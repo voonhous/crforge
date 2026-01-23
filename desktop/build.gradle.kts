@@ -15,4 +15,9 @@ dependencies {
 
 application {
     mainClass.set("org.crforge.desktop.DesktopLauncher")
+
+    // macOS requires this for LWJGL/GLFW
+    if (System.getProperty("os.name").lowercase().contains("mac")) {
+        applicationDefaultJvmArgs = listOf("-XstartOnFirstThread")
+    }
 }
