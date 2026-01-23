@@ -1,11 +1,12 @@
 package org.crforge.core.engine;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Tower;
 import org.crforge.core.entity.Troop;
+import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ class GameEngineTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     engine = new GameEngine();
+    engine.setMatch(new Standard1v1Match());
   }
 
   @Test

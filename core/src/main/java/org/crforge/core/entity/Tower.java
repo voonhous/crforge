@@ -94,6 +94,7 @@ public class Tower extends Building {
   }
 
   public static class Builder extends Building.Builder {
+
     private TowerType towerType = TowerType.PRINCESS;
 
     @Override

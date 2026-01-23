@@ -4,10 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.component.Combat;
 import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.*;
+import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.Projectile;
+import org.crforge.core.entity.Tower;
+import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Team;
 
-/** Handles attack execution, damage dealing, and projectile management. */
+/**
+ * Handles attack execution, damage dealing, and projectile management.
+ */
 public class CombatSystem {
 
   private final GameState gameState;
@@ -16,7 +21,9 @@ public class CombatSystem {
     this.gameState = gameState;
   }
 
-  /** Process combat for all entities. Called each tick. */
+  /**
+   * Process combat for all entities. Called each tick.
+   */
   public void update(float deltaTime) {
     // Process troop attacks
     for (Entity entity : gameState.getAliveEntities()) {
@@ -32,16 +39,24 @@ public class CombatSystem {
   }
 
   private void processTroopCombat(Troop troop) {
-    if (troop.isDeploying()) return;
-    if (!troop.hasTarget()) return;
+    if (troop.isDeploying()) {
+      return;
+    }
+    if (!troop.hasTarget()) {
+      return;
+    }
 
     Combat combat = troop.getCombat();
 
     // Check if in attack range
-    if (!troop.isInAttackRange()) return;
+    if (!troop.isInAttackRange()) {
+      return;
+    }
 
     // Check if can attack (cooldown ready)
-    if (!combat.canAttack()) return;
+    if (!combat.canAttack()) {
+      return;
+    }
 
     // Start attack if not already loading
     if (!combat.isLoading()) {
@@ -49,14 +64,18 @@ public class CombatSystem {
     }
 
     // Check if load time complete
-    if (combat.isLoading()) return;
+    if (combat.isLoading()) {
+      return;
+    }
 
     // Execute attack
     executeAttack(troop, troop.getCurrentTarget(), combat);
   }
 
   private void processTowerCombat(Tower tower) {
-    if (!tower.hasTarget()) return;
+    if (!tower.hasTarget()) {
+      return;
+    }
 
     Combat combat = tower.getCombat();
 
@@ -65,17 +84,23 @@ public class CombatSystem {
     float effectiveRange =
         combat.getRange() + (tower.getSize() + tower.getCurrentTarget().getSize()) / 2f;
 
-    if (distance > effectiveRange) return;
+    if (distance > effectiveRange) {
+      return;
+    }
 
     // Check cooldown
-    if (!combat.canAttack()) return;
+    if (!combat.canAttack()) {
+      return;
+    }
 
     // Start attack
     if (!combat.isLoading()) {
       combat.startAttack();
     }
 
-    if (combat.isLoading()) return;
+    if (combat.isLoading()) {
+      return;
+    }
 
     // Execute attack
     executeAttack(tower, tower.getCurrentTarget(), combat);
@@ -132,20 +157,28 @@ public class CombatSystem {
   }
 
   private void dealDamage(Entity target, int damage) {
-    if (target == null || !target.isAlive()) return;
+    if (target == null || !target.isAlive()) {
+      return;
+    }
     target.getHealth().takeDamage(damage);
   }
 
   private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius) {
-    if (primaryTarget == null) return;
+    if (primaryTarget == null) {
+      return;
+    }
 
     Team enemyTeam = source.getTeam().opposite();
     float centerX = primaryTarget.getPosition().getX();
     float centerY = primaryTarget.getPosition().getY();
 
     for (Entity entity : gameState.getAliveEntities()) {
-      if (entity.getTeam() != enemyTeam) continue;
-      if (!entity.isTargetable()) continue;
+      if (entity.getTeam() != enemyTeam) {
+        continue;
+      }
+      if (!entity.isTargetable()) {
+        continue;
+      }
 
       float dx = entity.getPosition().getX() - centerX;
       float dy = entity.getPosition().getY() - centerY;
@@ -159,10 +192,16 @@ public class CombatSystem {
     }
   }
 
-  /** Check if an entity can attack a target (used for validation). */
+  /**
+   * Check if an entity can attack a target (used for validation).
+   */
   public boolean canAttack(Entity attacker, Entity target) {
-    if (target == null || !target.isTargetable()) return false;
-    if (attacker.getTeam() == target.getTeam()) return false;
+    if (target == null || !target.isTargetable()) {
+      return false;
+    }
+    if (attacker.getTeam() == target.getTeam()) {
+      return false;
+    }
 
     Combat combat;
     if (attacker instanceof Troop troop) {

@@ -4,7 +4,9 @@ import lombok.Getter;
 import org.crforge.core.component.Position;
 import org.crforge.core.player.Team;
 
-/** Projectile for ranged attacks. Travels from source to target and deals damage on hit. */
+/**
+ * Projectile for ranged attacks. Travels from source to target and deals damage on hit.
+ */
 @Getter
 public class Projectile {
 
@@ -46,9 +48,13 @@ public class Projectile {
     nextId = 1;
   }
 
-  /** Update projectile position. Returns true if projectile reached target. */
+  /**
+   * Update projectile position. Returns true if projectile reached target.
+   */
   public boolean update(float deltaTime) {
-    if (!active) return false;
+    if (!active) {
+      return false;
+    }
 
     // If target is dead, projectile disappears (for homing projectiles)
     // Note: Some projectiles might continue to last known position - can be added later

@@ -1,6 +1,11 @@
 package org.crforge.core.card;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.crforge.core.entity.MovementType;
 import org.crforge.core.entity.TargetType;
 
@@ -20,7 +25,7 @@ public class CardRegistry {
             .name("Knight")
             .description("A tough melee fighter")
             .type(CardType.TROOP)
-            .elixirCost(3)
+            .cost(3)
             .troop(
                 TroopStats.builder()
                     .name("Knight")
@@ -41,7 +46,7 @@ public class CardRegistry {
             .name("Giant")
             .description("Slow but high health, only targets buildings")
             .type(CardType.TROOP)
-            .elixirCost(5)
+            .cost(5)
             .troop(
                 TroopStats.builder()
                     .name("Giant")
@@ -63,7 +68,7 @@ public class CardRegistry {
             .name("Valkyrie")
             .description("Spins and deals area damage")
             .type(CardType.TROOP)
-            .elixirCost(4)
+            .cost(4)
             .troop(
                 TroopStats.builder()
                     .name("Valkyrie")
@@ -86,7 +91,7 @@ public class CardRegistry {
             .name("Barbarians")
             .description("Four melee fighters")
             .type(CardType.TROOP)
-            .elixirCost(5)
+            .cost(5)
             .troop(
                 TroopStats.builder()
                     .name("Barbarian")
@@ -148,7 +153,7 @@ public class CardRegistry {
             .name("Goblins")
             .description("Three fast, weak fighters")
             .type(CardType.TROOP)
-            .elixirCost(2)
+            .cost(2)
             .troop(
                 TroopStats.builder()
                     .name("Goblin")
@@ -197,7 +202,7 @@ public class CardRegistry {
             .name("Minions")
             .description("Three flying units")
             .type(CardType.TROOP)
-            .elixirCost(3)
+            .cost(3)
             .troop(
                 TroopStats.builder()
                     .name("Minion")
@@ -248,7 +253,7 @@ public class CardRegistry {
             .name("Baby Dragon")
             .description("Flying unit with area damage")
             .type(CardType.TROOP)
-            .elixirCost(4)
+            .cost(4)
             .troop(
                 TroopStats.builder()
                     .name("Baby Dragon")
@@ -272,7 +277,7 @@ public class CardRegistry {
             .name("Musketeer")
             .description("Ranged attacker with good damage")
             .type(CardType.TROOP)
-            .elixirCost(4)
+            .cost(4)
             .troop(
                 TroopStats.builder()
                     .name("Musketeer")
@@ -294,7 +299,7 @@ public class CardRegistry {
             .name("Archers")
             .description("Two ranged attackers")
             .type(CardType.TROOP)
-            .elixirCost(3)
+            .cost(3)
             .troop(
                 TroopStats.builder()
                     .name("Archer")
@@ -329,7 +334,7 @@ public class CardRegistry {
             .name("Bomber")
             .description("Ground splash damage")
             .type(CardType.TROOP)
-            .elixirCost(2)
+            .cost(2)
             .troop(
                 TroopStats.builder()
                     .name("Bomber")
@@ -353,7 +358,7 @@ public class CardRegistry {
             .name("Arrows")
             .description("Area damage spell")
             .type(CardType.SPELL)
-            .elixirCost(3)
+            .cost(3)
             .spellDamage(303)
             .spellRadius(4.0f)
             .build());
@@ -364,7 +369,7 @@ public class CardRegistry {
             .name("Fireball")
             .description("High damage area spell")
             .type(CardType.SPELL)
-            .elixirCost(4)
+            .cost(4)
             .spellDamage(689)
             .spellRadius(2.5f)
             .build());
@@ -375,7 +380,7 @@ public class CardRegistry {
             .name("Zap")
             .description("Quick stun and damage")
             .type(CardType.SPELL)
-            .elixirCost(2)
+            .cost(2)
             .spellDamage(192)
             .spellRadius(2.5f)
             .spellDuration(0.5f) // stun duration
@@ -388,7 +393,7 @@ public class CardRegistry {
             .name("Cannon")
             .description("Defensive building that targets ground")
             .type(CardType.BUILDING)
-            .elixirCost(3)
+            .cost(3)
             .buildingHealth(742)
             .buildingLifetime(30f)
             .troop(
@@ -411,7 +416,7 @@ public class CardRegistry {
             .name("Tombstone")
             .description("Spawns Skeletons over time")
             .type(CardType.BUILDING)
-            .elixirCost(3)
+            .cost(3)
             .buildingHealth(511)
             .buildingLifetime(40f)
             .troop(

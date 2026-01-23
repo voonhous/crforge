@@ -11,8 +11,10 @@ public class Troop extends AbstractEntity {
   private final Combat combat;
   private final float deployTime;
 
-  @Setter private Entity currentTarget;
-  @Setter private boolean targetLocked;
+  @Setter
+  private Entity currentTarget;
+  @Setter
+  private boolean targetLocked;
   private float deployTimer;
 
   private Troop(Builder builder) {
@@ -56,20 +58,26 @@ public class Troop extends AbstractEntity {
   }
 
   public boolean isInAttackRange() {
-    if (currentTarget == null) return false;
+    if (currentTarget == null) {
+      return false;
+    }
     float distance = position.distanceTo(currentTarget.getPosition());
     float effectiveRange = combat.getRange() + (getSize() + currentTarget.getSize()) / 2f;
     return distance <= effectiveRange;
   }
 
   public float getDistanceToTarget() {
-    if (currentTarget == null) return Float.MAX_VALUE;
+    if (currentTarget == null) {
+      return Float.MAX_VALUE;
+    }
     return position.distanceTo(currentTarget.getPosition());
   }
 
   @Override
   public void update(float deltaTime) {
-    if (dead) return;
+    if (dead) {
+      return;
+    }
 
     // Handle deploy timer
     if (deployTimer > 0) {
@@ -99,6 +107,7 @@ public class Troop extends AbstractEntity {
   }
 
   public static class Builder {
+
     private String name = "Troop";
     private Team team = Team.BLUE;
     private float x = 0;

@@ -1,13 +1,22 @@
 package org.crforge.core.engine;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import lombok.Getter;
-import org.crforge.core.entity.*;
+import org.crforge.core.entity.AbstractEntity;
+import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.Projectile;
+import org.crforge.core.entity.Tower;
 import org.crforge.core.player.Team;
 
-/** Container for all game entities and state. Manages entity lifecycle (spawn, death, removal). */
+/**
+ * Container for all game entities and state. Manages entity lifecycle (spawn, death, removal).
+ */
 @Getter
 public class GameState {
 
@@ -50,7 +59,9 @@ public class GameState {
     projectiles.remove(projectile);
   }
 
-  /** Process pending spawns and removals. Called at start of each tick. */
+  /**
+   * Process pending spawns and removals. Called at start of each tick.
+   */
   public void processPending() {
     // Process spawns
     for (Entity entity : pendingSpawns) {
@@ -76,7 +87,9 @@ public class GameState {
     projectiles.removeIf(p -> !p.isActive());
   }
 
-  /** Check for dead entities and trigger death logic. */
+  /**
+   * Check for dead entities and trigger death logic.
+   */
   public void processDeaths() {
     for (Entity entity : entities) {
       if (!entity.isAlive() && entity instanceof AbstractEntity ae && !ae.isDead()) {
@@ -87,7 +100,9 @@ public class GameState {
   }
 
   private void checkWinCondition(Entity deadEntity) {
-    if (!(deadEntity instanceof Tower tower)) return;
+    if (!(deadEntity instanceof Tower tower)) {
+      return;
+    }
 
     if (tower.isCrownTower()) {
       gameOver = true;

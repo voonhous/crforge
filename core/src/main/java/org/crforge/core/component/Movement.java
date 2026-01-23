@@ -14,8 +14,10 @@ public class Movement {
   private final float size;
   private final MovementType type;
 
-  @Setter private float speedMultiplier = 1.0f;
-  @Setter private boolean canMoveFlag = true;
+  @Setter
+  private float speedMultiplier = 1.0f;
+  @Setter
+  private boolean canMoveFlag = true;
 
   public float getEffectiveSpeed() {
     return speed * speedMultiplier;
