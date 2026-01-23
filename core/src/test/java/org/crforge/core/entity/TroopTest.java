@@ -1,0 +1,114 @@
+package org.crforge.core.entity;
+
+import static org.assertj.core.api.Assertions.*;
+
+import org.crforge.core.component.Combat;
+import org.crforge.core.player.Team;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class TroopTest {
+
+  @BeforeEach
+  void setUp() {
+    AbstractEntity.resetIdCounter();
+  }
+
+  @Test
+  void builder_shouldCreateTroopWithDefaults() {
+    Troop troop = Troop.builder().build();
+
+    assertThat(troop.getName()).isEqualTo("Troop");
+    assertThat(troop.getTeam()).isEqualTo(Team.BLUE);
+    assertThat(troop.getHealth().getMax()).isEqualTo(100);
+    assertThat(troop.getMovementType()).isEqualTo(MovementType.GROUND);
+    assertThat(troop.getEntityType()).isEqualTo(EntityType.TROOP);
+  }
+
+  @Test
+  void builder_shouldAllowCustomization() {
+    Combat combat = Combat.builder().damage(100).range(1.5f).build();
+
+    Troop troop =
+        Troop.builder()
+            .name("Knight")
+            .team(Team.RED)
+            .position(10, 20)
+            .maxHealth(1000)
+            .speed(1.5f)
+            .mass(2.0f)
+            .size(1.2f)
+            .combat(combat)
+            .build();
+
+    assertThat(troop.getName()).isEqualTo("Knight");
+    assertThat(troop.getTeam()).isEqualTo(Team.RED);
+    assertThat(troop.getPosition().getX()).isEqualTo(10);
+    assertThat(troop.getPosition().getY()).isEqualTo(20);
+    assertThat(troop.getHealth().getMax()).isEqualTo(1000);
+    assertThat(troop.getCombat().getDamage()).isEqualTo(100);
+  }
+
+  @Test
+  void troop_shouldDeployBeforeBecomingTargetable() {
+    Troop troop = Troop.builder().deployTime(1.0f).build();
+    troop.onSpawn();
+
+    assertThat(troop.isDeploying()).isTrue();
+    assertThat(troop.isTargetable()).isFalse();
+
+    // Simulate time passing
+    troop.update(1.0f);
+
+    assertThat(troop.isDeploying()).isFalse();
+    assertThat(troop.isTargetable()).isTrue();
+  }
+
+  @Test
+  void troop_shouldTrackTarget() {
+    Troop attacker = Troop.builder().name("Attacker").team(Team.BLUE).build();
+
+    Troop target = Troop.builder().name("Target").team(Team.RED).build();
+    target.onSpawn();
+    target.update(2.0f); // Deploy
+
+    attacker.setCurrentTarget(target);
+
+    assertThat(attacker.hasTarget()).isTrue();
+    assertThat(attacker.getCurrentTarget()).isEqualTo(target);
+
+    attacker.clearTarget();
+
+    assertThat(attacker.hasTarget()).isFalse();
+  }
+
+  @Test
+  void troop_shouldCalculateDistanceToTarget() {
+    Troop attacker = Troop.builder().position(0, 0).build();
+
+    Troop target = Troop.builder().position(3, 4).build();
+    target.onSpawn();
+    target.update(2.0f);
+
+    attacker.setCurrentTarget(target);
+
+    assertThat(attacker.getDistanceToTarget()).isEqualTo(5.0f, within(0.01f));
+  }
+
+  @Test
+  void troop_withNoTarget_shouldReturnMaxDistance() {
+    Troop troop = Troop.builder().build();
+
+    assertThat(troop.getDistanceToTarget()).isEqualTo(Float.MAX_VALUE);
+  }
+
+  @Test
+  void troop_shouldHaveUniqueIds() {
+    Troop troop1 = Troop.builder().build();
+    Troop troop2 = Troop.builder().build();
+    Troop troop3 = Troop.builder().build();
+
+    assertThat(troop1.getId()).isNotEqualTo(troop2.getId());
+    assertThat(troop2.getId()).isNotEqualTo(troop3.getId());
+  }
+}
