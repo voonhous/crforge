@@ -1,10 +1,14 @@
 package org.crforge.core.combat;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.component.Combat;
-import org.crforge.core.entity.*;
+import org.crforge.core.entity.AbstractEntity;
+import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.MovementType;
+import org.crforge.core.entity.TargetType;
+import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

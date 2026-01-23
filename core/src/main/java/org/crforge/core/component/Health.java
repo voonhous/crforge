@@ -36,7 +36,9 @@ public class Health {
   }
 
   public int takeDamage(int damage) {
-    if (damage <= 0) return 0;
+    if (damage <= 0) {
+      return 0;
+    }
 
     int actualDamage;
 
@@ -58,7 +60,9 @@ public class Health {
   }
 
   public void heal(int amount) {
-    if (amount <= 0) return;
+    if (amount <= 0) {
+      return;
+    }
     current = Math.min(current + amount, max);
   }
 

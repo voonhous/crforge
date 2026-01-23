@@ -1,6 +1,6 @@
 package org.crforge.core.combat;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.engine.GameState;

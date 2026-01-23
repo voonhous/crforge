@@ -8,22 +8,29 @@ import lombok.Singular;
 @Getter
 @Builder
 public class Card {
+
   private final String id;
   private final String name;
   private final String description;
   private final CardType type;
-  private final int elixirCost;
+  private final int cost;
 
-  @Singular private final List<TroopStats> troops;
+  @Singular
+  private final List<TroopStats> troops;
 
   // For spells
-  @Builder.Default private final int spellDamage = 0;
-  @Builder.Default private final float spellRadius = 0f;
-  @Builder.Default private final float spellDuration = 0f;
+  @Builder.Default
+  private final int spellDamage = 0;
+  @Builder.Default
+  private final float spellRadius = 0f;
+  @Builder.Default
+  private final float spellDuration = 0f;
 
   // For buildings
-  @Builder.Default private final int buildingHealth = 0;
-  @Builder.Default private final float buildingLifetime = 0f;
+  @Builder.Default
+  private final int buildingHealth = 0;
+  @Builder.Default
+  private final float buildingLifetime = 0f;
 
   public boolean isTroop() {
     return type == CardType.TROOP;

@@ -46,7 +46,9 @@ public class Building extends AbstractEntity {
 
   @Override
   public void update(float deltaTime) {
-    if (dead) return;
+    if (dead) {
+      return;
+    }
 
     // Reduce lifetime
     if (hasLifetime()) {
@@ -64,6 +66,7 @@ public class Building extends AbstractEntity {
   }
 
   public static class Builder {
+
     private String name = "Building";
     private Team team = Team.BLUE;
     private float x = 0;

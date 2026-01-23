@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.player.Team;

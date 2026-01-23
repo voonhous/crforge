@@ -15,7 +15,8 @@ public abstract class AbstractEntity implements Entity {
 
   private static long nextId = 1;
 
-  @EqualsAndHashCode.Include protected final long id;
+  @EqualsAndHashCode.Include
+  protected final long id;
   protected final String name;
   protected final Team team;
   protected final Position position;

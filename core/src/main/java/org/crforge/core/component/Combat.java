@@ -8,14 +8,22 @@ import org.crforge.core.entity.TargetType;
 @Builder
 public class Combat {
 
-  @Builder.Default private final int damage = 0;
-  @Builder.Default private final float range = 1.0f;
-  @Builder.Default private final float sightRange = 5.5f;
-  @Builder.Default private final float attackCooldown = 1.0f;
-  @Builder.Default private final float aoeRadius = 0;
-  @Builder.Default private final TargetType targetType = TargetType.ALL;
-  @Builder.Default private final boolean ranged = false;
-  @Builder.Default private final float loadTime = 0;
+  @Builder.Default
+  private final int damage = 0;
+  @Builder.Default
+  private final float range = 1.0f;
+  @Builder.Default
+  private final float sightRange = 5.5f;
+  @Builder.Default
+  private final float attackCooldown = 1.0f;
+  @Builder.Default
+  private final float aoeRadius = 0;
+  @Builder.Default
+  private final TargetType targetType = TargetType.ALL;
+  @Builder.Default
+  private final boolean ranged = false;
+  @Builder.Default
+  private final float loadTime = 0;
 
   private float currentCooldown;
   private float currentLoadTime;

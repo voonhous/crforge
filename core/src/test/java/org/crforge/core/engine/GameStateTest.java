@@ -1,6 +1,6 @@
 package org.crforge.core.engine;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Tower;

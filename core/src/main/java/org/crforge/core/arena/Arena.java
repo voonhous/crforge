@@ -5,6 +5,7 @@ import org.crforge.core.player.Team;
 
 @Getter
 public class Arena {
+
   public static final int WIDTH = 18;
   public static final int HEIGHT = 32;
   public static final float TILE_SIZE = 1.0f;
@@ -85,7 +86,9 @@ public class Arena {
 
   public boolean isValidPlacement(float x, float y, Team team) {
     Tile tile = getTileAt(x, y);
-    if (tile == null) return false;
+    if (tile == null) {
+      return false;
+    }
 
     // Can only place in your own zone
     if (team == Team.BLUE) {

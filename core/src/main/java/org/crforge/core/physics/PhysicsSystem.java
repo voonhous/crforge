@@ -4,7 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.*;
+import org.crforge.core.entity.Building;
+import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.MovementType;
+import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Team;
 
 public class PhysicsSystem {
@@ -39,11 +42,17 @@ public class PhysicsSystem {
   }
 
   private void applyMovement(Troop troop, float deltaTime) {
-    if (!troop.getMovement().canMove()) return;
-    if (troop.isDeploying()) return;
+    if (!troop.getMovement().canMove()) {
+      return;
+    }
+    if (troop.isDeploying()) {
+      return;
+    }
 
     // If in attack range, don't move
-    if (troop.isInAttackRange()) return;
+    if (troop.isInAttackRange()) {
+      return;
+    }
 
     Entity target = troop.getCurrentTarget();
     if (target != null && target.isAlive()) {
@@ -125,14 +134,18 @@ public class PhysicsSystem {
     float minDist = (a.getSize() + b.getSize()) / 2f;
     float overlap = minDist - dist;
 
-    if (overlap <= 0) return; // No collision
+    if (overlap <= 0) {
+      return; // No collision
+    }
 
     // Get masses
     float massA = getMass(a);
     float massB = getMass(b);
     float totalMass = massA + massB;
 
-    if (totalMass <= 0) return;
+    if (totalMass <= 0) {
+      return;
+    }
 
     // Calculate push ratios (inverse of mass)
     float ratioA = (massB > 0) ? massB / totalMass : 0;

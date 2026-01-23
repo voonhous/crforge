@@ -1,6 +1,6 @@
 package org.crforge.core.entity;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
