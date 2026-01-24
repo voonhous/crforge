@@ -9,6 +9,7 @@ import org.crforge.core.entity.MovementType;
 @RequiredArgsConstructor
 public class Movement {
 
+  @Getter
   private final float speed;
   private final float mass;
   private final float size;
@@ -18,6 +19,13 @@ public class Movement {
   private float speedMultiplier = 1.0f;
   @Setter
   private boolean canMoveFlag = true;
+
+  @Setter
+  private boolean movementDisabled = false;
+
+  public float getBaseSpeed() {
+    return speed;
+  }
 
   public float getEffectiveSpeed() {
     return speed * speedMultiplier;

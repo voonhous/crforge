@@ -7,6 +7,10 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.player.Team;
+import org.crforge.core.effect.AppliedEffect;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -22,6 +26,8 @@ public abstract class AbstractEntity implements Entity {
   protected final Position position;
   protected final Health health;
   protected final Movement movement;
+
+  protected final List<AppliedEffect> appliedEffects = new ArrayList<>();
 
   protected boolean spawned;
   protected boolean dead;
@@ -82,5 +88,15 @@ public abstract class AbstractEntity implements Entity {
   @Override
   public void onDeath() {
     this.dead = true;
+  }
+
+  @Override
+  public List<AppliedEffect> getAppliedEffects() {
+    return appliedEffects;
+  }
+
+  @Override
+  public void addEffect(AppliedEffect effect) {
+    appliedEffects.add(effect);
   }
 }
