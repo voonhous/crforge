@@ -13,9 +13,15 @@ import org.crforge.core.player.Team;
 public class PhysicsSystem {
 
   private final Arena arena;
+  private final Pathfinder pathfinder;
+
+  public PhysicsSystem(Arena arena, Pathfinder pathfinder) {
+    this.arena = arena;
+    this.pathfinder = pathfinder;
+  }
 
   public PhysicsSystem(Arena arena) {
-    this.arena = arena;
+    this(arena, new BasePathfinder());
   }
 
   public void update(Collection<Entity> entities, float deltaTime) {
@@ -66,7 +72,14 @@ public class PhysicsSystem {
     Position pos = troop.getPosition();
     Position targetPos = target.getPosition();
 
-    float angle = pos.angleTo(targetPos);
+    float angle =
+        pathfinder.getNextMovementAngle(
+            pos,
+            troop.getMovementType(),
+            targetPos.getX(),
+            targetPos.getY(),
+            arena);
+
     float speed = troop.getMovement().getEffectiveSpeed();
     float distance = speed * deltaTime;
 
@@ -81,11 +94,28 @@ public class PhysicsSystem {
     Position pos = troop.getPosition();
     Team team = troop.getTeam();
 
-    // Move toward enemy crown tower
-    float targetY = (team == Team.BLUE) ? Arena.HEIGHT - 3f : 3f;
-    float targetX = arena.getCenterX();
+    // Determine which lane the troop is in based on X position
+    float centerX = arena.getCenterX();
+    boolean isLeftLane = pos.getX() < centerX;
 
-    float angle = (float) Math.atan2(targetY - pos.getY(), targetX - pos.getX());
+    // Move toward the enemy princess tower in the same lane
+    float targetX;
+    float targetY;
+
+    if (team == Team.BLUE) {
+      // Blue troops attack red towers (at top)
+      targetX = isLeftLane ? arena.getRedLeftPrincessTowerX() : arena.getRedRightPrincessTowerX();
+      targetY = arena.getRedLeftPrincessTowerY();
+    } else {
+      // Red troops attack blue towers (at bottom)
+      targetX = isLeftLane ? arena.getBlueLeftPrincessTowerX() : arena.getBlueRightPrincessTowerX();
+      targetY = arena.getBlueLeftPrincessTowerY();
+    }
+
+    float angle =
+        pathfinder.getNextMovementAngle(
+            pos, troop.getMovementType(), targetX, targetY, arena);
+
     float speed = troop.getMovement().getEffectiveSpeed();
     float distance = speed * deltaTime;
 
@@ -114,13 +144,16 @@ public class PhysicsSystem {
   }
 
   private boolean shouldCollide(Entity a, Entity b) {
-    // Air units don't collide with ground units
-    if (a.getMovementType() == MovementType.AIR && b.getMovementType() == MovementType.GROUND) {
-      return false;
-    }
-    return a.getMovementType() != MovementType.GROUND || b.getMovementType() != MovementType.AIR;
+    MovementType typeA = a.getMovementType();
+    MovementType typeB = b.getMovementType();
 
-    // Buildings always collide with ground troops
+    // Air units do not collide with ground units or buildings
+    if (typeA == MovementType.AIR) {
+      return typeB == MovementType.AIR; // Air only collides with air
+    }
+    return typeB != MovementType.AIR; // Ground/building does not collide with air
+
+    // Ground and buildings collide with each other
   }
 
   private void resolveCollision(Entity a, Entity b) {
@@ -143,13 +176,27 @@ public class PhysicsSystem {
     float massB = getMass(b);
     float totalMass = massA + massB;
 
-    if (totalMass <= 0) {
-      return;
-    }
+    // Calculate push ratios, lighter objects get pushed more
+    // If one has mass 0 (immovable), the other gets pushed fully
+    float ratioA;
+    float ratioB;
 
-    // Calculate push ratios (inverse of mass)
-    float ratioA = (massB > 0) ? massB / totalMass : 0;
-    float ratioB = (massA > 0) ? massA / totalMass : 0;
+    if (totalMass <= 0) {
+      // Both immovable, no push
+      return;
+    } else if (massA <= 0) {
+      // A is immovable, B gets pushed fully
+      ratioA = 0;
+      ratioB = 1;
+    } else if (massB <= 0) {
+      // B is immovable, A gets pushed fully
+      ratioA = 1;
+      ratioB = 0;
+    } else {
+      // Both movable, push proportional to inverse mass
+      ratioA = massB / totalMass;
+      ratioB = massA / totalMass;
+    }
 
     // Normalize direction
     if (dist > 0.001f) {

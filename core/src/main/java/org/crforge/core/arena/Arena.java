@@ -13,9 +13,10 @@ public class Arena {
   // River is at the center of the arena
   public static final int RIVER_Y = HEIGHT / 2;
 
-  // Bridge positions (left and right)
+  // Bridge positions (left and right) - each bridge is 3 tiles wide
+  public static final int BRIDGE_WIDTH = 3;
   public static final int LEFT_BRIDGE_X = 3;
-  public static final int RIGHT_BRIDGE_X = WIDTH - 4;
+  public static final int RIGHT_BRIDGE_X = WIDTH - LEFT_BRIDGE_X - BRIDGE_WIDTH; // symmetric with left
 
   private final Tile[][] tiles;
   private final String name;
@@ -63,8 +64,8 @@ public class Arena {
   }
 
   private boolean isBridgePosition(int x) {
-    return (x >= LEFT_BRIDGE_X && x <= LEFT_BRIDGE_X + 2)
-        || (x >= RIGHT_BRIDGE_X && x <= RIGHT_BRIDGE_X + 2);
+    return (x >= LEFT_BRIDGE_X && x < LEFT_BRIDGE_X + BRIDGE_WIDTH)
+        || (x >= RIGHT_BRIDGE_X && x < RIGHT_BRIDGE_X + BRIDGE_WIDTH);
   }
 
   public Tile getTile(int x, int y) {
@@ -124,7 +125,7 @@ public class Arena {
   }
 
   public float getBlueLeftPrincessTowerX() {
-    return 4f;
+    return LEFT_BRIDGE_X + BRIDGE_WIDTH / 2f; // center of bridge
   }
 
   public float getBlueLeftPrincessTowerY() {
@@ -132,7 +133,7 @@ public class Arena {
   }
 
   public float getBlueRightPrincessTowerX() {
-    return WIDTH - 4f;
+    return RIGHT_BRIDGE_X + BRIDGE_WIDTH / 2f; // center of bridge
   }
 
   public float getBlueRightPrincessTowerY() {
@@ -140,7 +141,7 @@ public class Arena {
   }
 
   public float getRedLeftPrincessTowerX() {
-    return 4f;
+    return LEFT_BRIDGE_X + BRIDGE_WIDTH / 2f; // center of bridge
   }
 
   public float getRedLeftPrincessTowerY() {
@@ -148,7 +149,7 @@ public class Arena {
   }
 
   public float getRedRightPrincessTowerX() {
-    return WIDTH - 4f;
+    return RIGHT_BRIDGE_X + BRIDGE_WIDTH / 2f; // center of bridge
   }
 
   public float getRedRightPrincessTowerY() {

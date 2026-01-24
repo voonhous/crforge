@@ -57,19 +57,23 @@ public class Standard1v1Match extends Match {
   }
 
   private void spawnTowersForTeam(Team team, TowerSpawnCallback callback) {
-    // Y positions: BLUE at bottom (0), RED at top (HEIGHT)
-    float baseY = (team == Team.BLUE) ? 3f : Arena.HEIGHT - 3f;
-    float princessY = (team == Team.BLUE) ? 6f : Arena.HEIGHT - 6f;
+    Arena arena = getArena();
 
-    // Crown tower (center)
-    Tower crownTower = Tower.createCrownTower(team, Arena.WIDTH / 2f, baseY);
-    callback.spawn(crownTower);
-
-    // Princess towers (left and right)
-    Tower leftPrincess = Tower.createPrincessTower(team, 5f, princessY);
-    Tower rightPrincess = Tower.createPrincessTower(team, Arena.WIDTH - 5f, princessY);
-    callback.spawn(leftPrincess);
-    callback.spawn(rightPrincess);
+    if (team == Team.BLUE) {
+      callback.spawn(Tower.createCrownTower(team,
+          arena.getBlueCrownTowerX(), arena.getBlueCrownTowerY()));
+      callback.spawn(Tower.createPrincessTower(team,
+          arena.getBlueLeftPrincessTowerX(), arena.getBlueLeftPrincessTowerY()));
+      callback.spawn(Tower.createPrincessTower(team,
+          arena.getBlueRightPrincessTowerX(), arena.getBlueRightPrincessTowerY()));
+    } else {
+      callback.spawn(Tower.createCrownTower(team,
+          arena.getRedCrownTowerX(), arena.getRedCrownTowerY()));
+      callback.spawn(Tower.createPrincessTower(team,
+          arena.getRedLeftPrincessTowerX(), arena.getRedLeftPrincessTowerY()));
+      callback.spawn(Tower.createPrincessTower(team,
+          arena.getRedRightPrincessTowerX(), arena.getRedRightPrincessTowerY()));
+    }
   }
 
   /**
