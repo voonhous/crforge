@@ -2,10 +2,12 @@ package org.crforge.core.component;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.entity.TargetType;
 
 @Getter
 @Builder
+@Setter
 public class Combat {
 
   @Builder.Default
@@ -28,8 +30,13 @@ public class Combat {
   private float currentCooldown;
   private float currentLoadTime;
 
+  @Builder.Default
+  private float attackSpeedMultiplier = 1.0f;
+  @Builder.Default
+  private boolean combatDisabled = false;
+
   public boolean canAttack() {
-    return currentCooldown <= 0;
+    return !combatDisabled && currentCooldown <= 0;
   }
 
   public boolean isLoading() {
@@ -46,11 +53,12 @@ public class Combat {
   }
 
   public void update(float deltaTime) {
+    float effectiveDelta = deltaTime * (combatDisabled ? 0 : attackSpeedMultiplier);
     if (currentCooldown > 0) {
-      currentCooldown -= deltaTime;
+      currentCooldown -= effectiveDelta;
     }
     if (currentLoadTime > 0) {
-      currentLoadTime -= deltaTime;
+      currentLoadTime -= effectiveDelta;
     }
   }
 
