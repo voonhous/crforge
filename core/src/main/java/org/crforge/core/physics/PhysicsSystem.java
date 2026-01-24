@@ -156,68 +156,155 @@ public class PhysicsSystem {
     // Ground and buildings collide with each other
   }
 
-  private void resolveCollision(Entity a, Entity b) {
-    Position posA = a.getPosition();
-    Position posB = b.getPosition();
+  /**
+   * Collision result containing push direction and overlap amount.
+   */
+  private record CollisionResult(float dirX, float dirY, float overlap) {}
 
+  private void resolveCollision(Entity a, Entity b) {
+    // 1. Detect collision and calculate push direction
+    CollisionResult collision = detectCollision(a, b);
+    if (collision == null) {
+      return;
+    }
+
+    // 2. Calculate how much each entity should be pushed (based on mass)
+    float[] pushRatios = calculatePushRatios(a, b);
+    if (pushRatios == null) {
+      return;
+    }
+    float ratioA = pushRatios[0];
+    float ratioB = pushRatios[1];
+
+    // 3. Apply push to separate entities
+    float pushX = collision.overlap * collision.dirX;
+    float pushY = collision.overlap * collision.dirY;
+
+    if (a.getMovementType() != MovementType.BUILDING) {
+      a.getPosition().add(pushX * ratioA, pushY * ratioA);
+    }
+    if (b.getMovementType() != MovementType.BUILDING) {
+      b.getPosition().add(-pushX * ratioB, -pushY * ratioB);
+    }
+  }
+
+  /**
+   * Detects collision between two entities.
+   * Handles circle-circle (troop vs troop) and circle-rect (troop vs building).
+   *
+   * @return CollisionResult with direction from B toward A, or null if no collision
+   */
+  private CollisionResult detectCollision(Entity a, Entity b) {
+    boolean aIsBuilding = a.getMovementType() == MovementType.BUILDING;
+    boolean bIsBuilding = b.getMovementType() == MovementType.BUILDING;
+
+    if (bIsBuilding && !aIsBuilding) {
+      // Troop (A) vs Building (B): circle-rectangle collision
+      return detectCircleRectCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(), b.getSize());
+    } else if (aIsBuilding && !bIsBuilding) {
+      // Building (A) vs Troop (B): flip the result direction
+      CollisionResult result = detectCircleRectCollision(b.getPosition(), b.getSize() / 2f, a.getPosition(), a.getSize());
+      if (result == null) return null;
+      return new CollisionResult(-result.dirX, -result.dirY, result.overlap);
+    } else {
+      // Circle-circle collision (troop vs troop, or building vs building)
+      return detectCircleCircleCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(), b.getSize() / 2f);
+    }
+  }
+
+  private CollisionResult detectCircleCircleCollision(Position posA, float radiusA, Position posB, float radiusB) {
     float dx = posA.getX() - posB.getX();
     float dy = posA.getY() - posB.getY();
     float dist = (float) Math.sqrt(dx * dx + dy * dy);
-
-    float minDist = (a.getSize() + b.getSize()) / 2f;
+    float minDist = radiusA + radiusB;
     float overlap = minDist - dist;
 
     if (overlap <= 0) {
-      return; // No collision
+      return null;
     }
 
-    // Get masses
-    float massA = getMass(a);
-    float massB = getMass(b);
-    float totalMass = massA + massB;
-
-    // Calculate push ratios, lighter objects get pushed more
-    // If one has mass 0 (immovable), the other gets pushed fully
-    float ratioA;
-    float ratioB;
-
-    if (totalMass <= 0) {
-      // Both immovable, no push
-      return;
-    } else if (massA <= 0) {
-      // A is immovable, B gets pushed fully
-      ratioA = 0;
-      ratioB = 1;
-    } else if (massB <= 0) {
-      // B is immovable, A gets pushed fully
-      ratioA = 1;
-      ratioB = 0;
-    } else {
-      // Both movable, push proportional to inverse mass
-      ratioA = massB / totalMass;
-      ratioB = massA / totalMass;
-    }
-
-    // Normalize direction
+    // Normalize direction (from B toward A)
     if (dist > 0.001f) {
       dx /= dist;
       dy /= dist;
     } else {
-      // Overlapping exactly - push in random direction
       dx = 1;
       dy = 0;
     }
 
-    float pushX = overlap * dx;
-    float pushY = overlap * dy;
+    return new CollisionResult(dx, dy, overlap);
+  }
 
-    // Apply push
-    if (massA > 0 && a.getMovementType() != MovementType.BUILDING) {
-      posA.add(pushX * ratioA, pushY * ratioA);
+  private CollisionResult detectCircleRectCollision(Position circlePos, float radius, Position rectPos, float rectSize) {
+    float cx = circlePos.getX();
+    float cy = circlePos.getY();
+    float rx = rectPos.getX();
+    float ry = rectPos.getY();
+    float halfSize = rectSize / 2f;
+
+    // Find closest point on rectangle to circle center
+    float closestX = clamp(cx, rx - halfSize, rx + halfSize);
+    float closestY = clamp(cy, ry - halfSize, ry + halfSize);
+
+    // Distance from circle center to closest point
+    float dx = cx - closestX;
+    float dy = cy - closestY;
+    float distSq = dx * dx + dy * dy;
+
+    if (distSq >= radius * radius) {
+      return null; // No collision
     }
-    if (massB > 0 && b.getMovementType() != MovementType.BUILDING) {
-      posB.add(-pushX * ratioB, -pushY * ratioB);
+
+    float dist = (float) Math.sqrt(distSq);
+    float overlap = radius - dist;
+
+    // Direction from rect toward circle
+    if (dist > 0.001f) {
+      dx /= dist;
+      dy /= dist;
+    } else {
+      // Circle center inside rectangle - push toward nearest edge
+      float toLeft = cx - (rx - halfSize);
+      float toRight = (rx + halfSize) - cx;
+      float toBottom = cy - (ry - halfSize);
+      float toTop = (ry + halfSize) - cy;
+      float minEdgeDist = Math.min(Math.min(toLeft, toRight), Math.min(toBottom, toTop));
+
+      if (minEdgeDist == toLeft) { dx = -1; dy = 0; }
+      else if (minEdgeDist == toRight) { dx = 1; dy = 0; }
+      else if (minEdgeDist == toBottom) { dx = 0; dy = -1; }
+      else { dx = 0; dy = 1; }
+
+      overlap = radius + minEdgeDist;
     }
+
+    return new CollisionResult(dx, dy, overlap);
+  }
+
+  /**
+   * Calculate push ratios based on mass. Lighter objects get pushed more.
+   * Immovable objects (mass 0) don't move; the other object takes full push.
+   *
+   * @return [ratioA, ratioB] or null if both immovable
+   */
+  private float[] calculatePushRatios(Entity a, Entity b) {
+    float massA = getMass(a);
+    float massB = getMass(b);
+    float totalMass = massA + massB;
+
+    if (totalMass <= 0) {
+      return null; // Both immovable
+    } else if (massA <= 0) {
+      return new float[] {0, 1}; // A immovable, B takes full push
+    } else if (massB <= 0) {
+      return new float[] {1, 0}; // B immovable, A takes full push
+    } else {
+      return new float[] {massB / totalMass, massA / totalMass};
+    }
+  }
+
+  private float clamp(float value, float min, float max) {
+    return Math.max(min, Math.min(max, value));
   }
 
   private float getMass(Entity entity) {
