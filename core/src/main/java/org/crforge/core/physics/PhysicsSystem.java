@@ -10,20 +10,43 @@ import org.crforge.core.entity.MovementType;
 import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Team;
 
+/**
+ * Handles all physics interactions in the game, including movement, collision detection, collision
+ * resolution, and arena boundary enforcement.
+ */
 public class PhysicsSystem {
+
+  private static final float SLIDE_FACTOR = 0.5f;
 
   private final Arena arena;
   private final Pathfinder pathfinder;
 
+  /**
+   * Creates a PhysicsSystem with a specific Arena and Pathfinder.
+   *
+   * @param arena      The game arena.
+   * @param pathfinder The pathfinding strategy to use.
+   */
   public PhysicsSystem(Arena arena, Pathfinder pathfinder) {
     this.arena = arena;
     this.pathfinder = pathfinder;
   }
 
+  /**
+   * Creates a PhysicsSystem with a default BasePathfinder.
+   *
+   * @param arena The game arena.
+   */
   public PhysicsSystem(Arena arena) {
     this(arena, new BasePathfinder());
   }
 
+  /**
+   * Updates the physics state for all entities.
+   *
+   * @param entities  All entities in the game.
+   * @param deltaTime Time elapsed since last update (in seconds).
+   */
   public void update(Collection<Entity> entities, float deltaTime) {
     List<Entity> movableEntities =
         entities.stream()
@@ -31,31 +54,28 @@ public class PhysicsSystem {
             .filter(e -> e.getMovementType() != MovementType.BUILDING)
             .toList();
 
-    // Apply movement
+    // 1. Apply movement based on pathfinding
     for (Entity entity : movableEntities) {
       if (entity instanceof Troop troop) {
         applyMovement(troop, deltaTime);
       }
     }
 
-    // Resolve collisions
+    // 2. Resolve collisions between entities
     resolveCollisions(entities);
 
-    // Enforce bounds
+    // 3. Keep entities within arena bounds
     for (Entity entity : movableEntities) {
       enforceBounds(entity);
     }
   }
 
   private void applyMovement(Troop troop, float deltaTime) {
-    if (!troop.getMovement().canMove()) {
-      return;
-    }
-    if (troop.isDeploying()) {
+    if (!troop.getMovement().canMove() || troop.isDeploying()) {
       return;
     }
 
-    // If in attack range, don't move
+    // Don't move if already in range to attack current target
     if (troop.isInAttackRange()) {
       return;
     }
@@ -72,42 +92,30 @@ public class PhysicsSystem {
     Position pos = troop.getPosition();
     Position targetPos = target.getPosition();
 
-    float angle =
-        pathfinder.getNextMovementAngle(
-            pos,
-            troop.getMovementType(),
-            targetPos.getX(),
-            targetPos.getY(),
-            arena);
+    float angle = pathfinder.getNextMovementAngle(
+        pos,
+        troop.getMovementType(),
+        targetPos.getX(),
+        targetPos.getY(),
+        arena);
 
-    float speed = troop.getMovement().getEffectiveSpeed();
-    float distance = speed * deltaTime;
-
-    float dx = (float) Math.cos(angle) * distance;
-    float dy = (float) Math.sin(angle) * distance;
-
-    pos.add(dx, dy);
-    pos.setRotation(angle);
+    applyVelocity(troop, angle, deltaTime);
   }
 
   private void moveTowardEnemySide(Troop troop, float deltaTime) {
     Position pos = troop.getPosition();
     Team team = troop.getTeam();
 
-    // Determine which lane the troop is in based on X position
     float centerX = arena.getCenterX();
     boolean isLeftLane = pos.getX() < centerX;
 
-    // Move toward the enemy princess tower in the same lane
     float targetX;
     float targetY;
 
     if (team == Team.BLUE) {
-      // Blue troops attack red towers (at top)
       targetX = isLeftLane ? arena.getRedLeftPrincessTowerX() : arena.getRedRightPrincessTowerX();
       targetY = arena.getRedLeftPrincessTowerY();
     } else {
-      // Red troops attack blue towers (at bottom)
       targetX = isLeftLane ? arena.getBlueLeftPrincessTowerX() : arena.getBlueRightPrincessTowerX();
       targetY = arena.getBlueLeftPrincessTowerY();
     }
@@ -115,21 +123,24 @@ public class PhysicsSystem {
     float angle = pathfinder.getNextMovementAngle(
         pos, troop.getMovementType(), targetX, targetY, arena);
 
+    applyVelocity(troop, angle, deltaTime);
+  }
+
+  private void applyVelocity(Troop troop, float angle, float deltaTime) {
     float speed = troop.getMovement().getEffectiveSpeed();
     float distance = speed * deltaTime;
 
     float dx = (float) Math.cos(angle) * distance;
     float dy = (float) Math.sin(angle) * distance;
 
-    pos.add(dx, dy);
-    pos.setRotation(angle);
+    troop.getPosition().add(dx, dy);
+    troop.getPosition().setRotation(angle);
   }
 
   private void resolveCollisions(Collection<Entity> entities) {
     List<Entity> collidable =
         entities.stream().filter(Entity::isAlive).filter(Entity::isTargetable).toList();
 
-    // Check all pairs
     for (int i = 0; i < collidable.size(); i++) {
       for (int j = i + 1; j < collidable.size(); j++) {
         Entity a = collidable.get(i);
@@ -148,11 +159,9 @@ public class PhysicsSystem {
 
     // Air units do not collide with ground units or buildings
     if (typeA == MovementType.AIR) {
-      return typeB == MovementType.AIR; // Air only collides with air
+      return typeB == MovementType.AIR;
     }
-    return typeB != MovementType.AIR; // Ground/building does not collide with air
-
-    // Ground and buildings collide with each other
+    return typeB != MovementType.AIR;
   }
 
   /**
@@ -162,6 +171,10 @@ public class PhysicsSystem {
 
   }
 
+  /**
+   * Resolves collision between two entities by pushing them apart. If one entity is a building,
+   * applies sliding physics to the other.
+   */
   private void resolveCollision(Entity a, Entity b) {
     // 1. Detect collision and calculate push direction
     CollisionResult collision = detectCollision(a, b);
@@ -181,6 +194,14 @@ public class PhysicsSystem {
     float pushX = collision.overlap * collision.dirX;
     float pushY = collision.overlap * collision.dirY;
 
+    // Apply sliding physics if colliding with a static building
+    Vector2 slidingAdjustment = calculateSliding(a, b, collision);
+    if (slidingAdjustment != null) {
+      pushX += slidingAdjustment.x;
+      pushY += slidingAdjustment.y;
+    }
+
+    // Apply position updates
     if (a.getMovementType() != MovementType.BUILDING) {
       a.getPosition().add(pushX * ratioA, pushY * ratioA);
     }
@@ -190,13 +211,74 @@ public class PhysicsSystem {
   }
 
   /**
-   * Detects collision between two entities. Matches JS logic: treats all entities (including
-   * buildings) as circles.
-   *
-   * @return CollisionResult with direction from B toward A, or null if no collision
+   * Helper class for vector operations to keep resolveCollision clean.
    */
+  private static class Vector2 {
+
+    float x, y;
+
+    Vector2(float x, float y) {
+      this.x = x;
+      this.y = y;
+    }
+  }
+
+  /**
+   * Calculates the sliding vector if one entity is a building and the other is a troop. This helps
+   * troops slide around buildings instead of getting stuck.
+   *
+   * @return A Vector2 representing the adjustment to the push vector, or null if no sliding
+   * applies.
+   */
+  private Vector2 calculateSliding(Entity a, Entity b, CollisionResult collision) {
+    boolean aIsBuilding = a.getMovementType() == MovementType.BUILDING;
+    boolean bIsBuilding = b.getMovementType() == MovementType.BUILDING;
+
+    // Sliding only applies when exactly one entity is a building
+    if (aIsBuilding == bIsBuilding) {
+      return null;
+    }
+
+    Entity mover = aIsBuilding ? b : a;
+
+    // Normal vector pointing FROM static object TO mover
+    // collision.dir points from B to A
+    float normalX = bIsBuilding ? collision.dirX : -collision.dirX;
+    float normalY = bIsBuilding ? collision.dirY : -collision.dirY;
+
+    // Tangent vector (-y, x)
+    float tanX = -normalY;
+    float tanY = normalX;
+
+    // Compare tangent with mover's intended direction
+    float rot = mover.getPosition().getRotation();
+    float moveX = (float) Math.cos(rot);
+    float moveY = (float) Math.sin(rot);
+    float dot = moveX * tanX + moveY * tanY;
+
+    float slideX;
+    float slideY;
+
+    // Apply slide in the direction that matches movement
+    if (dot >= 0) {
+      slideX = tanX * collision.overlap * SLIDE_FACTOR;
+      slideY = tanY * collision.overlap * SLIDE_FACTOR;
+    } else {
+      slideX = -tanX * collision.overlap * SLIDE_FACTOR;
+      slideY = -tanY * collision.overlap * SLIDE_FACTOR;
+    }
+
+    // If 'a' is the mover, we add the slide directly.
+    // If 'b' is the mover, we need to subtract because the final application logic subtracts the push vector for 'b'.
+    // (See resolveCollision: b.add(-pushX, -pushY))
+    if (a == mover) {
+      return new Vector2(slideX, slideY);
+    } else {
+      return new Vector2(-slideX, -slideY);
+    }
+  }
+
   private CollisionResult detectCollision(Entity a, Entity b) {
-    // Treat everything as circles
     return detectCircleCircleCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(),
         b.getSize() / 2f);
   }
@@ -205,13 +287,16 @@ public class PhysicsSystem {
       float radiusB) {
     float dx = posA.getX() - posB.getX();
     float dy = posA.getY() - posB.getY();
-    float dist = (float) Math.sqrt(dx * dx + dy * dy);
+    float distSq = dx * dx + dy * dy;
     float minDist = radiusA + radiusB;
-    float overlap = minDist - dist;
 
-    if (overlap <= 0) {
+    // Quick check with squared distance
+    if (distSq >= minDist * minDist) {
       return null;
     }
+
+    float dist = (float) Math.sqrt(distSq);
+    float overlap = minDist - dist;
 
     // Normalize direction (from B toward A)
     if (dist > 0.001f) {
@@ -225,39 +310,29 @@ public class PhysicsSystem {
     return new CollisionResult(dx, dy, overlap);
   }
 
-  /**
-   * Calculate push ratios based on mass. Lighter objects get pushed more.
-   * <p>
-   * Immovable objects (mass 0) don't move; the other object takes full push.
-   *
-   * @return [ratioA, ratioB] or null if both immovable
-   */
   private float[] calculatePushRatios(Entity a, Entity b) {
     float massA = getMass(a);
     float massB = getMass(b);
     float totalMass = massA + massB;
 
     if (totalMass <= 0) {
-      return null; // Both immovable
+      return null;
     } else if (massA <= 0) {
-      return new float[]{0, 1}; // A immovable, B takes full push
+      return new float[]{0, 1}; // A is immovable
     } else if (massB <= 0) {
-      return new float[]{1, 0}; // B immovable, A takes full push
+      return new float[]{1, 0}; // B is immovable
     } else {
       return new float[]{massB / totalMass, massA / totalMass};
     }
-  }
-
-  private float clamp(float value, float min, float max) {
-    return Math.max(min, Math.min(max, value));
   }
 
   private float getMass(Entity entity) {
     if (entity instanceof Troop troop) {
       return troop.getMovement().getMass();
     }
+    // Buildings are effectively infinite mass for collision resolution purposes
     if (entity instanceof Building) {
-      return 0; // Buildings are immovable
+      return 0;
     }
     return 1;
   }
