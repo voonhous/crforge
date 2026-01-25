@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.component.Combat;
 import org.crforge.core.player.Team;
 
@@ -10,6 +11,12 @@ public class Building extends AbstractEntity {
   private final Combat combat;
   private final float lifetime;
   private float remainingLifetime;
+
+  @Setter
+  private Entity currentTarget;
+
+  // Accumulator for fractional health decay
+  private float decayAccumulator;
 
   protected Building(Builder builder) {
     super(
@@ -25,6 +32,8 @@ public class Building extends AbstractEntity {
     this.combat = builder.combat;
     this.lifetime = builder.lifetime;
     this.remainingLifetime = lifetime;
+    this.currentTarget = null;
+    this.decayAccumulator = 0f;
   }
 
   public static Builder builder() {
@@ -44,17 +53,45 @@ public class Building extends AbstractEntity {
     return hasLifetime() && remainingLifetime <= 0;
   }
 
+  public boolean hasTarget() {
+    return currentTarget != null && currentTarget.isAlive();
+  }
+
+  public void clearTarget() {
+    this.currentTarget = null;
+  }
+
   @Override
   public void update(float deltaTime) {
     if (dead) {
       return;
     }
 
-    // Reduce lifetime
+    // Reduce lifetime and apply health decay
     if (hasLifetime()) {
       remainingLifetime -= deltaTime;
-      if (remainingLifetime <= 0) {
+
+      // Calculate decay
+      // Rate: MaxHP / TotalLifetime (damage per second)
+      float decayRate = (float) health.getMax() / lifetime;
+      float decayAmount = decayRate * deltaTime;
+
+      decayAccumulator += decayAmount;
+
+      if (decayAccumulator >= 1.0f) {
+        int damage = (int) decayAccumulator;
+        health.takeDamage(damage);
+        decayAccumulator -= damage;
+      }
+
+      // Also check explicit lifetime expiry as a failsafe or for logic that depends on time
+      if (remainingLifetime <= 0 || health.isDead()) {
         remainingLifetime = 0;
+        markDead();
+      }
+    } else {
+      // For non-lifetime buildings (if any, e.g. King Tower), just check health
+      if (health.isDead()) {
         markDead();
       }
     }
