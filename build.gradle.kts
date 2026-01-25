@@ -1,6 +1,7 @@
 plugins {
     java
     idea
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 allprojects {
@@ -14,10 +15,17 @@ allprojects {
 
 subprojects {
     apply(plugin = "java")
+    apply(plugin = "com.diffplug.spotless")
 
     java {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
+
+    spotless {
+        java {
+            endWithNewline()
         }
     }
 
