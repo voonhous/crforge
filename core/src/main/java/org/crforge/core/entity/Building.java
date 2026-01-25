@@ -67,15 +67,15 @@ public class Building extends AbstractEntity {
 
   public static class Builder {
 
-    private String name = "Building";
-    private Team team = Team.BLUE;
-    private float x = 0;
-    private float y = 0;
-    private int maxHealth = 500;
-    private float mass = 0;
-    private float size = 3.0f;
-    private Combat combat = null;
-    private float lifetime = 0; // 0 = permanent
+    protected String name = "Building";
+    protected Team team = Team.BLUE;
+    protected float x = 0;
+    protected float y = 0;
+    protected int maxHealth = 500;
+    protected float mass = 0;
+    protected float size = 3.0f;
+    protected Combat combat = null;
+    protected float lifetime = 0; // 0 = permanent
 
     public Builder name(String name) {
       this.name = name;

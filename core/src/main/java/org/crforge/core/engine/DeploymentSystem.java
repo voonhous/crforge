@@ -10,6 +10,7 @@ import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.Building;
 import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.SpawnerBuilding;
 import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
@@ -117,15 +118,41 @@ public class DeploymentSystem {
 
     float size = stats != null ? stats.getSize() : 2.0f;
 
-    Building building = Building.builder()
-        .name(card.getName())
-        .team(team)
-        .position(x, y)
-        .maxHealth(card.getBuildingHealth())
-        .size(size)
-        .combat(combat)
-        .lifetime(card.getBuildingLifetime())
-        .build();
+    // Determine if it is a SpawnerBuilding or a regular Building
+    boolean isSpawner = card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0;
+
+    Building building;
+
+    if (isSpawner && card.getTroops().size() > 1) {
+      TroopStats spawnStats = card.getTroops().get(1); // Second troop def is the spawned unit
+
+      SpawnerBuilding spawner = SpawnerBuilding.builder()
+          .name(card.getName())
+          .team(team)
+          .position(x, y)
+          .maxHealth(card.getBuildingHealth())
+          .size(size)
+          .combat(combat)
+          .lifetime(card.getBuildingLifetime())
+          .spawnInterval(card.getSpawnInterval())
+          .deathSpawnCount(card.getDeathSpawnCount())
+          .spawnStats(spawnStats)
+          .build();
+
+      // Inject callback
+      spawner.setSpawnCallback(state::spawnEntity);
+      building = spawner;
+    } else {
+      building = Building.builder()
+          .name(card.getName())
+          .team(team)
+          .position(x, y)
+          .maxHealth(card.getBuildingHealth())
+          .size(size)
+          .combat(combat)
+          .lifetime(card.getBuildingLifetime())
+          .build();
+    }
 
     state.spawnEntity(building);
   }

@@ -74,7 +74,7 @@ public class DebugGameScreen implements Screen {
         CardRegistry.get("musketeer"),
         CardRegistry.get("giant"),
         CardRegistry.get("archers"),
-        CardRegistry.get("fireball"),
+        CardRegistry.get("tombstone"),
         CardRegistry.get("valkyrie"),
         CardRegistry.get("goblins"),
         CardRegistry.get("arrows")
