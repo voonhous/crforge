@@ -32,6 +32,12 @@ public class Card {
   @Builder.Default
   private final float buildingLifetime = 0f;
 
+  // For spawners (Buildings or Troops)
+  @Builder.Default
+  private final float spawnInterval = 0f;
+  @Builder.Default
+  private final int deathSpawnCount = 0;
+
   public boolean isTroop() {
     return type == CardType.TROOP;
   }

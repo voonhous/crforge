@@ -419,6 +419,8 @@ public class CardRegistry {
             .cost(3)
             .buildingHealth(511)
             .buildingLifetime(40f)
+            .spawnInterval(3.1f) // Spawn every 3.1s
+            .deathSpawnCount(4) // 4 Skeletons on death
             .troop(
                 TroopStats.builder()
                     .name("Tombstone")
@@ -426,6 +428,18 @@ public class CardRegistry {
                     .damage(0)
                     .size(2.0f)
                     .movementType(MovementType.BUILDING)
+                    .build())
+            .troop(
+                TroopStats.builder()
+                    .name("Skeleton")
+                    .health(67)
+                    .damage(67)
+                    .speed(1.2f) // Fast
+                    .mass(1.0f)
+                    .size(0.4f)
+                    .range(0.5f)
+                    .attackCooldown(1.0f)
+                    .movementType(MovementType.GROUND)
                     .build())
             .build());
   }
