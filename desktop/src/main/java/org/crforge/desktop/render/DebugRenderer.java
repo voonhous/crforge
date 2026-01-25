@@ -36,13 +36,13 @@ public class DebugRenderer {
   private static final Color COLOR_RIVER = new Color(0.2f, 0.5f, 0.8f, 1f);
   private static final Color COLOR_BRIDGE = new Color(0.5f, 0.4f, 0.3f, 1f);
   private static final Color COLOR_GROUND = new Color(0.3f, 0.5f, 0.3f, 1f);
-  private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f, 1f);
+  private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f, 1f); // Dark gray for banned tiles
   private static final Color COLOR_GRID = new Color(0f, 0f, 0f, 0.2f);
 
   // Colors for entities
   private static final Color COLOR_BLUE_ENTITY = new Color(0.3f, 0.5f, 1f, 1f);
   private static final Color COLOR_RED_ENTITY = new Color(1f, 0.3f, 0.3f, 1f);
-  private static final Color COLOR_TOWER = new Color(0.8f, 0.8f, 0.8f, 1f);
+  private static final Color COLOR_TOWER_BOUNDARY = new Color(0.5f, 0.5f, 0.5f, 1f); // Opaque grey
   private static final Color COLOR_PROJECTILE = new Color(1f, 1f, 0f, 1f);
   private static final Color COLOR_AIR_UNIT = new Color(0.7f, 0.9f, 1f, 0.8f);
 
@@ -156,17 +156,20 @@ public class DebugRenderer {
       float y = entity.getPosition().getY() * TILE_PIXELS;
       float radius = entity.getSize() * TILE_PIXELS / 2f;
 
+      // Special indicator for Tower (Optional: Inner box to signify building)
+      // Draw this FIRST so it appears underneath the circular body
+      if (entity.getEntityType() == EntityType.TOWER) {
+        shapeRenderer.setColor(COLOR_TOWER_BOUNDARY);
+        // radius * 2 is the full diameter/size of the entity
+        shapeRenderer.rect(x - radius, y - radius, radius * 2, radius * 2);
+      }
+
       // Get base color by team
       Color baseColor = getEntityColor(entity);
       shapeRenderer.setColor(baseColor);
 
-      if (entity.getEntityType() == EntityType.TOWER) {
-        // Towers as squares
-        shapeRenderer.rect(x - radius, y - radius, radius * 2, radius * 2);
-      } else {
-        // Troops as circles
-        shapeRenderer.circle(x, y, radius);
-      }
+      // Render entity as circle
+      shapeRenderer.circle(x, y, radius);
 
       // Air units get a ring
       if (entity.getMovementType() == MovementType.AIR) {
@@ -188,11 +191,8 @@ public class DebugRenderer {
       Color baseColor = getEntityColor(entity);
       shapeRenderer.setColor(baseColor.r * 0.5f, baseColor.g * 0.5f, baseColor.b * 0.5f, 1f);
 
-      if (entity.getEntityType() == EntityType.TOWER) {
-        shapeRenderer.rect(x - radius, y - radius, radius * 2, radius * 2);
-      } else {
-        shapeRenderer.circle(x, y, radius);
-      }
+      // Always draw circle outline (physics body)
+      shapeRenderer.circle(x, y, radius);
     }
     shapeRenderer.end();
   }

@@ -112,9 +112,8 @@ public class PhysicsSystem {
       targetY = arena.getBlueLeftPrincessTowerY();
     }
 
-    float angle =
-        pathfinder.getNextMovementAngle(
-            pos, troop.getMovementType(), targetX, targetY, arena);
+    float angle = pathfinder.getNextMovementAngle(
+        pos, troop.getMovementType(), targetX, targetY, arena);
 
     float speed = troop.getMovement().getEffectiveSpeed();
     float distance = speed * deltaTime;
@@ -159,7 +158,9 @@ public class PhysicsSystem {
   /**
    * Collision result containing push direction and overlap amount.
    */
-  private record CollisionResult(float dirX, float dirY, float overlap) {}
+  private record CollisionResult(float dirX, float dirY, float overlap) {
+
+  }
 
   private void resolveCollision(Entity a, Entity b) {
     // 1. Detect collision and calculate push direction
@@ -189,30 +190,19 @@ public class PhysicsSystem {
   }
 
   /**
-   * Detects collision between two entities.
-   * Handles circle-circle (troop vs troop) and circle-rect (troop vs building).
+   * Detects collision between two entities. Matches JS logic: treats all entities (including
+   * buildings) as circles.
    *
    * @return CollisionResult with direction from B toward A, or null if no collision
    */
   private CollisionResult detectCollision(Entity a, Entity b) {
-    boolean aIsBuilding = a.getMovementType() == MovementType.BUILDING;
-    boolean bIsBuilding = b.getMovementType() == MovementType.BUILDING;
-
-    if (bIsBuilding && !aIsBuilding) {
-      // Troop (A) vs Building (B): circle-rectangle collision
-      return detectCircleRectCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(), b.getSize());
-    } else if (aIsBuilding && !bIsBuilding) {
-      // Building (A) vs Troop (B): flip the result direction
-      CollisionResult result = detectCircleRectCollision(b.getPosition(), b.getSize() / 2f, a.getPosition(), a.getSize());
-      if (result == null) return null;
-      return new CollisionResult(-result.dirX, -result.dirY, result.overlap);
-    } else {
-      // Circle-circle collision (troop vs troop, or building vs building)
-      return detectCircleCircleCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(), b.getSize() / 2f);
-    }
+    // Treat everything as circles
+    return detectCircleCircleCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(),
+        b.getSize() / 2f);
   }
 
-  private CollisionResult detectCircleCircleCollision(Position posA, float radiusA, Position posB, float radiusB) {
+  private CollisionResult detectCircleCircleCollision(Position posA, float radiusA, Position posB,
+      float radiusB) {
     float dx = posA.getX() - posB.getX();
     float dy = posA.getY() - posB.getY();
     float dist = (float) Math.sqrt(dx * dx + dy * dy);
@@ -235,54 +225,9 @@ public class PhysicsSystem {
     return new CollisionResult(dx, dy, overlap);
   }
 
-  private CollisionResult detectCircleRectCollision(Position circlePos, float radius, Position rectPos, float rectSize) {
-    float cx = circlePos.getX();
-    float cy = circlePos.getY();
-    float rx = rectPos.getX();
-    float ry = rectPos.getY();
-    float halfSize = rectSize / 2f;
-
-    // Find closest point on rectangle to circle center
-    float closestX = clamp(cx, rx - halfSize, rx + halfSize);
-    float closestY = clamp(cy, ry - halfSize, ry + halfSize);
-
-    // Distance from circle center to closest point
-    float dx = cx - closestX;
-    float dy = cy - closestY;
-    float distSq = dx * dx + dy * dy;
-
-    if (distSq >= radius * radius) {
-      return null; // No collision
-    }
-
-    float dist = (float) Math.sqrt(distSq);
-    float overlap = radius - dist;
-
-    // Direction from rect toward circle
-    if (dist > 0.001f) {
-      dx /= dist;
-      dy /= dist;
-    } else {
-      // Circle center inside rectangle - push toward nearest edge
-      float toLeft = cx - (rx - halfSize);
-      float toRight = (rx + halfSize) - cx;
-      float toBottom = cy - (ry - halfSize);
-      float toTop = (ry + halfSize) - cy;
-      float minEdgeDist = Math.min(Math.min(toLeft, toRight), Math.min(toBottom, toTop));
-
-      if (minEdgeDist == toLeft) { dx = -1; dy = 0; }
-      else if (minEdgeDist == toRight) { dx = 1; dy = 0; }
-      else if (minEdgeDist == toBottom) { dx = 0; dy = -1; }
-      else { dx = 0; dy = 1; }
-
-      overlap = radius + minEdgeDist;
-    }
-
-    return new CollisionResult(dx, dy, overlap);
-  }
-
   /**
    * Calculate push ratios based on mass. Lighter objects get pushed more.
+   * <p>
    * Immovable objects (mass 0) don't move; the other object takes full push.
    *
    * @return [ratioA, ratioB] or null if both immovable
@@ -295,11 +240,11 @@ public class PhysicsSystem {
     if (totalMass <= 0) {
       return null; // Both immovable
     } else if (massA <= 0) {
-      return new float[] {0, 1}; // A immovable, B takes full push
+      return new float[]{0, 1}; // A immovable, B takes full push
     } else if (massB <= 0) {
-      return new float[] {1, 0}; // B immovable, A takes full push
+      return new float[]{1, 0}; // B immovable, A takes full push
     } else {
-      return new float[] {massB / totalMass, massA / totalMass};
+      return new float[]{massB / totalMass, massA / totalMass};
     }
   }
 
