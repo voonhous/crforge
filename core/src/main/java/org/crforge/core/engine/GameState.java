@@ -11,6 +11,7 @@ import lombok.Getter;
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Entity;
 import org.crforge.core.entity.Projectile;
+import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.Tower;
 import org.crforge.core.player.Team;
 
@@ -89,14 +90,26 @@ public class GameState {
 
   /**
    * Check for dead entities and trigger death logic.
+   * @param spawnerSystem System to handle death spawns
    */
-  public void processDeaths() {
+  public void processDeaths(SpawnerSystem spawnerSystem) {
     for (Entity entity : entities) {
       if (!entity.isAlive() && entity instanceof AbstractEntity ae && !ae.isDead()) {
         entity.onDeath();
+
+        // Trigger death spawns (e.g. Golem -> Golemites, Tombstone -> Skeletons)
+        if (spawnerSystem != null) {
+          spawnerSystem.onDeath(entity);
+        }
+
         checkWinCondition(entity);
       }
     }
+  }
+
+  // Overload for legacy/testing compatibility
+  public void processDeaths() {
+    processDeaths(null);
   }
 
   private void checkWinCondition(Entity deadEntity) {

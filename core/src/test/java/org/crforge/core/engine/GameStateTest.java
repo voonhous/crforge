@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.component.Health;
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Tower;
 import org.crforge.core.entity.Troop;
@@ -64,8 +65,9 @@ class GameStateTest {
 
   @Test
   void getAliveEntities_shouldFilterDeadEntities() {
-    Troop aliveTroop = Troop.builder().name("Knight").team(Team.BLUE).maxHealth(100).build();
-    Troop deadTroop = Troop.builder().name("Knight").team(Team.RED).maxHealth(100).build();
+    Troop aliveTroop = Troop.builder().name("Knight").team(Team.BLUE).health(new Health(100))
+        .build();
+    Troop deadTroop = Troop.builder().name("Knight").team(Team.RED).health(new Health(100)).build();
 
     gameState.spawnEntity(aliveTroop);
     gameState.spawnEntity(deadTroop);
@@ -78,7 +80,7 @@ class GameStateTest {
 
   @Test
   void processDeaths_shouldTriggerOnDeath() {
-    Troop troop = Troop.builder().name("Knight").team(Team.BLUE).maxHealth(100).build();
+    Troop troop = Troop.builder().name("Knight").team(Team.BLUE).health(new Health(100)).build();
 
     gameState.spawnEntity(troop);
     gameState.processPending();
@@ -96,7 +98,7 @@ class GameStateTest {
             .name("Crown Tower")
             .team(Team.BLUE)
             .towerType(Tower.TowerType.CROWN)
-            .maxHealth(100)
+            .health(new Health(100))
             .build();
 
     gameState.spawnEntity(crownTower);

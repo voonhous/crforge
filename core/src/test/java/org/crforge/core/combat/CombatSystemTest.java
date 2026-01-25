@@ -3,6 +3,8 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Projectile;
@@ -190,8 +192,8 @@ class CombatSystemTest {
     return Troop.builder()
         .name("Melee")
         .team(team)
-        .position(x, y)
-        .maxHealth(100)
+        .position(new Position(x, y))
+        .health(new Health(100))
         .deployTime(1.0f)
         .combat(
             Combat.builder()
@@ -208,8 +210,8 @@ class CombatSystemTest {
     return Troop.builder()
         .name("Ranged")
         .team(team)
-        .position(x, y)
-        .maxHealth(100)
+        .position(new Position(x, y))
+        .health(new Health(100))
         .deployTime(1.0f)
         .combat(
             Combat.builder()
@@ -226,8 +228,8 @@ class CombatSystemTest {
     return Troop.builder()
         .name("AOE")
         .team(team)
-        .position(x, y)
-        .maxHealth(100)
+        .position(new Position(x, y))
+        .health(new Health(100))
         .deployTime(1.0f)
         .combat(
             Combat.builder()

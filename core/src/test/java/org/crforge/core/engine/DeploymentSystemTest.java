@@ -7,8 +7,11 @@ import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Position;
+import org.crforge.core.entity.Building;
 import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.SpawnerBuilding;
+import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
@@ -112,12 +115,12 @@ class DeploymentSystemTest {
         .build();
 
     // Deck of all Tombstones to bypass shuffle RNG
-    List<Card> cards = new ArrayList<>();
+    List<Card> allTombstones = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      cards.add(tombstone);
+      allTombstones.add(tombstone);
     }
 
-    Player spawnerPlayer = new Player(Team.RED, new Deck(cards), false);
+    Player spawnerPlayer = new Player(Team.RED, new Deck(allTombstones), false);
 
     PlayerActionDTO action = PlayerActionDTO.builder()
         .handIndex(0)
@@ -131,15 +134,17 @@ class DeploymentSystemTest {
     // Process pending spawns to move them to the active entity list
     gameState.processPending();
 
-    // Verify a SpawnerBuilding was added to the state
+    // Verify a Building was added
     assertThat(gameState.getEntities()).hasSize(1);
     Entity entity = gameState.getEntities().get(0);
 
-    assertThat(entity).isInstanceOf(SpawnerBuilding.class);
-    SpawnerBuilding spawner = (SpawnerBuilding) entity;
-    assertThat(spawner.getName()).isEqualTo("Tombstone");
-    assertThat(spawner.getSpawnInterval()).isEqualTo(3.0f);
-    assertThat(spawner.getDeathSpawnCount()).isEqualTo(4);
+    assertThat(entity).isInstanceOf(Building.class);
+    assertThat(entity.getName()).isEqualTo("Tombstone");
+
+    // Check component
+    assertThat(entity.getSpawner()).isNotNull();
+    assertThat(entity.getSpawner().getSpawnInterval()).isEqualTo(3.0f);
+    assertThat(entity.getSpawner().getDeathSpawnCount()).isEqualTo(4);
   }
 
   @Test
@@ -176,19 +181,19 @@ class DeploymentSystemTest {
     assertThat(gameState.getEntities()).hasSize(1);
     Entity entity = gameState.getEntities().get(0);
 
-    // Should be a Building but NOT a SpawnerBuilding
-    assertThat(entity).isInstanceOf(org.crforge.core.entity.Building.class);
-    assertThat(entity).isNotInstanceOf(org.crforge.core.entity.SpawnerBuilding.class);
+    // Should be a Building with null spawner
+    assertThat(entity).isInstanceOf(Building.class);
+    assertThat(entity.getSpawner()).isNull();
   }
 
   @Test
   void testCastSpell() {
     // We need a target for the spell to hit to verify damage
-    org.crforge.core.entity.Troop enemy = org.crforge.core.entity.Troop.builder()
+    Troop enemy = Troop.builder()
         .name("Target")
         .team(Team.RED)
-        .position(10f, 10f)
-        .maxHealth(100)
+        .position(new Position(10f, 10f))
+        .health(new Health(100))
         .build();
     enemy.onSpawn();
     gameState.spawnEntity(enemy);

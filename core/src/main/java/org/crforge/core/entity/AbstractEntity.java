@@ -1,18 +1,21 @@
 package org.crforge.core.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
-import org.crforge.core.player.Team;
+import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.crforge.core.player.Team;
 
 @Getter
+@SuperBuilder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(of = {"id", "name", "team"})
 public abstract class AbstractEntity implements Entity {
@@ -20,37 +23,30 @@ public abstract class AbstractEntity implements Entity {
   private static long nextId = 1;
 
   @EqualsAndHashCode.Include
-  protected final long id;
+  @Builder.Default
+  protected final long id = nextId++;
+
   protected final String name;
   protected final Team team;
   protected final Position position;
-  protected final Health health;
-  protected final Movement movement;
 
+  @Builder.Default
+  protected final Health health = new Health(100);
+
+  @Builder.Default
+  protected final Movement movement = new Movement(0f, 0f, 1.0f, MovementType.GROUND);
+
+  @Builder.Default
+  protected final SpawnerComponent spawner = null;
+
+  @Builder.Default
   protected final List<AppliedEffect> appliedEffects = new ArrayList<>();
 
-  protected boolean spawned;
-  protected boolean dead;
+  @Builder.Default
+  protected boolean spawned = false;
 
-  protected AbstractEntity(
-      String name,
-      Team team,
-      float x,
-      float y,
-      int maxHealth,
-      float speed,
-      float mass,
-      float size,
-      MovementType movementType) {
-    this.id = nextId++;
-    this.name = name;
-    this.team = team;
-    this.position = new Position(x, y);
-    this.health = new Health(maxHealth);
-    this.movement = new Movement(speed, mass, size, movementType);
-    this.spawned = false;
-    this.dead = false;
-  }
+  @Builder.Default
+  protected boolean dead = false;
 
   public static void resetIdCounter() {
     nextId = 1;

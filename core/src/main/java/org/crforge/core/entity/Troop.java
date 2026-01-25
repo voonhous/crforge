@@ -1,43 +1,28 @@
 package org.crforge.core.entity;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Combat;
-import org.crforge.core.player.Team;
 
 @Getter
+@SuperBuilder
 public class Troop extends AbstractEntity {
 
-  private final Combat combat;
-  private final float deployTime;
+  @Builder.Default
+  private final Combat combat = Combat.builder().build();
+
+  @Builder.Default
+  private final float deployTime = 1.0f;
 
   @Setter
   private Entity currentTarget;
   @Setter
   private boolean targetLocked;
-  private float deployTimer;
 
-  private Troop(Builder builder) {
-    super(
-        builder.name,
-        builder.team,
-        builder.x,
-        builder.y,
-        builder.maxHealth,
-        builder.speed,
-        builder.mass,
-        builder.size,
-        builder.movementType);
-    this.combat = builder.combat;
-    this.deployTime = builder.deployTime;
-    this.deployTimer = deployTime;
-    this.currentTarget = null;
-    this.targetLocked = false;
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
+  @Builder.Default
+  private float deployTimer = 1.0f;
 
   @Override
   public EntityType getEntityType() {
@@ -90,12 +75,18 @@ public class Troop extends AbstractEntity {
     }
 
     // Update combat cooldowns
-    combat.update(deltaTime);
+    if (combat != null) {
+      combat.update(deltaTime);
+    }
   }
 
   @Override
   public void onSpawn() {
     super.onSpawn();
+    // Sync deploy timer with deploy time if not manually set
+    if (deployTimer == 0 && deployTime > 0) {
+      deployTimer = deployTime;
+    }
     if (deployTime <= 0) {
       deployTimer = 0;
     }
@@ -104,75 +95,5 @@ public class Troop extends AbstractEntity {
   @Override
   public boolean isTargetable() {
     return super.isTargetable() && !isDeploying();
-  }
-
-  public static class Builder {
-
-    private String name = "Troop";
-    private Team team = Team.BLUE;
-    private float x = 0;
-    private float y = 0;
-    private int maxHealth = 100;
-    private float speed = 1.0f;
-    private float mass = 1.0f;
-    private float size = 1.0f;
-    private MovementType movementType = MovementType.GROUND;
-    private Combat combat = Combat.builder().build();
-    private float deployTime = 1.0f;
-
-    public Builder name(String name) {
-      this.name = name;
-      return this;
-    }
-
-    public Builder team(Team team) {
-      this.team = team;
-      return this;
-    }
-
-    public Builder position(float x, float y) {
-      this.x = x;
-      this.y = y;
-      return this;
-    }
-
-    public Builder maxHealth(int maxHealth) {
-      this.maxHealth = maxHealth;
-      return this;
-    }
-
-    public Builder speed(float speed) {
-      this.speed = speed;
-      return this;
-    }
-
-    public Builder mass(float mass) {
-      this.mass = mass;
-      return this;
-    }
-
-    public Builder size(float size) {
-      this.size = size;
-      return this;
-    }
-
-    public Builder movementType(MovementType movementType) {
-      this.movementType = movementType;
-      return this;
-    }
-
-    public Builder combat(Combat combat) {
-      this.combat = combat;
-      return this;
-    }
-
-    public Builder deployTime(float deployTime) {
-      this.deployTime = deployTime;
-      return this;
-    }
-
-    public Troop build() {
-      return new Troop(this);
-    }
   }
 }

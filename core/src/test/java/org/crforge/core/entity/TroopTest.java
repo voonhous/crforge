@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,8 +22,8 @@ class TroopTest {
   void builder_shouldCreateTroopWithDefaults() {
     Troop troop = Troop.builder().build();
 
-    assertThat(troop.getName()).isEqualTo("Troop");
-    assertThat(troop.getTeam()).isEqualTo(Team.BLUE);
+    assertThat(troop.getName()).isNull(); // Name is not defaulted in AbstractEntity
+    assertThat(troop.getTeam()).isNull(); // Team is not defaulted
     assertThat(troop.getHealth().getMax()).isEqualTo(100);
     assertThat(troop.getMovementType()).isEqualTo(MovementType.GROUND);
     assertThat(troop.getEntityType()).isEqualTo(EntityType.TROOP);
@@ -34,11 +37,9 @@ class TroopTest {
         Troop.builder()
             .name("Knight")
             .team(Team.RED)
-            .position(10, 20)
-            .maxHealth(1000)
-            .speed(1.5f)
-            .mass(2.0f)
-            .size(1.2f)
+            .position(new Position(10, 20))
+            .health(new Health(1000))
+            .movement(new Movement(1.5f, 2.0f, 1.2f, MovementType.GROUND))
             .combat(combat)
             .build();
 
@@ -85,9 +86,9 @@ class TroopTest {
 
   @Test
   void troop_shouldCalculateDistanceToTarget() {
-    Troop attacker = Troop.builder().position(0, 0).build();
+    Troop attacker = Troop.builder().position(new Position(0, 0)).build();
 
-    Troop target = Troop.builder().position(3, 4).build();
+    Troop target = Troop.builder().position(new Position(3, 4)).build();
     target.onSpawn();
     target.update(2.0f);
 

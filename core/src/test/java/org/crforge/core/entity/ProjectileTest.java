@@ -2,6 +2,8 @@ package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Position;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -127,6 +129,11 @@ class ProjectileTest {
   }
 
   private Troop createTroop(Team team, float x, float y) {
-    return Troop.builder().name("Test").team(team).position(x, y).maxHealth(100).size(1.0f).build();
+    return Troop.builder()
+        .name("Test")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(100))
+        .build();
   }
 }

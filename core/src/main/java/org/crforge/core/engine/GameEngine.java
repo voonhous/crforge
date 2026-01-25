@@ -6,6 +6,7 @@ import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.Tower;
 import org.crforge.core.match.Match;
 import org.crforge.core.match.Standard1v1Match;
@@ -16,12 +17,6 @@ import org.crforge.core.player.dto.PlayerActionDTO;
 
 /**
  * Main game engine. Coordinates all systems and runs the simulation tick loop at 30 FPS.
- * <p>
- * The engine is mode-agnostic - all match-specific logic (player count, arena layout, timing rules)
- * is delegated to the {@link Match} instance.
- *
- * @see Match
- * @see Standard1v1Match
  */
 @Getter
 public class GameEngine {
@@ -34,6 +29,7 @@ public class GameEngine {
   private final CombatSystem combatSystem;
   private final DeploymentSystem deploymentSystem;
   private final StatusEffectSystem statusEffectSystem;
+  private final SpawnerSystem spawnerSystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -47,6 +43,7 @@ public class GameEngine {
     this.combatSystem = new CombatSystem(gameState);
     this.deploymentSystem = new DeploymentSystem(gameState);
     this.statusEffectSystem = new StatusEffectSystem();
+    this.spawnerSystem = new SpawnerSystem(gameState);
     this.running = false;
   }
 
@@ -60,8 +57,6 @@ public class GameEngine {
 
   /**
    * Queue a player action for processing on next tick.
-   *
-   * @throws IllegalStateException if match is not set
    */
   public void queueAction(Player player, PlayerActionDTO action) {
     if (match == null) {
@@ -74,8 +69,6 @@ public class GameEngine {
 
   /**
    * Initialize a new match. Requires setMatch() to be called first.
-   *
-   * @throws IllegalStateException if match is not set
    */
   public void initMatch() {
     if (match == null) {
@@ -113,32 +106,35 @@ public class GameEngine {
     // 3. Process queued deployments
     deploymentSystem.update();
 
-    // 4. Update status effects (Update durations and calculate multipliers)
+    // 4. Update Spawners (new CES system)
+    spawnerSystem.update(DELTA_TIME);
+
+    // 5. Update status effects (Update durations and calculate multipliers)
     statusEffectSystem.update(gameState, DELTA_TIME);
 
-    // 5. Update all entities (timers, cooldowns, etc.)
+    // 6. Update all entities (timers, cooldowns, etc.)
     for (Entity entity : gameState.getAliveEntities()) {
       entity.update(DELTA_TIME);
     }
 
-    // 6. Update targeting
+    // 7. Update targeting
     targetingSystem.updateTargets(gameState.getAliveEntities());
 
-    // 7. Process combat (attacks and projectiles)
+    // 8. Process combat (attacks and projectiles)
     combatSystem.update(DELTA_TIME);
 
-    // 8. Update physics (movement and collisions)
+    // 9. Update physics (movement and collisions)
     if (physicsSystem != null) {
       physicsSystem.update(gameState.getAliveEntities(), DELTA_TIME);
     }
 
-    // 9. Process deaths
-    gameState.processDeaths();
+    // 10. Process deaths (Pass spawnerSystem to handle death spawns)
+    gameState.processDeaths(spawnerSystem);
 
-    // 10. Check time limit
+    // 11. Check time limit
     checkTimeLimit();
 
-    // 11. Increment frame counter
+    // 12. Increment frame counter
     gameState.incrementFrame();
   }
 
