@@ -56,15 +56,28 @@ public class DebugRenderer {
   private static final Color COLOR_ELIXIR = new Color(0.9f, 0.2f, 0.9f, 1f);
   private static final Color COLOR_ELIXIR_BG = new Color(0.3f, 0.1f, 0.3f, 0.8f);
 
+  // Debug colors
+  private static final Color COLOR_PATH = new Color(0f, 1f, 1f, 0.7f); // Cyan
+
   private final ShapeRenderer shapeRenderer;
   private final SpriteBatch spriteBatch;
   private final BitmapFont font;
+
+  private boolean drawPaths = false;
 
   public DebugRenderer() {
     this.shapeRenderer = new ShapeRenderer();
     this.spriteBatch = new SpriteBatch();
     this.font = new BitmapFont();
     this.font.setColor(Color.WHITE);
+  }
+
+  public void toggleDrawPaths() {
+    drawPaths = !drawPaths;
+  }
+
+  public boolean isDrawPaths() {
+    return drawPaths;
   }
 
   public void render(GameEngine engine, OrthographicCamera camera) {
@@ -93,7 +106,12 @@ public class DebugRenderer {
     // 6. Render targeting lines (debug)
     renderTargetingLines(state);
 
-    // 7. Render UI (elixir, timer)
+    // 7. Render path lines (debug)
+    if (drawPaths) {
+      renderPathLines(state);
+    }
+
+    // 8. Render UI (elixir, timer)
     renderUI(engine, match, camera);
   }
 
@@ -289,6 +307,29 @@ public class DebugRenderer {
     shapeRenderer.end();
   }
 
+  private void renderPathLines(GameState state) {
+    shapeRenderer.begin(ShapeType.Line);
+    shapeRenderer.setColor(COLOR_PATH);
+
+    for (Entity entity : state.getAliveEntities()) {
+      // Only render paths for troops that are moving
+      if (entity instanceof Troop troop && troop.isAlive()) {
+        float x = troop.getPosition().getX() * TILE_PIXELS;
+        float y = troop.getPosition().getY() * TILE_PIXELS;
+        float rot = troop.getPosition().getRotation();
+
+        // Draw line in direction of movement
+        float len = TILE_PIXELS * 1.5f;
+        float x2 = x + (float)Math.cos(rot) * len;
+        float y2 = y + (float)Math.sin(rot) * len;
+
+        shapeRenderer.line(x, y, x2, y2);
+      }
+    }
+
+    shapeRenderer.end();
+  }
+
   private void renderUI(GameEngine engine, Match match, OrthographicCamera camera) {
     // Render UI in screen space
     float screenWidth = camera.viewportWidth;
@@ -321,6 +362,11 @@ public class DebugRenderer {
       Team winner = engine.getGameState().getWinner();
       String winText = winner != null ? winner + " WINS!" : "DRAW!";
       font.draw(spriteBatch, winText, screenWidth / 2 - 40, screenHeight / 2);
+    }
+
+    // Controls help
+    if (drawPaths) {
+      font.draw(spriteBatch, "Paths: ON", screenWidth - 80, screenHeight - 30);
     }
 
     spriteBatch.end();
