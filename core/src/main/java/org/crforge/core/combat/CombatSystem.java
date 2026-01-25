@@ -2,7 +2,9 @@ package org.crforge.core.combat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.Entity;
 import org.crforge.core.entity.Projectile;
@@ -110,14 +112,15 @@ public class CombatSystem {
     if (combat.isRanged()) {
       // Spawn projectile
       Projectile projectile =
-          new Projectile(attacker, target, combat.getDamage(), combat.getAoeRadius());
+          new Projectile(attacker, target, combat.getDamage(), combat.getAoeRadius(), combat.getHitEffects());
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack - deal damage immediately
       if (combat.getAoeRadius() > 0) {
-        dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius());
+        dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius(), combat.getHitEffects());
       } else {
         dealDamage(target, combat.getDamage());
+        applyEffects(target, combat.getHitEffects());
       }
     }
 
@@ -150,9 +153,11 @@ public class CombatSystem {
           projectile.getSource(),
           projectile.getTarget(),
           projectile.getDamage(),
-          projectile.getAoeRadius());
+          projectile.getAoeRadius(),
+          projectile.getEffects());
     } else {
       dealDamage(projectile.getTarget(), projectile.getDamage());
+      applyEffects(projectile.getTarget(), projectile.getEffects());
     }
   }
 
@@ -163,7 +168,18 @@ public class CombatSystem {
     target.getHealth().takeDamage(damage);
   }
 
-  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius) {
+  private void applyEffects(Entity target, List<EffectStats> effects) {
+    if (target == null || !target.isAlive() || effects == null || effects.isEmpty()) {
+      return;
+    }
+
+    for (EffectStats stats : effects) {
+      AppliedEffect effect = new AppliedEffect(stats.getType(), stats.getDuration(), stats.getIntensity());
+      target.addEffect(effect);
+    }
+  }
+
+  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius, List<EffectStats> effects) {
     if (primaryTarget == null) {
       return;
     }
@@ -188,8 +204,14 @@ public class CombatSystem {
       float effectiveRadius = radius + entity.getSize() / 2f;
       if (distance <= effectiveRadius) {
         dealDamage(entity, damage);
+        applyEffects(entity, effects);
       }
     }
+  }
+
+  // Overload for backward compatibility in internal calls if needed (though not used above)
+  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius) {
+    dealAoeDamage(source, primaryTarget, damage, radius, null);
   }
 
   /**

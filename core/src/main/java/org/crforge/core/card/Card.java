@@ -1,5 +1,6 @@
 package org.crforge.core.card;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,7 +25,7 @@ public class Card {
   @Builder.Default
   private final float spellRadius = 0f;
   @Builder.Default
-  private final float spellDuration = 0f;
+  private final List<EffectStats> spellEffects = new ArrayList<>();
 
   // For buildings
   @Builder.Default

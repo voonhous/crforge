@@ -1,8 +1,11 @@
 package org.crforge.core.entity;
 
 import lombok.Getter;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.player.Team;
+import java.util.List;
+import java.util.Collections;
 
 /**
  * Projectile for ranged attacks. Travels from source to target and deals damage on hit.
@@ -20,10 +23,12 @@ public class Projectile {
   private final int damage;
   private final float aoeRadius;
   private final float speed;
+  private final List<EffectStats> effects;
+
   private boolean active;
   private boolean hit;
 
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed) {
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed, List<EffectStats> effects) {
     this.id = nextId++;
     this.source = source;
     this.target = target;
@@ -32,16 +37,21 @@ public class Projectile {
     this.damage = damage;
     this.aoeRadius = aoeRadius;
     this.speed = speed > 0 ? speed : DEFAULT_SPEED;
+    this.effects = effects != null ? effects : Collections.emptyList();
     this.active = true;
     this.hit = false;
   }
 
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius, List<EffectStats> effects) {
+    this(source, target, damage, aoeRadius, DEFAULT_SPEED, effects);
+  }
+
   public Projectile(Entity source, Entity target, int damage, float aoeRadius) {
-    this(source, target, damage, aoeRadius, DEFAULT_SPEED);
+    this(source, target, damage, aoeRadius, DEFAULT_SPEED, Collections.emptyList());
   }
 
   public Projectile(Entity source, Entity target, int damage) {
-    this(source, target, damage, 0, DEFAULT_SPEED);
+    this(source, target, damage, 0, DEFAULT_SPEED, Collections.emptyList());
   }
 
   public static void resetIdCounter() {
@@ -57,7 +67,6 @@ public class Projectile {
     }
 
     // If target is dead, projectile disappears (for homing projectiles)
-    // Note: Some projectiles might continue to last known position - can be added later
     if (target == null || !target.isAlive()) {
       active = false;
       return false;
@@ -89,5 +98,9 @@ public class Projectile {
 
   public boolean hasAoe() {
     return aoeRadius > 0;
+  }
+
+  public boolean hasEffects() {
+    return !effects.isEmpty();
   }
 }
