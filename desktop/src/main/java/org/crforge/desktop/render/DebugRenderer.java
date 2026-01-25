@@ -36,6 +36,7 @@ public class DebugRenderer {
   private static final Color COLOR_RIVER = new Color(0.2f, 0.5f, 0.8f, 1f);
   private static final Color COLOR_BRIDGE = new Color(0.5f, 0.4f, 0.3f, 1f);
   private static final Color COLOR_GROUND = new Color(0.3f, 0.5f, 0.3f, 1f);
+  private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f, 1f);
   private static final Color COLOR_GRID = new Color(0f, 0f, 0f, 0.2f);
 
   // Colors for entities
@@ -123,6 +124,7 @@ public class DebugRenderer {
       case RIVER -> COLOR_RIVER;
       case BRIDGE -> COLOR_BRIDGE;
       case GROUND -> COLOR_GROUND;
+      case BANNED -> COLOR_BANNED;
     };
   }
 

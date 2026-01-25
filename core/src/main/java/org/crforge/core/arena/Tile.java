@@ -3,7 +3,7 @@ package org.crforge.core.arena;
 public record Tile(int x, int y, TileType type) {
 
   public boolean isWalkable() {
-    return type != TileType.RIVER;
+    return type != TileType.RIVER && type != TileType.BANNED;
   }
 
   public boolean isPlaceable() {

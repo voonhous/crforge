@@ -15,8 +15,10 @@ public class Arena {
 
   // Bridge positions (left and right) - each bridge is 3 tiles wide
   public static final int BRIDGE_WIDTH = 3;
-  public static final int LEFT_BRIDGE_X = 3;
-  public static final int RIGHT_BRIDGE_X = WIDTH - LEFT_BRIDGE_X - BRIDGE_WIDTH; // symmetric with left
+  // Changed from 3 to 2 to ensure 2-tile horizontal gap between King and Princess towers
+  public static final int LEFT_BRIDGE_X = 2;
+  public static final int RIGHT_BRIDGE_X =
+      WIDTH - LEFT_BRIDGE_X - BRIDGE_WIDTH; // symmetric with left
 
   private final Tile[][] tiles;
   private final String name;
@@ -41,6 +43,14 @@ public class Arena {
   }
 
   private TileType determineTileType(int x, int y) {
+    // Check for banned tiles (edges behind king towers)
+    // Based on original logic: rows 0 and 31, columns < 6 or > 11 are banned
+    if (y == 0 || y == HEIGHT - 1) {
+      if (x < 6 || x > 11) {
+        return TileType.BANNED;
+      }
+    }
+
     // River tiles (center row)
     if (y == RIVER_Y || y == RIVER_Y - 1) {
       // Check if this is a bridge position
@@ -91,6 +101,11 @@ public class Arena {
       return false;
     }
 
+    // Cannot place on banned tiles
+    if (tile.type() == TileType.BANNED) {
+      return false;
+    }
+
     // Can only place in your own zone
     if (team == Team.BLUE) {
       return tile.type() == TileType.BLUE_ZONE;
@@ -113,7 +128,7 @@ public class Arena {
   }
 
   public float getBlueCrownTowerY() {
-    return 3f;
+    return 3.0f;
   }
 
   public float getRedCrownTowerX() {
@@ -121,23 +136,23 @@ public class Arena {
   }
 
   public float getRedCrownTowerY() {
-    return HEIGHT - 3f;
+    return HEIGHT - 3.0f;
   }
 
   public float getBlueLeftPrincessTowerX() {
-    return LEFT_BRIDGE_X + BRIDGE_WIDTH / 2f; // center of bridge
+    return LEFT_BRIDGE_X + BRIDGE_WIDTH / 2f;
   }
 
   public float getBlueLeftPrincessTowerY() {
-    return 6f;
+    return 6.5f;
   }
 
   public float getBlueRightPrincessTowerX() {
-    return RIGHT_BRIDGE_X + BRIDGE_WIDTH / 2f; // center of bridge
+    return RIGHT_BRIDGE_X + BRIDGE_WIDTH / 2f;
   }
 
   public float getBlueRightPrincessTowerY() {
-    return 6f;
+    return 6.5f;
   }
 
   public float getRedLeftPrincessTowerX() {
@@ -145,7 +160,7 @@ public class Arena {
   }
 
   public float getRedLeftPrincessTowerY() {
-    return HEIGHT - 6f;
+    return HEIGHT - 6.5f;
   }
 
   public float getRedRightPrincessTowerX() {
@@ -153,6 +168,6 @@ public class Arena {
   }
 
   public float getRedRightPrincessTowerY() {
-    return HEIGHT - 6f;
+    return HEIGHT - 6.5f;
   }
 }
