@@ -4,7 +4,7 @@ import java.util.List;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.Entity;
+import org.crforge.core.entity.base.Entity;
 
 /**
  * Handles the calculation of final attributes based on active status effects.

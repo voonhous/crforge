@@ -1,4 +1,4 @@
-package org.crforge.core.entity;
+package org.crforge.core.entity.base;
 
 import java.util.ArrayList;
 import java.util.List;

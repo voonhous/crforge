@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
-import org.crforge.core.entity.MovementType;
-import org.crforge.core.entity.TargetType;
+import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.base.TargetType;
 
 @Getter
 @Builder

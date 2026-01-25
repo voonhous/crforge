@@ -4,10 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.Building;
-import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.MovementType;
-import org.crforge.core.entity.Troop;
+import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**

@@ -2,7 +2,7 @@ package org.crforge.core.match;
 
 import org.crforge.core.arena.Arena;
 import org.crforge.core.engine.GameEngine;
-import org.crforge.core.entity.Tower;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 
 /**

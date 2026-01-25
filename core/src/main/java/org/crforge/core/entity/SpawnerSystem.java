@@ -7,6 +7,8 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.engine.GameState;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.unit.Troop;
 
 public class SpawnerSystem {
 

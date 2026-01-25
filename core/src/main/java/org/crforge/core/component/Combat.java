@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.EffectStats;
-import org.crforge.core.entity.TargetType;
+import org.crforge.core.entity.base.TargetType;
 
 @Getter
 @Builder

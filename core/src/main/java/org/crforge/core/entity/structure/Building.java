@@ -1,10 +1,13 @@
-package org.crforge.core.entity;
+package org.crforge.core.entity.structure;
 
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Combat;
+import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.EntityType;
 
 @Getter
 @SuperBuilder

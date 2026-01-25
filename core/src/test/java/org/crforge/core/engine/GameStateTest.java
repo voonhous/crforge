@@ -3,9 +3,9 @@ package org.crforge.core.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.component.Health;
-import org.crforge.core.entity.AbstractEntity;
-import org.crforge.core.entity.Tower;
-import org.crforge.core.entity.Troop;
+import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

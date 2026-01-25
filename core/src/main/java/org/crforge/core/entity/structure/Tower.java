@@ -1,4 +1,4 @@
-package org.crforge.core.entity;
+package org.crforge.core.entity.structure;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,6 +7,8 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.entity.base.EntityType;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.player.Team;
 
 @Getter

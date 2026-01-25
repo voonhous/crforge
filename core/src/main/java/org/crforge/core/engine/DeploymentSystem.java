@@ -14,9 +14,10 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
-import org.crforge.core.entity.Building;
-import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.Troop;
+import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -161,7 +162,7 @@ public class DeploymentSystem {
         .team(team)
         .position(new Position(x, y))
         .health(new Health(health))
-        .movement(new Movement(0, 0, size, org.crforge.core.entity.MovementType.BUILDING))
+        .movement(new Movement(0, 0, size, MovementType.BUILDING))
         .combat(combat)
         .lifetime(card.getBuildingLifetime())
         .remainingLifetime(card.getBuildingLifetime())

@@ -6,10 +6,10 @@ import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.Projectile;
-import org.crforge.core.entity.Tower;
-import org.crforge.core.entity.Troop;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**
