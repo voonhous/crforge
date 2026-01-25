@@ -23,13 +23,13 @@ import org.crforge.desktop.render.DebugRenderer;
  * <p>
  * Controls:
  * <ul>
- *   <li>SPACE: Pause/resume simulation</li>
- *   <li>R: Reset match</li>
- *   <li>1-4: Play card from blue player's hand at random position</li>
- *   <li>5-8: Play card from red player's hand at random position</li>
- *   <li>+/-: Speed</li>
- *   <li>up/slow down simulation</li>
- *   <li>Click: Deploy selected card at position (TODO)</li>
+ * <li>SPACE: Pause/resume simulation</li>
+ * <li>R: Reset match</li>
+ * <li>P: Toggle path visualization</li>
+ * <li>1-4: Play card from blue player's hand at random position</li>
+ * <li>5-8: Play card from red player's hand at random position</li>
+ * <li>+/-: Speed up/slow down simulation</li>
+ * <li>Click: Deploy selected card at position (TODO)</li>
  * </ul>
  */
 public class DebugGameScreen implements Screen {
@@ -111,6 +111,10 @@ public class DebugGameScreen implements Screen {
         switch (keycode) {
           case Input.Keys.SPACE -> paused = !paused;
           case Input.Keys.R -> resetMatch();
+          case Input.Keys.P -> {
+            renderer.toggleDrawPaths();
+            System.out.println("Path visualization: " + (renderer.isDrawPaths() ? "ON" : "OFF"));
+          }
           case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
           case Input.Keys.MINUS -> adjustSpeed(0.5f);
 
@@ -232,6 +236,7 @@ public class DebugGameScreen implements Screen {
     System.out.println("Controls:");
     System.out.println("  SPACE - Pause/Resume");
     System.out.println("  R     - Reset match");
+    System.out.println("  P     - Toggle path visualization");
     System.out.println("  +/-   - Speed up/slow down");
     System.out.println("  1-4   - Play blue card");
     System.out.println("  5-8   - Play red card");
