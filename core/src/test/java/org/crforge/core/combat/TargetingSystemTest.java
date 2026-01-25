@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Entity;
 import org.crforge.core.entity.MovementType;
@@ -28,7 +30,7 @@ class TargetingSystemTest {
         Troop.builder()
             .name(name)
             .team(team)
-            .position(x, y)
+            .position(new Position(x, y))
             .deployTime(0)
             .combat(Combat.builder().sightRange(5.5f).range(1.0f).build())
             .build();
@@ -78,9 +80,9 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Ground Attacker")
             .team(Team.BLUE)
-            .position(10, 10)
+            .position(new Position(10, 10))
             .deployTime(0)
-            .movementType(MovementType.GROUND)
+            .movement(new Movement(0, 0, 1, MovementType.GROUND))
             .combat(Combat.builder().sightRange(5.5f).targetType(TargetType.GROUND).build())
             .build();
     groundAttacker.onSpawn();
@@ -89,9 +91,9 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Air Enemy")
             .team(Team.RED)
-            .position(12, 10)
+            .position(new Position(12, 10))
             .deployTime(0)
-            .movementType(MovementType.AIR)
+            .movement(new Movement(0, 0, 1, MovementType.AIR))
             .build();
     airEnemy.onSpawn();
 
@@ -107,9 +109,9 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Air Attacker")
             .team(Team.BLUE)
-            .position(10, 10)
+            .position(new Position(10, 10))
             .deployTime(0)
-            .movementType(MovementType.AIR)
+            .movement(new Movement(0, 0, 1, MovementType.AIR))
             .combat(Combat.builder().sightRange(5.5f).targetType(TargetType.AIR).build())
             .build();
     airAttacker.onSpawn();
@@ -118,9 +120,9 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Air Enemy")
             .team(Team.RED)
-            .position(12, 10)
+            .position(new Position(12, 10))
             .deployTime(0)
-            .movementType(MovementType.AIR)
+            .movement(new Movement(0, 0, 1, MovementType.AIR))
             .build();
     airEnemy.onSpawn();
 

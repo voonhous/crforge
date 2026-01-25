@@ -8,9 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
+import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.entity.Building;
 import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.SpawnerBuilding;
 import org.crforge.core.entity.Troop;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
@@ -67,13 +70,30 @@ public class DeploymentSystem {
     }
 
     for (TroopStats stats : troopStatsList) {
-      Troop troop = createTroop(team, stats, x, y);
+      // Check for spawner capability (Witch/Mother Witch logic)
+      SpawnerComponent spawner = null;
+      if (card.getTroopCount() > 1 && (card.getSpawnInterval() > 0
+          || card.getDeathSpawnCount() > 0)) {
+        // If this is the main unit (usually index 0), attach spawner
+        // A more robust system would map specific stats to specific spawners in Card definition
+        if (stats == troopStatsList.get(0)) {
+          TroopStats spawnStats = card.getTroops().get(1);
+          spawner = SpawnerComponent.builder()
+              .spawnInterval(card.getSpawnInterval())
+              .currentTimer(card.getSpawnInterval())
+              .deathSpawnCount(card.getDeathSpawnCount())
+              .spawnStats(spawnStats)
+              .build();
+        }
+      }
+
+      Troop troop = createTroop(team, stats, x, y, spawner);
       state.spawnEntity(troop);
     }
   }
 
-  private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY) {
-    // Apply spawn offset (for multi-unit cards like Barbarians)
+  private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
+      SpawnerComponent spawner) {
     float spawnX = baseX + stats.getOffsetX();
     float spawnY = baseY + stats.getOffsetY();
 
@@ -90,19 +110,17 @@ public class DeploymentSystem {
     return Troop.builder()
         .name(stats.getName())
         .team(team)
-        .position(spawnX, spawnY)
-        .maxHealth(stats.getHealth())
-        .speed(stats.getSpeed())
-        .mass(stats.getMass())
-        .size(stats.getSize())
-        .movementType(stats.getMovementType())
+        .position(new Position(spawnX, spawnY))
+        .health(new Health(stats.getHealth()))
+        .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getSize(),
+            stats.getMovementType()))
         .combat(combat)
         .deployTime(stats.getDeployTime())
+        .spawner(spawner)
         .build();
   }
 
   private void spawnBuilding(Team team, Card card, float x, float y) {
-    // Buildings use first TroopStats for combat info (if any)
     TroopStats stats = card.getTroops().isEmpty() ? null : card.getTroops().get(0);
 
     Combat combat = null;
@@ -117,42 +135,34 @@ public class DeploymentSystem {
     }
 
     float size = stats != null ? stats.getSize() : 2.0f;
+    int health = card.getBuildingHealth();
 
-    // Determine if it is a SpawnerBuilding or a regular Building
-    boolean isSpawner = card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0;
-
-    Building building;
-
-    if (isSpawner && card.getTroops().size() > 1) {
-      TroopStats spawnStats = card.getTroops().get(1); // Second troop def is the spawned unit
-
-      SpawnerBuilding spawner = SpawnerBuilding.builder()
-          .name(card.getName())
-          .team(team)
-          .position(x, y)
-          .maxHealth(card.getBuildingHealth())
-          .size(size)
-          .combat(combat)
-          .lifetime(card.getBuildingLifetime())
-          .spawnInterval(card.getSpawnInterval())
-          .deathSpawnCount(card.getDeathSpawnCount())
-          .spawnStats(spawnStats)
-          .build();
-
-      // Inject callback
-      spawner.setSpawnCallback(state::spawnEntity);
-      building = spawner;
-    } else {
-      building = Building.builder()
-          .name(card.getName())
-          .team(team)
-          .position(x, y)
-          .maxHealth(card.getBuildingHealth())
-          .size(size)
-          .combat(combat)
-          .lifetime(card.getBuildingLifetime())
-          .build();
+    // Create Spawner Component if needed
+    SpawnerComponent spawner = null;
+    if (card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0) {
+      if (card.getTroops().size() > 1) {
+        TroopStats spawnStats = card.getTroops().get(1);
+        spawner = SpawnerComponent.builder()
+            .spawnInterval(card.getSpawnInterval())
+            .currentTimer(card.getSpawnInterval())
+            .deathSpawnCount(card.getDeathSpawnCount())
+            .spawnStats(spawnStats)
+            .build();
+      }
     }
+
+    // Always use Building class, attach components optionally
+    Building building = Building.builder()
+        .name(card.getName())
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(health))
+        .movement(new Movement(0, 0, size, org.crforge.core.entity.MovementType.BUILDING))
+        .combat(combat)
+        .lifetime(card.getBuildingLifetime())
+        .remainingLifetime(card.getBuildingLifetime())
+        .spawner(spawner) // Attach component via builder
+        .build();
 
     state.spawnEntity(building);
   }

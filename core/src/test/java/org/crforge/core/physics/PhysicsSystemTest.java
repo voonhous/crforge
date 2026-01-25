@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.entity.Entity;
 import org.crforge.core.entity.MovementType;
 import org.crforge.core.entity.Troop;
@@ -84,11 +86,8 @@ class PhysicsSystemTest {
     Troop troop = Troop.builder()
         .name(name)
         .team(Team.BLUE)
-        .position(x, y)
-        .mass(mass)
-        .size(1.0f) // Radius 0.5
-        .speed(5.0f)
-        .movementType(MovementType.GROUND)
+        .position(new Position(x, y))
+        .movement(new Movement(5.0f, mass, 1.0f, MovementType.GROUND))
         .deployTime(0f)
         .build();
 

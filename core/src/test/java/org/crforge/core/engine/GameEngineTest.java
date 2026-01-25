@@ -3,6 +3,9 @@ package org.crforge.core.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.entity.AbstractEntity;
 import org.crforge.core.entity.Tower;
 import org.crforge.core.entity.Troop;
@@ -84,7 +87,8 @@ class GameEngineTest {
   void spawn_shouldAddEntityToGame() {
     engine.initMatch();
 
-    Troop knight = Troop.builder().name("Knight").team(Team.BLUE).position(9, 15).build();
+    Troop knight = Troop.builder().name("Knight").team(Team.BLUE).position(new Position(9, 15))
+        .build();
 
     engine.spawn(knight);
     engine.tick(); // Process pending spawns
@@ -100,8 +104,8 @@ class GameEngineTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(9, 10)
-            .speed(2.0f)
+            .position(new Position(9, 10))
+            .movement(new Movement(2.0f, 1.0f, 1.0f, org.crforge.core.entity.MovementType.GROUND))
             .deployTime(0)
             .combat(Combat.builder().sightRange(20f).build())
             .build();
@@ -149,8 +153,8 @@ class GameEngineTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(9, 26) // Near red tower
-            .maxHealth(1000)
+            .position(new Position(9, 26)) // Near red tower
+            .health(new Health(1000))
             .deployTime(0)
             .combat(
                 Combat.builder()

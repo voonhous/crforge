@@ -1,12 +1,13 @@
 package org.crforge.core.entity;
 
+import java.util.List;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
-import org.crforge.core.player.Team;
+import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
-import java.util.List;
+import org.crforge.core.player.Team;
 
 public interface Entity {
 
@@ -23,6 +24,8 @@ public interface Entity {
   Combat getCombat();
 
   Health getHealth();
+
+  SpawnerComponent getSpawner();
 
   float getSize();
 
