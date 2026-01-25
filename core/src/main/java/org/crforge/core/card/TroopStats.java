@@ -1,5 +1,7 @@
 package org.crforge.core.card;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import org.crforge.core.entity.MovementType;
@@ -40,4 +42,6 @@ public class TroopStats {
   private final float offsetX = 0f;
   @Builder.Default
   private final float offsetY = 0f;
+  @Builder.Default
+  private final List<EffectStats> hitEffects = new ArrayList<>();
 }

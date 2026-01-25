@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.MovementType;
 import org.crforge.core.entity.TargetType;
 
@@ -351,6 +352,35 @@ public class CardRegistry {
                     .build())
             .build());
 
+    register(
+        Card.builder()
+            .id("ice_wizard")
+            .name("Ice Wizard")
+            .description("Shoots ice shards that slow enemies")
+            .type(CardType.TROOP)
+            .cost(3)
+            .troop(
+                TroopStats.builder()
+                    .name("Ice Wizard")
+                    .health(590)
+                    .damage(75)
+                    .speed(1.0f)
+                    .mass(3.0f)
+                    .size(0.6f)
+                    .range(5.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.7f)
+                    .ranged(true)
+                    .hitEffects(List.of(
+                        EffectStats.builder()
+                            .type(StatusEffectType.SLOW)
+                            .duration(2.5f)
+                            .intensity(0.35f) // 35% slow
+                            .build()
+                    ))
+                    .build())
+            .build());
+
     // Spells
     register(
         Card.builder()
@@ -383,7 +413,46 @@ public class CardRegistry {
             .cost(2)
             .spellDamage(192)
             .spellRadius(2.5f)
-            .spellDuration(0.5f) // stun duration
+            .spellEffects(List.of(
+                EffectStats.builder()
+                    .type(StatusEffectType.STUN)
+                    .duration(0.5f)
+                    .build()
+            ))
+            .build());
+
+    register(
+        Card.builder()
+            .id("freeze")
+            .name("Freeze")
+            .description("Freezes troops and buildings")
+            .type(CardType.SPELL)
+            .cost(4)
+            .spellDamage(95)
+            .spellRadius(3.0f)
+            .spellEffects(List.of(
+                EffectStats.builder()
+                    .type(StatusEffectType.FREEZE)
+                    .duration(4.0f)
+                    .build()
+            ))
+            .build());
+
+    register(
+        Card.builder()
+            .id("rage")
+            .name("Rage")
+            .description("Increases movement and attack speed")
+            .type(CardType.SPELL)
+            .cost(2)
+            .spellRadius(5.0f)
+            .spellEffects(List.of(
+                EffectStats.builder()
+                    .type(StatusEffectType.RAGE)
+                    .duration(6.0f)
+                    .intensity(0.35f) // 35% boost
+                    .build()
+            ))
             .build());
 
     // Buildings

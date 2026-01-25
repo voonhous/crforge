@@ -1,8 +1,11 @@
 package org.crforge.core.component;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.entity.TargetType;
 
 @Getter
@@ -26,6 +29,8 @@ public class Combat {
   private final boolean ranged = false;
   @Builder.Default
   private final float loadTime = 0;
+  @Builder.Default
+  private final List<EffectStats> hitEffects = new ArrayList<>();
 
   private float currentCooldown;
   private float currentLoadTime;

@@ -6,12 +6,14 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
+import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.entity.Building;
 import org.crforge.core.entity.Entity;
 import org.crforge.core.entity.Troop;
@@ -69,14 +71,14 @@ public class DeploymentSystem {
       return;
     }
 
+    TroopStats mainStats = troopStatsList.get(0);
+
     for (TroopStats stats : troopStatsList) {
       // Check for spawner capability (Witch/Mother Witch logic)
       SpawnerComponent spawner = null;
-      if (card.getTroopCount() > 1 && (card.getSpawnInterval() > 0
-          || card.getDeathSpawnCount() > 0)) {
-        // If this is the main unit (usually index 0), attach spawner
-        // A more robust system would map specific stats to specific spawners in Card definition
-        if (stats == troopStatsList.get(0)) {
+
+      if (stats == mainStats && (card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0)) {
+        if (card.getTroops().size() > 1) {
           TroopStats spawnStats = card.getTroops().get(1);
           spawner = SpawnerComponent.builder()
               .spawnInterval(card.getSpawnInterval())
@@ -105,6 +107,7 @@ public class DeploymentSystem {
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
         .ranged(stats.isRanged())
+        .hitEffects(stats.getHitEffects()) // Pass effects
         .build();
 
     return Troop.builder()
@@ -131,6 +134,7 @@ public class DeploymentSystem {
           .attackCooldown(stats.getAttackCooldown())
           .targetType(stats.getTargetType())
           .ranged(stats.isRanged())
+          .hitEffects(stats.getHitEffects())
           .build();
     }
 
@@ -161,7 +165,7 @@ public class DeploymentSystem {
         .combat(combat)
         .lifetime(card.getBuildingLifetime())
         .remainingLifetime(card.getBuildingLifetime())
-        .spawner(spawner) // Attach component via builder
+        .spawner(spawner)
         .build();
 
     state.spawnEntity(building);
@@ -171,11 +175,12 @@ public class DeploymentSystem {
     // Find all enemy entities within spell radius and deal damage
     float radius = card.getSpellRadius();
     int damage = card.getSpellDamage();
+    List<EffectStats> effects = card.getSpellEffects();
 
     List<Entity> targets = new ArrayList<>();
     for (Entity entity : state.getAliveEntities()) {
       if (entity.getTeam() == team) {
-        continue; // Don't damage own team
+        continue;
       }
 
       float dx = entity.getPosition().getX() - x;
@@ -190,6 +195,15 @@ public class DeploymentSystem {
     // Apply damage to all targets (deaths processed by GameEngine.processDeaths())
     for (Entity target : targets) {
       target.getHealth().takeDamage(damage);
+
+      // Apply effects
+      if (effects != null) {
+        for (EffectStats effectStats : effects) {
+          AppliedEffect effect = new AppliedEffect(effectStats.getType(), effectStats.getDuration(),
+              effectStats.getIntensity());
+          target.addEffect(effect);
+        }
+      }
     }
   }
 
