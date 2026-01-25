@@ -4,9 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -57,7 +58,7 @@ public class PhysicsSystem {
     // 1. Apply movement based on pathfinding
     for (Entity entity : movableEntities) {
       if (entity instanceof Troop troop) {
-        applyMovement(troop, deltaTime);
+        applyMovement(troop, entities, deltaTime);
       }
     }
 
@@ -70,7 +71,7 @@ public class PhysicsSystem {
     }
   }
 
-  private void applyMovement(Troop troop, float deltaTime) {
+  private void applyMovement(Troop troop, Collection<Entity> allEntities, float deltaTime) {
     if (!troop.getMovement().canMove() || troop.isDeploying()) {
       return;
     }
@@ -84,7 +85,7 @@ public class PhysicsSystem {
     if (target != null && target.isAlive()) {
       moveTowardTarget(troop, target, deltaTime);
     } else {
-      moveTowardEnemySide(troop, deltaTime);
+      moveTowardEnemySide(troop, allEntities, deltaTime);
     }
   }
 
@@ -102,9 +103,10 @@ public class PhysicsSystem {
     applyVelocity(troop, angle, deltaTime);
   }
 
-  private void moveTowardEnemySide(Troop troop, float deltaTime) {
+  private void moveTowardEnemySide(Troop troop, Collection<Entity> allEntities, float deltaTime) {
     Position pos = troop.getPosition();
     Team team = troop.getTeam();
+    Team enemyTeam = team.opposite();
 
     float centerX = arena.getCenterX();
     boolean isLeftLane = pos.getX() < centerX;
@@ -112,12 +114,40 @@ public class PhysicsSystem {
     float targetX;
     float targetY;
 
+    // Check if Princess Tower in this lane is alive
+    boolean princessAlive = false;
+
+    // TODO: Find a better way to do this, can we abstract this up into Match or something else to see if princess tower is still alive
+    // Naive search in the provided alive entities list
+    for (Entity e : allEntities) {
+      if (e.getTeam() == enemyTeam && e instanceof Tower tower && tower.isPrincessTower()) {
+        float tx = tower.getPosition().getX();
+        // Check if tower is in the same lane (Left/Right)
+        boolean towerIsLeft = tx < centerX;
+        if (towerIsLeft == isLeftLane) {
+          princessAlive = true;
+          break;
+        }
+      }
+    }
+
     if (team == Team.BLUE) {
-      targetX = isLeftLane ? arena.getRedLeftPrincessTowerX() : arena.getRedRightPrincessTowerX();
-      targetY = arena.getRedLeftPrincessTowerY();
+      if (princessAlive) {
+        targetX = isLeftLane ? arena.getRedLeftPrincessTowerX() : arena.getRedRightPrincessTowerX();
+        targetY = arena.getRedLeftPrincessTowerY();
+      } else {
+        targetX = arena.getRedCrownTowerX();
+        targetY = arena.getRedCrownTowerY();
+      }
     } else {
-      targetX = isLeftLane ? arena.getBlueLeftPrincessTowerX() : arena.getBlueRightPrincessTowerX();
-      targetY = arena.getBlueLeftPrincessTowerY();
+      if (princessAlive) {
+        targetX =
+            isLeftLane ? arena.getBlueLeftPrincessTowerX() : arena.getBlueRightPrincessTowerX();
+        targetY = arena.getBlueLeftPrincessTowerY();
+      } else {
+        targetX = arena.getBlueCrownTowerX();
+        targetY = arena.getBlueCrownTowerY();
+      }
     }
 
     float angle = pathfinder.getNextMovementAngle(
