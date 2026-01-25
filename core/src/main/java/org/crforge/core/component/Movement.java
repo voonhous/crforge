@@ -3,7 +3,7 @@ package org.crforge.core.component;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.crforge.core.entity.MovementType;
+import org.crforge.core.entity.base.MovementType;
 
 @Getter
 @RequiredArgsConstructor

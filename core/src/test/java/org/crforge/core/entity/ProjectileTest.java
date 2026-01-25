@@ -2,12 +2,14 @@ package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Collections;
 import java.util.List;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.StatusEffectType;
+import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

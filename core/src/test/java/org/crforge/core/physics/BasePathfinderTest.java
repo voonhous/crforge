@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.MovementType;
+import org.crforge.core.entity.base.MovementType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

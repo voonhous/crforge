@@ -2,12 +2,12 @@ package org.crforge.core.combat;
 
 import java.util.Collection;
 import java.util.Comparator;
-import org.crforge.core.entity.Building;
-import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.MovementType;
-import org.crforge.core.entity.TargetType;
-import org.crforge.core.entity.Tower;
-import org.crforge.core.entity.Troop;
+import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 public class TargetingSystem {

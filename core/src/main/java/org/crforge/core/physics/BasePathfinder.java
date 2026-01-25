@@ -2,7 +2,7 @@ package org.crforge.core.physics;
 
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.MovementType;
+import org.crforge.core.entity.base.MovementType;
 
 /**
  * Basic pathfinder that handles lane-based movement and river crossing via bridges.

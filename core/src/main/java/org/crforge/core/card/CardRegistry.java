@@ -7,8 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.effect.StatusEffectType;
-import org.crforge.core.entity.MovementType;
-import org.crforge.core.entity.TargetType;
+import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.base.TargetType;
 
 public class CardRegistry {
 

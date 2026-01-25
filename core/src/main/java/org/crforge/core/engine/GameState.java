@@ -8,11 +8,11 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import lombok.Getter;
-import org.crforge.core.entity.AbstractEntity;
-import org.crforge.core.entity.Entity;
-import org.crforge.core.entity.Projectile;
+import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.SpawnerSystem;
-import org.crforge.core.entity.Tower;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 
 /**

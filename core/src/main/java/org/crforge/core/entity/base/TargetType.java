@@ -1,4 +1,4 @@
-package org.crforge.core.entity;
+package org.crforge.core.entity.base;
 
 public enum TargetType {
   ALL,

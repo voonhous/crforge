@@ -6,9 +6,10 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.AbstractEntity;
-import org.crforge.core.entity.Tower;
-import org.crforge.core.entity.Troop;
+import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,7 +106,7 @@ class GameEngineTest {
             .name("Knight")
             .team(Team.BLUE)
             .position(new Position(9, 10))
-            .movement(new Movement(2.0f, 1.0f, 1.0f, org.crforge.core.entity.MovementType.GROUND))
+            .movement(new Movement(2.0f, 1.0f, 1.0f, MovementType.GROUND))
             .deployTime(0)
             .combat(Combat.builder().sightRange(20f).build())
             .build();

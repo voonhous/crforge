@@ -1,8 +1,9 @@
-package org.crforge.core.entity;
+package org.crforge.core.entity.projectile;
 
 import lombok.Getter;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Position;
+import org.crforge.core.entity.base.Entity;
 import org.crforge.core.player.Team;
 import java.util.List;
 import java.util.Collections;
