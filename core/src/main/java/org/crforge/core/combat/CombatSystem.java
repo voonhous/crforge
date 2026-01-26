@@ -8,7 +8,7 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
-import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -27,12 +27,13 @@ public class CombatSystem {
    * Process combat for all entities. Called each tick.
    */
   public void update(float deltaTime) {
-    // Process troop attacks
+    // Process attacks
     for (Entity entity : gameState.getAliveEntities()) {
       if (entity instanceof Troop troop) {
         processTroopCombat(troop);
-      } else if (entity instanceof Tower tower) {
-        processTowerCombat(tower);
+      } else if (entity instanceof Building building) {
+        // Handles both Tower and regular Buildings (like Cannon)
+        processBuildingCombat(building);
       }
     }
 
@@ -74,17 +75,22 @@ public class CombatSystem {
     executeAttack(troop, troop.getCurrentTarget(), combat);
   }
 
-  private void processTowerCombat(Tower tower) {
-    if (!tower.hasTarget()) {
+  private void processBuildingCombat(Building building) {
+    if (!building.hasTarget()) {
       return;
     }
 
-    Combat combat = tower.getCombat();
+    Combat combat = building.getCombat();
+
+    // Buildings like Tesla might exist without combat component
+    if (combat == null) {
+      return;
+    }
 
     // Check if in range
-    float distance = tower.getPosition().distanceTo(tower.getCurrentTarget().getPosition());
+    float distance = building.getPosition().distanceTo(building.getCurrentTarget().getPosition());
     float effectiveRange =
-        combat.getRange() + (tower.getSize() + tower.getCurrentTarget().getSize()) / 2f;
+        combat.getRange() + (building.getSize() + building.getCurrentTarget().getSize()) / 2f;
 
     if (distance > effectiveRange) {
       return;
@@ -105,7 +111,7 @@ public class CombatSystem {
     }
 
     // Execute attack
-    executeAttack(tower, tower.getCurrentTarget(), combat);
+    executeAttack(building, building.getCurrentTarget(), combat);
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
@@ -225,12 +231,8 @@ public class CombatSystem {
       return false;
     }
 
-    Combat combat;
-    if (attacker instanceof Troop troop) {
-      combat = troop.getCombat();
-    } else if (attacker instanceof Tower tower) {
-      combat = tower.getCombat();
-    } else {
+    Combat combat = attacker.getCombat();
+    if (combat == null) {
       return false;
     }
 

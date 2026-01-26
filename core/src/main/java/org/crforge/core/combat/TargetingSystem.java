@@ -2,11 +2,11 @@ package org.crforge.core.combat;
 
 import java.util.Collection;
 import java.util.Comparator;
-import org.crforge.core.entity.structure.Building;
+import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
-import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -15,60 +15,55 @@ public class TargetingSystem {
   public void updateTargets(Collection<Entity> entities) {
     for (Entity entity : entities) {
       if (entity instanceof Troop troop && troop.isAlive() && !troop.isDeploying()) {
-        updateTroopTarget(troop, entities);
-      } else if (entity instanceof Tower tower && tower.isAlive()) {
-        updateTowerTarget(tower, entities);
+        updateEntityTarget(troop, entities);
+      } else if (entity instanceof Building building && building.isAlive()) {
+        // Handles both Tower and regular Buildings (like Cannon)
+        updateEntityTarget(building, entities);
       }
     }
   }
 
-  private void updateTroopTarget(Troop troop, Collection<Entity> entities) {
+  private void updateEntityTarget(Entity entity, Collection<Entity> entities) {
+    // Need to cast to access currentTarget methods
+    Entity currentTarget = null;
+    if (entity instanceof Troop t) {
+      currentTarget = t.getCurrentTarget();
+    }
+    if (entity instanceof Building b) {
+      currentTarget = b.getCurrentTarget();
+    }
+
     // If target is still valid, keep it
-    if (troop.hasTarget() && isValidTarget(troop, troop.getCurrentTarget())) {
+    if (isValidTarget(entity, currentTarget)) {
       return;
     }
 
     // Find new target
-    Entity newTarget = findBestTarget(troop, entities);
-    troop.setCurrentTarget(newTarget);
+    Entity newTarget = findBestTarget(entity, entities);
+
+    if (entity instanceof Troop t) {
+      t.setCurrentTarget(newTarget);
+    }
+    if (entity instanceof Building b) {
+      b.setCurrentTarget(newTarget);
+    }
   }
 
-  private void updateTowerTarget(Tower tower, Collection<Entity> entities) {
-    // If target is still valid, keep it
-    if (tower.hasTarget() && isValidTarget(tower, tower.getCurrentTarget())) {
-      return;
+  private Entity findBestTarget(Entity attacker, Collection<Entity> entities) {
+    Combat combat = attacker.getCombat();
+    if (combat == null) {
+      return null;
     }
 
-    // Find new target
-    Entity newTarget = findBestTargetForTower(tower, entities);
-    tower.setCurrentTarget(newTarget);
-  }
-
-  private Entity findBestTarget(Troop troop, Collection<Entity> entities) {
-    Team enemyTeam = troop.getTeam().opposite();
-    TargetType targetType = troop.getCombat().getTargetType();
-    float sightRange = troop.getCombat().getSightRange();
+    Team enemyTeam = attacker.getTeam().opposite();
+    float sightRange = combat.getSightRange();
 
     return entities.stream()
         .filter(e -> e.getTeam() == enemyTeam)
         .filter(Entity::isTargetable)
-        .filter(e -> canTarget(troop, e, targetType))
-        .filter(e -> getDistance(troop, e) <= sightRange)
-        .min(Comparator.comparingDouble(e -> getDistance(troop, e)))
-        .orElse(null);
-  }
-
-  private Entity findBestTargetForTower(Tower tower, Collection<Entity> entities) {
-    Team enemyTeam = tower.getTeam().opposite();
-    float sightRange = tower.getCombat().getSightRange();
-
-    return entities.stream()
-        .filter(e -> e.getTeam() == enemyTeam)
-        .filter(Entity::isTargetable)
-        .filter(e -> !(e instanceof Tower)) // Towers don't attack other towers
-        .filter(e -> !(e instanceof Building)) // Towers prefer troops
-        .filter(e -> getDistance(tower, e) <= sightRange)
-        .min(Comparator.comparingDouble(e -> getDistance(tower, e)))
+        .filter(e -> canTarget(attacker, e))
+        .filter(e -> getDistance(attacker, e) <= sightRange)
+        .min(Comparator.comparingDouble(e -> getDistance(attacker, e)))
         .orElse(null);
   }
 
@@ -77,36 +72,25 @@ public class TargetingSystem {
       return false;
     }
 
-    // Check if target is still in range
-    float sightRange;
-    TargetType targetType;
-
-    if (attacker instanceof Troop troop) {
-      sightRange = troop.getCombat().getSightRange();
-      targetType = troop.getCombat().getTargetType();
-    } else if (attacker instanceof Tower tower) {
-      sightRange = tower.getCombat().getSightRange();
-      targetType = TargetType.ALL;
-    } else {
+    Combat combat = attacker.getCombat();
+    if (combat == null) {
       return false;
     }
 
+    // Check if target is still in range (with leeway)
     float distance = getDistance(attacker, target);
-    if (distance > sightRange * 1.5f) { // Allow some leeway before retargeting
+    if (distance > combat.getSightRange() * 1.5f) {
       return false;
     }
 
-    if (attacker instanceof Troop troop) {
-      return canTarget(troop, target, targetType);
-    }
-
-    return true;
+    return canTarget(attacker, target);
   }
 
-  private boolean canTarget(Entity attacker, Entity target, TargetType targetType) {
+  private boolean canTarget(Entity attacker, Entity target) {
+    TargetType attackerTargetType = attacker.getCombat().getTargetType();
     MovementType targetMovement = target.getMovementType();
 
-    return switch (targetType) {
+    return switch (attackerTargetType) {
       case ALL -> true;
       case GROUND ->
           targetMovement == MovementType.GROUND || targetMovement == MovementType.BUILDING;
