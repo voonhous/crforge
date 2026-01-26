@@ -3,6 +3,8 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.card.CardRegistry;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -167,5 +169,43 @@ class TargetingSystemTest {
     // Update - should retarget to enemy2
     targetingSystem.updateTargets(entities);
     assertThat(attacker.getCurrentTarget()).isEqualTo(enemy2);
+  }
+
+  @Test
+  void knightShouldIgnoreBabyDragon() {
+    // Verify registry config
+    TroopStats knightStats = CardRegistry.get("knight").getTroops().get(0);
+    TroopStats dragonStats = CardRegistry.get("baby_dragon").getTroops().get(0);
+
+    assertThat(knightStats.getTargetType()).isEqualTo(TargetType.GROUND);
+    assertThat(dragonStats.getMovementType()).isEqualTo(MovementType.AIR);
+
+    // Verify system interaction
+    Troop knight = Troop.builder()
+        .name("Knight")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .deployTime(0)
+        .movement(new Movement(0, 0, 1, MovementType.GROUND))
+        .combat(Combat.builder()
+            .sightRange(5.5f)
+            .targetType(knightStats.getTargetType()) // Use actual stat
+            .build())
+        .build();
+    knight.onSpawn();
+
+    Troop dragon = Troop.builder()
+        .name("Baby Dragon")
+        .team(Team.RED)
+        .position(new Position(12, 10))
+        .deployTime(0)
+        .movement(new Movement(0, 0, 1, dragonStats.getMovementType())) // Use actual stat
+        .build();
+    dragon.onSpawn();
+
+    List<Entity> entities = List.of(knight, dragon);
+    targetingSystem.updateTargets(entities);
+
+    assertThat(knight.getCurrentTarget()).isNull();
   }
 }
