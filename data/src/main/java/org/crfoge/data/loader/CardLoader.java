@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.crfoge.data.loader.dto.CardConfigDTO;
 import org.crfoge.data.loader.dto.EffectConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
@@ -67,6 +68,22 @@ public class CardLoader {
   }
 
   private static TroopStats convertUnit(UnitConfigDTO dto) {
+    // Validate required fields
+    Objects.requireNonNull(dto.getMovementType(),
+        "MovementType is required for unit: " + dto.getName());
+
+    // Buildings don't strictly need a targetType if they don't attack, but Troops do.
+    // For now, we enforce it for consistency if it's being loaded as a Unit.
+    // Exception: Buildings that don't attack (like Tombstone) might not have it set in JSON if they rely on default.
+    // However, the issue was specifically about Troops causing NPEs.
+    // Let's enforce it for non-buildings or just enforce it generally and fix JSON.
+    // Given the previous error was in TargetingSystem (which checks if targetable),
+    // it implies this unit IS trying to target something.
+    if (dto.getDamage() > 0) {
+      Objects.requireNonNull(dto.getTargetType(),
+          "TargetType is required for attacking unit: " + dto.getName());
+    }
+
     return TroopStats.builder()
         .name(dto.getName())
         .health(dto.getHealth())

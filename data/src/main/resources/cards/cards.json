@@ -80,6 +80,7 @@
         "range": 0.7,
         "attackCooldown": 1.4,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": -0.5,
         "offsetY": -0.5
       },
@@ -93,6 +94,7 @@
         "range": 0.7,
         "attackCooldown": 1.4,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": 0.5,
         "offsetY": -0.5
       },
@@ -106,6 +108,7 @@
         "range": 0.7,
         "attackCooldown": 1.4,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": -0.5,
         "offsetY": 0.5
       },
@@ -119,6 +122,7 @@
         "range": 0.7,
         "attackCooldown": 1.4,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": 0.5,
         "offsetY": 0.5
       }
@@ -141,6 +145,7 @@
         "range": 0.7,
         "attackCooldown": 1.1,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": -0.3,
         "offsetY": 0.0
       },
@@ -154,6 +159,7 @@
         "range": 0.7,
         "attackCooldown": 1.1,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": 0.3,
         "offsetY": 0.0
       },
@@ -167,6 +173,7 @@
         "range": 0.7,
         "attackCooldown": 1.1,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "offsetX": 0.0,
         "offsetY": 0.3
       }
@@ -188,6 +195,7 @@
         "size": 0.5,
         "range": 2.0,
         "attackCooldown": 1.0,
+        "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true,
         "offsetX": -0.3
@@ -201,6 +209,7 @@
         "size": 0.5,
         "range": 2.0,
         "attackCooldown": 1.0,
+        "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true,
         "offsetX": 0.3
@@ -214,6 +223,7 @@
         "size": 0.5,
         "range": 2.0,
         "attackCooldown": 1.0,
+        "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true,
         "offsetY": 0.3
@@ -237,6 +247,7 @@
         "range": 3.5,
         "aoeRadius": 1.0,
         "attackCooldown": 1.5,
+        "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true
       }
@@ -259,6 +270,8 @@
         "range": 6.0,
         "sightRange": 6.5,
         "attackCooldown": 1.0,
+        "targetType": "ALL",
+        "movementType": "GROUND",
         "ranged": true
       }
     ]
@@ -279,6 +292,8 @@
         "size": 0.5,
         "range": 5.0,
         "attackCooldown": 1.1,
+        "targetType": "ALL",
+        "movementType": "GROUND",
         "ranged": true,
         "offsetX": -0.3
       },
@@ -291,6 +306,8 @@
         "size": 0.5,
         "range": 5.0,
         "attackCooldown": 1.1,
+        "targetType": "ALL",
+        "movementType": "GROUND",
         "ranged": true,
         "offsetX": 0.3
       }
@@ -314,6 +331,7 @@
         "aoeRadius": 1.5,
         "attackCooldown": 1.9,
         "targetType": "GROUND",
+        "movementType": "GROUND",
         "ranged": true
       }
     ]
@@ -335,6 +353,8 @@
         "range": 5.5,
         "sightRange": 5.5,
         "attackCooldown": 1.7,
+        "targetType": "ALL",
+        "movementType": "GROUND",
         "ranged": true,
         "hitEffects": [
           {

@@ -1,6 +1,7 @@
 package org.crforge.data.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.io.ByteArrayInputStream;
@@ -65,6 +66,62 @@ class CardLoaderTest {
   }
 
   @Test
+  void loadCards_shouldThrowOnMissingMovementType() {
+    String json = """
+        [
+          {
+            "id": "musketeer",
+            "name": "Musketeer",
+            "type": "TROOP",
+            "cost": 4,
+            "units": [
+              {
+                "name": "Musketeer",
+                "health": 720,
+                "damage": 181,
+                "targetType": "ALL"
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+
+    assertThatThrownBy(() -> CardLoader.loadCards(is))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("MovementType is required");
+  }
+
+  @Test
+  void loadCards_shouldThrowOnMissingTargetTypeForAttacker() {
+    String json = """
+        [
+          {
+            "id": "musketeer",
+            "name": "Musketeer",
+            "type": "TROOP",
+            "cost": 4,
+            "units": [
+              {
+                "name": "Musketeer",
+                "health": 720,
+                "damage": 181,
+                "movementType": "GROUND"
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+
+    assertThatThrownBy(() -> CardLoader.loadCards(is))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("TargetType is required");
+  }
+
+  @Test
   void loadCards_shouldParseSpellWithEffects() {
     String json = """
         [
@@ -114,6 +171,8 @@ class CardLoaderTest {
               {
                 "name": "Minion",
                 "health": 252,
+                "damage": 84,
+                "targetType": "ALL",
                 "movementType": "AIR",
                 "count": 3
               }
