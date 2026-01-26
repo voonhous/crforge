@@ -1,4 +1,4 @@
-package org.crforge.core.loader.dto;
+package org.crfoge.data.loader.dto;
 
 import java.util.List;
 import lombok.Data;

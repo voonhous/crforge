@@ -1,4 +1,4 @@
-package org.crforge.core.card;
+package org.crfoge.data.card;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,7 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.crforge.core.loader.CardLoader;
+import org.crfoge.data.loader.CardLoader;
+import org.crforge.core.card.Card;
 
 @Slf4j
 public class CardRegistry {

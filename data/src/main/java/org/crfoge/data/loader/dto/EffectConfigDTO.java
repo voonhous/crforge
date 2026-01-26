@@ -1,4 +1,4 @@
-package org.crforge.core.loader.dto;
+package org.crfoge.data.loader.dto;
 
 import lombok.Data;
 import org.crforge.core.effect.StatusEffectType;
