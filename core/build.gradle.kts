@@ -4,17 +4,16 @@ plugins {
 
 dependencies {
     // JSON parsing for card data
-    api("com.fasterxml.jackson.core:jackson-databind:${property("jacksonVersion")}")
+    api(libs.jackson.databind)
 
     // Logging
-    api("org.slf4j:slf4j-api:2.0.12")
-
+    api(libs.slf4j.api)
     // Use simple logger for now in tests/CLI
-    testImplementation("org.slf4j:slf4j-simple:2.0.12")
+    testImplementation(libs.slf4j.simple)
 
     // Lombok
-    compileOnly("org.projectlombok:lombok:1.18.30")
-    annotationProcessor("org.projectlombok:lombok:1.18.30")
-    testCompileOnly("org.projectlombok:lombok:1.18.30")
-    testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+    testCompileOnly(libs.lombok)
+    testAnnotationProcessor(libs.lombok)
 }

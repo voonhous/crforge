@@ -6,7 +6,7 @@ dependencies {
     implementation(project(":core"))
 
     // JSON for bridge protocol
-    implementation("com.fasterxml.jackson.core:jackson-databind:${property("jacksonVersion")}")
+    implementation(libs.jackson.databind)
 }
 
 application {
