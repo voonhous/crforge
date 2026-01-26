@@ -2,6 +2,7 @@ package org.crforge.core.entity.structure;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -18,6 +19,23 @@ public class Tower extends Building {
   @Builder.Default
   private final TowerType towerType = TowerType.PRINCESS;
 
+  /**
+   * Towers can be active or inactive.
+   * <p>
+   * Crown (King) towers start inactive and activate when damaged or a Princess tower falls.
+   */
+  @Builder.Default
+  @Setter
+  private boolean active = true;
+
+  /**
+   * Timer that ticks down when a tower is first activated.
+   * <p>
+   * The tower cannot attack until this timer reaches 0.
+   */
+  @Builder.Default
+  private float activationTimer = 0f;
+
   // Factory methods for standard towers
   public static Tower createCrownTower(Team team, float x, float y) {
     return Tower.builder()
@@ -27,12 +45,13 @@ public class Tower extends Building {
         .health(new Health(4824))
         .movement(new Movement(0, 0, 4.0f, MovementType.BUILDING))
         .towerType(TowerType.CROWN)
+        .active(false)
         .combat(
             Combat.builder()
                 .damage(109)
-                .range(6.5f)
-                .sightRange(9.5f)
-                .attackCooldown(0.8f)
+                .range(7.0f) // Standard range, verified against original
+                .sightRange(7.0f)
+                .attackCooldown(1.0f)
                 .ranged(true)
                 .build())
         .build();
@@ -46,11 +65,12 @@ public class Tower extends Building {
         .health(new Health(3052))
         .movement(new Movement(0, 0, 3.0f, MovementType.BUILDING))
         .towerType(TowerType.PRINCESS)
+        .active(true)
         .combat(
             Combat.builder()
                 .damage(109)
                 .range(7.5f)
-                .sightRange(9.5f)
+                .sightRange(7.5f)
                 .attackCooldown(0.8f)
                 .ranged(true)
                 .build())
@@ -68,6 +88,34 @@ public class Tower extends Building {
 
   public boolean isPrincessTower() {
     return towerType == TowerType.PRINCESS;
+  }
+
+  public boolean isWakingUp() {
+    return activationTimer > 0;
+  }
+
+  public void activate() {
+    if (!active) {
+      active = true;
+      // 1 second activation delay
+      activationTimer = 1.0f;
+    }
+  }
+
+
+
+  @Override
+  public void update(float deltaTime) {
+    super.update(deltaTime);
+
+    // Auto-activate if damaged
+    if (!active && health.getCurrent() < health.getMax()) {
+      activate();
+    }
+
+    if (activationTimer > 0) {
+      activationTimer -= deltaTime;
+    }
   }
 
   public enum TowerType {

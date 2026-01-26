@@ -6,6 +6,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -14,6 +15,11 @@ public class TargetingSystem {
   public void updateTargets(Collection<Entity> entities) {
     for (Entity entity : entities) {
       if (!entity.isAlive()) {
+        continue;
+      }
+
+      // Inactive towers do not target
+      if (entity instanceof Tower tower && !tower.isActive()) {
         continue;
       }
 

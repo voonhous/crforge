@@ -129,6 +129,73 @@ class GameStateTest {
   }
 
   @Test
+  void princessTowerDeath_shouldActivateKingTower() {
+    // Setup: King Tower (inactive) + Princess Tower (active)
+    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3);
+    Tower princessTower = Tower.createPrincessTower(Team.BLUE, 5, 6);
+
+    gameState.spawnEntity(kingTower);
+    gameState.spawnEntity(princessTower);
+    gameState.processPending();
+
+    // Verify initial state
+    assertThat(kingTower.isActive()).isFalse();
+    assertThat(princessTower.isActive()).isTrue();
+
+    // Destroy Princess Tower
+    princessTower.getHealth().takeDamage(10000);
+    gameState.processDeaths();
+
+    // Verify King Tower activated
+    assertThat(kingTower.isActive()).as("King Tower should activate when Princess Tower falls")
+        .isTrue();
+  }
+
+  @Test
+  void kingTower_shouldActivateWhenDamaged() {
+    // Setup: King Tower (inactive)
+    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3);
+    gameState.spawnEntity(kingTower);
+    gameState.processPending();
+
+    // Verify initial state
+    assertThat(kingTower.isActive()).isFalse();
+
+    // Damage the King Tower
+    kingTower.getHealth().takeDamage(100);
+
+    // Simulate game update (Tower.update() handles the activation check)
+    kingTower.update(0.1f);
+
+    // Verify King Tower activated
+    assertThat(kingTower.isActive()).as("King Tower should activate when damaged").isTrue();
+  }
+
+  @Test
+  void kingTower_shouldHaveActivationDelay() {
+    // Setup: King Tower (inactive)
+    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3);
+    gameState.spawnEntity(kingTower);
+    gameState.processPending();
+
+    // Activate the tower manually or via damage
+    kingTower.getHealth().takeDamage(100);
+    kingTower.update(0.1f);
+
+    // Should be active but waking up
+    assertThat(kingTower.isActive()).isTrue();
+    assertThat(kingTower.isWakingUp()).isTrue();
+
+    // Advance time by 0.5s (still waking up, assumes 1s delay)
+    kingTower.update(0.5f);
+    assertThat(kingTower.isWakingUp()).isTrue();
+
+    // Advance time by another 0.6s (total > 1.0s)
+    kingTower.update(0.6f);
+    assertThat(kingTower.isWakingUp()).isFalse();
+  }
+
+  @Test
   void incrementFrame_shouldTrackGameTime() {
     gameState.incrementFrame();
     gameState.incrementFrame();
