@@ -7,6 +7,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.crfoge.data.card.CardRegistry;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
@@ -32,6 +33,7 @@ import org.crforge.desktop.render.DebugRenderer;
  * <li>Click: Deploy selected card at position (TODO)</li>
  * </ul>
  */
+@Slf4j
 public class DebugGameScreen implements Screen {
 
   private static final float SIM_SPEED_MIN = 0.25f;
@@ -227,21 +229,29 @@ public class DebugGameScreen implements Screen {
     Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-    // Update simulation
-    if (!paused && engine.isRunning()) {
-      accumulator += delta * simSpeed;
+    try {
+      // Update simulation
+      if (!paused && engine.isRunning()) {
+        accumulator += delta * simSpeed;
 
-      // Fixed timestep simulation
-      float tickDelta = GameEngine.DELTA_TIME;
-      while (accumulator >= tickDelta) {
-        engine.tick();
-        accumulator -= tickDelta;
+        // Fixed timestep simulation
+        float tickDelta = GameEngine.DELTA_TIME;
+        while (accumulator >= tickDelta) {
+          engine.tick();
+          accumulator -= tickDelta;
+        }
       }
-    }
 
-    // Render
-    camera.update();
-    renderer.render(engine, camera, hoverTileX, hoverTileY);
+      // Render
+      camera.update();
+      renderer.render(engine, camera, hoverTileX, hoverTileY);
+    } catch (Exception e) {
+      log.error("CRASH during game loop!", e);
+      // Pause to prevent log spam/hard crash loop if possible
+      paused = true;
+      // Exit to prevent hanging window
+       Gdx.app.exit();
+    }
   }
 
   @Override
