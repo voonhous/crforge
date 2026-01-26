@@ -8,7 +8,6 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
-import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -27,32 +26,36 @@ public class CombatSystem {
    * Process combat for all entities. Called each tick.
    */
   public void update(float deltaTime) {
-    // Process attacks
+    // Process attacks for ANY entity with a combat component (Troop or Building)
     for (Entity entity : gameState.getAliveEntities()) {
-      if (entity instanceof Troop troop) {
-        processTroopCombat(troop);
-      } else if (entity instanceof Building building) {
-        // Handles both Tower and regular Buildings (like Cannon)
-        processBuildingCombat(building);
-      }
+      processEntityCombat(entity);
     }
 
     // Update and process projectiles
     updateProjectiles(deltaTime);
   }
 
-  private void processTroopCombat(Troop troop) {
-    if (troop.isDeploying()) {
-      return;
-    }
-    if (!troop.hasTarget()) {
+  private void processEntityCombat(Entity entity) {
+    Combat combat = entity.getCombat();
+
+    // Entity cannot fight (e.g., Elixir Collector)
+    if (combat == null) {
       return;
     }
 
-    Combat combat = troop.getCombat();
+    // Troops cannot attack while deploying
+    if (entity instanceof Troop troop && troop.isDeploying()) {
+      return;
+    }
+
+    if (!combat.hasTarget()) {
+      return;
+    }
+
+    Entity target = combat.getCurrentTarget();
 
     // Check if in attack range
-    if (!troop.isInAttackRange()) {
+    if (!isInAttackRange(entity, target, combat)) {
       return;
     }
 
@@ -72,58 +75,27 @@ public class CombatSystem {
     }
 
     // Execute attack
-    executeAttack(troop, troop.getCurrentTarget(), combat);
+    executeAttack(entity, target, combat);
   }
 
-  private void processBuildingCombat(Building building) {
-    if (!building.hasTarget()) {
-      return;
-    }
-
-    Combat combat = building.getCombat();
-
-    // Buildings like Tesla might exist without combat component
-    if (combat == null) {
-      return;
-    }
-
-    // Check if in range
-    float distance = building.getPosition().distanceTo(building.getCurrentTarget().getPosition());
-    float effectiveRange =
-        combat.getRange() + (building.getSize() + building.getCurrentTarget().getSize()) / 2f;
-
-    if (distance > effectiveRange) {
-      return;
-    }
-
-    // Check cooldown
-    if (!combat.canAttack()) {
-      return;
-    }
-
-    // Start attack
-    if (!combat.isLoading()) {
-      combat.startAttack();
-    }
-
-    if (combat.isLoading()) {
-      return;
-    }
-
-    // Execute attack
-    executeAttack(building, building.getCurrentTarget(), combat);
+  private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
+    float distance = attacker.getPosition().distanceTo(target.getPosition());
+    float effectiveRange = combat.getRange() + (attacker.getSize() + target.getSize()) / 2f;
+    return distance <= effectiveRange;
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
     if (combat.isRanged()) {
       // Spawn projectile
       Projectile projectile =
-          new Projectile(attacker, target, combat.getDamage(), combat.getAoeRadius(), combat.getHitEffects());
+          new Projectile(attacker, target, combat.getDamage(), combat.getAoeRadius(),
+              combat.getHitEffects());
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack - deal damage immediately
       if (combat.getAoeRadius() > 0) {
-        dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius(), combat.getHitEffects());
+        dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius(),
+            combat.getHitEffects());
       } else {
         dealDamage(target, combat.getDamage());
         applyEffects(target, combat.getHitEffects());
@@ -180,12 +152,14 @@ public class CombatSystem {
     }
 
     for (EffectStats stats : effects) {
-      AppliedEffect effect = new AppliedEffect(stats.getType(), stats.getDuration(), stats.getIntensity());
+      AppliedEffect effect = new AppliedEffect(stats.getType(), stats.getDuration(),
+          stats.getIntensity());
       target.addEffect(effect);
     }
   }
 
-  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius, List<EffectStats> effects) {
+  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius,
+      List<EffectStats> effects) {
     if (primaryTarget == null) {
       return;
     }
@@ -213,11 +187,6 @@ public class CombatSystem {
         applyEffects(entity, effects);
       }
     }
-  }
-
-  // Overload for backward compatibility in internal calls if needed (though not used above)
-  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius) {
-    dealAoeDamage(source, primaryTarget, damage, radius, null);
   }
 
   /**
