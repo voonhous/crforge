@@ -57,8 +57,8 @@ class TowerDestructionIntegrationTest {
 
     assertThat(redPrincess.isAlive()).as("Princess tower should be destroyed").isFalse();
     // Target might be null or King tower depending on timing, but shouldn't be Princess
-    if (knight.getCurrentTarget() != null) {
-      assertThat(knight.getCurrentTarget()).isNotEqualTo(redPrincess);
+    if (knight.getCombat().getCurrentTarget() != null) {
+      assertThat(knight.getCombat().getCurrentTarget()).isNotEqualTo(redPrincess);
     }
 
     // 4. Knight should now move towards King Tower

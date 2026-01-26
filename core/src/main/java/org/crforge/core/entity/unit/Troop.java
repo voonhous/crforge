@@ -26,39 +26,16 @@ public class Troop extends AbstractEntity {
     return EntityType.TROOP;
   }
 
-  // --- Delegation to Combat Component ---
-  // Maintained for compatibility with PhysicsSystem and ease of access
-  // TODO: Remove this in the future?
-
-  public Entity getCurrentTarget() {
-    return combat != null ? combat.getCurrentTarget() : null;
-  }
-
-  public void setCurrentTarget(Entity target) {
-    if (combat != null) {
-      combat.setCurrentTarget(target);
-    }
-  }
-
-  public boolean hasTarget() {
-    return combat != null && combat.hasTarget();
-  }
-
-  public void clearTarget() {
-    if (combat != null) {
-      combat.clearTarget();
-    }
-  }
-
-  // --- End Delegation ---
-
   public boolean isDeploying() {
     return deployTimer > 0;
   }
 
   public boolean isInAttackRange() {
-    Entity currentTarget = getCurrentTarget();
-    if (currentTarget == null || combat == null) {
+    if (combat == null) {
+      return false;
+    }
+    Entity currentTarget = combat.getCurrentTarget();
+    if (currentTarget == null) {
       return false;
     }
     float distance = position.distanceTo(currentTarget.getPosition());
@@ -67,7 +44,10 @@ public class Troop extends AbstractEntity {
   }
 
   public float getDistanceToTarget() {
-    Entity currentTarget = getCurrentTarget();
+    if (combat == null) {
+      return Float.MAX_VALUE;
+    }
+    Entity currentTarget = combat.getCurrentTarget();
     if (currentTarget == null) {
       return Float.MAX_VALUE;
     }

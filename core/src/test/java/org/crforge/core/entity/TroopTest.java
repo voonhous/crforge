@@ -78,14 +78,14 @@ class TroopTest {
     target.onSpawn();
     target.update(2.0f); // Deploy
 
-    attacker.setCurrentTarget(target);
+    attacker.getCombat().setCurrentTarget(target);
 
-    assertThat(attacker.hasTarget()).isTrue();
-    assertThat(attacker.getCurrentTarget()).isEqualTo(target);
+    assertThat(attacker.getCombat().hasTarget()).isTrue();
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(target);
 
-    attacker.clearTarget();
+    attacker.getCombat().clearTarget();
 
-    assertThat(attacker.hasTarget()).isFalse();
+    assertThat(attacker.getCombat().hasTarget()).isFalse();
   }
 
   @Test
@@ -96,7 +96,7 @@ class TroopTest {
     target.onSpawn();
     target.update(2.0f);
 
-    attacker.setCurrentTarget(target);
+    attacker.getCombat().setCurrentTarget(target);
 
     assertThat(attacker.getDistanceToTarget()).isEqualTo(5.0f, within(0.01f));
   }

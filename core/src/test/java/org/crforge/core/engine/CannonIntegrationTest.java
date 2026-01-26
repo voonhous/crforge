@@ -65,7 +65,7 @@ class CannonIntegrationTest {
     engine.tick(); // Update systems
 
     // 4. Verify Targeting
-    assertThat(cannon.getCurrentTarget())
+    assertThat(cannon.getCombat().getCurrentTarget())
         .as("Cannon should acquire the enemy troop as a target")
         .isEqualTo(enemy);
 

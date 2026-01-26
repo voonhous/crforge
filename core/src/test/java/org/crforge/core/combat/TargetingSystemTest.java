@@ -49,7 +49,7 @@ class TargetingSystemTest {
     List<Entity> entities = List.of(attacker, farEnemy, nearEnemy);
     targetingSystem.updateTargets(entities);
 
-    assertThat(attacker.getCurrentTarget()).isEqualTo(nearEnemy);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(nearEnemy);
   }
 
   @Test
@@ -61,7 +61,7 @@ class TargetingSystemTest {
     List<Entity> entities = List.of(attacker, ally, enemy);
     targetingSystem.updateTargets(entities);
 
-    assertThat(attacker.getCurrentTarget()).isEqualTo(enemy);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(enemy);
   }
 
   @Test
@@ -73,7 +73,7 @@ class TargetingSystemTest {
     List<Entity> entities = List.of(attacker, farEnemy);
     targetingSystem.updateTargets(entities);
 
-    assertThat(attacker.getCurrentTarget()).isNull();
+    assertThat(attacker.getCombat().getCurrentTarget()).isNull();
   }
 
   @Test
@@ -102,7 +102,7 @@ class TargetingSystemTest {
     List<Entity> entities = List.of(groundAttacker, airEnemy);
     targetingSystem.updateTargets(entities);
 
-    assertThat(groundAttacker.getCurrentTarget()).isNull();
+    assertThat(groundAttacker.getCombat().getCurrentTarget()).isNull();
   }
 
   @Test
@@ -131,7 +131,7 @@ class TargetingSystemTest {
     List<Entity> entities = List.of(airAttacker, airEnemy);
     targetingSystem.updateTargets(entities);
 
-    assertThat(airAttacker.getCurrentTarget()).isEqualTo(airEnemy);
+    assertThat(airAttacker.getCombat().getCurrentTarget()).isEqualTo(airEnemy);
   }
 
   @Test
@@ -143,11 +143,11 @@ class TargetingSystemTest {
 
     // First update - acquire target
     targetingSystem.updateTargets(entities);
-    assertThat(attacker.getCurrentTarget()).isEqualTo(enemy);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(enemy);
 
     // Second update - should keep same target
     targetingSystem.updateTargets(entities);
-    assertThat(attacker.getCurrentTarget()).isEqualTo(enemy);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(enemy);
   }
 
   @Test
@@ -160,7 +160,7 @@ class TargetingSystemTest {
 
     // First update - acquire target
     targetingSystem.updateTargets(entities);
-    assertThat(attacker.getCurrentTarget()).isEqualTo(enemy1);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(enemy1);
 
     // Kill enemy1
     enemy1.getHealth().takeDamage(10000);
@@ -168,7 +168,7 @@ class TargetingSystemTest {
 
     // Update - should retarget to enemy2
     targetingSystem.updateTargets(entities);
-    assertThat(attacker.getCurrentTarget()).isEqualTo(enemy2);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(enemy2);
   }
 
   @Test
@@ -206,6 +206,6 @@ class TargetingSystemTest {
     List<Entity> entities = List.of(knight, dragon);
     targetingSystem.updateTargets(entities);
 
-    assertThat(knight.getCurrentTarget()).isNull();
+    assertThat(knight.getCombat().getCurrentTarget()).isNull();
   }
 }
