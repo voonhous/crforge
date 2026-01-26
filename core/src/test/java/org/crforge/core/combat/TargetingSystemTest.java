@@ -3,7 +3,7 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import org.crforge.core.card.CardRegistry;
+import org.crfoge.data.card.CardRegistry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;

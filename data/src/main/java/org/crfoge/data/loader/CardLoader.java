@@ -1,4 +1,4 @@
-package org.crforge.core.loader;
+package org.crfoge.data.loader;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,12 +6,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import org.crfoge.data.loader.dto.CardConfigDTO;
+import org.crfoge.data.loader.dto.EffectConfigDTO;
+import org.crfoge.data.loader.dto.UnitConfigDTO;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.TroopStats;
-import org.crforge.core.loader.dto.CardConfigDTO;
-import org.crforge.core.loader.dto.EffectConfigDTO;
-import org.crforge.core.loader.dto.UnitConfigDTO;
 
 public class CardLoader {
 

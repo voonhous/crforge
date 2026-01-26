@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.within;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.CardRegistry;
+import org.crfoge.data.card.CardRegistry;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.unit.Troop;
