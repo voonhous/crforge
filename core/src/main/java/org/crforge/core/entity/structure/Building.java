@@ -2,7 +2,6 @@ package org.crforge.core.entity.structure;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -21,9 +20,6 @@ public class Building extends AbstractEntity {
   // based on the lifetime passed to builder
   @Builder.Default
   private float remainingLifetime = 0f;
-
-  @Setter
-  private Entity currentTarget;
 
   // Accumulator for fractional health decay
   @Builder.Default
@@ -48,13 +44,28 @@ public class Building extends AbstractEntity {
     return hasLifetime() && remainingLifetime <= 0;
   }
 
+  // --- Delegation to Combat Component ---
+  // TODO: Remove this in the future?
+  public Entity getCurrentTarget() {
+    return combat != null ? combat.getCurrentTarget() : null;
+  }
+
+  public void setCurrentTarget(Entity target) {
+    if (combat != null) {
+      combat.setCurrentTarget(target);
+    }
+  }
+
   public boolean hasTarget() {
-    return currentTarget != null && currentTarget.isAlive();
+    return combat != null && combat.hasTarget();
   }
 
   public void clearTarget() {
-    this.currentTarget = null;
+    if (combat != null) {
+      combat.clearTarget();
+    }
   }
+  // --- End Delegation ---
 
   @Override
   public void onSpawn() {

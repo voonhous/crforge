@@ -2,7 +2,6 @@ package org.crforge.core.entity.unit;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -19,11 +18,6 @@ public class Troop extends AbstractEntity {
   @Builder.Default
   private final float deployTime = 1.0f;
 
-  @Setter
-  private Entity currentTarget;
-  @Setter
-  private boolean targetLocked;
-
   @Builder.Default
   private float deployTimer = 1.0f;
 
@@ -32,21 +26,39 @@ public class Troop extends AbstractEntity {
     return EntityType.TROOP;
   }
 
+  // --- Delegation to Combat Component ---
+  // Maintained for compatibility with PhysicsSystem and ease of access
+  // TODO: Remove this in the future?
+
+  public Entity getCurrentTarget() {
+    return combat != null ? combat.getCurrentTarget() : null;
+  }
+
+  public void setCurrentTarget(Entity target) {
+    if (combat != null) {
+      combat.setCurrentTarget(target);
+    }
+  }
+
   public boolean hasTarget() {
-    return currentTarget != null && currentTarget.isAlive();
+    return combat != null && combat.hasTarget();
   }
 
   public void clearTarget() {
-    this.currentTarget = null;
-    this.targetLocked = false;
+    if (combat != null) {
+      combat.clearTarget();
+    }
   }
+
+  // --- End Delegation ---
 
   public boolean isDeploying() {
     return deployTimer > 0;
   }
 
   public boolean isInAttackRange() {
-    if (currentTarget == null) {
+    Entity currentTarget = getCurrentTarget();
+    if (currentTarget == null || combat == null) {
       return false;
     }
     float distance = position.distanceTo(currentTarget.getPosition());
@@ -55,6 +67,7 @@ public class Troop extends AbstractEntity {
   }
 
   public float getDistanceToTarget() {
+    Entity currentTarget = getCurrentTarget();
     if (currentTarget == null) {
       return Float.MAX_VALUE;
     }

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.TargetType;
 
 @Getter
@@ -32,6 +33,10 @@ public class Combat {
   @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
 
+  // Dynamic states
+  private Entity currentTarget;
+  private boolean targetLocked;
+
   private float currentCooldown;
   private float currentLoadTime;
 
@@ -39,6 +44,15 @@ public class Combat {
   private float attackSpeedMultiplier = 1.0f;
   @Builder.Default
   private boolean combatDisabled = false;
+
+  public boolean hasTarget() {
+    return currentTarget != null && currentTarget.isAlive();
+  }
+
+  public void clearTarget() {
+    this.currentTarget = null;
+    this.targetLocked = false;
+  }
 
   public boolean canAttack() {
     return !combatDisabled && currentCooldown <= 0;
