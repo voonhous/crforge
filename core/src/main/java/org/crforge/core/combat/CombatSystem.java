@@ -8,6 +8,7 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -36,6 +37,13 @@ public class CombatSystem {
   }
 
   private void processEntityCombat(Entity entity) {
+    // Inactive towers or waking up towers cannot attack
+    if (entity instanceof Tower tower) {
+      if (!tower.isActive() || tower.isWakingUp()) {
+        return;
+      }
+    }
+
     Combat combat = entity.getCombat();
 
     // Entity cannot fight (e.g., Elixir Collector)
@@ -197,6 +205,10 @@ public class CombatSystem {
       return false;
     }
     if (attacker.getTeam() == target.getTeam()) {
+      return false;
+    }
+    // Inactive towers cannot attack
+    if (attacker instanceof Tower tower && (!tower.isActive() || tower.isWakingUp())) {
       return false;
     }
 

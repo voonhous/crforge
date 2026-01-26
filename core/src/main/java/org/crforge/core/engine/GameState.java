@@ -8,10 +8,10 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import lombok.Getter;
+import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
-import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 
@@ -90,6 +90,7 @@ public class GameState {
 
   /**
    * Check for dead entities and trigger death logic.
+   *
    * @param spawnerSystem System to handle death spawns
    */
   public void processDeaths(SpawnerSystem spawnerSystem) {
@@ -100,6 +101,14 @@ public class GameState {
         // Trigger death spawns (e.g. Golem -> Golemites, Tombstone -> Skeletons)
         if (spawnerSystem != null) {
           spawnerSystem.onDeath(entity);
+        }
+
+        // Check for activation of King Tower if Princess Tower dies
+        if (entity instanceof Tower tower && tower.isPrincessTower()) {
+          Tower king = getCrownTower(tower.getTeam());
+          if (king != null) {
+            king.setActive(true);
+          }
         }
 
         checkWinCondition(entity);
