@@ -37,10 +37,12 @@ subprojects {
         useJUnitPlatform()
     }
 
+    val libs = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
+
     dependencies {
-        testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-        testImplementation("org.assertj:assertj-core:3.25.3")
-        testImplementation("org.mockito:mockito-core:5.10.0")
-        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+        testImplementation(libs.findLibrary("junit-jupiter").get())
+        testImplementation(libs.findLibrary("assertj-core").get())
+        testImplementation(libs.findLibrary("mockito-core").get())
+        testRuntimeOnly(libs.findLibrary("junit-platform-launcher").get())
     }
 }

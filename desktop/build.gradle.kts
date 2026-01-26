@@ -2,15 +2,13 @@ plugins {
     application
 }
 
-val gdxVersion: String by project
-
 dependencies {
     implementation(project(":core"))
 
     // LibGDX
-    implementation("com.badlogicgames.gdx:gdx:$gdxVersion")
-    implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion")
-    implementation("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    implementation(libs.gdx)
+    implementation(libs.gdx.backend.lwjgl3)
+    implementation("com.badlogicgames.gdx:gdx-platform:${libs.versions.gdx.get()}:natives-desktop")
 }
 
 application {
