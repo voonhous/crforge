@@ -1,6 +1,8 @@
 package org.crforge.desktop.render;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -39,6 +41,7 @@ public class DebugRenderer {
   private static final Color COLOR_GROUND = new Color(0.3f, 0.5f, 0.3f, 1f);
   private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f, 1f); // Dark gray for banned tiles
   private static final Color COLOR_GRID = new Color(0f, 0f, 0f, 0.2f);
+  private static final Color COLOR_HOVER = new Color(1f, 1f, 1f, 0.3f); // Semi-transparent white
 
   // Colors for entities
   private static final Color COLOR_BLUE_ENTITY = new Color(0.3f, 0.5f, 1f, 1f);
@@ -88,6 +91,10 @@ public class DebugRenderer {
   }
 
   public void render(GameEngine engine, OrthographicCamera camera) {
+    render(engine, camera, -1, -1);
+  }
+
+  public void render(GameEngine engine, OrthographicCamera camera, int hoverX, int hoverY) {
     GameState state = engine.getGameState();
     Arena arena = engine.getArena();
     Match match = engine.getMatch();
@@ -101,27 +108,32 @@ public class DebugRenderer {
     // 2. Render grid lines
     renderGrid(arena);
 
-    // 3. Render entities
+    // 3. Render hover highlight
+    if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
+      renderHover(hoverX, hoverY);
+    }
+
+    // 4. Render entities
     renderEntities(state);
 
-    // 4. Render projectiles
+    // 5. Render projectiles
     renderProjectiles(state);
 
-    // 5. Render health bars
+    // 6. Render health bars
     renderHealthBars(state);
 
-    // 6. Render targeting lines (debug)
+    // 7. Render targeting lines (debug)
     renderTargetingLines(state);
 
-    // 7. Render path lines (debug)
+    // 8. Render path lines (debug)
     if (drawPaths) {
       renderPathLines(state);
     }
 
-    // 8. Render Entity Names (New)
+    // 9. Render Entity Names (New)
     renderEntityNames(state);
 
-    // 9. Render UI (elixir, timer)
+    // 10. Render UI (elixir, timer)
     renderUI(engine, match, camera);
   }
 
@@ -157,6 +169,7 @@ public class DebugRenderer {
   }
 
   private void renderGrid(Arena arena) {
+    Gdx.gl.glEnable(GL20.GL_BLEND);
     shapeRenderer.begin(ShapeType.Line);
     shapeRenderer.setColor(COLOR_GRID);
 
@@ -173,6 +186,14 @@ public class DebugRenderer {
       shapeRenderer.line(0, y * TILE_PIXELS, width, y * TILE_PIXELS);
     }
 
+    shapeRenderer.end();
+  }
+
+  private void renderHover(int x, int y) {
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    shapeRenderer.begin(ShapeType.Filled);
+    shapeRenderer.setColor(COLOR_HOVER);
+    shapeRenderer.rect(x * TILE_PIXELS, y * TILE_PIXELS, TILE_PIXELS, TILE_PIXELS);
     shapeRenderer.end();
   }
 
@@ -310,6 +331,7 @@ public class DebugRenderer {
   }
 
   private void renderTargetingLines(GameState state) {
+    Gdx.gl.glEnable(GL20.GL_BLEND);
     shapeRenderer.begin(ShapeType.Line);
 
     for (Entity entity : state.getAliveEntities()) {
@@ -337,6 +359,7 @@ public class DebugRenderer {
   }
 
   private void renderPathLines(GameState state) {
+    Gdx.gl.glEnable(GL20.GL_BLEND);
     shapeRenderer.begin(ShapeType.Line);
     shapeRenderer.setColor(COLOR_PATH);
 

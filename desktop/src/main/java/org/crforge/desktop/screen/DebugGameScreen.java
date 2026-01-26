@@ -49,6 +49,10 @@ public class DebugGameScreen implements Screen {
   private Player bluePlayer;
   private Player redPlayer;
 
+  // Track mouse position for hover effect
+  private int hoverTileX = -1;
+  private int hoverTileY = -1;
+
   public DebugGameScreen() {
     this.engine = new GameEngine();
     this.renderer = new DebugRenderer();
@@ -138,10 +142,26 @@ public class DebugGameScreen implements Screen {
       }
 
       @Override
+      public boolean mouseMoved(int screenX, int screenY) {
+        // Convert screen to world coordinates
+        float rawWorldX = screenX / DebugRenderer.TILE_PIXELS;
+        float rawWorldY = (Gdx.graphics.getHeight() - screenY) / DebugRenderer.TILE_PIXELS;
+
+        // Snap to grid
+        hoverTileX = (int) Math.floor(rawWorldX);
+        hoverTileY = (int) Math.floor(rawWorldY);
+        return false;
+      }
+
+      @Override
       public boolean touchDown(int screenX, int screenY, int pointer, int button) {
         // Convert screen to world coordinates
-        float worldX = screenX / DebugRenderer.TILE_PIXELS;
-        float worldY = (Gdx.graphics.getHeight() - screenY) / DebugRenderer.TILE_PIXELS;
+        float rawWorldX = screenX / DebugRenderer.TILE_PIXELS;
+        float rawWorldY = (Gdx.graphics.getHeight() - screenY) / DebugRenderer.TILE_PIXELS;
+
+        // Snap to grid center
+        float worldX = (float) Math.floor(rawWorldX) + 0.5f;
+        float worldY = (float) Math.floor(rawWorldY) + 0.5f;
 
         // Determine which side was clicked
         float midY = Arena.HEIGHT / 2f;
@@ -151,7 +171,8 @@ public class DebugGameScreen implements Screen {
         if (player != null) {
           PlayerActionDTO action = PlayerActionDTO.play(0, worldX, worldY);
           engine.queueAction(player, action);
-          System.out.printf("Click deploy: %.1f, %.1f (%s)%n", worldX, worldY, player.getTeam());
+          System.out.printf("Click deploy: %.1f, %.1f (%s) [Raw: %.1f, %.1f]%n",
+              worldX, worldY, player.getTeam(), rawWorldX, rawWorldY);
         }
 
         return true;
@@ -165,14 +186,18 @@ public class DebugGameScreen implements Screen {
     }
 
     // Get a valid spawn position for this player
-    float x = Arena.WIDTH / 2f + (float) (Math.random() - 0.5) * 8;
-    float y;
+    float rawX = Arena.WIDTH / 2f + (float) (Math.random() - 0.5) * 8;
+    float rawY;
 
     if (player.getTeam() == Team.BLUE) {
-      y = 8f + (float) (Math.random()) * 5;  // Blue spawns in lower area
+      rawY = 8f + (float) (Math.random()) * 5;  // Blue spawns in lower area
     } else {
-      y = Arena.HEIGHT - 8f - (float) (Math.random()) * 5;  // Red spawns in upper area
+      rawY = Arena.HEIGHT - 8f - (float) (Math.random()) * 5;  // Red spawns in upper area
     }
+
+    // Snap to grid
+    float x = (float) Math.floor(rawX) + 0.5f;
+    float y = (float) Math.floor(rawY) + 0.5f;
 
     PlayerActionDTO action = PlayerActionDTO.play(handIndex, x, y);
     engine.queueAction(player, action);
@@ -216,7 +241,7 @@ public class DebugGameScreen implements Screen {
 
     // Render
     camera.update();
-    renderer.render(engine, camera);
+    renderer.render(engine, camera, hoverTileX, hoverTileY);
   }
 
   @Override
