@@ -41,6 +41,7 @@ public class TargetingSystem {
     // Find new target
     Entity newTarget = findBestTarget(entity, entities);
 
+    // TODO: Refactor: Make a Combatant interface that extends Entity to remove instanceof checks
     if (entity instanceof Troop t) {
       t.setCurrentTarget(newTarget);
     }
