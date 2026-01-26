@@ -3,6 +3,7 @@ package org.crforge.desktop.render;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
@@ -62,6 +63,8 @@ public class DebugRenderer {
   private final ShapeRenderer shapeRenderer;
   private final SpriteBatch spriteBatch;
   private final BitmapFont font;
+  private final BitmapFont entityNameFont; // Smaller font for names
+  private final GlyphLayout glpyhLayout = new GlyphLayout();
 
   private boolean drawPaths = false;
 
@@ -70,6 +73,10 @@ public class DebugRenderer {
     this.spriteBatch = new SpriteBatch();
     this.font = new BitmapFont();
     this.font.setColor(Color.WHITE);
+
+    this.entityNameFont = new BitmapFont();
+    this.entityNameFont.setColor(Color.WHITE);
+    this.entityNameFont.getData().setScale(0.7f); // Scale down slightly
   }
 
   public void toggleDrawPaths() {
@@ -111,7 +118,10 @@ public class DebugRenderer {
       renderPathLines(state);
     }
 
-    // 8. Render UI (elixir, timer)
+    // 8. Render Entity Names (New)
+    renderEntityNames(state);
+
+    // 9. Render UI (elixir, timer)
     renderUI(engine, match, camera);
   }
 
@@ -213,6 +223,25 @@ public class DebugRenderer {
       shapeRenderer.circle(x, y, radius);
     }
     shapeRenderer.end();
+  }
+
+  private void renderEntityNames(GameState state) {
+    spriteBatch.begin();
+    for (Entity entity : state.getAliveEntities()) {
+      float x = entity.getPosition().getX() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS;
+      float radius = entity.getSize() * TILE_PIXELS / 2f;
+
+      // Draw name slightly above the health bar
+      float textY = y + radius + 15;
+
+      // Use width from glyph layout to center name
+      glpyhLayout.setText(entityNameFont, entity.getName());
+      float textWidth = glpyhLayout.width;
+
+      entityNameFont.draw(spriteBatch, entity.getName(), x - textWidth / 2, textY);
+    }
+    spriteBatch.end();
   }
 
   private Color getEntityColor(Entity entity) {
@@ -430,5 +459,6 @@ public class DebugRenderer {
     shapeRenderer.dispose();
     spriteBatch.dispose();
     font.dispose();
+    entityNameFont.dispose();
   }
 }
