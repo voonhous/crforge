@@ -40,7 +40,7 @@ class CombatSystemTest {
     target.update(2.0f);
 
     // Set target
-    attacker.setCurrentTarget(target);
+    attacker.getCombat().setCurrentTarget(target);
 
     // Run combat update
     combatSystem.update(1.0f / 30f);
@@ -62,7 +62,7 @@ class CombatSystemTest {
     attacker.update(2.0f);
     target.update(2.0f);
 
-    attacker.setCurrentTarget(target);
+    attacker.getCombat().setCurrentTarget(target);
 
     // Run combat update
     combatSystem.update(1.0f / 30f);
@@ -83,7 +83,7 @@ class CombatSystemTest {
 
     attacker.update(2.0f);
     target.update(2.0f);
-    attacker.setCurrentTarget(target);
+    attacker.getCombat().setCurrentTarget(target);
 
     // Spawn projectile
     combatSystem.update(1.0f / 30f);
@@ -109,7 +109,7 @@ class CombatSystemTest {
 
     attacker.update(2.0f);
     target.update(2.0f);
-    attacker.setCurrentTarget(target);
+    attacker.getCombat().setCurrentTarget(target);
 
     // First attack
     combatSystem.update(1.0f / 30f);
@@ -143,7 +143,7 @@ class CombatSystemTest {
     target2.update(2.0f);
     farTarget.update(2.0f);
 
-    attacker.setCurrentTarget(target1);
+    attacker.getCombat().setCurrentTarget(target1);
 
     combatSystem.update(1.0f / 30f);
 

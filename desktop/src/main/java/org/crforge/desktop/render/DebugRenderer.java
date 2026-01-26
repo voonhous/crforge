@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
+import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
@@ -336,11 +337,9 @@ public class DebugRenderer {
 
     for (Entity entity : state.getAliveEntities()) {
       Entity target = null;
-
-      if (entity instanceof Troop troop && troop.hasTarget()) {
-        target = troop.getCurrentTarget();
-      } else if (entity instanceof Tower tower && tower.hasTarget()) {
-        target = tower.getCurrentTarget();
+      Combat combat = entity.getCombat();
+      if (combat != null && combat.hasTarget()) {
+        target = combat.getCurrentTarget();
       }
 
       if (target != null && target.isAlive()) {

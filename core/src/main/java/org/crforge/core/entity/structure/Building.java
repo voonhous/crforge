@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 
 @Getter
@@ -43,29 +42,6 @@ public class Building extends AbstractEntity {
   public boolean isExpired() {
     return hasLifetime() && remainingLifetime <= 0;
   }
-
-  // --- Delegation to Combat Component ---
-  // TODO: Remove this in the future?
-  public Entity getCurrentTarget() {
-    return combat != null ? combat.getCurrentTarget() : null;
-  }
-
-  public void setCurrentTarget(Entity target) {
-    if (combat != null) {
-      combat.setCurrentTarget(target);
-    }
-  }
-
-  public boolean hasTarget() {
-    return combat != null && combat.hasTarget();
-  }
-
-  public void clearTarget() {
-    if (combat != null) {
-      combat.clearTarget();
-    }
-  }
-  // --- End Delegation ---
 
   @Override
   public void onSpawn() {

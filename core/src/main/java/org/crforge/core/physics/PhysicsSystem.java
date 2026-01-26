@@ -81,7 +81,7 @@ public class PhysicsSystem {
       return;
     }
 
-    Entity target = troop.getCurrentTarget();
+    Entity target = troop.getCombat() != null ? troop.getCombat().getCurrentTarget() : null;
     if (target != null && target.isAlive()) {
       moveTowardTarget(troop, target, deltaTime);
     } else {
