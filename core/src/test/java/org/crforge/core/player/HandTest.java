@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -95,5 +96,41 @@ class HandTest {
     assertThat(hand.playCard(-1)).isNull();
     assertThat(hand.playCard(4)).isNull();
     assertThat(hand.playCard(99)).isNull();
+  }
+
+  @Test
+  void testHandGenerationIsDeterministic() {
+    // Using the same seed should produce identical hands
+    long seed = 12345L;
+    Hand hand1 = new Hand(deck, new Random(seed));
+    Hand hand2 = new Hand(deck, new Random(seed));
+
+    assertThat(isSameHandOrder(hand1, hand2))
+        .as("Hands created with same seed should be identical")
+        .isTrue();
+  }
+
+  @Test
+  void testHandGenerationIsRandom() {
+    // Check that we can generate distinct hands using different seeds.
+    // This verifies that the Random instance is actually being used for shuffling.
+
+    Hand hand1 = new Hand(deck, new Random(1));
+    Hand hand2 = new Hand(deck, new Random(2));
+
+    assertThat(isSameHandOrder(hand1, hand2))
+        .as("Hands created with different seeds should generally differ")
+        .isFalse();
+  }
+
+  private static boolean isSameHandOrder(Hand h1, Hand h2) {
+    // Compare visible cards
+    for (int i = 0; i < 4; i++) {
+      if (h1.getCard(i) != h2.getCard(i)) {
+        return false;
+      }
+    }
+    // Compare next card
+    return h1.getNextCard() == h2.getNextCard();
   }
 }

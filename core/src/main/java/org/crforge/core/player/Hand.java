@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 import lombok.Getter;
 import org.crforge.core.card.Card;
 
@@ -25,11 +26,15 @@ public class Hand {
   private Card nextCard; // The "Next" card shown in UI
 
   public Hand(Deck deck) {
+    this(deck, new Random());
+  }
+
+  public Hand(Deck deck, Random random) {
     this.cards = new Card[HAND_SIZE];
 
     // Initialize cycle with shuffled deck
     List<Card> deckCards = new ArrayList<>(deck.getCards());
-    Collections.shuffle(deckCards);
+    Collections.shuffle(deckCards, random);
     this.cycle = new LinkedList<>(deckCards);
 
     // Deal initial hand
