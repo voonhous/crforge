@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.card.Card;
+import org.crforge.core.card.CardType;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -31,6 +34,7 @@ public abstract class Match {
   protected final List<Player> redPlayers;
 
   protected boolean overtime;
+  @Setter
   protected Team winner;
 
   protected Match(Arena arena) {
@@ -102,13 +106,6 @@ public abstract class Match {
   }
 
   /**
-   * Sets the winner of the match.
-   */
-  public void setWinner(Team team) {
-    this.winner = team;
-  }
-
-  /**
    * Checks if the match has ended (has a winner or draw).
    */
   public boolean isEnded() {
@@ -122,7 +119,27 @@ public abstract class Match {
    * @return true if the action is valid for this match type
    */
   public boolean validateAction(Player player, PlayerActionDTO action) {
-    // Base validation: check placement is on player's side of arena
+    if (!action.isValid()) {
+      return false;
+    }
+
+    // Check bounds
+    if (!arena.isInBounds(action.getX(), action.getY())) {
+      return false;
+    }
+
+    // Get the card to check its type
+    Card card = player.getHand().getCard(action.getHandIndex());
+    if (card == null) {
+      return false;
+    }
+
+    // Spells can be placed anywhere in the arena
+    if (card.getType() == CardType.SPELL) {
+      return true;
+    }
+
+    // Base validation for troops/buildings: check placement is on player's side of arena
     float y = action.getY();
     float midY = Arena.HEIGHT / 2f;
 
