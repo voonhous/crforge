@@ -1,12 +1,12 @@
 package org.crforge.core.entity.projectile;
 
+import java.util.Collections;
+import java.util.List;
 import lombok.Getter;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.player.Team;
-import java.util.List;
-import java.util.Collections;
 
 /**
  * Projectile for ranged attacks. Travels from source to target and deals damage on hit.
@@ -26,10 +26,19 @@ public class Projectile {
   private final float speed;
   private final List<EffectStats> effects;
 
+  // Position-targeted fields (for spell projectiles)
+  private final float targetX;
+  private final float targetY;
+  private final boolean positionTargeted;
+
   private boolean active;
   private boolean hit;
 
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed, List<EffectStats> effects) {
+  /**
+   * Entity-targeted projectile (ranged unit attacks).
+   */
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
+      List<EffectStats> effects) {
     this.id = nextId++;
     this.source = source;
     this.target = target;
@@ -39,11 +48,36 @@ public class Projectile {
     this.aoeRadius = aoeRadius;
     this.speed = speed > 0 ? speed : DEFAULT_SPEED;
     this.effects = effects != null ? effects : Collections.emptyList();
+    this.targetX = 0;
+    this.targetY = 0;
+    this.positionTargeted = false;
     this.active = true;
     this.hit = false;
   }
 
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, List<EffectStats> effects) {
+  /**
+   * Position-targeted projectile (spell projectiles like Fireball/Arrows).
+   */
+  public Projectile(Team team, float startX, float startY, float destX, float destY,
+      int damage, float aoeRadius, float speed, List<EffectStats> effects) {
+    this.id = nextId++;
+    this.source = null;
+    this.target = null;
+    this.team = team;
+    this.position = new Position(startX, startY);
+    this.damage = damage;
+    this.aoeRadius = aoeRadius;
+    this.speed = speed > 0 ? speed : DEFAULT_SPEED;
+    this.effects = effects != null ? effects : Collections.emptyList();
+    this.targetX = destX;
+    this.targetY = destY;
+    this.positionTargeted = true;
+    this.active = true;
+    this.hit = false;
+  }
+
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius,
+      List<EffectStats> effects) {
     this(source, target, damage, aoeRadius, DEFAULT_SPEED, effects);
   }
 
@@ -66,7 +100,10 @@ public class Projectile {
     if (!active) {
       return false;
     }
+    return positionTargeted ? updatePositionTargeted(deltaTime) : updateEntityTargeted(deltaTime);
+  }
 
+  private boolean updateEntityTargeted(float deltaTime) {
     // If target is dead, projectile disappears (for homing projectiles)
     if (target == null || !target.isAlive()) {
       active = false;
@@ -88,6 +125,31 @@ public class Projectile {
     }
 
     // Move toward target
+    float ratio = moveDistance / distance;
+    position.add(dx * ratio, dy * ratio);
+
+    // Update rotation to face target
+    position.setRotation((float) Math.atan2(dy, dx));
+
+    return false;
+  }
+
+  private boolean updatePositionTargeted(float deltaTime) {
+    float dx = targetX - position.getX();
+    float dy = targetY - position.getY();
+    float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+    float moveDistance = speed * deltaTime;
+
+    if (distance <= moveDistance) {
+      // Snap to target position
+      position.set(targetX, targetY);
+      hit = true;
+      active = false;
+      return true;
+    }
+
+    // Move toward target position
     float ratio = moveDistance / distance;
     position.add(dx * ratio, dy * ratio);
 

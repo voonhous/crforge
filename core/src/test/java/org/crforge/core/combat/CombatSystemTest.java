@@ -2,9 +2,13 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
+import java.util.List;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.projectile.Projectile;
@@ -186,6 +190,59 @@ class CombatSystemTest {
     ally.update(2.0f);
 
     assertThat(combatSystem.canAttack(attacker, ally)).isFalse();
+  }
+
+  @Test
+  void applySpellDamage_shouldDamageEnemiesInRadius() {
+    Troop enemy1 = createMeleeTroop(Team.RED, 10f, 10f, 0);
+    enemy1.getHealth().takeDamage(0); // Ensure alive
+    Troop enemy2 = createMeleeTroop(Team.RED, 11f, 10f, 0);
+    Troop ally = createMeleeTroop(Team.BLUE, 10.5f, 10f, 0);
+    Troop farEnemy = createMeleeTroop(Team.RED, 50f, 50f, 0);
+
+    gameState.spawnEntity(enemy1);
+    gameState.spawnEntity(enemy2);
+    gameState.spawnEntity(ally);
+    gameState.spawnEntity(farEnemy);
+    gameState.processPending();
+
+    enemy1.update(2.0f);
+    enemy2.update(2.0f);
+    ally.update(2.0f);
+    farEnemy.update(2.0f);
+
+    combatSystem.applySpellDamage(Team.BLUE, 10f, 10f, 50, 3.0f, Collections.emptyList());
+
+    // Both close enemies should be damaged
+    assertThat(enemy1.getHealth().getCurrent()).isEqualTo(50);
+    assertThat(enemy2.getHealth().getCurrent()).isEqualTo(50);
+    // Ally should NOT be damaged
+    assertThat(ally.getHealth().getCurrent()).isEqualTo(100);
+    // Far enemy should NOT be damaged
+    assertThat(farEnemy.getHealth().getCurrent()).isEqualTo(100);
+  }
+
+  @Test
+  void positionTargetedProjectile_shouldApplySpellDamageOnHit() {
+    Troop enemy = createMeleeTroop(Team.RED, 10f, 10f, 0);
+
+    gameState.spawnEntity(enemy);
+    gameState.processPending();
+
+    enemy.update(2.0f);
+
+    // Create a position-targeted projectile aimed at (10, 10) — very close to start so it hits fast
+    Projectile projectile = new Projectile(Team.BLUE, 10f, 10.5f, 10f, 10f,
+        75, 3.0f, 50f, Collections.emptyList());
+    gameState.spawnProjectile(projectile);
+
+    // Run enough updates for the projectile to arrive
+    for (int i = 0; i < 30; i++) {
+      combatSystem.update(1.0f / 30f);
+    }
+
+    // Enemy should have taken damage from the position-targeted projectile
+    assertThat(enemy.getHealth().getCurrent()).isLessThan(100);
   }
 
   private Troop createMeleeTroop(Team team, float x, float y, int damage) {
