@@ -18,6 +18,17 @@ class HandTest {
   private Hand hand;
   private List<Card> createdCards;
 
+  private static boolean isSameHandOrder(Hand h1, Hand h2) {
+    // Compare visible cards
+    for (int i = 0; i < 4; i++) {
+      if (h1.getCard(i) != h2.getCard(i)) {
+        return false;
+      }
+    }
+    // Compare next card
+    return h1.getNextCard() == h2.getNextCard();
+  }
+
   @BeforeEach
   void setUp() {
     // Create 8 distinct cards
@@ -123,14 +134,19 @@ class HandTest {
         .isFalse();
   }
 
-  private static boolean isSameHandOrder(Hand h1, Hand h2) {
-    // Compare visible cards
-    for (int i = 0; i < 4; i++) {
-      if (h1.getCard(i) != h2.getCard(i)) {
-        return false;
-      }
+  @Test
+  void testHandDataForRendering() {
+    // Verify that the hand provides all necessary data for UI rendering
+    Card[] cards = hand.getCards();
+    assertThat(cards).hasSize(4);
+    for (Card c : cards) {
+      assertThat(c).isNotNull();
+      assertThat(c.getName()).isNotEmpty();
+      assertThat(c.getCost()).isGreaterThan(0);
     }
-    // Compare next card
-    return h1.getNextCard() == h2.getNextCard();
+
+    Card next = hand.getNextCard();
+    assertThat(next).isNotNull();
+    assertThat(next.getName()).isNotEmpty();
   }
 }
