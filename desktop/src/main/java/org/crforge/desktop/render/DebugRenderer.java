@@ -14,6 +14,8 @@ import lombok.Setter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.CardType;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.engine.GameEngine;
@@ -28,6 +30,7 @@ import org.crforge.core.match.Match;
 import org.crforge.core.player.Hand;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
+import org.crforge.core.player.dto.PlayerActionDTO;
 
 /**
  * Debug renderer using LibGDX ShapeRenderer for minimal visualization. Renders arena tiles,
@@ -48,9 +51,11 @@ public class DebugRenderer {
   private static final Color COLOR_RIVER = new Color(0.2f, 0.5f, 0.8f, 1f);
   private static final Color COLOR_BRIDGE = new Color(0.5f, 0.4f, 0.3f, 1f);
   private static final Color COLOR_GROUND = new Color(0.3f, 0.5f, 0.3f, 1f);
-  private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f, 1f); // Dark gray for banned tiles
+  private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f,
+      1f); // Dark gray for banned tiles
   private static final Color COLOR_GRID = new Color(0f, 0f, 0f, 0.2f);
-  private static final Color COLOR_HOVER = new Color(1f, 1f, 1f, 0.3f); // Semi-transparent white
+  private static final Color COLOR_HOVER_INVALID = new Color(1f, 0.3f, 0.3f,
+      0.3f); // Reddish for invalid
 
   // Colors for entities
   private static final Color COLOR_BLUE_ENTITY = new Color(0.3f, 0.5f, 1f, 1f);
@@ -58,6 +63,11 @@ public class DebugRenderer {
   private static final Color COLOR_TOWER_BOUNDARY = new Color(0.5f, 0.5f, 0.5f, 1f); // Opaque grey
   private static final Color COLOR_PROJECTILE = new Color(1f, 1f, 0f, 1f);
   private static final Color COLOR_AIR_UNIT = new Color(0.7f, 0.9f, 1f, 0.8f);
+
+  // Ghost colors for placement
+  private static final Color COLOR_BLUE_GHOST = new Color(0.3f, 0.5f, 1f, 0.5f);
+  private static final Color COLOR_RED_GHOST = new Color(1f, 0.3f, 0.3f, 0.5f);
+  private static final Color COLOR_SPELL_RADIUS = new Color(1f, 1f, 1f, 0.3f);
 
   // Health bar colors
   private static final Color COLOR_HEALTH_BG = new Color(0.2f, 0.2f, 0.2f, 0.8f);
@@ -123,7 +133,9 @@ public class DebugRenderer {
 
     // 3. Render hover highlight
     if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
-      renderHover(hoverX, hoverY);
+      Player player = getPlayer(match);
+      Card selectedCard = getSelectedCard(player);
+      renderHover(hoverX, hoverY, selectedCard, player, match);
     }
 
     // 4. Render entities
@@ -148,6 +160,26 @@ public class DebugRenderer {
 
     // 10. Render UI (hands, elixir, timer)
     renderUI(engine, match, camera);
+  }
+
+  private Player getPlayer(Match match) {
+    if (match == null || selectedTeam == null) {
+      return null;
+    }
+    // Find player by team. Assuming 1v1 or primary player for now.
+    for (Player p : match.getAllPlayers()) {
+      if (p.getTeam() == selectedTeam) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  private Card getSelectedCard(Player player) {
+    if (player == null || selectedHandIndex == -1) {
+      return null;
+    }
+    return player.getHand().getCard(selectedHandIndex);
   }
 
   private void renderUIBackgrounds(OrthographicCamera camera) {
@@ -236,17 +268,70 @@ public class DebugRenderer {
     shapeRenderer.end();
   }
 
-  private void renderHover(int x, int y) {
+  private void renderHover(int x, int y, Card selectedCard, Player player, Match match) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     shapeRenderer.begin(ShapeType.Filled);
-    shapeRenderer.setColor(COLOR_HOVER);
-    shapeRenderer.rect(
-        x * TILE_PIXELS,
-        y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-        TILE_PIXELS,
-        TILE_PIXELS
-    );
+
+    // Validate placement
+    boolean isValid = true;
+    if (player != null && selectedCard != null) {
+      PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, x + 0.5f, y + 0.5f);
+      isValid = match.validateAction(player, action);
+    }
+
+    if (!isValid) {
+      shapeRenderer.setColor(COLOR_HOVER_INVALID);
+      shapeRenderer.rect(
+          x * TILE_PIXELS,
+          y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
+          TILE_PIXELS,
+          TILE_PIXELS
+      );
+    } else if (selectedCard != null) {
+      renderGhostCard(x, y, selectedCard, player.getTeam());
+
+      // Also render the tile grid for better placement visualization
+      // Use a subtle white overlay to indicate the tile is being targeted
+      shapeRenderer.setColor(0.5f, 0.5f, 0.5f, 0.2f);
+      shapeRenderer.rect(
+          x * TILE_PIXELS,
+          y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
+          TILE_PIXELS,
+          TILE_PIXELS
+      );
+    }
+
     shapeRenderer.end();
+  }
+
+  private void renderGhostCard(int hoverX, int hoverY, Card card, Team team) {
+    Color ghostColor = team == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
+    shapeRenderer.setColor(ghostColor);
+
+    float centerX = (hoverX + 0.5f) * TILE_PIXELS;
+    float centerY = (hoverY + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+
+    if (card.getType() == CardType.SPELL) {
+      float radius = card.getSpellRadius() * TILE_PIXELS;
+      shapeRenderer.setColor(COLOR_SPELL_RADIUS);
+      shapeRenderer.circle(centerX, centerY, radius, 32);
+    } else {
+      // Render troops/buildings
+      if (card.getTroops() != null) {
+        for (TroopStats stats : card.getTroops()) {
+          // Calculate ghost position relative to deployment center
+          float offsetX = stats.getOffsetX() * TILE_PIXELS;
+          float offsetY = stats.getOffsetY() * TILE_PIXELS;
+          float ghostX = centerX + offsetX;
+          float ghostY = centerY + offsetY;
+          float radius = (stats.getSize() * TILE_PIXELS) / 2f;
+
+          // Ensure ghost color is set for each circle
+          shapeRenderer.setColor(ghostColor);
+          shapeRenderer.circle(ghostX, ghostY, radius);
+        }
+      }
+    }
   }
 
   private void renderEntities(GameState state) {
@@ -545,7 +630,9 @@ public class DebugRenderer {
   }
 
   private void renderCard(Card card, float x, float y, float w, float h, boolean selected) {
-    if (card == null) return;
+    if (card == null) {
+      return;
+    }
 
     shapeRenderer.begin(ShapeType.Filled);
     // Background
@@ -579,7 +666,9 @@ public class DebugRenderer {
     font.getData().setScale(0.7f);
     // Simple wrapping logic or truncation
     String name = card.getName();
-    if (name.length() > 8) name = name.substring(0, 8) + "..";
+    if (name.length() > 8) {
+      name = name.substring(0, 8) + "..";
+    }
 
     glpyhLayout.setText(font, name);
     font.draw(spriteBatch, name, x + (w - glpyhLayout.width) / 2, y + h / 2);
