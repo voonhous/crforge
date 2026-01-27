@@ -6,6 +6,7 @@ import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.math.Vector3;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.crfoge.data.card.CardRegistry;
@@ -42,26 +43,33 @@ public class DebugGameScreen implements Screen {
   private final GameEngine engine;
   private final DebugRenderer renderer;
   private final OrthographicCamera camera;
+  private final Vector3 touchPos = new Vector3();
 
   private float simSpeed = 1f;
   private boolean paused = false;
   private float accumulator = 0f;
 
-  // Players for testing
   private Player bluePlayer;
   private Player redPlayer;
 
-  // Track mouse position for hover effect
   private int hoverTileX = -1;
   private int hoverTileY = -1;
+
+  private int selectedHandIndex = -1;
+  private Player selectedPlayer = null;
 
   public DebugGameScreen() {
     this.engine = new GameEngine();
     this.renderer = new DebugRenderer();
 
-    // Setup camera to view the arena
-    float viewWidth = Arena.WIDTH * DebugRenderer.TILE_PIXELS;
-    float viewHeight = Arena.HEIGHT * DebugRenderer.TILE_PIXELS;
+    // Setup camera
+    float arenaWidth = Arena.WIDTH * DebugRenderer.TILE_PIXELS;
+    float arenaHeight = Arena.HEIGHT * DebugRenderer.TILE_PIXELS;
+
+    // Viewport includes UI margins
+    float viewWidth = arenaWidth;
+    float viewHeight = arenaHeight + DebugRenderer.TOP_UI_HEIGHT + DebugRenderer.BOTTOM_UI_HEIGHT;
+
     this.camera = new OrthographicCamera(viewWidth, viewHeight);
     camera.position.set(viewWidth / 2, viewHeight / 2, 0);
     camera.update();
@@ -103,6 +111,9 @@ public class DebugGameScreen implements Screen {
     bluePlayer = new Player(Team.BLUE, blueDeck, false);
     redPlayer = new Player(Team.RED, redDeck, true);
 
+    // Default selection
+    selectedPlayer = bluePlayer;
+
     match.addPlayer(bluePlayer);
     match.addPlayer(redPlayer);
 
@@ -124,17 +135,17 @@ public class DebugGameScreen implements Screen {
           case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
           case Input.Keys.MINUS -> adjustSpeed(0.5f);
 
-          // Blue player cards (1-4)
-          case Input.Keys.NUM_1 -> playCard(bluePlayer, 0);
-          case Input.Keys.NUM_2 -> playCard(bluePlayer, 1);
-          case Input.Keys.NUM_3 -> playCard(bluePlayer, 2);
-          case Input.Keys.NUM_4 -> playCard(bluePlayer, 3);
+          // Select card from hand (Blue Player) via keyboard
+          case Input.Keys.NUM_1 -> selectCard(bluePlayer, 0);
+          case Input.Keys.NUM_2 -> selectCard(bluePlayer, 1);
+          case Input.Keys.NUM_3 -> selectCard(bluePlayer, 2);
+          case Input.Keys.NUM_4 -> selectCard(bluePlayer, 3);
 
-          // Red player cards (5-8)
-          case Input.Keys.NUM_5 -> playCard(redPlayer, 0);
-          case Input.Keys.NUM_6 -> playCard(redPlayer, 1);
-          case Input.Keys.NUM_7 -> playCard(redPlayer, 2);
-          case Input.Keys.NUM_8 -> playCard(redPlayer, 3);
+          // Select card from hand (Red Player) via keyboard
+          case Input.Keys.NUM_5 -> selectCard(redPlayer, 0);
+          case Input.Keys.NUM_6 -> selectCard(redPlayer, 1);
+          case Input.Keys.NUM_7 -> selectCard(redPlayer, 2);
+          case Input.Keys.NUM_8 -> selectCard(redPlayer, 3);
 
           default -> {
             return false;
@@ -145,69 +156,109 @@ public class DebugGameScreen implements Screen {
 
       @Override
       public boolean mouseMoved(int screenX, int screenY) {
-        // Convert screen to world coordinates
-        float rawWorldX = screenX / DebugRenderer.TILE_PIXELS;
-        float rawWorldY = (Gdx.graphics.getHeight() - screenY) / DebugRenderer.TILE_PIXELS;
-
-        // Snap to grid
-        hoverTileX = (int) Math.floor(rawWorldX);
-        hoverTileY = (int) Math.floor(rawWorldY);
+        updateHover(screenX, screenY);
         return false;
       }
 
       @Override
       public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        // Convert screen to world coordinates
-        float rawWorldX = screenX / DebugRenderer.TILE_PIXELS;
-        float rawWorldY = (Gdx.graphics.getHeight() - screenY) / DebugRenderer.TILE_PIXELS;
-
-        // Snap to grid center
-        float worldX = (float) Math.floor(rawWorldX) + 0.5f;
-        float worldY = (float) Math.floor(rawWorldY) + 0.5f;
-
-        // Determine which side was clicked
-        float midY = Arena.HEIGHT / 2f;
-        Player player = worldY < midY ? bluePlayer : redPlayer;
-
-        // Play first card in hand at clicked position
-        if (player != null) {
-          PlayerActionDTO action = PlayerActionDTO.play(0, worldX, worldY);
-          engine.queueAction(player, action);
-          System.out.printf("Click deploy: %.1f, %.1f (%s) [Raw: %.1f, %.1f]%n",
-              worldX, worldY, player.getTeam(), rawWorldX, rawWorldY);
+        if (button == Input.Buttons.LEFT) {
+          handleLeftClick(screenX, screenY);
+        } else if (button == Input.Buttons.RIGHT) {
+          selectedHandIndex = -1; // Deselect
+          renderer.setSelectedHandIndex(-1);
+          renderer.setSelectedTeam(null);
         }
-
         return true;
       }
     });
   }
 
-  private void playCard(Player player, int handIndex) {
-    if (player == null) {
+  private void updateHover(int screenX, int screenY) {
+    // Use camera unproject to handle coordinates correctly even if resized (though fixed size for now)
+    touchPos.set(screenX, screenY, 0);
+    camera.unproject(touchPos);
+
+    // touchPos.y is world Y (0 is bottom of UI)
+    // Arena starts at BOTTOM_UI_HEIGHT
+    float arenaY = touchPos.y - DebugRenderer.BOTTOM_UI_HEIGHT;
+    float arenaX = touchPos.x;
+
+    float rawTileX = arenaX / DebugRenderer.TILE_PIXELS;
+    float rawTileY = arenaY / DebugRenderer.TILE_PIXELS;
+
+    // Snap to grid
+    hoverTileX = (int) Math.floor(rawTileX);
+    hoverTileY = (int) Math.floor(rawTileY);
+  }
+
+  private void handleLeftClick(int screenX, int screenY) {
+    touchPos.set(screenX, screenY, 0);
+    camera.unproject(touchPos);
+
+    // 1. Check for Card Selection (Clicking on hand in Bottom UI or Top UI)
+    // Check Bottom (Blue)
+    if (touchPos.y < DebugRenderer.BOTTOM_UI_HEIGHT) {
+      checkHandSelection(touchPos.x, touchPos.y, bluePlayer, false);
       return;
     }
 
-    // Get a valid spawn position for this player
-    float rawX = Arena.WIDTH / 2f + (float) (Math.random() - 0.5) * 8;
-    float rawY;
-
-    if (player.getTeam() == Team.BLUE) {
-      rawY = 8f + (float) (Math.random()) * 5;  // Blue spawns in lower area
-    } else {
-      rawY = Arena.HEIGHT - 8f - (float) (Math.random()) * 5;  // Red spawns in upper area
+    // Check Top (Red)
+    float topUiStart = camera.viewportHeight - DebugRenderer.TOP_UI_HEIGHT;
+    if (touchPos.y > topUiStart) {
+      checkHandSelection(touchPos.x, touchPos.y, redPlayer, true);
+      return;
     }
 
-    // Snap to grid
-    float x = (float) Math.floor(rawX) + 0.5f;
-    float y = (float) Math.floor(rawY) + 0.5f;
+    // 2. Play Card (Clicking on Arena)
+    if (selectedHandIndex != -1 && selectedPlayer != null && hoverTileX >= 0
+        && hoverTileX < Arena.WIDTH && hoverTileY >= 0 && hoverTileY < Arena.HEIGHT) {
+      // Try to play selected card
+      float playX = hoverTileX + 0.5f;
+      float playY = hoverTileY + 0.5f;
 
-    PlayerActionDTO action = PlayerActionDTO.play(handIndex, x, y);
-    engine.queueAction(player, action);
+      PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, playX, playY);
+      engine.queueAction(selectedPlayer, action);
+    }
+  }
 
-    Card card = player.getHand().getCard(handIndex);
-    if (card != null) {
-      System.out.printf("%s playing %s at (%.1f, %.1f)%n",
-          player.getTeam(), card.getName(), x, y);
+  private void checkHandSelection(float worldX, float worldY, Player player, boolean isTop) {
+    // Replicate layout logic from DebugRenderer for hit detection
+    float cardWidth = 60;
+    float cardHeight = 80;
+    float spacing = 10;
+    float handWidth = (cardWidth * 4) + (spacing * 3);
+    float startX = (camera.viewportWidth - handWidth) / 2;
+
+    // Calculate Y position based on whether it's top or bottom player
+    // Matches DebugRenderer:
+    // float cardY = isTop ? yPos + 30 : yPos + 30;
+    // For bottom: yPos = 0 -> cardY = 30
+    // For top: yPos = screenHeight - TOP_UI_HEIGHT -> cardY = (screenHeight - 140) + 30
+    float baseY = isTop ? (camera.viewportHeight - DebugRenderer.TOP_UI_HEIGHT) : 0;
+    float cardY = baseY + 30;
+
+    // Simple bounding box check
+    if (worldY >= cardY && worldY <= cardY + cardHeight) {
+      for (int i = 0; i < 4; i++) {
+        float cardX = startX + i * (cardWidth + spacing);
+        if (worldX >= cardX && worldX <= cardX + cardWidth) {
+          selectCard(player, i);
+          return;
+        }
+      }
+    }
+  }
+
+  private void selectCard(Player player, int index) {
+    this.selectedPlayer = player;
+    this.selectedHandIndex = index;
+    renderer.setSelectedHandIndex(index);
+    renderer.setSelectedTeam(player.getTeam());
+
+    Card c = player.getHand().getCard(index);
+    if (c != null) {
+      System.out.println("Selected (" + player.getTeam() + "): " + c.getName());
     }
   }
 
@@ -250,18 +301,21 @@ public class DebugGameScreen implements Screen {
       // Pause to prevent log spam/hard crash loop if possible
       paused = true;
       // Exit to prevent hanging window
-       Gdx.app.exit();
+      Gdx.app.exit();
     }
   }
 
   @Override
   public void resize(int width, int height) {
-    // Keep arena centered
-    float viewWidth = Arena.WIDTH * DebugRenderer.TILE_PIXELS;
-    float viewHeight = Arena.HEIGHT * DebugRenderer.TILE_PIXELS;
-    camera.viewportWidth = viewWidth;
-    camera.viewportHeight = viewHeight;
-    camera.position.set(viewWidth / 2, viewHeight / 2, 0);
+    // Keep arena centered with correct aspect ratio
+    // TODO: Disable resize feature (Although it is not working now, we should remove it entirely)
+    float arenaWidth = Arena.WIDTH * DebugRenderer.TILE_PIXELS;
+    float arenaHeight = Arena.HEIGHT * DebugRenderer.TILE_PIXELS;
+    float totalHeight = arenaHeight + DebugRenderer.TOP_UI_HEIGHT + DebugRenderer.BOTTOM_UI_HEIGHT;
+
+    camera.viewportWidth = arenaWidth;
+    camera.viewportHeight = totalHeight;
+    camera.position.set(arenaWidth / 2, totalHeight / 2, 0); // Center includes UI
     camera.update();
   }
 

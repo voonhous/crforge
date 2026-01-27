@@ -13,9 +13,10 @@ public class DesktopLauncher {
   public static void main(String[] args) {
     Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 
-    // Window size based on arena dimensions
+    // Window size based on arena dimensions + UI Margins
     int width = (int) (Arena.WIDTH * DebugRenderer.TILE_PIXELS);
-    int height = (int) (Arena.HEIGHT * DebugRenderer.TILE_PIXELS);
+    int height = (int) (Arena.HEIGHT * DebugRenderer.TILE_PIXELS
+        + DebugRenderer.TOP_UI_HEIGHT + DebugRenderer.BOTTOM_UI_HEIGHT);
 
     config.setTitle("CRForge - Debug Visualizer");
     config.setWindowedMode(width, height);

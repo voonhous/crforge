@@ -9,8 +9,11 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
+import org.crforge.core.card.Card;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.engine.GameEngine;
@@ -22,6 +25,7 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.match.Match;
+import org.crforge.core.player.Hand;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 
@@ -33,6 +37,10 @@ public class DebugRenderer {
 
   // Scale: 1 tile = TILE_PIXELS pixels
   public static final float TILE_PIXELS = 24f;
+
+  // UI Dimensions
+  public static final float TOP_UI_HEIGHT = 140f;
+  public static final float BOTTOM_UI_HEIGHT = 140f;
 
   // Colors for tile types
   private static final Color COLOR_BLUE_ZONE = new Color(0.2f, 0.3f, 0.6f, 1f);
@@ -58,6 +66,10 @@ public class DebugRenderer {
   private static final Color COLOR_HEALTH_RED = new Color(0.9f, 0.2f, 0.2f, 1f);
 
   // UI colors
+  private static final Color COLOR_UI_BG = new Color(0.15f, 0.15f, 0.15f, 1f);
+  private static final Color COLOR_CARD_BG = new Color(0.3f, 0.3f, 0.3f, 1f);
+  private static final Color COLOR_CARD_BORDER = new Color(0.1f, 0.1f, 0.1f, 1f);
+  private static final Color COLOR_CARD_SELECTED = new Color(1f, 1f, 0f, 1f);
   private static final Color COLOR_ELIXIR = new Color(0.9f, 0.2f, 0.9f, 1f);
   private static final Color COLOR_ELIXIR_BG = new Color(0.3f, 0.1f, 0.3f, 0.8f);
 
@@ -70,7 +82,12 @@ public class DebugRenderer {
   private final BitmapFont entityNameFont; // Smaller font for names
   private final GlyphLayout glpyhLayout = new GlyphLayout();
 
+  @Getter
   private boolean drawPaths = false;
+  @Setter
+  private int selectedHandIndex = -1;
+  @Setter
+  private Team selectedTeam = null;
 
   public DebugRenderer() {
     this.shapeRenderer = new ShapeRenderer();
@@ -87,14 +104,6 @@ public class DebugRenderer {
     drawPaths = !drawPaths;
   }
 
-  public boolean isDrawPaths() {
-    return drawPaths;
-  }
-
-  public void render(GameEngine engine, OrthographicCamera camera) {
-    render(engine, camera, -1, -1);
-  }
-
   public void render(GameEngine engine, OrthographicCamera camera, int hoverX, int hoverY) {
     GameState state = engine.getGameState();
     Arena arena = engine.getArena();
@@ -102,6 +111,9 @@ public class DebugRenderer {
 
     shapeRenderer.setProjectionMatrix(camera.combined);
     spriteBatch.setProjectionMatrix(camera.combined);
+
+    // 0. Render UI Backgrounds
+    renderUIBackgrounds(camera);
 
     // 1. Render arena tiles (filled)
     renderArenaTiles(arena);
@@ -134,8 +146,31 @@ public class DebugRenderer {
     // 9. Render Entity Names (New)
     renderEntityNames(state);
 
-    // 10. Render UI (elixir, timer)
+    // 10. Render UI (hands, elixir, timer)
     renderUI(engine, match, camera);
+  }
+
+  private void renderUIBackgrounds(OrthographicCamera camera) {
+    shapeRenderer.begin(ShapeType.Filled);
+    shapeRenderer.setColor(COLOR_UI_BG);
+
+    // Top UI
+    shapeRenderer.rect(
+        0,
+        camera.viewportHeight - TOP_UI_HEIGHT,
+        camera.viewportWidth,
+        TOP_UI_HEIGHT
+    );
+
+    // Bottom UI
+    shapeRenderer.rect(
+        0,
+        0,
+        camera.viewportWidth,
+        BOTTOM_UI_HEIGHT
+    );
+
+    shapeRenderer.end();
   }
 
   private void renderArenaTiles(Arena arena) {
@@ -148,7 +183,7 @@ public class DebugRenderer {
         shapeRenderer.setColor(color);
         shapeRenderer.rect(
             x * TILE_PIXELS,
-            y * TILE_PIXELS,
+            y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
             TILE_PIXELS,
             TILE_PIXELS
         );
@@ -176,15 +211,26 @@ public class DebugRenderer {
 
     float width = Arena.WIDTH * TILE_PIXELS;
     float height = Arena.HEIGHT * TILE_PIXELS;
+    float startY = BOTTOM_UI_HEIGHT;
 
     // Vertical lines
     for (int x = 0; x <= Arena.WIDTH; x++) {
-      shapeRenderer.line(x * TILE_PIXELS, 0, x * TILE_PIXELS, height);
+      shapeRenderer.line(
+          x * TILE_PIXELS,
+          startY,
+          x * TILE_PIXELS,
+          startY + height
+      );
     }
 
     // Horizontal lines
     for (int y = 0; y <= Arena.HEIGHT; y++) {
-      shapeRenderer.line(0, y * TILE_PIXELS, width, y * TILE_PIXELS);
+      shapeRenderer.line(
+          0,
+          startY + y * TILE_PIXELS,
+          width,
+          startY + y * TILE_PIXELS
+      );
     }
 
     shapeRenderer.end();
@@ -194,7 +240,12 @@ public class DebugRenderer {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     shapeRenderer.begin(ShapeType.Filled);
     shapeRenderer.setColor(COLOR_HOVER);
-    shapeRenderer.rect(x * TILE_PIXELS, y * TILE_PIXELS, TILE_PIXELS, TILE_PIXELS);
+    shapeRenderer.rect(
+        x * TILE_PIXELS,
+        y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
+        TILE_PIXELS,
+        TILE_PIXELS
+    );
     shapeRenderer.end();
   }
 
@@ -203,7 +254,7 @@ public class DebugRenderer {
 
     for (Entity entity : state.getAliveEntities()) {
       float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float radius = entity.getSize() * TILE_PIXELS / 2f;
 
       // Special indicator for Tower (Optional: Inner box to signify building)
@@ -234,7 +285,7 @@ public class DebugRenderer {
     shapeRenderer.begin(ShapeType.Line);
     for (Entity entity : state.getAliveEntities()) {
       float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float radius = entity.getSize() * TILE_PIXELS / 2f;
 
       // Darker outline
@@ -251,7 +302,7 @@ public class DebugRenderer {
     spriteBatch.begin();
     for (Entity entity : state.getAliveEntities()) {
       float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float radius = entity.getSize() * TILE_PIXELS / 2f;
 
       // Draw name slightly above the health bar
@@ -292,7 +343,7 @@ public class DebugRenderer {
       }
 
       float x = projectile.getPosition().getX() * TILE_PIXELS;
-      float y = projectile.getPosition().getY() * TILE_PIXELS;
+      float y = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
       // Small circle for projectile
       shapeRenderer.circle(x, y, 4);
@@ -309,7 +360,7 @@ public class DebugRenderer {
       float healthPercent = (float) health.getCurrent() / health.getMax();
 
       float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float radius = entity.getSize() * TILE_PIXELS / 2f;
 
       float barWidth = Math.max(radius * 2, 20);
@@ -344,9 +395,9 @@ public class DebugRenderer {
 
       if (target != null && target.isAlive()) {
         float x1 = entity.getPosition().getX() * TILE_PIXELS;
-        float y1 = entity.getPosition().getY() * TILE_PIXELS;
+        float y1 = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
         float x2 = target.getPosition().getX() * TILE_PIXELS;
-        float y2 = target.getPosition().getY() * TILE_PIXELS;
+        float y2 = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
         // Thin red line for targeting
         shapeRenderer.setColor(1f, 0f, 0f, 0.3f);
@@ -366,13 +417,13 @@ public class DebugRenderer {
       // Only render paths for troops that are moving
       if (entity instanceof Troop troop && troop.isAlive()) {
         float x = troop.getPosition().getX() * TILE_PIXELS;
-        float y = troop.getPosition().getY() * TILE_PIXELS;
+        float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
         float rot = troop.getPosition().getRotation();
 
         // Draw line in direction of movement
         float len = TILE_PIXELS * 1.5f;
-        float x2 = x + (float)Math.cos(rot) * len;
-        float y2 = y + (float)Math.sin(rot) * len;
+        float x2 = x + (float) Math.cos(rot) * len;
+        float y2 = y + (float) Math.sin(rot) * len;
 
         shapeRenderer.line(x, y, x2, y2);
       }
@@ -386,7 +437,7 @@ public class DebugRenderer {
     float screenWidth = camera.viewportWidth;
     float screenHeight = camera.viewportHeight;
 
-    // Game timer at top center
+    // Game timer
     float gameTime = engine.getGameTimeSeconds();
     int minutes = (int) (gameTime / 60);
     int seconds = (int) (gameTime % 60);
@@ -395,85 +446,145 @@ public class DebugRenderer {
       timeText = "OT " + timeText;
     }
 
-    // Elixir bars at bottom
+    // Render Hands and Elixir
     if (match != null) {
-      renderElixirBars(match, screenWidth);
+      if (!match.getBluePlayers().isEmpty()) {
+        Player blue = match.getBluePlayers().get(0);
+        renderPlayerHUD(blue, false, 0, screenWidth);
+      }
+      if (!match.getRedPlayers().isEmpty()) {
+        Player red = match.getRedPlayers().get(0);
+        renderPlayerHUD(red, true, screenHeight - TOP_UI_HEIGHT, screenWidth);
+      }
     }
 
-    // Timer and status text
+    // Screen Center Text (Timer, State)
     spriteBatch.begin();
-    font.draw(spriteBatch, timeText, screenWidth / 2 - 20, screenHeight - 10);
+    font.getData().setScale(1.2f);
+    glpyhLayout.setText(font, timeText);
+    font.draw(spriteBatch, timeText, (screenWidth - glpyhLayout.width) / 2, screenHeight - 10);
 
-    // Entity count
+    font.getData().setScale(1.0f);
     String entityCount = "Entities: " + engine.getGameState().getAliveEntities().size();
-    font.draw(spriteBatch, entityCount, 10, screenHeight - 10);
+    font.draw(spriteBatch, entityCount, 10, screenHeight / 2 + 20);
 
-    // Game state
     if (engine.getGameState().isGameOver()) {
       Team winner = engine.getGameState().getWinner();
       String winText = winner != null ? winner + " WINS!" : "DRAW!";
-      font.draw(spriteBatch, winText, screenWidth / 2 - 40, screenHeight / 2);
+      font.getData().setScale(2.0f);
+      glpyhLayout.setText(font, winText);
+      font.draw(spriteBatch, winText, (screenWidth - glpyhLayout.width) / 2, screenHeight / 2);
+      font.getData().setScale(1.0f);
     }
 
     // Controls help
     if (drawPaths) {
-      font.draw(spriteBatch, "Paths: ON", screenWidth - 80, screenHeight - 30);
+      font.draw(spriteBatch, "Paths: ON", screenWidth - 100, screenHeight / 2 + 20);
     }
 
     spriteBatch.end();
   }
 
-  private void renderElixirBars(Match match, float screenWidth) {
+  private void renderPlayerHUD(Player player, boolean isTop, float yPos, float width) {
+    float cardWidth = 60;
+    float cardHeight = 80;
+    float spacing = 10;
+    float handWidth = (cardWidth * 4) + (spacing * 3);
+    float startX = (width - handWidth) / 2;
+    float cardY = isTop ? yPos + 30 : yPos + 30; // Adjust for margins
+
+    // 1. Draw Elixir Bar
+    float elixir = player.getElixir().getCurrent();
+    float maxElixir = 10f;
+    float barWidth = 250;
+    float barHeight = 15;
+    float barX = (width - barWidth) / 2;
+    float barY = isTop ? yPos + 10 : yPos + 115; // Bottom for top player, top for bottom player
+
     shapeRenderer.begin(ShapeType.Filled);
-
-    float barWidth = 100;
-    float barHeight = 12;
-    float padding = 10;
-
-    // Blue player (left side)
-    if (!match.getBluePlayers().isEmpty()) {
-      Player blue = match.getBluePlayers().get(0);
-      float elixir = blue.getElixir().getCurrent();
-
-      // Background
-      shapeRenderer.setColor(COLOR_ELIXIR_BG);
-      shapeRenderer.rect(padding, padding, barWidth, barHeight);
-
-      // Elixir fill
-      shapeRenderer.setColor(COLOR_ELIXIR);
-      shapeRenderer.rect(padding, padding, barWidth * (elixir / 10f), barHeight);
-    }
-
-    // Red player (right side)
-    if (!match.getRedPlayers().isEmpty()) {
-      Player red = match.getRedPlayers().get(0);
-      float elixir = red.getElixir().getCurrent();
-
-      float x = screenWidth - barWidth - padding;
-
-      // Background
-      shapeRenderer.setColor(COLOR_ELIXIR_BG);
-      shapeRenderer.rect(x, padding, barWidth, barHeight);
-
-      // Elixir fill
-      shapeRenderer.setColor(COLOR_ELIXIR);
-      shapeRenderer.rect(x, padding, barWidth * (elixir / 10f), barHeight);
-    }
-
+    // Bar Background
+    shapeRenderer.setColor(COLOR_ELIXIR_BG);
+    shapeRenderer.rect(barX, barY, barWidth, barHeight);
+    // Elixir Fill
+    shapeRenderer.setColor(COLOR_ELIXIR);
+    shapeRenderer.rect(barX, barY, barWidth * (elixir / maxElixir), barHeight);
     shapeRenderer.end();
 
-    // Elixir numbers
+    // Elixir Text
     spriteBatch.begin();
-    if (!match.getBluePlayers().isEmpty()) {
-      Player blue = match.getBluePlayers().get(0);
-      font.draw(spriteBatch, String.valueOf(blue.getElixir().getFloor()), padding + barWidth + 5,
-          padding + 12);
+    String elixirText = String.format("%d / 10", player.getElixir().getFloor());
+    glpyhLayout.setText(font, elixirText);
+
+    // Draw text centered within the bar
+    float textX = barX + (barWidth - glpyhLayout.width) / 2;
+    float textY = barY + (barHeight + glpyhLayout.height) / 2;
+
+    font.draw(spriteBatch, elixirText, textX, textY);
+    spriteBatch.end();
+
+    // 2. Draw Hand
+    Hand hand = player.getHand();
+    for (int i = 0; i < 4; i++) {
+      Card card = hand.getCard(i);
+      float cardX = startX + i * (cardWidth + spacing);
+      boolean isSelected = i == selectedHandIndex && player.getTeam() == selectedTeam;
+      renderCard(card, cardX, cardY, cardWidth, cardHeight, isSelected);
     }
-    if (!match.getRedPlayers().isEmpty()) {
-      Player red = match.getRedPlayers().get(0);
-      font.draw(spriteBatch, String.valueOf(red.getElixir().getFloor()), screenWidth - padding - 15,
-          padding + 12);
+
+    // 3. Draw Next Card
+    Card nextCard = hand.getNextCard();
+    // Position to the RIGHT of the hand
+    float nextX = startX + handWidth + spacing * 2;
+
+    renderCard(nextCard, nextX, cardY + 10, cardWidth * 0.8f, cardHeight * 0.8f, false);
+
+    // Label for Next
+    spriteBatch.begin();
+    font.draw(spriteBatch, "Next", nextX, cardY + cardHeight);
+    spriteBatch.end();
+  }
+
+  private void renderCard(Card card, float x, float y, float w, float h, boolean selected) {
+    if (card == null) return;
+
+    shapeRenderer.begin(ShapeType.Filled);
+    // Background
+    shapeRenderer.setColor(COLOR_CARD_BG);
+    shapeRenderer.rect(x, y, w, h);
+
+    // Selection Highlight
+    if (selected) {
+      shapeRenderer.setColor(COLOR_CARD_SELECTED);
+      shapeRenderer.rect(x, y, w, 4); // Bottom highlight
+      shapeRenderer.rect(x, y + h - 4, w, 4); // Top
+      shapeRenderer.rect(x, y, 4, h); // Left
+      shapeRenderer.rect(x + w - 4, y, 4, h); // Right
+    } else {
+      shapeRenderer.setColor(COLOR_CARD_BORDER);
+      shapeRenderer.rect(x, y, w, h);
+      shapeRenderer.setColor(COLOR_CARD_BG);
+      shapeRenderer.rect(x + 2, y + 2, w - 4, h - 4);
     }
+    shapeRenderer.end();
+
+    // Text (Name and Cost)
+    spriteBatch.begin();
+
+    // Cost (Top Left)
+    font.setColor(COLOR_ELIXIR);
+    font.draw(spriteBatch, String.valueOf(card.getCost()), x + 5, y + h - 5);
+
+    // Name (Center, Wrapped)
+    font.setColor(Color.WHITE);
+    font.getData().setScale(0.7f);
+    // Simple wrapping logic or truncation
+    String name = card.getName();
+    if (name.length() > 8) name = name.substring(0, 8) + "..";
+
+    glpyhLayout.setText(font, name);
+    font.draw(spriteBatch, name, x + (w - glpyhLayout.width) / 2, y + h / 2);
+
+    font.getData().setScale(1.0f); // Reset
     spriteBatch.end();
   }
 
