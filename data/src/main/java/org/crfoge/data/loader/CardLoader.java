@@ -17,6 +17,7 @@ import org.crforge.core.card.TroopStats;
 public class CardLoader {
 
   private static final ObjectMapper mapper = new ObjectMapper();
+  private static final float SPEED_BASE = 60.0f;
 
   public static List<Card> loadCards(InputStream inputStream) {
     try {
@@ -51,13 +52,6 @@ public class CardLoader {
       for (UnitConfigDTO unitDto : dto.getUnits()) {
         int count = unitDto.getCount() > 0 ? unitDto.getCount() : 1;
         // If config specifies count > 1 (e.g. Barbarians), we create multiple TroopStats
-        // In a real file, specific offsets might be defined in separate UnitConfig entries,
-        // but for simple "count", we might need logic to distribute them.
-        // For now, let's assume the JSON explicitly lists units if they have distinct offsets,
-        // OR the count simply duplicates the stats (offsets handled elsewhere or ignored for now).
-        // EDIT: The CardRegistry logic had specific offsets. The JSON should probably define
-        // the array of units explicitly for things like Barbarians to control offsets.
-        // But for simplicity here, I will just add the stats 'count' times.
         TroopStats stats = convertUnit(unitDto);
         for (int i = 0; i < count; i++) {
           builder.troop(stats);
@@ -73,23 +67,19 @@ public class CardLoader {
     Objects.requireNonNull(dto.getMovementType(),
         "MovementType is required for unit: " + dto.getName());
 
-    // Buildings don't strictly need a targetType if they don't attack, but Troops do.
-    // For now, we enforce it for consistency if it's being loaded as a Unit.
-    // Exception: Buildings that don't attack (like Tombstone) might not have it set in JSON if they rely on default.
-    // However, the issue was specifically about Troops causing NPEs.
-    // Let's enforce it for non-buildings or just enforce it generally and fix JSON.
-    // Given the previous error was in TargetingSystem (which checks if targetable),
-    // it implies this unit IS trying to target something.
     if (dto.getDamage() > 0) {
       Objects.requireNonNull(dto.getTargetType(),
           "TargetType is required for attacking unit: " + dto.getName());
     }
 
+    // Conversion: Base speed 60 = 1.0 tiles/sec
+    float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
+
     return TroopStats.builder()
         .name(dto.getName())
         .health(dto.getHealth())
         .damage(dto.getDamage())
-        .speed(dto.getSpeed())
+        .speed(effectiveSpeed)
         .mass(dto.getMass())
         .size(dto.getSize())
         .range(dto.getRange())

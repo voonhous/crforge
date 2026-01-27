@@ -34,7 +34,7 @@ class CardLoaderTest {
                 "name": "Knight",
                 "health": 1452,
                 "damage": 167,
-                "speed": 1.0,
+                "speed": 60.0,
                 "mass": 5.0,
                 "size": 0.8,
                 "range": 0.7,
@@ -63,6 +63,39 @@ class CardLoaderTest {
     assertThat(stats.getName()).isEqualTo("Knight");
     assertThat(stats.getHealth()).isEqualTo(1452);
     assertThat(stats.getTargetType()).isEqualTo(TargetType.GROUND);
+    // Speed 60 should convert to 1.0f
+    assertThat(stats.getSpeed()).isCloseTo(1.0f, within(0.001f));
+  }
+
+  @Test
+  void loadCards_shouldConvertBase60Speed() {
+    String json = """
+        [
+          {
+            "id": "giant",
+            "name": "Giant",
+            "type": "TROOP",
+            "cost": 5,
+            "units": [
+              {
+                "name": "Giant",
+                "health": 4091,
+                "speed": 45.0,
+                "damage": 211,
+                "targetType": "BUILDINGS",
+                "movementType": "GROUND"
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    TroopStats stats = cards.get(0).getTroops().get(0);
+    // Speed 45 should convert to 0.75f
+    assertThat(stats.getSpeed()).isCloseTo(0.75f, within(0.001f));
   }
 
   @Test
