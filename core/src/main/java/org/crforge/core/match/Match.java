@@ -139,17 +139,9 @@ public abstract class Match {
       return true;
     }
 
-    // Base validation for troops/buildings: check placement is on player's side of arena
-    float y = action.getY();
-    float midY = Arena.HEIGHT / 2f;
-
-    if (player.getTeam() == Team.BLUE) {
-      // Blue can place on bottom half (with some bridge allowance)
-      return y < midY + 1;
-    } else {
-      // Red can place on top half
-      return y > midY - 1;
-    }
+    // Troops and buildings must follow strict arena placement rules
+    // (No river, no bridge, only in own zone)
+    return arena.isValidPlacement(action.getX(), action.getY(), player.getTeam());
   }
 
   // --- Abstract methods for subclasses to implement ---
