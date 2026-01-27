@@ -312,7 +312,7 @@ public class DebugRenderer {
     float centerY = (hoverY + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
     if (card.getType() == CardType.SPELL) {
-      float radius = card.getSpellRadius() * TILE_PIXELS;
+      float radius = card.getProjectile().getRadius() * TILE_PIXELS;
       shapeRenderer.setColor(COLOR_SPELL_RADIUS);
       shapeRenderer.circle(centerX, centerY, radius, 32);
     } else {

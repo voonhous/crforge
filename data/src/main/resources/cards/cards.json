@@ -147,7 +147,12 @@
         "targetType": "GROUND",
         "movementType": "GROUND",
         "offsetX": -0.3,
-        "offsetY": 0.0
+        "offsetY": 0.0,
+        "projectile": {
+          "name": "SpearGoblinProjectile",
+          "speed": 500,
+          "homing": true
+        }
       },
       {
         "name": "Goblin",
@@ -161,7 +166,12 @@
         "targetType": "GROUND",
         "movementType": "GROUND",
         "offsetX": 0.3,
-        "offsetY": 0.0
+        "offsetY": 0.0,
+        "projectile": {
+          "name": "SpearGoblinProjectile",
+          "speed": 500,
+          "homing": true
+        }
       },
       {
         "name": "Goblin",
@@ -175,7 +185,12 @@
         "targetType": "GROUND",
         "movementType": "GROUND",
         "offsetX": 0.0,
-        "offsetY": 0.3
+        "offsetY": 0.3,
+        "projectile": {
+          "name": "SpearGoblinProjectile",
+          "speed": 500,
+          "homing": true
+        }
       }
     ]
   },
@@ -198,7 +213,12 @@
         "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true,
-        "offsetX": -0.3
+        "offsetX": -0.3,
+        "projectile": {
+          "name": "MinionSpit",
+          "speed": 1000,
+          "homing": true
+        }
       },
       {
         "name": "Minion",
@@ -212,7 +232,12 @@
         "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true,
-        "offsetX": 0.3
+        "offsetX": 0.3,
+        "projectile": {
+          "name": "MinionSpit",
+          "speed": 1000,
+          "homing": true
+        }
       },
       {
         "name": "Minion",
@@ -226,7 +251,12 @@
         "targetType": "ALL",
         "movementType": "AIR",
         "ranged": true,
-        "offsetY": 0.3
+        "offsetY": 0.3,
+        "projectile": {
+          "name": "MinionSpit",
+          "speed": 1000,
+          "homing": true
+        }
       }
     ]
   },
@@ -245,11 +275,17 @@
         "mass": 3.0,
         "size": 0.8,
         "range": 3.5,
-        "aoeRadius": 1.0,
         "attackCooldown": 1.5,
         "targetType": "ALL",
         "movementType": "AIR",
-        "ranged": true
+        "ranged": true,
+        "projectile": {
+          "name": "BabyDragonProjectile",
+          "damage": 133,
+          "speed": 500,
+          "radius": 1.0,
+          "homing": true
+        }
       }
     ]
   },
@@ -272,7 +308,13 @@
         "attackCooldown": 1.0,
         "targetType": "ALL",
         "movementType": "GROUND",
-        "ranged": true
+        "ranged": true,
+        "projectile": {
+          "name": "MusketeerProjectile",
+          "damage": 181,
+          "speed": 1000,
+          "homing": true
+        }
       }
     ]
   },
@@ -295,7 +337,13 @@
         "targetType": "ALL",
         "movementType": "GROUND",
         "ranged": true,
-        "offsetX": -0.3
+        "offsetX": -0.3,
+        "projectile": {
+          "name": "ArcherArrow",
+          "damage": 107,
+          "speed": 600,
+          "homing": true
+        }
       },
       {
         "name": "Archer",
@@ -309,7 +357,13 @@
         "targetType": "ALL",
         "movementType": "GROUND",
         "ranged": true,
-        "offsetX": 0.3
+        "offsetX": 0.3,
+        "projectile": {
+          "name": "ArcherArrow",
+          "damage": 107,
+          "speed": 600,
+          "homing": true
+        }
       }
     ]
   },
@@ -328,11 +382,17 @@
         "mass": 1.5,
         "size": 0.5,
         "range": 4.5,
-        "aoeRadius": 1.5,
         "attackCooldown": 1.9,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "ranged": true
+        "ranged": true,
+        "projectile": {
+          "name": "BombSkeletonProjectile",
+          "damage": 193,
+          "speed": 400,
+          "radius": 1.5,
+          "homing": false
+        }
       }
     ]
   },
@@ -356,13 +416,20 @@
         "targetType": "ALL",
         "movementType": "GROUND",
         "ranged": true,
-        "hitEffects": [
-          {
-            "type": "SLOW",
-            "duration": 2.5,
-            "intensity": 0.35
-          }
-        ]
+        "projectile": {
+          "name": "ice_wizardProjectile",
+          "damage": 75,
+          "speed": 700,
+          "radius": 1.0,
+          "homing": true,
+          "hitEffects": [
+            {
+              "type": "SLOW",
+              "duration": 2.5,
+              "intensity": 0.35
+            }
+          ]
+        }
       }
     ]
   },
@@ -372,9 +439,12 @@
     "description": "Area damage spell",
     "type": "SPELL",
     "cost": 3,
-    "spellDamage": 303,
-    "spellRadius": 4.0,
-    "spellProjectileSpeed": 8.0
+    "projectile": {
+      "name": "ArrowsSpell",
+      "damage": 303,
+      "speed": 700,
+      "radius": 4.0
+    }
   },
   {
     "id": "fireball",
@@ -382,9 +452,12 @@
     "description": "High damage area spell",
     "type": "SPELL",
     "cost": 4,
-    "spellDamage": 689,
-    "spellRadius": 2.5,
-    "spellProjectileSpeed": 12.0
+    "projectile": {
+      "name": "FireballSpell",
+      "damage": 689,
+      "speed": 600,
+      "radius": 2.5
+    }
   },
   {
     "id": "zap",
@@ -392,14 +465,18 @@
     "description": "Quick stun and damage",
     "type": "SPELL",
     "cost": 2,
-    "spellDamage": 192,
-    "spellRadius": 2.5,
-    "spellEffects": [
-      {
-        "type": "STUN",
-        "duration": 0.5
-      }
-    ]
+    "projectile": {
+      "name": "ZapSpell",
+      "damage": 192,
+      "speed": 0.0,
+      "radius": 2.5,
+      "hitEffects": [
+        {
+          "type": "STUN",
+          "duration": 0.5
+        }
+      ]
+    }
   },
   {
     "id": "freeze",
@@ -407,14 +484,18 @@
     "description": "Freezes troops and buildings",
     "type": "SPELL",
     "cost": 4,
-    "spellDamage": 95,
-    "spellRadius": 3.0,
-    "spellEffects": [
-      {
-        "type": "FREEZE",
-        "duration": 4.0
-      }
-    ]
+    "projectile": {
+      "name": "FreezeSpell",
+      "damage": 95,
+      "speed": 0.0,
+      "radius": 3.0,
+      "hitEffects": [
+        {
+          "type": "FREEZE",
+          "duration": 4.0
+        }
+      ]
+    }
   },
   {
     "id": "rage",
@@ -422,14 +503,19 @@
     "description": "Increases movement and attack speed",
     "type": "SPELL",
     "cost": 2,
-    "spellRadius": 5.0,
-    "spellEffects": [
-      {
-        "type": "RAGE",
-        "duration": 6.0,
-        "intensity": 0.35
-      }
-    ]
+    "projectile": {
+      "name": "RageSpell",
+      "damage": 0,
+      "speed": 0.0,
+      "radius": 5.0,
+      "hitEffects": [
+        {
+          "type": "RAGE",
+          "duration": 6.0,
+          "intensity": 0.35
+        }
+      ]
+    }
   },
   {
     "id": "cannon",
@@ -449,7 +535,12 @@
         "attackCooldown": 0.8,
         "targetType": "GROUND",
         "movementType": "BUILDING",
-        "ranged": true
+        "ranged": true,
+        "projectile": {
+          "name": "TowerCannonball",
+          "speed": 500,
+          "homing": true
+        }
       }
     ]
   },

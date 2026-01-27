@@ -11,6 +11,7 @@ import java.util.List;
 import org.crfoge.data.loader.CardLoader;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.MovementType;
@@ -163,14 +164,16 @@ class CardLoaderTest {
             "name": "Zap",
             "type": "SPELL",
             "cost": 2,
-            "spellDamage": 192,
-            "spellRadius": 2.5,
-            "spellEffects": [
-              {
-                "type": "STUN",
-                "duration": 0.5
-              }
-            ]
+            "projectile": {
+                "damage": 192,
+                "radius": 2.5,
+                "hitEffects": [
+                  {
+                    "type": "STUN",
+                    "duration": 0.5
+                  }
+                ]
+            }
           }
         ]
         """;
@@ -183,12 +186,16 @@ class CardLoaderTest {
 
     assertThat(card.getId()).isEqualTo("zap");
     assertThat(card.getType()).isEqualTo(CardType.SPELL);
-    assertThat(card.getSpellDamage()).isEqualTo(192);
-    assertThat(card.getSpellRadius()).isCloseTo(2.5f, within(0.01f));
 
-    assertThat(card.getSpellEffects()).hasSize(1);
-    assertThat(card.getSpellEffects().get(0).getType()).isEqualTo(StatusEffectType.STUN);
-    assertThat(card.getSpellEffects().get(0).getDuration()).isCloseTo(0.5f, within(0.01f));
+    // Check projectile stats
+    ProjectileStats proj = card.getProjectile();
+    assertThat(proj).isNotNull();
+    assertThat(proj.getDamage()).isEqualTo(192);
+    assertThat(proj.getRadius()).isCloseTo(2.5f, within(0.01f));
+
+    assertThat(proj.getHitEffects()).hasSize(1);
+    assertThat(proj.getHitEffects().get(0).getType()).isEqualTo(StatusEffectType.STUN);
+    assertThat(proj.getHitEffects().get(0).getDuration()).isCloseTo(0.5f, within(0.01f));
   }
 
   @Test
@@ -224,5 +231,47 @@ class CardLoaderTest {
     assertThat(card.getTroops()).hasSize(3);
     assertThat(card.getTroops().get(0).getName()).isEqualTo("Minion");
     assertThat(card.getTroops().get(0).getMovementType()).isEqualTo(MovementType.AIR);
+  }
+
+  @Test
+  void loadCards_shouldParseProjectileConfig() {
+    String json = """
+        [
+          {
+            "id": "archers",
+            "name": "Archers",
+            "type": "TROOP",
+            "cost": 3,
+            "units": [
+              {
+                "name": "Archer",
+                "health": 304,
+                "damage": 107,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "projectile": {
+                  "name": "ArcherArrow",
+                  "speed": 600,
+                  "homing": true
+                }
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    TroopStats stats = card.getTroops().get(0);
+
+    assertThat(stats.getProjectile()).isNotNull();
+    ProjectileStats proj = stats.getProjectile();
+
+    assertThat(proj.getName()).isEqualTo("ArcherArrow");
+    assertThat(proj.getSpeed()).isCloseTo(10.0f, within(0.01f));
+    assertThat(proj.isHoming()).isTrue();
   }
 }

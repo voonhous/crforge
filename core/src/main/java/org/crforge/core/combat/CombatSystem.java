@@ -3,6 +3,7 @@ package org.crforge.core.combat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameState;
@@ -94,13 +95,17 @@ public class CombatSystem {
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
     if (combat.isRanged()) {
-      // Spawn projectile
+      ProjectileStats stats = combat.getProjectileStats();
+
+      float speed = (stats != null) ? stats.getSpeed() : 0;
+      float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
+      List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
+
       Projectile projectile =
-          new Projectile(attacker, target, combat.getDamage(), combat.getAoeRadius(),
-              combat.getHitEffects());
+          new Projectile(attacker, target, combat.getDamage(), aoeRadius, speed, effects);
       gameState.spawnProjectile(projectile);
     } else {
-      // Melee attack - deal damage immediately
+      // Melee attack, deal damage immediately
       if (combat.getAoeRadius() > 0) {
         dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius(),
             combat.getHitEffects());
@@ -201,11 +206,11 @@ public class CombatSystem {
   }
 
   /**
-   * Apply spell damage to all targetable enemies within radius of the given center point.
-   * Accounts for entity size in the radius check.
+   * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
+   * for entity size in the radius check.
    */
   public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
-                               int damage, float radius, List<EffectStats> effects) {
+      int damage, float radius, List<EffectStats> effects) {
     Team enemyTeam = sourceTeam.opposite();
 
     for (Entity entity : gameState.getAliveEntities()) {

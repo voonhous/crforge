@@ -16,11 +16,8 @@ public class CardConfigDTO {
   // Troop specifics
   private List<UnitConfigDTO> units;
 
-  // Spell specifics
-  private int spellDamage;
-  private float spellRadius;
-  private float spellProjectileSpeed;
-  private List<EffectConfigDTO> spellEffects;
+  // Projectile specifics (For Spells)
+  private ProjectileConfigDTO projectile;
 
   // Building specifics
   private int buildingHealth;

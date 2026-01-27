@@ -25,6 +25,7 @@ public class UnitConfigDTO {
   private float offsetX;
   private float offsetY;
   private List<EffectConfigDTO> hitEffects;
+  private ProjectileConfigDTO projectile;
 
   // Configuration convenience
   private int count = 1; // Default to 1 unit

@@ -9,9 +9,11 @@ import java.util.List;
 import java.util.Objects;
 import org.crfoge.data.loader.dto.CardConfigDTO;
 import org.crfoge.data.loader.dto.EffectConfigDTO;
+import org.crfoge.data.loader.dto.ProjectileConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TroopStats;
 
 public class CardLoader {
@@ -36,16 +38,13 @@ public class CardLoader {
         .description(dto.getDescription())
         .type(dto.getType())
         .cost(dto.getCost())
-        .spellDamage(dto.getSpellDamage())
-        .spellRadius(dto.getSpellRadius())
-        .spellProjectileSpeed(dto.getSpellProjectileSpeed())
         .buildingHealth(dto.getBuildingHealth())
         .buildingLifetime(dto.getBuildingLifetime())
         .spawnInterval(dto.getSpawnInterval())
         .deathSpawnCount(dto.getDeathSpawnCount());
 
-    if (dto.getSpellEffects() != null) {
-      builder.spellEffects(convertEffects(dto.getSpellEffects()));
+    if (dto.getProjectile() != null) {
+      builder.projectile(convertProjectile(dto.getProjectile()));
     }
 
     if (dto.getUnits() != null) {
@@ -75,7 +74,7 @@ public class CardLoader {
     // Conversion: Base speed 60 = 1.0 tiles/sec
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
 
-    return TroopStats.builder()
+    TroopStats.TroopStatsBuilder builder = TroopStats.builder()
         .name(dto.getName())
         .health(dto.getHealth())
         .damage(dto.getDamage())
@@ -92,6 +91,27 @@ public class CardLoader {
         .deployTime(dto.getDeployTime() > 0 ? dto.getDeployTime() : 1.0f)
         .offsetX(dto.getOffsetX())
         .offsetY(dto.getOffsetY())
+        .hitEffects(convertEffects(dto.getHitEffects()));
+
+    if (dto.getProjectile() != null) {
+      builder.projectile(convertProjectile(dto.getProjectile()));
+    }
+
+    return builder.build();
+  }
+
+  private static ProjectileStats convertProjectile(ProjectileConfigDTO dto) {
+    if (dto == null) {
+      return null;
+    }
+
+    float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
+    return ProjectileStats.builder()
+        .name(dto.getName())
+        .damage(dto.getDamage())
+        .speed(effectiveSpeed)
+        .radius(dto.getRadius())
+        .homing(dto.getHoming() != null ? dto.getHoming() : true)
         .hitEffects(convertEffects(dto.getHitEffects()))
         .build();
   }
