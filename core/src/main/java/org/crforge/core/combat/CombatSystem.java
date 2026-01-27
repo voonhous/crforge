@@ -6,6 +6,7 @@ import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
@@ -171,6 +172,14 @@ public class CombatSystem {
       AppliedEffect effect = new AppliedEffect(stats.getType(), stats.getDuration(),
           stats.getIntensity());
       target.addEffect(effect);
+
+      // Handle Stun Reset Logic (Reset attack windup/charge)
+      if (stats.getType() == StatusEffectType.STUN) {
+        Combat combat = target.getCombat();
+        if (combat != null) {
+          combat.resetAttackState();
+        }
+      }
     }
   }
 

@@ -75,6 +75,14 @@ public class Combat {
     currentLoadTime = 0;
   }
 
+  /**
+   * Resets the attack animation/load time. Used for Stun (Zap) mechanics.
+   * Unlike Freeze (which pauses), Stun forces the unit to restart their attack windup.
+   */
+  public void resetAttackState() {
+    this.currentLoadTime = 0;
+  }
+
   public void update(float deltaTime) {
     float effectiveDelta = deltaTime * (combatDisabled ? 0 : attackSpeedMultiplier);
     if (currentCooldown > 0) {

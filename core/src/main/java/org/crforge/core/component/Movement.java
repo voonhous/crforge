@@ -40,7 +40,7 @@ public class Movement {
   }
 
   public boolean canMove() {
-    return canMoveFlag && type != MovementType.BUILDING;
+    return !movementDisabled && canMoveFlag && type != MovementType.BUILDING;
   }
 
   public boolean isBuilding() {
