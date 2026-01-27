@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
@@ -37,7 +38,7 @@ class DeploymentSystemTest {
     for (int i = 0; i < 8; i++) {
       cards.add(Card.builder()
           .name("Troop " + i)
-          .cost(3) // Cost is 3
+          .cost(3)
           .type(CardType.TROOP)
           .build());
     }
@@ -207,8 +208,11 @@ class DeploymentSystemTest {
         .name("Fireball")
         .type(CardType.SPELL)
         .cost(4)
-        .spellDamage(50)
-        .spellRadius(2.0f)
+        .projectile(ProjectileStats.builder()
+            .damage(50)
+            .radius(2.0f)
+            .speed(0) // 0 speed = Instant/Direct application
+            .build())
         .build();
 
     // Deck of all Fireballs
@@ -248,15 +252,17 @@ class DeploymentSystemTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    // Create a traveling spell (with spellProjectileSpeed > 0)
+    // Use new ProjectileStats structure
     Card arrows = Card.builder()
         .id("arrows")
         .name("Arrows")
         .type(CardType.SPELL)
         .cost(3)
-        .spellDamage(303)
-        .spellRadius(4.0f)
-        .spellProjectileSpeed(8.0f)
+        .projectile(ProjectileStats.builder()
+            .damage(303)
+            .radius(4.0f)
+            .speed(8.0f) // > 0 means it creates a projectile
+            .build())
         .build();
 
     List<Card> allArrows = new ArrayList<>();

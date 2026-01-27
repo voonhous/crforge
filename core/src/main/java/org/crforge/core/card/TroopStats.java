@@ -9,19 +9,6 @@ import org.crforge.core.entity.base.TargetType;
 
 /**
  * Defines the base statistics for a unit (Troop or Building turret) spawned by a {@link Card}.
- * <p>
- * <b>Blueprint Pattern:</b><br>
- * This class is a Data Transfer Object (DTO) holding the <i>initial</i> values for an entity's
- * components. It shares attribute names with components (like 'health' or 'speed') because it
- * provides the source data for them.
- * <p>
- * When a card is played, the {@link org.crforge.core.engine.DeploymentSystem} reads these values to
- * create new instances of:
- * <ul>
- * <li>{@link org.crforge.core.component.Health} (initialized with {@code health})</li>
- * <li>{@link org.crforge.core.component.Movement} (initialized with {@code speed}, {@code mass}, etc.)</li>
- * <li>{@link org.crforge.core.component.Combat} (initialized with {@code damage}, {@code range}, etc.)</li>
- * </ul>
  */
 @Getter
 @Builder
@@ -60,4 +47,6 @@ public class TroopStats {
   private final float offsetY = 0f;
   @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
+
+  private final ProjectileStats projectile;
 }

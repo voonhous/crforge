@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Combat;
@@ -13,11 +14,10 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
-import org.crforge.core.entity.structure.Building;
-import org.crforge.core.entity.base.Entity;
-import org.crforge.core.entity.projectile.Projectile;
-import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -111,7 +111,8 @@ public class DeploymentSystem {
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
         .ranged(stats.isRanged())
-        .hitEffects(stats.getHitEffects()) // Pass effects
+        .hitEffects(stats.getHitEffects())
+        .projectileStats(stats.getProjectile())
         .build();
 
     return Troop.builder()
@@ -139,11 +140,11 @@ public class DeploymentSystem {
           .targetType(stats.getTargetType())
           .ranged(stats.isRanged())
           .hitEffects(stats.getHitEffects())
+          .projectileStats(stats.getProjectile())
           .build();
     }
 
     float size = stats != null ? stats.getSize() : 2.0f;
-    int health = card.getBuildingHealth();
 
     // Create Spawner Component if needed
     SpawnerComponent spawner = null;
@@ -164,7 +165,7 @@ public class DeploymentSystem {
         .name(card.getName())
         .team(team)
         .position(new Position(x, y))
-        .health(new Health(health))
+        .health(new Health(card.getBuildingHealth()))
         .movement(new Movement(0, 0, size, MovementType.BUILDING))
         .combat(combat)
         .lifetime(card.getBuildingLifetime())
@@ -176,18 +177,23 @@ public class DeploymentSystem {
   }
 
   private void castSpell(Team team, Card card, float x, float y) {
-    float speed = card.getSpellProjectileSpeed();
-    int damage = card.getSpellDamage();
-    float radius = card.getSpellRadius();
-    List<EffectStats> effects = card.getSpellEffects();
+    ProjectileStats proj = card.getProjectile();
+    if (proj == null) {
+      return;
+    }
+
+    int damage = proj.getDamage();
+    float speed = proj.getSpeed();
+    float radius = proj.getRadius();
+    List<EffectStats> effects = proj.getHitEffects();
 
     if (speed > 0) {
-      // Traveling spell: spawn position-targeted projectile
+      // Traveling spell
       float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
       Projectile p = new Projectile(team, x, startY, x, y, damage, radius, speed, effects);
       state.spawnProjectile(p);
     } else {
-      // Instant spell: delegate to CombatSystem
+      // Instant spell
       combatSystem.applySpellDamage(team, x, y, damage, radius, effects);
     }
   }

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
@@ -31,8 +32,10 @@ class SpellDeploymentTest {
         .name("Fireball")
         .type(CardType.SPELL)
         .cost(4)
-        .spellDamage(100)
-        .spellRadius(2.5f)
+        .projectile(ProjectileStats.builder()
+            .damage(100)
+            .radius(2.5f)
+            .build())
         .build();
 
     troopCard = Card.builder()

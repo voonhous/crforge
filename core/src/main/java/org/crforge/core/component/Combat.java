@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.TargetType;
 
@@ -30,8 +31,11 @@ public class Combat {
   private final boolean ranged = false;
   @Builder.Default
   private final float loadTime = 0;
+
   @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
+
+  private final ProjectileStats projectileStats;
 
   // Dynamic states
   private Entity currentTarget;
