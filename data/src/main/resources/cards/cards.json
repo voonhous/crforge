@@ -373,7 +373,8 @@
     "type": "SPELL",
     "cost": 3,
     "spellDamage": 303,
-    "spellRadius": 4.0
+    "spellRadius": 4.0,
+    "spellProjectileSpeed": 8.0
   },
   {
     "id": "fireball",
@@ -382,7 +383,8 @@
     "type": "SPELL",
     "cost": 4,
     "spellDamage": 689,
-    "spellRadius": 2.5
+    "spellRadius": 2.5,
+    "spellProjectileSpeed": 12.0
   },
   {
     "id": "zap",

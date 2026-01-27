@@ -1,6 +1,5 @@
 package org.crforge.core.engine;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -8,14 +7,15 @@ import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
-import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.player.Player;
@@ -29,7 +29,10 @@ import org.crforge.core.player.dto.PlayerActionDTO;
 @RequiredArgsConstructor
 public class DeploymentSystem {
 
+  private static final float SPELL_TRAVEL_DISTANCE = 10f;
+
   private final GameState state;
+  private final CombatSystem combatSystem;
 
   // Internal queue to hold requests associated with the player who made them
   private final Queue<DeploymentRequest> requestQueue = new ConcurrentLinkedQueue<>();
@@ -173,38 +176,19 @@ public class DeploymentSystem {
   }
 
   private void castSpell(Team team, Card card, float x, float y) {
-    // Find all enemy entities within spell radius and deal damage
-    float radius = card.getSpellRadius();
+    float speed = card.getSpellProjectileSpeed();
     int damage = card.getSpellDamage();
+    float radius = card.getSpellRadius();
     List<EffectStats> effects = card.getSpellEffects();
 
-    List<Entity> targets = new ArrayList<>();
-    for (Entity entity : state.getAliveEntities()) {
-      if (entity.getTeam() == team) {
-        continue;
-      }
-
-      float dx = entity.getPosition().getX() - x;
-      float dy = entity.getPosition().getY() - y;
-      float distSq = dx * dx + dy * dy;
-
-      if (distSq <= radius * radius) {
-        targets.add(entity);
-      }
-    }
-
-    // Apply damage to all targets (deaths processed by GameEngine.processDeaths())
-    for (Entity target : targets) {
-      target.getHealth().takeDamage(damage);
-
-      // Apply effects
-      if (effects != null) {
-        for (EffectStats effectStats : effects) {
-          AppliedEffect effect = new AppliedEffect(effectStats.getType(), effectStats.getDuration(),
-              effectStats.getIntensity());
-          target.addEffect(effect);
-        }
-      }
+    if (speed > 0) {
+      // Traveling spell: spawn position-targeted projectile
+      float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+      Projectile p = new Projectile(team, x, startY, x, y, damage, radius, speed, effects);
+      state.spawnProjectile(p);
+    } else {
+      // Instant spell: delegate to CombatSystem
+      combatSystem.applySpellDamage(team, x, y, damage, radius, effects);
     }
   }
 

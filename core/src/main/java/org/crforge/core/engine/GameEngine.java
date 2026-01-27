@@ -41,7 +41,7 @@ public class GameEngine {
     this.gameState = new GameState();
     this.targetingSystem = new TargetingSystem();
     this.combatSystem = new CombatSystem(gameState);
-    this.deploymentSystem = new DeploymentSystem(gameState);
+    this.deploymentSystem = new DeploymentSystem(gameState, combatSystem);
     this.statusEffectSystem = new StatusEffectSystem();
     this.spawnerSystem = new SpawnerSystem(gameState);
     this.running = false;

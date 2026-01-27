@@ -37,6 +37,7 @@ public class CardLoader {
         .cost(dto.getCost())
         .spellDamage(dto.getSpellDamage())
         .spellRadius(dto.getSpellRadius())
+        .spellProjectileSpeed(dto.getSpellProjectileSpeed())
         .buildingHealth(dto.getBuildingHealth())
         .buildingLifetime(dto.getBuildingLifetime())
         .spawnInterval(dto.getSpawnInterval())

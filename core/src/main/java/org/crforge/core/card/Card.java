@@ -49,6 +49,8 @@ public class Card {
   @Builder.Default
   private final float spellRadius = 0f;
   @Builder.Default
+  private final float spellProjectileSpeed = 0f;
+  @Builder.Default
   private final List<EffectStats> spellEffects = new ArrayList<>();
 
   // For buildings

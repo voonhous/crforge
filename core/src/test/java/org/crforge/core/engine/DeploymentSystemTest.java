@@ -7,6 +7,7 @@ import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.structure.Building;
@@ -28,7 +29,8 @@ class DeploymentSystemTest {
   @BeforeEach
   void setUp() {
     gameState = new GameState();
-    deploymentSystem = new DeploymentSystem(gameState);
+    CombatSystem combatSystem = new CombatSystem(gameState);
+    deploymentSystem = new DeploymentSystem(gameState, combatSystem);
 
     // Create a deck of 8 dummy cards
     List<Card> cards = new ArrayList<>();
@@ -198,6 +200,7 @@ class DeploymentSystemTest {
     enemy.onSpawn();
     gameState.spawnEntity(enemy);
     gameState.processPending(); // Add enemy to alive entities
+    enemy.update(2.0f); // Finish deploying so enemy is targetable
 
     Card fireball = Card.builder()
         .id("fireball")
@@ -228,8 +231,57 @@ class DeploymentSystemTest {
     deploymentSystem.queueAction(spellPlayer, action);
     deploymentSystem.update();
 
-    // Verify spell effect (damage) was applied immediately (DeploymentSystem.castSpell logic)
-    // Note: The DeploymentSystem calls castSpell which applies damage directly for now
+    // Verify spell effect (damage) was applied immediately via CombatSystem.applySpellDamage
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(50);
+  }
+
+  @Test
+  void testCastTravelingSpell_createsProjectile() {
+    // Place a target enemy
+    Troop enemy = Troop.builder()
+        .name("Target")
+        .team(Team.RED)
+        .position(new Position(10f, 10f))
+        .health(new Health(500))
+        .build();
+    enemy.onSpawn();
+    gameState.spawnEntity(enemy);
+    gameState.processPending();
+
+    // Create a traveling spell (with spellProjectileSpeed > 0)
+    Card arrows = Card.builder()
+        .id("arrows")
+        .name("Arrows")
+        .type(CardType.SPELL)
+        .cost(3)
+        .spellDamage(303)
+        .spellRadius(4.0f)
+        .spellProjectileSpeed(8.0f)
+        .build();
+
+    List<Card> allArrows = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      allArrows.add(arrows);
+    }
+
+    Player spellPlayer = new Player(Team.BLUE, new Deck(allArrows), false);
+    spellPlayer.getElixir().update(100f);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(10f)
+        .y(10f)
+        .build();
+
+    deploymentSystem.queueAction(spellPlayer, action);
+    deploymentSystem.update();
+
+    // Traveling spell should NOT deal immediate damage
+    assertThat(enemy.getHealth().getCurrent()).isEqualTo(500);
+
+    // Should have spawned a projectile
+    assertThat(gameState.getProjectiles()).hasSize(1);
+    assertThat(gameState.getProjectiles().get(0).isPositionTargeted()).isTrue();
+    assertThat(gameState.getProjectiles().get(0).getDamage()).isEqualTo(303);
   }
 }

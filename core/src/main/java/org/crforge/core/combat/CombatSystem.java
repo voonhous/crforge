@@ -134,7 +134,10 @@ public class CombatSystem {
   }
 
   private void onProjectileHit(Projectile projectile) {
-    if (projectile.hasAoe()) {
+    if (projectile.isPositionTargeted()) {
+      applySpellDamage(projectile.getTeam(), projectile.getTargetX(), projectile.getTargetY(),
+          projectile.getDamage(), projectile.getAoeRadius(), projectile.getEffects());
+    } else if (projectile.hasAoe()) {
       dealAoeDamage(
           projectile.getSource(),
           projectile.getTarget(),
@@ -189,6 +192,34 @@ public class CombatSystem {
       float distance = (float) Math.sqrt(dx * dx + dy * dy);
 
       // Check if within AOE radius (accounting for entity size)
+      float effectiveRadius = radius + entity.getSize() / 2f;
+      if (distance <= effectiveRadius) {
+        dealDamage(entity, damage);
+        applyEffects(entity, effects);
+      }
+    }
+  }
+
+  /**
+   * Apply spell damage to all targetable enemies within radius of the given center point.
+   * Accounts for entity size in the radius check.
+   */
+  public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
+                               int damage, float radius, List<EffectStats> effects) {
+    Team enemyTeam = sourceTeam.opposite();
+
+    for (Entity entity : gameState.getAliveEntities()) {
+      if (entity.getTeam() != enemyTeam) {
+        continue;
+      }
+      if (!entity.isTargetable()) {
+        continue;
+      }
+
+      float dx = entity.getPosition().getX() - centerX;
+      float dy = entity.getPosition().getY() - centerY;
+      float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
       float effectiveRadius = radius + entity.getSize() / 2f;
       if (distance <= effectiveRadius) {
         dealDamage(entity, damage);

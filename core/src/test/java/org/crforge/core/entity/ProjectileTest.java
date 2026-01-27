@@ -2,6 +2,7 @@ package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.List;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Health;
@@ -149,6 +150,65 @@ class ProjectileTest {
 
     Projectile p3 = new Projectile(source, target, 50);
     assertThat(p3.getId()).isEqualTo(1);
+  }
+
+  @Test
+  void positionTargeted_shouldStartAtGivenPosition() {
+    Projectile projectile = new Projectile(Team.BLUE, 5f, 20f, 5f, 10f,
+        100, 2.5f, 8f, Collections.emptyList());
+
+    assertThat(projectile.getPosition().getX()).isEqualTo(5f);
+    assertThat(projectile.getPosition().getY()).isEqualTo(20f);
+    assertThat(projectile.isPositionTargeted()).isTrue();
+    assertThat(projectile.isActive()).isTrue();
+    assertThat(projectile.isHit()).isFalse();
+    assertThat(projectile.getSource()).isNull();
+    assertThat(projectile.getTarget()).isNull();
+    assertThat(projectile.getTeam()).isEqualTo(Team.BLUE);
+  }
+
+  @Test
+  void positionTargeted_shouldMoveTowardDestination() {
+    Projectile projectile = new Projectile(Team.BLUE, 5f, 20f, 5f, 10f,
+        100, 2.5f, 10f, Collections.emptyList());
+
+    float initialY = projectile.getPosition().getY();
+    projectile.update(0.1f);
+
+    // Should have moved toward y=10 (downward from y=20)
+    assertThat(projectile.getPosition().getY()).isLessThan(initialY);
+    assertThat(projectile.isActive()).isTrue();
+  }
+
+  @Test
+  void positionTargeted_shouldHitWhenReachingDestination() {
+    // Short distance with fast speed to ensure arrival
+    Projectile projectile = new Projectile(Team.RED, 5f, 11f, 5f, 10f,
+        200, 3f, 50f, Collections.emptyList());
+
+    boolean hit = projectile.update(1.0f);
+
+    assertThat(hit).isTrue();
+    assertThat(projectile.isHit()).isTrue();
+    assertThat(projectile.isActive()).isFalse();
+    // Should snap to target position
+    assertThat(projectile.getPosition().getX()).isEqualTo(5f);
+    assertThat(projectile.getPosition().getY()).isEqualTo(10f);
+  }
+
+  @Test
+  void positionTargeted_shouldNotDeactivateFromNullTarget() {
+    // Position-targeted projectiles have null target — they should NOT deactivate
+    Projectile projectile = new Projectile(Team.BLUE, 5f, 20f, 5f, 10f,
+        100, 2.5f, 5f, Collections.emptyList());
+
+    assertThat(projectile.getTarget()).isNull();
+
+    boolean hit = projectile.update(0.1f);
+
+    // Should still be active and moving, not deactivated due to null target
+    assertThat(hit).isFalse();
+    assertThat(projectile.isActive()).isTrue();
   }
 
   private Troop createTroop(Team team, float x, float y) {

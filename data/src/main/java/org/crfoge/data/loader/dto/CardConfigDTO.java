@@ -19,6 +19,7 @@ public class CardConfigDTO {
   // Spell specifics
   private int spellDamage;
   private float spellRadius;
+  private float spellProjectileSpeed;
   private List<EffectConfigDTO> spellEffects;
 
   // Building specifics
