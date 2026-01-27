@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.player.Deck;
@@ -107,11 +108,11 @@ class MatchTest {
   void validateAction_blueShouldOnlyPlaceOnBottomHalf() {
     match.addPlayer(bluePlayer);
 
-    // Valid placement (bottom half)
+    // Valid placement (bottom half, Y=10)
     PlayerActionDTO validAction = PlayerActionDTO.play(0, 9f, 10f);
     assertThat(match.validateAction(bluePlayer, validAction)).isTrue();
 
-    // Invalid placement (top half)
+    // Invalid placement (top half, Y=25)
     PlayerActionDTO invalidAction = PlayerActionDTO.play(0, 9f, 25f);
     assertThat(match.validateAction(bluePlayer, invalidAction)).isFalse();
   }
@@ -120,13 +121,42 @@ class MatchTest {
   void validateAction_redShouldOnlyPlaceOnTopHalf() {
     match.addPlayer(redPlayer);
 
-    // Valid placement (top half)
+    // Valid placement (top half, Y=25)
     PlayerActionDTO validAction = PlayerActionDTO.play(0, 9f, 25f);
     assertThat(match.validateAction(redPlayer, validAction)).isTrue();
 
-    // Invalid placement (bottom half)
+    // Invalid placement (bottom half, Y=5)
     PlayerActionDTO invalidAction = PlayerActionDTO.play(0, 9f, 5f);
     assertThat(match.validateAction(redPlayer, invalidAction)).isFalse();
+  }
+
+  @Test
+  void validateAction_shouldRejectBridgePlacement() {
+    match.addPlayer(bluePlayer);
+
+    // Bridge location: X ~ 3.5, Y = 15.5 (River is at Y=16)
+    // Arena Left Bridge starts at X=2, width 3.
+    // River tiles are Y=15, 16.
+
+    PlayerActionDTO bridgeAction = PlayerActionDTO.play(0, Arena.LEFT_BRIDGE_X + 1.0f,
+        Arena.RIVER_Y - 0.5f);
+
+    // Should be rejected for Troops
+    assertThat(match.validateAction(bluePlayer, bridgeAction))
+        .as("Bridge placement should be rejected for troops")
+        .isFalse();
+  }
+
+  @Test
+  void validateAction_shouldRejectRiverPlacement() {
+    match.addPlayer(bluePlayer);
+
+    // River location (not bridge): Center X=9, Y=16
+    PlayerActionDTO riverAction = PlayerActionDTO.play(0, 9f, 16f);
+
+    assertThat(match.validateAction(bluePlayer, riverAction))
+        .as("River placement should be rejected")
+        .isFalse();
   }
 
   @Test
