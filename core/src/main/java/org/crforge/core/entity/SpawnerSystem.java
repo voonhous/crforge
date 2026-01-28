@@ -6,9 +6,12 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
+import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.player.Team;
 
 public class SpawnerSystem {
 
@@ -37,10 +40,20 @@ public class SpawnerSystem {
 
   // Called by GameState.processDeaths() or GameEngine
   public void onDeath(Entity entity) {
+    // 1. Handle Spawner Component (e.g. Golem -> Golemites, Tombstone -> Skeletons)
     SpawnerComponent spawner = entity.getSpawner();
     if (spawner != null && spawner.getDeathSpawnCount() > 0) {
       for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
         spawnUnit(entity, spawner.getSpawnStats(), true);
+      }
+    }
+
+    // 2. Handle Effects (e.g. Mother Witch CURSE -> Cursed Hog)
+    for (AppliedEffect effect : entity.getAppliedEffects()) {
+      if (effect.getType() == StatusEffectType.CURSE && effect.getSpawnSpecies() != null) {
+        // Spawn the unit for the OPPONENT of the dying unit
+        // (i.e. the team of the Mother Witch who applied the curse)
+        spawnEffectUnit(entity, effect.getSpawnSpecies(), entity.getTeam().opposite());
       }
     }
   }
@@ -53,13 +66,26 @@ public class SpawnerSystem {
     if (stats == null) {
       return;
     }
+    // Standard spawns belong to the same team as the source
+    doSpawn(source.getPosition(), source.getSize(), source.getTeam(), stats, isDeathSpawn);
+  }
 
-    // Use source.getPosition() to determine spawn location
+  private void spawnEffectUnit(Entity victim, TroopStats stats, Team ownerTeam) {
+    if (stats == null) {
+      return;
+    }
+    // Effect spawns (like Cursed Hogs) appear at the victim's location but belong to the effect owner
+    doSpawn(victim.getPosition(), victim.getSize(), ownerTeam, stats, true);
+  }
+
+  private void doSpawn(Position origin, float originSize, Team team, TroopStats stats,
+      boolean isDeathSpawn) {
+    // Use origin to determine spawn location
     // Add simple random spread if it's a death spawn to prevent stacking perfectly
-    float spread = isDeathSpawn ? (float) (Math.random() - 0.5) * source.getSize() : 0;
+    float spread = isDeathSpawn ? (float) (Math.random() - 0.5) * originSize : 0;
 
-    float x = source.getPosition().getX() + spread;
-    float y = source.getPosition().getY() + spread;
+    float x = origin.getX() + spread;
+    float y = origin.getY() + spread;
 
     Combat combat = Combat.builder()
         .damage(stats.getDamage())
@@ -73,7 +99,7 @@ public class SpawnerSystem {
 
     Troop unit = Troop.builder()
         .name(stats.getName())
-        .team(source.getTeam())
+        .team(team)
         .position(new Position(x, y))
         .health(new Health(stats.getHealth()))
         .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getSize(),

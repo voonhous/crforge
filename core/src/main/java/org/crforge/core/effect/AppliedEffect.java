@@ -1,18 +1,27 @@
 package org.crforge.core.effect;
 
+import org.crforge.core.card.TroopStats;
+
 /**
  * Represents an instance of an effect currently affecting an entity.
  */
 public class AppliedEffect {
 
   private final StatusEffectType type;
-  private float remainingDuration;
   private final float intensity; // e.g., 0.5 for a 50% slow
+  private final TroopStats spawnSpecies; // For Curse effects
+  private float remainingDuration;
 
-  public AppliedEffect(StatusEffectType type, float duration, float intensity) {
+  public AppliedEffect(StatusEffectType type, float duration, float intensity,
+      TroopStats spawnSpecies) {
     this.type = type;
     this.remainingDuration = duration;
     this.intensity = intensity;
+    this.spawnSpecies = spawnSpecies;
+  }
+
+  public AppliedEffect(StatusEffectType type, float duration, float intensity) {
+    this(type, duration, intensity, null);
   }
 
   public void update(float deltaTime) {
@@ -33,6 +42,10 @@ public class AppliedEffect {
 
   public float getRemainingDuration() {
     return remainingDuration;
+  }
+
+  public TroopStats getSpawnSpecies() {
+    return spawnSpecies;
   }
 
   /**

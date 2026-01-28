@@ -1,5 +1,54 @@
 [
   {
+    "id": "mother_witch",
+    "name": "Mother Witch",
+    "description": "Places a curse on enemy troops. When a cursed troop dies, it turns into a building-targeting Cursed Hog that fights for the Mother Witch!",
+    "type": "TROOP",
+    "cost": 4,
+    "units": [
+      {
+        "name": "Mother Witch",
+        "health": 529,
+        "damage": 133,
+        "speed": 60.0,
+        "mass": 6.0,
+        "size": 0.7,
+        "range": 5.5,
+        "sightRange": 6.0,
+        "attackCooldown": 1.1,
+        "firstAttackCooldown": 0.1,
+        "deployTime": 1.0,
+        "targetType": "ALL",
+        "movementType": "GROUND",
+        "projectile": {
+          "name": "VoodooProjectile",
+          "speed": 600,
+          "homing": true,
+          "hitEffects": [
+            {
+              "type": "CURSE",
+              "duration": 5.0,
+              "spawnUnit": {
+                "name": "VoodooHog",
+                "health": 520,
+                "damage": 55,
+                "speed": 120.0,
+                "mass": 2.0,
+                "size": 0.6,
+                "range": 0.5,
+                "attackCooldown": 1.3,
+                "firstAttackCooldown": 0.5,
+                "deployTime": 0.0,
+                "targetType": "BUILDINGS",
+                "movementType": "GROUND"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
     "id": "knight",
     "name": "Knight",
     "description": "A tough melee fighter",
@@ -34,7 +83,7 @@
         "health": 4090,
         "damage": 253,
         "speed": 45.0,
-        "mass": 10.0,
+        "mass": 18.0,
         "size": 1.2,
         "range": 1.2,
         "attackCooldown": 1.5,

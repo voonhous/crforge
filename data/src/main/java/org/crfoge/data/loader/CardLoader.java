@@ -149,10 +149,18 @@ public class CardLoader {
     if (dtos == null) {
       return new ArrayList<>();
     }
-    return dtos.stream().map(dto -> EffectStats.builder()
-        .type(dto.getType())
-        .duration(dto.getDuration())
-        .intensity(dto.getIntensity())
-        .build()).toList();
+    return dtos.stream().map(dto -> {
+      EffectStats.EffectStatsBuilder builder = EffectStats.builder()
+          .type(dto.getType())
+          .duration(dto.getDuration())
+          .intensity(dto.getIntensity());
+
+      // Handle nested unit definition for CURSE effects
+      if (dto.getSpawnUnit() != null) {
+        builder.spawnSpecies(convertUnit(dto.getSpawnUnit()));
+      }
+
+      return builder.build();
+    }).toList();
   }
 }
