@@ -69,7 +69,6 @@ public class SpawnerSystem {
         .firstAttackCooldown(stats.getFirstAttackCooldown())
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
-        .ranged(stats.isRanged())
         .build();
 
     Troop unit = Troop.builder()

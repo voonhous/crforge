@@ -3,12 +3,9 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
-import java.util.List;
-import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
-import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.projectile.Projectile;
@@ -258,7 +255,6 @@ class CombatSystemTest {
                 .range(1.5f)
                 .sightRange(5.5f)
                 .attackCooldown(1.0f)
-                .ranged(false)
                 .build())
         .build();
   }
@@ -276,7 +272,6 @@ class CombatSystemTest {
                 .range(6.0f)
                 .sightRange(6.0f)
                 .attackCooldown(1.0f)
-                .ranged(true)
                 .build())
         .build();
   }
@@ -294,7 +289,6 @@ class CombatSystemTest {
                 .range(1.5f)
                 .sightRange(5.5f)
                 .attackCooldown(1.0f)
-                .ranged(false)
                 .aoeRadius(aoeRadius)
                 .build())
         .build();

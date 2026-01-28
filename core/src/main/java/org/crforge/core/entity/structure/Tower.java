@@ -49,11 +49,10 @@ public class Tower extends Building {
         .combat(
             Combat.builder()
                 .damage(109)
-                .range(7.0f) // Standard range, verified against original
+                .range(7.0f)
                 .sightRange(7.0f)
                 .attackCooldown(1.0f)
                 .firstAttackCooldown(0.0f) // Instant first hit? Usually towers have no extra delay
-                .ranged(true)
                 .build())
         .build();
   }
@@ -74,7 +73,6 @@ public class Tower extends Building {
                 .sightRange(7.5f)
                 .attackCooldown(0.8f)
                 .firstAttackCooldown(0.0f)
-                .ranged(true)
                 .build())
         .build();
   }
@@ -103,7 +101,6 @@ public class Tower extends Building {
       activationTimer = 1.0f;
     }
   }
-
 
 
   @Override

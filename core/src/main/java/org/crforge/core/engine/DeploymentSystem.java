@@ -111,7 +111,6 @@ public class DeploymentSystem {
         .firstAttackCooldown(stats.getFirstAttackCooldown())
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
-        .ranged(stats.isRanged())
         .hitEffects(stats.getHitEffects())
         .projectileStats(stats.getProjectile())
         .build();
@@ -142,7 +141,6 @@ public class DeploymentSystem {
           .attackCooldown(stats.getAttackCooldown())
           .firstAttackCooldown(stats.getFirstAttackCooldown())
           .targetType(stats.getTargetType())
-          .ranged(stats.isRanged())
           .hitEffects(stats.getHitEffects())
           .projectileStats(stats.getProjectile())
           .build();

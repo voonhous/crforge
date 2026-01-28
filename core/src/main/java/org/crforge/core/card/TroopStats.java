@@ -42,8 +42,6 @@ public class TroopStats {
   @Builder.Default
   private final TargetType targetType = TargetType.ALL;
   @Builder.Default
-  private final boolean ranged = false;
-  @Builder.Default
   private final float deployTime = DEFAULT_DEPLOY_TIME;
   @Builder.Default
   private final float offsetX = 0f;
@@ -53,4 +51,8 @@ public class TroopStats {
   private final List<EffectStats> hitEffects = new ArrayList<>();
 
   private final ProjectileStats projectile;
+
+  public boolean isRanged() {
+    return range >= 2.0f;
+  }
 }
