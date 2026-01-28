@@ -9,6 +9,7 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
@@ -121,8 +122,9 @@ public class CombatSystem {
         dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius(),
             combat.getHitEffects());
       } else {
-        dealDamage(target, combat.getDamage());
+        // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
         applyEffects(target, combat.getHitEffects());
+        dealDamage(target, combat.getDamage());
       }
     }
 
@@ -161,8 +163,9 @@ public class CombatSystem {
           projectile.getAoeRadius(),
           projectile.getEffects());
     } else {
-      dealDamage(projectile.getTarget(), projectile.getDamage());
+      // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
       applyEffects(projectile.getTarget(), projectile.getEffects());
+      dealDamage(projectile.getTarget(), projectile.getDamage());
     }
   }
 
@@ -179,6 +182,12 @@ public class CombatSystem {
     }
 
     for (EffectStats stats : effects) {
+      // Buildings (MovementType.BUILDING) cannot be Cursed
+      if (stats.getType() == StatusEffectType.CURSE
+          && target.getMovementType() == MovementType.BUILDING) {
+        continue;
+      }
+
       // Pass spawnSpecies (if any) to the AppliedEffect
       AppliedEffect effect = new AppliedEffect(
           stats.getType(),
@@ -223,8 +232,9 @@ public class CombatSystem {
       // Check if within AOE radius (accounting for entity size)
       float effectiveRadius = radius + entity.getSize() / 2f;
       if (distance <= effectiveRadius) {
-        dealDamage(entity, damage);
+        // Apply effects BEFORE damage
         applyEffects(entity, effects);
+        dealDamage(entity, damage);
       }
     }
   }
@@ -251,8 +261,9 @@ public class CombatSystem {
 
       float effectiveRadius = radius + entity.getSize() / 2f;
       if (distance <= effectiveRadius) {
-        dealDamage(entity, damage);
+        // Apply effects BEFORE damage
         applyEffects(entity, effects);
+        dealDamage(entity, damage);
       }
     }
   }
