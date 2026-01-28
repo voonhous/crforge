@@ -84,7 +84,7 @@ public class DebugGameScreen implements Screen {
 
     // Create test decks with available cards
     List<Card> blueCards = List.of(
-        CardRegistry.get("knight"),
+        CardRegistry.get("barbarians"),
         CardRegistry.get("musketeer"),
         CardRegistry.get("giant"),
         CardRegistry.get("archers"),
