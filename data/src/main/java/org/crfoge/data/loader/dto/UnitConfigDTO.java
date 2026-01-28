@@ -1,11 +1,13 @@
 package org.crfoge.data.loader.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import lombok.Data;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UnitConfigDTO {
 
   private String name;
@@ -21,7 +23,7 @@ public class UnitConfigDTO {
   private MovementType movementType;
   private TargetType targetType;
   private boolean ranged;
-  private float deployTime;
+  private Float deployTime;
   private float offsetX;
   private float offsetY;
   private List<EffectConfigDTO> hitEffects;

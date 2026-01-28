@@ -1,5 +1,7 @@
 package org.crforge.core.entity.structure;
 
+import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -24,16 +26,22 @@ public class Building extends AbstractEntity {
   @Builder.Default
   private float decayAccumulator = 0f;
 
+  // Added deploy fields
+  @Builder.Default
+  private final float deployTime = DEFAULT_DEPLOY_TIME;
+
+  @Builder.Default
+  private float deployTimer = 1.0f;
+
   @Override
   public EntityType getEntityType() {
     return EntityType.BUILDING;
   }
 
-  // Need to sync remainingLifetime with lifetime on build or spawn
-  // AbstractEntity constructor runs before this logic in manual code,
-  // but with SuperBuilder we might need to set remainingLifetime explicitly in DeploymentSystem
-  // or use an initializer block if we can.
-  // For simplicity, we'll initialize it in onSpawn or assume the builder sets it.
+  // Used for testing
+  public boolean isDeploying() {
+    return deployTimer > 0;
+  }
 
   public boolean hasLifetime() {
     return lifetime > 0;
@@ -49,11 +57,30 @@ public class Building extends AbstractEntity {
     if (remainingLifetime == 0 && lifetime > 0) {
       remainingLifetime = lifetime;
     }
+    // Sync deploy timer with deploy time if not manually set
+    if (deployTimer == 0 && deployTime > 0) {
+      deployTimer = deployTime;
+    }
+    if (deployTime <= 0) {
+      deployTimer = 0;
+      spawned = true; // Instant spawn
+    }
   }
 
   @Override
   public void update(float deltaTime) {
     if (dead) {
+      return;
+    }
+
+    // Handle deploy timer
+    // While deploying, buildings are targetable but do not decay or attack
+    if (deployTimer > 0) {
+      deployTimer -= deltaTime;
+      if (deployTimer <= 0) {
+        deployTimer = 0;
+        spawned = true;
+      }
       return;
     }
 

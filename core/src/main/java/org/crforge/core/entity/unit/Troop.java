@@ -1,5 +1,7 @@
 package org.crforge.core.entity.unit;
 
+import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -16,7 +18,7 @@ public class Troop extends AbstractEntity {
   private final Combat combat = Combat.builder().build();
 
   @Builder.Default
-  private final float deployTime = 1.0f;
+  private final float deployTime = DEFAULT_DEPLOY_TIME;
 
   @Builder.Default
   private float deployTimer = 1.0f;

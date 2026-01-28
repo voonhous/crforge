@@ -1,5 +1,7 @@
 package org.crfoge.data.loader;
 
+import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -88,7 +90,7 @@ public class CardLoader {
         .movementType(dto.getMovementType())
         .targetType(dto.getTargetType())
         .ranged(dto.isRanged())
-        .deployTime(dto.getDeployTime() > 0 ? dto.getDeployTime() : 1.0f)
+        .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
         .offsetX(dto.getOffsetX())
         .offsetY(dto.getOffsetY())
         .hitEffects(convertEffects(dto.getHitEffects()));
