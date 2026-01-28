@@ -34,6 +34,8 @@ public class TroopStats {
   @Builder.Default
   private final float attackCooldown = 1.0f;
   @Builder.Default
+  private final float firstAttackCooldown = 0f;
+  @Builder.Default
   private final float aoeRadius = 0f;
   @Builder.Default
   private final MovementType movementType = MovementType.GROUND;
