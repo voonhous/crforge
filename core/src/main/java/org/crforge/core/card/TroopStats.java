@@ -14,6 +14,8 @@ import org.crforge.core.entity.base.TargetType;
 @Builder
 public class TroopStats {
 
+  public static final Float DEFAULT_DEPLOY_TIME = 1.0f;
+
   private final String name;
   @Builder.Default
   private final int health = 100;
@@ -40,7 +42,7 @@ public class TroopStats {
   @Builder.Default
   private final boolean ranged = false;
   @Builder.Default
-  private final float deployTime = 1.0f;
+  private final float deployTime = DEFAULT_DEPLOY_TIME;
   @Builder.Default
   private final float offsetX = 0f;
   @Builder.Default

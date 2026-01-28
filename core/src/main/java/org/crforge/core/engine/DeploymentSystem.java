@@ -115,6 +115,7 @@ public class DeploymentSystem {
         .projectileStats(stats.getProjectile())
         .build();
 
+    // Explicitly set deployTimer to deployTime to avoid default value issues
     return Troop.builder()
         .name(stats.getName())
         .team(team)
@@ -124,6 +125,7 @@ public class DeploymentSystem {
             stats.getMovementType()))
         .combat(combat)
         .deployTime(stats.getDeployTime())
+        .deployTimer(stats.getDeployTime()) // Explicitly set timer
         .spawner(spawner)
         .build();
   }
@@ -145,6 +147,7 @@ public class DeploymentSystem {
     }
 
     float size = stats != null ? stats.getSize() : 2.0f;
+    float deployTime = stats != null ? stats.getDeployTime() : 1.0f;
 
     // Create Spawner Component if needed
     SpawnerComponent spawner = null;
@@ -171,6 +174,8 @@ public class DeploymentSystem {
         .lifetime(card.getBuildingLifetime())
         .remainingLifetime(card.getBuildingLifetime())
         .spawner(spawner)
+        .deployTime(deployTime)
+        .deployTimer(deployTime) // Explicitly set timer to match time
         .build();
 
     state.spawnEntity(building);
