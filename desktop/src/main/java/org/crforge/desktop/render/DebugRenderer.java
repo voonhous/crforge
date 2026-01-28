@@ -320,10 +320,16 @@ public class DebugRenderer {
       if (card.getTroops() != null) {
         for (TroopStats stats : card.getTroops()) {
           // Calculate ghost position relative to deployment center
-          float offsetX = stats.getOffsetX() * TILE_PIXELS;
-          float offsetY = stats.getOffsetY() * TILE_PIXELS;
-          float ghostX = centerX + offsetX;
-          float ghostY = centerY + offsetY;
+          float offsetX = stats.getOffsetX();
+          float offsetY = stats.getOffsetY();
+
+          if (team == Team.RED) {
+            offsetX = -offsetX;
+            offsetY = -offsetY;
+          }
+
+          float ghostX = centerX + (offsetX * TILE_PIXELS);
+          float ghostY = centerY + (offsetY * TILE_PIXELS);
           float radius = (stats.getSize() * TILE_PIXELS) / 2f;
 
           // Ensure ghost color is set for each circle

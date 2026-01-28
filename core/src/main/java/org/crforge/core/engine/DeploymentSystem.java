@@ -14,7 +14,6 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
@@ -104,10 +103,25 @@ public class DeploymentSystem {
     }
   }
 
+  /**
+   * The Red player's view is rotated 180 degrees relative to the Blue player's view.
+   * <p>
+   * This means that a formation defined with offsets (dx, dy) for Blue (where +y is forward and +x
+   * is right) should be applied as (-dx, -dy) for Red to preserve the formation's relative shape
+   * and orientation towards the enemy.
+   */
   private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
       SpawnerComponent spawner) {
-    float spawnX = baseX + stats.getOffsetX();
-    float spawnY = baseY + stats.getOffsetY();
+    float offsetX = stats.getOffsetX();
+    float offsetY = stats.getOffsetY();
+
+    if (team == Team.RED) {
+      offsetX = -offsetX;
+      offsetY = -offsetY;
+    }
+
+    float spawnX = baseX + offsetX;
+    float spawnY = baseY + offsetY;
 
     Combat combat = Combat.builder()
         .damage(stats.getDamage())
