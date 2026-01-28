@@ -138,8 +138,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": 0,
-        "offsetY": 1
+        "offsetX": 0.0,
+        "offsetY": 0.7
       },
       {
         "name": "Barbarian",
@@ -154,8 +154,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": -0.951,
-        "offsetY": 0.309
+        "offsetX": -0.666,
+        "offsetY": 0.216
       },
       {
         "name": "Barbarian",
@@ -170,8 +170,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": -0.588,
-        "offsetY": -0.809
+        "offsetX": -0.411,
+        "offsetY": -0.566
       },
       {
         "name": "Barbarian",
@@ -186,8 +186,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": 0.588,
-        "offsetY": -0.809
+        "offsetX": 0.411,
+        "offsetY": -0.566
       },
       {
         "name": "Barbarian",
@@ -202,8 +202,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": 0.951,
-        "offsetY": 0.309
+        "offsetX": 0.666,
+        "offsetY": 0.216
       }
     ]
   },
