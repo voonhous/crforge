@@ -30,8 +30,6 @@ public class Combat {
   @Builder.Default
   private final TargetType targetType = TargetType.ALL;
   @Builder.Default
-  private final boolean ranged = false;
-  @Builder.Default
   private final float loadTime = 0; // Standard windup for attacks
 
   @Builder.Default
@@ -58,6 +56,13 @@ public class Combat {
   // Track if we are currently in the middle of an attack sequence (winding up)
   @Builder.Default
   private boolean isAttacking = false;
+
+  /**
+   * Returns true if the unit is considered ranged (Range >= 2.0 tiles).
+   */
+  public boolean isRanged() {
+    return range >= 2.0f;
+  }
 
   public boolean hasTarget() {
     return currentTarget != null && currentTarget.isAlive();
@@ -108,8 +113,8 @@ public class Combat {
   }
 
   /**
-   * Resets the attack animation/load time. Used for Stun (Zap) mechanics.
-   * Unlike Freeze (which pauses), Stun forces the unit to restart their attack windup.
+   * Resets the attack animation/load time. Used for Stun (Zap) mechanics. Unlike Freeze (which
+   * pauses), Stun forces the unit to restart their attack windup.
    */
   public void resetAttackState() {
     this.currentLoadTime = 0;

@@ -91,7 +91,6 @@ public class CardLoader {
         .aoeRadius(dto.getAoeRadius())
         .movementType(dto.getMovementType())
         .targetType(dto.getTargetType())
-        .ranged(dto.isRanged())
         .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
         .offsetX(dto.getOffsetX())
         .offsetY(dto.getOffsetY())

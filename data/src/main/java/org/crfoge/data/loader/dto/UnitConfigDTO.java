@@ -23,7 +23,6 @@ public class UnitConfigDTO {
   private float aoeRadius;
   private MovementType movementType;
   private TargetType targetType;
-  private boolean ranged;
   private Float deployTime;
   private float offsetX;
   private float offsetY;
