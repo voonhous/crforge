@@ -27,4 +27,9 @@ public class EffectStats {
    */
   @Builder.Default
   private final float intensity = 0f;
+
+  /**
+   * For CURSE effects: Defines the unit that spawns when the cursed entity dies.
+   */
+  private final TroopStats spawnSpecies;
 }

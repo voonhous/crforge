@@ -93,6 +93,14 @@ public abstract class AbstractEntity implements Entity {
 
   @Override
   public void addEffect(AppliedEffect effect) {
+    // Prevent stacking of effects of the same type.
+    // Instead, refresh the duration of the existing effect.
+    for (AppliedEffect existing : appliedEffects) {
+      if (existing.getType() == effect.getType()) {
+        existing.refresh(effect.getRemainingDuration());
+        return;
+      }
+    }
     appliedEffects.add(effect);
   }
 }

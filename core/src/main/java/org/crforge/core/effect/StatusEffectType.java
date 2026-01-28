@@ -43,5 +43,10 @@ public enum StatusEffectType {
   /**
    * Increases damage taken by the entity.
    */
-  VULNERABILITY
+  VULNERABILITY,
+
+  /**
+   * Entities that die while cursed spawn a specific unit (e.g. Cursed Hog) for the opponent.
+   */
+  CURSE
 }

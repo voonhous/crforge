@@ -179,8 +179,13 @@ public class CombatSystem {
     }
 
     for (EffectStats stats : effects) {
-      AppliedEffect effect = new AppliedEffect(stats.getType(), stats.getDuration(),
-          stats.getIntensity());
+      // Pass spawnSpecies (if any) to the AppliedEffect
+      AppliedEffect effect = new AppliedEffect(
+          stats.getType(),
+          stats.getDuration(),
+          stats.getIntensity(),
+          stats.getSpawnSpecies()
+      );
       target.addEffect(effect);
 
       // Handle Stun Reset Logic (Reset attack windup/charge)
