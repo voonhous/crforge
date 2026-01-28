@@ -50,9 +50,21 @@ public class TroopStats {
   @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
 
+  // Spawn Mechanics (Enter the Arena effects)
+  @Builder.Default
+  private final int spawnDamage = 0;
+  @Builder.Default
+  private final float spawnRadius = 0f;
+  @Builder.Default
+  private final List<EffectStats> spawnEffects = new ArrayList<>();
+
   private final ProjectileStats projectile;
 
   public boolean isRanged() {
     return range >= 2.0f;
+  }
+
+  public boolean hasSpawnEffect() {
+    return spawnDamage > 0 || !spawnEffects.isEmpty();
   }
 }

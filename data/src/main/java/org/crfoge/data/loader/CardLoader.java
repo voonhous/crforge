@@ -46,7 +46,7 @@ public class CardLoader {
         .deathSpawnCount(dto.getDeathSpawnCount());
 
     if (dto.getProjectile() != null) {
-      builder.projectile(convertProjectile(dto.getProjectile()));
+      builder.projectile(convertProjectile(dto.getProjectile(), 0)); // Spells use DTO damage
     }
 
     if (dto.getUnits() != null) {
@@ -68,7 +68,11 @@ public class CardLoader {
     Objects.requireNonNull(dto.getMovementType(),
         "MovementType is required for unit: " + dto.getName());
 
-    if (dto.getDamage() > 0) {
+    // Validation: Require TargetType if the unit has ANY attack capability
+    // This includes: base damage, a projectile, or even spawn damage (though rare to have ONLY spawn damage)
+    boolean hasAttackCapability = dto.getDamage() > 0 || dto.getProjectile() != null;
+
+    if (hasAttackCapability) {
       Objects.requireNonNull(dto.getTargetType(),
           "TargetType is required for attacking unit: " + dto.getName());
     }
@@ -84,7 +88,7 @@ public class CardLoader {
         .mass(dto.getMass())
         .size(dto.getSize())
         .range(dto.getRange())
-        .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f) // Default
+        .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
         .attackCooldown(dto.getAttackCooldown())
         .firstAttackCooldown(
             dto.getFirstAttackCooldown() != null ? dto.getFirstAttackCooldown() : 0f)
@@ -94,24 +98,46 @@ public class CardLoader {
         .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
         .offsetX(dto.getOffsetX())
         .offsetY(dto.getOffsetY())
-        .hitEffects(convertEffects(dto.getHitEffects()));
+        .hitEffects(convertEffects(dto.getHitEffects()))
+        // Spawn Mechanics
+        .spawnDamage(dto.getSpawnDamage())
+        .spawnRadius(dto.getSpawnRadius())
+        .spawnEffects(convertEffects(dto.getSpawnEffects()));
 
     if (dto.getProjectile() != null) {
-      builder.projectile(convertProjectile(dto.getProjectile()));
+      // Logic for Projectile Damage on Troops:
+      // We prioritize the projectile's explicit damage if it is set (> 0).
+      // Only if the projectile has 0 damage do we fallback to the unit's damage.
+      // This allows units like Ice Wizard to define 0 unit damage but have a projectile with damage,
+      // or Firecracker to have distinct unit stats vs projectile stats.
+      int damageSource = dto.getProjectile().getDamage() > 0
+          ? dto.getProjectile().getDamage()
+          : dto.getDamage();
+
+      builder.projectile(convertProjectile(dto.getProjectile(), damageSource));
     }
 
     return builder.build();
   }
 
-  private static ProjectileStats convertProjectile(ProjectileConfigDTO dto) {
+  /**
+   * Converts Projectile DTO.
+   *
+   * @param dto            The config DTO
+   * @param fallbackDamage Used if the DTO has 0 damage.
+   */
+  private static ProjectileStats convertProjectile(ProjectileConfigDTO dto, int fallbackDamage) {
     if (dto == null) {
       return null;
     }
 
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
+    // Use DTO damage if available, otherwise use fallback
+    int effectiveDamage = dto.getDamage() > 0 ? dto.getDamage() : fallbackDamage;
+
     return ProjectileStats.builder()
         .name(dto.getName())
-        .damage(dto.getDamage())
+        .damage(effectiveDamage)
         .speed(effectiveSpeed)
         .radius(dto.getRadius())
         .homing(dto.getHoming() != null ? dto.getHoming() : true)
