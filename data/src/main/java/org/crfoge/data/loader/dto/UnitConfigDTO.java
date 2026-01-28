@@ -29,6 +29,11 @@ public class UnitConfigDTO {
   private List<EffectConfigDTO> hitEffects;
   private ProjectileConfigDTO projectile;
 
+  // Spawn Mechanics
+  private int spawnDamage;
+  private float spawnRadius;
+  private List<EffectConfigDTO> spawnEffects;
+
   // Configuration convenience
   private int count = 1; // Default to 1 unit
 }

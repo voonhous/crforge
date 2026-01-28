@@ -14,6 +14,7 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
+import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
@@ -95,6 +96,11 @@ public class DeploymentSystem {
 
       Troop troop = createTroop(team, stats, x, y, spawner);
       state.spawnEntity(troop);
+
+      // Handle Spawn Effects
+      if (stats.hasSpawnEffect()) {
+        triggerSpawnEffect(team, stats, troop.getPosition().getX(), troop.getPosition().getY());
+      }
     }
   }
 
@@ -179,6 +185,11 @@ public class DeploymentSystem {
         .build();
 
     state.spawnEntity(building);
+
+    // Buildings can have spawn effects too (e.g. Tesla hiding?) - though not in standard CR
+    if (stats != null && stats.hasSpawnEffect()) {
+      triggerSpawnEffect(team, stats, x, y);
+    }
   }
 
   private void castSpell(Team team, Card card, float x, float y) {
@@ -201,6 +212,20 @@ public class DeploymentSystem {
       // Instant spell
       combatSystem.applySpellDamage(team, x, y, damage, radius, effects);
     }
+  }
+
+  /**
+   * Applies spawn effects immediately at the spawn location.
+   */
+  private void triggerSpawnEffect(Team team, TroopStats stats, float x, float y) {
+    combatSystem.applySpellDamage(
+        team,
+        x,
+        y,
+        stats.getSpawnDamage(),
+        stats.getSpawnRadius(),
+        stats.getSpawnEffects()
+    );
   }
 
   // Simple container for the queue

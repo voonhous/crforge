@@ -430,6 +430,15 @@
         "deployTime": 1.0,
         "targetType": "ALL",
         "movementType": "GROUND",
+        "spawnDamage": 84,
+        "spawnRadius": 3.0,
+        "spawnEffects": [
+          {
+            "type": "SLOW",
+            "duration": 1.0,
+            "intensity": 0.3
+          }
+        ],
         "projectile": {
           "name": "ice_wizardProjectile",
           "damage": 89,

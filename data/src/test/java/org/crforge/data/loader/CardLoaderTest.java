@@ -274,4 +274,134 @@ class CardLoaderTest {
     assertThat(proj.getSpeed()).isCloseTo(10.0f, within(0.01f));
     assertThat(proj.isHoming()).isTrue();
   }
+
+  @Test
+  void loadCards_shouldPrioritizeProjectileDamage() {
+    // Scenario 1: Unit has damage, Projectile has damage -> Use Projectile damage (e.g. Ice Wizard/Firecracker specific logic)
+    // Scenario 2: Unit has damage, Projectile has 0 -> Inherit Unit damage (e.g. Musketeer)
+    String json = """
+        [
+          {
+            "id": "firecracker",
+            "name": "Firecracker",
+            "type": "TROOP",
+            "cost": 3,
+            "units": [
+              {
+                "name": "Firecracker",
+                "damage": 50,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "projectile": {
+                  "name": "Rocket",
+                  "damage": 100,
+                  "speed": 600
+                }
+              }
+            ]
+          },
+          {
+            "id": "musketeer",
+            "name": "Musketeer",
+            "type": "TROOP",
+            "cost": 4,
+            "units": [
+              {
+                "name": "Musketeer",
+                "damage": 200,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "projectile": {
+                  "name": "Bullet",
+                  "damage": 0,
+                  "speed": 600
+                }
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(2);
+
+    // Firecracker: Projectile damage (100) should override unit damage (50) for the projectile
+    Card firecracker = cards.get(0);
+    TroopStats fcStats = firecracker.getTroops().get(0);
+    assertThat(fcStats.getDamage()).isEqualTo(50); // Unit damage remains
+    assertThat(fcStats.getProjectile().getDamage()).isEqualTo(100); // Projectile uses its own
+
+    // Musketeer: Projectile damage (0) should inherit unit damage (200)
+    Card musketeer = cards.get(1);
+    TroopStats mStats = musketeer.getTroops().get(0);
+    assertThat(mStats.getDamage()).isEqualTo(200);
+    assertThat(mStats.getProjectile().getDamage()).isEqualTo(200);
+  }
+
+  @Test
+  void loadCards_shouldParseIceWizardSpawnStats() {
+    String json = """
+        [
+          {
+            "id": "ice_wizard",
+            "name": "Ice Wizard",
+            "type": "TROOP",
+            "cost": 3,
+            "units": [
+              {
+                "name": "Ice Wizard",
+                "damage": 89,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "spawnDamage": 84,
+                "spawnRadius": 1.0,
+                "spawnEffects": [
+                  {
+                    "type": "SLOW",
+                    "duration": 1.0,
+                    "intensity": 0.3
+                  }
+                ],
+                "projectile": {
+                    "name": "ice_wizardProjectile",
+                    "damage": 89,
+                    "speed": 700,
+                    "radius": 1.5,
+                    "homing": true,
+                    "hitEffects": [
+                      {
+                        "type": "SLOW",
+                        "duration": 2.5,
+                        "intensity": 0.3
+                      }
+                    ]
+                }
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    TroopStats stats = cards.get(0).getTroops().get(0);
+
+    // Verify Spawn Damage
+    assertThat(stats.getSpawnDamage()).isEqualTo(84);
+    assertThat(stats.getSpawnRadius()).isCloseTo(1.0f, within(0.01f));
+
+    // Verify Spawn Effects
+    assertThat(stats.getSpawnEffects()).hasSize(1);
+    assertThat(stats.getSpawnEffects().get(0).getType()).isEqualTo(StatusEffectType.SLOW);
+    assertThat(stats.getSpawnEffects().get(0).getDuration()).isCloseTo(1.0f, within(0.01f));
+    assertThat(stats.getSpawnEffects().get(0).getIntensity()).isCloseTo(0.3f, within(0.01f));
+
+    // Verify Projectile Inheritance (Damage 89 from Unit)
+    assertThat(stats.getProjectile()).isNotNull();
+    assertThat(stats.getProjectile().getDamage()).isEqualTo(89);
+  }
 }
