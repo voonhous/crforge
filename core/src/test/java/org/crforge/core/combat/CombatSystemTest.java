@@ -3,12 +3,20 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.List;
+import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
+import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
@@ -240,6 +248,76 @@ class CombatSystemTest {
 
     // Enemy should have taken damage from the position-targeted projectile
     assertThat(enemy.getHealth().getCurrent()).isLessThan(100);
+  }
+
+  @Test
+  void curseShouldApplyBeforeLethalDamage() {
+    // 1. Create a unit with 10 HP
+    Troop victim = createMeleeTroop(Team.RED, 10f, 10f, 0);
+    victim.getHealth().takeDamage(90); // Set current HP to 10
+
+    // 2. Create a Projectile that deals 20 damage (Lethal) AND applies Curse
+    TroopStats hogStats = TroopStats.builder().name("Cursed Hog").build();
+    List<EffectStats> effects = List.of(
+        EffectStats.builder().type(StatusEffectType.CURSE).duration(5f).spawnSpecies(hogStats)
+            .build()
+    );
+
+    // Create projectile targeting victim
+    // We mock the source/target interaction by creating a manual projectile or calling onHit
+    Projectile projectile = new Projectile(createMeleeTroop(Team.BLUE, 0, 0, 0), victim, 20, 0, 10f,
+        effects);
+
+    // 3. Add to game state so update logic works (although we check effects on victim directly)
+    gameState.spawnEntity(victim);
+    gameState.processPending();
+
+    // 4. Manually trigger hit logic for test precision (bypassing movement update)
+    // Or better, let's let the system update naturally.
+    gameState.spawnProjectile(projectile);
+
+    // Move projectile to target immediately
+    projectile.getPosition().set(10f, 10f); // Snap to target
+
+    // Run combat update
+    combatSystem.update(1.0f); // Should detect hit
+
+    // 5. Verify Victim is Dead
+    assertThat(victim.getHealth().isDead()).isTrue();
+
+    // 6. Verify Curse Effect was applied despite death
+    // Note: In a real tick, SpawnerSystem would process this. Here we just check the list.
+    List<AppliedEffect> appliedEffects = victim.getAppliedEffects();
+    assertThat(appliedEffects).hasSize(1);
+    assertThat(appliedEffects.get(0).getType()).isEqualTo(StatusEffectType.CURSE);
+  }
+
+  @Test
+  void curseShouldNotApplyToBuildings() {
+    // 1. Create a Building
+    Building tombstone = Building.builder()
+        .name("Tombstone")
+        .team(Team.RED)
+        .position(new Position(10f, 10f))
+        .health(new Health(500))
+        .movement(new Movement(0, 0, 1, MovementType.BUILDING))
+        .build();
+
+    gameState.spawnEntity(tombstone);
+    gameState.processPending();
+
+    // 2. Apply Curse via Spell Damage (simulating Mother Witch hit or Curse spell)
+    List<EffectStats> effects = List.of(
+        EffectStats.builder().type(StatusEffectType.CURSE).duration(5f).build()
+    );
+
+    combatSystem.applySpellDamage(Team.BLUE, 10f, 10f, 50, 2.0f, effects);
+
+    // 3. Verify Damage Taken
+    assertThat(tombstone.getHealth().getCurrent()).isEqualTo(450);
+
+    // 4. Verify No Effect Applied
+    assertThat(tombstone.getAppliedEffects()).isEmpty();
   }
 
   private Troop createMeleeTroop(Team team, float x, float y, int damage) {
