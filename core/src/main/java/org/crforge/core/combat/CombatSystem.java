@@ -66,6 +66,11 @@ public class CombatSystem {
 
     // Check if in attack range
     if (!isInAttackRange(entity, target, combat)) {
+      // If out of range, cancel any ongoing attack
+      if (combat.isAttacking()) {
+        combat.setAttacking(false);
+        combat.setCurrentLoadTime(0);
+      }
       return;
     }
 
@@ -74,9 +79,14 @@ public class CombatSystem {
       return;
     }
 
-    // Start attack if not already loading
-    if (!combat.isLoading()) {
-      combat.startAttack();
+    // Start attack if not already loading/attacking
+    if (!combat.isAttacking()) {
+      // Determine windup time
+      float windup = combat.isFirstAttackOnTarget()
+          ? combat.getFirstAttackCooldown()
+          : combat.getLoadTime();
+
+      combat.startAttack(windup);
     }
 
     // Check if load time complete

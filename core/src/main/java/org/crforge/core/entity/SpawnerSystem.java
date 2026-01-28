@@ -66,6 +66,7 @@ public class SpawnerSystem {
         .range(stats.getRange())
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
+        .firstAttackCooldown(stats.getFirstAttackCooldown())
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
         .ranged(stats.isRanged())

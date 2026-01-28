@@ -15,6 +15,7 @@
         "size": 0.8,
         "range": 0.7,
         "attackCooldown": 1.2,
+        "firstAttackCooldown": 0.5,
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND"
