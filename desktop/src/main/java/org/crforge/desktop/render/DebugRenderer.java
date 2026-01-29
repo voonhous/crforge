@@ -53,6 +53,8 @@ public class DebugRenderer {
   private static final Color COLOR_GROUND = new Color(0.3f, 0.5f, 0.3f, 1f);
   private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f,
       1f); // Dark gray for banned tiles
+  private static final Color COLOR_TOWER = new Color(1.0f, 1.0f, 0.0f, 0.5f); // Yellow for towers
+
   private static final Color COLOR_GRID = new Color(0f, 0f, 0f, 0.2f);
   private static final Color COLOR_HOVER_INVALID = new Color(1f, 0.3f, 0.3f,
       0.3f); // Reddish for invalid
@@ -233,6 +235,7 @@ public class DebugRenderer {
       case BRIDGE -> COLOR_BRIDGE;
       case GROUND -> COLOR_GROUND;
       case BANNED -> COLOR_BANNED;
+      case TOWER -> COLOR_TOWER;
     };
   }
 
