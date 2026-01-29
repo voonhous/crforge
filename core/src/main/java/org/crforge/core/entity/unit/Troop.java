@@ -41,7 +41,8 @@ public class Troop extends AbstractEntity {
       return false;
     }
     float distance = position.distanceTo(currentTarget.getPosition());
-    float effectiveRange = combat.getRange() + (getSize() + currentTarget.getSize()) / 2f;
+    // Collision Radius used for attack range calculation
+    float effectiveRange = combat.getRange() + getCollisionRadius() + currentTarget.getCollisionRadius();
     return distance <= effectiveRange;
   }
 

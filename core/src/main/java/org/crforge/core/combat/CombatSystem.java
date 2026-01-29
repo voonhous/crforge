@@ -101,7 +101,8 @@ public class CombatSystem {
 
   private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
     float distance = attacker.getPosition().distanceTo(target.getPosition());
-    float effectiveRange = combat.getRange() + (attacker.getSize() + target.getSize()) / 2f;
+    // Updated to use Collision Radius
+    float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
     return distance <= effectiveRange;
   }
 
@@ -229,8 +230,8 @@ public class CombatSystem {
       float dy = entity.getPosition().getY() - centerY;
       float distance = (float) Math.sqrt(dx * dx + dy * dy);
 
-      // Check if within AOE radius (accounting for entity size)
-      float effectiveRadius = radius + entity.getSize() / 2f;
+      // Use Collision Radius for AOE check
+      float effectiveRadius = radius + entity.getCollisionRadius();
       if (distance <= effectiveRadius) {
         // Apply effects BEFORE damage
         applyEffects(entity, effects);
@@ -259,7 +260,8 @@ public class CombatSystem {
       float dy = entity.getPosition().getY() - centerY;
       float distance = (float) Math.sqrt(dx * dx + dy * dy);
 
-      float effectiveRadius = radius + entity.getSize() / 2f;
+      // Use Collision Radius for spell AOE check
+      float effectiveRadius = radius + entity.getCollisionRadius();
       if (distance <= effectiveRadius) {
         // Apply effects BEFORE damage
         applyEffects(entity, effects);
@@ -289,7 +291,8 @@ public class CombatSystem {
     }
 
     float distance = attacker.getPosition().distanceTo(target.getPosition());
-    float effectiveRange = combat.getRange() + (attacker.getSize() + target.getSize()) / 2f;
+    // Updated to use Collision Radius
+    float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
 
     return distance <= effectiveRange;
   }

@@ -34,7 +34,7 @@ class SlidingPhysicsTest {
   @Test
   void testTroopCollidingWithBuilding_ShouldSlide() {
     // Building at (10, 10) with size 3.0 (Radius 1.5)
-    Building building = createBuilding("Building", 10f, 10f, 3.0f);
+    Building building = createBuilding("Building", 10f, 10f, 1.5f);
 
     // Troop at (9, 9) moving North-East towards building center
     Troop troop = createTroop("Troop", 9f, 9f);
@@ -54,7 +54,7 @@ class SlidingPhysicsTest {
 
   @Test
   void testSliding_GlancingBlow() {
-    Building building = createBuilding("Building", 10f, 20f, 3.0f);
+    Building building = createBuilding("Building", 10f, 20f, 1.5f);
     Troop troop = createTroop("Slider", 8.8f, 18.8f);
 
     // Intent: Move mostly UP (80 degrees)
@@ -79,19 +79,19 @@ class SlidingPhysicsTest {
         .name(name)
         .team(Team.BLUE)
         .position(new Position(x, y))
-        .movement(new Movement(5.0f, 1.0f, 1.0f, MovementType.GROUND))
+        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
         .deployTime(0f)
         .build();
     troop.onSpawn();
     return troop;
   }
 
-  private Building createBuilding(String name, float x, float y, float size) {
+  private Building createBuilding(String name, float x, float y, float radius) {
     Building building = Building.builder()
         .name(name)
         .team(Team.RED)
         .position(new Position(x, y))
-        .movement(new Movement(0, 0, size, MovementType.BUILDING))
+        .movement(new Movement(0, 0, radius, radius * 1.5f, MovementType.BUILDING))
         .build();
     building.onSpawn();
     return building;

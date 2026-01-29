@@ -34,6 +34,7 @@ class TargetingSystemTest {
             .team(team)
             .position(new Position(x, y))
             .deployTime(0)
+            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
             .combat(Combat.builder().sightRange(5.5f).range(1.0f).build())
             .build();
     troop.onSpawn();
@@ -84,7 +85,7 @@ class TargetingSystemTest {
             .team(Team.BLUE)
             .position(new Position(10, 10))
             .deployTime(0)
-            .movement(new Movement(0, 0, 1, MovementType.GROUND))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
             .combat(Combat.builder().sightRange(5.5f).targetType(TargetType.GROUND).build())
             .build();
     groundAttacker.onSpawn();
@@ -95,7 +96,7 @@ class TargetingSystemTest {
             .team(Team.RED)
             .position(new Position(12, 10))
             .deployTime(0)
-            .movement(new Movement(0, 0, 1, MovementType.AIR))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.AIR))
             .build();
     airEnemy.onSpawn();
 
@@ -113,7 +114,7 @@ class TargetingSystemTest {
             .team(Team.BLUE)
             .position(new Position(10, 10))
             .deployTime(0)
-            .movement(new Movement(0, 0, 1, MovementType.AIR))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.AIR))
             .combat(Combat.builder().sightRange(5.5f).targetType(TargetType.AIR).build())
             .build();
     airAttacker.onSpawn();
@@ -124,7 +125,7 @@ class TargetingSystemTest {
             .team(Team.RED)
             .position(new Position(12, 10))
             .deployTime(0)
-            .movement(new Movement(0, 0, 1, MovementType.AIR))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.AIR))
             .build();
     airEnemy.onSpawn();
 
@@ -186,7 +187,7 @@ class TargetingSystemTest {
         .team(Team.BLUE)
         .position(new Position(10, 10))
         .deployTime(0)
-        .movement(new Movement(0, 0, 1, MovementType.GROUND))
+        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
         .combat(Combat.builder()
             .sightRange(5.5f)
             .targetType(knightStats.getTargetType()) // Use actual stat
@@ -199,7 +200,7 @@ class TargetingSystemTest {
         .team(Team.RED)
         .position(new Position(12, 10))
         .deployTime(0)
-        .movement(new Movement(0, 0, 1, dragonStats.getMovementType())) // Use actual stat
+        .movement(new Movement(0, 0, 0.5f, 0.5f, dragonStats.getMovementType())) // Use actual stat
         .build();
     dragon.onSpawn();
 

@@ -34,7 +34,7 @@ public abstract class AbstractEntity implements Entity {
   protected final Health health = new Health(100);
 
   @Builder.Default
-  protected final Movement movement = new Movement(0f, 0f, 1.0f, MovementType.GROUND);
+  protected final Movement movement = new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND);
 
   @Builder.Default
   protected final SpawnerComponent spawner = null;
@@ -53,8 +53,13 @@ public abstract class AbstractEntity implements Entity {
   }
 
   @Override
-  public float getSize() {
-    return movement.getSize();
+  public float getCollisionRadius() {
+    return movement.getCollisionRadius();
+  }
+
+  @Override
+  public float getVisualRadius() {
+    return movement.getVisualRadius();
   }
 
   @Override

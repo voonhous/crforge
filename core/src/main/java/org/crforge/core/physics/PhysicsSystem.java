@@ -309,8 +309,8 @@ public class PhysicsSystem {
   }
 
   private CollisionResult detectCollision(Entity a, Entity b) {
-    return detectCircleCircleCollision(a.getPosition(), a.getSize() / 2f, b.getPosition(),
-        b.getSize() / 2f);
+    return detectCircleCircleCollision(a.getPosition(), a.getCollisionRadius(), b.getPosition(),
+        b.getCollisionRadius());
   }
 
   private CollisionResult detectCircleCircleCollision(Position posA, float radiusA, Position posB,
@@ -369,7 +369,8 @@ public class PhysicsSystem {
 
   private void enforceBounds(Entity entity) {
     Position pos = entity.getPosition();
-    float radius = entity.getSize() / 2f;
+    // Use Collision Radius for bounds check
+    float radius = entity.getCollisionRadius();
 
     float minX = radius;
     float maxX = Arena.WIDTH - radius;

@@ -300,7 +300,7 @@ class CombatSystemTest {
         .team(Team.RED)
         .position(new Position(10f, 10f))
         .health(new Health(500))
-        .movement(new Movement(0, 0, 1, MovementType.BUILDING))
+        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
         .build();
 
     gameState.spawnEntity(tombstone);
@@ -320,6 +320,8 @@ class CombatSystemTest {
     assertThat(tombstone.getAppliedEffects()).isEmpty();
   }
 
+  // --- Helper Methods ---
+
   private Troop createMeleeTroop(Team team, float x, float y, int damage) {
     return Troop.builder()
         .name("Melee")
@@ -327,6 +329,7 @@ class CombatSystemTest {
         .position(new Position(x, y))
         .health(new Health(100))
         .deployTime(1.0f)
+        // Use default radii (0.5 collision, 0.5 visual) via AbstractEntity default Movement
         .combat(
             Combat.builder()
                 .damage(damage)

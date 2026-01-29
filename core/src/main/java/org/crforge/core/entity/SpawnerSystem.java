@@ -67,7 +67,7 @@ public class SpawnerSystem {
       return;
     }
     // Standard spawns belong to the same team as the source
-    doSpawn(source.getPosition(), source.getSize(), source.getTeam(), stats, isDeathSpawn);
+    doSpawn(source.getPosition(), source.getCollisionRadius() * 2, source.getTeam(), stats, isDeathSpawn);
   }
 
   private void spawnEffectUnit(Entity victim, TroopStats stats, Team ownerTeam) {
@@ -75,14 +75,14 @@ public class SpawnerSystem {
       return;
     }
     // Effect spawns (like Cursed Hogs) appear at the victim's location but belong to the effect owner
-    doSpawn(victim.getPosition(), victim.getSize(), ownerTeam, stats, true);
+    doSpawn(victim.getPosition(), victim.getCollisionRadius() * 2, ownerTeam, stats, true);
   }
 
-  private void doSpawn(Position origin, float originSize, Team team, TroopStats stats,
+  private void doSpawn(Position origin, float originDiameter, Team team, TroopStats stats,
       boolean isDeathSpawn) {
     // Use origin to determine spawn location
     // Add simple random spread if it's a death spawn to prevent stacking perfectly
-    float spread = isDeathSpawn ? (float) (Math.random() - 0.5) * originSize : 0;
+    float spread = isDeathSpawn ? (float) (Math.random() - 0.5) * originDiameter : 0;
 
     float x = origin.getX() + spread;
     float y = origin.getY() + spread;
@@ -102,7 +102,11 @@ public class SpawnerSystem {
         .team(team)
         .position(new Position(x, y))
         .health(new Health(stats.getHealth()))
-        .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getSize(),
+        .movement(new Movement(
+            stats.getSpeed(),
+            stats.getMass(),
+            stats.getCollisionRadius(),
+            stats.getVisualRadius(),
             stats.getMovementType()))
         .combat(combat)
         .deployTime(0.5f) // Fast deploy for spawned units

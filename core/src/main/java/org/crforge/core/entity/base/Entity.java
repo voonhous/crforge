@@ -27,7 +27,15 @@ public interface Entity {
 
   SpawnerComponent getSpawner();
 
-  float getSize();
+  /**
+   * The radius used for collision detection and range calculations.
+   */
+  float getCollisionRadius();
+
+  /**
+   * The radius used for visual rendering.
+   */
+  float getVisualRadius();
 
   EntityType getEntityType();
 

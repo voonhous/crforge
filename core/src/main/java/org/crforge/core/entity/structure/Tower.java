@@ -38,12 +38,13 @@ public class Tower extends Building {
 
   // Factory methods for standard towers
   public static Tower createCrownTower(Team team, float x, float y) {
+    // Crown Tower: Collision Radius 1.4, Visual Size 4.0 (Radius 2.0)
     return Tower.builder()
         .name("Crown Tower")
         .team(team)
         .position(new Position(x, y))
         .health(new Health(4824))
-        .movement(new Movement(0, 0, 4.0f, MovementType.BUILDING))
+        .movement(new Movement(0, 0, 1.4f, 2.0f, MovementType.BUILDING))
         .towerType(TowerType.CROWN)
         .active(false)
         .combat(
@@ -52,18 +53,19 @@ public class Tower extends Building {
                 .range(7.0f)
                 .sightRange(7.0f)
                 .attackCooldown(1.0f)
-                .firstAttackCooldown(0.0f) // Instant first hit? Usually towers have no extra delay
+                .firstAttackCooldown(0.0f)
                 .build())
         .build();
   }
 
   public static Tower createPrincessTower(Team team, float x, float y) {
+    // Princess Tower: Collision Radius 1.0, Visual Size 3.0 (Radius 1.5)
     return Tower.builder()
         .name("Princess Tower")
         .team(team)
         .position(new Position(x, y))
         .health(new Health(3052))
-        .movement(new Movement(0, 0, 3.0f, MovementType.BUILDING))
+        .movement(new Movement(0, 0, 1.0f, 1.5f, MovementType.BUILDING))
         .towerType(TowerType.PRINCESS)
         .active(true)
         .combat(

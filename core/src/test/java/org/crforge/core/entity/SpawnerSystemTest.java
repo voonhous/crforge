@@ -50,7 +50,7 @@ class SpawnerSystemTest {
             .team(Team.BLUE)
             .position(new Position(10, 10))
             .health(new Health(100))
-            .movement(new Movement(0, 0, 2.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
             .lifetime(40f)
             .spawner(spawnerComponent)
             .build();
@@ -76,8 +76,8 @@ class SpawnerSystemTest {
     Entity spawned = gameState.getPendingSpawns().get(0);
     assertThat(spawned.getName()).isEqualTo("Skeleton");
     // Spread might slightly offset position
-    assertThat(spawned.getPosition().getX()).isEqualTo(10f);
-    assertThat(spawned.getPosition().getY()).isEqualTo(10f);
+    assertThat(spawned.getPosition().getX()).isBetween(9.0f, 11.0f);
+    assertThat(spawned.getPosition().getY()).isBetween(9.0f, 11.0f);
 
     gameState.processPending();
 

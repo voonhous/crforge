@@ -15,7 +15,12 @@ public class UnitConfigDTO {
   private int damage;
   private float speed;
   private float mass;
-  private float size;
+
+  // Radius for collision
+  private Float collisionRadius;
+  // Radius for rendering
+  private Float visualRadius;
+
   private float range;
   private float sightRange;
   private float attackCooldown;

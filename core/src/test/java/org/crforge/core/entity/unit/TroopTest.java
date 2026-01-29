@@ -42,7 +42,7 @@ class TroopTest {
             .team(Team.RED)
             .position(new Position(10, 20))
             .health(new Health(1000))
-            .movement(new Movement(1.5f, 2.0f, 1.2f, MovementType.GROUND))
+            .movement(new Movement(1.5f, 2.0f, 0.5f, 0.5f, MovementType.GROUND))
             .combat(combat)
             .build();
 

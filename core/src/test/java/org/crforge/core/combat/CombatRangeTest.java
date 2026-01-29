@@ -54,6 +54,7 @@ class CombatRangeTest {
     // 0.8 range (Short Melee)
     Troop attacker = createTroop(Team.BLUE, 10f, 10f, 0.8f);
     // Target at distance 1.0 (center to center distance)
+    // Both have 0 collision radius in this test helper
     Troop target = createTroop(Team.RED, 11f, 10f, 0.8f);
 
     gameState.spawnEntity(attacker);
@@ -65,7 +66,7 @@ class CombatRangeTest {
     // Run update
     combatSystem.update(0.1f);
 
-    // Should NOT have attacked (HP remains 100) because 1.0 > 0.8
+    // Should NOT have attacked (HP remains 100) because 1.0 > 0.8 (effective range with 0 radii)
     assertThat(target.getHealth().getCurrent()).isEqualTo(100);
   }
 
@@ -116,7 +117,7 @@ class CombatRangeTest {
         .position(new Position(x, y))
         .health(new Health(100))
         // Create troops with size 0 to test raw range
-        .movement(new Movement(0f, 0f, 0f, MovementType.GROUND)) // Size 0 for range testing
+        .movement(new Movement(0f, 0f, 0f, 0f, MovementType.GROUND)) // Size 0 for range testing
         .deployTime(0f)
         .combat(Combat.builder()
             .damage(10)

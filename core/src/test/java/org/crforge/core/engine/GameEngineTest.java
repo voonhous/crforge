@@ -106,7 +106,7 @@ class GameEngineTest {
             .name("Knight")
             .team(Team.BLUE)
             .position(new Position(9, 10))
-            .movement(new Movement(2.0f, 1.0f, 1.0f, MovementType.GROUND))
+            .movement(new Movement(2.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
             .deployTime(0)
             .combat(Combat.builder().sightRange(20f).build())
             .build();
