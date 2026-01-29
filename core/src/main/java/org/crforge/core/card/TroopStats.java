@@ -25,8 +25,12 @@ public class TroopStats {
   private final float speed = 1.0f;
   @Builder.Default
   private final float mass = 1.0f;
+
   @Builder.Default
-  private final float size = 1.0f;
+  private final float collisionRadius = 0.5f;
+  @Builder.Default
+  private final float visualRadius = 0.5f;
+
   @Builder.Default
   private final float range = 1.0f;
   @Builder.Default

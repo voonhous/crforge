@@ -141,7 +141,11 @@ public class DeploymentSystem {
         .team(team)
         .position(new Position(spawnX, spawnY))
         .health(new Health(stats.getHealth()))
-        .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getSize(),
+        .movement(new Movement(
+            stats.getSpeed(),
+            stats.getMass(),
+            stats.getCollisionRadius(),
+            stats.getVisualRadius(),
             stats.getMovementType()))
         .combat(combat)
         .deployTime(stats.getDeployTime())
@@ -166,7 +170,8 @@ public class DeploymentSystem {
           .build();
     }
 
-    float size = stats != null ? stats.getSize() : 2.0f;
+    float collisionRadius = stats != null ? stats.getCollisionRadius() : 1.0f;
+    float visualRadius = stats != null ? stats.getVisualRadius() : 1.0f;
     float deployTime = stats != null ? stats.getDeployTime() : 1.0f;
 
     // Create Spawner Component if needed
@@ -189,7 +194,7 @@ public class DeploymentSystem {
         .team(team)
         .position(new Position(x, y))
         .health(new Health(card.getBuildingHealth()))
-        .movement(new Movement(0, 0, size, MovementType.BUILDING))
+        .movement(new Movement(0, 0, collisionRadius, visualRadius, MovementType.BUILDING))
         .combat(combat)
         .lifetime(card.getBuildingLifetime())
         .remainingLifetime(card.getBuildingLifetime())

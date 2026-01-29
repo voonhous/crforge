@@ -56,8 +56,8 @@ class UnitSpeedTest {
         .team(Team.BLUE)
         .position(new Position(startX, startY))
         .health(new Health(stats.getHealth()))
-        .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getSize(),
-            stats.getMovementType()))
+        .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getCollisionRadius(),
+            stats.getVisualRadius(), stats.getMovementType()))
         .combat(Combat.builder().build()) // Dummy combat
         .deployTime(0f) // Instant deploy for test
         .build();

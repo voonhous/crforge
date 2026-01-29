@@ -38,7 +38,7 @@ class ZapStunTest {
         .name("Runner")
         .team(Team.BLUE)
         .position(new Position(10f, 10f))
-        .movement(new Movement(5.0f, 1.0f, 1.0f, MovementType.GROUND))
+        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
         .combat(Combat.builder().build())
         .deployTime(0)
         .build();

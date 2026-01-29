@@ -44,7 +44,7 @@ class TowerDestructionIntegrationTest {
         .team(Team.BLUE)
         .position(new Position(targetX, targetY - 2.0f))
         .health(new Health(1000))
-        .movement(new Movement(5.0f, 1.0f, 1.0f, MovementType.GROUND))
+        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
         .combat(Combat.builder().damage(10).range(1.0f).attackCooldown(0.1f).build())
         .build();
     knight.onSpawn();

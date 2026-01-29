@@ -87,7 +87,7 @@ class PhysicsSystemTest {
         .name(name)
         .team(Team.BLUE)
         .position(new Position(x, y))
-        .movement(new Movement(5.0f, mass, 1.0f, MovementType.GROUND))
+        .movement(new Movement(5.0f, mass, 0.5f, 0.5f, MovementType.GROUND))
         .deployTime(0f)
         .build();
 

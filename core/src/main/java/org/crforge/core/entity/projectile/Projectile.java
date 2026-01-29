@@ -117,7 +117,8 @@ public class Projectile {
 
     float moveDistance = speed * deltaTime;
 
-    if (distance <= moveDistance || distance <= target.getSize() / 2f) {
+    // Use Collision Radius for hit check
+    if (distance <= moveDistance || distance <= target.getCollisionRadius()) {
       // Reached target
       hit = true;
       active = false;

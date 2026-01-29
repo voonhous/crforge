@@ -12,7 +12,8 @@ public class Movement {
   @Getter
   private final float speed;
   private final float mass;
-  private final float size;
+  private final float collisionRadius;
+  private final float visualRadius;
   private final MovementType type;
 
   @Setter
@@ -29,10 +30,6 @@ public class Movement {
 
   public float getEffectiveSpeed() {
     return speed * speedMultiplier;
-  }
-
-  public float getRadius() {
-    return size / 2f;
   }
 
   public void resetSpeedMultiplier() {

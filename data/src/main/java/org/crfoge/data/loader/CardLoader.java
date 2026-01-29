@@ -69,7 +69,7 @@ public class CardLoader {
         "MovementType is required for unit: " + dto.getName());
 
     // Validation: Require TargetType if the unit has ANY attack capability
-    // This includes: base damage, a projectile, or even spawn damage (though rare to have ONLY spawn damage)
+    // This includes: base damage, a projectile, or even spawn damage
     boolean hasAttackCapability = dto.getDamage() > 0 || dto.getProjectile() != null;
 
     if (hasAttackCapability) {
@@ -80,13 +80,21 @@ public class CardLoader {
     // Conversion: Base speed 60 = 1.0 tiles/sec
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
 
+    // Resolve radii
+    // Default collision radius if missing (safe fallback)
+    float colRad = dto.getCollisionRadius() != null ? dto.getCollisionRadius() : 0.5f;
+
+    // Visual radius: If visualRadius is present, use it. Else match collision radius.
+    float visRad = dto.getVisualRadius() != null ? dto.getVisualRadius() : colRad;
+
     TroopStats.TroopStatsBuilder builder = TroopStats.builder()
         .name(dto.getName())
         .health(dto.getHealth())
         .damage(dto.getDamage())
         .speed(effectiveSpeed)
         .mass(dto.getMass())
-        .size(dto.getSize())
+        .collisionRadius(colRad)
+        .visualRadius(visRad)
         .range(dto.getRange())
         .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
         .attackCooldown(dto.getAttackCooldown())
@@ -108,8 +116,6 @@ public class CardLoader {
       // Logic for Projectile Damage on Troops:
       // We prioritize the projectile's explicit damage if it is set (> 0).
       // Only if the projectile has 0 damage do we fallback to the unit's damage.
-      // This allows units like Ice Wizard to define 0 unit damage but have a projectile with damage,
-      // or Firecracker to have distinct unit stats vs projectile stats.
       int damageSource = dto.getProjectile().getDamage() > 0
           ? dto.getProjectile().getDamage()
           : dto.getDamage();

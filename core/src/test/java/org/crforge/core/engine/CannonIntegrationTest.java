@@ -34,7 +34,7 @@ class CannonIntegrationTest {
         .team(Team.BLUE)
         .position(new Position(10f, 10f))
         .health(new Health(800))
-        .movement(new Movement(0f, 0f, 2.0f, MovementType.BUILDING))
+        .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
         .combat(Combat.builder()
             .range(5.5f)
             .sightRange(5.5f)
@@ -53,7 +53,7 @@ class CannonIntegrationTest {
         .team(Team.RED)
         .position(new Position(12f, 10f))
         .health(new Health(1000))
-        .movement(new Movement(0f, 0f, 1.0f, MovementType.GROUND))
+        .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
         .deployTime(0) // Make it targetable immediately
         .build();
 
