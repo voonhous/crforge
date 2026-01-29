@@ -6,5 +6,6 @@ public enum TileType {
   BRIDGE,
   BLUE_ZONE,
   RED_ZONE,
-  BANNED
+  BANNED,
+  TOWER
 }

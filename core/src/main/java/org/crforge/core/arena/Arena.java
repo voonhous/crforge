@@ -43,6 +43,11 @@ public class Arena {
   }
 
   private TileType determineTileType(int x, int y) {
+    // Check for towers first
+    if (isTower(x, y)) {
+      return TileType.TOWER;
+    }
+
     // Check for banned tiles (edges behind king towers)
     // Based on original logic: rows 0 and 31, columns < 6 or > 11 are banned
     if (y == 0 || y == HEIGHT - 1) {
@@ -73,6 +78,31 @@ public class Arena {
     return TileType.GROUND;
   }
 
+  private boolean isTower(int x, int y) {
+    // Crown Towers (4x4)
+    // Blue: x[7-10], y[1-4]
+    // Red: x[7-10], y[27-30]
+    if (x >= 7 && x <= 10) {
+      if (y >= 1 && y <= 4) return true;
+      if (y >= 27 && y <= 30) return true;
+    }
+
+    // Princess Towers (3x3)
+    // Blue: y[5-7]
+    // Red: y[24-26]
+    boolean isBluePrincessY = (y >= 5 && y <= 7);
+    boolean isRedPrincessY = (y >= 24 && y <= 26);
+
+    if (isBluePrincessY || isRedPrincessY) {
+      // Left: x[2-4]
+      if (x >= 2 && x <= 4) return true;
+      // Right: x[13-15]
+      if (x >= 13 && x <= 15) return true;
+    }
+
+    return false;
+  }
+
   private boolean isBridgePosition(int x) {
     return (x >= LEFT_BRIDGE_X && x < LEFT_BRIDGE_X + BRIDGE_WIDTH)
         || (x >= RIGHT_BRIDGE_X && x < RIGHT_BRIDGE_X + BRIDGE_WIDTH);
@@ -101,8 +131,8 @@ public class Arena {
       return false;
     }
 
-    // Cannot place on banned tiles
-    if (tile.type() == TileType.BANNED) {
+    // Cannot place on banned or tower tiles
+    if (tile.type() == TileType.BANNED || tile.type() == TileType.TOWER) {
       return false;
     }
 
