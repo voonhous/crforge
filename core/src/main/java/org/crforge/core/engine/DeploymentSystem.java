@@ -128,7 +128,7 @@ public class DeploymentSystem {
         .range(stats.getRange())
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
-        .firstAttackCooldown(stats.getFirstAttackCooldown())
+        .loadTime(stats.getLoadTime())
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
         .hitEffects(stats.getHitEffects())
@@ -149,7 +149,7 @@ public class DeploymentSystem {
             stats.getMovementType()))
         .combat(combat)
         .deployTime(stats.getDeployTime())
-        .deployTimer(stats.getDeployTime()) // Explicitly set timer
+        .deployTimer(stats.getDeployTime())
         .spawner(spawner)
         .build();
   }
@@ -162,8 +162,9 @@ public class DeploymentSystem {
       combat = Combat.builder()
           .damage(stats.getDamage())
           .range(stats.getRange())
+          .sightRange(stats.getSightRange()) // Building sight
           .attackCooldown(stats.getAttackCooldown())
-          .firstAttackCooldown(stats.getFirstAttackCooldown())
+          .loadTime(stats.getLoadTime())
           .targetType(stats.getTargetType())
           .hitEffects(stats.getHitEffects())
           .projectileStats(stats.getProjectile())

@@ -87,19 +87,19 @@ public class DebugGameScreen implements Screen {
         CardRegistry.get("barbarians"),
         CardRegistry.get("musketeer"),
         CardRegistry.get("giant"),
-        CardRegistry.get("archers"),
+        CardRegistry.get("archer"),
         CardRegistry.get("tombstone"),
         CardRegistry.get("valkyrie"),
         CardRegistry.get("goblins"),
-        CardRegistry.get("arrows")
+        CardRegistry.get("babydragon")
     );
 
     List<Card> redCards = List.of(
-        CardRegistry.get("mother_witch"),
-        CardRegistry.get("baby_dragon"),
+        CardRegistry.get("goblins"),
+        CardRegistry.get("babydragon"),
         CardRegistry.get("minions"),
         CardRegistry.get("bomber"),
-        CardRegistry.get("zap"),
+        CardRegistry.get("valkyrie"),
         CardRegistry.get("cannon"),
         CardRegistry.get("knight"),
         CardRegistry.get("musketeer")

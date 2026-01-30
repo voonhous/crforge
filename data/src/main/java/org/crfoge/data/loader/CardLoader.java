@@ -98,8 +98,7 @@ public class CardLoader {
         .range(dto.getRange())
         .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
         .attackCooldown(dto.getAttackCooldown())
-        .firstAttackCooldown(
-            dto.getFirstAttackCooldown() != null ? dto.getFirstAttackCooldown() : 0f)
+        .loadTime(dto.getLoadTime() != null ? dto.getLoadTime() : 0f)
         .aoeRadius(dto.getAoeRadius())
         .movementType(dto.getMovementType())
         .targetType(dto.getTargetType())

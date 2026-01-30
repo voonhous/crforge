@@ -63,8 +63,8 @@ class CombatRangeTest {
 
     attacker.getCombat().setCurrentTarget(target);
 
-    // Run update
-    combatSystem.update(0.1f);
+    // Simulate enough time to potentially attack
+    runCombatUpdates(2.0f);
 
     // Should NOT have attacked (HP remains 100) because 1.0 > 0.8 (effective range with 0 radii)
     assertThat(target.getHealth().getCurrent()).isEqualTo(100);
@@ -83,8 +83,7 @@ class CombatRangeTest {
 
     attacker.getCombat().setCurrentTarget(target);
 
-    // Run update
-    combatSystem.update(0.1f);
+    runCombatUpdates(2.0f);
 
     // Should HAVE attacked (HP < 100) because 1.0 <= 1.2
     assertThat(target.getHealth().getCurrent()).isLessThan(100);
@@ -103,11 +102,22 @@ class CombatRangeTest {
 
     attacker.getCombat().setCurrentTarget(target);
 
-    // Run update
-    combatSystem.update(0.1f);
+    runCombatUpdates(2.0f);
 
     // Should HAVE attacked because 1.5 <= 1.6
     assertThat(target.getHealth().getCurrent()).isLessThan(100);
+  }
+
+  private void runCombatUpdates(float duration) {
+    float dt = 0.1f;
+    int ticks = (int) (duration / dt);
+    for (int i = 0; i < ticks; i++) {
+      // We need to update entities (for timers) AND combat system
+      for (org.crforge.core.entity.base.Entity e : gameState.getAliveEntities()) {
+        e.update(dt);
+      }
+      combatSystem.update(dt);
+    }
   }
 
   private Troop createTroop(Team team, float x, float y, float range) {

@@ -29,10 +29,8 @@ class TowerDestructionIntegrationTest {
   void troopShouldMoveToKingTower_afterDestroyingPrincessTower() {
     // 1. Setup: Red Princess Tower is the target
     Tower redPrincess = engine.getGameState().getPrincessTowers(Team.RED).get(0);
-    // Determine which lane this tower is in
-    boolean isLeft = redPrincess.getPosition().getX() < engine.getArena().getCenterX();
 
-    // Set HP to 1 so it dies instantly
+    // Set HP to 1 so it dies essentially instantly when attacked
     redPrincess.getHealth().takeDamage(redPrincess.getHealth().getCurrent() - 1);
 
     // 2. Spawn Blue Knight right next to it
@@ -45,7 +43,12 @@ class TowerDestructionIntegrationTest {
         .position(new Position(targetX, targetY - 2.0f))
         .health(new Health(1000))
         .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder().damage(10).range(1.0f).attackCooldown(0.1f).build())
+        .combat(Combat.builder()
+            .damage(10)
+            .range(1.0f)
+            .attackCooldown(0.1f)
+            .loadTime(0f)
+            .build())
         .build();
     knight.onSpawn();
 
@@ -53,7 +56,8 @@ class TowerDestructionIntegrationTest {
     engine.tick();
 
     // 3. Knight should attack and destroy tower
-    engine.runSeconds(1.0f);
+    // Increased duration to 1.5s to account for potential windup or movement adjustments
+    engine.runSeconds(1.5f);
 
     assertThat(redPrincess.isAlive()).as("Princess tower should be destroyed").isFalse();
     // Target might be null or King tower depending on timing, but shouldn't be Princess
@@ -62,13 +66,8 @@ class TowerDestructionIntegrationTest {
     }
 
     // 4. Knight should now move towards King Tower
-    float initialY = knight.getPosition().getY();
-
-    // Run simulation
     engine.runSeconds(2.0f);
 
-    // Check if moved significantly North
-    // If bug exists, it stays near targetY (25.5). King is at 29.
     assertThat(knight.getPosition().getY())
         .as("Knight should move North past the dead tower")
         .isGreaterThan(targetY + 1.0f);

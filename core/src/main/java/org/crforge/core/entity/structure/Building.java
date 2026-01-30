@@ -81,6 +81,11 @@ public class Building extends AbstractEntity {
         deployTimer = 0;
         spawned = true;
       }
+
+      // Buildings accumulate load time while deploying
+      if (combat != null) {
+        combat.update(deltaTime, true);
+      }
       return;
     }
 
@@ -115,7 +120,8 @@ public class Building extends AbstractEntity {
 
     // Update combat
     if (combat != null) {
-      combat.update(deltaTime);
+      // Buildings accumulate load time if not attacking
+      combat.update(deltaTime, true);
     }
   }
 }

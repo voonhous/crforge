@@ -37,12 +37,17 @@ class SpawnerSystemTest {
             .speed(1.2f)
             .build();
 
+    // With new logic, single-unit waves use spawnPauseTime for the delay between spawns.
+    // We set spawnPauseTime to 3.0 so it waits 3s, spawns, then waits 3s again.
     SpawnerComponent spawnerComponent = SpawnerComponent.builder()
-        .spawnInterval(3.0f)
-        .currentTimer(3.0f)
+        .spawnPauseTime(3.0f)
+        .unitsPerWave(1)
         .deathSpawnCount(4)
         .spawnStats(skeletonStats)
         .build();
+
+    // Manually initialize to ensure timer is set correctly for test
+    spawnerComponent.initialize();
 
     spawnerBuilding =
         Building.builder()
@@ -61,15 +66,15 @@ class SpawnerSystemTest {
 
   @Test
   void update_shouldSpawnUnitPeriodically() {
-    // Initial update (0s) -> No spawn yet
+    // Initial update (0s) -> Timer starts at 3.0. No spawn.
     spawnerSystem.update(0f);
     assertThat(gameState.getPendingSpawns()).isEmpty();
 
-    // Update 1s -> No spawn
+    // Update 1s -> Timer at 2.0. No spawn.
     spawnerSystem.update(1.0f);
     assertThat(gameState.getPendingSpawns()).isEmpty();
 
-    // Update 2s (Total 3s) -> Should spawn
+    // Update 2s (Total 3s) -> Timer <= 0. Should spawn.
     spawnerSystem.update(2.0f);
     assertThat(gameState.getPendingSpawns()).hasSize(1);
 
@@ -81,11 +86,11 @@ class SpawnerSystemTest {
 
     gameState.processPending();
 
-    // Update another 2.9s (Total 5.9s) -> No new spawn
+    // Update another 2.9s (Total 5.9s) -> Timer reloaded to 3.0, now at 0.1. No spawn.
     spawnerSystem.update(2.9f);
     assertThat(gameState.getPendingSpawns()).isEmpty();
 
-    // Update 0.2s (Total 6.1s) -> Should spawn second unit
+    // Update 0.2s (Total 6.1s) -> Timer <= 0. Should spawn second unit.
     spawnerSystem.update(0.2f);
     assertThat(gameState.getPendingSpawns()).hasSize(1);
   }

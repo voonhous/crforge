@@ -69,7 +69,7 @@ class TargetingSystemTest {
   void troop_shouldNotTargetOutOfRange() {
     Troop attacker = createDeployedTroop("Attacker", Team.BLUE, 10, 10);
     Troop farEnemy =
-        createDeployedTroop("Far Enemy", Team.RED, 20, 10); // 10 units away, sight range is 5.5
+        createDeployedTroop("Far Enemy", Team.RED, 20, 10);
 
     List<Entity> entities = List.of(attacker, farEnemy);
     targetingSystem.updateTargets(entities);
@@ -176,7 +176,7 @@ class TargetingSystemTest {
   void knightShouldIgnoreBabyDragon() {
     // Verify registry config
     TroopStats knightStats = CardRegistry.get("knight").getTroops().get(0);
-    TroopStats dragonStats = CardRegistry.get("baby_dragon").getTroops().get(0);
+    TroopStats dragonStats = CardRegistry.get("babydragon").getTroops().get(0);
 
     assertThat(knightStats.getTargetType()).isEqualTo(TargetType.GROUND);
     assertThat(dragonStats.getMovementType()).isEqualTo(MovementType.AIR);

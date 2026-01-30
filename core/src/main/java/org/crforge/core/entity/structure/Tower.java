@@ -19,26 +19,15 @@ public class Tower extends Building {
   @Builder.Default
   private final TowerType towerType = TowerType.PRINCESS;
 
-  /**
-   * Towers can be active or inactive.
-   * <p>
-   * Crown (King) towers start inactive and activate when damaged or a Princess tower falls.
-   */
   @Builder.Default
   @Setter
   private boolean active = true;
 
-  /**
-   * Timer that ticks down when a tower is first activated.
-   * <p>
-   * The tower cannot attack until this timer reaches 0.
-   */
   @Builder.Default
   private float activationTimer = 0f;
 
   // Factory methods for standard towers
   public static Tower createCrownTower(Team team, float x, float y) {
-    // Crown Tower: Collision Radius 1.4, Visual Size 4.0 (Radius 2.0)
     return Tower.builder()
         .name("Crown Tower")
         .team(team)
@@ -53,13 +42,12 @@ public class Tower extends Building {
                 .range(7.0f)
                 .sightRange(7.0f)
                 .attackCooldown(1.0f)
-                .firstAttackCooldown(0.0f)
+                .loadTime(0.0f) // Standard for towers? Usually they attack immediately when active
                 .build())
         .build();
   }
 
   public static Tower createPrincessTower(Team team, float x, float y) {
-    // Princess Tower: Collision Radius 1.0, Visual Size 3.0 (Radius 1.5)
     return Tower.builder()
         .name("Princess Tower")
         .team(team)
@@ -74,7 +62,7 @@ public class Tower extends Building {
                 .range(7.5f)
                 .sightRange(7.5f)
                 .attackCooldown(0.8f)
-                .firstAttackCooldown(0.0f)
+                .loadTime(0.0f)
                 .build())
         .build();
   }
@@ -99,17 +87,14 @@ public class Tower extends Building {
   public void activate() {
     if (!active) {
       active = true;
-      // 1 second activation delay
       activationTimer = 1.0f;
     }
   }
-
 
   @Override
   public void update(float deltaTime) {
     super.update(deltaTime);
 
-    // Auto-activate if damaged
     if (!active && health.getCurrent() < health.getMax()) {
       activate();
     }
