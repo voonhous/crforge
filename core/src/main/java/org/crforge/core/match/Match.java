@@ -18,10 +18,10 @@ import org.crforge.core.player.dto.PlayerActionDTO;
  * This is the base class for all match types. Extend this class to create different game modes
  * (2v2, Triple Elixir, Draft, etc.) with different:
  * <ul>
- *   <li>Arena layouts (dimensions, tower positions)</li>
- *   <li>Player configurations (1v1, 2v2, shared/separate elixir)</li>
- *   <li>Timing rules (match duration, overtime duration, elixir rates)</li>
- *   <li>Win conditions</li>
+ * <li>Arena layouts (dimensions, tower positions)</li>
+ * <li>Player configurations (1v1, 2v2, shared/separate elixir)</li>
+ * <li>Timing rules (match duration, overtime duration, elixir rates)</li>
+ * <li>Win conditions</li>
  * </ul>
  *
  * @see Standard1v1Match
@@ -139,8 +139,16 @@ public abstract class Match {
       return true;
     }
 
-    // Troops and buildings must follow strict arena placement rules
-    // (No river, no bridge, only in own zone)
+    // Buildings must follow strict placement rules (entire footprint in zone)
+    if (card.getType() == CardType.BUILDING) {
+      float radius = 0.5f; // Default small radius
+      if (card.getTroops() != null && !card.getTroops().isEmpty()) {
+        radius = card.getTroops().get(0).getCollisionRadius();
+      }
+      return arena.isValidBuildingPlacement(action.getX(), action.getY(), radius, player.getTeam());
+    }
+
+    // Troops check center point (legacy/standard behavior for now)
     return arena.isValidPlacement(action.getX(), action.getY(), player.getTeam());
   }
 
