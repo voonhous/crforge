@@ -20,6 +20,9 @@ public class BasePathfinder implements Pathfinder {
   private static final float RIVER_Y_MAX = Arena.RIVER_Y + 1.0f; // 17.0
   private static final float RIVER_CENTER_Y = Arena.RIVER_Y;    // 16.0
 
+  // Epsilon to ensure units cross the boundary instead of stopping exactly on it
+  private static final float BOUNDARY_EPSILON = 0.1f;
+
   @Override
   public float getNextMovementAngle(
       Position startPos, MovementType moveType, float targetX, float targetY, Arena arena) {
@@ -69,14 +72,36 @@ public class BasePathfinder implements Pathfinder {
     // 4. If we are currently inside the river zone (i.e., on a bridge),
     // keep moving towards the bridge exit before turning towards the final target.
     if (inRiverZone) {
-      float exitY = (targetY > curY) ? RIVER_Y_MAX : RIVER_Y_MIN;
+      // BOUNDARY_EPSILON to ensure we aim PAST the boundary.
+      // If we aim exactly for RIVER_Y_MAX (17.0) and curY is 17.0, we stop moving Y.
+      // By aiming for 17.1, we force the unit to cross into the North zone (Y > 17.0).
+      float exitY = (targetY > curY)
+          ? RIVER_Y_MAX + BOUNDARY_EPSILON
+          : RIVER_Y_MIN - BOUNDARY_EPSILON;
 
       // Find which bridge we are currently on
       float distToLeft = Math.abs(curX - LEFT_BRIDGE_CENTER_X);
       float bridgeX = (distToLeft < (Arena.WIDTH / 4f)) ? LEFT_BRIDGE_CENTER_X : RIGHT_BRIDGE_CENTER_X;
 
+      // For debugging
+      float targetBridgeX;
+      if (false) {
+        // Optimization: If unit is safely on the bridge, move straight forward.
+        // This prevents diagonal movement (which reduces forward speed) when slightly off-center.
+        // Bridge width is 3.0. Safe zone is roughly center +/- 1.0.
+        float distFromCenter = Math.abs(curX - bridgeX);
+        targetBridgeX = bridgeX;
+
+        if (distFromCenter < 1.0f) {
+          // We are safely in the middle of the bridge. Don't correct X.
+          targetBridgeX = curX;
+        }
+      } else {
+        targetBridgeX = bridgeX;
+      }
+
       // Move straight across the bridge until we clear the river zone
-      return (float) Math.atan2(exitY - curY, bridgeX - curX);
+      return (float) Math.atan2(exitY - curY, targetBridgeX - curX);
     }
 
     // 5. Default: move straight to target (same side of river or no river obstacles)
