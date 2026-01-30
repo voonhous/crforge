@@ -106,17 +106,19 @@ public class Building extends AbstractEntity {
         decayAccumulator -= damage;
       }
 
-      // Also check explicit lifetime expiry as a failsafe or for logic that depends on time
-      if (remainingLifetime <= 0 || health.isDead()) {
+      // Check lifetime expiry
+      // If lifetime expires, we force kill by depleting health.
+      // We do NOT call markDead() here directly, because GameState.processDeaths()
+      // handles the transition from Health<=0 to Dead=true and triggers onDeath events.
+      if (remainingLifetime <= 0) {
         remainingLifetime = 0;
-        markDead();
-      }
-    } else {
-      // For non-lifetime buildings (if any, e.g. King Tower), just check health
-      if (health.isDead()) {
-        markDead();
+        if (health.isAlive()) {
+          health.takeDamage(health.getCurrent());
+        }
       }
     }
+    // Note: We deliberately do not check health.isDead() -> markDead() here.
+    // GameState.processDeaths() will handle it.
 
     // Update combat
     if (combat != null) {
