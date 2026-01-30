@@ -99,7 +99,7 @@
         "targetType": "GROUND",
         "movementType": "GROUND",
         "offsetX": 0.0,
-        "offsetY": 0.95
+        "offsetY": 1.2
       },
       {
         "name": "Barbarian",
@@ -115,8 +115,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": -0.904,
-        "offsetY": 0.294
+        "offsetX": -1.141,
+        "offsetY": 0.371
       },
       {
         "name": "Barbarian",
@@ -132,8 +132,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": -0.558,
-        "offsetY": -0.769
+        "offsetX": -0.705,
+        "offsetY": -0.971
       },
       {
         "name": "Barbarian",
@@ -149,8 +149,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": 0.558,
-        "offsetY": -0.769
+        "offsetX": 0.705,
+        "offsetY": -0.971
       },
       {
         "name": "Barbarian",
@@ -166,8 +166,8 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": 0.904,
-        "offsetY": 0.294
+        "offsetX": 1.141,
+        "offsetY": 0.371
       }
     ]
   },
@@ -192,7 +192,7 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": 0.95,
+        "offsetX": 1.2,
         "offsetY": 0.0
       },
       {
@@ -210,7 +210,7 @@
         "targetType": "GROUND",
         "movementType": "GROUND",
         "offsetX": 0.0,
-        "offsetY": 0.95
+        "offsetY": 1.2
       },
       {
         "name": "Goblin_Stab",
@@ -226,7 +226,7 @@
         "deployTime": 1.0,
         "targetType": "GROUND",
         "movementType": "GROUND",
-        "offsetX": -0.95,
+        "offsetX": -1.2,
         "offsetY": 0.0
       },
       {
@@ -244,7 +244,7 @@
         "targetType": "GROUND",
         "movementType": "GROUND",
         "offsetX": -0.0,
-        "offsetY": -0.95
+        "offsetY": -1.2
       }
     ]
   },
@@ -276,7 +276,7 @@
           "homing": true
         },
         "offsetX": 0.0,
-        "offsetY": 0.25
+        "offsetY": 0.5
       },
       {
         "name": "Minion",
@@ -298,8 +298,8 @@
           "speed": 1000,
           "homing": true
         },
-        "offsetX": -0.217,
-        "offsetY": -0.125
+        "offsetX": -0.433,
+        "offsetY": -0.25
       },
       {
         "name": "Minion",
@@ -321,8 +321,8 @@
           "speed": 1000,
           "homing": true
         },
-        "offsetX": 0.217,
-        "offsetY": -0.125
+        "offsetX": 0.433,
+        "offsetY": -0.25
       }
     ]
   },
