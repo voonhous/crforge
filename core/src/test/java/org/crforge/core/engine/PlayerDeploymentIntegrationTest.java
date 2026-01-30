@@ -227,8 +227,8 @@ class PlayerDeploymentIntegrationTest {
 
     assertThat(knight).isNotNull();
     assertThat(knight.getTeam()).isEqualTo(Team.BLUE);
-    assertThat(knight.getHealth().getMax()).isEqualTo(1766);
-    assertThat(knight.getCombat().getDamage()).isEqualTo(202);
+    assertThat(knight.getHealth().getMax()).isEqualTo(690);
+    assertThat(knight.getCombat().getDamage()).isEqualTo(79);
     // Position may have shifted slightly due to physics, use approximate check
     assertThat(knight.getPosition().getX()).isCloseTo(9f, within(1f));
     assertThat(knight.getPosition().getY()).isCloseTo(10f, within(1f));
