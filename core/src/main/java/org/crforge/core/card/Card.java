@@ -36,6 +36,8 @@ public class Card {
   @Builder.Default
   private final float spawnInterval = 0f;
   @Builder.Default
+  private final float spawnPauseTime = 0f;
+  @Builder.Default
   private final int deathSpawnCount = 0;
 
   public boolean isTroop() {

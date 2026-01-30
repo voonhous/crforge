@@ -22,15 +22,13 @@ public class Combat {
   @Builder.Default
   private final float sightRange = 5.5f;
   @Builder.Default
-  private final float attackCooldown = 1.0f;
+  private final float attackCooldown = 1.0f; // "Hit Speed"
   @Builder.Default
-  private final float firstAttackCooldown = 0f; // Custom initial windup
+  private final float loadTime = 0f; // Hidden stat: charges up to reduce first hit delay
   @Builder.Default
   private final float aoeRadius = 0;
   @Builder.Default
   private final TargetType targetType = TargetType.ALL;
-  @Builder.Default
-  private final float loadTime = 0; // Standard windup for attacks
 
   @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
@@ -41,17 +39,16 @@ public class Combat {
   private Entity currentTarget;
   private boolean targetLocked;
 
-  private float currentCooldown;
-  private float currentLoadTime;
+  private float currentCooldown; // Time remaining in "Hit Speed" wait after an attack
+  private float currentWindup;   // Time remaining in "Attack Animation" before damage
+
+  @Builder.Default
+  private float accumulatedLoadTime = 0f; // Time charged while moving/deploying/idling
 
   @Builder.Default
   private float attackSpeedMultiplier = 1.0f;
   @Builder.Default
   private boolean combatDisabled = false;
-
-  // Track if we are performing the first attack on the current target
-  @Builder.Default
-  private boolean firstAttackOnTarget = true;
 
   // Track if we are currently in the middle of an attack sequence (winding up)
   @Builder.Default
@@ -69,16 +66,13 @@ public class Combat {
   }
 
   public void setCurrentTarget(Entity currentTarget) {
-    // If target changes (or is set to null), reset first attack flag
     if (this.currentTarget != currentTarget) {
       this.currentTarget = currentTarget;
       this.targetLocked = currentTarget != null;
-      if (this.currentTarget != null) {
-        this.firstAttackOnTarget = true;
-      }
       // Reset attack state on retarget
       this.isAttacking = false;
-      this.currentLoadTime = 0;
+      this.currentWindup = 0;
+      // Do NOT reset accumulatedLoadTime here; moving to new target preserves charge.
     }
   }
 
@@ -90,26 +84,53 @@ public class Combat {
     return !combatDisabled && currentCooldown <= 0;
   }
 
-  public boolean isLoading() {
-    return currentLoadTime > 0;
+  public boolean isWindingUp() {
+    return currentWindup > 0;
   }
 
-  public void startAttack(float duration) {
-    currentLoadTime = duration;
-    isAttacking = true;
-  }
+  /**
+   * Starts an attack sequence.
+   * Calculates windup based on attackCooldown and accumulatedLoadTime.
+   */
+  public void startAttackSequence() {
+    // Formula: Windup = HitTime - Charge
+    // Ensure we don't go below 0 (instant)
+    float calculatedWindup = Math.max(0, attackCooldown - accumulatedLoadTime);
 
-  // Legacy/Default overload
-  public void startAttack() {
-    startAttack(loadTime);
+    this.currentWindup = calculatedWindup;
+    this.isAttacking = true;
+
+    // Charge is consumed for this attack
+    this.accumulatedLoadTime = 0;
   }
 
   public void finishAttack() {
-    currentCooldown = attackCooldown;
-    currentLoadTime = 0;
-    isAttacking = false;
-    // We consumed the first attack
-    firstAttackOnTarget = false;
+    // Attack finished. Reset state.
+    this.currentCooldown = 0; // Immediate chaining if windup accounts for full duration
+    this.isAttacking = false;
+  }
+
+  /**
+   * Updates timers and charge.
+   * @param deltaTime Time passed
+   * @param canAccumulateLoad If true, we are moving/deploying/idle and can charge up.
+   */
+  public void update(float deltaTime, boolean canAccumulateLoad) {
+    float effectiveDelta = deltaTime * (combatDisabled ? 0 : attackSpeedMultiplier);
+
+    if (currentCooldown > 0) {
+      currentCooldown -= effectiveDelta;
+    }
+
+    if (isAttacking) {
+      currentWindup -= effectiveDelta;
+    } else if (canAccumulateLoad && !combatDisabled) {
+      // Charge up logic
+      accumulatedLoadTime += effectiveDelta;
+      if (accumulatedLoadTime > loadTime) {
+        accumulatedLoadTime = loadTime;
+      }
+    }
   }
 
   /**
@@ -117,21 +138,9 @@ public class Combat {
    * pauses), Stun forces the unit to restart their attack windup.
    */
   public void resetAttackState() {
-    this.currentLoadTime = 0;
+    this.currentWindup = 0;
     this.isAttacking = false;
-    // Stun typically resets the windup, but does it reset "first hit" status if target didn't change?
-    // In CR, zapping a Sparky resets charge. Zapping a troop usually just resets the current swing.
-    // We won't reset 'firstAttackOnTarget' here to avoid exploiting first hit speed repeatedly on same target.
-  }
-
-  public void update(float deltaTime) {
-    float effectiveDelta = deltaTime * (combatDisabled ? 0 : attackSpeedMultiplier);
-    if (currentCooldown > 0) {
-      currentCooldown -= effectiveDelta;
-    }
-    if (currentLoadTime > 0) {
-      currentLoadTime -= effectiveDelta;
-    }
+    this.accumulatedLoadTime = 0; // Stun resets charge
   }
 
   public void resetCooldown() {

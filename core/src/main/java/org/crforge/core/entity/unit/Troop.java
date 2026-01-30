@@ -70,12 +70,17 @@ public class Troop extends AbstractEntity {
         deployTimer = 0;
         spawned = true;
       }
+      // Troops accumulate load time while deploying
+      if (combat != null) {
+        combat.update(deltaTime, true);
+      }
       return;
     }
 
-    // Update combat cooldowns
+    // Update combat
     if (combat != null) {
-      combat.update(deltaTime);
+      // Pass true to allow accumulating load time if not attacking
+      combat.update(deltaTime, true);
     }
   }
 

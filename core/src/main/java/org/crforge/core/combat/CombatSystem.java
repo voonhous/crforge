@@ -60,48 +60,48 @@ public class CombatSystem {
     }
 
     if (!combat.hasTarget()) {
+      // If we don't have a target, ensure we aren't stuck in attack state
+      if (combat.isAttacking()) {
+        combat.setAttacking(false);
+        combat.setCurrentWindup(0);
+      }
       return;
     }
 
     Entity target = combat.getCurrentTarget();
 
-    // Check if in attack range
+    // Range Check
     if (!isInAttackRange(entity, target, combat)) {
       // If out of range, cancel any ongoing attack
       if (combat.isAttacking()) {
         combat.setAttacking(false);
-        combat.setCurrentLoadTime(0);
+        combat.setCurrentWindup(0);
       }
       return;
     }
 
-    // Check if can attack (cooldown ready)
+    // Check Cooldown
     if (!combat.canAttack()) {
       return;
     }
 
-    // Start attack if not already loading/attacking
+    // Start Attack if ready
     if (!combat.isAttacking()) {
-      // Determine windup time
-      float windup = combat.isFirstAttackOnTarget()
-          ? combat.getFirstAttackCooldown()
-          : combat.getLoadTime();
-
-      combat.startAttack(windup);
+      combat.startAttackSequence();
     }
 
-    // Check if load time complete
-    if (combat.isLoading()) {
+    // Check Windup
+    if (combat.isWindingUp()) {
       return;
     }
 
-    // Execute attack
+    // Execute Attack (Windup complete)
     executeAttack(entity, target, combat);
   }
 
   private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
     float distance = attacker.getPosition().distanceTo(target.getPosition());
-    // Updated to use Collision Radius
+    // Use Collision Radius for range calculation
     float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
     return distance <= effectiveRange;
   }
