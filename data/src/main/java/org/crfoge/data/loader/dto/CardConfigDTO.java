@@ -29,5 +29,6 @@ public class CardConfigDTO {
   // Spawner specifics
   private float spawnInterval;
   private float spawnPauseTime;
+  private int spawnNumber;
   private int deathSpawnCount;
 }

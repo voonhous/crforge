@@ -151,6 +151,50 @@ class DeploymentSystemTest {
   }
 
   @Test
+  void testDeploySpawnerBuilding_shouldPropagateSpawnPauseTime() {
+    // Regression test: Ensure spawnPauseTime is passed to SpawnerComponent
+    TroopStats skeletonStats = TroopStats.builder()
+        .name("Skeleton")
+        .build();
+
+    float spawnPauseTime = 3.5f;
+
+    Card tombstone = Card.builder()
+        .id("tombstone")
+        .name("Tombstone")
+        .type(CardType.BUILDING)
+        .cost(3)
+        .buildingHealth(500)
+        .spawnInterval(0.5f)
+        .spawnPauseTime(spawnPauseTime)
+        .deathSpawnCount(0)
+        .troop(TroopStats.builder().name("TombstoneBuilding").build())
+        .troop(skeletonStats)
+        .build();
+
+    List<Card> deckCards = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deckCards.add(tombstone);
+    }
+
+    Player player = new Player(Team.RED, new Deck(deckCards), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(5f)
+        .y(5f)
+        .build();
+
+    deploymentSystem.queueAction(player, action);
+    deploymentSystem.update();
+    gameState.processPending();
+
+    Entity entity = gameState.getEntities().get(0);
+    assertThat(entity.getSpawner()).isNotNull();
+    assertThat(entity.getSpawner().getSpawnPauseTime()).isEqualTo(spawnPauseTime);
+  }
+
+  @Test
   void testDeployRegularBuilding() {
     Card cannon = Card.builder()
         .id("cannon")

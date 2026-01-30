@@ -557,6 +557,7 @@
         "offsetY": 0.0
       }
     ],
+    "spawnNumber": 2,
     "spawnInterval": 0.5,
     "spawnPauseTime": 3.5,
     "deathSpawnCount": 4

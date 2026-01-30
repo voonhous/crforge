@@ -38,6 +38,8 @@ public class Card {
   @Builder.Default
   private final float spawnPauseTime = 0f;
   @Builder.Default
+  private final int spawnNumber = 1; // Default to 1 unit per wave
+  @Builder.Default
   private final int deathSpawnCount = 0;
 
   public boolean isTroop() {
