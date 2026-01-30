@@ -4,7 +4,7 @@
 and Hit Time.
 
 Nomenclature:
-1. Hit Speed (Clash Royale) = Hit Time (CR Forge) 
+1. Hit Speed (Clash Royale) = Hit Time or `attackCooldown` (CR Forge) 
 2. Load Time
 
 ---
