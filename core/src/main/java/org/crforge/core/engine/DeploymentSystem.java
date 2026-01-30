@@ -86,7 +86,9 @@ public class DeploymentSystem {
           TroopStats spawnStats = card.getTroops().get(1);
           spawner = SpawnerComponent.builder()
               .spawnInterval(card.getSpawnInterval())
-              .currentTimer(card.getSpawnInterval())
+              .spawnPauseTime(card.getSpawnPauseTime())
+              .unitsPerWave(card.getSpawnNumber())
+              .currentTimer(card.getSpawnPauseTime())
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
               .build();
@@ -182,7 +184,9 @@ public class DeploymentSystem {
         TroopStats spawnStats = card.getTroops().get(1);
         spawner = SpawnerComponent.builder()
             .spawnInterval(card.getSpawnInterval())
-            .currentTimer(card.getSpawnInterval())
+            .spawnPauseTime(card.getSpawnPauseTime())
+            .unitsPerWave(card.getSpawnNumber())
+            .currentTimer(card.getSpawnPauseTime())
             .deathSpawnCount(card.getDeathSpawnCount())
             .spawnStats(spawnStats)
             .build();

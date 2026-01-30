@@ -43,6 +43,8 @@ public class CardLoader {
         .buildingHealth(dto.getBuildingHealth())
         .buildingLifetime(dto.getBuildingLifetime())
         .spawnInterval(dto.getSpawnInterval())
+        .spawnPauseTime(dto.getSpawnPauseTime())
+        .spawnNumber(dto.getSpawnNumber() > 0 ? dto.getSpawnNumber() : 1) // Default to 1 if missing/0
         .deathSpawnCount(dto.getDeathSpawnCount());
 
     if (dto.getProjectile() != null) {
