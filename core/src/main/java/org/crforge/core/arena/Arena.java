@@ -144,6 +144,53 @@ public class Arena {
     }
   }
 
+  /**
+   * Validates if a building with a given radius can be placed at (x,y).
+   * Ensures the entire footprint is within valid tiles for the team.
+   */
+  public boolean isValidBuildingPlacement(float x, float y, float radius, Team team) {
+    float minX = x - radius;
+    float maxX = x + radius;
+    float minY = y - radius;
+    float maxY = y + radius;
+
+    // Check if the bounding box is within arena bounds
+    if (!isInBounds(minX, minY) || !isInBounds(maxX, maxY)) {
+      return false;
+    }
+
+    // Iterate over all tiles covered by this bounding box
+    // Using a small epsilon to handle float boundaries safely
+    // Example: Range [1.0, 2.0] should cover tile 1. floor(1.0)=1, floor(1.999)=1.
+    int tMinX = (int) Math.floor(minX + 0.001f);
+    int tMaxX = (int) Math.floor(maxX - 0.001f);
+    int tMinY = (int) Math.floor(minY + 0.001f);
+    int tMaxY = (int) Math.floor(maxY - 0.001f);
+
+    for (int tx = tMinX; tx <= tMaxX; tx++) {
+      for (int ty = tMinY; ty <= tMaxY; ty++) {
+        Tile tile = getTile(tx, ty);
+        if (tile == null) {
+          return false;
+        }
+
+        // Must be in the team's valid zone
+        // This implicitly checks for TOWER, BANNED, RIVER, and BRIDGE as they are distinct types
+        if (team == Team.BLUE) {
+          if (tile.type() != TileType.BLUE_ZONE) {
+            return false;
+          }
+        } else {
+          if (tile.type() != TileType.RED_ZONE) {
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
   public float getCenterX() {
     return WIDTH * TILE_SIZE / 2f;
   }
