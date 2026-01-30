@@ -60,7 +60,7 @@ public class Tower extends Building {
             Combat.builder()
                 .damage(109)
                 .range(7.5f)
-                .sightRange(7.5f)
+                .sightRange(9.5f)
                 .attackCooldown(0.8f)
                 .loadTime(0.0f)
                 .build())
