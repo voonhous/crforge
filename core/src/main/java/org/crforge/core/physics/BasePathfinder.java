@@ -61,12 +61,30 @@ public class BasePathfinder implements Pathfinder {
       float approachY = needsToCrossNorth ? RIVER_Y_MIN : RIVER_Y_MAX;
 
       // If we haven't reached the bridge approach Y yet, move towards that point
+      // (The approach point is essentially the entrance to the bridge)
       if ((needsToCrossNorth && curY < approachY - 0.2f) || (needsToCrossSouth && curY > approachY + 0.2f)) {
-        return (float) Math.atan2(approachY - curY, bridgeX - curX);
+        // Optimization: If unit is already aligned with bridge (within safe width),
+        // don't force it to center X.
+        float distFromCenter = Math.abs(curX - bridgeX);
+        float targetBridgeX = bridgeX;
+
+        if (distFromCenter < 1.0f) {
+          targetBridgeX = curX;
+        }
+
+        return (float) Math.atan2(approachY - curY, targetBridgeX - curX);
       }
 
       // Otherwise, aim for the center of the river on the bridge
-      return (float) Math.atan2(RIVER_CENTER_Y - curY, bridgeX - curX);
+      // Apply similar logic here as well for entering the bridge
+      float distFromCenter = Math.abs(curX - bridgeX);
+      float targetBridgeX = bridgeX;
+
+      if (distFromCenter < 1.0f) {
+        targetBridgeX = curX;
+      }
+
+      return (float) Math.atan2(RIVER_CENTER_Y - curY, targetBridgeX - curX);
     }
 
     // 4. If we are currently inside the river zone (i.e., on a bridge),
@@ -83,21 +101,17 @@ public class BasePathfinder implements Pathfinder {
       float distToLeft = Math.abs(curX - LEFT_BRIDGE_CENTER_X);
       float bridgeX = (distToLeft < (Arena.WIDTH / 4f)) ? LEFT_BRIDGE_CENTER_X : RIGHT_BRIDGE_CENTER_X;
 
-      // For debugging
-      float targetBridgeX;
-      if (false) {
-        // Optimization: If unit is safely on the bridge, move straight forward.
-        // This prevents diagonal movement (which reduces forward speed) when slightly off-center.
-        // Bridge width is 3.0. Safe zone is roughly center +/- 1.0.
-        float distFromCenter = Math.abs(curX - bridgeX);
-        targetBridgeX = bridgeX;
+      float targetBridgeX = bridgeX;
 
-        if (distFromCenter < 1.0f) {
-          // We are safely in the middle of the bridge. Don't correct X.
-          targetBridgeX = curX;
-        }
-      } else {
-        targetBridgeX = bridgeX;
+      // Optimization: If unit is safely on the bridge, move straight forward.
+      // This prevents diagonal movement (which reduces forward speed) when slightly off-center.
+      // Bridge width is 3.0. Safe zone is roughly center +/- 1.0 (leaving 0.5 buffer for radius).
+      float distFromCenter = Math.abs(curX - bridgeX);
+
+      if (distFromCenter < 1.0f) {
+        // We are safely in the middle of the bridge. Don't correct X.
+        // This stops units from rotating towards each other when side-by-side on bridge.
+        targetBridgeX = curX;
       }
 
       // Move straight across the bridge until we clear the river zone

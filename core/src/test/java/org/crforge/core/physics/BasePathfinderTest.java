@@ -139,7 +139,7 @@ class BasePathfinderTest {
 
     float bridgeX = Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH / 2f;
 
-    // Position: On the bridge, slightly misaligned X
+    // Position: On the bridge, slightly misaligned X but safely within 1.0 distance
     Position start = new Position(bridgeX + 0.1f, Arena.RIVER_Y);
 
     // Target: Far to the right (would normally cause a 45 deg turn)
@@ -149,11 +149,13 @@ class BasePathfinderTest {
     float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
         arena);
 
-    // Expectation: Move towards bridge exit (RIVER_Y_MAX) keeping X relatively aligned with bridge
-    // The code aims for (bridgeX, exitY)
+    // Expectation: Move towards bridge exit (RIVER_Y_MAX) keeping X aligned with CURRENT X
+    // because we are safely on the bridge.
     float exitY = Arena.RIVER_Y + 1.0f;
-    float expectedAngle = (float) Math.atan2(exitY - Arena.RIVER_Y, bridgeX - (bridgeX + 0.1f));
 
-    assertEquals(expectedAngle, angle, 0.01f, "Should walk straight across bridge before turning");
+    // UPDATED: Now we expect dx = 0, because targetBridgeX == curX
+    float expectedAngle = (float) Math.atan2(exitY - Arena.RIVER_Y, 0);
+
+    assertEquals(expectedAngle, angle, 0.01f, "Should walk straight across bridge (parallel to Y axis) before turning");
   }
 }
