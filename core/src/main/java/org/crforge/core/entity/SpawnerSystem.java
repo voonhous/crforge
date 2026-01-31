@@ -10,6 +10,7 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -24,6 +25,10 @@ public class SpawnerSystem {
   public void update(float deltaTime) {
     // Iterate only alive entities
     for (Entity entity : gameState.getAliveEntities()) {
+      if (isDeploying(entity)) {
+        continue;
+      }
+
       SpawnerComponent spawner = entity.getSpawner();
 
       // Skip if entity doesn't have this component
@@ -36,6 +41,16 @@ public class SpawnerSystem {
         spawnUnit(entity, spawner.getSpawnStats());
       }
     }
+  }
+
+  private boolean isDeploying(Entity entity) {
+    if (entity instanceof Troop troop) {
+      return troop.isDeploying();
+    }
+    if (entity instanceof Building building) {
+      return building.isDeploying();
+    }
+    return false;
   }
 
   // Called by GameState.processDeaths() or GameEngine
