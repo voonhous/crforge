@@ -88,7 +88,7 @@ public class DeploymentSystem {
               .spawnInterval(card.getSpawnInterval())
               .spawnPauseTime(card.getSpawnPauseTime())
               .unitsPerWave(card.getSpawnNumber())
-              .currentTimer(card.getSpawnPauseTime())
+              .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
               .build();
@@ -186,7 +186,7 @@ public class DeploymentSystem {
             .spawnInterval(card.getSpawnInterval())
             .spawnPauseTime(card.getSpawnPauseTime())
             .unitsPerWave(card.getSpawnNumber())
-            .currentTimer(card.getSpawnPauseTime())
+            .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
             .deathSpawnCount(card.getDeathSpawnCount())
             .spawnStats(spawnStats)
             .build();
