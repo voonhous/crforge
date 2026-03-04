@@ -18,6 +18,8 @@ import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
+import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -85,6 +87,15 @@ public class DebugRenderer {
   private static final Color COLOR_ELIXIR = new Color(0.9f, 0.2f, 0.9f, 1f);
   private static final Color COLOR_ELIXIR_BG = new Color(0.3f, 0.1f, 0.3f, 0.8f);
 
+  // Status effect ring colors
+  private static final Color COLOR_EFFECT_FREEZE = new Color(0.5f, 0.9f, 1f, 0.9f);
+  private static final Color COLOR_EFFECT_STUN = new Color(1f, 1f, 0.2f, 0.9f);
+  private static final Color COLOR_EFFECT_SLOW = new Color(0.3f, 0.7f, 1f, 0.9f);
+  private static final Color COLOR_EFFECT_RAGE = new Color(1f, 0.4f, 0.1f, 0.9f);
+
+  // Attack range circle color
+  private static final Color COLOR_ATTACK_RANGE = new Color(1f, 1f, 1f, 0.12f);
+
   // Debug colors
   private static final Color COLOR_PATH = new Color(0f, 1f, 1f, 0.7f); // Cyan
 
@@ -96,6 +107,8 @@ public class DebugRenderer {
 
   @Getter
   private boolean drawPaths = false;
+  @Getter
+  private boolean drawRanges = false;
   @Setter
   private int selectedHandIndex = -1;
   @Setter
@@ -114,6 +127,10 @@ public class DebugRenderer {
 
   public void toggleDrawPaths() {
     drawPaths = !drawPaths;
+  }
+
+  public void toggleDrawRanges() {
+    drawRanges = !drawRanges;
   }
 
   public void render(GameEngine engine, OrthographicCamera camera, int hoverX, int hoverY) {
@@ -157,10 +174,15 @@ public class DebugRenderer {
       renderPathLines(state);
     }
 
-    // 9. Render Entity Names (New)
+    // 9. Render attack range circles (debug)
+    if (drawRanges) {
+      renderAttackRanges(state);
+    }
+
+    // 10. Render Entity Names (New)
     renderEntityNames(state);
 
-    // 10. Render UI (hands, elixir, timer)
+    // 11. Render UI (hands, elixir, timer)
     renderUI(engine, match, camera);
   }
 
@@ -372,7 +394,8 @@ public class DebugRenderer {
 
     shapeRenderer.end();
 
-    // Draw outlines and COLLISION circles
+    // Draw outlines, collision circles, and status effect rings
+    Gdx.gl.glEnable(GL20.GL_BLEND);
     shapeRenderer.begin(ShapeType.Line);
     for (Entity entity : state.getAliveEntities()) {
       float x = entity.getPosition().getX() * TILE_PIXELS;
@@ -388,7 +411,54 @@ public class DebugRenderer {
       float collisionRadius = entity.getCollisionRadius() * TILE_PIXELS;
       shapeRenderer.setColor(COLOR_COLLISION_CIRCLE);
       shapeRenderer.circle(x, y, collisionRadius);
+
+      // 3. Status effect ring (outside visual radius)
+      Color effectColor = getStatusEffectColor(entity);
+      if (effectColor != null) {
+        shapeRenderer.setColor(effectColor);
+        shapeRenderer.circle(x, y, visualRadius + 3);
+        shapeRenderer.circle(x, y, visualRadius + 5);
+      }
     }
+    shapeRenderer.end();
+  }
+
+  private Color getStatusEffectColor(Entity entity) {
+    // Priority: FREEZE > STUN > SLOW > RAGE
+    boolean hasFreezeOrStun = false;
+    boolean hasSlow = false;
+    boolean hasRage = false;
+    for (AppliedEffect effect : entity.getAppliedEffects()) {
+      switch (effect.getType()) {
+        case FREEZE -> { return COLOR_EFFECT_FREEZE; }
+        case STUN -> hasFreezeOrStun = true;
+        case SLOW -> hasSlow = true;
+        case RAGE -> hasRage = true;
+        default -> { }
+      }
+    }
+    if (hasFreezeOrStun) return COLOR_EFFECT_STUN;
+    if (hasSlow) return COLOR_EFFECT_SLOW;
+    if (hasRage) return COLOR_EFFECT_RAGE;
+    return null;
+  }
+
+  private void renderAttackRanges(GameState state) {
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    shapeRenderer.begin(ShapeType.Line);
+    shapeRenderer.setColor(COLOR_ATTACK_RANGE);
+
+    for (Entity entity : state.getAliveEntities()) {
+      Combat combat = entity.getCombat();
+      if (combat == null) {
+        continue;
+      }
+      float x = entity.getPosition().getX() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float attackRadius = (combat.getRange() + entity.getCollisionRadius()) * TILE_PIXELS;
+      shapeRenderer.circle(x, y, attackRadius, 32);
+    }
+
     shapeRenderer.end();
   }
 
@@ -571,9 +641,13 @@ public class DebugRenderer {
       font.getData().setScale(1.0f);
     }
 
-    // Controls help
+    // Debug overlay status
+    int overlayLine = 0;
     if (drawPaths) {
-      font.draw(spriteBatch, "Paths: ON", screenWidth - 100, screenHeight / 2 + 20);
+      font.draw(spriteBatch, "Paths: ON", screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
+    }
+    if (drawRanges) {
+      font.draw(spriteBatch, "Ranges: ON", screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
 
     spriteBatch.end();
