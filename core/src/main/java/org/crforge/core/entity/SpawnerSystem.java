@@ -102,12 +102,14 @@ public class SpawnerSystem {
     float x = origin.getX() + spread;
     float y = origin.getY() + spread;
 
+    float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
     Combat combat = Combat.builder()
         .damage(stats.getDamage())
         .range(stats.getRange())
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
         .loadTime(stats.getLoadTime())
+        .accumulatedLoadTime(initialLoad)
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
         .build();
