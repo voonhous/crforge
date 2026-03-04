@@ -62,6 +62,11 @@ class SpawnerSystemTest {
 
     gameState.spawnEntity(spawnerBuilding);
     gameState.processPending();
+
+    // Advance past the building's deploy phase (1.0f seconds) so SpawnerSystem
+    // can tick the spawner. The SpawnerComponent timer (3.0f) is unaffected since
+    // SpawnerSystem skips deploying entities.
+    spawnerBuilding.update(1.0f);
   }
 
   @Test
