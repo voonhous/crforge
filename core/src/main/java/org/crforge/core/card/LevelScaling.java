@@ -4,11 +4,14 @@ package org.crforge.core.card;
  * Stat scaling by card level and rarity, based on:
  * https://royaleapi.com/blog/secret-stats and LEVEL_SCALING.md
  * <p>
- * Formula: each level applies {@code floor(prev * growth)} to the base stat.
+ * The multiplier is tracked as an integer in hundredths (e.g. 108 = 1.08) and advanced
+ * with floor each level: {@code m = floor(m * growth)}. The final stat is then
+ * {@code floor(baseStat * m / 100)}. This matches the game's own rounding behaviour
+ * and produces the exact values in the LEVEL_SCALING.md tables.
  * <ul>
- *   <li>Cards: 1.10 per level, starting from the rarity's minimum level</li>
- *   <li>Tower HP: 1.07 (King) or 1.08 (Princess) for levels 1–9, then 1.10 for 10+</li>
- *   <li>Tower damage: 1.08 for levels 1–9, then 1.10 for 10+</li>
+ *   <li>Cards: ×1.10 per level, starting from the rarity's minimum level</li>
+ *   <li>Tower HP: ×1.07 (King) or ×1.08 (Princess) for levels 1–9, then ×1.10 for 10+</li>
+ *   <li>Tower damage: ×1.08 for levels 1–9, then ×1.10 for 10+</li>
  * </ul>
  */
 public final class LevelScaling {
@@ -48,7 +51,7 @@ public final class LevelScaling {
   public static int scaleCard(int baseStat, Rarity rarity, int level) {
     int minLevel = getMinLevel(rarity);
     int clampedLevel = Math.max(minLevel, Math.min(level, MAX_CARD_LEVEL));
-    return applyGrowth(baseStat, clampedLevel - minLevel, 1.10);
+    return applyMultiplier(baseStat, clampedLevel - minLevel, 1.10);
   }
 
   public static int scalePrincessHp(int level) {
@@ -72,20 +75,25 @@ public final class LevelScaling {
   }
 
   private static int scaleTowerStat(int base, int level, double earlyGrowth, double lateGrowth) {
-    // Levels 1–9: earlyGrowth per level; levels 10+: lateGrowth per level
-    int earlySteps = Math.min(level - 1, 8);        // levels 2–9
-    int lateSteps  = Math.max(0, level - 9);         // levels 10+
-    int val = applyGrowth(base, earlySteps, earlyGrowth);
-    return applyGrowth(val, lateSteps, lateGrowth);
+    // Multiplier tracked in hundredths; growth threshold switches at level 10 (i.e. step 9+)
+    int m = 100;
+    for (int i = 1; i < level; i++) {
+      double growth = i < 9 ? earlyGrowth : lateGrowth;
+      m = (int) Math.floor(m * growth);
+    }
+    return (int) Math.floor(base * m / 100.0);
   }
 
-  /** Applies {@code floor(prev * growth)} for {@code steps} iterations. */
-  private static int applyGrowth(int base, int steps, double growth) {
-    int val = base;
+  /**
+   * Advances a multiplier (starting at 100 = 1.00) by {@code steps} levels, then applies
+   * it to {@code base}: {@code floor(base * m / 100)}.
+   */
+  private static int applyMultiplier(int base, int steps, double growth) {
+    int m = 100;
     for (int i = 0; i < steps; i++) {
-      val = (int) Math.floor(val * growth);
+      m = (int) Math.floor(m * growth);
     }
-    return val;
+    return (int) Math.floor(base * m / 100.0);
   }
 
   private static int getMinLevel(Rarity rarity) {

@@ -1,11 +1,13 @@
 package org.crfoge.data.loader.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import lombok.Data;
 import org.crforge.core.card.CardType;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CardConfigDTO {
 
   private String id;
