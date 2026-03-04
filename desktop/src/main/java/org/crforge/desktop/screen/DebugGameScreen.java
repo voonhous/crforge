@@ -224,6 +224,11 @@ public class DebugGameScreen implements Screen {
 
       PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, playX, playY);
       engine.queueAction(selectedPlayer, action);
+
+      // Deselect after playing, next card must be explicitly selected (matches real CR)
+      selectedHandIndex = -1;
+      renderer.setSelectedHandIndex(-1);
+      renderer.setSelectedTeam(null);
     }
   }
 
