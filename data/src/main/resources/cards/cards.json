@@ -4,6 +4,7 @@
     "name": "Knight",
     "description": "TID_SPELL_INFO_KNIGHT",
     "type": "TROOP",
+    "rarity": "Common",
     "cost": 3,
     "units": [
       {
@@ -30,6 +31,7 @@
     "name": "Giant",
     "description": "TID_SPELL_INFO_GIANT",
     "type": "TROOP",
+    "rarity": "Rare",
     "cost": 5,
     "units": [
       {
@@ -56,6 +58,7 @@
     "name": "Valkyrie",
     "description": "TID_SPELL_INFO_VALKYRIE",
     "type": "TROOP",
+    "rarity": "Rare",
     "cost": 4,
     "units": [
       {
@@ -82,6 +85,7 @@
     "name": "Barbarians",
     "description": "TID_SPELL_INFO_BARBARIANS",
     "type": "TROOP",
+    "rarity": "Common",
     "cost": 5,
     "units": [
       {
@@ -176,6 +180,7 @@
     "name": "Goblins",
     "description": "TID_SPELL_INFO_GOBLINS",
     "type": "TROOP",
+    "rarity": "Common",
     "cost": 2,
     "units": [
       {
@@ -253,6 +258,7 @@
     "name": "Minions",
     "description": "TID_SPELL_INFO_MINIONS",
     "type": "TROOP",
+    "rarity": "Common",
     "cost": 3,
     "units": [
       {
@@ -273,7 +279,9 @@
           "name": "MinionSpit",
           "damage": 42,
           "speed": 1000,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         },
         "offsetX": 0.0,
         "offsetY": 0.5
@@ -296,7 +304,9 @@
           "name": "MinionSpit",
           "damage": 42,
           "speed": 1000,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         },
         "offsetX": -0.433,
         "offsetY": -0.25
@@ -319,7 +329,9 @@
           "name": "MinionSpit",
           "damage": 42,
           "speed": 1000,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         },
         "offsetX": 0.433,
         "offsetY": -0.25
@@ -331,6 +343,7 @@
     "name": "BabyDragon",
     "description": "TID_SPELL_INFO_BABY_DRAGON",
     "type": "TROOP",
+    "rarity": "Epic",
     "cost": 4,
     "units": [
       {
@@ -351,7 +364,10 @@
           "name": "BabyDragonProjectile",
           "damage": 63,
           "speed": 500,
-          "homing": true
+          "homing": true,
+          "aoeToAir": true,
+          "aoeToGround": true,
+          "radius": 1.5
         },
         "offsetX": 0.0,
         "offsetY": 0.0
@@ -363,6 +379,7 @@
     "name": "Musketeer",
     "description": "TID_SPELL_INFO_MUSKETEER",
     "type": "TROOP",
+    "rarity": "Rare",
     "cost": 4,
     "units": [
       {
@@ -383,7 +400,9 @@
           "name": "MusketeerProjectile",
           "damage": 85,
           "speed": 1000,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         },
         "offsetX": 0.0,
         "offsetY": 0.0
@@ -395,6 +414,7 @@
     "name": "Archer",
     "description": "TID_SPELL_INFO_ARCHERS",
     "type": "TROOP",
+    "rarity": "Common",
     "cost": 3,
     "units": [
       {
@@ -415,7 +435,9 @@
           "name": "ArcherArrow",
           "damage": 44,
           "speed": 600,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         },
         "offsetX": 0.5,
         "offsetY": 0.0
@@ -438,7 +460,9 @@
           "name": "ArcherArrow",
           "damage": 44,
           "speed": 600,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         },
         "offsetX": -0.5,
         "offsetY": 0.0
@@ -450,6 +474,7 @@
     "name": "Bomber",
     "description": "TID_SPELL_INFO_BOMBER",
     "type": "TROOP",
+    "rarity": "Common",
     "cost": 2,
     "units": [
       {
@@ -470,7 +495,10 @@
           "name": "BombSkeletonProjectile",
           "damage": 88,
           "speed": 400,
-          "homing": false
+          "homing": false,
+          "aoeToAir": false,
+          "aoeToGround": true,
+          "radius": 1.5
         },
         "offsetX": 0.0,
         "offsetY": 0.0
@@ -482,6 +510,7 @@
     "name": "Cannon",
     "description": "TID_BUILDING_CANNON",
     "type": "BUILDING",
+    "rarity": "Common",
     "cost": 3,
     "buildingHealth": 322,
     "lifeTime": 30.0,
@@ -507,7 +536,9 @@
           "name": "TowerCannonball",
           "damage": 83,
           "speed": 1000,
-          "homing": true
+          "homing": true,
+          "aoeToAir": false,
+          "aoeToGround": false
         }
       }
     ]
@@ -517,6 +548,7 @@
     "name": "Tombstone",
     "description": "TID_BUILDING_TOMBSTONE",
     "type": "BUILDING",
+    "rarity": "Rare",
     "cost": 3,
     "buildingHealth": 207,
     "lifeTime": 30.0,
@@ -561,5 +593,33 @@
     "spawnInterval": 0.5,
     "spawnPauseTime": 3.5,
     "deathSpawnCount": 4
+  },
+  {
+    "id": "arrows",
+    "name": "Arrows",
+    "description": "TID_SPELL_INFO_ARROWS",
+    "type": "SPELL",
+    "rarity": "Common",
+    "cost": 3,
+    "projectile": {
+      "name": "ArrowsSpell",
+      "damage": 48,
+      "speed": 1100,
+      "radius": 1.4
+    }
+  },
+  {
+    "id": "fireball",
+    "name": "Fireball",
+    "description": "TID_SPELL_INFO_FIREBALL",
+    "type": "SPELL",
+    "rarity": "Rare",
+    "cost": 4,
+    "projectile": {
+      "name": "FireballSpell",
+      "damage": 269,
+      "speed": 600,
+      "radius": 2.5
+    }
   }
 ]
