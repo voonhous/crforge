@@ -15,11 +15,17 @@ public class Player {
   private final Hand hand;
   private final Elixir elixir;
   private final boolean isBot; // Simple flag for now, maybe expanded later
+  private final LevelConfig levelConfig;
 
   public Player(Team team, Deck deck, boolean isBot) {
+    this(team, deck, isBot, LevelConfig.standard());
+  }
+
+  public Player(Team team, Deck deck, boolean isBot, LevelConfig levelConfig) {
     this.team = team;
     this.deck = deck;
     this.isBot = isBot;
+    this.levelConfig = levelConfig;
 
     // Initialize systems
     this.hand = new Hand(deck);

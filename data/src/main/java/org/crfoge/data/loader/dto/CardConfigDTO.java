@@ -13,6 +13,7 @@ public class CardConfigDTO {
   private String description;
   private CardType type;
   private int cost;
+  private org.crforge.core.card.Rarity rarity;
 
   // Troop specifics
   private List<UnitConfigDTO> units;

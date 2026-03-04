@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.component.Health;
 import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -113,8 +114,8 @@ class GameStateTest {
 
   @Test
   void getTowerCount_shouldCountAliveTowers() {
-    Tower tower1 = Tower.createPrincessTower(Team.BLUE, 5, 5);
-    Tower tower2 = Tower.createPrincessTower(Team.BLUE, 10, 5);
+    Tower tower1 = Tower.createPrincessTower(Team.BLUE, 5, 5, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower tower2 = Tower.createPrincessTower(Team.BLUE, 10, 5, LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(tower1);
     gameState.spawnEntity(tower2);
@@ -131,8 +132,8 @@ class GameStateTest {
   @Test
   void princessTowerDeath_shouldActivateKingTower() {
     // Setup: King Tower (inactive) + Princess Tower (active)
-    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3);
-    Tower princessTower = Tower.createPrincessTower(Team.BLUE, 5, 6);
+    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower princessTower = Tower.createPrincessTower(Team.BLUE, 5, 6, LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(kingTower);
     gameState.spawnEntity(princessTower);
@@ -154,7 +155,7 @@ class GameStateTest {
   @Test
   void kingTower_shouldActivateWhenDamaged() {
     // Setup: King Tower (inactive)
-    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3);
+    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
     gameState.spawnEntity(kingTower);
     gameState.processPending();
 
@@ -174,7 +175,7 @@ class GameStateTest {
   @Test
   void kingTower_shouldHaveActivationDelay() {
     // Setup: King Tower (inactive)
-    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3);
+    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
     gameState.spawnEntity(kingTower);
     gameState.processPending();
 

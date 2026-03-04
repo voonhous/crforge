@@ -15,6 +15,7 @@ import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Deck;
+import org.crforge.core.player.LevelConfig;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -109,8 +110,9 @@ public class DebugGameScreen implements Screen {
     Deck blueDeck = new Deck(blueCards);
     Deck redDeck = new Deck(redCards);
 
-    bluePlayer = new Player(Team.BLUE, blueDeck, false);
-    redPlayer = new Player(Team.RED, redDeck, true);
+    LevelConfig levelCfg = new LevelConfig(11); // Level 11 for standard ladder gameplay
+    bluePlayer = new Player(Team.BLUE, blueDeck, false, levelCfg);
+    redPlayer = new Player(Team.RED, redDeck, true, levelCfg);
 
     // Default selection
     selectedPlayer = bluePlayer;

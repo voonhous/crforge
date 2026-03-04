@@ -3,6 +3,7 @@ package org.crfoge.data.loader;
 import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,7 +21,8 @@ import org.crforge.core.card.TroopStats;
 
 public class CardLoader {
 
-  private static final ObjectMapper mapper = new ObjectMapper();
+  private static final ObjectMapper mapper = new ObjectMapper()
+      .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
   private static final float SPEED_BASE = 60.0f;
 
   public static List<Card> loadCards(InputStream inputStream) {
@@ -40,6 +42,7 @@ public class CardLoader {
         .description(dto.getDescription())
         .type(dto.getType())
         .cost(dto.getCost())
+        .rarity(dto.getRarity() != null ? dto.getRarity() : org.crforge.core.card.Rarity.COMMON)
         .buildingHealth(dto.getBuildingHealth())
         .buildingLifetime(dto.getBuildingLifetime())
         .spawnInterval(dto.getSpawnInterval())

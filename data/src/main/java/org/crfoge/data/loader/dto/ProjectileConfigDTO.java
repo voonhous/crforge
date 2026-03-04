@@ -1,9 +1,11 @@
 package org.crfoge.data.loader.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProjectileConfigDTO {
 
   private String name;
