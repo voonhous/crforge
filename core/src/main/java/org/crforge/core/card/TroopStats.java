@@ -40,6 +40,8 @@ public class TroopStats {
   @Builder.Default
   private final float loadTime = 0f;
   @Builder.Default
+  private final boolean noPreload = false; // Sparky exception: does not enter preloaded
+  @Builder.Default
   private final float aoeRadius = 0f;
   @Builder.Default
   private final MovementType movementType = MovementType.GROUND;

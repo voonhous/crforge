@@ -125,12 +125,18 @@ public class DeploymentSystem {
     float spawnX = baseX + offsetX;
     float spawnY = baseY + offsetY;
 
+    // Troops enter the arena preloaded per RoyaleAPI secret stats:
+    // https://royaleapi.com/blog/secret-stats
+    // Exception: noPreload units (e.g. Sparky) start with 0 charge.
+    float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
+
     Combat combat = Combat.builder()
         .damage(stats.getDamage())
         .range(stats.getRange())
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
         .loadTime(stats.getLoadTime())
+        .accumulatedLoadTime(initialLoad)
         .aoeRadius(stats.getAoeRadius())
         .targetType(stats.getTargetType())
         .hitEffects(stats.getHitEffects())
@@ -161,12 +167,14 @@ public class DeploymentSystem {
 
     Combat combat = null;
     if (stats != null && stats.getDamage() > 0) {
+      float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
       combat = Combat.builder()
           .damage(stats.getDamage())
           .range(stats.getRange())
           .sightRange(stats.getSightRange()) // Building sight
           .attackCooldown(stats.getAttackCooldown())
           .loadTime(stats.getLoadTime())
+          .accumulatedLoadTime(initialLoad)
           .targetType(stats.getTargetType())
           .hitEffects(stats.getHitEffects())
           .projectileStats(stats.getProjectile())

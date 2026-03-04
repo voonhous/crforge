@@ -12,6 +12,12 @@ build/
 *.iws
 .vscode/
 
+# Eclipse
+.classpath
+.project
+.settings/
+.factorypath
+
 # OS
 .DS_Store
 Thumbs.db
