@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Combat;
@@ -56,20 +58,21 @@ public class DeploymentSystem {
     Card card = player.tryPlayCard(action);
 
     if (card != null) {
+      int cardLevel = player.getLevelConfig().getLevelFor(card);
       // 2. Spawn the Entity
-      spawnCard(player.getTeam(), card, action.getX(), action.getY());
+      spawnCard(player.getTeam(), card, action.getX(), action.getY(), cardLevel);
     }
   }
 
-  private void spawnCard(Team team, Card card, float x, float y) {
+  private void spawnCard(Team team, Card card, float x, float y, int level) {
     switch (card.getType()) {
-      case TROOP -> spawnTroops(team, card, x, y);
-      case BUILDING -> spawnBuilding(team, card, x, y);
+      case TROOP -> spawnTroops(team, card, x, y, level);
+      case BUILDING -> spawnBuilding(team, card, x, y, level);
       case SPELL -> castSpell(team, card, x, y);
     }
   }
 
-  private void spawnTroops(Team team, Card card, float x, float y) {
+  private void spawnTroops(Team team, Card card, float x, float y, int level) {
     List<TroopStats> troopStatsList = card.getTroops();
     if (troopStatsList == null || troopStatsList.isEmpty()) {
       return;
@@ -95,7 +98,7 @@ public class DeploymentSystem {
         }
       }
 
-      Troop troop = createTroop(team, stats, x, y, spawner);
+      Troop troop = createTroop(team, stats, x, y, spawner, level, card.getRarity());
       state.spawnEntity(troop);
 
       // Handle Spawn Effects
@@ -113,7 +116,7 @@ public class DeploymentSystem {
    * and orientation towards the enemy.
    */
   private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
-      SpawnerComponent spawner) {
+      SpawnerComponent spawner, int level, Rarity rarity) {
     float offsetX = stats.getOffsetX();
     float offsetY = stats.getOffsetY();
 
@@ -130,8 +133,11 @@ public class DeploymentSystem {
     // Exception: noPreload units (e.g. Sparky) start with 0 charge.
     float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
 
+    int scaledHp     = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
+    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
+
     Combat combat = Combat.builder()
-        .damage(stats.getDamage())
+        .damage(scaledDamage)
         .range(stats.getRange())
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
@@ -148,7 +154,7 @@ public class DeploymentSystem {
         .name(stats.getName())
         .team(team)
         .position(new Position(spawnX, spawnY))
-        .health(new Health(stats.getHealth()))
+        .health(new Health(scaledHp))
         .movement(new Movement(
             stats.getSpeed(),
             stats.getMass(),
@@ -162,14 +168,17 @@ public class DeploymentSystem {
         .build();
   }
 
-  private void spawnBuilding(Team team, Card card, float x, float y) {
+  private void spawnBuilding(Team team, Card card, float x, float y, int level) {
     TroopStats stats = card.getTroops().isEmpty() ? null : card.getTroops().get(0);
 
     Combat combat = null;
+    int scaledBuildingHp     = LevelScaling.scaleCard(card.getBuildingHealth(), card.getRarity(), level);
+    int scaledBuildingDamage = stats != null ? LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level) : 0;
+
     if (stats != null && stats.getDamage() > 0) {
       float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
       combat = Combat.builder()
-          .damage(stats.getDamage())
+          .damage(scaledBuildingDamage)
           .range(stats.getRange())
           .sightRange(stats.getSightRange()) // Building sight
           .attackCooldown(stats.getAttackCooldown())
@@ -206,7 +215,7 @@ public class DeploymentSystem {
         .name(card.getName())
         .team(team)
         .position(new Position(x, y))
-        .health(new Health(card.getBuildingHealth()))
+        .health(new Health(scaledBuildingHp))
         .movement(new Movement(0, 0, collisionRadius, visualRadius, MovementType.BUILDING))
         .combat(combat)
         .lifetime(card.getBuildingLifetime())

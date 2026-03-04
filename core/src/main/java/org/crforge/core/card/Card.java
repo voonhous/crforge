@@ -17,6 +17,8 @@ public class Card {
   private final String description;
   private final CardType type;
   private final int cost;
+  @Builder.Default
+  private final Rarity rarity = Rarity.COMMON;
 
   /**
    * Defines the units that this card spawns.

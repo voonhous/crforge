@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -27,38 +28,38 @@ public class Tower extends Building {
   private float activationTimer = 0f;
 
   // Factory methods for standard towers
-  public static Tower createCrownTower(Team team, float x, float y) {
+  public static Tower createCrownTower(Team team, float x, float y, int level) {
     return Tower.builder()
         .name("Crown Tower")
         .team(team)
         .position(new Position(x, y))
-        .health(new Health(4824))
+        .health(new Health(LevelScaling.scaleKingHp(level)))
         .movement(new Movement(0, 0, 1.4f, 2.0f, MovementType.BUILDING))
         .towerType(TowerType.CROWN)
         .active(false)
         .combat(
             Combat.builder()
-                .damage(109)
+                .damage(LevelScaling.scaleKingDamage(level))
                 .range(7.0f)
                 .sightRange(7.0f)
                 .attackCooldown(1.0f)
-                .loadTime(0.0f) // Standard for towers? Usually they attack immediately when active
+                .loadTime(0.0f)
                 .build())
         .build();
   }
 
-  public static Tower createPrincessTower(Team team, float x, float y) {
+  public static Tower createPrincessTower(Team team, float x, float y, int level) {
     return Tower.builder()
         .name("Princess Tower")
         .team(team)
         .position(new Position(x, y))
-        .health(new Health(3052))
+        .health(new Health(LevelScaling.scalePrincessHp(level)))
         .movement(new Movement(0, 0, 1.0f, 1.5f, MovementType.BUILDING))
         .towerType(TowerType.PRINCESS)
         .active(true)
         .combat(
             Combat.builder()
-                .damage(109)
+                .damage(LevelScaling.scalePrincessDamage(level))
                 .range(7.5f)
                 .sightRange(9.5f)
                 .attackCooldown(0.8f)

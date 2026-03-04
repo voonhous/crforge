@@ -1,6 +1,7 @@
 package org.crforge.core.match;
 
 import org.crforge.core.arena.Arena;
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
@@ -21,8 +22,15 @@ public class Standard1v1Match extends Match {
   // Overtime duration: 2 minutes
   public static final int OVERTIME_DURATION_TICKS = 120 * GameEngine.TICKS_PER_SECOND;
 
+  private final int towerLevel;
+
   public Standard1v1Match() {
+    this(LevelScaling.DEFAULT_TOWER_LEVEL);
+  }
+
+  public Standard1v1Match(int towerLevel) {
     super(Arena.standard());
+    this.towerLevel = towerLevel;
   }
 
   @Override
@@ -61,18 +69,18 @@ public class Standard1v1Match extends Match {
 
     if (team == Team.BLUE) {
       callback.spawn(Tower.createCrownTower(team,
-          arena.getBlueCrownTowerX(), arena.getBlueCrownTowerY()));
+          arena.getBlueCrownTowerX(), arena.getBlueCrownTowerY(), towerLevel));
       callback.spawn(Tower.createPrincessTower(team,
-          arena.getBlueLeftPrincessTowerX(), arena.getBlueLeftPrincessTowerY()));
+          arena.getBlueLeftPrincessTowerX(), arena.getBlueLeftPrincessTowerY(), towerLevel));
       callback.spawn(Tower.createPrincessTower(team,
-          arena.getBlueRightPrincessTowerX(), arena.getBlueRightPrincessTowerY()));
+          arena.getBlueRightPrincessTowerX(), arena.getBlueRightPrincessTowerY(), towerLevel));
     } else {
       callback.spawn(Tower.createCrownTower(team,
-          arena.getRedCrownTowerX(), arena.getRedCrownTowerY()));
+          arena.getRedCrownTowerX(), arena.getRedCrownTowerY(), towerLevel));
       callback.spawn(Tower.createPrincessTower(team,
-          arena.getRedLeftPrincessTowerX(), arena.getRedLeftPrincessTowerY()));
+          arena.getRedLeftPrincessTowerX(), arena.getRedLeftPrincessTowerY(), towerLevel));
       callback.spawn(Tower.createPrincessTower(team,
-          arena.getRedRightPrincessTowerX(), arena.getRedRightPrincessTowerY()));
+          arena.getRedRightPrincessTowerX(), arena.getRedRightPrincessTowerY(), towerLevel));
     }
   }
 
