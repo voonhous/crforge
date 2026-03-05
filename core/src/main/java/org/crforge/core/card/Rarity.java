@@ -12,5 +12,24 @@ public enum Rarity {
   RARE,
   EPIC,
   LEGENDARY,
-  CHAMPION
+  CHAMPION,
+
+  /**
+   * Fallback for cards with missing or empty rarity (e.g. internal sub-buildings
+   * like giantskeletonbomb). Scaled the same as {@link #COMMON}.
+   */
+  UNKNOWN;
+
+  /**
+   * Parses a rarity string, returning {@link #UNKNOWN} for null or empty values.
+   *
+   * @param value the rarity name (case-insensitive), or null/empty
+   * @return the matching Rarity, or UNKNOWN if the input is null/empty
+   */
+  public static Rarity fromString(String value) {
+    if (value == null || value.isEmpty()) {
+      return UNKNOWN;
+    }
+    return valueOf(value.toUpperCase());
+  }
 }

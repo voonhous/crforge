@@ -199,6 +199,51 @@ class CardLoaderTest {
   }
 
   @Test
+  void loadCards_shouldParseMultipleUnitsInArray() {
+    String json = """
+        [
+          {
+            "id": "archers",
+            "name": "Archers",
+            "type": "TROOP",
+            "cost": 3,
+            "units": [
+              {
+                "name": "Archer",
+                "health": 119,
+                "damage": 44,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "offsetX": 0.5,
+                "offsetY": 0.0
+              },
+              {
+                "name": "Archer",
+                "health": 119,
+                "damage": 44,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "offsetX": -0.5,
+                "offsetY": 0.0
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+
+    assertThat(card.getTroops()).hasSize(2);
+    assertThat(card.getTroops().get(0).getName()).isEqualTo("Archer");
+    assertThat(card.getTroops().get(0).getOffsetX()).isCloseTo(0.5f, within(0.01f));
+    assertThat(card.getTroops().get(1).getOffsetX()).isCloseTo(-0.5f, within(0.01f));
+  }
+
+  @Test
   void loadCards_shouldHandleMultipleUnitsWithCount() {
     String json = """
         [
@@ -227,7 +272,6 @@ class CardLoaderTest {
     assertThat(cards).hasSize(1);
     Card card = cards.get(0);
 
-    // Should have 3 identical stats in the list
     assertThat(card.getTroops()).hasSize(3);
     assertThat(card.getTroops().get(0).getName()).isEqualTo("Minion");
     assertThat(card.getTroops().get(0).getMovementType()).isEqualTo(MovementType.AIR);
@@ -277,8 +321,6 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldPrioritizeProjectileDamage() {
-    // Scenario 1: Unit has damage, Projectile has damage -> Use Projectile damage (e.g. Ice Wizard/Firecracker specific logic)
-    // Scenario 2: Unit has damage, Projectile has 0 -> Inherit Unit damage (e.g. Musketeer)
     String json = """
         [
           {
@@ -327,13 +369,11 @@ class CardLoaderTest {
 
     assertThat(cards).hasSize(2);
 
-    // Firecracker: Projectile damage (100) should override unit damage (50) for the projectile
     Card firecracker = cards.get(0);
     TroopStats fcStats = firecracker.getTroops().get(0);
-    assertThat(fcStats.getDamage()).isEqualTo(50); // Unit damage remains
-    assertThat(fcStats.getProjectile().getDamage()).isEqualTo(100); // Projectile uses its own
+    assertThat(fcStats.getDamage()).isEqualTo(50);
+    assertThat(fcStats.getProjectile().getDamage()).isEqualTo(100);
 
-    // Musketeer: Projectile damage (0) should inherit unit damage (200)
     Card musketeer = cards.get(1);
     TroopStats mStats = musketeer.getTroops().get(0);
     assertThat(mStats.getDamage()).isEqualTo(200);
@@ -403,5 +443,162 @@ class CardLoaderTest {
     // Verify Projectile Inheritance (Damage 89 from Unit)
     assertThat(stats.getProjectile()).isNotNull();
     assertThat(stats.getProjectile().getDamage()).isEqualTo(89);
+  }
+
+  @Test
+  void loadCards_shouldParseBuildingFromUnitLevel() {
+    String json = """
+        [
+          {
+            "id": "cannon",
+            "name": "Cannon",
+            "type": "BUILDING",
+            "rarity": "Common",
+            "cost": 3,
+            "units": [
+              {
+                "name": "Cannon",
+                "health": 322,
+                "damage": 83,
+                "speed": 0.0,
+                "collisionRadius": 0.6,
+                "sightRange": 5.5,
+                "range": 5.5,
+                "attackCooldown": 1.0,
+                "loadTime": 0.1,
+                "deployTime": 1.0,
+                "targetType": "GROUND",
+                "movementType": "GROUND",
+                "visualRadius": 1.5,
+                "lifeTime": 30.0,
+                "projectile": {
+                  "name": "TowerCannonball",
+                  "damage": 83,
+                  "speed": 1000,
+                  "homing": true
+                }
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+
+    assertThat(card.getType()).isEqualTo(CardType.BUILDING);
+    assertThat(card.getBuildingHealth()).isEqualTo(322);
+    assertThat(card.getBuildingLifetime()).isCloseTo(30.0f, within(0.01f));
+
+    TroopStats stats = card.getTroops().get(0);
+    assertThat(stats.getDamage()).isEqualTo(83);
+    assertThat(stats.getProjectile()).isNotNull();
+    assertThat(stats.getProjectile().getName()).isEqualTo("TowerCannonball");
+  }
+
+  @Test
+  void loadCards_shouldParseSpawnerBuildingFromUnitLevel() {
+    String json = """
+        [
+          {
+            "id": "tombstone",
+            "name": "Tombstone",
+            "type": "BUILDING",
+            "rarity": "Rare",
+            "cost": 3,
+            "units": [
+              {
+                "name": "Tombstone",
+                "health": 207,
+                "damage": 0,
+                "speed": 0.0,
+                "movementType": "GROUND",
+                "visualRadius": 1.5,
+                "lifeTime": 30.0,
+                "deathSpawn": [
+                  {
+                    "spawnCharacter": "Skeleton",
+                    "spawnNumber": 4
+                  }
+                ],
+                "liveSpawn": {
+                  "spawnCharacter": "Skeleton",
+                  "spawnNumber": 2,
+                  "spawnPauseTime": 3.5,
+                  "spawnInterval": 0.5
+                }
+              },
+              {
+                "name": "Skeleton",
+                "health": 32,
+                "damage": 32,
+                "speed": 90.0,
+                "movementType": "GROUND",
+                "targetType": "GROUND"
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+
+    assertThat(card.getType()).isEqualTo(CardType.BUILDING);
+    assertThat(card.getBuildingHealth()).isEqualTo(207);
+    assertThat(card.getBuildingLifetime()).isCloseTo(30.0f, within(0.01f));
+    assertThat(card.getSpawnInterval()).isCloseTo(0.5f, within(0.01f));
+    assertThat(card.getSpawnPauseTime()).isCloseTo(3.5f, within(0.01f));
+    assertThat(card.getSpawnNumber()).isEqualTo(2);
+    assertThat(card.getDeathSpawnCount()).isEqualTo(4);
+
+    // Second unit is the spawn template
+    assertThat(card.getTroops()).hasSize(2);
+    assertThat(card.getTroops().get(1).getName()).isEqualTo("Skeleton");
+    assertThat(card.getTroops().get(1).getDamage()).isEqualTo(32);
+  }
+
+  @Test
+  void loadCards_shouldLoadAllCardsFromResource() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+
+    List<Card> cards = CardLoader.loadCards(is);
+    assertThat(cards).hasSize(121);
+
+    // Spot check Knight
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    assertThat(knight.getType()).isEqualTo(CardType.TROOP);
+    assertThat(knight.getCost()).isEqualTo(3);
+    assertThat(knight.getTroops()).hasSize(1);
+
+    // Spot check Tombstone (spawner building)
+    Card tombstone = cards.stream().filter(c -> c.getId().equals("tombstone")).findFirst().orElse(null);
+    assertThat(tombstone).isNotNull();
+    assertThat(tombstone.getType()).isEqualTo(CardType.BUILDING);
+    assertThat(tombstone.getSpawnInterval()).isGreaterThan(0f);
+    assertThat(tombstone.getDeathSpawnCount()).isEqualTo(4);
+    assertThat(tombstone.getTroops()).hasSizeGreaterThanOrEqualTo(2);
+
+    // Spot check Cannon (building with projectile)
+    Card cannon = cards.stream().filter(c -> c.getId().equals("cannon")).findFirst().orElse(null);
+    assertThat(cannon).isNotNull();
+    assertThat(cannon.getType()).isEqualTo(CardType.BUILDING);
+    assertThat(cannon.getBuildingLifetime()).isGreaterThan(0f);
+    assertThat(cannon.getTroops().get(0).getProjectile()).isNotNull();
+
+    // Spot check spell (Fireball)
+    Card fireball = cards.stream().filter(c -> c.getId().equals("fireball")).findFirst().orElse(null);
+    assertThat(fireball).isNotNull();
+    assertThat(fireball.getType()).isEqualTo(CardType.SPELL);
+    assertThat(fireball.getProjectile()).isNotNull();
+    assertThat(fireball.getProjectile().getDamage()).isGreaterThan(0);
   }
 }
