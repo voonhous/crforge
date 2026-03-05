@@ -68,7 +68,7 @@ public class DeploymentSystem {
     switch (card.getType()) {
       case TROOP -> spawnTroops(team, card, x, y, level);
       case BUILDING -> spawnBuilding(team, card, x, y, level);
-      case SPELL -> castSpell(team, card, x, y);
+      case SPELL -> castSpell(team, card, x, y, level);
     }
   }
 
@@ -233,13 +233,14 @@ public class DeploymentSystem {
     }
   }
 
-  private void castSpell(Team team, Card card, float x, float y) {
+  private void castSpell(Team team, Card card, float x, float y, int level) {
     ProjectileStats proj = card.getProjectile();
     if (proj == null) {
       return;
     }
 
-    int damage = proj.getDamage();
+    // Scale spell damage by card level and rarity
+    int damage = LevelScaling.scaleCard(proj.getDamage(), card.getRarity(), level);
     float speed = proj.getSpeed();
     float radius = proj.getRadius();
     List<EffectStats> effects = proj.getHitEffects();

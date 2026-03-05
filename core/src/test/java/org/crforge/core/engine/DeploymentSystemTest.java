@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
@@ -15,6 +17,7 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Deck;
+import org.crforge.core.player.LevelConfig;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -333,5 +336,61 @@ class DeploymentSystemTest {
     assertThat(gameState.getProjectiles()).hasSize(1);
     assertThat(gameState.getProjectiles().get(0).isPositionTargeted()).isTrue();
     assertThat(gameState.getProjectiles().get(0).getDamage()).isEqualTo(303);
+  }
+
+  @Test
+  void testCastSpell_shouldScaleDamageByLevel() {
+    // Target with high HP so we can measure damage
+    Troop enemy = Troop.builder()
+        .name("Target")
+        .team(Team.RED)
+        .position(new Position(10f, 10f))
+        .health(new Health(10000))
+        .build();
+    enemy.onSpawn();
+    gameState.spawnEntity(enemy);
+    gameState.processPending();
+    enemy.update(2.0f);
+
+    int baseDamage = 100;
+    Rarity rarity = Rarity.RARE;
+    int level = 11;
+
+    Card fireball = Card.builder()
+        .id("fireball")
+        .name("Fireball")
+        .type(CardType.SPELL)
+        .cost(4)
+        .rarity(rarity)
+        .projectile(ProjectileStats.builder()
+            .damage(baseDamage)
+            .radius(2.0f)
+            .speed(0) // Instant
+            .build())
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(fireball);
+    }
+
+    // Player at level 11 with Rare card
+    Player spellPlayer = new Player(Team.BLUE, new Deck(deck), false,
+        new LevelConfig(level));
+    spellPlayer.getElixir().update(100f);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(10f)
+        .y(10f)
+        .build();
+
+    deploymentSystem.queueAction(spellPlayer, action);
+    deploymentSystem.update();
+
+    // Damage should be scaled, not raw
+    int expectedDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
+    assertThat(expectedDamage).isGreaterThan(baseDamage); // Sanity check scaling did something
+    assertThat(enemy.getHealth().getCurrent()).isEqualTo(10000 - expectedDamage);
   }
 }
