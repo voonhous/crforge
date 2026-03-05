@@ -2,28 +2,56 @@ package org.crfoge.data.loader;
 
 import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.crfoge.data.loader.dto.CardConfigDTO;
+import org.crfoge.data.loader.dto.DeathSpawnConfigDTO;
 import org.crfoge.data.loader.dto.EffectConfigDTO;
+import org.crfoge.data.loader.dto.LiveSpawnConfigDTO;
 import org.crfoge.data.loader.dto.ProjectileConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 
 public class CardLoader {
 
-  private static final ObjectMapper mapper = new ObjectMapper()
-      .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
+  private static final ObjectMapper mapper = createMapper();
   private static final float SPEED_BASE = 60.0f;
+
+  private static ObjectMapper createMapper() {
+    ObjectMapper om = new ObjectMapper()
+        .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
+    SimpleModule module = new SimpleModule();
+    module.addDeserializer(Rarity.class, new RarityDeserializer());
+    om.registerModule(module);
+    return om;
+  }
+
+  private static class RarityDeserializer extends StdDeserializer<Rarity> {
+
+    RarityDeserializer() {
+      super(Rarity.class);
+    }
+
+    @Override
+    public Rarity deserialize(JsonParser p, DeserializationContext ctxt)
+        throws IOException {
+      return Rarity.fromString(p.getText());
+    }
+  }
 
   public static List<Card> loadCards(InputStream inputStream) {
     try {
@@ -42,22 +70,37 @@ public class CardLoader {
         .description(dto.getDescription())
         .type(dto.getType())
         .cost(dto.getCost())
-        .rarity(dto.getRarity() != null ? dto.getRarity() : org.crforge.core.card.Rarity.COMMON)
-        .buildingHealth(dto.getBuildingHealth())
-        .buildingLifetime(dto.getBuildingLifetime())
-        .spawnInterval(dto.getSpawnInterval())
-        .spawnPauseTime(dto.getSpawnPauseTime())
-        .spawnNumber(dto.getSpawnNumber() > 0 ? dto.getSpawnNumber() : 1) // Default to 1 if missing/0
-        .deathSpawnCount(dto.getDeathSpawnCount());
+        .rarity(dto.getRarity() != null ? dto.getRarity() : Rarity.UNKNOWN);
 
     if (dto.getProjectile() != null) {
-      builder.projectile(convertProjectile(dto.getProjectile(), 0)); // Spells use DTO damage
+      builder.projectile(convertProjectile(dto.getProjectile(), 0));
     }
 
     if (dto.getUnits() != null) {
+      UnitConfigDTO primaryUnit = dto.getUnits().isEmpty() ? null : dto.getUnits().get(0);
+
+      // Building fields: read from primary unit
+      if (primaryUnit != null) {
+        builder.buildingHealth(primaryUnit.getHealth());
+        builder.buildingLifetime(primaryUnit.getLifeTime());
+
+        // Spawner config from liveSpawn
+        LiveSpawnConfigDTO liveSpawn = primaryUnit.getLiveSpawn();
+        if (liveSpawn != null) {
+          builder.spawnInterval(liveSpawn.getSpawnInterval());
+          builder.spawnPauseTime(liveSpawn.getSpawnPauseTime());
+          builder.spawnNumber(liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1);
+        }
+
+        // Death spawn count from first deathSpawn entry
+        List<DeathSpawnConfigDTO> deathSpawns = primaryUnit.getDeathSpawn();
+        if (deathSpawns != null && !deathSpawns.isEmpty()) {
+          builder.deathSpawnCount(deathSpawns.get(0).getSpawnNumber());
+        }
+      }
+
       for (UnitConfigDTO unitDto : dto.getUnits()) {
         int count = unitDto.getCount() > 0 ? unitDto.getCount() : 1;
-        // If config specifies count > 1 (e.g. Barbarians), we create multiple TroopStats
         TroopStats stats = convertUnit(unitDto);
         for (int i = 0; i < count; i++) {
           builder.troop(stats);
@@ -74,7 +117,6 @@ public class CardLoader {
         "MovementType is required for unit: " + dto.getName());
 
     // Validation: Require TargetType if the unit has ANY attack capability
-    // This includes: base damage, a projectile, or even spawn damage
     boolean hasAttackCapability = dto.getDamage() > 0 || dto.getProjectile() != null;
 
     if (hasAttackCapability) {
@@ -86,10 +128,7 @@ public class CardLoader {
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
 
     // Resolve radii
-    // Default collision radius if missing (safe fallback)
     float colRad = dto.getCollisionRadius() != null ? dto.getCollisionRadius() : 0.5f;
-
-    // Visual radius: If visualRadius is present, use it. Else match collision radius.
     float visRad = dto.getVisualRadius() != null ? dto.getVisualRadius() : colRad;
 
     TroopStats.TroopStatsBuilder builder = TroopStats.builder()
@@ -117,9 +156,6 @@ public class CardLoader {
         .spawnEffects(convertEffects(dto.getSpawnEffects()));
 
     if (dto.getProjectile() != null) {
-      // Logic for Projectile Damage on Troops:
-      // We prioritize the projectile's explicit damage if it is set (> 0).
-      // Only if the projectile has 0 damage do we fallback to the unit's damage.
       int damageSource = dto.getProjectile().getDamage() > 0
           ? dto.getProjectile().getDamage()
           : dto.getDamage();
@@ -130,19 +166,12 @@ public class CardLoader {
     return builder.build();
   }
 
-  /**
-   * Converts Projectile DTO.
-   *
-   * @param dto            The config DTO
-   * @param fallbackDamage Used if the DTO has 0 damage.
-   */
   private static ProjectileStats convertProjectile(ProjectileConfigDTO dto, int fallbackDamage) {
     if (dto == null) {
       return null;
     }
 
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
-    // Use DTO damage if available, otherwise use fallback
     int effectiveDamage = dto.getDamage() > 0 ? dto.getDamage() : fallbackDamage;
 
     return ProjectileStats.builder()
@@ -165,7 +194,6 @@ public class CardLoader {
           .duration(dto.getDuration())
           .intensity(dto.getIntensity());
 
-      // Handle nested unit definition for CURSE effects
       if (dto.getSpawnUnit() != null) {
         builder.spawnSpecies(convertUnit(dto.getSpawnUnit()));
       }

@@ -39,6 +39,11 @@ public class UnitConfigDTO {
   private float spawnRadius;
   private List<EffectConfigDTO> spawnEffects;
 
+  // Building fields
+  private float lifeTime;
+  private LiveSpawnConfigDTO liveSpawn;
+  private List<DeathSpawnConfigDTO> deathSpawn;
+
   // Configuration convenience
   private int count = 1; // Default to 1 unit
 }

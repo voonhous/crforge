@@ -98,7 +98,7 @@ public final class LevelScaling {
 
   private static int getMinLevel(Rarity rarity) {
     return switch (rarity) {
-      case COMMON -> COMMON_MIN_LEVEL;
+      case COMMON, UNKNOWN -> COMMON_MIN_LEVEL;
       case RARE -> RARE_MIN_LEVEL;
       case EPIC -> EPIC_MIN_LEVEL;
       case LEGENDARY -> LEGENDARY_MIN_LEVEL;
