@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.crfoge.data.loader.CardLoader;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.ProjectileStats;
@@ -600,5 +601,115 @@ class CardLoaderTest {
     assertThat(fireball.getType()).isEqualTo(CardType.SPELL);
     assertThat(fireball.getProjectile()).isNotNull();
     assertThat(fireball.getProjectile().getDamage()).isGreaterThan(0);
+
+    // Spot check Zap (area effect spell)
+    Card zap = cards.stream().filter(c -> c.getId().equals("zap")).findFirst().orElse(null);
+    assertThat(zap).isNotNull();
+    assertThat(zap.getAreaEffect()).isNotNull();
+    assertThat(zap.getAreaEffect().getDamage()).isEqualTo(75);
+    assertThat(zap.getAreaEffect().getRadius()).isCloseTo(2.5f, within(0.01f));
+    assertThat(zap.getAreaEffect().getBuff()).isEqualTo("ZapFreeze");
+
+    // Spot check ElectroWizard (deploy effect)
+    Card ewiz = cards.stream().filter(c -> c.getId().equals("electrowizard")).findFirst().orElse(null);
+    assertThat(ewiz).isNotNull();
+    assertThat(ewiz.getDeployEffect()).isNotNull();
+    assertThat(ewiz.getDeployEffect().getDamage()).isEqualTo(75);
+    assertThat(ewiz.getDeployEffect().getBuff()).isEqualTo("ZapFreeze");
+  }
+
+  @Test
+  void loadCards_shouldParseAreaEffectSpell() {
+    String json = """
+        [
+          {
+            "id": "zap",
+            "name": "Zap",
+            "type": "SPELL",
+            "rarity": "Common",
+            "cost": 2,
+            "areaEffect": {
+              "name": "Zap",
+              "radius": 2.5,
+              "lifeDuration": 0.001,
+              "hitsGround": true,
+              "hitsAir": true,
+              "damage": 75,
+              "buff": "ZapFreeze",
+              "buffDuration": 0.5,
+              "crownTowerDamagePercent": -70
+            }
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getType()).isEqualTo(CardType.SPELL);
+
+    AreaEffectStats ae = card.getAreaEffect();
+    assertThat(ae).isNotNull();
+    assertThat(ae.getName()).isEqualTo("Zap");
+    assertThat(ae.getRadius()).isCloseTo(2.5f, within(0.01f));
+    assertThat(ae.getLifeDuration()).isCloseTo(0.001f, within(0.0001f));
+    assertThat(ae.isHitsGround()).isTrue();
+    assertThat(ae.isHitsAir()).isTrue();
+    assertThat(ae.getDamage()).isEqualTo(75);
+    assertThat(ae.getBuff()).isEqualTo("ZapFreeze");
+    assertThat(ae.getBuffDuration()).isCloseTo(0.5f, within(0.01f));
+    assertThat(ae.getCrownTowerDamagePercent()).isEqualTo(-70);
+  }
+
+  @Test
+  void loadCards_shouldParseDeployEffect() {
+    String json = """
+        [
+          {
+            "id": "electrowizard",
+            "name": "Electro Wizard",
+            "type": "TROOP",
+            "rarity": "Legendary",
+            "cost": 4,
+            "deployEffect": {
+              "name": "ElectroWizardZap",
+              "radius": 3.0,
+              "lifeDuration": 0.001,
+              "hitsGround": true,
+              "hitsAir": true,
+              "damage": 75,
+              "buff": "ZapFreeze",
+              "buffDuration": 0.5,
+              "crownTowerDamagePercent": -100
+            },
+            "units": [
+              {
+                "name": "ElectroWizard",
+                "health": 433,
+                "damage": 75,
+                "targetType": "ALL",
+                "movementType": "GROUND"
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getType()).isEqualTo(CardType.TROOP);
+
+    AreaEffectStats de = card.getDeployEffect();
+    assertThat(de).isNotNull();
+    assertThat(de.getName()).isEqualTo("ElectroWizardZap");
+    assertThat(de.getRadius()).isCloseTo(3.0f, within(0.01f));
+    assertThat(de.getDamage()).isEqualTo(75);
+    assertThat(de.getBuff()).isEqualTo("ZapFreeze");
+    assertThat(de.getCrownTowerDamagePercent()).isEqualTo(-100);
   }
 }

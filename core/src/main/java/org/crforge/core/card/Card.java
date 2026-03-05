@@ -28,6 +28,16 @@ public class Card {
 
   private final ProjectileStats projectile;
 
+  /**
+   * Area effect for spells (e.g. Zap, Freeze, Poison). Null for non-spell cards.
+   */
+  private final AreaEffectStats areaEffect;
+
+  /**
+   * Deploy effect triggered when the card enters the arena (e.g. ElectroWizard stun).
+   */
+  private final AreaEffectStats deployEffect;
+
   // For buildings
   @Builder.Default
   private final int buildingHealth = 0;
