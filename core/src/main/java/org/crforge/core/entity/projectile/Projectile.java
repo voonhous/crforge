@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.Getter;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Position;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.player.Team;
 
@@ -26,6 +27,16 @@ public class Projectile {
   private final float speed;
   private final List<EffectStats> effects;
 
+  /**
+   * Status effect applied to the target on hit (from projectile targetBuff). Null if none.
+   */
+  private final StatusEffectType targetBuff;
+
+  /**
+   * Duration of the targetBuff in seconds.
+   */
+  private final float buffDuration;
+
   // Position-targeted fields (for spell projectiles)
   private final float targetX;
   private final float targetY;
@@ -35,10 +46,10 @@ public class Projectile {
   private boolean hit;
 
   /**
-   * Entity-targeted projectile (ranged unit attacks).
+   * Entity-targeted projectile (ranged unit attacks) with optional targetBuff.
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
-      List<EffectStats> effects) {
+      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration) {
     this.id = nextId++;
     this.source = source;
     this.target = target;
@@ -48,11 +59,21 @@ public class Projectile {
     this.aoeRadius = aoeRadius;
     this.speed = speed > 0 ? speed : DEFAULT_SPEED;
     this.effects = effects != null ? effects : Collections.emptyList();
+    this.targetBuff = targetBuff;
+    this.buffDuration = buffDuration;
     this.targetX = 0;
     this.targetY = 0;
     this.positionTargeted = false;
     this.active = true;
     this.hit = false;
+  }
+
+  /**
+   * Entity-targeted projectile without targetBuff (convenience).
+   */
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
+      List<EffectStats> effects) {
+    this(source, target, damage, aoeRadius, speed, effects, null, 0f);
   }
 
   /**
@@ -69,6 +90,8 @@ public class Projectile {
     this.aoeRadius = aoeRadius;
     this.speed = speed > 0 ? speed : DEFAULT_SPEED;
     this.effects = effects != null ? effects : Collections.emptyList();
+    this.targetBuff = null;
+    this.buffDuration = 0f;
     this.targetX = destX;
     this.targetY = destY;
     this.positionTargeted = true;

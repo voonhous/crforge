@@ -22,6 +22,7 @@ import org.crfoge.data.loader.dto.LiveSpawnConfigDTO;
 import org.crfoge.data.loader.dto.ProjectileConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
@@ -189,6 +190,8 @@ public class CardLoader {
         .radius(dto.getRadius())
         .homing(dto.getHoming() != null ? dto.getHoming() : true)
         .hitEffects(convertEffects(dto.getHitEffects()))
+        .targetBuff(StatusEffectType.fromBuffName(dto.getTargetBuff()))
+        .buffDuration(dto.getBuffDuration())
         .build();
   }
 
