@@ -6,12 +6,14 @@ import java.util.List;
 import org.crfoge.data.card.CardRegistry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
@@ -208,5 +210,86 @@ class TargetingSystemTest {
     targetingSystem.updateTargets(entities);
 
     assertThat(knight.getCombat().getCurrentTarget()).isNull();
+  }
+
+  @Test
+  void targetOnlyBuildings_shouldIgnoreTroops() {
+    // Giant-like unit: targets only buildings
+    Troop giant = Troop.builder()
+        .name("Giant")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .deployTime(0)
+        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .sightRange(5.5f)
+            .targetType(TargetType.GROUND)
+            .targetOnlyBuildings(true)
+            .build())
+        .build();
+    giant.onSpawn();
+
+    Troop enemyKnight = createDeployedTroop("Knight", Team.RED, 12, 10);
+
+    List<Entity> entities = List.of(giant, enemyKnight);
+    targetingSystem.updateTargets(entities);
+
+    // Giant should ignore Knight (not a building)
+    assertThat(giant.getCombat().getCurrentTarget()).isNull();
+  }
+
+  @Test
+  void targetOnlyBuildings_shouldTargetTower() {
+    Troop giant = Troop.builder()
+        .name("Giant")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .deployTime(0)
+        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .sightRange(9.0f)
+            .targetType(TargetType.GROUND)
+            .targetOnlyBuildings(true)
+            .build())
+        .build();
+    giant.onSpawn();
+
+    Tower tower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    tower.onSpawn();
+
+    List<Entity> entities = List.of(giant, tower);
+    targetingSystem.updateTargets(entities);
+
+    // Giant should target the tower
+    assertThat(giant.getCombat().getCurrentTarget()).isEqualTo(tower);
+  }
+
+  @Test
+  void targetOnlyBuildings_shouldPreferCloserBuilding() {
+    Troop giant = Troop.builder()
+        .name("Giant")
+        .team(Team.BLUE)
+        .position(new Position(5, 10))
+        .deployTime(0)
+        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .sightRange(15.0f)
+            .targetType(TargetType.GROUND)
+            .targetOnlyBuildings(true)
+            .build())
+        .build();
+    giant.onSpawn();
+
+    // A troop that is closer should be ignored
+    Troop enemyKnight = createDeployedTroop("Knight", Team.RED, 6, 10);
+
+    Tower farTower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    farTower.onSpawn();
+
+    List<Entity> entities = List.of(giant, enemyKnight, farTower);
+    targetingSystem.updateTargets(entities);
+
+    // Giant skips the Knight, targets the Tower even though it's further
+    assertThat(giant.getCombat().getCurrentTarget()).isEqualTo(farTower);
   }
 }

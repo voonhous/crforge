@@ -133,7 +133,7 @@ public class DeploymentSystem {
     // Exception: noPreload units (e.g. Sparky) start with 0 charge.
     float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
 
-    int scaledHp     = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
+    int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
 
     Combat combat = Combat.builder()
@@ -147,6 +147,9 @@ public class DeploymentSystem {
         .targetType(stats.getTargetType())
         .hitEffects(stats.getHitEffects())
         .projectileStats(stats.getProjectile())
+        .targetOnlyBuildings(stats.isTargetOnlyBuildings())
+        .minimumRange(stats.getMinimumRange())
+        .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .build();
 
     // Explicitly set deployTimer to deployTime to avoid default value issues
@@ -172,8 +175,10 @@ public class DeploymentSystem {
     TroopStats stats = card.getTroops().isEmpty() ? null : card.getTroops().get(0);
 
     Combat combat = null;
-    int scaledBuildingHp     = LevelScaling.scaleCard(card.getBuildingHealth(), card.getRarity(), level);
-    int scaledBuildingDamage = stats != null ? LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level) : 0;
+    int scaledBuildingHp = LevelScaling.scaleCard(card.getBuildingHealth(), card.getRarity(),
+        level);
+    int scaledBuildingDamage =
+        stats != null ? LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level) : 0;
 
     if (stats != null && stats.getDamage() > 0) {
       float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
@@ -187,6 +192,9 @@ public class DeploymentSystem {
           .targetType(stats.getTargetType())
           .hitEffects(stats.getHitEffects())
           .projectileStats(stats.getProjectile())
+          .targetOnlyBuildings(stats.isTargetOnlyBuildings())
+          .minimumRange(stats.getMinimumRange())
+          .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
           .build();
     }
 

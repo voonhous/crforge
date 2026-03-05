@@ -35,6 +35,14 @@ public class Combat {
 
   private final ProjectileStats projectileStats;
 
+  // Targeting and combat modifiers
+  @Builder.Default
+  private final boolean targetOnlyBuildings = false;
+  @Builder.Default
+  private final float minimumRange = 0f;
+  @Builder.Default
+  private final int crownTowerDamagePercent = 0;
+
   // Dynamic states
   private Entity currentTarget;
   private boolean targetLocked;

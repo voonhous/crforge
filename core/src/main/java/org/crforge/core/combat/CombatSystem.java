@@ -103,10 +103,22 @@ public class CombatSystem {
     float distance = attacker.getPosition().distanceTo(target.getPosition());
     // Use Collision Radius for range calculation
     float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
+
+    // Minimum range check (e.g. Mortar cannot attack nearby enemies)
+    if (combat.getMinimumRange() > 0) {
+      float effectiveMinRange = combat.getMinimumRange() + attacker.getCollisionRadius()
+          + target.getCollisionRadius();
+      if (distance < effectiveMinRange) {
+        return false;
+      }
+    }
+
     return distance <= effectiveRange;
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
+    int baseDamage = combat.getDamage();
+
     if (combat.isRanged()) {
       ProjectileStats stats = combat.getProjectileStats();
 
@@ -117,17 +129,21 @@ public class CombatSystem {
       float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
 
       Projectile projectile = new Projectile(
-          attacker, target, combat.getDamage(), aoeRadius, speed, effects, targetBuff, buffDuration);
+          attacker, target, baseDamage, aoeRadius, speed, effects, targetBuff, buffDuration,
+          combat.getCrownTowerDamagePercent());
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack, deal damage immediately
+      int effectiveDamage = adjustForCrownTower(baseDamage, target,
+          combat.getCrownTowerDamagePercent());
+
       if (combat.getAoeRadius() > 0) {
-        dealAoeDamage(attacker, target, combat.getDamage(), combat.getAoeRadius(),
+        dealAoeDamage(attacker, target, effectiveDamage, combat.getAoeRadius(),
             combat.getHitEffects());
       } else {
         // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
         applyEffects(target, combat.getHitEffects());
-        dealDamage(target, combat.getDamage());
+        dealDamage(target, effectiveDamage);
       }
     }
 
@@ -155,20 +171,24 @@ public class CombatSystem {
   }
 
   private void onProjectileHit(Projectile projectile) {
+    int baseDamage = projectile.getDamage();
+    int ctdp = projectile.getCrownTowerDamagePercent();
+
     if (projectile.isPositionTargeted()) {
       applySpellDamage(projectile.getTeam(), projectile.getTargetX(), projectile.getTargetY(),
-          projectile.getDamage(), projectile.getAoeRadius(), projectile.getEffects());
+          baseDamage, projectile.getAoeRadius(), projectile.getEffects());
     } else if (projectile.hasAoe()) {
       dealAoeDamage(
           projectile.getSource(),
           projectile.getTarget(),
-          projectile.getDamage(),
+          baseDamage,
           projectile.getAoeRadius(),
           projectile.getEffects());
     } else {
+      int effectiveDamage = adjustForCrownTower(baseDamage, projectile.getTarget(), ctdp);
       // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
       applyEffects(projectile.getTarget(), projectile.getEffects());
-      dealDamage(projectile.getTarget(), projectile.getDamage());
+      dealDamage(projectile.getTarget(), effectiveDamage);
     }
 
     // Apply projectile-level targetBuff (e.g. Ice Wizard SLOW, EWiz STUN)
@@ -199,6 +219,18 @@ public class CombatSystem {
         combat.resetAttackState();
       }
     }
+  }
+
+  /**
+   * Adjusts damage for crown tower damage reduction. Units like Miner deal reduced damage to Towers.
+   * Formula: effectiveDamage = baseDamage * (100 + crownTowerDamagePercent) / 100
+   * Example: crownTowerDamagePercent = -75 means 25% damage to towers.
+   */
+  private int adjustForCrownTower(int baseDamage, Entity target, int crownTowerDamagePercent) {
+    if (crownTowerDamagePercent == 0 || !(target instanceof Tower)) {
+      return baseDamage;
+    }
+    return Math.max(1, baseDamage * (100 + crownTowerDamagePercent) / 100);
   }
 
   private void dealDamage(Entity target, int damage) {
@@ -325,6 +357,19 @@ public class CombatSystem {
     // Updated to use Collision Radius
     float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
 
-    return distance <= effectiveRange;
+    if (distance > effectiveRange) {
+      return false;
+    }
+
+    // Minimum range check
+    if (combat.getMinimumRange() > 0) {
+      float effectiveMinRange = combat.getMinimumRange() + attacker.getCollisionRadius()
+          + target.getCollisionRadius();
+      if (distance < effectiveMinRange) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

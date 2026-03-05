@@ -162,7 +162,12 @@ public class CardLoader {
         // Spawn Mechanics
         .spawnDamage(dto.getSpawnDamage())
         .spawnRadius(dto.getSpawnRadius())
-        .spawnEffects(convertEffects(dto.getSpawnEffects()));
+        .spawnEffects(convertEffects(dto.getSpawnEffects()))
+        // Targeting and combat modifiers
+        .targetOnlyBuildings(dto.isTargetOnlyBuildings())
+        .minimumRange(dto.getMinimumRange())
+        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
+        .ignorePushback(dto.isIgnorePushback());
 
     if (dto.getProjectile() != null) {
       int damageSource = dto.getProjectile().getDamage() > 0

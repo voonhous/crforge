@@ -6,6 +6,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -80,6 +81,11 @@ public class TargetingSystem {
   }
 
   private boolean canTarget(Combat attackerCombat, Entity target) {
+    // targetOnlyBuildings: unit ignores all non-building/tower entities (e.g. Giant, Hog Rider)
+    if (attackerCombat.isTargetOnlyBuildings() && !(target instanceof Building)) {
+      return false;
+    }
+
     TargetType attackerTargetType = attackerCombat.getTargetType();
     MovementType targetMovement = target.getMovementType();
 

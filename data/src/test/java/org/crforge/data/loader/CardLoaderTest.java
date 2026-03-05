@@ -753,4 +753,36 @@ class CardLoaderTest {
     assertThat(proj.getTargetBuff()).isEqualTo(StatusEffectType.SLOW);
     assertThat(proj.getBuffDuration()).isCloseTo(2.5f, within(0.01f));
   }
+
+  @Test
+  void loadCards_shouldParseTargetingAndCombatModifiers() {
+    // Load from real cards.json and spot check Giant and Miner
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Giant: targetOnlyBuildings=true, ignorePushback=true
+    Card giant = cards.stream().filter(c -> c.getId().equals("giant")).findFirst().orElse(null);
+    assertThat(giant).isNotNull();
+    TroopStats giantStats = giant.getTroops().get(0);
+    assertThat(giantStats.isTargetOnlyBuildings()).isTrue();
+    assertThat(giantStats.isIgnorePushback()).isTrue();
+    assertThat(giantStats.getCrownTowerDamagePercent()).isEqualTo(0);
+
+    // Miner: crownTowerDamagePercent=-75
+    Card miner = cards.stream().filter(c -> c.getId().equals("miner")).findFirst().orElse(null);
+    assertThat(miner).isNotNull();
+    TroopStats minerStats = miner.getTroops().get(0);
+    assertThat(minerStats.getCrownTowerDamagePercent()).isEqualTo(-75);
+    assertThat(minerStats.isTargetOnlyBuildings()).isFalse();
+
+    // Knight: all modifiers default to false/0
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    TroopStats knightStats = knight.getTroops().get(0);
+    assertThat(knightStats.isTargetOnlyBuildings()).isFalse();
+    assertThat(knightStats.isIgnorePushback()).isFalse();
+    assertThat(knightStats.getMinimumRange()).isEqualTo(0f);
+    assertThat(knightStats.getCrownTowerDamagePercent()).isEqualTo(0);
+  }
 }
