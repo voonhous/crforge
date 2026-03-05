@@ -14,4 +14,14 @@ public class ProjectileConfigDTO {
   private float radius;
   private Boolean homing;
   private List<EffectConfigDTO> hitEffects;
+
+  /**
+   * Buff name applied to the target on hit (e.g. "IceWizardSlowDown").
+   */
+  private String targetBuff;
+
+  /**
+   * Duration of the targetBuff in seconds.
+   */
+  private float buffDuration;
 }

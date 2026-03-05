@@ -712,4 +712,45 @@ class CardLoaderTest {
     assertThat(de.getBuff()).isEqualTo("ZapFreeze");
     assertThat(de.getCrownTowerDamagePercent()).isEqualTo(-100);
   }
+
+  @Test
+  void loadCards_shouldParseProjectileTargetBuff() {
+    String json = """
+        [
+          {
+            "id": "icewizard",
+            "name": "Ice Wizard",
+            "type": "TROOP",
+            "rarity": "Legendary",
+            "cost": 3,
+            "units": [
+              {
+                "name": "IceWizard",
+                "health": 590,
+                "damage": 63,
+                "targetType": "ALL",
+                "movementType": "GROUND",
+                "projectile": {
+                  "name": "IceWizardProjectile",
+                  "damage": 63,
+                  "speed": 600,
+                  "homing": true,
+                  "targetBuff": "IceWizardSlowDown",
+                  "buffDuration": 2.5
+                }
+              }
+            ]
+          }
+        ]
+        """;
+
+    InputStream is = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+    List<Card> cards = CardLoader.loadCards(is);
+
+    assertThat(cards).hasSize(1);
+    ProjectileStats proj = cards.get(0).getTroops().get(0).getProjectile();
+    assertThat(proj).isNotNull();
+    assertThat(proj.getTargetBuff()).isEqualTo(StatusEffectType.SLOW);
+    assertThat(proj.getBuffDuration()).isCloseTo(2.5f, within(0.01f));
+  }
 }

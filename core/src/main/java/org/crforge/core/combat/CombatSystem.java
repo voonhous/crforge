@@ -113,9 +113,11 @@ public class CombatSystem {
       float speed = (stats != null) ? stats.getSpeed() : 0;
       float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
       List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
+      StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
+      float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
 
-      Projectile projectile =
-          new Projectile(attacker, target, combat.getDamage(), aoeRadius, speed, effects);
+      Projectile projectile = new Projectile(
+          attacker, target, combat.getDamage(), aoeRadius, speed, effects, targetBuff, buffDuration);
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack, deal damage immediately
@@ -167,6 +169,35 @@ public class CombatSystem {
       // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
       applyEffects(projectile.getTarget(), projectile.getEffects());
       dealDamage(projectile.getTarget(), projectile.getDamage());
+    }
+
+    // Apply projectile-level targetBuff (e.g. Ice Wizard SLOW, EWiz STUN)
+    applyTargetBuff(projectile);
+  }
+
+  /**
+   * Applies the projectile's targetBuff as a status effect on the hit target.
+   */
+  private void applyTargetBuff(Projectile projectile) {
+    if (projectile.getTargetBuff() == null || projectile.getTarget() == null
+        || !projectile.getTarget().isAlive()) {
+      return;
+    }
+
+    AppliedEffect effect = new AppliedEffect(
+        projectile.getTargetBuff(),
+        projectile.getBuffDuration(),
+        0f, // no intensity modifier for targetBuff
+        null
+    );
+    projectile.getTarget().addEffect(effect);
+
+    // Stun resets attack state
+    if (projectile.getTargetBuff() == StatusEffectType.STUN) {
+      Combat combat = projectile.getTarget().getCombat();
+      if (combat != null) {
+        combat.resetAttackState();
+      }
     }
   }
 
