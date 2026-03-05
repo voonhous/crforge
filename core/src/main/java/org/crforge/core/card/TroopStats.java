@@ -66,6 +66,16 @@ public class TroopStats {
 
   private final ProjectileStats projectile;
 
+  // Targeting and combat modifiers
+  @Builder.Default
+  private final boolean targetOnlyBuildings = false;
+  @Builder.Default
+  private final float minimumRange = 0f;
+  @Builder.Default
+  private final int crownTowerDamagePercent = 0;
+  @Builder.Default
+  private final boolean ignorePushback = false;
+
   public boolean isRanged() {
     return range >= 2.0f;
   }

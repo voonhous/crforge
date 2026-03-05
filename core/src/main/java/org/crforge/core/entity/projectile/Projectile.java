@@ -37,6 +37,12 @@ public class Projectile {
    */
   private final float buffDuration;
 
+  /**
+   * Damage reduction percentage when hitting a Crown Tower. 0 = full damage, -75 = 25% damage.
+   * Formula: effectiveDamage = baseDamage * (100 + crownTowerDamagePercent) / 100
+   */
+  private final int crownTowerDamagePercent;
+
   // Position-targeted fields (for spell projectiles)
   private final float targetX;
   private final float targetY;
@@ -46,10 +52,12 @@ public class Projectile {
   private boolean hit;
 
   /**
-   * Entity-targeted projectile (ranged unit attacks) with optional targetBuff.
+   * Entity-targeted projectile (ranged unit attacks) with optional targetBuff and crown tower
+   * damage modifier.
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
-      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration) {
+      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration,
+      int crownTowerDamagePercent) {
     this.id = nextId++;
     this.source = source;
     this.target = target;
@@ -61,6 +69,7 @@ public class Projectile {
     this.effects = effects != null ? effects : Collections.emptyList();
     this.targetBuff = targetBuff;
     this.buffDuration = buffDuration;
+    this.crownTowerDamagePercent = crownTowerDamagePercent;
     this.targetX = 0;
     this.targetY = 0;
     this.positionTargeted = false;
@@ -69,11 +78,19 @@ public class Projectile {
   }
 
   /**
+   * Entity-targeted projectile with targetBuff but no crown tower modifier (convenience).
+   */
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
+      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration) {
+    this(source, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration, 0);
+  }
+
+  /**
    * Entity-targeted projectile without targetBuff (convenience).
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
       List<EffectStats> effects) {
-    this(source, target, damage, aoeRadius, speed, effects, null, 0f);
+    this(source, target, damage, aoeRadius, speed, effects, null, 0f, 0);
   }
 
   /**
@@ -92,6 +109,7 @@ public class Projectile {
     this.effects = effects != null ? effects : Collections.emptyList();
     this.targetBuff = null;
     this.buffDuration = 0f;
+    this.crownTowerDamagePercent = 0;
     this.targetX = destX;
     this.targetY = destY;
     this.positionTargeted = true;

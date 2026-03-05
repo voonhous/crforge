@@ -34,6 +34,12 @@ public class UnitConfigDTO {
   private List<EffectConfigDTO> hitEffects;
   private ProjectileConfigDTO projectile;
 
+  // Targeting and combat modifiers
+  private boolean targetOnlyBuildings;
+  private float minimumRange;
+  private int crownTowerDamagePercent;
+  private boolean ignorePushback;
+
   // Spawn Mechanics
   private int spawnDamage;
   private float spawnRadius;
