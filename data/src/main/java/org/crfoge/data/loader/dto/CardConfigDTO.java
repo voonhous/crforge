@@ -22,4 +22,10 @@ public class CardConfigDTO {
 
   // Projectile specifics (For Spells)
   private ProjectileConfigDTO projectile;
+
+  // Area effects (spells like Zap, Freeze, Poison)
+  private AreaEffectConfigDTO areaEffect;
+
+  // Deploy effects (e.g. ElectroWizard entry stun)
+  private AreaEffectConfigDTO deployEffect;
 }

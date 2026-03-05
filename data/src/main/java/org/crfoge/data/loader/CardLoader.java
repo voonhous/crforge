@@ -14,12 +14,14 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.crfoge.data.loader.dto.AreaEffectConfigDTO;
 import org.crfoge.data.loader.dto.CardConfigDTO;
 import org.crfoge.data.loader.dto.DeathSpawnConfigDTO;
 import org.crfoge.data.loader.dto.EffectConfigDTO;
 import org.crfoge.data.loader.dto.LiveSpawnConfigDTO;
 import org.crfoge.data.loader.dto.ProjectileConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
@@ -74,6 +76,12 @@ public class CardLoader {
 
     if (dto.getProjectile() != null) {
       builder.projectile(convertProjectile(dto.getProjectile(), 0));
+    }
+    if (dto.getAreaEffect() != null) {
+      builder.areaEffect(convertAreaEffect(dto.getAreaEffect()));
+    }
+    if (dto.getDeployEffect() != null) {
+      builder.deployEffect(convertAreaEffect(dto.getDeployEffect()));
     }
 
     if (dto.getUnits() != null) {
@@ -181,6 +189,24 @@ public class CardLoader {
         .radius(dto.getRadius())
         .homing(dto.getHoming() != null ? dto.getHoming() : true)
         .hitEffects(convertEffects(dto.getHitEffects()))
+        .build();
+  }
+
+  private static AreaEffectStats convertAreaEffect(AreaEffectConfigDTO dto) {
+    if (dto == null) {
+      return null;
+    }
+    return AreaEffectStats.builder()
+        .name(dto.getName())
+        .radius(dto.getRadius())
+        .lifeDuration(dto.getLifeDuration())
+        .hitsGround(dto.isHitsGround())
+        .hitsAir(dto.isHitsAir())
+        .damage(dto.getDamage())
+        .hitSpeed(dto.getHitSpeed())
+        .buff(dto.getBuff())
+        .buffDuration(dto.getBuffDuration())
+        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
         .build();
   }
 
