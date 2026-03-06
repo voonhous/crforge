@@ -98,6 +98,20 @@ public class TargetingSystem {
     };
   }
 
+  /**
+   * Checks if the given target type can target the given movement type.
+   * Public for reuse by CombatSystem (multiple targets logic).
+   */
+  public static boolean canTargetMovementType(TargetType attackerType, MovementType targetMovement) {
+    return switch (attackerType) {
+      case ALL -> true;
+      case GROUND ->
+          targetMovement == MovementType.GROUND || targetMovement == MovementType.BUILDING;
+      case AIR -> targetMovement == MovementType.AIR;
+      case BUILDINGS -> targetMovement == MovementType.BUILDING;
+    };
+  }
+
   private float getDistance(Entity a, Entity b) {
     return a.getPosition().distanceTo(b.getPosition());
   }

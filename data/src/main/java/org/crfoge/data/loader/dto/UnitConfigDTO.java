@@ -40,6 +40,14 @@ public class UnitConfigDTO {
   private int crownTowerDamagePercent;
   private boolean ignorePushback;
 
+  // Shield
+  private int shieldHitpoints;
+
+  // Combat modifiers
+  private int multipleTargets;
+  private int multipleProjectiles;
+  private BuffOnDamageConfigDTO buffOnDamage;
+
   // Death mechanics
   private DeathDamageConfigDTO deathDamage;
 

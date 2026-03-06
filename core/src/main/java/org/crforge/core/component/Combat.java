@@ -35,6 +35,15 @@ public class Combat {
 
   private final ProjectileStats projectileStats;
 
+  // Combat modifiers
+  @Builder.Default
+  private final int multipleTargets = 0;
+  @Builder.Default
+  private final int multipleProjectiles = 0;
+
+  // Buff applied to target when dealing damage (e.g. EWiz stun on hit)
+  private final EffectStats buffOnDamage;
+
   // Targeting and combat modifiers
   @Builder.Default
   private final boolean targetOnlyBuildings = false;

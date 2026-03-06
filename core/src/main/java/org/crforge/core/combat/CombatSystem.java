@@ -97,6 +97,11 @@ public class CombatSystem {
 
     // Execute Attack (Windup complete)
     executeAttack(entity, target, combat);
+
+    // Multiple targets: attack additional enemies simultaneously (e.g. EWiz hits 2)
+    if (combat.getMultipleTargets() > 1) {
+      attackAdditionalTargets(entity, target, combat);
+    }
   }
 
   private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
@@ -128,6 +133,12 @@ public class CombatSystem {
       StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
       float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
 
+      // Use buff-on-damage as targetBuff if no projectile-level buff is set
+      if (targetBuff == null && combat.getBuffOnDamage() != null) {
+        targetBuff = combat.getBuffOnDamage().getType();
+        buffDuration = combat.getBuffOnDamage().getDuration();
+      }
+
       Projectile projectile = new Projectile(
           attacker, target, baseDamage, aoeRadius, speed, effects, targetBuff, buffDuration,
           combat.getCrownTowerDamagePercent());
@@ -145,9 +156,78 @@ public class CombatSystem {
         applyEffects(target, combat.getHitEffects());
         dealDamage(target, effectiveDamage);
       }
+
+      // Apply buff-on-damage for melee attacks
+      applyBuffOnDamage(combat, target);
     }
 
     combat.finishAttack();
+  }
+
+  /**
+   * Finds and attacks additional targets for units with multipleTargets > 1 (e.g. EWiz).
+   * The primary target has already been attacked; this method handles the extras.
+   */
+  private void attackAdditionalTargets(Entity attacker, Entity primaryTarget, Combat combat) {
+    int extraTargets = combat.getMultipleTargets() - 1;
+    Team enemyTeam = attacker.getTeam().opposite();
+
+    List<Entity> candidates = new ArrayList<>();
+    for (Entity e : gameState.getAliveEntities()) {
+      if (e == primaryTarget || e.getTeam() != enemyTeam || !e.isTargetable()) {
+        continue;
+      }
+      if (!isInAttackRange(attacker, e, combat)) {
+        continue;
+      }
+      if (!TargetingSystem.canTargetMovementType(combat.getTargetType(), e.getMovementType())) {
+        continue;
+      }
+      candidates.add(e);
+    }
+
+    // Sort by distance and pick closest extras
+    candidates.sort((a, b) -> {
+      float da = attacker.getPosition().distanceTo(a.getPosition());
+      float db = attacker.getPosition().distanceTo(b.getPosition());
+      return Float.compare(da, db);
+    });
+
+    for (int i = 0; i < Math.min(extraTargets, candidates.size()); i++) {
+      Entity extraTarget = candidates.get(i);
+      int baseDamage = combat.getDamage();
+
+      if (combat.isRanged()) {
+        ProjectileStats stats = combat.getProjectileStats();
+        float speed = (stats != null) ? stats.getSpeed() : 0;
+        float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
+        List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
+        StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
+        float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
+        if (targetBuff == null && combat.getBuffOnDamage() != null) {
+          targetBuff = combat.getBuffOnDamage().getType();
+          buffDuration = combat.getBuffOnDamage().getDuration();
+        }
+        Projectile projectile = new Projectile(
+            attacker, extraTarget, baseDamage, aoeRadius, speed, effects, targetBuff, buffDuration,
+            combat.getCrownTowerDamagePercent());
+        gameState.spawnProjectile(projectile);
+      } else {
+        int effectiveDamage = adjustForCrownTower(baseDamage, extraTarget,
+            combat.getCrownTowerDamagePercent());
+        applyEffects(extraTarget, combat.getHitEffects());
+        dealDamage(extraTarget, effectiveDamage);
+        applyBuffOnDamage(combat, extraTarget);
+      }
+    }
+  }
+
+  private void applyBuffOnDamage(Combat combat, Entity target) {
+    EffectStats buff = combat.getBuffOnDamage();
+    if (buff == null || !target.isAlive()) {
+      return;
+    }
+    target.addEffect(new AppliedEffect(buff.getType(), buff.getDuration(), buff.getIntensity()));
   }
 
   private void updateProjectiles(float deltaTime) {

@@ -74,6 +74,19 @@ public class TroopStats {
   @Builder.Default
   private final List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
+  // Shield
+  @Builder.Default
+  private final int shieldHitpoints = 0;
+
+  // Combat modifiers
+  @Builder.Default
+  private final int multipleTargets = 0;
+  @Builder.Default
+  private final int multipleProjectiles = 0;
+
+  // Buff applied to target when dealing damage (e.g. EWiz stun, Mother Witch curse)
+  private final EffectStats buffOnDamage;
+
   // Targeting and combat modifiers
   @Builder.Default
   private final boolean targetOnlyBuildings = false;

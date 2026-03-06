@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.crfoge.data.loader.dto.AreaEffectConfigDTO;
+import org.crfoge.data.loader.dto.BuffOnDamageConfigDTO;
 import org.crfoge.data.loader.dto.CardConfigDTO;
 import org.crfoge.data.loader.dto.DeathDamageConfigDTO;
 import org.crfoge.data.loader.dto.DeathSpawnConfigDTO;
@@ -191,6 +192,11 @@ public class CardLoader {
         .spawnDamage(dto.getSpawnDamage())
         .spawnRadius(dto.getSpawnRadius())
         .spawnEffects(convertEffects(dto.getSpawnEffects()))
+        // Shield
+        .shieldHitpoints(dto.getShieldHitpoints())
+        // Combat modifiers
+        .multipleTargets(dto.getMultipleTargets())
+        .multipleProjectiles(dto.getMultipleProjectiles())
         // Targeting and combat modifiers
         .targetOnlyBuildings(dto.isTargetOnlyBuildings())
         .minimumRange(dto.getMinimumRange())
@@ -202,6 +208,18 @@ public class CardLoader {
     if (deathDmg != null) {
       builder.deathDamage(deathDmg.getDamage());
       builder.deathDamageRadius(deathDmg.getRadius());
+    }
+
+    // Buff on damage (e.g. EWiz stun, Mother Witch curse)
+    BuffOnDamageConfigDTO buffOnDmg = dto.getBuffOnDamage();
+    if (buffOnDmg != null) {
+      StatusEffectType buffType = StatusEffectType.fromBuffName(buffOnDmg.getBuff());
+      if (buffType != null) {
+        builder.buffOnDamage(EffectStats.builder()
+            .type(buffType)
+            .duration(buffOnDmg.getDuration())
+            .build());
+      }
     }
 
     // Death spawns: resolve character references using the global lookup
