@@ -51,6 +51,13 @@ public final class StatusEffectRenderer {
   }
 
   /**
+   * Returns the color for a specific status effect type, or null if unmapped.
+   */
+  public static Color getEffectColor(StatusEffectType type) {
+    return EFFECT_COLORS.get(type);
+  }
+
+  /**
    * Returns the color for the highest-priority active status effect on the entity,
    * or null if no effects are active.
    */
