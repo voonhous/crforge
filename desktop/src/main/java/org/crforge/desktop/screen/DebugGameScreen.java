@@ -316,9 +316,10 @@ public class DebugGameScreen implements Screen {
       renderer.render(engine, camera, hoverTileX, hoverTileY, selectedHandIndex, selTeam);
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
-      // Pause to prevent log spam/hard crash loop if possible
+      // Always print to stderr so the error is visible even without SLF4J backend
+      System.err.println("CRASH during game loop!");
+      e.printStackTrace(System.err);
       paused = true;
-      // Exit to prevent hanging window
       Gdx.app.exit();
     }
   }
