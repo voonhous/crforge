@@ -88,19 +88,22 @@ public class DeploymentSystem {
       // Check for spawner capability (Witch/Mother Witch logic)
       SpawnerComponent spawner = null;
 
-      if (stats == mainStats && (card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0)) {
+      if (stats == mainStats && (card.getSpawnInterval() > 0 || card.getSpawnPauseTime() > 0
+          || card.getDeathSpawnCount() > 0)) {
         TroopStats spawnStats = card.getSpawnTemplate();
         // Fallback to units[1] if no spawnTemplate resolved
         if (spawnStats == null && card.getTroops().size() > 1) {
           spawnStats = card.getTroops().get(1);
         }
         if (spawnStats != null) {
+          float initialTimer = card.getSpawnStartTime() > 0
+              ? card.getSpawnStartTime() : card.getSpawnPauseTime();
           spawner = SpawnerComponent.builder()
               .spawnInterval(card.getSpawnInterval())
               .spawnPauseTime(card.getSpawnPauseTime())
               .unitsPerWave(card.getSpawnNumber())
               .spawnStartTime(card.getSpawnStartTime())
-              .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
+              .currentTimer(initialTimer)
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
               .build();
@@ -251,7 +254,8 @@ public class DeploymentSystem {
 
     // Create Spawner Component if needed
     SpawnerComponent spawner = null;
-    boolean hasCardLevelSpawn = card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0;
+    boolean hasCardLevelSpawn = card.getSpawnInterval() > 0 || card.getSpawnPauseTime() > 0
+        || card.getDeathSpawnCount() > 0;
     boolean hasUnitLevelDeath =
         stats != null && (stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty());
 
@@ -263,12 +267,14 @@ public class DeploymentSystem {
       int scaledDeathDmg = stats != null
           ? LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(), level) : 0;
 
+      float initialTimer = card.getSpawnStartTime() > 0
+          ? card.getSpawnStartTime() : card.getSpawnPauseTime();
       spawner = SpawnerComponent.builder()
           .spawnInterval(card.getSpawnInterval())
           .spawnPauseTime(card.getSpawnPauseTime())
           .unitsPerWave(card.getSpawnNumber())
           .spawnStartTime(card.getSpawnStartTime())
-          .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
+          .currentTimer(initialTimer)
           .deathSpawnCount(card.getDeathSpawnCount())
           .spawnStats(spawnStats)
           .deathDamage(scaledDeathDmg)
