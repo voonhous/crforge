@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.component.Health;
@@ -47,6 +48,10 @@ public abstract class AbstractEntity implements Entity {
 
   @Builder.Default
   protected boolean dead = false;
+
+  @Setter
+  @Builder.Default
+  protected boolean invulnerable = false;
 
   public static void resetIdCounter() {
     nextId = 1;

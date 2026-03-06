@@ -988,4 +988,71 @@ class CardLoaderTest {
     assertThat(mightyMiner.getTroops().get(0).getAbility().getStages().get(0).damage())
         .isEqualTo(16);
   }
+
+  @Test
+  void loadCards_shouldParseDashAbility() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Assassin (Bandit): DASH with damage=152, minRange=3.5, maxRange=6.0
+    Card assassin = cards.stream()
+        .filter(c -> c.getId().equals("assassin")).findFirst().orElse(null);
+    assertThat(assassin).isNotNull();
+    TroopStats banditStats = assassin.getTroops().get(0);
+    assertThat(banditStats.getAbility()).isNotNull();
+    assertThat(banditStats.getAbility().getType()).isEqualTo(AbilityType.DASH);
+    assertThat(banditStats.getAbility().getDashDamage()).isEqualTo(152);
+    assertThat(banditStats.getAbility().getDashMinRange()).isCloseTo(3.5f, within(0.01f));
+    assertThat(banditStats.getAbility().getDashMaxRange()).isCloseTo(6.0f, within(0.01f));
+
+    // MegaKnight: DASH with radius=2.2 (AOE dash)
+    Card megaKnight = cards.stream()
+        .filter(c -> c.getId().equals("megaknight")).findFirst().orElse(null);
+    assertThat(megaKnight).isNotNull();
+    TroopStats mkStats = megaKnight.getTroops().get(0);
+    assertThat(mkStats.getAbility()).isNotNull();
+    assertThat(mkStats.getAbility().getType()).isEqualTo(AbilityType.DASH);
+    assertThat(mkStats.getAbility().getDashDamage()).isEqualTo(210);
+    assertThat(mkStats.getAbility().getDashRadius()).isCloseTo(2.2f, within(0.01f));
+  }
+
+  @Test
+  void loadCards_shouldParseHookAbility() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Fisherman: HOOK with range=7.0, minimumRange=3.5
+    Card fisherman = cards.stream()
+        .filter(c -> c.getId().equals("fisherman")).findFirst().orElse(null);
+    assertThat(fisherman).isNotNull();
+    TroopStats fisherStats = fisherman.getTroops().get(0);
+    assertThat(fisherStats.getAbility()).isNotNull();
+    assertThat(fisherStats.getAbility().getType()).isEqualTo(AbilityType.HOOK);
+    assertThat(fisherStats.getAbility().getHookRange()).isCloseTo(7.0f, within(0.01f));
+    assertThat(fisherStats.getAbility().getHookMinimumRange()).isCloseTo(3.5f, within(0.01f));
+    assertThat(fisherStats.getAbility().getHookDragBackSpeed()).isCloseTo(850f, within(0.01f));
+  }
+
+  @Test
+  void loadCards_shouldParseReflectAbility() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // ElectroGiant: REFLECT with damage=75, radius=2.0, buff=ZapFreeze
+    Card eGiant = cards.stream()
+        .filter(c -> c.getId().equals("electrogiant")).findFirst().orElse(null);
+    assertThat(eGiant).isNotNull();
+    TroopStats egStats = eGiant.getTroops().get(0);
+    assertThat(egStats.getAbility()).isNotNull();
+    assertThat(egStats.getAbility().getType()).isEqualTo(AbilityType.REFLECT);
+    assertThat(egStats.getAbility().getReflectDamage()).isEqualTo(75);
+    assertThat(egStats.getAbility().getReflectRadius()).isCloseTo(2.0f, within(0.01f));
+    assertThat(egStats.getAbility().getReflectBuff())
+        .isEqualTo(StatusEffectType.STUN);
+    assertThat(egStats.getAbility().getReflectBuffDuration()).isCloseTo(0.5f, within(0.01f));
+    assertThat(egStats.getAbility().getReflectCrownTowerDamagePercent()).isEqualTo(50);
+  }
 }

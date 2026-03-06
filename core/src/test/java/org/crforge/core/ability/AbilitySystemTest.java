@@ -319,6 +319,193 @@ class AbilitySystemTest {
     assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(165);
   }
 
+  // -- DASH tests --
+
+  @Test
+  void dash_shouldTriggerWhenTargetInRangeWindow() {
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    // Target at distance ~5.0 (within [3.5, 6.0] dash window)
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    bandit.update(2.0f);
+    target.update(2.0f);
+
+    bandit.getCombat().setCurrentTarget(target);
+
+    // Tick to trigger dash
+    abilitySystem.update(DT);
+
+    AbilityComponent ability = bandit.getAbility();
+    assertThat(ability.getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+    assertThat(bandit.isInvulnerable()).isTrue();
+  }
+
+  @Test
+  void dash_shouldDealDamageOnArrival() {
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    bandit.update(2.0f);
+    target.update(2.0f);
+
+    bandit.getCombat().setCurrentTarget(target);
+
+    // Run enough ticks for bandit to arrive (dash speed is 15 tiles/s, 5 tiles distance)
+    for (int i = 0; i < 30; i++) {
+      abilitySystem.update(DT);
+    }
+
+    // Should have landed and dealt 152 damage
+    assertThat(target.getHealth().getCurrent()).isEqualTo(1000 - 152);
+    // Immunity should be off after landing
+    assertThat(bandit.isInvulnerable()).isFalse();
+  }
+
+  @Test
+  void dash_shouldNotTriggerWhenTargetTooClose() {
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    // Target at ~1.5 distance, below minRange 3.5
+    Troop target = createDummyTarget(Team.RED, 6.5f, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    bandit.update(2.0f);
+    target.update(2.0f);
+
+    bandit.getCombat().setCurrentTarget(target);
+    abilitySystem.update(DT);
+
+    assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.IDLE);
+  }
+
+  // -- HOOK tests --
+
+  @Test
+  void hook_shouldTriggerAndPullTarget() {
+    Troop fisher = createHookTroop(Team.BLUE, 5, 5);
+    // Target at distance 5.0 (within [3.5, 7.0] hook window)
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(fisher);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    fisher.update(2.0f);
+    target.update(2.0f);
+
+    fisher.getCombat().setCurrentTarget(target);
+
+    // First tick -> WINDING_UP
+    abilitySystem.update(DT);
+    assertThat(fisher.getAbility().getHookState())
+        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+
+    // Wait for load time (1.3s)
+    for (int i = 0; i < 40; i++) { // ~1.33s
+      abilitySystem.update(DT);
+    }
+
+    // Should be PULLING now
+    assertThat(fisher.getAbility().getHookState())
+        .isEqualTo(AbilityComponent.HookState.PULLING);
+
+    // Target should start moving toward the fisherman
+    float initialTargetX = target.getPosition().getX();
+
+    for (int i = 0; i < 30; i++) {
+      abilitySystem.update(DT);
+    }
+
+    // Target should have moved closer to the fisherman
+    assertThat(target.getPosition().getX()).isLessThan(initialTargetX);
+  }
+
+  // -- REFLECT tests --
+
+  @Test
+  void reflect_shouldDealCounterDamageOnMeleeHit() {
+    Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
+    Troop attacker = Troop.builder()
+        .name("Attacker")
+        .team(Team.RED)
+        .position(new Position(5.5f, 5))
+        .health(new Health(500))
+        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(100)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .build())
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(eGiant);
+    gameState.spawnEntity(attacker);
+    gameState.processPending();
+
+    eGiant.update(2.0f);
+
+    // Attacker hits eGiant with melee
+    attacker.getCombat().setCurrentTarget(eGiant);
+    attacker.getCombat().startAttackSequence();
+    attacker.getCombat().setCurrentWindup(0);
+
+    combatSystem.update(DT);
+
+    // eGiant should take 100 damage from the attack
+    assertThat(eGiant.getHealth().getCurrent()).isEqualTo(3000 - 100);
+
+    // Attacker should take 75 reflect damage
+    assertThat(attacker.getHealth().getCurrent()).isEqualTo(500 - 75);
+  }
+
+  @Test
+  void reflect_shouldNotTriggerOnRangedAttack() {
+    Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
+    Troop rangedAttacker = Troop.builder()
+        .name("Ranged")
+        .team(Team.RED)
+        .position(new Position(10, 5))
+        .health(new Health(500))
+        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(100)
+            .range(6.0f)
+            .sightRange(6.0f)
+            .attackCooldown(1.0f)
+            .build())
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(eGiant);
+    gameState.spawnEntity(rangedAttacker);
+    gameState.processPending();
+
+    eGiant.update(2.0f);
+
+    // Ranged attacker fires a projectile (no direct melee hit)
+    rangedAttacker.getCombat().setCurrentTarget(eGiant);
+    rangedAttacker.getCombat().startAttackSequence();
+    rangedAttacker.getCombat().setCurrentWindup(0);
+
+    combatSystem.update(DT);
+
+    // A projectile is spawned, but reflect doesn't trigger on ranged
+    // Attacker should NOT take reflect damage
+    assertThat(rangedAttacker.getHealth().getCurrent()).isEqualTo(500);
+  }
+
   // -- Helper methods --
 
   private Troop createChargeTroop(Team team, float x, float y) {
@@ -371,6 +558,91 @@ class AbilitySystemTest {
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(varDmgData))
+        .build();
+  }
+
+  private Troop createDashTroop(Team team, float x, float y) {
+    AbilityData dashData = AbilityData.builder()
+        .type(AbilityType.DASH)
+        .dashDamage(152)
+        .dashMinRange(3.5f)
+        .dashMaxRange(6.0f)
+        .dashCooldown(0.8f)
+        .dashImmuneTime(0.1f)
+        .dashLandingTime(0.2f)
+        .build();
+
+    return Troop.builder()
+        .name("Bandit")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(750))
+        .movement(new Movement(2.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(80)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .build())
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .ability(new AbilityComponent(dashData))
+        .build();
+  }
+
+  private Troop createHookTroop(Team team, float x, float y) {
+    AbilityData hookData = AbilityData.builder()
+        .type(AbilityType.HOOK)
+        .hookRange(7.0f)
+        .hookMinimumRange(3.5f)
+        .hookLoadTime(1.3f)
+        .hookDragBackSpeed(850f)
+        .hookDragSelfSpeed(450f)
+        .build();
+
+    return Troop.builder()
+        .name("Fisherman")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(900))
+        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(80)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.5f)
+            .build())
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .ability(new AbilityComponent(hookData))
+        .build();
+  }
+
+  private Troop createReflectTroop(Team team, float x, float y) {
+    AbilityData reflectData = AbilityData.builder()
+        .type(AbilityType.REFLECT)
+        .reflectDamage(75)
+        .reflectRadius(2.0f)
+        .reflectBuff(org.crforge.core.effect.StatusEffectType.STUN)
+        .reflectBuffDuration(0.5f)
+        .reflectCrownTowerDamagePercent(50)
+        .build();
+
+    return Troop.builder()
+        .name("ElectroGiant")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(3000))
+        .movement(new Movement(0.8f, 8f, 1.0f, 1.0f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(0) // ElectroGiant doesn't deal damage directly, reflect does
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .build())
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .ability(new AbilityComponent(reflectData))
         .build();
   }
 

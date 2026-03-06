@@ -45,6 +45,8 @@ public interface Entity {
 
   boolean isTargetable();
 
+  boolean isInvulnerable();
+
   void update(float deltaTime);
 
   void onSpawn();
