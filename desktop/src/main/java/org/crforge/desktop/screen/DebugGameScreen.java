@@ -19,6 +19,7 @@ import org.crforge.core.player.LevelConfig;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.desktop.render.CardLayout;
 import org.crforge.desktop.render.DebugRenderer;
 import org.crforge.desktop.render.RenderConstants;
 
@@ -236,22 +237,10 @@ public class DebugGameScreen implements Screen {
   }
 
   private void checkHandSelection(float worldX, float worldY, Player player, boolean isTop) {
-    float handWidth = (RenderConstants.CARD_WIDTH * RenderConstants.HAND_SIZE)
-        + (RenderConstants.CARD_SPACING * (RenderConstants.HAND_SIZE - 1));
-    float startX = (camera.viewportWidth - handWidth) / 2;
-
-    float baseY = isTop ? (camera.viewportHeight - RenderConstants.TOP_UI_HEIGHT) : 0;
-    float cardY = baseY + 30;
-
-    // Simple bounding box check
-    if (worldY >= cardY && worldY <= cardY + RenderConstants.CARD_HEIGHT) {
-      for (int i = 0; i < RenderConstants.HAND_SIZE; i++) {
-        float cardX = startX + i * (RenderConstants.CARD_WIDTH + RenderConstants.CARD_SPACING);
-        if (worldX >= cardX && worldX <= cardX + RenderConstants.CARD_WIDTH) {
-          selectCard(player, i);
-          return;
-        }
-      }
+    int index = CardLayout.hitTest(worldX, worldY, isTop,
+        camera.viewportWidth, camera.viewportHeight);
+    if (index != -1) {
+      selectCard(player, index);
     }
   }
 

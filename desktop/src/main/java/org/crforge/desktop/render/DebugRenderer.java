@@ -594,9 +594,8 @@ public class DebugRenderer {
   }
 
   private void renderPlayerHUD(Player player, boolean isTop, float yPos, float width) {
-    float handWidth = (CARD_WIDTH * HAND_SIZE) + (CARD_SPACING * (HAND_SIZE - 1));
-    float startX = (width - handWidth) / 2;
-    float cardY = isTop ? yPos + 30 : yPos + 30;
+    float screenHeight = yPos + (isTop ? TOP_UI_HEIGHT : BOTTOM_UI_HEIGHT);
+    float cy = CardLayout.cardY(isTop, screenHeight);
 
     // 1. Draw Elixir Bar
     float elixir = player.getElixir().getCurrent();
@@ -617,7 +616,6 @@ public class DebugRenderer {
     String elixirText = String.format("%d / 10", player.getElixir().getFloor());
     glyphLayout.setText(font, elixirText);
 
-    // Draw text centered within the bar
     float textX = barX + (ELIXIR_BAR_WIDTH - glyphLayout.width) / 2;
     float textY = barY + (ELIXIR_BAR_HEIGHT + glyphLayout.height) / 2;
 
@@ -628,20 +626,20 @@ public class DebugRenderer {
     Hand hand = player.getHand();
     for (int i = 0; i < HAND_SIZE; i++) {
       Card card = hand.getCard(i);
-      float cardX = startX + i * (CARD_WIDTH + CARD_SPACING);
+      float cx = CardLayout.cardX(width, i);
       boolean isSelected = i == selectedHandIndex && player.getTeam() == selectedTeam;
-      renderCard(card, cardX, cardY, CARD_WIDTH, CARD_HEIGHT, isSelected);
+      renderCard(card, cx, cy, CARD_WIDTH, CARD_HEIGHT, isSelected);
     }
 
     // 3. Draw Next Card
     Card nextCard = hand.getNextCard();
-    float nextX = startX + handWidth + CARD_SPACING * 2;
+    float nextX = CardLayout.nextCardX(width);
 
-    renderCard(nextCard, nextX, cardY + 10, CARD_WIDTH * 0.8f, CARD_HEIGHT * 0.8f, false);
+    renderCard(nextCard, nextX, cy + 10, CARD_WIDTH * 0.8f, CARD_HEIGHT * 0.8f, false);
 
     // Label for Next
     spriteBatch.begin();
-    font.draw(spriteBatch, "Next", nextX, cardY + CARD_HEIGHT);
+    font.draw(spriteBatch, "Next", nextX, cy + CARD_HEIGHT);
     spriteBatch.end();
   }
 
