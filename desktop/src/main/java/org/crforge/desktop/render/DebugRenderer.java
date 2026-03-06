@@ -1,39 +1,19 @@
 package org.crforge.desktop.render;
 
-import static org.crforge.desktop.render.RenderConstants.*;
-
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.arena.Arena;
-import org.crforge.core.arena.TileType;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.CardType;
-import org.crforge.core.card.TroopStats;
-import org.crforge.core.component.Combat;
-import org.crforge.core.component.Health;
-import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.base.Entity;
-import org.crforge.core.entity.base.EntityType;
-import org.crforge.core.entity.base.MovementType;
-import org.crforge.core.entity.projectile.Projectile;
-import org.crforge.core.entity.structure.Tower;
-import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.match.Match;
-import org.crforge.core.player.Hand;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
-import org.crforge.core.player.dto.PlayerActionDTO;
 
 /**
- * Debug renderer using LibGDX ShapeRenderer for minimal visualization. Renders arena tiles,
- * entities as shapes, health bars, and projectiles.
+ * Orchestrator for the debug renderer. Delegates all drawing to focused sub-renderers
+ * and controls the render pass ordering.
  */
 public class DebugRenderer {
 
@@ -43,6 +23,7 @@ public class DebugRenderer {
   private final ProjectileRenderer projectileRenderer;
   private final HealthBarRenderer healthBarRenderer;
   private final DebugOverlayRenderer debugOverlayRenderer;
+  private final HudRenderer hudRenderer;
 
   @Getter
   private boolean drawPaths = false;
@@ -60,6 +41,7 @@ public class DebugRenderer {
     this.projectileRenderer = new ProjectileRenderer(ctx);
     this.healthBarRenderer = new HealthBarRenderer(ctx);
     this.debugOverlayRenderer = new DebugOverlayRenderer(ctx);
+    this.hudRenderer = new HudRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -77,49 +59,50 @@ public class DebugRenderer {
 
     ctx.setProjection(camera);
 
-    // 0. Render UI Backgrounds
-    renderUIBackgrounds(camera);
+    // 0. UI backgrounds
+    hudRenderer.renderBackgrounds(camera);
 
-    // 1. Render arena tiles (filled)
+    // 1. Arena tiles
     arenaRenderer.renderTiles(arena);
 
-    // 2. Render grid lines
+    // 2. Grid lines
     arenaRenderer.renderGrid(arena);
 
-    // 3. Render hover highlight
+    // 3. Hover highlight
     if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
       Player player = getPlayer(match);
       Card selectedCard = getSelectedCard(player);
       arenaRenderer.renderHover(hoverX, hoverY, selectedCard, player, match, selectedHandIndex);
     }
 
-    // 4. Render entities
+    // 4. Entities
     entityRenderer.render(state);
 
-    // 5. Render projectiles
+    // 5. Projectiles
     projectileRenderer.render(state);
 
-    // 6. Render health bars
+    // 6. Health bars
     healthBarRenderer.render(state);
 
-    // 7. Render targeting lines (debug)
+    // 7. Targeting lines
     debugOverlayRenderer.renderTargetingLines(state);
 
-    // 8. Render path lines (debug)
+    // 8. Path lines
     if (drawPaths) {
       debugOverlayRenderer.renderPathLines(state);
     }
 
-    // 9. Render attack range circles (debug)
+    // 9. Attack range circles
     if (drawRanges) {
       debugOverlayRenderer.renderAttackRanges(state);
     }
 
-    // 10. Render Entity Names
+    // 10. Entity names
     debugOverlayRenderer.renderEntityNames(state);
 
-    // 11. Render UI (hands, elixir, timer)
-    renderUI(engine, match, camera);
+    // 11. HUD (timer, cards, elixir)
+    hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
+        drawPaths, drawRanges);
   }
 
   private Player getPlayer(Match match) {
@@ -139,182 +122,6 @@ public class DebugRenderer {
       return null;
     }
     return player.getHand().getCard(selectedHandIndex);
-  }
-
-  private void renderUIBackgrounds(OrthographicCamera camera) {
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-    ctx.getShapeRenderer().setColor(COLOR_UI_BG);
-
-    // Top UI
-    ctx.getShapeRenderer().rect(
-        0,
-        camera.viewportHeight - TOP_UI_HEIGHT,
-        camera.viewportWidth,
-        TOP_UI_HEIGHT
-    );
-
-    // Bottom UI
-    ctx.getShapeRenderer().rect(
-        0,
-        0,
-        camera.viewportWidth,
-        BOTTOM_UI_HEIGHT
-    );
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderUI(GameEngine engine, Match match, OrthographicCamera camera) {
-    float screenWidth = camera.viewportWidth;
-    float screenHeight = camera.viewportHeight;
-
-    // Game timer
-    float gameTime = engine.getGameTimeSeconds();
-    int minutes = (int) (gameTime / 60);
-    int seconds = (int) (gameTime % 60);
-    String timeText = String.format("%d:%02d", minutes, seconds);
-    if (engine.isOvertime()) {
-      timeText = "OT " + timeText;
-    }
-
-    // Render Hands and Elixir
-    if (match != null) {
-      if (!match.getBluePlayers().isEmpty()) {
-        Player blue = match.getBluePlayers().get(0);
-        renderPlayerHUD(blue, false, 0, screenWidth);
-      }
-      if (!match.getRedPlayers().isEmpty()) {
-        Player red = match.getRedPlayers().get(0);
-        renderPlayerHUD(red, true, screenHeight - TOP_UI_HEIGHT, screenWidth);
-      }
-    }
-
-    // Screen Center Text (Timer, State)
-    ctx.getSpriteBatch().begin();
-    ctx.getFont().getData().setScale(1.2f);
-    ctx.getGlyphLayout().setText(ctx.getFont(), timeText);
-    ctx.getFont().draw(ctx.getSpriteBatch(), timeText,
-        (screenWidth - ctx.getGlyphLayout().width) / 2, screenHeight - 10);
-
-    ctx.getFont().getData().setScale(1.0f);
-    String entityCount = "Entities: " + engine.getGameState().getAliveEntities().size();
-    ctx.getFont().draw(ctx.getSpriteBatch(), entityCount, 10, screenHeight / 2 + 20);
-
-    if (engine.getGameState().isGameOver()) {
-      Team winner = engine.getGameState().getWinner();
-      String winText = winner != null ? winner + " WINS!" : "DRAW!";
-      ctx.getFont().getData().setScale(2.0f);
-      ctx.getGlyphLayout().setText(ctx.getFont(), winText);
-      ctx.getFont().draw(ctx.getSpriteBatch(), winText,
-          (screenWidth - ctx.getGlyphLayout().width) / 2, screenHeight / 2);
-      ctx.getFont().getData().setScale(1.0f);
-    }
-
-    // Debug overlay status
-    int overlayLine = 0;
-    if (drawPaths) {
-      ctx.getFont().draw(ctx.getSpriteBatch(), "Paths: ON",
-          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
-    }
-    if (drawRanges) {
-      ctx.getFont().draw(ctx.getSpriteBatch(), "Ranges: ON",
-          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
-    }
-
-    ctx.getSpriteBatch().end();
-  }
-
-  private void renderPlayerHUD(Player player, boolean isTop, float yPos, float width) {
-    float screenHeight = yPos + (isTop ? TOP_UI_HEIGHT : BOTTOM_UI_HEIGHT);
-    float cy = CardLayout.cardY(isTop, screenHeight);
-
-    // 1. Draw Elixir Bar
-    float elixir = player.getElixir().getCurrent();
-    float barX = (width - ELIXIR_BAR_WIDTH) / 2;
-    float barY = isTop ? yPos + 10 : yPos + 115;
-
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-    ctx.getShapeRenderer().setColor(COLOR_ELIXIR_BG);
-    ctx.getShapeRenderer().rect(barX, barY, ELIXIR_BAR_WIDTH, ELIXIR_BAR_HEIGHT);
-    ctx.getShapeRenderer().setColor(COLOR_ELIXIR);
-    ctx.getShapeRenderer().rect(
-        barX, barY, ELIXIR_BAR_WIDTH * (elixir / MAX_ELIXIR), ELIXIR_BAR_HEIGHT);
-    ctx.getShapeRenderer().end();
-
-    // Elixir Text
-    ctx.getSpriteBatch().begin();
-    String elixirText = String.format("%d / 10", player.getElixir().getFloor());
-    ctx.getGlyphLayout().setText(ctx.getFont(), elixirText);
-
-    float textX = barX + (ELIXIR_BAR_WIDTH - ctx.getGlyphLayout().width) / 2;
-    float textY = barY + (ELIXIR_BAR_HEIGHT + ctx.getGlyphLayout().height) / 2;
-
-    ctx.getFont().draw(ctx.getSpriteBatch(), elixirText, textX, textY);
-    ctx.getSpriteBatch().end();
-
-    // 2. Draw Hand
-    Hand hand = player.getHand();
-    for (int i = 0; i < HAND_SIZE; i++) {
-      Card card = hand.getCard(i);
-      float cx = CardLayout.cardX(width, i);
-      boolean isSelected = i == selectedHandIndex && player.getTeam() == selectedTeam;
-      renderCard(card, cx, cy, CARD_WIDTH, CARD_HEIGHT, isSelected);
-    }
-
-    // 3. Draw Next Card
-    Card nextCard = hand.getNextCard();
-    float nextX = CardLayout.nextCardX(width);
-
-    renderCard(nextCard, nextX, cy + 10, CARD_WIDTH * 0.8f, CARD_HEIGHT * 0.8f, false);
-
-    // Label for Next
-    ctx.getSpriteBatch().begin();
-    ctx.getFont().draw(ctx.getSpriteBatch(), "Next", nextX, cy + CARD_HEIGHT);
-    ctx.getSpriteBatch().end();
-  }
-
-  private void renderCard(Card card, float x, float y, float w, float h, boolean selected) {
-    if (card == null) {
-      return;
-    }
-
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-    ctx.getShapeRenderer().setColor(COLOR_CARD_BG);
-    ctx.getShapeRenderer().rect(x, y, w, h);
-
-    if (selected) {
-      ctx.getShapeRenderer().setColor(COLOR_CARD_SELECTED);
-      ctx.getShapeRenderer().rect(x, y, w, 4);
-      ctx.getShapeRenderer().rect(x, y + h - 4, w, 4);
-      ctx.getShapeRenderer().rect(x, y, 4, h);
-      ctx.getShapeRenderer().rect(x + w - 4, y, 4, h);
-    } else {
-      ctx.getShapeRenderer().setColor(COLOR_CARD_BORDER);
-      ctx.getShapeRenderer().rect(x, y, w, h);
-      ctx.getShapeRenderer().setColor(COLOR_CARD_BG);
-      ctx.getShapeRenderer().rect(x + 2, y + 2, w - 4, h - 4);
-    }
-    ctx.getShapeRenderer().end();
-
-    // Text (Name and Cost)
-    ctx.getSpriteBatch().begin();
-
-    ctx.getFont().setColor(COLOR_ELIXIR);
-    ctx.getFont().draw(ctx.getSpriteBatch(), String.valueOf(card.getCost()), x + 5, y + h - 5);
-
-    ctx.getFont().setColor(Color.WHITE);
-    ctx.getFont().getData().setScale(ENTITY_NAME_FONT_SCALE);
-    String name = card.getName();
-    if (name.length() > 8) {
-      name = name.substring(0, 8) + "..";
-    }
-
-    ctx.getGlyphLayout().setText(ctx.getFont(), name);
-    ctx.getFont().draw(ctx.getSpriteBatch(), name,
-        x + (w - ctx.getGlyphLayout().width) / 2, y + h / 2);
-
-    ctx.getFont().getData().setScale(1.0f);
-    ctx.getSpriteBatch().end();
   }
 
   public void dispose() {
