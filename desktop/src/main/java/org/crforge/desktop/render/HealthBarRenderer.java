@@ -33,25 +33,28 @@ public class HealthBarRenderer {
       float barWidth = Math.max(radius * 2, HEALTH_BAR_MIN_WIDTH);
       float barY = y + radius + HEALTH_BAR_Y_OFFSET;
 
-      // Background
-      ctx.getShapeRenderer().setColor(COLOR_HEALTH_BG);
-      ctx.getShapeRenderer().rect(x - barWidth / 2, barY, barWidth, HEALTH_BAR_HEIGHT);
+      float barLeft = x - barWidth / 2;
 
-      // Health fill
+      // Health bar (bottom)
+      ctx.getShapeRenderer().setColor(COLOR_HEALTH_BG);
+      ctx.getShapeRenderer().rect(barLeft, barY, barWidth, HEALTH_BAR_HEIGHT);
+
       Color healthColor = healthPercent > HEALTH_THRESHOLD_HIGH ? COLOR_HEALTH_GREEN
           : healthPercent > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW
               : COLOR_HEALTH_RED;
       ctx.getShapeRenderer().setColor(healthColor);
-      ctx.getShapeRenderer().rect(
-          x - barWidth / 2, barY, barWidth * healthPercent, HEALTH_BAR_HEIGHT);
+      ctx.getShapeRenderer().rect(barLeft, barY, barWidth * healthPercent, HEALTH_BAR_HEIGHT);
 
-      // Shield bar (golden segment above health bar)
-      if (health.getShield() > 0) {
-        float shieldPercent = (float) health.getShield() / health.getMax();
+      // Shield bar (top, same width, only shown if unit was created with a shield)
+      if (health.getShieldMax() > 0) {
         float shieldBarY = barY + HEALTH_BAR_HEIGHT + 1;
+        float shieldPercent = (float) health.getShield() / health.getShieldMax();
+
+        ctx.getShapeRenderer().setColor(COLOR_HEALTH_BG);
+        ctx.getShapeRenderer().rect(barLeft, shieldBarY, barWidth, HEALTH_BAR_HEIGHT);
+
         ctx.getShapeRenderer().setColor(COLOR_SHIELD);
-        ctx.getShapeRenderer().rect(
-            x - barWidth / 2, shieldBarY, barWidth * shieldPercent, HEALTH_BAR_HEIGHT - 1);
+        ctx.getShapeRenderer().rect(barLeft, shieldBarY, barWidth * shieldPercent, HEALTH_BAR_HEIGHT);
       }
     }
 
