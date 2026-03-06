@@ -149,6 +149,14 @@ public class CombatSystem {
       Projectile projectile = new Projectile(
           attacker, target, baseDamage, aoeRadius, speed, effects, targetBuff, buffDuration,
           combat.getCrownTowerDamagePercent());
+
+      // Wire advanced projectile features from stats
+      if (stats != null) {
+        projectile.setChainedHitRadius(stats.getChainedHitRadius());
+        projectile.setChainedHitCount(stats.getChainedHitCount());
+        projectile.setSpawnProjectile(stats.getSpawnProjectile());
+      }
+
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack, deal damage immediately
@@ -306,6 +314,16 @@ public class CombatSystem {
 
     // Apply projectile-level targetBuff (e.g. Ice Wizard SLOW, EWiz STUN)
     applyTargetBuff(projectile);
+
+    // Chain lightning: spawn sub-projectiles to nearby enemies
+    if (projectile.getChainedHitCount() > 0 && projectile.getChainedHitRadius() > 0) {
+      processChainLightning(projectile);
+    }
+
+    // Spawn sub-projectile on impact (Log rolling, Firecracker explosion)
+    if (projectile.getSpawnProjectile() != null) {
+      processSpawnProjectile(projectile);
+    }
   }
 
   /**
@@ -332,6 +350,92 @@ public class CombatSystem {
         combat.resetAttackState();
       }
     }
+  }
+
+  /**
+   * Chain lightning: find N closest enemies within chainedHitRadius and create
+   * sub-projectiles to each. Excludes the primary target.
+   */
+  private void processChainLightning(Projectile projectile) {
+    Entity primaryTarget = projectile.getTarget();
+    if (primaryTarget == null) {
+      return;
+    }
+
+    float hitX = primaryTarget.getPosition().getX();
+    float hitY = primaryTarget.getPosition().getY();
+    float chainRadius = projectile.getChainedHitRadius();
+    int chainCount = projectile.getChainedHitCount();
+    Team team = projectile.getTeam();
+
+    List<Entity> candidates = new ArrayList<>();
+    for (Entity e : gameState.getAliveEntities()) {
+      if (e == primaryTarget || e.getTeam() == team || !e.isTargetable()) {
+        continue;
+      }
+      float dist = e.getPosition().distanceTo(primaryTarget.getPosition());
+      if (dist <= chainRadius + e.getCollisionRadius()) {
+        candidates.add(e);
+      }
+    }
+
+    // Sort by distance, pick closest N
+    candidates.sort((a, b) -> {
+      float da = a.getPosition().distanceTo(primaryTarget.getPosition());
+      float db = b.getPosition().distanceTo(primaryTarget.getPosition());
+      return Float.compare(da, db);
+    });
+
+    int chainsToSpawn = Math.min(chainCount, candidates.size());
+    for (int i = 0; i < chainsToSpawn; i++) {
+      Entity chainTarget = candidates.get(i);
+      Projectile chain = new Projectile(
+          projectile.getSource(), chainTarget,
+          projectile.getDamage(), 0, projectile.getProjectileSpeed(),
+          projectile.getEffects(),
+          projectile.getTargetBuff(), projectile.getBuffDuration(),
+          projectile.getCrownTowerDamagePercent());
+      gameState.spawnProjectile(chain);
+    }
+  }
+
+  /**
+   * Spawn sub-projectiles on impact (Log rolling projectile, Firecracker explosion).
+   */
+  private void processSpawnProjectile(Projectile projectile) {
+    ProjectileStats spawnStats = projectile.getSpawnProjectile();
+    if (spawnStats == null) {
+      return;
+    }
+
+    float hitX, hitY;
+    if (projectile.isPositionTargeted()) {
+      hitX = projectile.getTargetX();
+      hitY = projectile.getTargetY();
+    } else if (projectile.getTarget() != null) {
+      hitX = projectile.getTarget().getPosition().getX();
+      hitY = projectile.getTarget().getPosition().getY();
+    } else {
+      hitX = projectile.getPosition().getX();
+      hitY = projectile.getPosition().getY();
+    }
+
+    // Calculate travel direction for non-homing spawned projectiles
+    float dx = hitX - projectile.getOriginX();
+    float dy = hitY - projectile.getOriginY();
+    float dist = (float) Math.sqrt(dx * dx + dy * dy);
+    float dirX = dist > 0 ? dx / dist : 0;
+    float dirY = dist > 0 ? dy / dist : 1;
+
+    float range = spawnStats.getProjectileRange() > 0 ? spawnStats.getProjectileRange() : 10f;
+    float targetX = hitX + dirX * range;
+    float targetY = hitY + dirY * range;
+
+    Projectile spawned = new Projectile(
+        projectile.getTeam(), hitX, hitY, targetX, targetY,
+        spawnStats.getDamage(), spawnStats.getRadius(), spawnStats.getSpeed(),
+        spawnStats.getHitEffects());
+    gameState.spawnProjectile(spawned);
   }
 
   /**
