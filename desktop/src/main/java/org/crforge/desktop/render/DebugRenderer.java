@@ -40,6 +40,9 @@ public class DebugRenderer {
   private final RenderContext ctx;
   private final ArenaRenderer arenaRenderer;
   private final EntityRenderer entityRenderer;
+  private final ProjectileRenderer projectileRenderer;
+  private final HealthBarRenderer healthBarRenderer;
+  private final DebugOverlayRenderer debugOverlayRenderer;
 
   @Getter
   private boolean drawPaths = false;
@@ -54,6 +57,9 @@ public class DebugRenderer {
     this.ctx = new RenderContext();
     this.arenaRenderer = new ArenaRenderer(ctx);
     this.entityRenderer = new EntityRenderer(ctx);
+    this.projectileRenderer = new ProjectileRenderer(ctx);
+    this.healthBarRenderer = new HealthBarRenderer(ctx);
+    this.debugOverlayRenderer = new DebugOverlayRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -91,26 +97,26 @@ public class DebugRenderer {
     entityRenderer.render(state);
 
     // 5. Render projectiles
-    renderProjectiles(state);
+    projectileRenderer.render(state);
 
     // 6. Render health bars
-    renderHealthBars(state);
+    healthBarRenderer.render(state);
 
     // 7. Render targeting lines (debug)
-    renderTargetingLines(state);
+    debugOverlayRenderer.renderTargetingLines(state);
 
     // 8. Render path lines (debug)
     if (drawPaths) {
-      renderPathLines(state);
+      debugOverlayRenderer.renderPathLines(state);
     }
 
     // 9. Render attack range circles (debug)
     if (drawRanges) {
-      renderAttackRanges(state);
+      debugOverlayRenderer.renderAttackRanges(state);
     }
 
     // 10. Render Entity Names
-    renderEntityNames(state);
+    debugOverlayRenderer.renderEntityNames(state);
 
     // 11. Render UI (hands, elixir, timer)
     renderUI(engine, match, camera);
@@ -154,139 +160,6 @@ public class DebugRenderer {
         camera.viewportWidth,
         BOTTOM_UI_HEIGHT
     );
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderAttackRanges(GameState state) {
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
-    ctx.getShapeRenderer().setColor(COLOR_ATTACK_RANGE);
-
-    for (Entity entity : state.getAliveEntities()) {
-      Combat combat = entity.getCombat();
-      if (combat == null) {
-        continue;
-      }
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float attackRadius = (combat.getRange() + entity.getCollisionRadius()) * TILE_PIXELS;
-      ctx.getShapeRenderer().circle(x, y, attackRadius, CIRCLE_SEGMENTS);
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderEntityNames(GameState state) {
-    ctx.getSpriteBatch().begin();
-    for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
-
-      // Draw name slightly above the health bar
-      float textY = y + radius + 15;
-
-      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), entity.getName());
-      float textWidth = ctx.getGlyphLayout().width;
-
-      ctx.getEntityNameFont().draw(
-          ctx.getSpriteBatch(), entity.getName(), x - textWidth / 2, textY);
-    }
-    ctx.getSpriteBatch().end();
-  }
-
-  private void renderProjectiles(GameState state) {
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-    ctx.getShapeRenderer().setColor(COLOR_PROJECTILE);
-
-    for (Projectile projectile : state.getProjectiles()) {
-      if (!projectile.isActive()) {
-        continue;
-      }
-
-      float x = projectile.getPosition().getX() * TILE_PIXELS;
-      float y = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
-      ctx.getShapeRenderer().circle(x, y, PROJECTILE_RADIUS);
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderHealthBars(GameState state) {
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-
-    for (Entity entity : state.getAliveEntities()) {
-      Health health = entity.getHealth();
-      float healthPercent = (float) health.getCurrent() / health.getMax();
-
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
-
-      float barWidth = Math.max(radius * 2, HEALTH_BAR_MIN_WIDTH);
-      float barY = y + radius + HEALTH_BAR_Y_OFFSET;
-
-      // Background
-      ctx.getShapeRenderer().setColor(COLOR_HEALTH_BG);
-      ctx.getShapeRenderer().rect(x - barWidth / 2, barY, barWidth, HEALTH_BAR_HEIGHT);
-
-      // Health fill
-      Color healthColor = healthPercent > HEALTH_THRESHOLD_HIGH ? COLOR_HEALTH_GREEN
-          : healthPercent > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW
-              : COLOR_HEALTH_RED;
-      ctx.getShapeRenderer().setColor(healthColor);
-      ctx.getShapeRenderer().rect(
-          x - barWidth / 2, barY, barWidth * healthPercent, HEALTH_BAR_HEIGHT);
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderTargetingLines(GameState state) {
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
-
-    for (Entity entity : state.getAliveEntities()) {
-      Entity target = null;
-      Combat combat = entity.getCombat();
-      if (combat != null && combat.hasTarget()) {
-        target = combat.getCurrentTarget();
-      }
-
-      if (target != null && target.isAlive()) {
-        float x1 = entity.getPosition().getX() * TILE_PIXELS;
-        float y1 = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-        float x2 = target.getPosition().getX() * TILE_PIXELS;
-        float y2 = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
-        ctx.getShapeRenderer().setColor(1f, 0f, 0f, 0.3f);
-        ctx.getShapeRenderer().line(x1, y1, x2, y2);
-      }
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderPathLines(GameState state) {
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
-    ctx.getShapeRenderer().setColor(COLOR_PATH);
-
-    for (Entity entity : state.getAliveEntities()) {
-      if (entity instanceof Troop troop && troop.isAlive()) {
-        float x = troop.getPosition().getX() * TILE_PIXELS;
-        float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-        float rot = troop.getPosition().getRotation();
-
-        float len = TILE_PIXELS * 1.5f;
-        float x2 = x + (float) Math.cos(rot) * len;
-        float y2 = y + (float) Math.sin(rot) * len;
-
-        ctx.getShapeRenderer().line(x, y, x2, y2);
-      }
-    }
 
     ctx.getShapeRenderer().end();
   }
