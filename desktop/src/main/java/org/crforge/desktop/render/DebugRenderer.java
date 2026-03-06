@@ -39,6 +39,7 @@ public class DebugRenderer {
 
   private final RenderContext ctx;
   private final ArenaRenderer arenaRenderer;
+  private final EntityRenderer entityRenderer;
 
   @Getter
   private boolean drawPaths = false;
@@ -52,6 +53,7 @@ public class DebugRenderer {
   public DebugRenderer() {
     this.ctx = new RenderContext();
     this.arenaRenderer = new ArenaRenderer(ctx);
+    this.entityRenderer = new EntityRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -86,7 +88,7 @@ public class DebugRenderer {
     }
 
     // 4. Render entities
-    renderEntities(state);
+    entityRenderer.render(state);
 
     // 5. Render projectiles
     renderProjectiles(state);
@@ -156,83 +158,6 @@ public class DebugRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  private void renderEntities(GameState state) {
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-
-    for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
-      float visualRadius = entity.getVisualRadius() * TILE_PIXELS;
-
-      if (entity.getEntityType() == EntityType.TOWER) {
-        ctx.getShapeRenderer().setColor(COLOR_TOWER_BOUNDARY);
-        ctx.getShapeRenderer().rect(
-            x - visualRadius, y - visualRadius, visualRadius * 2, visualRadius * 2);
-      }
-
-      Color baseColor = getEntityColor(entity);
-      ctx.getShapeRenderer().setColor(baseColor);
-      ctx.getShapeRenderer().circle(x, y, visualRadius);
-
-      if (entity.getMovementType() == MovementType.AIR) {
-        ctx.getShapeRenderer().setColor(COLOR_AIR_UNIT);
-        ctx.getShapeRenderer().circle(x, y, visualRadius + 2);
-      }
-    }
-
-    ctx.getShapeRenderer().end();
-
-    // Draw outlines, collision circles, and status effect rings
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
-    for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
-      // 1. Visual Outline
-      float visualRadius = entity.getVisualRadius() * TILE_PIXELS;
-      Color baseColor = getEntityColor(entity);
-      ctx.getShapeRenderer().setColor(
-          baseColor.r * 0.5f, baseColor.g * 0.5f, baseColor.b * 0.5f, 1f);
-      ctx.getShapeRenderer().circle(x, y, visualRadius);
-
-      // 2. Collision Circle (Yellow overlay)
-      float collisionRadius = entity.getCollisionRadius() * TILE_PIXELS;
-      ctx.getShapeRenderer().setColor(COLOR_COLLISION_CIRCLE);
-      ctx.getShapeRenderer().circle(x, y, collisionRadius);
-
-      // 3. Status effect ring (outside visual radius)
-      Color effectColor = getStatusEffectColor(entity);
-      if (effectColor != null) {
-        ctx.getShapeRenderer().setColor(effectColor);
-        ctx.getShapeRenderer().circle(x, y, visualRadius + 3);
-        ctx.getShapeRenderer().circle(x, y, visualRadius + 5);
-      }
-    }
-    ctx.getShapeRenderer().end();
-  }
-
-  private Color getStatusEffectColor(Entity entity) {
-    // Priority: FREEZE > STUN > SLOW > RAGE
-    boolean hasFreezeOrStun = false;
-    boolean hasSlow = false;
-    boolean hasRage = false;
-    for (AppliedEffect effect : entity.getAppliedEffects()) {
-      switch (effect.getType()) {
-        case FREEZE -> { return COLOR_EFFECT_FREEZE; }
-        case STUN -> hasFreezeOrStun = true;
-        case SLOW -> hasSlow = true;
-        case RAGE -> hasRage = true;
-        default -> { }
-      }
-    }
-    if (hasFreezeOrStun) return COLOR_EFFECT_STUN;
-    if (hasSlow) return COLOR_EFFECT_SLOW;
-    if (hasRage) return COLOR_EFFECT_RAGE;
-    return null;
-  }
-
   private void renderAttackRanges(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -269,21 +194,6 @@ public class DebugRenderer {
           ctx.getSpriteBatch(), entity.getName(), x - textWidth / 2, textY);
     }
     ctx.getSpriteBatch().end();
-  }
-
-  private Color getEntityColor(Entity entity) {
-    if (entity.getEntityType() == EntityType.TOWER) {
-      Tower tower = (Tower) entity;
-      if (tower.isCrownTower()) {
-        return entity.getTeam() == Team.BLUE
-            ? COLOR_BLUE_CROWN_TOWER
-            : COLOR_RED_CROWN_TOWER;
-      }
-      return entity.getTeam() == Team.BLUE
-          ? COLOR_BLUE_PRINCESS_TOWER
-          : COLOR_RED_PRINCESS_TOWER;
-    }
-    return entity.getTeam() == Team.BLUE ? COLOR_BLUE_ENTITY : COLOR_RED_ENTITY;
   }
 
   private void renderProjectiles(GameState state) {
