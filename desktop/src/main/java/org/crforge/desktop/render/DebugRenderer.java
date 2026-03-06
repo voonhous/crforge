@@ -2,7 +2,6 @@ package org.crforge.desktop.render;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import lombok.Getter;
-import lombok.Setter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
@@ -29,10 +28,6 @@ public class DebugRenderer {
   private boolean drawPaths = false;
   @Getter
   private boolean drawRanges = false;
-  @Setter
-  private int selectedHandIndex = -1;
-  @Setter
-  private Team selectedTeam = null;
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
@@ -52,7 +47,9 @@ public class DebugRenderer {
     drawRanges = !drawRanges;
   }
 
-  public void render(GameEngine engine, OrthographicCamera camera, int hoverX, int hoverY) {
+  public void render(GameEngine engine, OrthographicCamera camera,
+                     int hoverX, int hoverY,
+                     int selectedHandIndex, Team selectedTeam) {
     GameState state = engine.getGameState();
     Arena arena = engine.getArena();
     Match match = engine.getMatch();
@@ -70,8 +67,8 @@ public class DebugRenderer {
 
     // 3. Hover highlight
     if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
-      Player player = getPlayer(match);
-      Card selectedCard = getSelectedCard(player);
+      Player player = getPlayer(match, selectedTeam);
+      Card selectedCard = getSelectedCard(player, selectedHandIndex);
       arenaRenderer.renderHover(hoverX, hoverY, selectedCard, player, match, selectedHandIndex);
     }
 
@@ -105,7 +102,7 @@ public class DebugRenderer {
         drawPaths, drawRanges);
   }
 
-  private Player getPlayer(Match match) {
+  private Player getPlayer(Match match, Team selectedTeam) {
     if (match == null || selectedTeam == null) {
       return null;
     }
@@ -117,7 +114,7 @@ public class DebugRenderer {
     return null;
   }
 
-  private Card getSelectedCard(Player player) {
+  private Card getSelectedCard(Player player, int selectedHandIndex) {
     if (player == null || selectedHandIndex == -1) {
       return null;
     }

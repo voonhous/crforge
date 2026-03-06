@@ -174,9 +174,8 @@ public class DebugGameScreen implements Screen {
         if (button == Input.Buttons.LEFT) {
           handleLeftClick(screenX, screenY);
         } else if (button == Input.Buttons.RIGHT) {
-          selectedHandIndex = -1; // Deselect
-          renderer.setSelectedHandIndex(-1);
-          renderer.setSelectedTeam(null);
+          selectedHandIndex = -1;
+          selectedPlayer = null;
         }
         return true;
       }
@@ -255,8 +254,7 @@ public class DebugGameScreen implements Screen {
 
       // Deselect after successful play (matches real CR)
       selectedHandIndex = -1;
-      renderer.setSelectedHandIndex(-1);
-      renderer.setSelectedTeam(null);
+      selectedPlayer = null;
     }
   }
 
@@ -271,8 +269,6 @@ public class DebugGameScreen implements Screen {
   private void selectCard(Player player, int index) {
     this.selectedPlayer = player;
     this.selectedHandIndex = index;
-    renderer.setSelectedHandIndex(index);
-    renderer.setSelectedTeam(player.getTeam());
 
     Card c = player.getHand().getCard(index);
     if (c != null) {
@@ -314,7 +310,8 @@ public class DebugGameScreen implements Screen {
 
       // Render
       camera.update();
-      renderer.render(engine, camera, hoverTileX, hoverTileY);
+      Team selTeam = selectedPlayer != null ? selectedPlayer.getTeam() : null;
+      renderer.render(engine, camera, hoverTileX, hoverTileY, selectedHandIndex, selTeam);
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
       // Pause to prevent log spam/hard crash loop if possible
