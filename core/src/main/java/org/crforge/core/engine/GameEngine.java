@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import lombok.Getter;
+import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
@@ -32,6 +33,7 @@ public class GameEngine {
   private final StatusEffectSystem statusEffectSystem;
   private final SpawnerSystem spawnerSystem;
   private final AreaEffectSystem areaEffectSystem;
+  private final AbilitySystem abilitySystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -47,6 +49,7 @@ public class GameEngine {
     this.statusEffectSystem = new StatusEffectSystem();
     this.spawnerSystem = new SpawnerSystem(gameState, combatSystem);
     this.areaEffectSystem = new AreaEffectSystem(gameState);
+    this.abilitySystem = new AbilitySystem(gameState);
     this.running = false;
   }
 
@@ -126,21 +129,24 @@ public class GameEngine {
     // 8. Update targeting
     targetingSystem.updateTargets(gameState.getAliveEntities());
 
-    // 9. Process combat (attacks and projectiles)
+    // 9. Update abilities (charge, variable damage) -- before combat so damage mods apply
+    abilitySystem.update(DELTA_TIME);
+
+    // 10. Process combat (attacks and projectiles)
     combatSystem.update(DELTA_TIME);
 
-    // 10. Update physics (movement and collisions)
+    // 11. Update physics (movement and collisions)
     if (physicsSystem != null) {
       physicsSystem.update(gameState.getAliveEntities(), DELTA_TIME);
     }
 
-    // 11. Process deaths (Pass spawnerSystem to handle death spawns)
+    // 12. Process deaths (Pass spawnerSystem to handle death spawns)
     gameState.processDeaths(spawnerSystem);
 
-    // 12. Check time limit
+    // 13. Check time limit
     checkTimeLimit();
 
-    // 13. Increment frame counter
+    // 14. Increment frame counter
     gameState.incrementFrame();
   }
 

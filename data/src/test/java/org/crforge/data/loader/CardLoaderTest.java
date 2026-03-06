@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.crfoge.data.loader.CardLoader;
+import org.crforge.core.ability.AbilityType;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -922,5 +923,69 @@ class CardLoaderTest {
     assertThat(knightStats.getShieldHitpoints()).isEqualTo(0);
     assertThat(knightStats.getBuffOnDamage()).isNull();
     assertThat(knightStats.getMultipleTargets()).isEqualTo(0);
+  }
+
+  @Test
+  void loadCards_shouldParseChargeAbility() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Prince: CHARGE ability with damage=306, speedMultiplier=2.0
+    Card prince = cards.stream()
+        .filter(c -> c.getId().equals("prince")).findFirst().orElse(null);
+    assertThat(prince).isNotNull();
+    TroopStats princeStats = prince.getTroops().get(0);
+    assertThat(princeStats.getAbility()).isNotNull();
+    assertThat(princeStats.getAbility().getType()).isEqualTo(AbilityType.CHARGE);
+    assertThat(princeStats.getAbility().getChargeDamage()).isEqualTo(306);
+    assertThat(princeStats.getAbility().getSpeedMultiplier()).isEqualTo(2.0f);
+
+    // DarkPrince: CHARGE ability with damage=208
+    Card darkPrince = cards.stream()
+        .filter(c -> c.getId().equals("darkprince")).findFirst().orElse(null);
+    assertThat(darkPrince).isNotNull();
+    TroopStats dpStats = darkPrince.getTroops().get(0);
+    assertThat(dpStats.getAbility()).isNotNull();
+    assertThat(dpStats.getAbility().getType()).isEqualTo(AbilityType.CHARGE);
+    assertThat(dpStats.getAbility().getChargeDamage()).isEqualTo(208);
+
+    // Knight: no ability
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    assertThat(knight.getTroops().get(0).getAbility()).isNull();
+  }
+
+  @Test
+  void loadCards_shouldParseVariableDamageAbility() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // InfernoDragon: VARIABLE_DAMAGE with 3 stages (14 -> 47 -> 165)
+    Card infernoDragon = cards.stream()
+        .filter(c -> c.getId().equals("infernodragon")).findFirst().orElse(null);
+    assertThat(infernoDragon).isNotNull();
+    TroopStats idStats = infernoDragon.getTroops().get(0);
+    assertThat(idStats.getAbility()).isNotNull();
+    assertThat(idStats.getAbility().getType()).isEqualTo(AbilityType.VARIABLE_DAMAGE);
+    assertThat(idStats.getAbility().getStages()).hasSize(3);
+    assertThat(idStats.getAbility().getStages().get(0).damage()).isEqualTo(14);
+    assertThat(idStats.getAbility().getStages().get(0).durationSeconds()).isEqualTo(0f);
+    assertThat(idStats.getAbility().getStages().get(1).damage()).isEqualTo(47);
+    assertThat(idStats.getAbility().getStages().get(1).durationSeconds()).isEqualTo(2.0f);
+    assertThat(idStats.getAbility().getStages().get(2).damage()).isEqualTo(165);
+    assertThat(idStats.getAbility().getStages().get(2).durationSeconds()).isEqualTo(2.0f);
+
+    // MightyMiner: VARIABLE_DAMAGE with 3 stages (16 -> 80 -> 160)
+    Card mightyMiner = cards.stream()
+        .filter(c -> c.getId().equals("mightyminer")).findFirst().orElse(null);
+    assertThat(mightyMiner).isNotNull();
+    assertThat(mightyMiner.getTroops().get(0).getAbility()).isNotNull();
+    assertThat(mightyMiner.getTroops().get(0).getAbility().getType())
+        .isEqualTo(AbilityType.VARIABLE_DAMAGE);
+    assertThat(mightyMiner.getTroops().get(0).getAbility().getStages()).hasSize(3);
+    assertThat(mightyMiner.getTroops().get(0).getAbility().getStages().get(0).damage())
+        .isEqualTo(16);
   }
 }

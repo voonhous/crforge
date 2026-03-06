@@ -5,6 +5,7 @@ import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -22,6 +23,9 @@ public class Troop extends AbstractEntity {
 
   @Builder.Default
   private float deployTimer = 1.0f;
+
+  @Builder.Default
+  private final AbilityComponent ability = null;
 
   @Override
   public EntityType getEntityType() {

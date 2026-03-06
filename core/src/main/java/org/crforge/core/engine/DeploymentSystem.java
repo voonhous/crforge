@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.RequiredArgsConstructor;
+import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.DeathSpawnEntry;
@@ -188,6 +189,10 @@ public class DeploymentSystem {
     int scaledShield = stats.getShieldHitpoints() > 0
         ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level) : 0;
 
+    // Create ability component if unit has one
+    AbilityComponent abilityComponent = stats.getAbility() != null
+        ? new AbilityComponent(stats.getAbility()) : null;
+
     // Explicitly set deployTimer to deployTime to avoid default value issues
     return Troop.builder()
         .name(stats.getName())
@@ -204,6 +209,7 @@ public class DeploymentSystem {
         .deployTime(stats.getDeployTime())
         .deployTimer(stats.getDeployTime())
         .spawner(spawner)
+        .ability(abilityComponent)
         .build();
   }
 

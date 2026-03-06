@@ -61,6 +61,9 @@ public class UnitConfigDTO {
   private LiveSpawnConfigDTO liveSpawn;
   private List<DeathSpawnConfigDTO> deathSpawn;
 
+  // Abilities (Charge, Variable Damage, etc.)
+  private List<AbilityConfigDTO> abilities;
+
   // Configuration convenience
   private int count = 1; // Default to 1 unit
 }

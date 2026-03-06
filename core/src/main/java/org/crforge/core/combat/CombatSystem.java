@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
@@ -122,7 +123,12 @@ public class CombatSystem {
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
-    int baseDamage = combat.getDamage();
+    int baseDamage = combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getDamage();
+
+    // Charge ability: override damage for this attack if charged
+    if (attacker instanceof Troop troop) {
+      baseDamage = AbilitySystem.getChargeDamage(troop.getAbility(), baseDamage);
+    }
 
     if (combat.isRanged()) {
       ProjectileStats stats = combat.getProjectileStats();
@@ -159,6 +165,11 @@ public class CombatSystem {
 
       // Apply buff-on-damage for melee attacks
       applyBuffOnDamage(combat, target);
+    }
+
+    // Consume charge after attack
+    if (attacker instanceof Troop t) {
+      AbilitySystem.consumeCharge(t);
     }
 
     combat.finishAttack();
