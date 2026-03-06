@@ -45,6 +45,13 @@ public class SpawnerComponent {
   private int deathSpawnCount;
   private TroopStats spawnStats;
 
+  /**
+   * Formation radius for live spawn placement (in tile units).
+   * Used by SpawnerSystem to arrange spawned units in a circle.
+   */
+  @Builder.Default
+  private float formationRadius = 0f;
+
   // Death mechanics
   @Builder.Default
   private int deathDamage = 0;
@@ -64,6 +71,14 @@ public class SpawnerComponent {
   public enum SpawnerState {
     WAITING_FOR_WAVE, // Counting down spawnPauseTime
     SPAWNING_WAVE     // Counting down spawnInterval between units
+  }
+
+  /**
+   * Returns the zero-based index of the most recently spawned unit within the current wave.
+   * Used by FormationLayout to calculate circular formation offsets.
+   */
+  public int getLastSpawnIndex() {
+    return unitsSpawnedInCurrentWave - 1;
   }
 
   /**

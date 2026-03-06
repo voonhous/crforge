@@ -31,4 +31,7 @@ public class CardConfigDTO {
 
   // Summon character for spells (e.g. Rage -> RageBottle, Heal -> HealSpirit)
   private String summonCharacter;
+
+  // Raw CSV summonRadius for troop deploy formation
+  private float summonRadius;
 }

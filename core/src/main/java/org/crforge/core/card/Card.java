@@ -57,6 +57,20 @@ public class Card {
   private final float spawnStartTime = 0f;
 
   /**
+   * Raw CSV summonRadius for troop deploy formation (divide by TILE_SCALE at deploy time).
+   * When 0, falls back to pre-baked per-unit offsets.
+   */
+  @Builder.Default
+  private final float summonRadius = 0f;
+
+  /**
+   * Formation radius for live spawns, already in tile units.
+   * Used by SpawnerSystem to arrange spawned units in a circle.
+   */
+  @Builder.Default
+  private final float liveSpawnRadius = 0f;
+
+  /**
    * Resolved spawn template stats. For spawner cards, this holds the TroopStats
    * for the spawned unit (resolved from liveSpawn.spawnCharacter or units[1]).
    */

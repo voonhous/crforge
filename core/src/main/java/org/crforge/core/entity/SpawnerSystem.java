@@ -16,6 +16,8 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.FormationLayout;
+import org.crforge.core.util.Vector2;
 
 public class SpawnerSystem {
 
@@ -50,7 +52,13 @@ public class SpawnerSystem {
 
       // Only tick periodic spawning for entities with live spawn capability
       if (spawner.hasLiveSpawn() && spawner.tick(deltaTime)) {
-        spawnUnit(entity, spawner.getSpawnStats());
+        int spawnIndex = spawner.getLastSpawnIndex();
+        int total = spawner.getUnitsPerWave();
+        float formationRadius = spawner.getFormationRadius();
+        float collisionRadius = spawner.getSpawnStats().getCollisionRadius();
+        Vector2 offset = FormationLayout.calculateOffset(
+            spawnIndex, total, formationRadius, collisionRadius);
+        doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats());
       }
     }
   }
@@ -84,14 +92,19 @@ public class SpawnerSystem {
       // 2. Handle resolved death spawns (e.g. Golem -> 2 Golemites)
       for (DeathSpawnEntry entry : spawner.getDeathSpawns()) {
         for (int i = 0; i < entry.count(); i++) {
-          spawnUnit(entity, entry.stats(), entry.radius());
+          Vector2 offset = FormationLayout.calculateOffset(
+              i, entry.count(), entry.radius(), entry.stats().getCollisionRadius());
+          doSpawn(entity.getPosition(), offset, entity.getTeam(), entry.stats());
         }
       }
 
       // 3. Fallback: legacy death spawn via deathSpawnCount + spawnStats
       if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
         for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
-          spawnUnit(entity, spawner.getSpawnStats(), true);
+          Vector2 offset = FormationLayout.calculateOffset(
+              i, spawner.getDeathSpawnCount(), spawner.getFormationRadius(),
+              spawner.getSpawnStats().getCollisionRadius());
+          doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats());
         }
       }
     }
@@ -106,46 +119,17 @@ public class SpawnerSystem {
     }
   }
 
-  private void spawnUnit(Entity source, TroopStats stats) {
-    spawnUnit(source, stats, false);
-  }
-
-  private void spawnUnit(Entity source, TroopStats stats, boolean isDeathSpawn) {
-    if (stats == null) {
-      return;
-    }
-    // Standard spawns belong to the same team as the source
-    doSpawn(source.getPosition(), source.getCollisionRadius() * 2, source.getTeam(), stats,
-        isDeathSpawn);
-  }
-
-  /**
-   * Spawn a death spawn unit with a specific spread radius.
-   */
-  private void spawnUnit(Entity source, TroopStats stats, float spreadRadius) {
-    if (stats == null) {
-      return;
-    }
-    float effectiveSpread = spreadRadius > 0 ? spreadRadius : source.getCollisionRadius() * 2;
-    doSpawn(source.getPosition(), effectiveSpread, source.getTeam(), stats, true);
-  }
-
   private void spawnEffectUnit(Entity victim, TroopStats stats, Team ownerTeam) {
     if (stats == null) {
       return;
     }
-    // Effect spawns (like Cursed Hogs) appear at the victim's location but belong to the effect owner
-    doSpawn(victim.getPosition(), victim.getCollisionRadius() * 2, ownerTeam, stats, true);
+    // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset
+    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats);
   }
 
-  private void doSpawn(Position origin, float originDiameter, Team team, TroopStats stats,
-      boolean isDeathSpawn) {
-    // Use origin to determine spawn location
-    // Add simple random spread if it's a death spawn to prevent stacking perfectly
-    float spread = isDeathSpawn ? (float) (Math.random() - 0.5) * originDiameter : 0;
-
-    float x = origin.getX() + spread;
-    float y = origin.getY() + spread;
+  private void doSpawn(Position origin, Vector2 offset, Team team, TroopStats stats) {
+    float x = origin.getX() + offset.getX();
+    float y = origin.getY() + offset.getY();
 
     float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
     Combat combat = Combat.builder()
