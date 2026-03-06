@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
+import org.crforge.core.ability.AbilityData;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 
@@ -86,6 +87,9 @@ public class TroopStats {
 
   // Buff applied to target when dealing damage (e.g. EWiz stun, Mother Witch curse)
   private final EffectStats buffOnDamage;
+
+  // Ability (Charge, Variable Damage, etc.)
+  private final AbilityData ability;
 
   // Targeting and combat modifiers
   @Builder.Default

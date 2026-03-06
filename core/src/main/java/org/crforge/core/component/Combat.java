@@ -52,6 +52,11 @@ public class Combat {
   @Builder.Default
   private final int crownTowerDamagePercent = 0;
 
+  // Ability-driven damage override (e.g. variable damage / inferno)
+  // When > 0, used instead of base damage
+  @Builder.Default
+  private int damageOverride = 0;
+
   // Dynamic states
   private Entity currentTarget;
   private boolean targetLocked;

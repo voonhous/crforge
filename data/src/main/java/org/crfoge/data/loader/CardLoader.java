@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.crfoge.data.loader.dto.AbilityConfigDTO;
 import org.crfoge.data.loader.dto.AreaEffectConfigDTO;
 import org.crfoge.data.loader.dto.BuffOnDamageConfigDTO;
 import org.crfoge.data.loader.dto.CardConfigDTO;
@@ -25,6 +26,9 @@ import org.crfoge.data.loader.dto.EffectConfigDTO;
 import org.crfoge.data.loader.dto.LiveSpawnConfigDTO;
 import org.crfoge.data.loader.dto.ProjectileConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
+import org.crforge.core.ability.AbilityData;
+import org.crforge.core.ability.AbilityType;
+import org.crforge.core.ability.VariableDamageStage;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.DeathSpawnEntry;
@@ -243,6 +247,44 @@ public class CardLoader {
           : dto.getDamage();
 
       builder.projectile(convertProjectile(dto.getProjectile(), damageSource));
+    }
+
+    // Abilities (Charge, Variable Damage, etc.)
+    if (dto.getAbilities() != null && !dto.getAbilities().isEmpty()) {
+      // Use the first ability (cards have at most one primary ability)
+      AbilityConfigDTO abilityDto = dto.getAbilities().get(0);
+      builder.ability(convertAbility(abilityDto));
+    }
+
+    return builder.build();
+  }
+
+  private static AbilityData convertAbility(AbilityConfigDTO dto) {
+    AbilityType type;
+    try {
+      type = AbilityType.valueOf(dto.getType());
+    } catch (IllegalArgumentException e) {
+      return null; // Unknown ability type, skip
+    }
+
+    AbilityData.AbilityDataBuilder builder = AbilityData.builder().type(type);
+
+    switch (type) {
+      case CHARGE -> {
+        builder.chargeDamage(dto.getDamage());
+        builder.speedMultiplier(dto.getSpeedMultiplier() > 0 ? dto.getSpeedMultiplier() : 2.0f);
+      }
+      case VARIABLE_DAMAGE -> {
+        if (dto.getStages() != null) {
+          List<VariableDamageStage> stages = dto.getStages().stream()
+              .map(s -> new VariableDamageStage(s.getDamage(), s.getTimeMs() / 1000f))
+              .toList();
+          builder.stages(stages);
+        }
+      }
+      default -> {
+        // DASH, HOOK, REFLECT handled in future tiers
+      }
     }
 
     return builder.build();
