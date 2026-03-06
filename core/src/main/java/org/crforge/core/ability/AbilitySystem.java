@@ -5,6 +5,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 
 /**
@@ -276,17 +277,36 @@ public class AbilitySystem {
           if (combat != null) {
             combat.setCombatDisabled(true);
           }
+          // Fisherman stops moving while hooking
+          troop.getMovement().setMovementDisabled(true);
         }
       }
       case WINDING_UP -> {
+        // Re-assert every tick because StatusEffectSystem resets these flags each tick
+        troop.getMovement().setMovementDisabled(true);
+        combat.setCombatDisabled(true);
+
         ability.setHookTimer(ability.getHookTimer() + deltaTime);
         if (ability.getHookTimer() >= data.getHookLoadTime()) {
-          // Start pulling target
-          ability.setHookState(AbilityComponent.HookState.PULLING);
+          Entity target = findEntityById(ability.getHookedTargetId());
+          if (target == null || !target.isAlive()) {
+            resetHook(troop, ability);
+            return;
+          }
+          // Buildings can't be pulled -- skip straight to dragging self toward them
+          if (target instanceof Building) {
+            ability.setHookState(AbilityComponent.HookState.DRAGGING_SELF);
+          } else {
+            ability.setHookState(AbilityComponent.HookState.PULLING);
+          }
           ability.setHookTimer(0f);
         }
       }
       case PULLING -> {
+        // Re-assert every tick because StatusEffectSystem resets these flags each tick
+        troop.getMovement().setMovementDisabled(true);
+        combat.setCombatDisabled(true);
+
         // Pull target toward the fisherman
         Entity target = findEntityById(ability.getHookedTargetId());
         if (target == null || !target.isAlive()) {
@@ -315,6 +335,10 @@ public class AbilitySystem {
         }
       }
       case DRAGGING_SELF -> {
+        // Re-assert every tick because StatusEffectSystem resets these flags each tick
+        troop.getMovement().setMovementDisabled(true);
+        combat.setCombatDisabled(true);
+
         // Fisherman pulls self toward the hooked target
         Entity target = findEntityById(ability.getHookedTargetId());
         if (target == null || !target.isAlive()) {
@@ -352,6 +376,8 @@ public class AbilitySystem {
     if (combat != null) {
       combat.setCombatDisabled(false);
     }
+    // Re-enable movement after hook sequence ends
+    troop.getMovement().setMovementDisabled(false);
   }
 
   private Entity findEntityById(long id) {
