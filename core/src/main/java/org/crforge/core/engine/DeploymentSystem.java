@@ -5,6 +5,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
@@ -95,6 +96,27 @@ public class DeploymentSystem {
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
               .build();
+        }
+      }
+
+      // Unit-level death mechanics (e.g. Golem death damage + death spawn)
+      boolean hasUnitDeathMechanics =
+          stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty();
+      if (hasUnitDeathMechanics) {
+        int scaledDeathDmg = LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(), level);
+
+        if (spawner == null) {
+          // Create a death-only SpawnerComponent
+          spawner = SpawnerComponent.builder()
+              .deathDamage(scaledDeathDmg)
+              .deathDamageRadius(stats.getDeathDamageRadius())
+              .deathSpawns(stats.getDeathSpawns())
+              .build();
+        } else {
+          // Merge death mechanics into existing spawner
+          spawner.setDeathDamage(scaledDeathDmg);
+          spawner.setDeathDamageRadius(stats.getDeathDamageRadius());
+          spawner.setDeathSpawns(stats.getDeathSpawns());
         }
       }
 
@@ -204,18 +226,27 @@ public class DeploymentSystem {
 
     // Create Spawner Component if needed
     SpawnerComponent spawner = null;
-    if (card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0) {
-      if (card.getTroops().size() > 1) {
-        TroopStats spawnStats = card.getTroops().get(1);
-        spawner = SpawnerComponent.builder()
-            .spawnInterval(card.getSpawnInterval())
-            .spawnPauseTime(card.getSpawnPauseTime())
-            .unitsPerWave(card.getSpawnNumber())
-            .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
-            .deathSpawnCount(card.getDeathSpawnCount())
-            .spawnStats(spawnStats)
-            .build();
-      }
+    boolean hasCardLevelSpawn = card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0;
+    boolean hasUnitLevelDeath =
+        stats != null && (stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty());
+
+    if (hasCardLevelSpawn || hasUnitLevelDeath) {
+      TroopStats spawnStats =
+          (card.getTroops().size() > 1) ? card.getTroops().get(1) : null;
+      int scaledDeathDmg = stats != null
+          ? LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(), level) : 0;
+
+      spawner = SpawnerComponent.builder()
+          .spawnInterval(card.getSpawnInterval())
+          .spawnPauseTime(card.getSpawnPauseTime())
+          .unitsPerWave(card.getSpawnNumber())
+          .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
+          .deathSpawnCount(card.getDeathSpawnCount())
+          .spawnStats(spawnStats)
+          .deathDamage(scaledDeathDmg)
+          .deathDamageRadius(stats != null ? stats.getDeathDamageRadius() : 0f)
+          .deathSpawns(stats != null ? stats.getDeathSpawns() : List.of())
+          .build();
     }
 
     // Always use Building class, attach components optionally

@@ -4496,6 +4496,7 @@
     "type": "BUILDING",
     "rarity": "",
     "cost": 0,
+
     "units": [
       {
         "name": "GiantSkeletonBomb",

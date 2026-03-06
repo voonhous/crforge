@@ -1,8 +1,11 @@
 package org.crforge.core.component;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 
 /**
@@ -35,6 +38,14 @@ public class SpawnerComponent {
   private int deathSpawnCount;
   private TroopStats spawnStats;
 
+  // Death mechanics
+  @Builder.Default
+  private int deathDamage = 0;
+  @Builder.Default
+  private float deathDamageRadius = 0f;
+  @Builder.Default
+  private List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
+
   // Runtime state
   @Builder.Default
   private float currentTimer = 0f;
@@ -46,6 +57,21 @@ public class SpawnerComponent {
   public enum SpawnerState {
     WAITING_FOR_WAVE, // Counting down spawnPauseTime
     SPAWNING_WAVE     // Counting down spawnInterval between units
+  }
+
+  /**
+   * Returns true if this spawner has periodic (live) spawning capability.
+   * Death-only spawners (like Golem) return false.
+   */
+  public boolean hasLiveSpawn() {
+    return spawnPauseTime > 0 || spawnInterval > 0;
+  }
+
+  /**
+   * Returns true if this spawner has any death mechanics (damage or spawns).
+   */
+  public boolean hasDeathMechanics() {
+    return deathDamage > 0 || deathSpawnCount > 0 || !deathSpawns.isEmpty();
   }
 
   /**
