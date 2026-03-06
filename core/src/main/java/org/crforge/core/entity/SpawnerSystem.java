@@ -155,7 +155,7 @@ public class SpawnerSystem {
             stats.getVisualRadius(),
             stats.getMovementType()))
         .combat(combat)
-        .deployTime(0.5f) // Fast deploy for spawned units
+        .deployTime(0f) // Spawned units deploy instantly (no landing animation)
         .build();
 
     gameState.spawnEntity(unit);
