@@ -1033,6 +1033,7 @@ class CardLoaderTest {
     assertThat(fisherStats.getAbility().getHookRange()).isCloseTo(7.0f, within(0.01f));
     assertThat(fisherStats.getAbility().getHookMinimumRange()).isCloseTo(3.5f, within(0.01f));
     assertThat(fisherStats.getAbility().getHookDragBackSpeed()).isCloseTo(850f, within(0.01f));
+    assertThat(fisherStats.getAbility().getHookLoadTime()).isCloseTo(1.3f, within(0.01f));
   }
 
   @Test
