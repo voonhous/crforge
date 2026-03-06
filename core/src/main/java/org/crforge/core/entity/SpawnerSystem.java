@@ -1,6 +1,9 @@
 package org.crforge.core.entity;
 
+import java.util.Collections;
+import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -17,9 +20,18 @@ import org.crforge.core.player.Team;
 public class SpawnerSystem {
 
   private final GameState gameState;
+  private final CombatSystem combatSystem;
 
-  public SpawnerSystem(GameState gameState) {
+  public SpawnerSystem(GameState gameState, CombatSystem combatSystem) {
     this.gameState = gameState;
+    this.combatSystem = combatSystem;
+  }
+
+  /**
+   * Legacy constructor for tests that don't need death damage.
+   */
+  public SpawnerSystem(GameState gameState) {
+    this(gameState, null);
   }
 
   public void update(float deltaTime) {
@@ -36,8 +48,8 @@ public class SpawnerSystem {
         continue;
       }
 
-      // Handle Interval Spawning
-      if (spawner.tick(deltaTime)) {
+      // Only tick periodic spawning for entities with live spawn capability
+      if (spawner.hasLiveSpawn() && spawner.tick(deltaTime)) {
         spawnUnit(entity, spawner.getSpawnStats());
       }
     }
@@ -55,15 +67,36 @@ public class SpawnerSystem {
 
   // Called by GameState.processDeaths() or GameEngine
   public void onDeath(Entity entity) {
-    // 1. Handle Spawner Component (e.g. Golem -> Golemites, Tombstone -> Skeletons)
     SpawnerComponent spawner = entity.getSpawner();
-    if (spawner != null && spawner.getDeathSpawnCount() > 0) {
-      for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
-        spawnUnit(entity, spawner.getSpawnStats(), true);
+
+    if (spawner != null) {
+      // 1. Apply death damage AOE (e.g. Golem, Ice Golem explode on death)
+      if (spawner.getDeathDamage() > 0 && combatSystem != null) {
+        combatSystem.applySpellDamage(
+            entity.getTeam(),
+            entity.getPosition().getX(),
+            entity.getPosition().getY(),
+            spawner.getDeathDamage(),
+            spawner.getDeathDamageRadius(),
+            Collections.emptyList());
+      }
+
+      // 2. Handle resolved death spawns (e.g. Golem -> 2 Golemites)
+      for (DeathSpawnEntry entry : spawner.getDeathSpawns()) {
+        for (int i = 0; i < entry.count(); i++) {
+          spawnUnit(entity, entry.stats(), entry.radius());
+        }
+      }
+
+      // 3. Fallback: legacy death spawn via deathSpawnCount + spawnStats
+      if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
+        for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
+          spawnUnit(entity, spawner.getSpawnStats(), true);
+        }
       }
     }
 
-    // 2. Handle Effects (e.g. Mother Witch CURSE -> Cursed Hog)
+    // 4. Handle Effects (e.g. Mother Witch CURSE -> Cursed Hog)
     for (AppliedEffect effect : entity.getAppliedEffects()) {
       if (effect.getType() == StatusEffectType.CURSE && effect.getSpawnSpecies() != null) {
         // Spawn the unit for the OPPONENT of the dying unit
@@ -82,7 +115,19 @@ public class SpawnerSystem {
       return;
     }
     // Standard spawns belong to the same team as the source
-    doSpawn(source.getPosition(), source.getCollisionRadius() * 2, source.getTeam(), stats, isDeathSpawn);
+    doSpawn(source.getPosition(), source.getCollisionRadius() * 2, source.getTeam(), stats,
+        isDeathSpawn);
+  }
+
+  /**
+   * Spawn a death spawn unit with a specific spread radius.
+   */
+  private void spawnUnit(Entity source, TroopStats stats, float spreadRadius) {
+    if (stats == null) {
+      return;
+    }
+    float effectiveSpread = spreadRadius > 0 ? spreadRadius : source.getCollisionRadius() * 2;
+    doSpawn(source.getPosition(), effectiveSpread, source.getTeam(), stats, true);
   }
 
   private void spawnEffectUnit(Entity victim, TroopStats stats, Team ownerTeam) {

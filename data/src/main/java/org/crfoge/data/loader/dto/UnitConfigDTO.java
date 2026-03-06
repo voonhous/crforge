@@ -40,6 +40,9 @@ public class UnitConfigDTO {
   private int crownTowerDamagePercent;
   private boolean ignorePushback;
 
+  // Death mechanics
+  private DeathDamageConfigDTO deathDamage;
+
   // Spawn Mechanics
   private int spawnDamage;
   private float spawnRadius;

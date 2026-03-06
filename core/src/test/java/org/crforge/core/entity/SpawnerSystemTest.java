@@ -2,7 +2,10 @@ package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -11,7 +14,9 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -109,5 +114,151 @@ class SpawnerSystemTest {
 
     // Check that they are skeletons
     assertThat(gameState.getPendingSpawns()).allMatch(e -> e.getName().equals("Skeleton"));
+  }
+
+  @Test
+  void onDeath_shouldApplyDeathDamageAOE() {
+    CombatSystem combatSystem = new CombatSystem(gameState);
+    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, combatSystem);
+
+    // Create a unit with death damage (like Ice Golem)
+    SpawnerComponent deathDmgSpawner = SpawnerComponent.builder()
+        .deathDamage(100)
+        .deathDamageRadius(2.5f)
+        .build();
+
+    Troop iceGolem = Troop.builder()
+        .name("IceGolem")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(1))
+        .deployTime(0f)
+        .spawner(deathDmgSpawner)
+        .build();
+
+    // Enemy nearby (should take damage)
+    Troop nearEnemy = Troop.builder()
+        .name("NearEnemy")
+        .team(Team.RED)
+        .position(new Position(11, 10))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    // Enemy far away (should NOT take damage)
+    Troop farEnemy = Troop.builder()
+        .name("FarEnemy")
+        .team(Team.RED)
+        .position(new Position(20, 20))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(iceGolem);
+    gameState.spawnEntity(nearEnemy);
+    gameState.spawnEntity(farEnemy);
+    gameState.processPending();
+
+    // Finish deploying so they're targetable
+    nearEnemy.update(1.0f);
+    farEnemy.update(1.0f);
+
+    systemWithCombat.onDeath(iceGolem);
+
+    assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(400); // 500 - 100
+    assertThat(farEnemy.getHealth().getCurrent()).isEqualTo(500); // No damage
+  }
+
+  @Test
+  void onDeath_shouldSpawnResolvedDeathSpawns() {
+    // Golem-like unit: dies and spawns 2 Golemites
+    TroopStats golemiteStats = TroopStats.builder()
+        .name("Golemite")
+        .health(394)
+        .damage(26)
+        .speed(0.75f)
+        .mass(5.0f)
+        .movementType(MovementType.GROUND)
+        .targetType(TargetType.ALL)
+        .build();
+
+    List<DeathSpawnEntry> deathSpawns = List.of(
+        new DeathSpawnEntry(golemiteStats, 2, 1.5f)
+    );
+
+    SpawnerComponent golemSpawner = SpawnerComponent.builder()
+        .deathDamage(88)
+        .deathDamageRadius(2.0f)
+        .deathSpawns(deathSpawns)
+        .build();
+
+    Troop golem = Troop.builder()
+        .name("Golem")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(1))
+        .deployTime(0f)
+        .spawner(golemSpawner)
+        .build();
+
+    gameState.spawnEntity(golem);
+    gameState.processPending();
+
+    CombatSystem combatSystem = new CombatSystem(gameState);
+    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, combatSystem);
+
+    systemWithCombat.onDeath(golem);
+
+    // Should spawn 2 Golemites
+    assertThat(gameState.getPendingSpawns()).hasSize(2);
+    assertThat(gameState.getPendingSpawns())
+        .allMatch(e -> e.getName().equals("Golemite"));
+
+    // Verify spawned unit stats
+    gameState.processPending();
+    Entity golemite = gameState.getEntities().stream()
+        .filter(e -> e.getName().equals("Golemite"))
+        .findFirst().orElse(null);
+    assertThat(golemite).isNotNull();
+    assertThat(golemite.getHealth().getMax()).isEqualTo(394);
+  }
+
+  @Test
+  void deathOnlySpawner_shouldNotLiveSpawn() {
+    // A death-only spawner (like Golem) should NOT trigger live spawning
+    // Use a fresh GameState to avoid interference from setUp's tombstone
+    GameState freshState = new GameState();
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+
+    TroopStats golemiteStats = TroopStats.builder()
+        .name("Golemite")
+        .health(394)
+        .damage(26)
+        .build();
+
+    SpawnerComponent deathOnlySpawner = SpawnerComponent.builder()
+        .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f)))
+        .build();
+
+    // hasLiveSpawn should be false since spawnPauseTime and spawnInterval are both 0
+    assertThat(deathOnlySpawner.hasLiveSpawn()).isFalse();
+
+    Troop golem = Troop.builder()
+        .name("Golem")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(2000))
+        .deployTime(0f)
+        .spawner(deathOnlySpawner)
+        .build();
+
+    freshState.spawnEntity(golem);
+    freshState.processPending();
+
+    // Tick spawner multiple times -- should NOT spawn anything
+    for (int i = 0; i < 100; i++) {
+      freshSystem.update(0.1f);
+    }
+    assertThat(freshState.getPendingSpawns()).isEmpty();
   }
 }

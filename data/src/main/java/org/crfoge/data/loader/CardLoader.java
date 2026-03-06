@@ -12,22 +12,26 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.crfoge.data.loader.dto.AreaEffectConfigDTO;
 import org.crfoge.data.loader.dto.CardConfigDTO;
+import org.crfoge.data.loader.dto.DeathDamageConfigDTO;
 import org.crfoge.data.loader.dto.DeathSpawnConfigDTO;
 import org.crfoge.data.loader.dto.EffectConfigDTO;
 import org.crfoge.data.loader.dto.LiveSpawnConfigDTO;
 import org.crfoge.data.loader.dto.ProjectileConfigDTO;
 import org.crfoge.data.loader.dto.UnitConfigDTO;
 import org.crforge.core.card.AreaEffectStats;
-import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.effect.StatusEffectType;
 
 public class CardLoader {
 
@@ -60,13 +64,36 @@ public class CardLoader {
     try {
       List<CardConfigDTO> configs = mapper.readValue(inputStream, new TypeReference<>() {
       });
-      return configs.stream().map(CardLoader::convert).toList();
+
+      // Pass 1: Build a global character name -> UnitConfigDTO lookup from all units
+      Map<String, UnitConfigDTO> characterLookup = buildCharacterLookup(configs);
+
+      // Pass 2: Convert cards with character resolution for death spawns
+      return configs.stream().map(dto -> convert(dto, characterLookup)).toList();
     } catch (IOException e) {
       throw new RuntimeException("Failed to load cards from JSON", e);
     }
   }
 
-  private static Card convert(CardConfigDTO dto) {
+  /**
+   * Builds a lookup map from unit names to their DTO definitions across all cards.
+   * Used to resolve cross-card character references in death spawns.
+   */
+  private static Map<String, UnitConfigDTO> buildCharacterLookup(List<CardConfigDTO> configs) {
+    Map<String, UnitConfigDTO> lookup = new HashMap<>();
+    for (CardConfigDTO card : configs) {
+      if (card.getUnits() != null) {
+        for (UnitConfigDTO unit : card.getUnits()) {
+          if (unit.getName() != null) {
+            lookup.put(unit.getName(), unit);
+          }
+        }
+      }
+    }
+    return lookup;
+  }
+
+  private static Card convert(CardConfigDTO dto, Map<String, UnitConfigDTO> characterLookup) {
     Card.CardBuilder builder = Card.builder()
         .id(dto.getId())
         .name(dto.getName())
@@ -110,7 +137,7 @@ public class CardLoader {
 
       for (UnitConfigDTO unitDto : dto.getUnits()) {
         int count = unitDto.getCount() > 0 ? unitDto.getCount() : 1;
-        TroopStats stats = convertUnit(unitDto);
+        TroopStats stats = convertUnit(unitDto, characterLookup);
         for (int i = 0; i < count; i++) {
           builder.troop(stats);
         }
@@ -120,7 +147,8 @@ public class CardLoader {
     return builder.build();
   }
 
-  private static TroopStats convertUnit(UnitConfigDTO dto) {
+  private static TroopStats convertUnit(UnitConfigDTO dto,
+      Map<String, UnitConfigDTO> characterLookup) {
     // Validate required fields
     Objects.requireNonNull(dto.getMovementType(),
         "MovementType is required for unit: " + dto.getName());
@@ -168,6 +196,28 @@ public class CardLoader {
         .minimumRange(dto.getMinimumRange())
         .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
         .ignorePushback(dto.isIgnorePushback());
+
+    // Death damage
+    DeathDamageConfigDTO deathDmg = dto.getDeathDamage();
+    if (deathDmg != null) {
+      builder.deathDamage(deathDmg.getDamage());
+      builder.deathDamageRadius(deathDmg.getRadius());
+    }
+
+    // Death spawns: resolve character references using the global lookup
+    if (dto.getDeathSpawn() != null) {
+      List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
+      for (DeathSpawnConfigDTO ds : dto.getDeathSpawn()) {
+        UnitConfigDTO resolved = characterLookup.get(ds.getSpawnCharacter());
+        if (resolved != null) {
+          // Convert the referenced unit (without resolving its own death spawns to avoid
+          // deep recursion; pass empty lookup for nested units)
+          TroopStats spawnStats = convertUnit(resolved, Map.of());
+          deathSpawns.add(new DeathSpawnEntry(spawnStats, ds.getSpawnNumber(), ds.getSpawnRadius()));
+        }
+      }
+      builder.deathSpawns(deathSpawns);
+    }
 
     if (dto.getProjectile() != null) {
       int damageSource = dto.getProjectile().getDamage() > 0
@@ -229,7 +279,7 @@ public class CardLoader {
           .intensity(dto.getIntensity());
 
       if (dto.getSpawnUnit() != null) {
-        builder.spawnSpecies(convertUnit(dto.getSpawnUnit()));
+        builder.spawnSpecies(convertUnit(dto.getSpawnUnit(), Map.of()));
       }
 
       return builder.build();

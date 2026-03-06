@@ -12,6 +12,7 @@ import org.crfoge.data.loader.CardLoader;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.effect.StatusEffectType;
@@ -784,5 +785,49 @@ class CardLoaderTest {
     assertThat(knightStats.isIgnorePushback()).isFalse();
     assertThat(knightStats.getMinimumRange()).isEqualTo(0f);
     assertThat(knightStats.getCrownTowerDamagePercent()).isEqualTo(0);
+  }
+
+  @Test
+  void loadCards_shouldParseDeathDamageAndDeathSpawns() {
+    // Load from real cards.json and spot check death mechanics
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Golem: deathDamage=88, deathDamageRadius=2.0
+    // Note: Golem's deathSpawn references "Golemite" which is a sub-character not present
+    // as a unit in any card, so it is gracefully skipped (empty list).
+    Card golem = cards.stream().filter(c -> c.getId().equals("golem")).findFirst().orElse(null);
+    assertThat(golem).isNotNull();
+    TroopStats golemStats = golem.getTroops().get(0);
+    assertThat(golemStats.getDeathDamage()).isEqualTo(88);
+    assertThat(golemStats.getDeathDamageRadius()).isCloseTo(2.0f, within(0.01f));
+
+    // BattleRam: deathSpawn -> 2 Barbarians (resolvable via character lookup)
+    Card battleRam = cards.stream()
+        .filter(c -> c.getId().equals("battleram")).findFirst().orElse(null);
+    assertThat(battleRam).isNotNull();
+    TroopStats ramStats = battleRam.getTroops().get(0);
+    assertThat(ramStats.getDeathSpawns()).hasSize(1);
+    DeathSpawnEntry ramDeathSpawn = ramStats.getDeathSpawns().get(0);
+    assertThat(ramDeathSpawn.count()).isEqualTo(2);
+    assertThat(ramDeathSpawn.radius()).isCloseTo(0.6f, within(0.01f));
+    assertThat(ramDeathSpawn.stats().getName()).isEqualTo("Barbarian");
+    assertThat(ramDeathSpawn.stats().getHealth()).isGreaterThan(0);
+
+    // GoblinCage: deathSpawn -> 1 GoblinBrawler (in same card's units[])
+    Card goblinCage = cards.stream()
+        .filter(c -> c.getId().equals("goblincage")).findFirst().orElse(null);
+    assertThat(goblinCage).isNotNull();
+    TroopStats cageStats = goblinCage.getTroops().get(0);
+    assertThat(cageStats.getDeathSpawns()).hasSize(1);
+    assertThat(cageStats.getDeathSpawns().get(0).stats().getName()).isEqualTo("GoblinBrawler");
+    assertThat(cageStats.getDeathSpawns().get(0).count()).isEqualTo(1);
+
+    // Knight: no death mechanics
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    assertThat(knight.getTroops().get(0).getDeathDamage()).isEqualTo(0);
+    assertThat(knight.getTroops().get(0).getDeathSpawns()).isEmpty();
   }
 }

@@ -66,6 +66,14 @@ public class TroopStats {
 
   private final ProjectileStats projectile;
 
+  // Death mechanics
+  @Builder.Default
+  private final int deathDamage = 0;
+  @Builder.Default
+  private final float deathDamageRadius = 0f;
+  @Builder.Default
+  private final List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
+
   // Targeting and combat modifiers
   @Builder.Default
   private final boolean targetOnlyBuildings = false;

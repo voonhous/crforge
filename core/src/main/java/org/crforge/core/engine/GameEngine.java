@@ -43,7 +43,7 @@ public class GameEngine {
     this.combatSystem = new CombatSystem(gameState);
     this.deploymentSystem = new DeploymentSystem(gameState, combatSystem);
     this.statusEffectSystem = new StatusEffectSystem();
-    this.spawnerSystem = new SpawnerSystem(gameState);
+    this.spawnerSystem = new SpawnerSystem(gameState, combatSystem);
     this.running = false;
   }
 
