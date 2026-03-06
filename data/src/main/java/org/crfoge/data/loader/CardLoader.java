@@ -117,6 +117,14 @@ public class CardLoader {
       builder.deployEffect(convertAreaEffect(dto.getDeployEffect()));
     }
 
+    // Resolve summonCharacter for spells
+    if (dto.getSummonCharacter() != null) {
+      UnitConfigDTO resolved = characterLookup.get(dto.getSummonCharacter());
+      if (resolved != null) {
+        builder.summonTemplate(convertUnit(resolved, Map.of()));
+      }
+    }
+
     if (dto.getUnits() != null) {
       UnitConfigDTO primaryUnit = dto.getUnits().isEmpty() ? null : dto.getUnits().get(0);
 
@@ -131,6 +139,22 @@ public class CardLoader {
           builder.spawnInterval(liveSpawn.getSpawnInterval());
           builder.spawnPauseTime(liveSpawn.getSpawnPauseTime());
           builder.spawnNumber(liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1);
+          builder.spawnStartTime(liveSpawn.getSpawnStartTime());
+
+          // Resolve spawn template: first try character lookup, then fall back to units[1]
+          TroopStats resolvedTemplate = null;
+          if (liveSpawn.getSpawnCharacter() != null) {
+            UnitConfigDTO resolved = characterLookup.get(liveSpawn.getSpawnCharacter());
+            if (resolved != null) {
+              resolvedTemplate = convertUnit(resolved, Map.of());
+            }
+          }
+          if (resolvedTemplate == null && dto.getUnits().size() > 1) {
+            resolvedTemplate = convertUnit(dto.getUnits().get(1), characterLookup);
+          }
+          if (resolvedTemplate != null) {
+            builder.spawnTemplate(resolvedTemplate);
+          }
         }
 
         // Death spawn count from first deathSpawn entry

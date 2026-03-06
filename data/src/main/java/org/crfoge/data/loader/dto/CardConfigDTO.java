@@ -28,4 +28,7 @@ public class CardConfigDTO {
 
   // Deploy effects (e.g. ElectroWizard entry stun)
   private AreaEffectConfigDTO deployEffect;
+
+  // Summon character for spells (e.g. Rage -> RageBottle, Heal -> HealSpirit)
+  private String summonCharacter;
 }

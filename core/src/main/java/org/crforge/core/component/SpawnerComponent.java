@@ -35,6 +35,13 @@ public class SpawnerComponent {
   @Builder.Default
   private int unitsPerWave = 1;
 
+  /**
+   * Initial delay before the first wave starts (e.g. Witch 1.0s).
+   * Only used once at spawn; after that, spawnPauseTime is used.
+   */
+  @Builder.Default
+  private float spawnStartTime = 0f;
+
   private int deathSpawnCount;
   private TroopStats spawnStats;
 
@@ -76,9 +83,10 @@ public class SpawnerComponent {
 
   /**
    * Initialize timer state (usually called after creation).
+   * Uses spawnStartTime for the initial delay if set, otherwise spawnPauseTime.
    */
   public void initialize() {
-    this.currentTimer = spawnPauseTime;
+    this.currentTimer = spawnStartTime > 0 ? spawnStartTime : spawnPauseTime;
     this.state = SpawnerState.WAITING_FOR_WAVE;
   }
 

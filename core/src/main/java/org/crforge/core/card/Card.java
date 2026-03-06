@@ -53,6 +53,19 @@ public class Card {
   private final int spawnNumber = 1; // Default to 1 unit per wave
   @Builder.Default
   private final int deathSpawnCount = 0;
+  @Builder.Default
+  private final float spawnStartTime = 0f;
+
+  /**
+   * Resolved spawn template stats. For spawner cards, this holds the TroopStats
+   * for the spawned unit (resolved from liveSpawn.spawnCharacter or units[1]).
+   */
+  private final TroopStats spawnTemplate;
+
+  /**
+   * Resolved summon template for spells that summon a character (e.g. Rage -> RageBottle).
+   */
+  private final TroopStats summonTemplate;
 
   public boolean isTroop() {
     return type == CardType.TROOP;
