@@ -3,6 +3,7 @@ package org.crforge.core.ability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
@@ -13,7 +14,10 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.effect.StatusEffectSystem;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.physics.PhysicsSystem;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +28,8 @@ class AbilitySystemTest {
   private AbilitySystem abilitySystem;
   private CombatSystem combatSystem;
   private TargetingSystem targetingSystem;
+  private PhysicsSystem physicsSystem;
+  private StatusEffectSystem statusEffectSystem;
 
   private static final float DT = 1.0f / 30;
 
@@ -35,6 +41,8 @@ class AbilitySystemTest {
     abilitySystem = new AbilitySystem(gameState);
     combatSystem = new CombatSystem(gameState);
     targetingSystem = new TargetingSystem();
+    physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
+    statusEffectSystem = new StatusEffectSystem();
   }
 
   // -- CHARGE tests --
@@ -430,6 +438,223 @@ class AbilitySystemTest {
     assertThat(target.getPosition().getX()).isLessThan(initialTargetX);
   }
 
+  @Test
+  void hook_fishermanShouldWalkThenStopAndWindUpBeforeHookingBuilding() {
+    // Fisherman starts 10 tiles from building. We simulate walking by manually
+    // advancing position 1 tile/s toward the building each tick (speed 1.0 tile/s).
+    // After ~3s the building enters hook range and the hook triggers.
+    // Then we verify the Fisherman stays put for the 1.3s wind-up.
+    Troop fisher = createHookTroop(Team.BLUE, 9, 5);
+    Building cannon = Building.builder()
+        .name("Cannon")
+        .team(Team.RED)
+        .position(new Position(9, 15))
+        .health(new Health(500))
+        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+        .lifetime(30f)
+        .remainingLifetime(30f)
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(fisher);
+    gameState.spawnEntity(cannon);
+    gameState.processPending();
+
+    fisher.update(2.0f);
+    cannon.update(2.0f);
+
+    float speed = 1.0f; // tile/s, matching Fisherman's speed
+    float startY = fisher.getPosition().getY();
+
+    // Phase 1: Simulate walking toward building until hook triggers (max 5s)
+    int hookTriggeredAtTick = -1;
+    for (int i = 0; i < 150; i++) {
+      // Simulate walking: move Fisherman toward building if hook hasn't triggered
+      if (fisher.getAbility().getHookState() == AbilityComponent.HookState.IDLE) {
+        fisher.getPosition().add(0, speed * DT);
+      }
+
+      targetingSystem.updateTargets(gameState.getAliveEntities());
+      abilitySystem.update(DT);
+
+      if (fisher.getAbility().getHookState() != AbilityComponent.HookState.IDLE
+          && hookTriggeredAtTick == -1) {
+        hookTriggeredAtTick = i;
+        break;
+      }
+    }
+
+    // Fisherman should have walked forward before hook triggered
+    assertThat(fisher.getPosition().getY())
+        .as("Fisherman should have walked toward the building")
+        .isGreaterThan(startY);
+
+    // Hook should have triggered
+    assertThat(hookTriggeredAtTick)
+        .as("Hook should have triggered within 5 seconds")
+        .isGreaterThanOrEqualTo(0);
+
+    // Phase 2: Hook just triggered -- verify Fisherman stays put during 1.3s wind-up
+    float yAtHookTrigger = fisher.getPosition().getY();
+
+    assertThat(fisher.getAbility().getHookState())
+        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+
+    // Run for 1 second (30 ticks) -- still within 1.3s wind-up
+    for (int i = 0; i < 30; i++) {
+      targetingSystem.updateTargets(gameState.getAliveEntities());
+      abilitySystem.update(DT);
+    }
+
+    // Should still be winding up (1.0s < 1.3s)
+    assertThat(fisher.getAbility().getHookState())
+        .as("Should still be winding up after 1s")
+        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+
+    // Position must not have changed during wind-up
+    assertThat(fisher.getPosition().getY())
+        .as("Fisherman should not move during wind-up")
+        .isEqualTo(yAtHookTrigger);
+
+    // Building should never have moved
+    assertThat(cannon.getPosition().getX()).isEqualTo(9f);
+    assertThat(cannon.getPosition().getY()).isEqualTo(15f);
+  }
+
+  @Test
+  void hook_shouldStopCompletelyWhenWindUpIsExtremelyLong() {
+    // Use an absurdly long hookLoadTime so the Fisherman never exits WINDING_UP.
+    // Run the full system loop (targeting + ability + physics) to verify that
+    // PhysicsSystem respects movementDisabled and the Fisherman truly stops.
+    AbilityData hookData = AbilityData.builder()
+        .type(AbilityType.HOOK)
+        .hookRange(7.0f)
+        .hookMinimumRange(3.5f)
+        .hookLoadTime(9999f)
+        .hookDragBackSpeed(850f)
+        .hookDragSelfSpeed(450f)
+        .build();
+
+    Troop fisher = Troop.builder()
+        .name("Fisherman")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(900))
+        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(80)
+            .range(1.2f)
+            .sightRange(7.5f)
+            .attackCooldown(1.3f)
+            .build())
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .ability(new AbilityComponent(hookData))
+        .build();
+
+    // Target at distance 5.0 (within [3.5, 7.0] hook window)
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(fisher);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    fisher.update(2.0f);
+    target.update(2.0f);
+
+    // Assign target and trigger hook
+    fisher.getCombat().setCurrentTarget(target);
+    abilitySystem.update(DT);
+
+    assertThat(fisher.getAbility().getHookState())
+        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+
+    float startX = fisher.getPosition().getX();
+    float startY = fisher.getPosition().getY();
+
+    // Run for 10 seconds (300 ticks) matching real GameEngine tick order:
+    // StatusEffectSystem (resets flags) -> targeting -> ability -> physics
+    for (int i = 0; i < 300; i++) {
+      statusEffectSystem.update(gameState, DT);
+      targetingSystem.updateTargets(gameState.getAliveEntities());
+      abilitySystem.update(DT);
+      physicsSystem.update(gameState.getAliveEntities(), DT);
+    }
+
+    assertThat(fisher.getAbility().getHookState())
+        .as("Should still be winding up after 10s (hookLoadTime=9999)")
+        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+
+    assertThat(fisher.getPosition().getX())
+        .as("Fisherman X should not change during wind-up")
+        .isEqualTo(startX);
+    assertThat(fisher.getPosition().getY())
+        .as("Fisherman Y should not change during wind-up")
+        .isEqualTo(startY);
+
+    // Movement and combat should be disabled the entire time
+    assertThat(fisher.getMovement().canMove())
+        .as("Movement should be disabled during wind-up")
+        .isFalse();
+    assertThat(fisher.getCombat().canAttack())
+        .as("Combat should be disabled during wind-up")
+        .isFalse();
+
+    // Target should not have moved either (not yet in PULLING)
+    assertThat(target.getPosition().getX()).isEqualTo(10f);
+    assertThat(target.getPosition().getY()).isEqualTo(5f);
+  }
+
+  @Test
+  void hook_shouldDragSelfToBuildingInsteadOfPulling() {
+    // Place Fisherman 5 tiles from a building (within hook range [3.5, 7.0])
+    Troop fisher = createHookTroop(Team.BLUE, 5, 5);
+    Building cannon = Building.builder()
+        .name("Cannon")
+        .team(Team.RED)
+        .position(new Position(10, 5))
+        .health(new Health(500))
+        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+        .lifetime(30f)
+        .remainingLifetime(30f)
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(fisher);
+    gameState.spawnEntity(cannon);
+    gameState.processPending();
+
+    fisher.update(2.0f);
+    cannon.update(2.0f);
+
+    // Manually set target and trigger hook
+    fisher.getCombat().setCurrentTarget(cannon);
+    abilitySystem.update(DT); // -> WINDING_UP
+
+    // Advance past wind-up (1.3s = 39 ticks)
+    for (int i = 0; i < 40; i++) {
+      abilitySystem.update(DT);
+    }
+
+    // Should skip PULLING and go straight to DRAGGING_SELF for buildings
+    assertThat(fisher.getAbility().getHookState())
+        .as("Should skip PULLING for buildings and go to DRAGGING_SELF")
+        .isEqualTo(AbilityComponent.HookState.DRAGGING_SELF);
+
+    // Building should not have moved at all
+    assertThat(cannon.getPosition().getX()).isEqualTo(10f);
+    assertThat(cannon.getPosition().getY()).isEqualTo(5f);
+
+    // Run a few more ticks -- Fisherman should be moving toward the building
+    float fisherXBefore = fisher.getPosition().getX();
+    for (int i = 0; i < 10; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(fisher.getPosition().getX())
+        .as("Fisherman should move toward the building")
+        .isGreaterThan(fisherXBefore);
+  }
+
   // -- REFLECT tests --
 
   @Test
@@ -608,9 +833,9 @@ class AbilitySystemTest {
         .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
         .combat(Combat.builder()
             .damage(80)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.5f)
+            .range(1.2f)
+            .sightRange(7.5f)
+            .attackCooldown(1.3f)
             .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
