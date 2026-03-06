@@ -222,14 +222,38 @@ public class DebugGameScreen implements Screen {
     // 2. Play Card (Clicking on Arena)
     if (selectedHandIndex != -1 && selectedPlayer != null && hoverTileX >= 0
         && hoverTileX < Arena.WIDTH && hoverTileY >= 0 && hoverTileY < Arena.HEIGHT) {
-      // Try to play selected card
       float playX = hoverTileX + 0.5f;
       float playY = hoverTileY + 0.5f;
 
       PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, playX, playY);
-      engine.queueAction(selectedPlayer, action);
 
-      // Deselect after playing, next card must be explicitly selected (matches real CR)
+      // Pre-validate: check placement and elixir before queuing
+      Card card = selectedPlayer.getHand().getCard(selectedHandIndex);
+      if (card == null) {
+        return;
+      }
+
+      boolean validPlacement = engine.getMatch().validateAction(selectedPlayer, action);
+      boolean canAfford = selectedPlayer.getElixir().has(card.getCost());
+
+      if (!validPlacement) {
+        System.out.printf("[%.1fs] Invalid placement for %s at (%.1f, %.1f)%n",
+            engine.getGameTimeSeconds(), card.getName(), playX, playY);
+        return;
+      }
+
+      if (!canAfford) {
+        System.out.printf("[%.1fs] Not enough elixir for %s (cost %d, have %d)%n",
+            engine.getGameTimeSeconds(), card.getName(), card.getCost(),
+            selectedPlayer.getElixir().getFloor());
+        return;
+      }
+
+      engine.queueAction(selectedPlayer, action);
+      System.out.printf("[%.1fs] %s played %s at (%.1f, %.1f)%n",
+          engine.getGameTimeSeconds(), selectedPlayer.getTeam(), card.getName(), playX, playY);
+
+      // Deselect after successful play (matches real CR)
       selectedHandIndex = -1;
       renderer.setSelectedHandIndex(-1);
       renderer.setSelectedTeam(null);
@@ -252,7 +276,8 @@ public class DebugGameScreen implements Screen {
 
     Card c = player.getHand().getCard(index);
     if (c != null) {
-      System.out.println("Selected (" + player.getTeam() + "): " + c.getName());
+      System.out.printf("[%.1fs] Selected (%s): %s (cost %d)%n",
+          engine.getGameTimeSeconds(), player.getTeam(), c.getName(), c.getCost());
     }
   }
 
