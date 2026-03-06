@@ -89,12 +89,17 @@ public class DeploymentSystem {
       SpawnerComponent spawner = null;
 
       if (stats == mainStats && (card.getSpawnInterval() > 0 || card.getDeathSpawnCount() > 0)) {
-        if (card.getTroops().size() > 1) {
-          TroopStats spawnStats = card.getTroops().get(1);
+        TroopStats spawnStats = card.getSpawnTemplate();
+        // Fallback to units[1] if no spawnTemplate resolved
+        if (spawnStats == null && card.getTroops().size() > 1) {
+          spawnStats = card.getTroops().get(1);
+        }
+        if (spawnStats != null) {
           spawner = SpawnerComponent.builder()
               .spawnInterval(card.getSpawnInterval())
               .spawnPauseTime(card.getSpawnPauseTime())
               .unitsPerWave(card.getSpawnNumber())
+              .spawnStartTime(card.getSpawnStartTime())
               .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
@@ -251,8 +256,10 @@ public class DeploymentSystem {
         stats != null && (stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty());
 
     if (hasCardLevelSpawn || hasUnitLevelDeath) {
-      TroopStats spawnStats =
-          (card.getTroops().size() > 1) ? card.getTroops().get(1) : null;
+      TroopStats spawnStats = card.getSpawnTemplate();
+      if (spawnStats == null && card.getTroops().size() > 1) {
+        spawnStats = card.getTroops().get(1);
+      }
       int scaledDeathDmg = stats != null
           ? LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(), level) : 0;
 
@@ -260,6 +267,7 @@ public class DeploymentSystem {
           .spawnInterval(card.getSpawnInterval())
           .spawnPauseTime(card.getSpawnPauseTime())
           .unitsPerWave(card.getSpawnNumber())
+          .spawnStartTime(card.getSpawnStartTime())
           .currentTimer(0f) // Start with 0 so it spawns immediately after deploy
           .deathSpawnCount(card.getDeathSpawnCount())
           .spawnStats(spawnStats)
@@ -293,6 +301,13 @@ public class DeploymentSystem {
   }
 
   private void castSpell(Team team, Card card, float x, float y, int level) {
+    // Summon character spells (Rage -> RageBottle, Heal -> HealSpirit)
+    if (card.getSummonTemplate() != null) {
+      Troop summoned = createTroop(team, card.getSummonTemplate(), x, y, null, level,
+          card.getRarity());
+      state.spawnEntity(summoned);
+    }
+
     // Area effect spells (Zap, Freeze, Poison, Earthquake, etc.)
     if (card.getAreaEffect() != null) {
       deployAreaEffect(team, card.getAreaEffect(), x, y, card.getRarity(), level);
