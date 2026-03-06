@@ -884,4 +884,43 @@ class CardLoaderTest {
     assertThat(knight.getAreaEffect()).isNull();
     assertThat(knight.getDeployEffect()).isNull();
   }
+
+  @Test
+  void loadCards_shouldParseShieldBuffOnDamageAndMultipleTargets() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // DarkPrince: shieldHitpoints=94
+    Card darkPrince = cards.stream()
+        .filter(c -> c.getId().equals("darkprince")).findFirst().orElse(null);
+    assertThat(darkPrince).isNotNull();
+    TroopStats dpStats = darkPrince.getTroops().get(0);
+    assertThat(dpStats.getShieldHitpoints()).isEqualTo(94);
+
+    // ElectroWizard: multipleTargets=2, buffOnDamage (ZapFreeze -> STUN, 0.5s)
+    Card ewiz = cards.stream()
+        .filter(c -> c.getId().equals("electrowizard")).findFirst().orElse(null);
+    assertThat(ewiz).isNotNull();
+    TroopStats ewizStats = ewiz.getTroops().get(0);
+    assertThat(ewizStats.getMultipleTargets()).isEqualTo(2);
+    assertThat(ewizStats.getBuffOnDamage()).isNotNull();
+    assertThat(ewizStats.getBuffOnDamage().getType()).isEqualTo(StatusEffectType.STUN);
+    assertThat(ewizStats.getBuffOnDamage().getDuration()).isCloseTo(0.5f, within(0.01f));
+
+    // Hunter: multipleProjectiles=10
+    Card hunter = cards.stream()
+        .filter(c -> c.getId().equals("hunter")).findFirst().orElse(null);
+    assertThat(hunter).isNotNull();
+    TroopStats hunterStats = hunter.getTroops().get(0);
+    assertThat(hunterStats.getMultipleProjectiles()).isEqualTo(10);
+
+    // Knight: no shield, no buffOnDamage, no multipleTargets
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    TroopStats knightStats = knight.getTroops().get(0);
+    assertThat(knightStats.getShieldHitpoints()).isEqualTo(0);
+    assertThat(knightStats.getBuffOnDamage()).isNull();
+    assertThat(knightStats.getMultipleTargets()).isEqualTo(0);
+  }
 }

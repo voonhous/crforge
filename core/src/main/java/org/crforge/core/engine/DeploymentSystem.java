@@ -179,14 +179,21 @@ public class DeploymentSystem {
         .targetOnlyBuildings(stats.isTargetOnlyBuildings())
         .minimumRange(stats.getMinimumRange())
         .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
+        .multipleTargets(stats.getMultipleTargets())
+        .multipleProjectiles(stats.getMultipleProjectiles())
+        .buffOnDamage(stats.getBuffOnDamage())
         .build();
+
+    // Scale shield by level
+    int scaledShield = stats.getShieldHitpoints() > 0
+        ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level) : 0;
 
     // Explicitly set deployTimer to deployTime to avoid default value issues
     return Troop.builder()
         .name(stats.getName())
         .team(team)
         .position(new Position(spawnX, spawnY))
-        .health(new Health(scaledHp))
+        .health(new Health(scaledHp, scaledShield))
         .movement(new Movement(
             stats.getSpeed(),
             stats.getMass(),

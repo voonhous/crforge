@@ -294,4 +294,137 @@ class CombatSystemTest {
                 .build())
         .build();
   }
+
+  @Test
+  void shieldAbsorbsDamageBeforeHealth() {
+    // Unit with shield: shield absorbs damage first
+    Troop shielded = Troop.builder()
+        .name("ShieldedUnit")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(100, 50)) // 100 HP + 50 shield
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(shielded);
+    gameState.processPending();
+
+    // Take 30 damage -> shield absorbs it (50 -> 20)
+    shielded.getHealth().takeDamage(30);
+    assertThat(shielded.getHealth().getShield()).isEqualTo(20);
+    assertThat(shielded.getHealth().getCurrent()).isEqualTo(100);
+
+    // Take 40 damage -> shield breaks (20), remaining 20 hits HP (100 -> 80)
+    shielded.getHealth().takeDamage(40);
+    assertThat(shielded.getHealth().getShield()).isEqualTo(0);
+    assertThat(shielded.getHealth().getCurrent()).isEqualTo(80);
+  }
+
+  @Test
+  void buffOnDamage_shouldApplyToTargetOnMeleeHit() {
+    // Melee attacker with buff-on-damage (e.g. stun on hit)
+    EffectStats stunOnHit = EffectStats.builder()
+        .type(StatusEffectType.STUN)
+        .duration(0.5f)
+        .build();
+
+    Troop attacker = Troop.builder()
+        .name("Stunner")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(50)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .buffOnDamage(stunOnHit)
+            .build())
+        .build();
+
+    Troop target = Troop.builder()
+        .name("Target")
+        .team(Team.RED)
+        .position(new Position(5.5f, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(attacker);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    // Set up target
+    attacker.getCombat().setCurrentTarget(target);
+    attacker.getCombat().startAttackSequence();
+    attacker.getCombat().setCurrentWindup(0); // Skip windup
+
+    combatSystem.update(1.0f / 30);
+
+    // Target should have taken damage and received stun
+    assertThat(target.getHealth().getCurrent()).isEqualTo(450);
+    assertThat(target.getAppliedEffects()).hasSize(1);
+    assertThat(target.getAppliedEffects().get(0).getType()).isEqualTo(StatusEffectType.STUN);
+  }
+
+  @Test
+  void multipleTargets_shouldAttackExtraEnemies() {
+    // Ranged attacker with multipleTargets=2 (like EWiz)
+    Troop attacker = Troop.builder()
+        .name("EWiz")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(46)
+            .range(5.0f)
+            .sightRange(5.5f)
+            .attackCooldown(1.8f)
+            .multipleTargets(2)
+            .build())
+        .build();
+
+    Troop target1 = Troop.builder()
+        .name("Target1")
+        .team(Team.RED)
+        .position(new Position(8, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    Troop target2 = Troop.builder()
+        .name("Target2")
+        .team(Team.RED)
+        .position(new Position(9, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    Troop target3 = Troop.builder()
+        .name("Target3")
+        .team(Team.RED)
+        .position(new Position(50, 50))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(attacker);
+    gameState.spawnEntity(target1);
+    gameState.spawnEntity(target2);
+    gameState.spawnEntity(target3);
+    gameState.processPending();
+
+    // Set up target
+    attacker.getCombat().setCurrentTarget(target1);
+    attacker.getCombat().startAttackSequence();
+    attacker.getCombat().setCurrentWindup(0); // Skip windup
+
+    combatSystem.update(1.0f / 30);
+
+    // Should have spawned 2 projectiles (primary + 1 extra), NOT 3 (target3 is out of range)
+    // EWiz is ranged, so projectiles are spawned
+    assertThat(gameState.getProjectiles()).hasSize(2);
+  }
 }
