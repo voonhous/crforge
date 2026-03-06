@@ -6,6 +6,7 @@ import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.match.Match;
@@ -30,6 +31,7 @@ public class GameEngine {
   private final DeploymentSystem deploymentSystem;
   private final StatusEffectSystem statusEffectSystem;
   private final SpawnerSystem spawnerSystem;
+  private final AreaEffectSystem areaEffectSystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -44,6 +46,7 @@ public class GameEngine {
     this.deploymentSystem = new DeploymentSystem(gameState, combatSystem);
     this.statusEffectSystem = new StatusEffectSystem();
     this.spawnerSystem = new SpawnerSystem(gameState, combatSystem);
+    this.areaEffectSystem = new AreaEffectSystem(gameState);
     this.running = false;
   }
 
@@ -117,24 +120,27 @@ public class GameEngine {
       entity.update(DELTA_TIME);
     }
 
-    // 7. Update targeting
+    // 7. Update area effects (damage/buff zones like Zap, Poison, Freeze)
+    areaEffectSystem.update(DELTA_TIME);
+
+    // 8. Update targeting
     targetingSystem.updateTargets(gameState.getAliveEntities());
 
-    // 8. Process combat (attacks and projectiles)
+    // 9. Process combat (attacks and projectiles)
     combatSystem.update(DELTA_TIME);
 
-    // 9. Update physics (movement and collisions)
+    // 10. Update physics (movement and collisions)
     if (physicsSystem != null) {
       physicsSystem.update(gameState.getAliveEntities(), DELTA_TIME);
     }
 
-    // 10. Process deaths (Pass spawnerSystem to handle death spawns)
+    // 11. Process deaths (Pass spawnerSystem to handle death spawns)
     gameState.processDeaths(spawnerSystem);
 
-    // 11. Check time limit
+    // 12. Check time limit
     checkTimeLimit();
 
-    // 12. Increment frame counter
+    // 13. Increment frame counter
     gameState.incrementFrame();
   }
 

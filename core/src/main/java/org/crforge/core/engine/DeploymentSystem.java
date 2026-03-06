@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.RequiredArgsConstructor;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
@@ -18,6 +19,7 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
@@ -127,6 +129,11 @@ public class DeploymentSystem {
       if (stats.hasSpawnEffect()) {
         triggerSpawnEffect(team, stats, troop.getPosition().getX(), troop.getPosition().getY());
       }
+    }
+
+    // Deploy effect (e.g. ElectroWizard stun, IceWizard slow on entry)
+    if (card.getDeployEffect() != null) {
+      deployAreaEffect(team, card.getDeployEffect(), x, y, card.getRarity(), level);
     }
   }
 
@@ -273,6 +280,13 @@ public class DeploymentSystem {
   }
 
   private void castSpell(Team team, Card card, float x, float y, int level) {
+    // Area effect spells (Zap, Freeze, Poison, Earthquake, etc.)
+    if (card.getAreaEffect() != null) {
+      deployAreaEffect(team, card.getAreaEffect(), x, y, card.getRarity(), level);
+      return;
+    }
+
+    // Projectile-based spells (Fireball, Arrows, Rocket, etc.)
     ProjectileStats proj = card.getProjectile();
     if (proj == null) {
       return;
@@ -293,6 +307,24 @@ public class DeploymentSystem {
       // Instant spell
       combatSystem.applySpellDamage(team, x, y, damage, radius, effects);
     }
+  }
+
+  private void deployAreaEffect(Team team, AreaEffectStats stats, float x, float y,
+      Rarity rarity, int level) {
+    int scaledDamage = stats.getDamage() > 0
+        ? LevelScaling.scaleCard(stats.getDamage(), rarity, level)
+        : 0;
+
+    AreaEffect effect = AreaEffect.builder()
+        .name(stats.getName())
+        .team(team)
+        .position(new Position(x, y))
+        .stats(stats)
+        .scaledDamage(scaledDamage)
+        .remainingLifetime(stats.getLifeDuration())
+        .build();
+
+    state.spawnEntity(effect);
   }
 
   /**
