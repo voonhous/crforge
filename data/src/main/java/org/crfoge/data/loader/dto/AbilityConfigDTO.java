@@ -18,6 +18,29 @@ public class AbilityConfigDTO {
   // VARIABLE_DAMAGE fields
   private List<VariableDamageStageDTO> stages;
 
+  // DASH fields
+  private float minRange;
+  private float maxRange;
+  private float radius;
+  private float cooldown;
+  private int immuneTimeMs;
+  private float pushback;
+  private float landingTime;
+  private float constantTime;
+
+  // HOOK fields
+  private float range;
+  private float minimumRange;
+  private float loadTime;
+  private int dragBackSpeed;
+  private int dragSelfSpeed;
+  private String targetBuff;
+  private float buffDuration;
+
+  // REFLECT fields
+  private String buff;
+  private int crownTowerDamagePercent;
+
   @Data
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class VariableDamageStageDTO {

@@ -282,8 +282,28 @@ public class CardLoader {
           builder.stages(stages);
         }
       }
-      default -> {
-        // DASH, HOOK, REFLECT handled in future tiers
+      case DASH -> {
+        builder.dashDamage(dto.getDamage());
+        builder.dashMinRange(dto.getMinRange());
+        builder.dashMaxRange(dto.getMaxRange());
+        builder.dashRadius(dto.getRadius());
+        builder.dashCooldown(dto.getCooldown());
+        builder.dashImmuneTime(dto.getImmuneTimeMs() / 1000f);
+        builder.dashLandingTime(dto.getLandingTime());
+      }
+      case HOOK -> {
+        builder.hookRange(dto.getRange());
+        builder.hookMinimumRange(dto.getMinimumRange());
+        builder.hookLoadTime(dto.getLoadTime());
+        builder.hookDragBackSpeed(dto.getDragBackSpeed());
+        builder.hookDragSelfSpeed(dto.getDragSelfSpeed());
+      }
+      case REFLECT -> {
+        builder.reflectDamage(dto.getDamage());
+        builder.reflectRadius(dto.getRadius());
+        builder.reflectBuff(StatusEffectType.fromBuffName(dto.getBuff()));
+        builder.reflectBuffDuration(dto.getBuffDuration());
+        builder.reflectCrownTowerDamagePercent(dto.getCrownTowerDamagePercent());
       }
     }
 

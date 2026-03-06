@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
@@ -165,6 +166,14 @@ public class CombatSystem {
 
       // Apply buff-on-damage for melee attacks
       applyBuffOnDamage(combat, target);
+
+      // Reflect: if target has REFLECT ability, deal counter-damage to attacker
+      if (target instanceof Troop reflector) {
+        int reflectDmg = AbilitySystem.getReflectDamage(reflector);
+        if (reflectDmg > 0) {
+          applyReflectDamage(reflector, attacker, reflectDmg);
+        }
+      }
     }
 
     // Consume charge after attack
@@ -239,6 +248,19 @@ public class CombatSystem {
       return;
     }
     target.addEffect(new AppliedEffect(buff.getType(), buff.getDuration(), buff.getIntensity()));
+  }
+
+  private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
+    AbilityData data = reflector.getAbility().getData();
+    int effectiveDamage = adjustForCrownTower(reflectDamage, attacker,
+        data.getReflectCrownTowerDamagePercent());
+    dealDamage(attacker, effectiveDamage);
+
+    // Apply reflect buff (e.g. ZapFreeze stun) to attacker
+    if (data.getReflectBuff() != null && data.getReflectBuffDuration() > 0) {
+      attacker.addEffect(new AppliedEffect(
+          data.getReflectBuff(), data.getReflectBuffDuration(), 0f));
+    }
   }
 
   private void updateProjectiles(float deltaTime) {
