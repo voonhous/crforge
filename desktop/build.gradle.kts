@@ -14,8 +14,7 @@ dependencies {
 
     // Logging
     api(libs.slf4j.api)
-    // Use simple logger for now in tests/CLI
-    testImplementation(libs.slf4j.simple)
+    implementation(libs.slf4j.simple)
 
     // Lombok
     compileOnly(libs.lombok)

@@ -124,7 +124,16 @@ public class ArenaRenderer {
     float centerY = (hoverY + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
     if (card.getType() == CardType.SPELL) {
-      float radius = card.getProjectile().getRadius() * TILE_PIXELS;
+      // Area-effect spells (Poison, Freeze, Zap) use areaEffect radius;
+      // projectile-based spells (Fireball, Arrows) use projectile radius
+      float radius;
+      if (card.getAreaEffect() != null) {
+        radius = card.getAreaEffect().getRadius() * TILE_PIXELS;
+      } else if (card.getProjectile() != null) {
+        radius = card.getProjectile().getRadius() * TILE_PIXELS;
+      } else {
+        radius = TILE_PIXELS; // fallback: 1 tile
+      }
       ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
       ctx.getShapeRenderer().circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
     } else {
