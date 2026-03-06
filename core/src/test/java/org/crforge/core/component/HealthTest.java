@@ -50,14 +50,21 @@ class HealthTest {
   }
 
   @Test
-  void shield_shouldOverflowToHealth() {
+  void shield_shouldNotOverflowToHealth() {
     Health health = new Health(100, 50);
 
+    // Hit that breaks the shield is fully absorbed -- no overflow into health
     int actualDamage = health.takeDamage(80);
 
-    assertThat(actualDamage).isEqualTo(30);
+    assertThat(actualDamage).isEqualTo(0);
     assertThat(health.getShield()).isEqualTo(0);
-    assertThat(health.getCurrent()).isEqualTo(70);
+    assertThat(health.getCurrent()).isEqualTo(100);
+
+    // Next hit goes straight to health
+    actualDamage = health.takeDamage(80);
+
+    assertThat(actualDamage).isEqualTo(80);
+    assertThat(health.getCurrent()).isEqualTo(20);
   }
 
   @Test

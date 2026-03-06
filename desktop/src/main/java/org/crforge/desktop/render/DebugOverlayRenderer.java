@@ -108,7 +108,12 @@ public class DebugOverlayRenderer {
       float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float radius = entity.getVisualRadius() * TILE_PIXELS;
 
-      float textY = y + radius + 15;
+      // Push name above both health bar and shield bar (if present)
+      float barsHeight = HEALTH_BAR_Y_OFFSET + HEALTH_BAR_HEIGHT;
+      if (entity.getHealth().getShieldMax() > 0) {
+        barsHeight += 1 + HEALTH_BAR_HEIGHT;
+      }
+      float textY = y + radius + barsHeight + 10;
 
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), entity.getName());
       float textWidth = ctx.getGlyphLayout().width;

@@ -314,10 +314,14 @@ class CombatSystemTest {
     assertThat(shielded.getHealth().getShield()).isEqualTo(20);
     assertThat(shielded.getHealth().getCurrent()).isEqualTo(100);
 
-    // Take 40 damage -> shield breaks (20), remaining 20 hits HP (100 -> 80)
+    // Take 40 damage -> shield breaks (20), but no overflow into HP
     shielded.getHealth().takeDamage(40);
     assertThat(shielded.getHealth().getShield()).isEqualTo(0);
-    assertThat(shielded.getHealth().getCurrent()).isEqualTo(80);
+    assertThat(shielded.getHealth().getCurrent()).isEqualTo(100);
+
+    // Next hit goes directly to health
+    shielded.getHealth().takeDamage(40);
+    assertThat(shielded.getHealth().getCurrent()).isEqualTo(60);
   }
 
   @Test
