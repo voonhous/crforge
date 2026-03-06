@@ -125,6 +125,9 @@ public class CardLoader {
       }
     }
 
+    // Read summonRadius from DTO (raw CSV value, divided by TILE_SCALE at deploy time)
+    builder.summonRadius(dto.getSummonRadius());
+
     if (dto.getUnits() != null) {
       UnitConfigDTO primaryUnit = dto.getUnits().isEmpty() ? null : dto.getUnits().get(0);
 
@@ -140,6 +143,7 @@ public class CardLoader {
           builder.spawnPauseTime(liveSpawn.getSpawnPauseTime());
           builder.spawnNumber(liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1);
           builder.spawnStartTime(liveSpawn.getSpawnStartTime());
+          builder.liveSpawnRadius(liveSpawn.getSpawnRadius());
 
           // Resolve spawn template: first try character lookup, then fall back to units[1]
           TroopStats resolvedTemplate = null;

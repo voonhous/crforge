@@ -27,6 +27,8 @@ import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.core.util.FormationLayout;
+import org.crforge.core.util.Vector2;
 
 /**
  * Handles the processing of Player Actions and the spawning of cards (Troops, Spells, Buildings).
@@ -83,8 +85,12 @@ public class DeploymentSystem {
     }
 
     TroopStats mainStats = troopStatsList.get(0);
+    int totalUnits = troopStatsList.size();
+    float summonRadius = card.getSummonRadius();
 
-    for (TroopStats stats : troopStatsList) {
+    for (int idx = 0; idx < totalUnits; idx++) {
+      TroopStats stats = troopStatsList.get(idx);
+
       // Check for spawner capability (Witch/Mother Witch logic)
       SpawnerComponent spawner = null;
 
@@ -106,6 +112,7 @@ public class DeploymentSystem {
               .currentTimer(initialTimer)
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
+              .formationRadius(card.getLiveSpawnRadius())
               .build();
         }
       }
@@ -131,7 +138,8 @@ public class DeploymentSystem {
         }
       }
 
-      Troop troop = createTroop(team, stats, x, y, spawner, level, card.getRarity());
+      Troop troop = createTroop(team, stats, x, y, spawner, level, card.getRarity(),
+          idx, totalUnits, summonRadius);
       state.spawnEntity(troop);
 
       // Handle Spawn Effects
@@ -154,9 +162,22 @@ public class DeploymentSystem {
    * and orientation towards the enemy.
    */
   private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
-      SpawnerComponent spawner, int level, Rarity rarity) {
-    float offsetX = stats.getOffsetX();
-    float offsetY = stats.getOffsetY();
+      SpawnerComponent spawner, int level, Rarity rarity,
+      int index, int total, float summonRadius) {
+    float offsetX;
+    float offsetY;
+
+    if (summonRadius > 0) {
+      // Use calculated circular formation offsets
+      Vector2 offset = FormationLayout.calculateDeployOffset(
+          index, total, summonRadius, stats.getCollisionRadius());
+      offsetX = offset.getX();
+      offsetY = offset.getY();
+    } else {
+      // Fall back to pre-baked per-unit offsets from cards.json
+      offsetX = stats.getOffsetX();
+      offsetY = stats.getOffsetY();
+    }
 
     if (team == Team.RED) {
       offsetX = -offsetX;
@@ -277,6 +298,7 @@ public class DeploymentSystem {
           .currentTimer(initialTimer)
           .deathSpawnCount(card.getDeathSpawnCount())
           .spawnStats(spawnStats)
+          .formationRadius(card.getLiveSpawnRadius())
           .deathDamage(scaledDeathDmg)
           .deathDamageRadius(stats != null ? stats.getDeathDamageRadius() : 0f)
           .deathSpawns(stats != null ? stats.getDeathSpawns() : List.of())
@@ -310,7 +332,7 @@ public class DeploymentSystem {
     // Summon character spells (Rage -> RageBottle, Heal -> HealSpirit)
     if (card.getSummonTemplate() != null) {
       Troop summoned = createTroop(team, card.getSummonTemplate(), x, y, null, level,
-          card.getRarity());
+          card.getRarity(), 0, 1, 0f);
       state.spawnEntity(summoned);
     }
 

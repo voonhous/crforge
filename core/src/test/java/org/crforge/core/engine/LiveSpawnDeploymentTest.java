@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.crforge.core.card.Card;
 import org.crfoge.data.card.CardRegistry;
 import org.crforge.core.entity.base.AbstractEntity;
+import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Deck;
@@ -163,6 +164,32 @@ class LiveSpawnDeploymentTest {
         .count();
     assertThat(totalSpawned).as("Witch should spawn multiple waves of skeletons")
         .isGreaterThanOrEqualTo(8);
+  }
+
+  @Test
+  void witch_spawnedSkeletons_shouldNotAllBeAtSamePosition() {
+    int slot = cycleUntilInHand("Witch");
+    assertThat(slot).as("Witch should be reachable in hand").isGreaterThanOrEqualTo(0);
+
+    giveMaxElixir();
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
+
+    // Run past deploy (1.0s) + spawnStartTime (1.0s) + margin to get first wave of 4 skeletons
+    engine.runSeconds(2.5f);
+
+    List<Entity> skeletons = engine.getGameState().getAliveEntities().stream()
+        .filter(e -> "Skeleton".equals(e.getName()))
+        .toList();
+
+    assertThat(skeletons).as("Should have spawned skeletons").hasSizeGreaterThanOrEqualTo(2);
+
+    // Verify that not all skeletons are at the exact same position (formation offsets applied)
+    boolean allSamePosition = skeletons.stream()
+        .allMatch(s -> s.getPosition().getX() == skeletons.get(0).getPosition().getX()
+            && s.getPosition().getY() == skeletons.get(0).getPosition().getY());
+    assertThat(allSamePosition)
+        .as("Spawned skeletons should not all be stacked at the same position")
+        .isFalse();
   }
 
   /**
