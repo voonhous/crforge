@@ -97,7 +97,16 @@ public class DebugRenderer {
     // 10. Entity names
     debugOverlayRenderer.renderEntityNames(state);
 
-    // 11. HUD (timer, cards, elixir)
+    // 11. Area effect zones
+    debugOverlayRenderer.renderAreaEffects(state);
+
+    // 12. Ability indicators (charge, dash, hook, reflect, variable damage)
+    debugOverlayRenderer.renderAbilityIndicators(state);
+
+    // 13. Spawner timers
+    debugOverlayRenderer.renderSpawnerTimers(state);
+
+    // 14. HUD (timer, cards, elixir)
     hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
         drawPaths, drawRanges);
   }
