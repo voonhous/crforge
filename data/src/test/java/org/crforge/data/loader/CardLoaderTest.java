@@ -830,4 +830,58 @@ class CardLoaderTest {
     assertThat(knight.getTroops().get(0).getDeathDamage()).isEqualTo(0);
     assertThat(knight.getTroops().get(0).getDeathSpawns()).isEmpty();
   }
+
+  @Test
+  void loadCards_shouldParseAreaEffectsAndDeployEffects() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Zap: one-shot area effect with stun
+    Card zap = cards.stream().filter(c -> c.getId().equals("zap")).findFirst().orElse(null);
+    assertThat(zap).isNotNull();
+    assertThat(zap.getAreaEffect()).isNotNull();
+    AreaEffectStats zapAoe = zap.getAreaEffect();
+    assertThat(zapAoe.getName()).isEqualTo("Zap");
+    assertThat(zapAoe.getRadius()).isCloseTo(2.5f, within(0.01f));
+    assertThat(zapAoe.getLifeDuration()).isCloseTo(0.001f, within(0.001f));
+    assertThat(zapAoe.getDamage()).isEqualTo(75);
+    assertThat(zapAoe.getBuff()).isEqualTo("ZapFreeze");
+    assertThat(zapAoe.getBuffDuration()).isCloseTo(0.5f, within(0.01f));
+    assertThat(zapAoe.getCrownTowerDamagePercent()).isEqualTo(-70);
+
+    // Poison: ticking area effect
+    Card poison = cards.stream().filter(c -> c.getId().equals("poison")).findFirst().orElse(null);
+    assertThat(poison).isNotNull();
+    assertThat(poison.getAreaEffect()).isNotNull();
+    AreaEffectStats poisonAoe = poison.getAreaEffect();
+    assertThat(poisonAoe.getHitSpeed()).isCloseTo(0.25f, within(0.01f));
+    assertThat(poisonAoe.getLifeDuration()).isCloseTo(8.0f, within(0.01f));
+    assertThat(poisonAoe.getBuff()).isEqualTo("Poison");
+
+    // Earthquake: ground-only ticking effect
+    Card earthquake = cards.stream()
+        .filter(c -> c.getId().equals("earthquake")).findFirst().orElse(null);
+    assertThat(earthquake).isNotNull();
+    AreaEffectStats eqAoe = earthquake.getAreaEffect();
+    assertThat(eqAoe.isHitsGround()).isTrue();
+    assertThat(eqAoe.isHitsAir()).isFalse();
+
+    // ElectroWizard: deploy effect
+    Card ewiz = cards.stream()
+        .filter(c -> c.getId().equals("electrowizard")).findFirst().orElse(null);
+    assertThat(ewiz).isNotNull();
+    assertThat(ewiz.getDeployEffect()).isNotNull();
+    AreaEffectStats deployFx = ewiz.getDeployEffect();
+    assertThat(deployFx.getName()).isEqualTo("ElectroWizardZap");
+    assertThat(deployFx.getRadius()).isCloseTo(3.0f, within(0.01f));
+    assertThat(deployFx.getDamage()).isEqualTo(75);
+    assertThat(deployFx.getBuff()).isEqualTo("ZapFreeze");
+
+    // Knight: no area effect or deploy effect
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    assertThat(knight.getAreaEffect()).isNull();
+    assertThat(knight.getDeployEffect()).isNull();
+  }
 }
