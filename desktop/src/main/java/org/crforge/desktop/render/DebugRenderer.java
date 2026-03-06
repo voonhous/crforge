@@ -38,6 +38,7 @@ import org.crforge.core.player.dto.PlayerActionDTO;
 public class DebugRenderer {
 
   private final RenderContext ctx;
+  private final ArenaRenderer arenaRenderer;
 
   @Getter
   private boolean drawPaths = false;
@@ -50,6 +51,7 @@ public class DebugRenderer {
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
+    this.arenaRenderer = new ArenaRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -71,16 +73,16 @@ public class DebugRenderer {
     renderUIBackgrounds(camera);
 
     // 1. Render arena tiles (filled)
-    renderArenaTiles(arena);
+    arenaRenderer.renderTiles(arena);
 
     // 2. Render grid lines
-    renderGrid(arena);
+    arenaRenderer.renderGrid(arena);
 
     // 3. Render hover highlight
     if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
       Player player = getPlayer(match);
       Card selectedCard = getSelectedCard(player);
-      renderHover(hoverX, hoverY, selectedCard, player, match);
+      arenaRenderer.renderHover(hoverX, hoverY, selectedCard, player, match, selectedHandIndex);
     }
 
     // 4. Render entities
@@ -152,139 +154,6 @@ public class DebugRenderer {
     );
 
     ctx.getShapeRenderer().end();
-  }
-
-  private void renderArenaTiles(Arena arena) {
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-
-    for (int x = 0; x < Arena.WIDTH; x++) {
-      for (int y = 0; y < Arena.HEIGHT; y++) {
-        TileType type = arena.getTile(x, y).type();
-        Color color = getTileColor(type);
-        ctx.getShapeRenderer().setColor(color);
-        ctx.getShapeRenderer().rect(
-            x * TILE_PIXELS,
-            y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-            TILE_PIXELS,
-            TILE_PIXELS
-        );
-      }
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private Color getTileColor(TileType type) {
-    return switch (type) {
-      case BLUE_ZONE -> COLOR_BLUE_ZONE;
-      case RED_ZONE -> COLOR_RED_ZONE;
-      case RIVER -> COLOR_RIVER;
-      case BRIDGE -> COLOR_BRIDGE;
-      case GROUND -> COLOR_GROUND;
-      case BANNED -> COLOR_BANNED;
-      case TOWER -> COLOR_TOWER_TILE;
-    };
-  }
-
-  private void renderGrid(Arena arena) {
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
-    ctx.getShapeRenderer().setColor(COLOR_GRID);
-
-    float width = Arena.WIDTH * TILE_PIXELS;
-    float height = Arena.HEIGHT * TILE_PIXELS;
-    float startY = BOTTOM_UI_HEIGHT;
-
-    // Vertical lines
-    for (int x = 0; x <= Arena.WIDTH; x++) {
-      ctx.getShapeRenderer().line(
-          x * TILE_PIXELS,
-          startY,
-          x * TILE_PIXELS,
-          startY + height
-      );
-    }
-
-    // Horizontal lines
-    for (int y = 0; y <= Arena.HEIGHT; y++) {
-      ctx.getShapeRenderer().line(
-          0,
-          startY + y * TILE_PIXELS,
-          width,
-          startY + y * TILE_PIXELS
-      );
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderHover(int x, int y, Card selectedCard, Player player, Match match) {
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Filled);
-
-    // Validate placement
-    boolean isValid = true;
-    if (player != null && selectedCard != null) {
-      PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, x + 0.5f, y + 0.5f);
-      isValid = match.validateAction(player, action);
-    }
-
-    if (!isValid) {
-      ctx.getShapeRenderer().setColor(COLOR_HOVER_INVALID);
-      ctx.getShapeRenderer().rect(
-          x * TILE_PIXELS,
-          y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-          TILE_PIXELS,
-          TILE_PIXELS
-      );
-    } else if (selectedCard != null) {
-      renderGhostCard(x, y, selectedCard, player.getTeam());
-
-      // Subtle white overlay to indicate the tile is being targeted
-      ctx.getShapeRenderer().setColor(0.5f, 0.5f, 0.5f, 0.2f);
-      ctx.getShapeRenderer().rect(
-          x * TILE_PIXELS,
-          y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-          TILE_PIXELS,
-          TILE_PIXELS
-      );
-    }
-
-    ctx.getShapeRenderer().end();
-  }
-
-  private void renderGhostCard(int hoverX, int hoverY, Card card, Team team) {
-    Color ghostColor = team == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
-    ctx.getShapeRenderer().setColor(ghostColor);
-
-    float centerX = (hoverX + 0.5f) * TILE_PIXELS;
-    float centerY = (hoverY + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
-    if (card.getType() == CardType.SPELL) {
-      float radius = card.getProjectile().getRadius() * TILE_PIXELS;
-      ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
-      ctx.getShapeRenderer().circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
-    } else {
-      // Render troops/buildings
-      if (card.getTroops() != null) {
-        for (TroopStats stats : card.getTroops()) {
-          float offsetX = stats.getOffsetX();
-          float offsetY = stats.getOffsetY();
-
-          if (team == Team.RED) {
-            offsetX = -offsetX;
-            offsetY = -offsetY;
-          }
-
-          float ghostX = centerX + (offsetX * TILE_PIXELS);
-          float ghostY = centerY + (offsetY * TILE_PIXELS);
-          float radius = stats.getVisualRadius() * TILE_PIXELS;
-
-          ctx.getShapeRenderer().setColor(ghostColor);
-          ctx.getShapeRenderer().circle(ghostX, ghostY, radius);
-        }
-      }
-    }
   }
 
   private void renderEntities(GameState state) {
