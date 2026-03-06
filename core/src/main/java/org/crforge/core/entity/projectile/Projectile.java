@@ -3,7 +3,9 @@ package org.crforge.core.entity.projectile;
 import java.util.Collections;
 import java.util.List;
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.Entity;
@@ -48,6 +50,21 @@ public class Projectile {
   private final float targetY;
   private final boolean positionTargeted;
 
+  // Advanced projectile features
+  @Setter
+  private float chainedHitRadius;
+  @Setter
+  private int chainedHitCount;
+  @Setter
+  private ProjectileStats spawnProjectile;
+
+  // Origin position (for spawn projectile direction calculation)
+  private final float originX;
+  private final float originY;
+
+  // Effective speed for chain sub-projectile creation
+  private final float projectileSpeed;
+
   private boolean active;
   private boolean hit;
 
@@ -73,6 +90,9 @@ public class Projectile {
     this.targetX = 0;
     this.targetY = 0;
     this.positionTargeted = false;
+    this.originX = source.getPosition().getX();
+    this.originY = source.getPosition().getY();
+    this.projectileSpeed = this.speed;
     this.active = true;
     this.hit = false;
   }
@@ -113,6 +133,9 @@ public class Projectile {
     this.targetX = destX;
     this.targetY = destY;
     this.positionTargeted = true;
+    this.originX = startX;
+    this.originY = startY;
+    this.projectileSpeed = this.speed;
     this.active = true;
     this.hit = false;
   }

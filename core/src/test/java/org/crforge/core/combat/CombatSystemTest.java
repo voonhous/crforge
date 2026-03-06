@@ -427,4 +427,73 @@ class CombatSystemTest {
     // EWiz is ranged, so projectiles are spawned
     assertThat(gameState.getProjectiles()).hasSize(2);
   }
+
+  @Test
+  void chainLightning_shouldDamageChainTargets() {
+    // Ranged attacker with chain lightning (like ElectroDragon)
+    Troop attacker = Troop.builder()
+        .name("ElectroDragon")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(75)
+            .range(3.5f)
+            .sightRange(5.5f)
+            .attackCooldown(2.1f)
+            .projectileStats(org.crforge.core.card.ProjectileStats.builder()
+                .name("ElectroDragonProjectile")
+                .damage(75)
+                .speed(10f)
+                .chainedHitRadius(4.0f)
+                .chainedHitCount(3)
+                .build())
+            .build())
+        .build();
+
+    Troop target1 = createChainTarget(Team.RED, 7, 5);
+    Troop target2 = createChainTarget(Team.RED, 8, 5);
+    Troop target3 = createChainTarget(Team.RED, 9, 5);
+
+    gameState.spawnEntity(attacker);
+    gameState.spawnEntity(target1);
+    gameState.spawnEntity(target2);
+    gameState.spawnEntity(target3);
+    gameState.processPending();
+
+    // Set target and fire
+    attacker.getCombat().setCurrentTarget(target1);
+    attacker.getCombat().startAttackSequence();
+    attacker.getCombat().setCurrentWindup(0);
+
+    // Run enough ticks for primary and chain projectiles to hit
+    for (int i = 0; i < 60; i++) {
+      combatSystem.update(1.0f / 30);
+    }
+
+    // Primary target should have taken 75 damage
+    assertThat(target1.getHealth().getCurrent()).isEqualTo(500 - 75);
+
+    // Chain targets should also have taken 75 damage each
+    // target2 and target3 are within chain radius (4.0) of target1
+    assertThat(target2.getHealth().getCurrent()).isEqualTo(500 - 75);
+    assertThat(target3.getHealth().getCurrent()).isEqualTo(500 - 75);
+  }
+
+  private Troop createChainTarget(Team team, float x, float y) {
+    return Troop.builder()
+        .name("ChainTarget")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(0)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .build())
+        .build();
+  }
 }

@@ -1106,4 +1106,68 @@ class CardLoaderTest {
         .filter(c -> c.getId().equals("heal")).findFirst().orElse(null);
     assertThat(heal).isNotNull();
   }
+
+  @Test
+  void loadCards_shouldParseChainLightning() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // ElectroDragon: projectile with chainedHitRadius=4.0, chainedHitCount=3
+    Card eDragon = cards.stream()
+        .filter(c -> c.getId().equals("electrodragon")).findFirst().orElse(null);
+    assertThat(eDragon).isNotNull();
+    TroopStats edStats = eDragon.getTroops().get(0);
+    ProjectileStats proj = edStats.getProjectile();
+    assertThat(proj).isNotNull();
+    assertThat(proj.getChainedHitRadius()).isCloseTo(4.0f, within(0.01f));
+    assertThat(proj.getChainedHitCount()).isEqualTo(3);
+
+    // ElectroSpirit: chainedHitCount=9
+    Card eSpirit = cards.stream()
+        .filter(c -> c.getId().equals("electrospirit")).findFirst().orElse(null);
+    assertThat(eSpirit).isNotNull();
+    ProjectileStats spiritProj = eSpirit.getTroops().get(0).getProjectile();
+    assertThat(spiritProj.getChainedHitCount()).isEqualTo(9);
+  }
+
+  @Test
+  void loadCards_shouldParseProjectileRangeAndScatter() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Hunter: scatter + projectileRange=6.5
+    Card hunter = cards.stream()
+        .filter(c -> c.getId().equals("hunter")).findFirst().orElse(null);
+    assertThat(hunter).isNotNull();
+    ProjectileStats hunterProj = hunter.getTroops().get(0).getProjectile();
+    assertThat(hunterProj).isNotNull();
+    assertThat(hunterProj.getProjectileRange()).isCloseTo(6.5f, within(0.01f));
+    assertThat(hunterProj.isHoming()).isFalse();
+  }
+
+  @Test
+  void loadCards_shouldParseSpawnProjectile() {
+    InputStream is = CardLoaderTest.class.getResourceAsStream("/cards/cards.json");
+    assertThat(is).isNotNull();
+    List<Card> cards = CardLoader.loadCards(is);
+
+    // Log spell: projectile with spawnProjectile (LogProjectileRolling)
+    Card log = cards.stream()
+        .filter(c -> c.getId().equals("log")).findFirst().orElse(null);
+    assertThat(log).isNotNull();
+    ProjectileStats logProj = log.getProjectile();
+    assertThat(logProj).isNotNull();
+    assertThat(logProj.getSpawnProjectile()).isNotNull();
+    ProjectileStats rollingProj = logProj.getSpawnProjectile();
+    assertThat(rollingProj.getName()).isEqualTo("LogProjectileRolling");
+    assertThat(rollingProj.getDamage()).isEqualTo(105);
+    assertThat(rollingProj.getProjectileRange()).isCloseTo(10.1f, within(0.01f));
+
+    // Knight: no advanced projectile features
+    Card knight = cards.stream().filter(c -> c.getId().equals("knight")).findFirst().orElse(null);
+    assertThat(knight).isNotNull();
+    assertThat(knight.getProjectile()).isNull();
+  }
 }

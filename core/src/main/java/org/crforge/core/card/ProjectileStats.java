@@ -36,4 +36,21 @@ public class ProjectileStats {
    */
   @Builder.Default
   private final float buffDuration = 0f;
+
+  // Chain lightning: after primary hit, chain to N more targets within radius
+  @Builder.Default
+  private final float chainedHitRadius = 0f;
+  @Builder.Default
+  private final int chainedHitCount = 0;
+
+  // Non-homing scatter projectiles expire at this range
+  @Builder.Default
+  private final float projectileRange = 0f;
+
+  // Spawn sub-projectile on impact
+  private final ProjectileStats spawnProjectile;
+  @Builder.Default
+  private final int spawnCount = 0;
+  @Builder.Default
+  private final float spawnRadius = 0f;
 }

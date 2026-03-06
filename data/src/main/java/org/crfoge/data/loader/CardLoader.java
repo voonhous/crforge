@@ -342,7 +342,7 @@ public class CardLoader {
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
     int effectiveDamage = dto.getDamage() > 0 ? dto.getDamage() : fallbackDamage;
 
-    return ProjectileStats.builder()
+    ProjectileStats.ProjectileStatsBuilder builder = ProjectileStats.builder()
         .name(dto.getName())
         .damage(effectiveDamage)
         .speed(effectiveSpeed)
@@ -351,7 +351,18 @@ public class CardLoader {
         .hitEffects(convertEffects(dto.getHitEffects()))
         .targetBuff(StatusEffectType.fromBuffName(dto.getTargetBuff()))
         .buffDuration(dto.getBuffDuration())
-        .build();
+        .chainedHitRadius(dto.getChainedHitRadius())
+        .chainedHitCount(dto.getChainedHitCount())
+        .projectileRange(dto.getProjectileRange());
+
+    // Spawn sub-projectile on impact (Log rolling, Firecracker explosion)
+    if (dto.getSpawnProjectile() != null) {
+      builder.spawnProjectile(convertProjectile(dto.getSpawnProjectile(), 0));
+      builder.spawnCount(dto.getSpawnProjectile().getSpawnCount());
+      builder.spawnRadius(dto.getSpawnProjectile().getSpawnRadius());
+    }
+
+    return builder.build();
   }
 
   private static AreaEffectStats convertAreaEffect(AreaEffectConfigDTO dto) {
