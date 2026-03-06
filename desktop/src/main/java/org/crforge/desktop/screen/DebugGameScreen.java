@@ -86,27 +86,29 @@ public class DebugGameScreen implements Screen {
     // Create a standard 1v1 match
     Standard1v1Match match = new Standard1v1Match();
 
-    // Create test decks with available cards
+    // Decks showcasing special abilities and effects:
+    // Blue: charge, hook, variable damage, deploy effect, spawner, area effect spells, shield
     List<Card> blueCards = List.of(
-        CardRegistry.get("barbarians"),
-        CardRegistry.get("musketeer"),
-        CardRegistry.get("giant"),
-        CardRegistry.get("archer"),
-        CardRegistry.get("tombstone"),
-        CardRegistry.get("valkyrie"),
-        CardRegistry.get("goblins"),
-        CardRegistry.get("babydragon")
+        CardRegistry.get("darkprince"),    // Charge + Shield
+        CardRegistry.get("prince"),        // Charge
+        CardRegistry.get("fisherman"),     // Hook
+        CardRegistry.get("infernodragon"), // Variable damage (inferno stages)
+        CardRegistry.get("electrowizard"), // Deploy stun effect
+        CardRegistry.get("witch"),         // Live spawner (skeletons)
+        CardRegistry.get("zap"),           // Area effect spell (stun)
+        CardRegistry.get("poison")         // Area effect spell (ticking)
     );
 
+    // Red: dash, reflect, shield, spawner building, live spawn, area effect, charge
     List<Card> redCards = List.of(
-        CardRegistry.get("goblins"),
-        CardRegistry.get("babydragon"),
-        CardRegistry.get("minions"),
-        CardRegistry.get("bomber"),
-        CardRegistry.get("valkyrie"),
-        CardRegistry.get("cannon"),
-        CardRegistry.get("knight"),
-        CardRegistry.get("musketeer")
+        CardRegistry.get("megaknight"),       // Dash
+        CardRegistry.get("electrogiant"),     // Reflect
+        CardRegistry.get("assassin"),         // Dash
+        CardRegistry.get("skeletonwarriors"), // Shield
+        CardRegistry.get("tombstone"),        // Spawner building
+        CardRegistry.get("darkwitch"),        // Live spawn + death spawn
+        CardRegistry.get("freeze"),           // Area effect spell
+        CardRegistry.get("ramrider")          // Charge + live spawn
     );
 
     Deck blueDeck = new Deck(blueCards);
