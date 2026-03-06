@@ -20,6 +20,7 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
 import org.crforge.desktop.render.DebugRenderer;
+import org.crforge.desktop.render.RenderConstants;
 
 /**
  * Debug screen for visualizing the game simulation.
@@ -33,7 +34,7 @@ import org.crforge.desktop.render.DebugRenderer;
  * <li>1-4: Play card from blue player's hand at random position</li>
  * <li>5-8: Play card from red player's hand at random position</li>
  * <li>+/-: Speed up/slow down simulation</li>
- * <li>Click: Deploy selected card at position (TODO)</li>
+ * <li>Click: Deploy selected card at position</li>
  * </ul>
  */
 @Slf4j
@@ -65,12 +66,12 @@ public class DebugGameScreen implements Screen {
     this.renderer = new DebugRenderer();
 
     // Setup camera
-    float arenaWidth = Arena.WIDTH * DebugRenderer.TILE_PIXELS;
-    float arenaHeight = Arena.HEIGHT * DebugRenderer.TILE_PIXELS;
+    float arenaWidth = Arena.WIDTH * RenderConstants.TILE_PIXELS;
+    float arenaHeight = Arena.HEIGHT * RenderConstants.TILE_PIXELS;
 
     // Viewport includes UI margins
     float viewWidth = arenaWidth;
-    float viewHeight = arenaHeight + DebugRenderer.TOP_UI_HEIGHT + DebugRenderer.BOTTOM_UI_HEIGHT;
+    float viewHeight = arenaHeight + RenderConstants.TOP_UI_HEIGHT + RenderConstants.BOTTOM_UI_HEIGHT;
 
     this.camera = new OrthographicCamera(viewWidth, viewHeight);
     camera.position.set(viewWidth / 2, viewHeight / 2, 0);
@@ -188,11 +189,11 @@ public class DebugGameScreen implements Screen {
 
     // touchPos.y is world Y (0 is bottom of UI)
     // Arena starts at BOTTOM_UI_HEIGHT
-    float arenaY = touchPos.y - DebugRenderer.BOTTOM_UI_HEIGHT;
+    float arenaY = touchPos.y - RenderConstants.BOTTOM_UI_HEIGHT;
     float arenaX = touchPos.x;
 
-    float rawTileX = arenaX / DebugRenderer.TILE_PIXELS;
-    float rawTileY = arenaY / DebugRenderer.TILE_PIXELS;
+    float rawTileX = arenaX / RenderConstants.TILE_PIXELS;
+    float rawTileY = arenaY / RenderConstants.TILE_PIXELS;
 
     // Snap to grid
     hoverTileX = (int) Math.floor(rawTileX);
@@ -205,13 +206,13 @@ public class DebugGameScreen implements Screen {
 
     // 1. Check for Card Selection (Clicking on hand in Bottom UI or Top UI)
     // Check Bottom (Blue)
-    if (touchPos.y < DebugRenderer.BOTTOM_UI_HEIGHT) {
+    if (touchPos.y < RenderConstants.BOTTOM_UI_HEIGHT) {
       checkHandSelection(touchPos.x, touchPos.y, bluePlayer, false);
       return;
     }
 
     // Check Top (Red)
-    float topUiStart = camera.viewportHeight - DebugRenderer.TOP_UI_HEIGHT;
+    float topUiStart = camera.viewportHeight - RenderConstants.TOP_UI_HEIGHT;
     if (touchPos.y > topUiStart) {
       checkHandSelection(touchPos.x, touchPos.y, redPlayer, true);
       return;
@@ -235,26 +236,18 @@ public class DebugGameScreen implements Screen {
   }
 
   private void checkHandSelection(float worldX, float worldY, Player player, boolean isTop) {
-    // Replicate layout logic from DebugRenderer for hit detection
-    float cardWidth = 60;
-    float cardHeight = 80;
-    float spacing = 10;
-    float handWidth = (cardWidth * 4) + (spacing * 3);
+    float handWidth = (RenderConstants.CARD_WIDTH * RenderConstants.HAND_SIZE)
+        + (RenderConstants.CARD_SPACING * (RenderConstants.HAND_SIZE - 1));
     float startX = (camera.viewportWidth - handWidth) / 2;
 
-    // Calculate Y position based on whether it's top or bottom player
-    // Matches DebugRenderer:
-    // float cardY = isTop ? yPos + 30 : yPos + 30;
-    // For bottom: yPos = 0 -> cardY = 30
-    // For top: yPos = screenHeight - TOP_UI_HEIGHT -> cardY = (screenHeight - 140) + 30
-    float baseY = isTop ? (camera.viewportHeight - DebugRenderer.TOP_UI_HEIGHT) : 0;
+    float baseY = isTop ? (camera.viewportHeight - RenderConstants.TOP_UI_HEIGHT) : 0;
     float cardY = baseY + 30;
 
     // Simple bounding box check
-    if (worldY >= cardY && worldY <= cardY + cardHeight) {
-      for (int i = 0; i < 4; i++) {
-        float cardX = startX + i * (cardWidth + spacing);
-        if (worldX >= cardX && worldX <= cardX + cardWidth) {
+    if (worldY >= cardY && worldY <= cardY + RenderConstants.CARD_HEIGHT) {
+      for (int i = 0; i < RenderConstants.HAND_SIZE; i++) {
+        float cardX = startX + i * (RenderConstants.CARD_WIDTH + RenderConstants.CARD_SPACING);
+        if (worldX >= cardX && worldX <= cardX + RenderConstants.CARD_WIDTH) {
           selectCard(player, i);
           return;
         }
@@ -321,9 +314,9 @@ public class DebugGameScreen implements Screen {
   public void resize(int width, int height) {
     // Keep arena centered with correct aspect ratio
     // TODO: Disable resize feature (Although it is not working now, we should remove it entirely)
-    float arenaWidth = Arena.WIDTH * DebugRenderer.TILE_PIXELS;
-    float arenaHeight = Arena.HEIGHT * DebugRenderer.TILE_PIXELS;
-    float totalHeight = arenaHeight + DebugRenderer.TOP_UI_HEIGHT + DebugRenderer.BOTTOM_UI_HEIGHT;
+    float arenaWidth = Arena.WIDTH * RenderConstants.TILE_PIXELS;
+    float arenaHeight = Arena.HEIGHT * RenderConstants.TILE_PIXELS;
+    float totalHeight = arenaHeight + RenderConstants.TOP_UI_HEIGHT + RenderConstants.BOTTOM_UI_HEIGHT;
 
     camera.viewportWidth = arenaWidth;
     camera.viewportHeight = totalHeight;

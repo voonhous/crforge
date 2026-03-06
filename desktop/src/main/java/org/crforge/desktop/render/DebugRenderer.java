@@ -1,5 +1,7 @@
 package org.crforge.desktop.render;
 
+import static org.crforge.desktop.render.RenderConstants.*;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -40,70 +42,11 @@ import org.crforge.core.player.dto.PlayerActionDTO;
  */
 public class DebugRenderer {
 
-  // Scale: 1 tile = TILE_PIXELS pixels
-  public static final float TILE_PIXELS = 24f;
-
-  // UI Dimensions
-  public static final float TOP_UI_HEIGHT = 140f;
-  public static final float BOTTOM_UI_HEIGHT = 140f;
-
-  // Colors for tile types
-  private static final Color COLOR_BLUE_ZONE = new Color(0.2f, 0.3f, 0.6f, 1f);
-  private static final Color COLOR_RED_ZONE = new Color(0.6f, 0.2f, 0.2f, 1f);
-  private static final Color COLOR_RIVER = new Color(0.2f, 0.5f, 0.8f, 1f);
-  private static final Color COLOR_BRIDGE = new Color(0.5f, 0.4f, 0.3f, 1f);
-  private static final Color COLOR_GROUND = new Color(0.3f, 0.5f, 0.3f, 1f);
-  private static final Color COLOR_BANNED = new Color(0.1f, 0.1f, 0.1f, 1f);
-  private static final Color COLOR_TOWER = new Color(1.0f, 1.0f, 0.0f, 0.5f);
-
-  private static final Color COLOR_GRID = new Color(0f, 0f, 0f, 0.2f);
-  private static final Color COLOR_HOVER_INVALID = new Color(1f, 0.3f, 0.3f, 0.3f);
-
-  // Colors for entities
-  private static final Color COLOR_BLUE_ENTITY = new Color(0.3f, 0.5f, 1f, 1f);
-  private static final Color COLOR_RED_ENTITY = new Color(1f, 0.3f, 0.3f, 1f);
-  private static final Color COLOR_TOWER_BOUNDARY = new Color(0.5f, 0.5f, 0.5f, 1f); // Opaque grey
-  private static final Color COLOR_PROJECTILE = new Color(1f, 1f, 0f, 1f);
-  private static final Color COLOR_AIR_UNIT = new Color(0.7f, 0.9f, 1f, 0.8f);
-
-  // Debug overlay colors
-  private static final Color COLOR_COLLISION_CIRCLE = new Color(1f, 1f, 0f, 0.5f); // Yellow outline
-
-  private static final Color COLOR_BLUE_GHOST = new Color(0.3f, 0.5f, 1f, 0.5f);
-  private static final Color COLOR_RED_GHOST = new Color(1f, 0.3f, 0.3f, 0.5f);
-  private static final Color COLOR_SPELL_RADIUS = new Color(1f, 1f, 1f, 0.3f);
-
-  // Health bar colors
-  private static final Color COLOR_HEALTH_BG = new Color(0.2f, 0.2f, 0.2f, 0.8f);
-  private static final Color COLOR_HEALTH_GREEN = new Color(0.2f, 0.8f, 0.2f, 1f);
-  private static final Color COLOR_HEALTH_YELLOW = new Color(0.9f, 0.9f, 0.2f, 1f);
-  private static final Color COLOR_HEALTH_RED = new Color(0.9f, 0.2f, 0.2f, 1f);
-
-  // UI colors
-  private static final Color COLOR_UI_BG = new Color(0.15f, 0.15f, 0.15f, 1f);
-  private static final Color COLOR_CARD_BG = new Color(0.3f, 0.3f, 0.3f, 1f);
-  private static final Color COLOR_CARD_BORDER = new Color(0.1f, 0.1f, 0.1f, 1f);
-  private static final Color COLOR_CARD_SELECTED = new Color(1f, 1f, 0f, 1f);
-  private static final Color COLOR_ELIXIR = new Color(0.9f, 0.2f, 0.9f, 1f);
-  private static final Color COLOR_ELIXIR_BG = new Color(0.3f, 0.1f, 0.3f, 0.8f);
-
-  // Status effect ring colors
-  private static final Color COLOR_EFFECT_FREEZE = new Color(0.5f, 0.9f, 1f, 0.9f);
-  private static final Color COLOR_EFFECT_STUN = new Color(1f, 1f, 0.2f, 0.9f);
-  private static final Color COLOR_EFFECT_SLOW = new Color(0.3f, 0.7f, 1f, 0.9f);
-  private static final Color COLOR_EFFECT_RAGE = new Color(1f, 0.4f, 0.1f, 0.9f);
-
-  // Attack range circle color
-  private static final Color COLOR_ATTACK_RANGE = new Color(1f, 1f, 1f, 0.12f);
-
-  // Debug colors
-  private static final Color COLOR_PATH = new Color(0f, 1f, 1f, 0.7f); // Cyan
-
   private final ShapeRenderer shapeRenderer;
   private final SpriteBatch spriteBatch;
   private final BitmapFont font;
   private final BitmapFont entityNameFont; // Smaller font for names
-  private final GlyphLayout glpyhLayout = new GlyphLayout();
+  private final GlyphLayout glyphLayout = new GlyphLayout();
 
   @Getter
   private boolean drawPaths = false;
@@ -122,7 +65,7 @@ public class DebugRenderer {
 
     this.entityNameFont = new BitmapFont();
     this.entityNameFont.setColor(Color.WHITE);
-    this.entityNameFont.getData().setScale(0.7f); // Scale down slightly
+    this.entityNameFont.getData().setScale(ENTITY_NAME_FONT_SCALE);
   }
 
   public void toggleDrawPaths() {
@@ -179,7 +122,7 @@ public class DebugRenderer {
       renderAttackRanges(state);
     }
 
-    // 10. Render Entity Names (New)
+    // 10. Render Entity Names
     renderEntityNames(state);
 
     // 11. Render UI (hands, elixir, timer)
@@ -190,7 +133,6 @@ public class DebugRenderer {
     if (match == null || selectedTeam == null) {
       return null;
     }
-    // Find player by team. Assuming 1v1 or primary player for now.
     for (Player p : match.getAllPlayers()) {
       if (p.getTeam() == selectedTeam) {
         return p;
@@ -257,7 +199,7 @@ public class DebugRenderer {
       case BRIDGE -> COLOR_BRIDGE;
       case GROUND -> COLOR_GROUND;
       case BANNED -> COLOR_BANNED;
-      case TOWER -> COLOR_TOWER;
+      case TOWER -> COLOR_TOWER_TILE;
     };
   }
 
@@ -339,7 +281,7 @@ public class DebugRenderer {
     if (card.getType() == CardType.SPELL) {
       float radius = card.getProjectile().getRadius() * TILE_PIXELS;
       shapeRenderer.setColor(COLOR_SPELL_RADIUS);
-      shapeRenderer.circle(centerX, centerY, radius, 32);
+      shapeRenderer.circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
     } else {
       // Render troops/buildings
       if (card.getTroops() != null) {
@@ -456,7 +398,7 @@ public class DebugRenderer {
       float x = entity.getPosition().getX() * TILE_PIXELS;
       float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float attackRadius = (combat.getRange() + entity.getCollisionRadius()) * TILE_PIXELS;
-      shapeRenderer.circle(x, y, attackRadius, 32);
+      shapeRenderer.circle(x, y, attackRadius, CIRCLE_SEGMENTS);
     }
 
     shapeRenderer.end();
@@ -473,8 +415,8 @@ public class DebugRenderer {
       float textY = y + radius + 15;
 
       // Use width from glyph layout to center name
-      glpyhLayout.setText(entityNameFont, entity.getName());
-      float textWidth = glpyhLayout.width;
+      glyphLayout.setText(entityNameFont, entity.getName());
+      float textWidth = glyphLayout.width;
 
       entityNameFont.draw(spriteBatch, entity.getName(), x - textWidth / 2, textY);
     }
@@ -483,16 +425,15 @@ public class DebugRenderer {
 
   private Color getEntityColor(Entity entity) {
     if (entity.getEntityType() == EntityType.TOWER) {
-      // Towers are gray with team tint
       Tower tower = (Tower) entity;
       if (tower.isCrownTower()) {
         return entity.getTeam() == Team.BLUE
-            ? new Color(0.4f, 0.5f, 0.9f, 1f)
-            : new Color(0.9f, 0.4f, 0.4f, 1f);
+            ? COLOR_BLUE_CROWN_TOWER
+            : COLOR_RED_CROWN_TOWER;
       }
       return entity.getTeam() == Team.BLUE
-          ? new Color(0.5f, 0.6f, 0.8f, 1f)
-          : new Color(0.8f, 0.5f, 0.5f, 1f);
+          ? COLOR_BLUE_PRINCESS_TOWER
+          : COLOR_RED_PRINCESS_TOWER;
     }
     return entity.getTeam() == Team.BLUE ? COLOR_BLUE_ENTITY : COLOR_RED_ENTITY;
   }
@@ -510,7 +451,7 @@ public class DebugRenderer {
       float y = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
       // Small circle for projectile
-      shapeRenderer.circle(x, y, 4);
+      shapeRenderer.circle(x, y, PROJECTILE_RADIUS);
     }
 
     shapeRenderer.end();
@@ -527,20 +468,19 @@ public class DebugRenderer {
       float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float radius = entity.getVisualRadius() * TILE_PIXELS;
 
-      float barWidth = Math.max(radius * 2, 20);
-      float barHeight = 4;
-      float barY = y + radius + 4;
+      float barWidth = Math.max(radius * 2, HEALTH_BAR_MIN_WIDTH);
+      float barY = y + radius + HEALTH_BAR_Y_OFFSET;
 
       // Background
       shapeRenderer.setColor(COLOR_HEALTH_BG);
-      shapeRenderer.rect(x - barWidth / 2, barY, barWidth, barHeight);
+      shapeRenderer.rect(x - barWidth / 2, barY, barWidth, HEALTH_BAR_HEIGHT);
 
       // Health fill
-      Color healthColor = healthPercent > 0.6f ? COLOR_HEALTH_GREEN
-          : healthPercent > 0.3f ? COLOR_HEALTH_YELLOW
+      Color healthColor = healthPercent > HEALTH_THRESHOLD_HIGH ? COLOR_HEALTH_GREEN
+          : healthPercent > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW
               : COLOR_HEALTH_RED;
       shapeRenderer.setColor(healthColor);
-      shapeRenderer.rect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+      shapeRenderer.rect(x - barWidth / 2, barY, barWidth * healthPercent, HEALTH_BAR_HEIGHT);
     }
 
     shapeRenderer.end();
@@ -625,8 +565,8 @@ public class DebugRenderer {
     // Screen Center Text (Timer, State)
     spriteBatch.begin();
     font.getData().setScale(1.2f);
-    glpyhLayout.setText(font, timeText);
-    font.draw(spriteBatch, timeText, (screenWidth - glpyhLayout.width) / 2, screenHeight - 10);
+    glyphLayout.setText(font, timeText);
+    font.draw(spriteBatch, timeText, (screenWidth - glyphLayout.width) / 2, screenHeight - 10);
 
     font.getData().setScale(1.0f);
     String entityCount = "Entities: " + engine.getGameState().getAliveEntities().size();
@@ -636,8 +576,8 @@ public class DebugRenderer {
       Team winner = engine.getGameState().getWinner();
       String winText = winner != null ? winner + " WINS!" : "DRAW!";
       font.getData().setScale(2.0f);
-      glpyhLayout.setText(font, winText);
-      font.draw(spriteBatch, winText, (screenWidth - glpyhLayout.width) / 2, screenHeight / 2);
+      glyphLayout.setText(font, winText);
+      font.draw(spriteBatch, winText, (screenWidth - glyphLayout.width) / 2, screenHeight / 2);
       font.getData().setScale(1.0f);
     }
 
@@ -654,61 +594,54 @@ public class DebugRenderer {
   }
 
   private void renderPlayerHUD(Player player, boolean isTop, float yPos, float width) {
-    float cardWidth = 60;
-    float cardHeight = 80;
-    float spacing = 10;
-    float handWidth = (cardWidth * 4) + (spacing * 3);
+    float handWidth = (CARD_WIDTH * HAND_SIZE) + (CARD_SPACING * (HAND_SIZE - 1));
     float startX = (width - handWidth) / 2;
-    float cardY = isTop ? yPos + 30 : yPos + 30; // Adjust for margins
+    float cardY = isTop ? yPos + 30 : yPos + 30;
 
     // 1. Draw Elixir Bar
     float elixir = player.getElixir().getCurrent();
-    float maxElixir = 10f;
-    float barWidth = 250;
-    float barHeight = 15;
-    float barX = (width - barWidth) / 2;
-    float barY = isTop ? yPos + 10 : yPos + 115; // Bottom for top player, top for bottom player
+    float barX = (width - ELIXIR_BAR_WIDTH) / 2;
+    float barY = isTop ? yPos + 10 : yPos + 115;
 
     shapeRenderer.begin(ShapeType.Filled);
     // Bar Background
     shapeRenderer.setColor(COLOR_ELIXIR_BG);
-    shapeRenderer.rect(barX, barY, barWidth, barHeight);
+    shapeRenderer.rect(barX, barY, ELIXIR_BAR_WIDTH, ELIXIR_BAR_HEIGHT);
     // Elixir Fill
     shapeRenderer.setColor(COLOR_ELIXIR);
-    shapeRenderer.rect(barX, barY, barWidth * (elixir / maxElixir), barHeight);
+    shapeRenderer.rect(barX, barY, ELIXIR_BAR_WIDTH * (elixir / MAX_ELIXIR), ELIXIR_BAR_HEIGHT);
     shapeRenderer.end();
 
     // Elixir Text
     spriteBatch.begin();
     String elixirText = String.format("%d / 10", player.getElixir().getFloor());
-    glpyhLayout.setText(font, elixirText);
+    glyphLayout.setText(font, elixirText);
 
     // Draw text centered within the bar
-    float textX = barX + (barWidth - glpyhLayout.width) / 2;
-    float textY = barY + (barHeight + glpyhLayout.height) / 2;
+    float textX = barX + (ELIXIR_BAR_WIDTH - glyphLayout.width) / 2;
+    float textY = barY + (ELIXIR_BAR_HEIGHT + glyphLayout.height) / 2;
 
     font.draw(spriteBatch, elixirText, textX, textY);
     spriteBatch.end();
 
     // 2. Draw Hand
     Hand hand = player.getHand();
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < HAND_SIZE; i++) {
       Card card = hand.getCard(i);
-      float cardX = startX + i * (cardWidth + spacing);
+      float cardX = startX + i * (CARD_WIDTH + CARD_SPACING);
       boolean isSelected = i == selectedHandIndex && player.getTeam() == selectedTeam;
-      renderCard(card, cardX, cardY, cardWidth, cardHeight, isSelected);
+      renderCard(card, cardX, cardY, CARD_WIDTH, CARD_HEIGHT, isSelected);
     }
 
     // 3. Draw Next Card
     Card nextCard = hand.getNextCard();
-    // Position to the RIGHT of the hand
-    float nextX = startX + handWidth + spacing * 2;
+    float nextX = startX + handWidth + CARD_SPACING * 2;
 
-    renderCard(nextCard, nextX, cardY + 10, cardWidth * 0.8f, cardHeight * 0.8f, false);
+    renderCard(nextCard, nextX, cardY + 10, CARD_WIDTH * 0.8f, CARD_HEIGHT * 0.8f, false);
 
     // Label for Next
     spriteBatch.begin();
-    font.draw(spriteBatch, "Next", nextX, cardY + cardHeight);
+    font.draw(spriteBatch, "Next", nextX, cardY + CARD_HEIGHT);
     spriteBatch.end();
   }
 
@@ -746,15 +679,15 @@ public class DebugRenderer {
 
     // Name (Center, Wrapped)
     font.setColor(Color.WHITE);
-    font.getData().setScale(0.7f);
+    font.getData().setScale(ENTITY_NAME_FONT_SCALE);
     // Simple wrapping logic or truncation
     String name = card.getName();
     if (name.length() > 8) {
       name = name.substring(0, 8) + "..";
     }
 
-    glpyhLayout.setText(font, name);
-    font.draw(spriteBatch, name, x + (w - glpyhLayout.width) / 2, y + h / 2);
+    glyphLayout.setText(font, name);
+    font.draw(spriteBatch, name, x + (w - glyphLayout.width) / 2, y + h / 2);
 
     font.getData().setScale(1.0f); // Reset
     spriteBatch.end();
