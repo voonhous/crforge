@@ -128,13 +128,6 @@ public class Combat {
   }
 
   /**
-   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
-   */
-  public void setCombatDisabled(boolean disabled) {
-    setCombatDisabled(ModifierSource.STATUS_EFFECT, disabled);
-  }
-
-  /**
    * Returns true if any source has disabled combat.
    */
   public boolean isCombatDisabled() {
@@ -150,13 +143,6 @@ public class Combat {
     } else {
       attackSpeedMultipliers.put(source, multiplier);
     }
-  }
-
-  /**
-   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
-   */
-  public void setAttackSpeedMultiplier(float multiplier) {
-    setAttackSpeedMultiplier(ModifierSource.STATUS_EFFECT, multiplier);
   }
 
   /**
