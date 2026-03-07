@@ -4,12 +4,12 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.combat.DamageUtil;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
-import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 
 /**
@@ -84,7 +84,7 @@ public class AreaEffectSystem {
 
         // Apply damage with crown tower modifier
         if (damage > 0) {
-          int effectiveDamage = adjustForCrownTower(damage, target, stats.getCrownTowerDamagePercent());
+          int effectiveDamage = DamageUtil.adjustForCrownTower(damage, target, stats.getCrownTowerDamagePercent());
           target.getHealth().takeDamage(effectiveDamage);
         }
       }
@@ -115,10 +115,4 @@ public class AreaEffectSystem {
     target.addEffect(new AppliedEffect(effectType, duration, 0f));
   }
 
-  private int adjustForCrownTower(int baseDamage, Entity target, int crownTowerDamagePercent) {
-    if (crownTowerDamagePercent == 0 || !(target instanceof Tower)) {
-      return baseDamage;
-    }
-    return Math.max(1, baseDamage * (100 + crownTowerDamagePercent) / 100);
-  }
 }
