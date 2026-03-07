@@ -488,29 +488,8 @@ public class CombatSystem {
     if (primaryTarget == null) {
       return;
     }
-
-    Team enemyTeam = source.getTeam().opposite();
-    float centerX = primaryTarget.getPosition().getX();
-    float centerY = primaryTarget.getPosition().getY();
-
-    for (Entity entity : gameState.getAliveEntities()) {
-      if (entity.getTeam() != enemyTeam) {
-        continue;
-      }
-      if (!entity.isTargetable()) {
-        continue;
-      }
-
-      float distance = entity.getPosition().distanceTo(centerX, centerY);
-
-      // Use Collision Radius for AOE check
-      float effectiveRadius = radius + entity.getCollisionRadius();
-      if (distance <= effectiveRadius) {
-        // Apply effects BEFORE damage
-        applyEffects(entity, effects);
-        dealDamage(entity, damage);
-      }
-    }
+    applySpellDamage(source.getTeam(), primaryTarget.getPosition().getX(),
+        primaryTarget.getPosition().getY(), damage, radius, effects);
   }
 
   /**
