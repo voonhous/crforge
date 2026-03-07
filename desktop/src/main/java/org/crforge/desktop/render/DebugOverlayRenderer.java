@@ -16,6 +16,7 @@ import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffect;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 
 /**
@@ -122,6 +123,53 @@ public class DebugOverlayRenderer {
           ctx.getSpriteBatch(), entity.getName(), x - textWidth / 2, textY);
     }
     ctx.getSpriteBatch().end();
+  }
+
+  /**
+   * Render radial (pie) countdown timers on deploying entities.
+   * The arc sweeps from full circle down to nothing as deploy completes.
+   */
+  public void renderDeployTimers(GameState state) {
+    boolean hasAny = false;
+    for (Entity entity : state.getAliveEntities()) {
+      if ((entity instanceof Troop troop && troop.isDeploying())
+          || (entity instanceof Building building && building.isDeploying())) {
+        hasAny = true;
+        break;
+      }
+    }
+    if (!hasAny) {
+      return;
+    }
+
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    ctx.getShapeRenderer().begin(ShapeType.Filled);
+    ctx.getShapeRenderer().setColor(COLOR_DEPLOY_TIMER);
+
+    for (Entity entity : state.getAliveEntities()) {
+      float deployTimer;
+      float deployTime;
+
+      if (entity instanceof Troop troop && troop.isDeploying()) {
+        deployTimer = troop.getDeployTimer();
+        deployTime = troop.getDeployTime();
+      } else if (entity instanceof Building building && building.isDeploying()) {
+        deployTimer = building.getDeployTimer();
+        deployTime = building.getDeployTime();
+      } else {
+        continue;
+      }
+
+      float progress = deployTime > 0 ? deployTimer / deployTime : 0f;
+      float x = entity.getPosition().getX() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float radius = entity.getVisualRadius() * TILE_PIXELS;
+
+      // Arc starts at 90 degrees (top) and sweeps clockwise by progress * 360
+      ctx.getShapeRenderer().arc(x, y, radius, 90, progress * 360, CIRCLE_SEGMENTS);
+    }
+
+    ctx.getShapeRenderer().end();
   }
 
   // ---- New Feature Visualizations ----
