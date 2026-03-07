@@ -87,11 +87,14 @@ public class Combat {
   @Builder.Default
   private boolean isAttacking = false;
 
+  // Units with range >= this threshold use projectile attacks instead of melee
+  private static final float RANGED_THRESHOLD = 2.0f;
+
   /**
    * Returns true if the unit is considered ranged (Range >= 2.0 tiles).
    */
   public boolean isRanged() {
-    return range >= 2.0f;
+    return range >= RANGED_THRESHOLD;
   }
 
   public boolean hasTarget() {
