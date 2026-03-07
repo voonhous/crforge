@@ -137,11 +137,11 @@ public class DebugGameScreen implements Screen {
           case Input.Keys.R -> resetMatch();
           case Input.Keys.P -> {
             renderer.toggleDrawPaths();
-            System.out.println("Path visualization: " + (renderer.isDrawPaths() ? "ON" : "OFF"));
+            log.info("Path visualization: {}", renderer.isDrawPaths() ? "ON" : "OFF");
           }
           case Input.Keys.O -> {
             renderer.toggleDrawRanges();
-            System.out.println("Range circles: " + (renderer.isDrawRanges() ? "ON" : "OFF"));
+            log.info("Range circles: {}", renderer.isDrawRanges() ? "ON" : "OFF");
           }
           case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
           case Input.Keys.MINUS -> adjustSpeed(0.5f);
@@ -238,20 +238,20 @@ public class DebugGameScreen implements Screen {
       boolean canAfford = selectedPlayer.getElixir().has(card.getCost());
 
       if (!validPlacement) {
-        System.out.printf("[%.1fs] Invalid placement for %s at (%.1f, %.1f)%n",
+        log.warn("[{}s] Invalid placement for {} at ({}, {})",
             engine.getGameTimeSeconds(), card.getName(), playX, playY);
         return;
       }
 
       if (!canAfford) {
-        System.out.printf("[%.1fs] Not enough elixir for %s (cost %d, have %d)%n",
+        log.warn("[{}s] Not enough elixir for {} (cost {}, have {})",
             engine.getGameTimeSeconds(), card.getName(), card.getCost(),
             selectedPlayer.getElixir().getFloor());
         return;
       }
 
       engine.queueAction(selectedPlayer, action);
-      System.out.printf("[%.1fs] %s played %s at (%.1f, %.1f)%n",
+      log.info("[{}s] {} played {} at ({}, {})",
           engine.getGameTimeSeconds(), selectedPlayer.getTeam(), card.getName(), playX, playY);
 
       // Deselect after successful play (matches real CR)
@@ -274,21 +274,21 @@ public class DebugGameScreen implements Screen {
 
     Card c = player.getHand().getCard(index);
     if (c != null) {
-      System.out.printf("[%.1fs] Selected (%s): %s (cost %d)%n",
+      log.info("[{}s] Selected ({}): {} (cost {})",
           engine.getGameTimeSeconds(), player.getTeam(), c.getName(), c.getCost());
     }
   }
 
   private void adjustSpeed(float factor) {
     simSpeed = Math.max(SIM_SPEED_MIN, Math.min(SIM_SPEED_MAX, simSpeed * factor));
-    System.out.printf("Simulation speed: %.2fx%n", simSpeed);
+    log.info("Simulation speed: {}x", simSpeed);
   }
 
   private void resetMatch() {
     engine.getGameState().reset();
     setupMatch();
     paused = false;
-    System.out.println("Match reset");
+    log.info("Match reset");
   }
 
   @Override
@@ -316,9 +316,6 @@ public class DebugGameScreen implements Screen {
       renderer.render(engine, camera, hoverTileX, hoverTileY, selectedHandIndex, selTeam);
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
-      // Always print to stderr so the error is visible even without SLF4J backend
-      System.err.println("CRASH during game loop!");
-      e.printStackTrace(System.err);
       paused = true;
       Gdx.app.exit();
     }
@@ -340,17 +337,17 @@ public class DebugGameScreen implements Screen {
 
   @Override
   public void show() {
-    System.out.println("=== CRForge Debug Visualizer ===");
-    System.out.println("Controls:");
-    System.out.println("  SPACE - Pause/Resume");
-    System.out.println("  R     - Reset match");
-    System.out.println("  P     - Toggle path visualization");
-    System.out.println("  O     - Toggle attack range circles");
-    System.out.println("  +/-   - Speed up/slow down");
-    System.out.println("  1-4   - Play blue card");
-    System.out.println("  5-8   - Play red card");
-    System.out.println("  Click - Deploy at position");
-    System.out.println("================================");
+    log.info("=== CRForge Debug Visualizer ===\n"
+        + "Controls:\n"
+        + "  SPACE - Pause/Resume\n"
+        + "  R     - Reset match\n"
+        + "  P     - Toggle path visualization\n"
+        + "  O     - Toggle attack range circles\n"
+        + "  +/-   - Speed up/slow down\n"
+        + "  1-4   - Play blue card\n"
+        + "  5-8   - Play red card\n"
+        + "  Click - Deploy at position\n"
+        + "================================");
   }
 
   @Override

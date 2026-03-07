@@ -144,7 +144,6 @@ class PlayerDeploymentIntegrationTest {
 
     // Ensure we actually found Goblins to run the test
     if (goblinsSlot == -1) {
-      System.out.println("Skipping test: Goblins not in initial hand");
       return;
     }
 
