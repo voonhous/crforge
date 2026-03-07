@@ -2,6 +2,7 @@ package org.crforge.core.ability;
 
 import java.util.List;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -54,26 +55,27 @@ public class AbilitySystem {
       return;
     }
 
-    boolean hasTarget = combat.hasTarget();
+    // Charge builds from continuous uninterrupted movement:
+    // - No target required, just needs to be moving
+    // - Attacking, stuns, knockbacks, freezes all stop movement and reset charge
+    // - Once charged, first attack deals bonus damage, then charge resets
     boolean isAttacking = combat.isAttacking();
+    boolean isMoving = troop.getMovement().getEffectiveSpeed() > 0 && !isAttacking;
 
-    // Charge only builds while moving toward target (has target, not yet attacking)
-    if (hasTarget && !isAttacking) {
+    if (isMoving) {
+      // Build charge while moving
       ability.setChargeTimer(ability.getChargeTimer() + deltaTime);
 
       if (!ability.isCharged() && ability.getChargeTimer() >= ability.getChargeTime()) {
         ability.setCharged(true);
-        // Apply speed multiplier
-        troop.getMovement().setSpeedMultiplier(ability.getData().getSpeedMultiplier());
+        // Apply speed multiplier via ABILITY_CHARGE source
+        troop.getMovement().setSpeedMultiplier(
+            ModifierSource.ABILITY_CHARGE, ability.getData().getSpeedMultiplier());
       }
-    }
-
-    // If no target, reset charge
-    if (!hasTarget) {
-      if (ability.isCharged() || ability.getChargeTimer() > 0) {
-        ability.reset();
-        troop.getMovement().setSpeedMultiplier(1.0f);
-      }
+    } else if (!ability.isCharged() && ability.getChargeTimer() > 0) {
+      // Stopped moving before fully charged -- charge is lost, restart from zero
+      ability.reset();
+      troop.getMovement().clearModifiers(ModifierSource.ABILITY_CHARGE);
     }
   }
 
@@ -96,7 +98,7 @@ public class AbilitySystem {
     AbilityComponent ability = troop.getAbility();
     if (ability != null && ability.getData().getType() == AbilityType.CHARGE) {
       ability.reset();
-      troop.getMovement().setSpeedMultiplier(1.0f);
+      troop.getMovement().clearModifiers(ModifierSource.ABILITY_CHARGE);
     }
   }
 
@@ -170,9 +172,9 @@ public class AbilitySystem {
           ability.setDashTargetY(target.getPosition().getY());
           // Immune during dash
           troop.setInvulnerable(true);
-          // Disable normal combat during dash
+          // Disable normal combat during dash (set once, survives StatusEffectSystem)
           if (combat != null) {
-            combat.setCombatDisabled(true);
+            combat.setCombatDisabled(ModifierSource.ABILITY_DASH, true);
           }
         }
       }
@@ -211,11 +213,11 @@ public class AbilitySystem {
         float landTime = data.getDashLandingTime() > 0 ? data.getDashLandingTime() : 0.2f;
 
         if (ability.getDashTimer() >= landTime) {
-          // Done landing, back to idle
+          // Done landing, back to idle -- clear ABILITY_DASH source
           ability.setDashState(AbilityComponent.DashState.IDLE);
           ability.setDashCooldownTimer(data.getDashCooldown());
           if (combat != null) {
-            combat.setCombatDisabled(false);
+            combat.clearModifiers(ModifierSource.ABILITY_DASH);
           }
         }
       }
@@ -274,18 +276,15 @@ public class AbilitySystem {
           ability.setHookState(AbilityComponent.HookState.WINDING_UP);
           ability.setHookTimer(0f);
           ability.setHookedTargetId(target.getId());
+          // Set once -- source-tracked, won't be trampled by StatusEffectSystem
           if (combat != null) {
-            combat.setCombatDisabled(true);
+            combat.setCombatDisabled(ModifierSource.ABILITY_HOOK, true);
           }
-          // Fisherman stops moving while hooking
-          troop.getMovement().setMovementDisabled(true);
+          troop.getMovement().setMovementDisabled(ModifierSource.ABILITY_HOOK, true);
         }
       }
       case WINDING_UP -> {
-        // Re-assert every tick because StatusEffectSystem resets these flags each tick
-        troop.getMovement().setMovementDisabled(true);
-        combat.setCombatDisabled(true);
-
+        // No re-assert needed -- ABILITY_HOOK source persists across StatusEffectSystem resets
         ability.setHookTimer(ability.getHookTimer() + deltaTime);
         if (ability.getHookTimer() >= data.getHookLoadTime()) {
           Entity target = findEntityById(ability.getHookedTargetId());
@@ -303,9 +302,7 @@ public class AbilitySystem {
         }
       }
       case PULLING -> {
-        // Re-assert every tick because StatusEffectSystem resets these flags each tick
-        troop.getMovement().setMovementDisabled(true);
-        combat.setCombatDisabled(true);
+        // No re-assert needed -- ABILITY_HOOK source persists across StatusEffectSystem resets
 
         // Pull target toward the fisherman
         Entity target = findEntityById(ability.getHookedTargetId());
@@ -335,9 +332,7 @@ public class AbilitySystem {
         }
       }
       case DRAGGING_SELF -> {
-        // Re-assert every tick because StatusEffectSystem resets these flags each tick
-        troop.getMovement().setMovementDisabled(true);
-        combat.setCombatDisabled(true);
+        // No re-assert needed -- ABILITY_HOOK source persists across StatusEffectSystem resets
 
         // Fisherman pulls self toward the hooked target
         Entity target = findEntityById(ability.getHookedTargetId());
@@ -372,12 +367,12 @@ public class AbilitySystem {
     ability.setHookState(AbilityComponent.HookState.IDLE);
     ability.setHookTimer(0f);
     ability.setHookedTargetId(-1);
+    // Clear ABILITY_HOOK source from both components
     Combat combat = troop.getCombat();
     if (combat != null) {
-      combat.setCombatDisabled(false);
+      combat.clearModifiers(ModifierSource.ABILITY_HOOK);
     }
-    // Re-enable movement after hook sequence ends
-    troop.getMovement().setMovementDisabled(false);
+    troop.getMovement().clearModifiers(ModifierSource.ABILITY_HOOK);
   }
 
   private Entity findEntityById(long id) {
