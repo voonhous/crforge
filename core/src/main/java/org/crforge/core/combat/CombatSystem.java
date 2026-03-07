@@ -141,35 +141,11 @@ public class CombatSystem {
     }
 
     if (combat.isRanged()) {
-      ProjectileStats stats = combat.getProjectileStats();
-
-      float speed = (stats != null) ? stats.getSpeed() : 0;
-      float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
-      List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
-      StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
-      float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
-
-      // Use buff-on-damage as targetBuff if no projectile-level buff is set
-      if (targetBuff == null && combat.getBuffOnDamage() != null) {
-        targetBuff = combat.getBuffOnDamage().getType();
-        buffDuration = combat.getBuffOnDamage().getDuration();
-      }
-
-      Projectile projectile = new Projectile(
-          attacker, target, baseDamage, aoeRadius, speed, effects, targetBuff, buffDuration,
-          combat.getCrownTowerDamagePercent());
-
-      // Wire advanced projectile features from stats
-      if (stats != null) {
-        projectile.setChainedHitRadius(stats.getChainedHitRadius());
-        projectile.setChainedHitCount(stats.getChainedHitCount());
-        projectile.setSpawnProjectile(stats.getSpawnProjectile());
-      }
-
+      Projectile projectile = createAttackProjectile(attacker, target, baseDamage, combat);
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack, deal damage immediately
-      int effectiveDamage = adjustForCrownTower(baseDamage, target,
+      int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, target,
           combat.getCrownTowerDamagePercent());
 
       if (combat.getAoeRadius() > 0) {
@@ -235,22 +211,10 @@ public class CombatSystem {
       int baseDamage = combat.getDamage();
 
       if (combat.isRanged()) {
-        ProjectileStats stats = combat.getProjectileStats();
-        float speed = (stats != null) ? stats.getSpeed() : 0;
-        float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
-        List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
-        StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
-        float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
-        if (targetBuff == null && combat.getBuffOnDamage() != null) {
-          targetBuff = combat.getBuffOnDamage().getType();
-          buffDuration = combat.getBuffOnDamage().getDuration();
-        }
-        Projectile projectile = new Projectile(
-            attacker, extraTarget, baseDamage, aoeRadius, speed, effects, targetBuff, buffDuration,
-            combat.getCrownTowerDamagePercent());
+        Projectile projectile = createAttackProjectile(attacker, extraTarget, baseDamage, combat);
         gameState.spawnProjectile(projectile);
       } else {
-        int effectiveDamage = adjustForCrownTower(baseDamage, extraTarget,
+        int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, extraTarget,
             combat.getCrownTowerDamagePercent());
         applyEffects(extraTarget, combat.getHitEffects());
         dealDamage(extraTarget, effectiveDamage);
@@ -269,7 +233,7 @@ public class CombatSystem {
 
   private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
     AbilityData data = reflector.getAbility().getData();
-    int effectiveDamage = adjustForCrownTower(reflectDamage, attacker,
+    int effectiveDamage = DamageUtil.adjustForCrownTower(reflectDamage, attacker,
         data.getReflectCrownTowerDamagePercent());
     dealDamage(attacker, effectiveDamage);
 
@@ -315,7 +279,7 @@ public class CombatSystem {
           projectile.getAoeRadius(),
           projectile.getEffects());
     } else {
-      int effectiveDamage = adjustForCrownTower(baseDamage, projectile.getTarget(), ctdp);
+      int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, projectile.getTarget(), ctdp);
       // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
       applyEffects(projectile.getTarget(), projectile.getEffects());
       dealDamage(projectile.getTarget(), effectiveDamage);
@@ -448,15 +412,37 @@ public class CombatSystem {
   }
 
   /**
-   * Adjusts damage for crown tower damage reduction. Units like Miner deal reduced damage to Towers.
-   * Formula: effectiveDamage = baseDamage * (100 + crownTowerDamagePercent) / 100
-   * Example: crownTowerDamagePercent = -75 means 25% damage to towers.
+   * Creates a projectile for a ranged attack, resolving stats from the combat component's
+   * ProjectileStats with fallback to combat-level values.
    */
-  private int adjustForCrownTower(int baseDamage, Entity target, int crownTowerDamagePercent) {
-    if (crownTowerDamagePercent == 0 || !(target instanceof Tower)) {
-      return baseDamage;
+  private Projectile createAttackProjectile(Entity attacker, Entity target, int damage,
+      Combat combat) {
+    ProjectileStats stats = combat.getProjectileStats();
+
+    float speed = (stats != null) ? stats.getSpeed() : 0;
+    float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
+    List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
+    StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
+    float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
+
+    // Use buff-on-damage as targetBuff if no projectile-level buff is set
+    if (targetBuff == null && combat.getBuffOnDamage() != null) {
+      targetBuff = combat.getBuffOnDamage().getType();
+      buffDuration = combat.getBuffOnDamage().getDuration();
     }
-    return Math.max(1, baseDamage * (100 + crownTowerDamagePercent) / 100);
+
+    Projectile projectile = new Projectile(
+        attacker, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration,
+        combat.getCrownTowerDamagePercent());
+
+    // Wire advanced projectile features from stats
+    if (stats != null) {
+      projectile.setChainedHitRadius(stats.getChainedHitRadius());
+      projectile.setChainedHitCount(stats.getChainedHitCount());
+      projectile.setSpawnProjectile(stats.getSpawnProjectile());
+    }
+
+    return projectile;
   }
 
   private void dealDamage(Entity target, int damage) {
