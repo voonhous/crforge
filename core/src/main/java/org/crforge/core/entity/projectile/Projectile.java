@@ -40,6 +40,11 @@ public class Projectile {
   private final float buffDuration;
 
   /**
+   * Original buff name for data-driven multiplier resolution (e.g. "IceWizardCold").
+   */
+  private final String targetBuffName;
+
+  /**
    * Damage reduction percentage when hitting a Crown Tower. 0 = full damage, -75 = 25% damage.
    * Formula: effectiveDamage = baseDamage * (100 + crownTowerDamagePercent) / 100
    */
@@ -69,12 +74,12 @@ public class Projectile {
   private boolean hit;
 
   /**
-   * Entity-targeted projectile (ranged unit attacks) with optional targetBuff and crown tower
-   * damage modifier.
+   * Entity-targeted projectile (ranged unit attacks) with optional targetBuff, crown tower
+   * damage modifier, and buff name for data-driven multiplier resolution.
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
       List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration,
-      int crownTowerDamagePercent) {
+      int crownTowerDamagePercent, String targetBuffName) {
     this.id = nextId++;
     this.source = source;
     this.target = target;
@@ -86,6 +91,7 @@ public class Projectile {
     this.effects = effects != null ? effects : Collections.emptyList();
     this.targetBuff = targetBuff;
     this.buffDuration = buffDuration;
+    this.targetBuffName = targetBuffName;
     this.crownTowerDamagePercent = crownTowerDamagePercent;
     this.targetX = 0;
     this.targetY = 0;
@@ -98,11 +104,21 @@ public class Projectile {
   }
 
   /**
+   * Entity-targeted projectile with optional targetBuff and crown tower modifier (legacy, no buff name).
+   */
+  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
+      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration,
+      int crownTowerDamagePercent) {
+    this(source, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration,
+        crownTowerDamagePercent, null);
+  }
+
+  /**
    * Entity-targeted projectile with targetBuff but no crown tower modifier (convenience).
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
       List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration) {
-    this(source, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration, 0);
+    this(source, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration, 0, null);
   }
 
   /**
@@ -110,7 +126,7 @@ public class Projectile {
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
       List<EffectStats> effects) {
-    this(source, target, damage, aoeRadius, speed, effects, null, 0f, 0);
+    this(source, target, damage, aoeRadius, speed, effects, null, 0f, 0, null);
   }
 
   /**
@@ -129,6 +145,7 @@ public class Projectile {
     this.effects = effects != null ? effects : Collections.emptyList();
     this.targetBuff = null;
     this.buffDuration = 0f;
+    this.targetBuffName = null;
     this.crownTowerDamagePercent = 0;
     this.targetX = destX;
     this.targetY = destY;

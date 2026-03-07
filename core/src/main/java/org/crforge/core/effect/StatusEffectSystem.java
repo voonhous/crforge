@@ -38,18 +38,39 @@ public class StatusEffectSystem {
     boolean isStunned = false;
 
     for (AppliedEffect effect : effects) {
-      switch (effect.getType()) {
-        case STUN:
-        case FREEZE:
+      // STUN/FREEZE always stun regardless of buff definition
+      if (effect.getType() == StatusEffectType.STUN || effect.getType() == StatusEffectType.FREEZE) {
+        isStunned = true;
+        continue;
+      }
+
+      // Data-driven path: use BuffDefinition multipliers if available
+      BuffDefinition buffDef = effect.getBuffDefinition();
+      if (buffDef != null) {
+        float speedMult = buffDef.computeSpeedMultiplier();
+        float hitSpeedMult = buffDef.computeHitSpeedMultiplier();
+        moveSpeedMult *= speedMult;
+        attackSpeedMult *= hitSpeedMult;
+        // If computed multiplier is zero or negative, treat as stun (e.g. Freeze buff)
+        if (speedMult <= 0f || hitSpeedMult <= 0f) {
           isStunned = true;
-          break;
+        }
+        continue;
+      }
+
+      // Legacy fallback: use intensity-based calculation for effects without BuffDefinition
+      switch (effect.getType()) {
         case SLOW:
+        case POISON:
+        case EARTHQUAKE:
           moveSpeedMult *= (1.0f - effect.getIntensity());
           attackSpeedMult *= (1.0f - effect.getIntensity());
           break;
         case RAGE:
           moveSpeedMult *= (1.0f + effect.getIntensity());
           attackSpeedMult *= (1.0f + effect.getIntensity());
+          break;
+        default:
           break;
       }
     }

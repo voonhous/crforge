@@ -250,6 +250,7 @@ public class CardLoader {
         builder.buffOnDamage(EffectStats.builder()
             .type(buffType)
             .duration(buffOnDmg.getDuration())
+            .buffName(buffOnDmg.getBuff())
             .build());
       }
     }
@@ -332,6 +333,7 @@ public class CardLoader {
         builder.reflectBuff(StatusEffectType.fromBuffName(dto.getBuff()));
         builder.reflectBuffDuration(dto.getBuffDuration());
         builder.reflectCrownTowerDamagePercent(dto.getCrownTowerDamagePercent());
+        builder.reflectBuffName(dto.getBuff());
       }
     }
 
@@ -355,6 +357,7 @@ public class CardLoader {
         .hitEffects(convertEffects(dto.getHitEffects()))
         .targetBuff(StatusEffectType.fromBuffName(dto.getTargetBuff()))
         .buffDuration(dto.getBuffDuration())
+        .buffName(dto.getTargetBuff())
         .chainedHitRadius(dto.getChainedHitRadius())
         .chainedHitCount(dto.getChainedHitCount())
         .projectileRange(dto.getProjectileRange());

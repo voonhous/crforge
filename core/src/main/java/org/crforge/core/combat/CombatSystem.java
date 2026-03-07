@@ -228,7 +228,7 @@ public class CombatSystem {
     if (buff == null || !target.isAlive()) {
       return;
     }
-    target.addEffect(new AppliedEffect(buff.getType(), buff.getDuration(), buff.getIntensity()));
+    target.addEffect(new AppliedEffect(buff.getType(), buff.getDuration(), buff.getBuffName()));
   }
 
   private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
@@ -240,7 +240,7 @@ public class CombatSystem {
     // Apply reflect buff (e.g. ZapFreeze stun) to attacker
     if (data.getReflectBuff() != null && data.getReflectBuffDuration() > 0) {
       attacker.addEffect(new AppliedEffect(
-          data.getReflectBuff(), data.getReflectBuffDuration(), 0f));
+          data.getReflectBuff(), data.getReflectBuffDuration(), data.getReflectBuffName()));
     }
   }
 
@@ -311,8 +311,7 @@ public class CombatSystem {
     AppliedEffect effect = new AppliedEffect(
         projectile.getTargetBuff(),
         projectile.getBuffDuration(),
-        0f, // no intensity modifier for targetBuff
-        null
+        projectile.getTargetBuffName()
     );
     projectile.getTarget().addEffect(effect);
 
@@ -367,7 +366,7 @@ public class CombatSystem {
           projectile.getDamage(), 0, projectile.getProjectileSpeed(),
           projectile.getEffects(),
           projectile.getTargetBuff(), projectile.getBuffDuration(),
-          projectile.getCrownTowerDamagePercent());
+          projectile.getCrownTowerDamagePercent(), projectile.getTargetBuffName());
       gameState.spawnProjectile(chain);
     }
   }
@@ -424,16 +423,18 @@ public class CombatSystem {
     List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
     StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
     float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
+    String targetBuffName = (stats != null) ? stats.getBuffName() : null;
 
     // Use buff-on-damage as targetBuff if no projectile-level buff is set
     if (targetBuff == null && combat.getBuffOnDamage() != null) {
       targetBuff = combat.getBuffOnDamage().getType();
       buffDuration = combat.getBuffOnDamage().getDuration();
+      targetBuffName = combat.getBuffOnDamage().getBuffName();
     }
 
     Projectile projectile = new Projectile(
         attacker, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration,
-        combat.getCrownTowerDamagePercent());
+        combat.getCrownTowerDamagePercent(), targetBuffName);
 
     // Wire advanced projectile features from stats
     if (stats != null) {

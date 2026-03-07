@@ -16,6 +16,8 @@ import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -411,6 +413,29 @@ public class DeploymentSystem {
     int scaledDamage = stats.getDamage() > 0
         ? LevelScaling.scaleCard(stats.getDamage(), rarity, level)
         : 0;
+    int resolvedCtdp = stats.getCrownTowerDamagePercent();
+    int buildingDmgPct = 0;
+
+    // Resolve values from BuffDefinition if the area effect has a buff
+    BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
+    if (buffDef != null) {
+      // If area effect has no damage but buff defines DPS, compute base damage per tick
+      if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
+        float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
+        int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
+        scaledDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
+      }
+
+      // Resolve crown tower damage percent from buff if not set on stats
+      if (resolvedCtdp == 0 && buffDef.getCrownTowerDamagePercent() != 0) {
+        resolvedCtdp = buffDef.getCrownTowerDamagePercent();
+      }
+
+      // Resolve building damage percent from buff (e.g. Earthquake)
+      if (buffDef.getBuildingDamagePercent() != 0) {
+        buildingDmgPct = buffDef.getBuildingDamagePercent();
+      }
+    }
 
     AreaEffect effect = AreaEffect.builder()
         .name(stats.getName())
@@ -418,6 +443,8 @@ public class DeploymentSystem {
         .position(new Position(x, y))
         .stats(stats)
         .scaledDamage(scaledDamage)
+        .resolvedCrownTowerDamagePercent(resolvedCtdp)
+        .buildingDamagePercent(buildingDmgPct)
         .remainingLifetime(stats.getLifeDuration())
         .build();
 

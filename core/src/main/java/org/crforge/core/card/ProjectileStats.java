@@ -37,6 +37,12 @@ public class ProjectileStats {
   @Builder.Default
   private final float buffDuration = 0f;
 
+  /**
+   * Original buff name from parsed data (e.g. "IceWizardCold", "ZapFreeze").
+   * Used to look up BuffDefinition for data-driven multiplier resolution.
+   */
+  private final String buffName;
+
   // Chain lightning: after primary hit, chain to N more targets within radius
   @Builder.Default
   private final float chainedHitRadius = 0f;
