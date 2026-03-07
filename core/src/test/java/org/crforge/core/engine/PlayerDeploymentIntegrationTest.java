@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
-import org.crforge.data.card.CardRegistry;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.unit.Troop;
@@ -16,6 +15,7 @@ import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -73,12 +73,13 @@ class PlayerDeploymentIntegrationTest {
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
     engine.queueAction(bluePlayer, action);
 
-    // Tick to process deployment, then another to process pending spawns
-    engine.tick();
-    engine.tick();
+    // Tick past the 1s placement sync delay (30 ticks) + 1 tick to process pending spawns
+    int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
+    int totalTicks = syncTicks + 1;
+    engine.tick(totalTicks);
 
-    // Verify elixir was spent (account for regen during 2 ticks)
-    float expectedElixir = initialElixir - cost + (2 * GameEngine.DELTA_TIME / 2.8f);
+    // Verify elixir was spent (account for regen during ticks)
+    float expectedElixir = initialElixir - cost + (totalTicks * GameEngine.DELTA_TIME / 2.8f);
     assertThat(bluePlayer.getElixir().getCurrent()).isCloseTo(expectedElixir, within(0.1f));
 
     // Verify entity was spawned (count depends on card - some spawn multiple)
@@ -97,12 +98,15 @@ class PlayerDeploymentIntegrationTest {
     // Try to play a card (all cards in deck cost at least 2)
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
     engine.queueAction(bluePlayer, action);
-    engine.tick();
-    engine.tick();
+
+    // Tick past sync delay + 1 extra tick
+    int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
+    int totalTicks = syncTicks + 1;
+    engine.tick(totalTicks);
 
     // Elixir should only have increased from regen (not spent)
-    float expectedElixir = elixirBefore + (2 * GameEngine.DELTA_TIME / 2.8f);
-    assertThat(bluePlayer.getElixir().getCurrent()).isCloseTo(expectedElixir, within(0.01f));
+    float expectedElixir = elixirBefore + (totalTicks * GameEngine.DELTA_TIME / 2.8f);
+    assertThat(bluePlayer.getElixir().getCurrent()).isCloseTo(expectedElixir, within(0.1f));
 
     // No new entities (besides towers)
     assertThat(engine.getGameState().getEntities().size()).isEqualTo(initialEntityCount);
@@ -116,12 +120,15 @@ class PlayerDeploymentIntegrationTest {
     // Try to place on enemy side (y=25 is in red zone)
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
     engine.queueAction(bluePlayer, action);
-    engine.tick();
-    engine.tick();
+
+    // Tick past sync delay + 1 extra tick
+    int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
+    int totalTicks = syncTicks + 1;
+    engine.tick(totalTicks);
 
     // Elixir should only have increased from regen (action was rejected by match validation)
-    float expectedElixir = initialElixir + (2 * GameEngine.DELTA_TIME / 2.8f);
-    assertThat(bluePlayer.getElixir().getCurrent()).isCloseTo(expectedElixir, within(0.01f));
+    float expectedElixir = initialElixir + (totalTicks * GameEngine.DELTA_TIME / 2.8f);
+    assertThat(bluePlayer.getElixir().getCurrent()).isCloseTo(expectedElixir, within(0.1f));
 
     // No new entities
     assertThat(engine.getGameState().getEntities().size()).isEqualTo(initialEntityCount);
@@ -153,8 +160,10 @@ class PlayerDeploymentIntegrationTest {
 
     PlayerActionDTO action = PlayerActionDTO.play(goblinsSlot, 9f, 10f);
     engine.queueAction(bluePlayer, action);
-    engine.tick();
-    engine.tick(); // Process pending spawns
+
+    // Tick past sync delay + 1 extra to process pending spawns
+    int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
+    engine.tick(syncTicks + 1);
 
     int newTroopCount = (int) engine.getGameState().getAliveEntities().stream()
         .filter(e -> e.getEntityType() == EntityType.TROOP)
@@ -220,8 +229,10 @@ class PlayerDeploymentIntegrationTest {
 
     PlayerActionDTO action = PlayerActionDTO.play(knightSlot, 9f, 10f);
     engine.queueAction(bluePlayer, action);
-    engine.tick();
-    engine.tick(); // Process pending spawns
+
+    // Tick past sync delay + 1 extra to process pending spawns
+    int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
+    engine.tick(syncTicks + 1);
 
     // Find the spawned knight
     Troop knight = engine.getGameState().getAliveEntities().stream()

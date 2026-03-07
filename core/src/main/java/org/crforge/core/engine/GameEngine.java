@@ -6,9 +6,9 @@ import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
+import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffectSystem;
-import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.match.Match;
 import org.crforge.core.match.Standard1v1Match;
@@ -109,8 +109,8 @@ public class GameEngine {
       match.update(DELTA_TIME);
     }
 
-    // 3. Process queued deployments
-    deploymentSystem.update();
+    // 3. Process queued deployments (includes server sync delay)
+    deploymentSystem.update(DELTA_TIME);
 
     // 4. Update Spawners (new CES system)
     spawnerSystem.update(DELTA_TIME);

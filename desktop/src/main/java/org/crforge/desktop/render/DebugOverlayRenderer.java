@@ -1,11 +1,29 @@
 package org.crforge.desktop.render;
 
-import static org.crforge.desktop.render.RenderConstants.*;
+import static org.crforge.desktop.render.RenderConstants.BOTTOM_UI_HEIGHT;
+import static org.crforge.desktop.render.RenderConstants.CIRCLE_SEGMENTS;
+import static org.crforge.desktop.render.RenderConstants.COLOR_AREA_EFFECT;
+import static org.crforge.desktop.render.RenderConstants.COLOR_ATTACK_RANGE;
+import static org.crforge.desktop.render.RenderConstants.COLOR_BLUE_GHOST;
+import static org.crforge.desktop.render.RenderConstants.COLOR_CHARGE_BAR;
+import static org.crforge.desktop.render.RenderConstants.COLOR_CHARGE_READY;
+import static org.crforge.desktop.render.RenderConstants.COLOR_DASH_LINE;
+import static org.crforge.desktop.render.RenderConstants.COLOR_DEPLOY_TIMER;
+import static org.crforge.desktop.render.RenderConstants.COLOR_HOOK_LINE;
+import static org.crforge.desktop.render.RenderConstants.COLOR_PATH;
+import static org.crforge.desktop.render.RenderConstants.COLOR_RED_ENTITY;
+import static org.crforge.desktop.render.RenderConstants.COLOR_RED_GHOST;
+import static org.crforge.desktop.render.RenderConstants.COLOR_REFLECT_AURA;
+import static org.crforge.desktop.render.RenderConstants.COLOR_VARIABLE_DAMAGE_DOT;
+import static org.crforge.desktop.render.RenderConstants.HEALTH_BAR_HEIGHT;
+import static org.crforge.desktop.render.RenderConstants.HEALTH_BAR_Y_OFFSET;
+import static org.crforge.desktop.render.RenderConstants.TILE_PIXELS;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import java.util.List;
 import java.util.Optional;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityType;
@@ -13,16 +31,18 @@ import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.StatusEffectType;
+import org.crforge.core.engine.DeploymentSystem;
+import org.crforge.core.engine.DeploymentSystem.PendingDeployment;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.player.Team;
 
 /**
- * Renders debug overlays: targeting lines, path direction indicators,
- * attack range circles, entity name labels, area effect zones,
- * ability state indicators, and spawner timers.
+ * Renders debug overlays: targeting lines, path direction indicators, attack range circles, entity
+ * name labels, area effect zones, ability state indicators, and spawner timers.
  */
 public class DebugOverlayRenderer {
 
@@ -32,7 +52,9 @@ public class DebugOverlayRenderer {
     this.ctx = ctx;
   }
 
-  /** Draw thin red lines from each entity to its current target. */
+  /**
+   * Draw thin red lines from each entity to its current target.
+   */
   public void renderTargetingLines(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -58,7 +80,9 @@ public class DebugOverlayRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /** Draw movement direction lines for all troops. */
+  /**
+   * Draw movement direction lines for all troops.
+   */
   public void renderPathLines(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -81,7 +105,9 @@ public class DebugOverlayRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /** Draw attack range circles for all entities with combat. */
+  /**
+   * Draw attack range circles for all entities with combat.
+   */
   public void renderAttackRanges(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -101,7 +127,9 @@ public class DebugOverlayRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /** Draw entity names above health bars. */
+  /**
+   * Draw entity names above health bars.
+   */
   public void renderEntityNames(GameState state) {
     ctx.getSpriteBatch().begin();
     for (Entity entity : state.getAliveEntities()) {
@@ -126,8 +154,8 @@ public class DebugOverlayRenderer {
   }
 
   /**
-   * Render radial (pie) countdown timers on deploying entities.
-   * The arc sweeps from full circle down to nothing as deploy completes.
+   * Render radial (pie) countdown timers on deploying entities. The arc sweeps from full circle
+   * down to nothing as deploy completes.
    */
   public void renderDeployTimers(GameState state) {
     boolean hasAny = false;
@@ -170,6 +198,71 @@ public class DebugOverlayRenderer {
     }
 
     ctx.getShapeRenderer().end();
+  }
+
+  /**
+   * Render ghost silhouettes for pending deployments (during the server sync delay). Shows a
+   * translucent team-colored circle with a radial countdown and the card name.
+   */
+  public void renderPendingDeployments(List<PendingDeployment> pendingDeployments) {
+    if (pendingDeployments.isEmpty()) {
+      return;
+    }
+
+    float ghostRadius = TILE_PIXELS * 0.8f;
+
+    // Pass 1: Filled ghost circle + radial countdown
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    ctx.getShapeRenderer().begin(ShapeType.Filled);
+
+    for (PendingDeployment pending : pendingDeployments) {
+      float x = pending.getX() * TILE_PIXELS;
+      float y = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+
+      // Ghost fill
+      Color ghostColor = pending.getTeam() == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
+      ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.3f);
+      ctx.getShapeRenderer().circle(x, y, ghostRadius, CIRCLE_SEGMENTS);
+
+      // Radial countdown arc (sweeps from full to nothing as delay expires)
+      float progress = DeploymentSystem.PLACEMENT_SYNC_DELAY > 0
+          ? pending.getRemainingDelay() / DeploymentSystem.PLACEMENT_SYNC_DELAY
+          : 0f;
+      ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.5f);
+      ctx.getShapeRenderer().arc(x, y, ghostRadius, 90, progress * 360, CIRCLE_SEGMENTS);
+    }
+
+    ctx.getShapeRenderer().end();
+
+    // Pass 2: Outline ring
+    ctx.getShapeRenderer().begin(ShapeType.Line);
+
+    for (PendingDeployment pending : pendingDeployments) {
+      float x = pending.getX() * TILE_PIXELS;
+      float y = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+
+      Color ghostColor = pending.getTeam() == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
+      ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.7f);
+      ctx.getShapeRenderer().circle(x, y, ghostRadius, CIRCLE_SEGMENTS);
+    }
+
+    ctx.getShapeRenderer().end();
+
+    // Pass 3: Card name label
+    ctx.getSpriteBatch().begin();
+
+    for (PendingDeployment pending : pendingDeployments) {
+      float x = pending.getX() * TILE_PIXELS;
+      float y = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+
+      String name = pending.getCard().getName();
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), name);
+      float textWidth = ctx.getGlyphLayout().width;
+      ctx.getEntityNameFont().draw(
+          ctx.getSpriteBatch(), name, x - textWidth / 2, y + ghostRadius + 10);
+    }
+
+    ctx.getSpriteBatch().end();
   }
 
   // ---- New Feature Visualizations ----
@@ -230,12 +323,10 @@ public class DebugOverlayRenderer {
   }
 
   /**
-   * Render ability state indicators for troops with abilities:
-   * - CHARGE: bar below entity showing charge progress
-   * - VARIABLE_DAMAGE: small dots showing current inferno stage
-   * - DASH: line toward dash target while dashing
-   * - HOOK: line to hooked target while hooking
-   * - REFLECT: aura ring at reflect radius
+   * Render ability state indicators for troops with abilities: - CHARGE: bar below entity showing
+   * charge progress - VARIABLE_DAMAGE: small dots showing current inferno stage - DASH: line toward
+   * dash target while dashing - HOOK: line to hooked target while hooking - REFLECT: aura ring at
+   * reflect radius
    */
   public void renderAbilityIndicators(GameState state) {
     // Collect troops with abilities
@@ -268,7 +359,8 @@ public class DebugOverlayRenderer {
       switch (type) {
         case CHARGE -> renderChargeBar(x, y, visualRadius, ability);
         case VARIABLE_DAMAGE -> renderVariableDamageDots(x, y, visualRadius, ability);
-        default -> { }
+        default -> {
+        }
       }
     }
 
@@ -300,7 +392,8 @@ public class DebugOverlayRenderer {
           }
         }
         case REFLECT -> renderReflectAura(x, y, ability);
-        default -> { }
+        default -> {
+        }
       }
     }
 
@@ -347,7 +440,7 @@ public class DebugOverlayRenderer {
   // ---- Private helpers for ability indicators ----
 
   private void renderChargeBar(float x, float y, float visualRadius,
-                                AbilityComponent ability) {
+      AbilityComponent ability) {
     float barWidth = Math.max(visualRadius * 2, 16);
     float barHeight = 3;
     float barY = y - visualRadius - 6;
@@ -371,7 +464,7 @@ public class DebugOverlayRenderer {
   }
 
   private void renderVariableDamageDots(float x, float y, float visualRadius,
-                                         AbilityComponent ability) {
+      AbilityComponent ability) {
     int totalStages = ability.getData().getStages().size();
     int currentStage = ability.getCurrentStage();
 
@@ -424,7 +517,9 @@ public class DebugOverlayRenderer {
     }
   }
 
-  /** Determine the color for an area effect based on its buff type. */
+  /**
+   * Determine the color for an area effect based on its buff type.
+   */
   private Color getAreaEffectColor(AreaEffectStats stats) {
     if (stats.getBuff() != null) {
       StatusEffectType effectType = StatusEffectType.fromBuffName(stats.getBuff());
