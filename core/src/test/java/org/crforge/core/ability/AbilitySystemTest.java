@@ -187,6 +187,38 @@ class AbilitySystemTest {
   }
 
   @Test
+  void charge_shouldDealDamageInstantlySkippingWindup() {
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 6, 5); // Close enough for melee
+
+    gameState.spawnEntity(prince);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    prince.update(2.0f);
+    target.update(2.0f);
+
+    // Build up charge
+    for (int i = 0; i < 78; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().isCharged()).isTrue();
+
+    // Acquire target -- do NOT manually skip windup
+    prince.getCombat().setCurrentTarget(target);
+
+    // A single combat tick should deal charge damage instantly (no windup wait)
+    combatSystem.update(DT);
+
+    assertThat(target.getHealth().getCurrent())
+        .as("Charge damage should be dealt on first tick, skipping windup")
+        .isEqualTo(1000 - 306);
+
+    // Charge should be consumed
+    assertThat(prince.getAbility().isCharged()).isFalse();
+  }
+
+  @Test
   void charge_shouldDealNormalDamageWhenNotCharged() {
     Troop prince = createChargeTroop(Team.BLUE, 5, 5);
     Troop target = createDummyTarget(Team.RED, 6, 5);

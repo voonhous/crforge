@@ -87,6 +87,14 @@ public class CombatSystem {
       return;
     }
 
+    // Charge impact: skip windup and deal damage instantly on contact
+    if (entity instanceof Troop troop && troop.getAbility() != null
+        && troop.getAbility().isCharged()) {
+      combat.startAttackSequence();
+      executeAttack(entity, target, combat);
+      return;
+    }
+
     // Start Attack if ready
     if (!combat.isAttacking()) {
       combat.startAttackSequence();
