@@ -13,7 +13,6 @@ public class ProjectileConfigDTO {
   private float speed;
   private float radius;
   private Boolean homing;
-  private List<EffectConfigDTO> hitEffects;
 
   /**
    * Buff name applied to the target on hit (e.g. "IceWizardSlowDown").
@@ -25,6 +24,10 @@ public class ProjectileConfigDTO {
    */
   private float buffDuration;
 
+  // AOE targeting flags
+  private boolean aoeToAir;
+  private boolean aoeToGround;
+
   // Chain lightning (ElectroDragon, ElectroSpirit)
   private float chainedHitRadius;
   private int chainedHitCount;
@@ -33,8 +36,14 @@ public class ProjectileConfigDTO {
   private String scatter;
   private float projectileRange;
 
-  // Spawn sub-projectile on impact (Log, Firecracker)
-  private ProjectileConfigDTO spawnProjectile;
+  // Spawn sub-projectile on impact (Firecracker explosion) - string reference
+  private String spawnProjectile;
   private int spawnCount;
   private float spawnRadius;
+
+  // Character spawning on impact (GoblinBarrel, BarbLog)
+  private SpawnConfigDTO spawn;
+
+  // Deflect behaviours (stored for future use)
+  private List<String> deflectBehaviours;
 }

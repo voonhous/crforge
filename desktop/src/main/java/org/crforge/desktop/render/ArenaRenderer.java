@@ -137,10 +137,23 @@ public class ArenaRenderer {
       ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
       ctx.getShapeRenderer().circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
     } else {
-      if (card.getTroops() != null) {
-        for (TroopStats stats : card.getTroops()) {
-          float offsetX = stats.getOffsetX();
-          float offsetY = stats.getOffsetY();
+      TroopStats unitStats = card.getUnitStats();
+      if (unitStats != null) {
+        int total = card.getUnitCount();
+        float summonRadius = card.getSummonRadius();
+        float visRadius = unitStats.getVisualRadius() * TILE_PIXELS;
+
+        for (int idx = 0; idx < total; idx++) {
+          float offsetX = 0f;
+          float offsetY = 0f;
+
+          if (total > 1 && summonRadius > 0) {
+            org.crforge.core.util.Vector2 offset =
+                org.crforge.core.util.FormationLayout.calculateDeployOffset(
+                    idx, total, summonRadius, unitStats.getCollisionRadius());
+            offsetX = offset.getX();
+            offsetY = offset.getY();
+          }
 
           if (team == Team.RED) {
             offsetX = -offsetX;
@@ -149,10 +162,9 @@ public class ArenaRenderer {
 
           float ghostX = centerX + (offsetX * TILE_PIXELS);
           float ghostY = centerY + (offsetY * TILE_PIXELS);
-          float radius = stats.getVisualRadius() * TILE_PIXELS;
 
           ctx.getShapeRenderer().setColor(ghostColor);
-          ctx.getShapeRenderer().circle(ghostX, ghostY, radius);
+          ctx.getShapeRenderer().circle(ghostX, ghostY, visRadius);
         }
       }
     }

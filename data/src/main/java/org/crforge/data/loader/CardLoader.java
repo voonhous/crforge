@@ -1,7 +1,5 @@
 package org.crforge.data.loader;
 
-import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
-
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -11,37 +9,24 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import org.crforge.data.loader.dto.AbilityConfigDTO;
-import org.crforge.data.loader.dto.AreaEffectConfigDTO;
-import org.crforge.data.loader.dto.BuffOnDamageConfigDTO;
-import org.crforge.data.loader.dto.CardConfigDTO;
-import org.crforge.data.loader.dto.DeathDamageConfigDTO;
-import org.crforge.data.loader.dto.DeathSpawnConfigDTO;
-import org.crforge.data.loader.dto.EffectConfigDTO;
-import org.crforge.data.loader.dto.LiveSpawnConfigDTO;
-import org.crforge.data.loader.dto.ProjectileConfigDTO;
-import org.crforge.data.loader.dto.UnitConfigDTO;
-import org.crforge.core.ability.AbilityData;
-import org.crforge.core.ability.AbilityType;
-import org.crforge.core.ability.VariableDamageStage;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.DeathSpawnEntry;
-import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
-import org.crforge.core.effect.StatusEffectType;
+import org.crforge.data.loader.dto.AreaEffectConfigDTO;
+import org.crforge.data.loader.dto.CardConfigDTO;
 
+/**
+ * Loads card definitions from cards.json (slim format) and resolves unit/projectile references
+ * from pre-loaded maps.
+ */
 public class CardLoader {
 
   private static final ObjectMapper mapper = createMapper();
-  private static final float SPEED_BASE = 60.0f;
 
   private static ObjectMapper createMapper() {
     ObjectMapper om = new ObjectMapper()
@@ -65,40 +50,31 @@ public class CardLoader {
     }
   }
 
-  public static List<Card> loadCards(InputStream inputStream) {
+  /**
+   * Loads cards from the given input stream, resolving unit and projectile references
+   * from the provided maps.
+   *
+   * @param inputStream   JSON array of CardConfigDTO in slim format
+   * @param unitMap       pre-loaded unit name -> TroopStats map
+   * @param projectileMap pre-loaded projectile name -> ProjectileStats map
+   * @return list of fully resolved Card objects
+   */
+  public static List<Card> loadCards(InputStream inputStream,
+      Map<String, TroopStats> unitMap,
+      Map<String, ProjectileStats> projectileMap) {
     try {
-      List<CardConfigDTO> configs = mapper.readValue(inputStream, new TypeReference<>() {
-      });
-
-      // Pass 1: Build a global character name -> UnitConfigDTO lookup from all units
-      Map<String, UnitConfigDTO> characterLookup = buildCharacterLookup(configs);
-
-      // Pass 2: Convert cards with character resolution for death spawns
-      return configs.stream().map(dto -> convert(dto, characterLookup)).toList();
+      List<CardConfigDTO> configs = mapper.readValue(inputStream, new TypeReference<>() {});
+      return configs.stream()
+          .map(dto -> convert(dto, unitMap, projectileMap))
+          .toList();
     } catch (IOException e) {
       throw new RuntimeException("Failed to load cards from JSON", e);
     }
   }
 
-  /**
-   * Builds a lookup map from unit names to their DTO definitions across all cards.
-   * Used to resolve cross-card character references in death spawns.
-   */
-  private static Map<String, UnitConfigDTO> buildCharacterLookup(List<CardConfigDTO> configs) {
-    Map<String, UnitConfigDTO> lookup = new HashMap<>();
-    for (CardConfigDTO card : configs) {
-      if (card.getUnits() != null) {
-        for (UnitConfigDTO unit : card.getUnits()) {
-          if (unit.getName() != null) {
-            lookup.put(unit.getName(), unit);
-          }
-        }
-      }
-    }
-    return lookup;
-  }
-
-  private static Card convert(CardConfigDTO dto, Map<String, UnitConfigDTO> characterLookup) {
+  private static Card convert(CardConfigDTO dto,
+      Map<String, TroopStats> unitMap,
+      Map<String, ProjectileStats> projectileMap) {
     Card.CardBuilder builder = Card.builder()
         .id(dto.getId())
         .name(dto.getName())
@@ -107,9 +83,25 @@ public class CardLoader {
         .cost(dto.getCost())
         .rarity(dto.getRarity() != null ? dto.getRarity() : Rarity.UNKNOWN);
 
-    if (dto.getProjectile() != null) {
-      builder.projectile(convertProjectile(dto.getProjectile(), 0));
+    // Resolve unit reference
+    TroopStats unitStats = null;
+    if (dto.getUnit() != null) {
+      unitStats = unitMap.get(dto.getUnit());
+      if (unitStats != null) {
+        builder.unitStats(unitStats);
+      }
     }
+    builder.unitCount(dto.getCount() > 0 ? dto.getCount() : 1);
+
+    // Resolve projectile reference (for spells)
+    if (dto.getProjectile() != null) {
+      ProjectileStats proj = projectileMap.get(dto.getProjectile());
+      if (proj != null) {
+        builder.projectile(proj);
+      }
+    }
+
+    // Area effects (inline, unchanged)
     if (dto.getAreaEffect() != null) {
       builder.areaEffect(convertAreaEffect(dto.getAreaEffect()));
     }
@@ -117,62 +109,24 @@ public class CardLoader {
       builder.deployEffect(convertAreaEffect(dto.getDeployEffect()));
     }
 
-    // Resolve summonCharacter for spells
+    // Resolve summonCharacter for spells (e.g. Rage -> RageBottle)
     if (dto.getSummonCharacter() != null) {
-      UnitConfigDTO resolved = characterLookup.get(dto.getSummonCharacter());
-      if (resolved != null) {
-        builder.summonTemplate(convertUnit(resolved, Map.of()));
+      TroopStats summonTemplate = unitMap.get(dto.getSummonCharacter());
+      if (summonTemplate != null) {
+        builder.summonTemplate(summonTemplate);
       }
     }
 
-    // Read summonRadius from DTO (raw CSV value, divided by TILE_SCALE at deploy time)
+    // summonRadius for troop deploy formation
     builder.summonRadius(dto.getSummonRadius());
 
-    if (dto.getUnits() != null) {
-      UnitConfigDTO primaryUnit = dto.getUnits().isEmpty() ? null : dto.getUnits().get(0);
-
-      // Building fields: read from primary unit
-      if (primaryUnit != null) {
-        builder.buildingHealth(primaryUnit.getHealth());
-        builder.buildingLifetime(primaryUnit.getLifeTime());
-
-        // Spawner config from liveSpawn
-        LiveSpawnConfigDTO liveSpawn = primaryUnit.getLiveSpawn();
-        if (liveSpawn != null) {
-          builder.spawnInterval(liveSpawn.getSpawnInterval());
-          builder.spawnPauseTime(liveSpawn.getSpawnPauseTime());
-          builder.spawnNumber(liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1);
-          builder.spawnStartTime(liveSpawn.getSpawnStartTime());
-          builder.liveSpawnRadius(liveSpawn.getSpawnRadius());
-
-          // Resolve spawn template: first try character lookup, then fall back to units[1]
-          TroopStats resolvedTemplate = null;
-          if (liveSpawn.getSpawnCharacter() != null) {
-            UnitConfigDTO resolved = characterLookup.get(liveSpawn.getSpawnCharacter());
-            if (resolved != null) {
-              resolvedTemplate = convertUnit(resolved, Map.of());
-            }
-          }
-          if (resolvedTemplate == null && dto.getUnits().size() > 1) {
-            resolvedTemplate = convertUnit(dto.getUnits().get(1), characterLookup);
-          }
-          if (resolvedTemplate != null) {
-            builder.spawnTemplate(resolvedTemplate);
-          }
-        }
-
-        // Death spawn count from first deathSpawn entry
-        List<DeathSpawnConfigDTO> deathSpawns = primaryUnit.getDeathSpawn();
-        if (deathSpawns != null && !deathSpawns.isEmpty()) {
-          builder.deathSpawnCount(deathSpawns.get(0).getSpawnNumber());
-        }
-      }
-
-      for (UnitConfigDTO unitDto : dto.getUnits()) {
-        int count = unitDto.getCount() > 0 ? unitDto.getCount() : 1;
-        TroopStats stats = convertUnit(unitDto, characterLookup);
-        for (int i = 0; i < count; i++) {
-          builder.troop(stats);
+    // Resolve spawn template from unitStats.liveSpawn if present
+    if (unitStats != null && unitStats.getLiveSpawn() != null) {
+      LiveSpawnConfig liveSpawn = unitStats.getLiveSpawn();
+      if (liveSpawn.spawnCharacter() != null) {
+        TroopStats spawnTemplate = unitMap.get(liveSpawn.spawnCharacter());
+        if (spawnTemplate != null) {
+          builder.spawnTemplate(spawnTemplate);
         }
       }
     }
@@ -180,199 +134,7 @@ public class CardLoader {
     return builder.build();
   }
 
-  private static TroopStats convertUnit(UnitConfigDTO dto,
-      Map<String, UnitConfigDTO> characterLookup) {
-    // Validate required fields
-    Objects.requireNonNull(dto.getMovementType(),
-        "MovementType is required for unit: " + dto.getName());
-
-    // Validation: Require TargetType if the unit has ANY attack capability
-    boolean hasAttackCapability = dto.getDamage() > 0 || dto.getProjectile() != null;
-
-    if (hasAttackCapability) {
-      Objects.requireNonNull(dto.getTargetType(),
-          "TargetType is required for attacking unit: " + dto.getName());
-    }
-
-    // Conversion: Base speed 60 = 1.0 tiles/sec
-    float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
-
-    // Resolve radii
-    float colRad = dto.getCollisionRadius() != null ? dto.getCollisionRadius() : 0.5f;
-    float visRad = dto.getVisualRadius() != null ? dto.getVisualRadius() : colRad;
-
-    TroopStats.TroopStatsBuilder builder = TroopStats.builder()
-        .name(dto.getName())
-        .health(dto.getHealth())
-        .damage(dto.getDamage())
-        .speed(effectiveSpeed)
-        .mass(dto.getMass())
-        .collisionRadius(colRad)
-        .visualRadius(visRad)
-        .range(dto.getRange())
-        .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
-        .attackCooldown(dto.getAttackCooldown())
-        .loadTime(dto.getLoadTime() != null ? dto.getLoadTime() : 0f)
-        .aoeRadius(dto.getAoeRadius())
-        .movementType(dto.getMovementType())
-        .targetType(dto.getTargetType())
-        .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
-        .offsetX(dto.getOffsetX())
-        .offsetY(dto.getOffsetY())
-        .hitEffects(convertEffects(dto.getHitEffects()))
-        // Spawn Mechanics
-        .spawnDamage(dto.getSpawnDamage())
-        .spawnRadius(dto.getSpawnRadius())
-        .spawnEffects(convertEffects(dto.getSpawnEffects()))
-        // Shield
-        .shieldHitpoints(dto.getShieldHitpoints())
-        // Combat modifiers
-        .multipleTargets(dto.getMultipleTargets())
-        .multipleProjectiles(dto.getMultipleProjectiles())
-        // Targeting and combat modifiers
-        .targetOnlyBuildings(dto.isTargetOnlyBuildings())
-        .minimumRange(dto.getMinimumRange())
-        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-        .ignorePushback(dto.isIgnorePushback());
-
-    // Death damage
-    DeathDamageConfigDTO deathDmg = dto.getDeathDamage();
-    if (deathDmg != null) {
-      builder.deathDamage(deathDmg.getDamage());
-      builder.deathDamageRadius(deathDmg.getRadius());
-    }
-
-    // Buff on damage (e.g. EWiz stun, Mother Witch curse)
-    BuffOnDamageConfigDTO buffOnDmg = dto.getBuffOnDamage();
-    if (buffOnDmg != null) {
-      StatusEffectType buffType = StatusEffectType.fromBuffName(buffOnDmg.getBuff());
-      if (buffType != null) {
-        builder.buffOnDamage(EffectStats.builder()
-            .type(buffType)
-            .duration(buffOnDmg.getDuration())
-            .buffName(buffOnDmg.getBuff())
-            .build());
-      }
-    }
-
-    // Death spawns: resolve character references using the global lookup
-    if (dto.getDeathSpawn() != null) {
-      List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
-      for (DeathSpawnConfigDTO ds : dto.getDeathSpawn()) {
-        UnitConfigDTO resolved = characterLookup.get(ds.getSpawnCharacter());
-        if (resolved != null) {
-          // Convert the referenced unit (without resolving its own death spawns to avoid
-          // deep recursion; pass empty lookup for nested units)
-          TroopStats spawnStats = convertUnit(resolved, Map.of());
-          deathSpawns.add(new DeathSpawnEntry(spawnStats, ds.getSpawnNumber(), ds.getSpawnRadius()));
-        }
-      }
-      builder.deathSpawns(deathSpawns);
-    }
-
-    if (dto.getProjectile() != null) {
-      int damageSource = dto.getProjectile().getDamage() > 0
-          ? dto.getProjectile().getDamage()
-          : dto.getDamage();
-
-      builder.projectile(convertProjectile(dto.getProjectile(), damageSource));
-    }
-
-    // Abilities (Charge, Variable Damage, etc.)
-    if (dto.getAbilities() != null && !dto.getAbilities().isEmpty()) {
-      // Use the first ability (cards have at most one primary ability)
-      AbilityConfigDTO abilityDto = dto.getAbilities().get(0);
-      builder.ability(convertAbility(abilityDto));
-    }
-
-    return builder.build();
-  }
-
-  private static AbilityData convertAbility(AbilityConfigDTO dto) {
-    AbilityType type;
-    try {
-      type = AbilityType.valueOf(dto.getType());
-    } catch (IllegalArgumentException e) {
-      return null; // Unknown ability type, skip
-    }
-
-    AbilityData.AbilityDataBuilder builder = AbilityData.builder().type(type);
-
-    switch (type) {
-      case CHARGE -> {
-        builder.chargeDamage(dto.getDamage());
-        builder.speedMultiplier(dto.getSpeedMultiplier() > 0 ? dto.getSpeedMultiplier() : 2.0f);
-      }
-      case VARIABLE_DAMAGE -> {
-        if (dto.getStages() != null) {
-          List<VariableDamageStage> stages = dto.getStages().stream()
-              .map(s -> new VariableDamageStage(s.getDamage(), s.getTimeMs() / 1000f))
-              .toList();
-          builder.stages(stages);
-        }
-      }
-      case DASH -> {
-        builder.dashDamage(dto.getDamage());
-        builder.dashMinRange(dto.getMinRange());
-        builder.dashMaxRange(dto.getMaxRange());
-        builder.dashRadius(dto.getRadius());
-        builder.dashCooldown(dto.getCooldown());
-        builder.dashImmuneTime(dto.getImmuneTimeMs() / 1000f);
-        builder.dashLandingTime(dto.getLandingTime());
-      }
-      case HOOK -> {
-        builder.hookRange(dto.getRange());
-        builder.hookMinimumRange(dto.getMinimumRange());
-        builder.hookLoadTime(dto.getLoadTime());
-        builder.hookDragBackSpeed(dto.getDragBackSpeed());
-        builder.hookDragSelfSpeed(dto.getDragSelfSpeed());
-      }
-      case REFLECT -> {
-        builder.reflectDamage(dto.getDamage());
-        builder.reflectRadius(dto.getRadius());
-        builder.reflectBuff(StatusEffectType.fromBuffName(dto.getBuff()));
-        builder.reflectBuffDuration(dto.getBuffDuration());
-        builder.reflectCrownTowerDamagePercent(dto.getCrownTowerDamagePercent());
-        builder.reflectBuffName(dto.getBuff());
-      }
-    }
-
-    return builder.build();
-  }
-
-  private static ProjectileStats convertProjectile(ProjectileConfigDTO dto, int fallbackDamage) {
-    if (dto == null) {
-      return null;
-    }
-
-    float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
-    int effectiveDamage = dto.getDamage() > 0 ? dto.getDamage() : fallbackDamage;
-
-    ProjectileStats.ProjectileStatsBuilder builder = ProjectileStats.builder()
-        .name(dto.getName())
-        .damage(effectiveDamage)
-        .speed(effectiveSpeed)
-        .radius(dto.getRadius())
-        .homing(dto.getHoming() != null ? dto.getHoming() : true)
-        .hitEffects(convertEffects(dto.getHitEffects()))
-        .targetBuff(StatusEffectType.fromBuffName(dto.getTargetBuff()))
-        .buffDuration(dto.getBuffDuration())
-        .buffName(dto.getTargetBuff())
-        .chainedHitRadius(dto.getChainedHitRadius())
-        .chainedHitCount(dto.getChainedHitCount())
-        .projectileRange(dto.getProjectileRange());
-
-    // Spawn sub-projectile on impact (Log rolling, Firecracker explosion)
-    if (dto.getSpawnProjectile() != null) {
-      builder.spawnProjectile(convertProjectile(dto.getSpawnProjectile(), 0));
-      builder.spawnCount(dto.getSpawnProjectile().getSpawnCount());
-      builder.spawnRadius(dto.getSpawnProjectile().getSpawnRadius());
-    }
-
-    return builder.build();
-  }
-
-  private static AreaEffectStats convertAreaEffect(AreaEffectConfigDTO dto) {
+  static AreaEffectStats convertAreaEffect(AreaEffectConfigDTO dto) {
     if (dto == null) {
       return null;
     }
@@ -388,23 +150,5 @@ public class CardLoader {
         .buffDuration(dto.getBuffDuration())
         .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
         .build();
-  }
-
-  private static List<EffectStats> convertEffects(List<EffectConfigDTO> dtos) {
-    if (dtos == null) {
-      return new ArrayList<>();
-    }
-    return dtos.stream().map(dto -> {
-      EffectStats.EffectStatsBuilder builder = EffectStats.builder()
-          .type(dto.getType())
-          .duration(dto.getDuration())
-          .intensity(dto.getIntensity());
-
-      if (dto.getSpawnUnit() != null) {
-        builder.spawnSpecies(convertUnit(dto.getSpawnUnit(), Map.of()));
-      }
-
-      return builder.build();
-    }).toList();
   }
 }

@@ -29,10 +29,9 @@ public class UnitConfigDTO {
   private MovementType movementType;
   private TargetType targetType;
   private Float deployTime;
-  private float offsetX;
-  private float offsetY;
-  private List<EffectConfigDTO> hitEffects;
-  private ProjectileConfigDTO projectile;
+
+  // Projectile reference (string name into projectiles.json)
+  private String projectile;
 
   // Targeting and combat modifiers
   private boolean targetOnlyBuildings;
@@ -51,11 +50,6 @@ public class UnitConfigDTO {
   // Death mechanics
   private DeathDamageConfigDTO deathDamage;
 
-  // Spawn Mechanics
-  private int spawnDamage;
-  private float spawnRadius;
-  private List<EffectConfigDTO> spawnEffects;
-
   // Building fields
   private float lifeTime;
   private LiveSpawnConfigDTO liveSpawn;
@@ -63,7 +57,4 @@ public class UnitConfigDTO {
 
   // Abilities (Charge, Variable Damage, etc.)
   private List<AbilityConfigDTO> abilities;
-
-  // Configuration convenience
-  private int count = 1; // Default to 1 unit
 }

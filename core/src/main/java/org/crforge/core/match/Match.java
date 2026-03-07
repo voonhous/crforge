@@ -142,8 +142,8 @@ public abstract class Match {
     // Buildings must follow strict placement rules (entire footprint in zone)
     if (card.getType() == CardType.BUILDING) {
       float radius = 0.5f; // Default small radius
-      if (card.getTroops() != null && !card.getTroops().isEmpty()) {
-        radius = card.getTroops().get(0).getCollisionRadius();
+      if (card.getUnitStats() != null) {
+        radius = card.getUnitStats().getCollisionRadius();
       }
       return arena.isValidBuildingPlacement(action.getX(), action.getY(), radius, player.getTeam());
     }

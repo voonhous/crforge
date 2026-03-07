@@ -1,9 +1,7 @@
 package org.crforge.core.card;
 
-import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Singular;
 
 /**
  * Represents the static configuration and definition of a Card.
@@ -21,10 +19,15 @@ public class Card {
   private final Rarity rarity = Rarity.COMMON;
 
   /**
-   * Defines the units that this card spawns.
+   * The unit type this card spawns (null for pure spells without a projectile-spawned character).
    */
-  @Singular
-  private final List<TroopStats> troops;
+  private final TroopStats unitStats;
+
+  /**
+   * How many copies of the unit to deploy (default 1). For example, Archers = 2, Barbarians = 5.
+   */
+  @Builder.Default
+  private final int unitCount = 1;
 
   private final ProjectileStats projectile;
 
@@ -38,41 +41,16 @@ public class Card {
    */
   private final AreaEffectStats deployEffect;
 
-  // For buildings
-  @Builder.Default
-  private final int buildingHealth = 0;
-  @Builder.Default
-  private final float buildingLifetime = 0f;
-
-  // For spawners (Buildings or Troops)
-  @Builder.Default
-  private final float spawnInterval = 0f;
-  @Builder.Default
-  private final float spawnPauseTime = 0f;
-  @Builder.Default
-  private final int spawnNumber = 1; // Default to 1 unit per wave
-  @Builder.Default
-  private final int deathSpawnCount = 0;
-  @Builder.Default
-  private final float spawnStartTime = 0f;
-
   /**
-   * Raw CSV summonRadius for troop deploy formation (divide by TILE_SCALE at deploy time).
-   * When 0, falls back to pre-baked per-unit offsets.
+   * Raw CSV summonRadius for troop deploy formation (divide by TILE_SCALE at deploy time). When 0,
+   * uses default circular formation layout.
    */
   @Builder.Default
   private final float summonRadius = 0f;
 
   /**
-   * Formation radius for live spawns, already in tile units.
-   * Used by SpawnerSystem to arrange spawned units in a circle.
-   */
-  @Builder.Default
-  private final float liveSpawnRadius = 0f;
-
-  /**
-   * Resolved spawn template stats. For spawner cards, this holds the TroopStats
-   * for the spawned unit (resolved from liveSpawn.spawnCharacter or units[1]).
+   * Resolved spawn template stats. For spawner cards, this holds the TroopStats for the spawned
+   * unit (resolved from liveSpawn.spawnCharacter).
    */
   private final TroopStats spawnTemplate;
 
@@ -93,7 +71,4 @@ public class Card {
     return type == CardType.BUILDING;
   }
 
-  public int getTroopCount() {
-    return troops != null ? troops.size() : 0;
-  }
 }

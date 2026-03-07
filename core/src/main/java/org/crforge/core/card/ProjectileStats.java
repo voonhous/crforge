@@ -38,8 +38,8 @@ public class ProjectileStats {
   private final float buffDuration = 0f;
 
   /**
-   * Original buff name from parsed data (e.g. "IceWizardCold", "ZapFreeze").
-   * Used to look up BuffDefinition for data-driven multiplier resolution.
+   * Original buff name from parsed data (e.g. "IceWizardCold", "ZapFreeze"). Used to look up
+   * BuffDefinition for data-driven multiplier resolution.
    */
   private final String buffName;
 
@@ -48,6 +48,12 @@ public class ProjectileStats {
   private final float chainedHitRadius = 0f;
   @Builder.Default
   private final int chainedHitCount = 0;
+
+  // AOE targeting flags
+  @Builder.Default
+  private final boolean aoeToAir = false;
+  @Builder.Default
+  private final boolean aoeToGround = false;
 
   // Non-homing scatter projectiles expire at this range
   @Builder.Default

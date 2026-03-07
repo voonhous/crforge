@@ -12,6 +12,7 @@ import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
+import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
@@ -115,40 +116,32 @@ public class DeploymentSystem {
   }
 
   private void spawnTroops(Team team, Card card, float x, float y, int level) {
-    List<TroopStats> troopStatsList = card.getTroops();
-    if (troopStatsList == null || troopStatsList.isEmpty()) {
+    TroopStats unitStats = card.getUnitStats();
+    if (unitStats == null) {
       return;
     }
 
-    TroopStats mainStats = troopStatsList.get(0);
-    int totalUnits = troopStatsList.size();
+    int totalUnits = card.getUnitCount();
     float summonRadius = card.getSummonRadius();
 
     for (int idx = 0; idx < totalUnits; idx++) {
-      TroopStats stats = troopStatsList.get(idx);
-
       // Check for spawner capability (Witch/Mother Witch logic)
       SpawnerComponent spawner = null;
 
-      if (stats == mainStats && (card.getSpawnInterval() > 0 || card.getSpawnPauseTime() > 0
-          || card.getDeathSpawnCount() > 0)) {
+      if (idx == 0 && unitStats.getLiveSpawn() != null) {
+        LiveSpawnConfig ls = unitStats.getLiveSpawn();
         TroopStats spawnStats = card.getSpawnTemplate();
-        // Fallback to units[1] if no spawnTemplate resolved
-        if (spawnStats == null && card.getTroops().size() > 1) {
-          spawnStats = card.getTroops().get(1);
-        }
         if (spawnStats != null) {
-          float initialTimer = card.getSpawnStartTime() > 0
-              ? card.getSpawnStartTime() : card.getSpawnPauseTime();
+          float initialTimer = ls.spawnStartTime() > 0
+              ? ls.spawnStartTime() : ls.spawnPauseTime();
           spawner = SpawnerComponent.builder()
-              .spawnInterval(card.getSpawnInterval())
-              .spawnPauseTime(card.getSpawnPauseTime())
-              .unitsPerWave(card.getSpawnNumber())
-              .spawnStartTime(card.getSpawnStartTime())
+              .spawnInterval(ls.spawnInterval())
+              .spawnPauseTime(ls.spawnPauseTime())
+              .unitsPerWave(ls.spawnNumber())
+              .spawnStartTime(ls.spawnStartTime())
               .currentTimer(initialTimer)
-              .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
-              .formationRadius(card.getLiveSpawnRadius())
+              .formationRadius(ls.spawnRadius())
               .rarity(card.getRarity())
               .level(level)
               .build();
@@ -157,36 +150,31 @@ public class DeploymentSystem {
 
       // Unit-level death mechanics (e.g. Golem death damage + death spawn)
       boolean hasUnitDeathMechanics =
-          stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty();
+          unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
       if (hasUnitDeathMechanics) {
-        int scaledDeathDmg = LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(),
+        int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(),
             level);
 
         if (spawner == null) {
           // Create a death-only SpawnerComponent
           spawner = SpawnerComponent.builder()
               .deathDamage(scaledDeathDmg)
-              .deathDamageRadius(stats.getDeathDamageRadius())
-              .deathSpawns(stats.getDeathSpawns())
+              .deathDamageRadius(unitStats.getDeathDamageRadius())
+              .deathSpawns(unitStats.getDeathSpawns())
               .rarity(card.getRarity())
               .level(level)
               .build();
         } else {
           // Merge death mechanics into existing spawner
           spawner.setDeathDamage(scaledDeathDmg);
-          spawner.setDeathDamageRadius(stats.getDeathDamageRadius());
-          spawner.setDeathSpawns(stats.getDeathSpawns());
+          spawner.setDeathDamageRadius(unitStats.getDeathDamageRadius());
+          spawner.setDeathSpawns(unitStats.getDeathSpawns());
         }
       }
 
-      Troop troop = createTroop(team, stats, x, y, spawner, level, card.getRarity(),
+      Troop troop = createTroop(team, unitStats, x, y, spawner, level, card.getRarity(),
           idx, totalUnits, summonRadius);
       state.spawnEntity(troop);
-
-      // Handle Spawn Effects
-      if (stats.hasSpawnEffect()) {
-        triggerSpawnEffect(team, stats, troop.getPosition().getX(), troop.getPosition().getY());
-      }
     }
 
     // Deploy effect (e.g. ElectroWizard stun, IceWizard slow on entry)
@@ -205,19 +193,15 @@ public class DeploymentSystem {
   private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
       SpawnerComponent spawner, int level, Rarity rarity,
       int index, int total, float summonRadius) {
-    float offsetX;
-    float offsetY;
+    float offsetX = 0f;
+    float offsetY = 0f;
 
-    if (summonRadius > 0) {
+    if (total > 1 && summonRadius > 0) {
       // Use calculated circular formation offsets
       Vector2 offset = FormationLayout.calculateDeployOffset(
           index, total, summonRadius, stats.getCollisionRadius());
       offsetX = offset.getX();
       offsetY = offset.getY();
-    } else {
-      // Fall back to pre-baked per-unit offsets from cards.json
-      offsetX = stats.getOffsetX();
-      offsetY = stats.getOffsetY();
     }
 
     if (team == Team.RED) {
@@ -284,68 +268,75 @@ public class DeploymentSystem {
   }
 
   private void spawnBuilding(Team team, Card card, float x, float y, int level) {
-    TroopStats stats = card.getTroops().isEmpty() ? null : card.getTroops().get(0);
+    TroopStats unitStats = card.getUnitStats();
 
     Combat combat = null;
-    int scaledBuildingHp = LevelScaling.scaleCard(card.getBuildingHealth(), card.getRarity(),
-        level);
-    int scaledBuildingDamage =
-        stats != null ? LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level) : 0;
+    int scaledBuildingHp = unitStats != null
+        ? LevelScaling.scaleCard(unitStats.getHealth(), card.getRarity(), level) : 0;
+    int scaledBuildingDamage = unitStats != null
+        ? LevelScaling.scaleCard(unitStats.getDamage(), card.getRarity(), level) : 0;
 
-    if (stats != null && stats.getDamage() > 0) {
-      float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
+    if (unitStats != null && unitStats.getDamage() > 0) {
+      float initialLoad = unitStats.isNoPreload() ? 0f : unitStats.getLoadTime();
       combat = Combat.builder()
           .damage(scaledBuildingDamage)
-          .range(stats.getRange())
-          .sightRange(stats.getSightRange()) // Building sight
-          .attackCooldown(stats.getAttackCooldown())
-          .loadTime(stats.getLoadTime())
+          .range(unitStats.getRange())
+          .sightRange(unitStats.getSightRange())
+          .attackCooldown(unitStats.getAttackCooldown())
+          .loadTime(unitStats.getLoadTime())
           .accumulatedLoadTime(initialLoad)
-          .targetType(stats.getTargetType())
-          .hitEffects(stats.getHitEffects())
-          .projectileStats(stats.getProjectile())
-          .targetOnlyBuildings(stats.isTargetOnlyBuildings())
-          .minimumRange(stats.getMinimumRange())
-          .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
+          .targetType(unitStats.getTargetType())
+          .hitEffects(unitStats.getHitEffects())
+          .projectileStats(unitStats.getProjectile())
+          .targetOnlyBuildings(unitStats.isTargetOnlyBuildings())
+          .minimumRange(unitStats.getMinimumRange())
+          .crownTowerDamagePercent(unitStats.getCrownTowerDamagePercent())
           .build();
     }
 
-    float collisionRadius = stats != null ? stats.getCollisionRadius() : 1.0f;
-    float visualRadius = stats != null ? stats.getVisualRadius() : 1.0f;
-    float deployTime = stats != null ? stats.getDeployTime() : 1.0f;
+    float collisionRadius = unitStats != null ? unitStats.getCollisionRadius() : 1.0f;
+    float visualRadius = unitStats != null ? unitStats.getVisualRadius() : 1.0f;
+    float deployTime = unitStats != null ? unitStats.getDeployTime() : 1.0f;
+    float lifeTime = unitStats != null ? unitStats.getLifeTime() : 0f;
 
     // Create Spawner Component if needed
     SpawnerComponent spawner = null;
-    boolean hasCardLevelSpawn = card.getSpawnInterval() > 0 || card.getSpawnPauseTime() > 0
-        || card.getDeathSpawnCount() > 0;
-    boolean hasUnitLevelDeath =
-        stats != null && (stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty());
+    boolean hasLiveSpawn = unitStats != null && unitStats.getLiveSpawn() != null;
+    boolean hasUnitLevelDeath = unitStats != null
+        && (unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty());
 
-    if (hasCardLevelSpawn || hasUnitLevelDeath) {
+    if (hasLiveSpawn || hasUnitLevelDeath) {
+      LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
       TroopStats spawnStats = card.getSpawnTemplate();
-      if (spawnStats == null && card.getTroops().size() > 1) {
-        spawnStats = card.getTroops().get(1);
-      }
-      int scaledDeathDmg = stats != null
-          ? LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(), level) : 0;
+      int scaledDeathDmg = unitStats != null
+          ? LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level) : 0;
 
-      float initialTimer = card.getSpawnStartTime() > 0
-          ? card.getSpawnStartTime() : card.getSpawnPauseTime();
-      spawner = SpawnerComponent.builder()
-          .spawnInterval(card.getSpawnInterval())
-          .spawnPauseTime(card.getSpawnPauseTime())
-          .unitsPerWave(card.getSpawnNumber())
-          .spawnStartTime(card.getSpawnStartTime())
-          .currentTimer(initialTimer)
-          .deathSpawnCount(card.getDeathSpawnCount())
-          .spawnStats(spawnStats)
-          .formationRadius(card.getLiveSpawnRadius())
+      SpawnerComponent.SpawnerComponentBuilder spawnerBuilder = SpawnerComponent.builder()
           .deathDamage(scaledDeathDmg)
-          .deathDamageRadius(stats != null ? stats.getDeathDamageRadius() : 0f)
-          .deathSpawns(stats != null ? stats.getDeathSpawns() : List.of())
+          .deathDamageRadius(unitStats != null ? unitStats.getDeathDamageRadius() : 0f)
+          .deathSpawns(unitStats != null ? unitStats.getDeathSpawns() : List.of())
           .rarity(card.getRarity())
-          .level(level)
-          .build();
+          .level(level);
+
+      if (ls != null) {
+        float initialTimer = ls.spawnStartTime() > 0
+            ? ls.spawnStartTime() : ls.spawnPauseTime();
+        spawnerBuilder
+            .spawnInterval(ls.spawnInterval())
+            .spawnPauseTime(ls.spawnPauseTime())
+            .unitsPerWave(ls.spawnNumber())
+            .spawnStartTime(ls.spawnStartTime())
+            .currentTimer(initialTimer)
+            .spawnStats(spawnStats)
+            .formationRadius(ls.spawnRadius());
+
+        // Derive deathSpawnCount from first death spawn entry
+        if (unitStats.getDeathSpawns() != null && !unitStats.getDeathSpawns().isEmpty()) {
+          spawnerBuilder.deathSpawnCount(unitStats.getDeathSpawns().get(0).count());
+        }
+      }
+
+      spawner = spawnerBuilder.build();
     }
 
     // Always use Building class, attach components optionally
@@ -356,19 +347,14 @@ public class DeploymentSystem {
         .health(new Health(scaledBuildingHp))
         .movement(new Movement(0, 0, collisionRadius, visualRadius, MovementType.BUILDING))
         .combat(combat)
-        .lifetime(card.getBuildingLifetime())
-        .remainingLifetime(card.getBuildingLifetime())
+        .lifetime(lifeTime)
+        .remainingLifetime(lifeTime)
         .spawner(spawner)
         .deployTime(deployTime)
         .deployTimer(deployTime) // Explicitly set timer to match time
         .build();
 
     state.spawnEntity(building);
-
-    // Buildings can have spawn effects too (e.g. Tesla hiding?) - though not in standard CR
-    if (stats != null && stats.hasSpawnEffect()) {
-      triggerSpawnEffect(team, stats, x, y);
-    }
   }
 
   private void castSpell(Team team, Card card, float x, float y, int level) {
@@ -449,20 +435,6 @@ public class DeploymentSystem {
         .build();
 
     state.spawnEntity(effect);
-  }
-
-  /**
-   * Applies spawn effects immediately at the spawn location.
-   */
-  private void triggerSpawnEffect(Team team, TroopStats stats, float x, float y) {
-    combatSystem.applySpellDamage(
-        team,
-        x,
-        y,
-        stats.getSpawnDamage(),
-        stats.getSpawnRadius(),
-        stats.getSpawnEffects()
-    );
   }
 
   // Simple container for the queue

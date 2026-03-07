@@ -5,25 +5,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "Knight",
-        "health": 690,
-        "damage": 79,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Knight"
   },
   {
     "id": "archer",
@@ -31,58 +13,8 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "Archer",
-        "health": 119,
-        "damage": 44,
-        "speed": 60.0,
-        "mass": 3.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 0.9,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "ArcherArrow",
-          "damage": 44,
-          "speed": 600,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.5,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Archer",
-        "health": 119,
-        "damage": 44,
-        "speed": 60.0,
-        "mass": 3.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 0.9,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "ArcherArrow",
-          "damage": 44,
-          "speed": 600,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": -0.5,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Archer",
+    "count": 2
   },
   {
     "id": "goblins",
@@ -90,76 +22,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 2,
-    "units": [
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 1.2,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 1.2
-      },
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -1.2,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.0,
-        "offsetY": -1.2
-      }
-    ]
+    "unit": "Goblin_Stab",
+    "count": 4,
+    "summonRadius": 700.0
   },
   {
     "id": "giant",
@@ -167,27 +32,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 5,
-    "units": [
-      {
-        "name": "Giant",
-        "health": 1550,
-        "damage": 99,
-        "speed": 45.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 7.5,
-        "range": 1.2,
-        "attackCooldown": 1.5,
-        "loadTime": 1.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Giant"
   },
   {
     "id": "pekka",
@@ -195,26 +40,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 7,
-    "units": [
-      {
-        "name": "Pekka",
-        "health": 1469,
-        "damage": 319,
-        "speed": 45.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 5.0,
-        "range": 1.2,
-        "attackCooldown": 1.8,
-        "loadTime": 1.3,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Pekka"
   },
   {
     "id": "minions",
@@ -222,83 +48,8 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.5
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": -0.433,
-        "offsetY": -0.25
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.433,
-        "offsetY": -0.25
-      }
-    ]
+    "unit": "Minion",
+    "count": 3
   },
   {
     "id": "balloon",
@@ -306,32 +57,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "units": [
-      {
-        "name": "Balloon",
-        "health": 655,
-        "damage": 250,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 7.7,
-        "range": 0.1,
-        "attackCooldown": 2.0,
-        "loadTime": 1.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "AIR",
-        "targetOnlyBuildings": true,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "BalloonBomb",
-            "spawnNumber": 1
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Balloon"
   },
   {
     "id": "witch",
@@ -339,41 +65,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "units": [
-      {
-        "name": "Witch",
-        "health": 328,
-        "damage": 53,
-        "speed": 60.0,
-        "mass": 8.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "WitchProjectile",
-          "damage": 53,
-          "speed": 600,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5
-        },
-        "liveSpawn": {
-          "spawnCharacter": "Skeleton",
-          "spawnNumber": 4,
-          "spawnPauseTime": 7.0,
-          "spawnStartTime": 1.0,
-          "spawnRadius": 2.0
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Witch"
   },
   {
     "id": "barbarians",
@@ -381,93 +73,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 5,
-    "units": [
-      {
-        "name": "Barbarian",
-        "health": 262,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 1.2
-      },
-      {
-        "name": "Barbarian",
-        "health": 262,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -1.141,
-        "offsetY": 0.371
-      },
-      {
-        "name": "Barbarian",
-        "health": 262,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.705,
-        "offsetY": -0.971
-      },
-      {
-        "name": "Barbarian",
-        "health": 262,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.705,
-        "offsetY": -0.971
-      },
-      {
-        "name": "Barbarian",
-        "health": 262,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 1.141,
-        "offsetY": 0.371
-      }
-    ]
+    "unit": "Barbarian",
+    "count": 5,
+    "summonRadius": 700.0
   },
   {
     "id": "golem",
@@ -475,39 +83,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 8,
-    "units": [
-      {
-        "name": "Golem",
-        "health": 2000,
-        "damage": 122,
-        "speed": 45.0,
-        "mass": 20.0,
-        "collisionRadius": 0.75,
-        "sightRange": 7.0,
-        "range": 0.75,
-        "attackCooldown": 2.5,
-        "loadTime": 1.5,
-        "deployTime": 3.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "deathDamage": {
-          "damage": 88,
-          "radius": 2.0
-        },
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Golemite",
-            "spawnNumber": 2,
-            "spawnRadius": 1.5
-          }
-        ],
-        "ignoreBuff": "VoodooCurse",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Golem"
   },
   {
     "id": "skeletons",
@@ -515,59 +91,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 1,
-    "units": [
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 1.2
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -1.039,
-        "offsetY": -0.6
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 1.039,
-        "offsetY": -0.6
-      }
-    ]
+    "unit": "Skeleton",
+    "count": 3,
+    "summonRadius": 700.0
   },
   {
     "id": "valkyrie",
@@ -575,26 +101,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "Valkyrie",
-        "health": 745,
-        "damage": 104,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.5,
-        "loadTime": 1.4,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "areaDamageRadius": 2.0,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Valkyrie"
   },
   {
     "id": "skeletonarmy",
@@ -602,263 +109,8 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 3,
-    "units": [
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.5
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.203,
-        "offsetY": 0.457
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.372,
-        "offsetY": 0.335
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.476,
-        "offsetY": 0.155
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.497,
-        "offsetY": -0.052
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.433,
-        "offsetY": -0.25
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.294,
-        "offsetY": -0.405
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -0.104,
-        "offsetY": -0.489
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.104,
-        "offsetY": -0.489
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.294,
-        "offsetY": -0.405
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.433,
-        "offsetY": -0.25
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.497,
-        "offsetY": -0.052
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.476,
-        "offsetY": 0.155
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.372,
-        "offsetY": 0.335
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.203,
-        "offsetY": 0.457
-      }
-    ]
+    "unit": "Skeleton",
+    "count": 15
   },
   {
     "id": "bomber",
@@ -866,34 +118,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 2,
-    "units": [
-      {
-        "name": "Bomber",
-        "health": 119,
-        "damage": 88,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 4.5,
-        "attackCooldown": 1.8,
-        "loadTime": 1.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "BombSkeletonProjectile",
-          "damage": 88,
-          "speed": 400,
-          "homing": false,
-          "aoeToAir": false,
-          "aoeToGround": true,
-          "radius": 1.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Bomber"
   },
   {
     "id": "musketeer",
@@ -901,33 +126,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "Musketeer",
-        "health": 282,
-        "damage": 85,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 6.0,
-        "range": 6.0,
-        "attackCooldown": 1.0,
-        "loadTime": 0.3,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "MusketeerProjectile",
-          "damage": 85,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Musketeer"
   },
   {
     "id": "babydragon",
@@ -935,34 +134,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 4,
-    "units": [
-      {
-        "name": "BabyDragon",
-        "health": 450,
-        "damage": 63,
-        "speed": 90.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 3.5,
-        "attackCooldown": 1.5,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "BabyDragonProjectile",
-          "damage": 63,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "BabyDragon"
   },
   {
     "id": "prince",
@@ -970,34 +142,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "units": [
-      {
-        "name": "Prince",
-        "health": 750,
-        "damage": 153,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.4,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "abilities": [
-          {
-            "type": "CHARGE",
-            "damage": 306,
-            "triggerRange": 0.25,
-            "speedMultiplier": 2.0
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Prince"
   },
   {
     "id": "wizard",
@@ -1005,34 +150,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 5,
-    "units": [
-      {
-        "name": "Wizard",
-        "health": 295,
-        "damage": 110,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.4,
-        "loadTime": 1.0,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "chr_wizardProjectile",
-          "damage": 110,
-          "speed": 600,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Wizard"
   },
   {
     "id": "minipekka",
@@ -1040,25 +158,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "MiniPekka",
-        "health": 543,
-        "damage": 295,
-        "speed": 90.0,
-        "mass": 4.0,
-        "collisionRadius": 0.45,
-        "sightRange": 5.5,
-        "range": 0.8,
-        "attackCooldown": 1.6,
-        "loadTime": 1.1,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "MiniPekka"
   },
   {
     "id": "speargoblins",
@@ -1066,83 +166,8 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 2,
-    "units": [
-      {
-        "name": "SpearGoblin",
-        "health": 52,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "SpearGoblinProjectile",
-          "damage": 32,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.5
-      },
-      {
-        "name": "SpearGoblin",
-        "health": 52,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "SpearGoblinProjectile",
-          "damage": 32,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": -0.433,
-        "offsetY": -0.25
-      },
-      {
-        "name": "SpearGoblin",
-        "health": 52,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "SpearGoblinProjectile",
-          "damage": 32,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.433,
-        "offsetY": -0.25
-      }
-    ]
+    "unit": "SpearGoblin",
+    "count": 3
   },
   {
     "id": "giantskeleton",
@@ -1150,32 +175,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 6,
-    "units": [
-      {
-        "name": "GiantSkeleton",
-        "health": 1413,
-        "damage": 108,
-        "speed": 60.0,
-        "mass": 18.0,
-        "collisionRadius": 1.0,
-        "sightRange": 5.0,
-        "range": 0.8,
-        "attackCooldown": 1.3,
-        "loadTime": 1.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "GiantSkeletonBomb",
-            "spawnNumber": 1
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GiantSkeleton"
   },
   {
     "id": "hogrider",
@@ -1183,26 +183,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "HogRider",
-        "health": 663,
-        "damage": 124,
-        "speed": 120.0,
-        "mass": 4.0,
-        "collisionRadius": 0.6,
-        "sightRange": 9.5,
-        "range": 0.8,
-        "attackCooldown": 1.6,
-        "loadTime": 1.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "HogRider"
   },
   {
     "id": "minionhorde",
@@ -1210,158 +191,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 5,
-    "units": [
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 1.1,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.55,
-        "offsetY": 0.953
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": -0.55,
-        "offsetY": 0.953
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": -1.1,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": -0.55,
-        "offsetY": -0.953
-      },
-      {
-        "name": "Minion",
-        "health": 90,
-        "damage": 42,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MinionSpit",
-          "damage": 42,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.55,
-        "offsetY": -0.953
-      }
-    ]
+    "unit": "Minion",
+    "count": 6,
+    "summonRadius": 600.0
   },
   {
     "id": "icewizard",
@@ -1369,36 +201,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "units": [
-      {
-        "name": "IceWizard",
-        "health": 269,
-        "damage": 35,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "ice_wizardProjectile",
-          "damage": 35,
-          "speed": 700,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5,
-          "targetBuff": "IceWizardSlowDown",
-          "buffDuration": 2.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ],
+    "unit": "IceWizard",
     "deployEffect": {
       "name": "IceWizardCold",
       "radius": 3.0,
@@ -1417,38 +220,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 6,
-    "units": [
-      {
-        "name": "RoyalGiant",
-        "health": 1236,
-        "damage": 120,
-        "speed": 45.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 7.5,
-        "range": 5.0,
-        "attackCooldown": 1.7,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "RoyalGiantProjectile",
-          "damage": 120,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false,
-          "deflectBehaviours": [
-            "IgnoreHeight"
-          ]
-        },
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "RoyalGiant"
   },
   {
     "id": "skeletonwarriors",
@@ -1456,62 +228,8 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 3,
-    "units": [
-      {
-        "name": "SkeletonWarrior",
-        "health": 32,
-        "damage": 46,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.0,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 100,
-        "offsetX": 0.0,
-        "offsetY": 0.5
-      },
-      {
-        "name": "SkeletonWarrior",
-        "health": 32,
-        "damage": 46,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.0,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 100,
-        "offsetX": -0.433,
-        "offsetY": -0.25
-      },
-      {
-        "name": "SkeletonWarrior",
-        "health": 32,
-        "damage": 46,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.0,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 100,
-        "offsetX": 0.433,
-        "offsetY": -0.25
-      }
-    ]
+    "unit": "SkeletonWarrior",
+    "count": 3
   },
   {
     "id": "princess",
@@ -1519,36 +237,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "units": [
-      {
-        "name": "Princess",
-        "health": 102,
-        "damage": 66,
-        "speed": 60.0,
-        "mass": 3.0,
-        "collisionRadius": 0.5,
-        "sightRange": 9.5,
-        "range": 9.0,
-        "attackCooldown": 3.0,
-        "loadTime": 2.7,
-        "deployTime": 1.2,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "PrincessProjectile",
-          "damage": 66,
-          "speed": 600,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 2.0
-        },
-        "areaDamageRadius": 2.5,
-        "multipleProjectiles": 5,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Princess"
   },
   {
     "id": "darkprince",
@@ -1556,36 +245,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 4,
-    "units": [
-      {
-        "name": "DarkPrince",
-        "health": 469,
-        "damage": 104,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "areaDamageRadius": 1.1,
-        "shieldHitpoints": 94,
-        "abilities": [
-          {
-            "type": "CHARGE",
-            "damage": 208,
-            "triggerRange": 0.3,
-            "speedMultiplier": 2.0
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "DarkPrince"
   },
   {
     "id": "lavahound",
@@ -1593,43 +253,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 7,
-    "units": [
-      {
-        "name": "LavaHound",
-        "health": 1399,
-        "damage": 21,
-        "speed": 45.0,
-        "mass": 5.0,
-        "collisionRadius": 0.75,
-        "sightRange": 5.5,
-        "range": 3.5,
-        "attackCooldown": 1.3,
-        "loadTime": 0.3,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "LavaHoundProjectile",
-          "damage": 21,
-          "speed": 400,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true
-        },
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "LavaPups",
-            "spawnNumber": 6,
-            "spawnRadius": 2.5
-          }
-        ],
-        "ignoreBuff": "VoodooCurse",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "LavaHound"
   },
   {
     "id": "icespirits",
@@ -1637,39 +261,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 1,
-    "units": [
-      {
-        "name": "IceSpirits",
-        "health": 90,
-        "damage": 43,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.4,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 0.3,
-        "loadTime": 0.1,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "IceSpiritsProjectile",
-          "damage": 43,
-          "speed": 400,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5,
-          "targetBuff": "Freeze",
-          "buffDuration": 1.1,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "IceSpirits"
   },
   {
     "id": "firespirits",
@@ -1677,37 +269,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 1,
-    "units": [
-      {
-        "name": "FireSpirits",
-        "health": 90,
-        "damage": 81,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.4,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 0.3,
-        "loadTime": 0.1,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "FireSpiritsProjectile",
-          "damage": 81,
-          "speed": 400,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 2.3,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "FireSpirits"
   },
   {
     "id": "miner",
@@ -1715,26 +277,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "units": [
-      {
-        "name": "Miner",
-        "health": 473,
-        "damage": 76,
-        "speed": 90.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "crownTowerDamagePercent": -75,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Miner"
   },
   {
     "id": "zapmachine",
@@ -1742,35 +285,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 6,
-    "units": [
-      {
-        "name": "ZapMachine",
-        "health": 567,
-        "damage": 520,
-        "speed": 45.0,
-        "mass": 18.0,
-        "collisionRadius": 1.0,
-        "sightRange": 5.0,
-        "range": 5.0,
-        "attackCooldown": 4.0,
-        "loadTime": 3.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "ZapMachineProjectile",
-          "damage": 520,
-          "speed": 1400,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": true,
-          "radius": 1.8
-        },
-        "ignorePushback": true,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "ZapMachine"
   },
   {
     "id": "bowler",
@@ -1778,39 +293,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "units": [
-      {
-        "name": "Bowler",
-        "health": 813,
-        "damage": 113,
-        "speed": 45.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 5.5,
-        "range": 4.0,
-        "attackCooldown": 2.5,
-        "loadTime": 2.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "BowlerProjectile",
-          "damage": 113,
-          "speed": 170,
-          "homing": false,
-          "aoeToAir": false,
-          "aoeToGround": true,
-          "radius": 1.8,
-          "projectileRange": 7.5,
-          "deflectBehaviours": [
-            "InvertDirection"
-          ]
-        },
-        "ignorePushback": true,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Bowler"
   },
   {
     "id": "ragebarbarian",
@@ -1818,31 +301,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "RageBarbarian",
-        "health": 501,
-        "damage": 100,
-        "speed": 120.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 0.8,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "deathSpawn": [
-          {
-            "spawnCharacter": "RageBarbarianBottle",
-            "spawnNumber": 1
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "RageBarbarian"
   },
   {
     "id": "battleram",
@@ -1850,42 +309,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "BattleRam",
-        "health": 378,
-        "damage": 112,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.75,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 0.4,
-        "loadTime": 0.35,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Barbarian",
-            "spawnNumber": 2,
-            "spawnRadius": 0.6
-          }
-        ],
-        "ignoreBuff": "VoodooCurse",
-        "abilities": [
-          {
-            "type": "CHARGE",
-            "damage": 224,
-            "triggerRange": 0.3,
-            "speedMultiplier": 2.0
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "BattleRam"
   },
   {
     "id": "infernodragon",
@@ -1893,44 +317,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "InfernoDragon",
-        "health": 506,
-        "damage": 14,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 3.5,
-        "attackCooldown": 0.4,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "abilities": [
-          {
-            "type": "VARIABLE_DAMAGE",
-            "stages": [
-              {
-                "damage": 14,
-                "timeMs": 0
-              },
-              {
-                "damage": 47,
-                "timeMs": 2000
-              },
-              {
-                "damage": 165,
-                "timeMs": 2000
-              }
-            ]
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "InfernoDragon"
   },
   {
     "id": "icegolemite",
@@ -1938,39 +325,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 2,
-    "units": [
-      {
-        "name": "IceGolemite",
-        "health": 514,
-        "damage": 33,
-        "speed": 45.0,
-        "mass": 6.0,
-        "collisionRadius": 0.7,
-        "sightRange": 7.0,
-        "range": 0.75,
-        "attackCooldown": 2.5,
-        "loadTime": 1.5,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "deathDamage": {
-          "damage": 33,
-          "radius": 2.0
-        },
-        "deathAreaEffect": {
-          "name": "FreezeIceGolemite",
-          "radius": 2.0,
-          "lifeDuration": 1.0,
-          "hitsGround": true,
-          "hitsAir": true,
-          "buff": "IceWizardSlowDown",
-          "buffDuration": 2.0
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "IceGolemite"
   },
   {
     "id": "megaminion",
@@ -1978,33 +333,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 3,
-    "units": [
-      {
-        "name": "MegaMinion",
-        "health": 327,
-        "damage": 122,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.5,
-        "loadTime": 1.1,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "MegaMinionSpit",
-          "damage": 122,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "MegaMinion"
   },
   {
     "id": "blowdartgoblin",
@@ -2012,33 +341,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 3,
-    "units": [
-      {
-        "name": "BlowdartGoblin",
-        "health": 102,
-        "damage": 59,
-        "speed": 120.0,
-        "mass": 3.0,
-        "collisionRadius": 0.5,
-        "sightRange": 7.5,
-        "range": 6.5,
-        "attackCooldown": 0.8,
-        "loadTime": 0.45,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "BlowdartGoblinProjectile",
-          "damage": 59,
-          "speed": 800,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "BlowdartGoblin"
   },
   {
     "id": "goblingang",
@@ -2046,59 +349,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 1.5
-      },
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -1.299,
-        "offsetY": -0.75
-      },
-      {
-        "name": "Goblin_Stab",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.5,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 1.299,
-        "offsetY": -0.75
-      }
-    ]
+    "unit": "Goblin_Stab",
+    "count": 3,
+    "summonRadius": 1000.0
   },
   {
     "id": "electrowizard",
@@ -2106,30 +359,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "ElectroWizard",
-        "health": 279,
-        "damage": 46,
-        "speed": 90.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.8,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "multipleTargets": 2,
-        "buffOnDamage": {
-          "buff": "ZapFreeze",
-          "duration": 0.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ],
+    "unit": "ElectroWizard",
     "deployEffect": {
       "name": "ElectroWizardZap",
       "radius": 3.0,
@@ -2148,42 +378,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 6,
-    "units": [
-      {
-        "name": "AngryBarbarian",
-        "health": 524,
-        "damage": 150,
-        "speed": 90.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 6.0,
-        "range": 1.2,
-        "attackCooldown": 1.4,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 1.2,
-        "offsetY": 0.0
-      },
-      {
-        "name": "AngryBarbarian",
-        "health": 524,
-        "damage": 150,
-        "speed": 90.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 6.0,
-        "range": 1.2,
-        "attackCooldown": 1.4,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": -1.2,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "AngryBarbarian",
+    "count": 2,
+    "summonRadius": 700.0
   },
   {
     "id": "hunter",
@@ -2191,37 +388,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 4,
-    "units": [
-      {
-        "name": "Hunter",
-        "health": 346,
-        "damage": 33,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 4.0,
-        "attackCooldown": 2.2,
-        "loadTime": 1.5,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "HunterProjectile",
-          "damage": 33,
-          "speed": 550,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "scatter": "Line",
-          "projectileRange": 6.5
-        },
-        "areaDamageRadius": 0.07,
-        "multipleProjectiles": 10,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Hunter"
   },
   {
     "id": "axeman",
@@ -2229,35 +396,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "units": [
-      {
-        "name": "AxeMan",
-        "health": 500,
-        "damage": 66,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 4.5,
-        "attackCooldown": 0.9,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "AxeManProjectile",
-          "damage": 66,
-          "speed": 550,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.0,
-          "projectileRange": 7.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "AxeMan"
   },
   {
     "id": "assassin",
@@ -2265,35 +404,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "units": [
-      {
-        "name": "Assassin",
-        "health": 354,
-        "damage": 76,
-        "speed": 90.0,
-        "mass": 3.0,
-        "collisionRadius": 0.6,
-        "sightRange": 6.0,
-        "range": 0.75,
-        "attackCooldown": 1.0,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "abilities": [
-          {
-            "type": "DASH",
-            "damage": 152,
-            "minRange": 3.5,
-            "maxRange": 6.0,
-            "cooldown": 0.8,
-            "immuneTimeMs": 100
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Assassin"
   },
   {
     "id": "royalrecruits",
@@ -2301,116 +412,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 7,
-    "units": [
-      {
-        "name": "Recruit",
-        "health": 214,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 94,
-        "offsetX": 1.0,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Recruit",
-        "health": 214,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 94,
-        "offsetX": 0.5,
-        "offsetY": 0.866
-      },
-      {
-        "name": "Recruit",
-        "health": 214,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 94,
-        "offsetX": -0.5,
-        "offsetY": 0.866
-      },
-      {
-        "name": "Recruit",
-        "health": 214,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 94,
-        "offsetX": -1.0,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Recruit",
-        "health": 214,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 94,
-        "offsetX": -0.5,
-        "offsetY": -0.866
-      },
-      {
-        "name": "Recruit",
-        "health": 214,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 5.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "shieldHitpoints": 94,
-        "offsetX": 0.5,
-        "offsetY": -0.866
-      }
-    ]
+    "unit": "Recruit",
+    "count": 6,
+    "summonRadius": 500.0
   },
   {
     "id": "darkwitch",
@@ -2418,39 +422,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "DarkWitch",
-        "health": 354,
-        "damage": 123,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.3,
-        "loadTime": 0.55,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Bat",
-            "spawnNumber": 1,
-            "spawnRadius": 0.5
-          }
-        ],
-        "liveSpawn": {
-          "spawnCharacter": "Bat",
-          "spawnNumber": 2,
-          "spawnPauseTime": 5.0,
-          "spawnStartTime": 1.0,
-          "spawnRadius": 1.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "DarkWitch"
   },
   {
     "id": "bats",
@@ -2458,93 +430,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 2,
-    "units": [
-      {
-        "name": "Bat",
-        "health": 32,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "offsetX": 0.0,
-        "offsetY": 1.25
-      },
-      {
-        "name": "Bat",
-        "health": 32,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "offsetX": -1.189,
-        "offsetY": 0.386
-      },
-      {
-        "name": "Bat",
-        "health": 32,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "offsetX": -0.735,
-        "offsetY": -1.011
-      },
-      {
-        "name": "Bat",
-        "health": 32,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "offsetX": 0.735,
-        "offsetY": -1.011
-      },
-      {
-        "name": "Bat",
-        "health": 32,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "offsetX": 1.189,
-        "offsetY": 0.386
-      }
-    ]
+    "unit": "Bat",
+    "count": 5,
+    "summonRadius": 750.0
   },
   {
     "id": "ghost",
@@ -2552,31 +440,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "units": [
-      {
-        "name": "Ghost",
-        "health": 473,
-        "damage": 102,
-        "speed": 90.0,
-        "mass": 3.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.8,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "areaDamageRadius": 1.0,
-        "stealth": {
-          "hideTimeMs": 400,
-          "notAttackingTimeMs": 1800,
-          "buff": "Invisibility"
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Ghost"
   },
   {
     "id": "ramrider",
@@ -2584,38 +448,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 5,
-    "units": [
-      {
-        "name": "Ram",
-        "health": 663,
-        "damage": 98,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.6,
-        "sightRange": 7.5,
-        "range": 0.8,
-        "attackCooldown": 1.7,
-        "loadTime": 1.1,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "liveSpawn": {
-          "spawnCharacter": "RamRider",
-          "spawnNumber": 1
-        },
-        "abilities": [
-          {
-            "type": "CHARGE",
-            "damage": 196,
-            "triggerRange": 0.25,
-            "speedMultiplier": 2.0
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Ram"
   },
   {
     "id": "minisparkys",
@@ -2623,71 +456,9 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "MiniZapMachine",
-        "health": 207,
-        "damage": 46,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.0,
-        "range": 4.5,
-        "attackCooldown": 2.1,
-        "loadTime": 1.3,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "buffOnDamage": {
-          "buff": "ZapFreeze",
-          "duration": 0.5
-        },
-        "offsetX": 0.0,
-        "offsetY": 1.6
-      },
-      {
-        "name": "MiniZapMachine",
-        "health": 207,
-        "damage": 46,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.0,
-        "range": 4.5,
-        "attackCooldown": 2.1,
-        "loadTime": 1.3,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "buffOnDamage": {
-          "buff": "ZapFreeze",
-          "duration": 0.5
-        },
-        "offsetX": -1.386,
-        "offsetY": -0.8
-      },
-      {
-        "name": "MiniZapMachine",
-        "health": 207,
-        "damage": 46,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.0,
-        "range": 4.5,
-        "attackCooldown": 2.1,
-        "loadTime": 1.3,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "buffOnDamage": {
-          "buff": "ZapFreeze",
-          "duration": 0.5
-        },
-        "offsetX": 1.386,
-        "offsetY": -0.8
-      }
-    ]
+    "unit": "MiniZapMachine",
+    "count": 3,
+    "summonRadius": 1000.0
   },
   {
     "id": "rascals",
@@ -2695,25 +466,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 5,
-    "units": [
-      {
-        "name": "RascalBoy",
-        "health": 758,
-        "damage": 85,
-        "speed": 60.0,
-        "mass": 10.0,
-        "collisionRadius": 0.75,
-        "sightRange": 5.5,
-        "range": 0.8,
-        "attackCooldown": 1.5,
-        "loadTime": 1.1,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "RascalBoy"
   },
   {
     "id": "megaknight",
@@ -2721,40 +474,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 7,
-    "units": [
-      {
-        "name": "MegaKnight",
-        "health": 1560,
-        "damage": 105,
-        "speed": 60.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "areaDamageRadius": 1.3,
-        "abilities": [
-          {
-            "type": "DASH",
-            "damage": 210,
-            "minRange": 3.5,
-            "maxRange": 5.0,
-            "radius": 2.2,
-            "cooldown": 0.9,
-            "pushback": 1.0,
-            "landingTime": 0.3,
-            "constantTime": 0.8
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "MegaKnight"
   },
   {
     "id": "skeletonballoon",
@@ -2762,33 +482,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "SkeletonBalloon",
-        "health": 208,
-        "damage": 0,
-        "speed": 90.0,
-        "mass": 7.0,
-        "collisionRadius": 0.5,
-        "sightRange": 7.7,
-        "range": 0.35,
-        "attackCooldown": 0.3,
-        "loadTime": 0.2,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "AIR",
-        "targetOnlyBuildings": true,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "SkeletonContainer",
-            "spawnNumber": 1
-          }
-        ],
-        "ignoreBuff": "VoodooCurse",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "SkeletonBalloon"
   },
   {
     "id": "dartbarrell",
@@ -2796,33 +490,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "DartBarrell",
-        "health": 240,
-        "damage": 67,
-        "speed": 90.0,
-        "mass": 3.0,
-        "collisionRadius": 0.5,
-        "sightRange": 6.0,
-        "range": 6.0,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "DartBarrellProjectile",
-          "damage": 67,
-          "speed": 800,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "DartBarrell"
   },
   {
     "id": "wallbreakers",
@@ -2830,72 +498,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 2,
-    "units": [
-      {
-        "name": "Wallbreaker",
-        "health": 129,
-        "damage": 137,
-        "speed": 120.0,
-        "mass": 4.0,
-        "collisionRadius": 0.4,
-        "sightRange": 7.0,
-        "range": 0.5,
-        "attackCooldown": 1.2,
-        "loadTime": 1.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "WallbreakerProjectile",
-          "damage": 137,
-          "speed": 1000,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5,
-          "projectileRange": 0.001,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "targetOnlyBuildings": true,
-        "areaDamageRadius": 1.5,
-        "offsetX": 1.15,
-        "offsetY": 0.0
-      },
-      {
-        "name": "Wallbreaker",
-        "health": 129,
-        "damage": 137,
-        "speed": 120.0,
-        "mass": 4.0,
-        "collisionRadius": 0.4,
-        "sightRange": 7.0,
-        "range": 0.5,
-        "attackCooldown": 1.2,
-        "loadTime": 1.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "WallbreakerProjectile",
-          "damage": 137,
-          "speed": 1000,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 1.5,
-          "projectileRange": 0.001,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "targetOnlyBuildings": true,
-        "areaDamageRadius": 1.5,
-        "offsetX": -1.15,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Wallbreaker",
+    "count": 2,
+    "summonRadius": 750.0
   },
   {
     "id": "royalhogs",
@@ -2903,80 +508,9 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 5,
-    "units": [
-      {
-        "name": "RoyalHog",
-        "health": 327,
-        "damage": 29,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.6,
-        "sightRange": 9.5,
-        "range": 0.75,
-        "attackCooldown": 1.2,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "offsetX": 0.601,
-        "offsetY": 0.0
-      },
-      {
-        "name": "RoyalHog",
-        "health": 327,
-        "damage": 29,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.6,
-        "sightRange": 9.5,
-        "range": 0.75,
-        "attackCooldown": 1.2,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "offsetX": 0.0,
-        "offsetY": 0.601
-      },
-      {
-        "name": "RoyalHog",
-        "health": 327,
-        "damage": 29,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.6,
-        "sightRange": 9.5,
-        "range": 0.75,
-        "attackCooldown": 1.2,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "offsetX": -0.601,
-        "offsetY": 0.0
-      },
-      {
-        "name": "RoyalHog",
-        "health": 327,
-        "damage": 29,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.6,
-        "sightRange": 9.5,
-        "range": 0.75,
-        "attackCooldown": 1.2,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "offsetX": -0.0,
-        "offsetY": -0.601
-      }
-    ]
+    "unit": "RoyalHog",
+    "count": 4,
+    "summonRadius": 1.0
   },
   {
     "id": "goblingiant",
@@ -2984,32 +518,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 6,
-    "units": [
-      {
-        "name": "GoblinGiant",
-        "health": 1180,
-        "damage": 69,
-        "speed": 60.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 7.5,
-        "range": 1.2,
-        "attackCooldown": 1.5,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "liveSpawn": {
-          "spawnCharacter": "SpearGoblinGiant",
-          "spawnNumber": 2,
-          "spawnRadius": 0.9
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GoblinGiant"
   },
   {
     "id": "fisherman",
@@ -3017,37 +526,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "units": [
-      {
-        "name": "Fisherman",
-        "health": 340,
-        "damage": 76,
-        "speed": 60.0,
-        "mass": 10.0,
-        "collisionRadius": 0.5,
-        "sightRange": 7.5,
-        "range": 1.2,
-        "attackCooldown": 1.3,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "abilities": [
-          {
-            "type": "HOOK",
-            "range": 7.0,
-            "minimumRange": 3.5,
-            "loadTime": 1.3,
-            "dragBackSpeed": 850,
-            "dragSelfSpeed": 450,
-            "targetBuff": "IceWizardSlowDown",
-            "buffDuration": 1.5
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Fisherman"
   },
   {
     "id": "elitearcher",
@@ -3055,35 +534,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "EliteArcher",
-        "health": 207,
-        "damage": 56,
-        "speed": 60.0,
-        "mass": 3.0,
-        "collisionRadius": 0.6,
-        "sightRange": 7.5,
-        "range": 7.0,
-        "attackCooldown": 1.1,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "EliteArcherArrow",
-          "damage": 56,
-          "speed": 1000,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 0.25,
-          "projectileRange": 11.0
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "EliteArcher"
   },
   {
     "id": "electrodragon",
@@ -3091,40 +542,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "units": [
-      {
-        "name": "ElectroDragon",
-        "health": 371,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 7.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 3.5,
-        "attackCooldown": 2.1,
-        "loadTime": 1.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "ElectroDragonProjectile",
-          "damage": 75,
-          "speed": 2000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false,
-          "targetBuff": "ZapFreeze",
-          "buffDuration": 0.5,
-          "chainedHitRadius": 4.0,
-          "chainedHitCount": 3,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "ElectroDragon"
   },
   {
     "id": "firecracker",
@@ -3132,50 +550,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "Firecracker",
-        "health": 119,
-        "damage": 0,
-        "speed": 90.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 8.0,
-        "range": 6.0,
-        "attackCooldown": 3.0,
-        "loadTime": 2.35,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "FirecrackerProjectile",
-          "damage": 0,
-          "speed": 400,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "scatter": "Line",
-          "spawnProjectile": {
-            "name": "FirecrackerExplosion",
-            "damage": 25,
-            "speed": 550,
-            "homing": false,
-            "aoeToAir": true,
-            "aoeToGround": true,
-            "radius": 0.4,
-            "scatter": "Line",
-            "projectileRange": 5.0,
-            "spawnCount": 5,
-            "spawnRadius": 0.08,
-            "deflectBehaviours": [
-              "InvertDirection"
-            ]
-          }
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Firecracker"
   },
   {
     "id": "mightyminer",
@@ -3183,45 +558,7 @@
     "type": "TROOP",
     "rarity": "Champion",
     "cost": 4,
-    "units": [
-      {
-        "name": "MightyMiner",
-        "health": 879,
-        "damage": 16,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 0.4,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "abilities": [
-          {
-            "type": "VARIABLE_DAMAGE",
-            "stages": [
-              {
-                "damage": 16,
-                "timeMs": 0
-              },
-              {
-                "damage": 80,
-                "timeMs": 2000
-              },
-              {
-                "damage": 160,
-                "timeMs": 2000
-              }
-            ]
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "MightyMiner"
   },
   {
     "id": "elixirgolem",
@@ -3229,36 +566,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 3,
-    "units": [
-      {
-        "name": "ElixirGolem1",
-        "health": 613,
-        "damage": 99,
-        "speed": 45.0,
-        "mass": 15.0,
-        "collisionRadius": 0.6,
-        "sightRange": 7.5,
-        "range": 0.8,
-        "attackCooldown": 1.1,
-        "loadTime": 0.3,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "ElixirGolem2",
-            "spawnNumber": 2,
-            "spawnRadius": 0.75
-          }
-        ],
-        "manaOnDeathForOpponent": 1000,
-        "ignoreBuff": "VoodooCurse",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "ElixirGolem1"
   },
   {
     "id": "battlehealer",
@@ -3266,25 +574,7 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "BattleHealer",
-        "health": 671,
-        "damage": 58,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.5,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "BattleHealer"
   },
   {
     "id": "skeletonking",
@@ -3292,27 +582,7 @@
     "type": "TROOP",
     "rarity": "Champion",
     "cost": 4,
-    "units": [
-      {
-        "name": "SkeletonKing",
-        "health": 898,
-        "damage": 80,
-        "speed": 60.0,
-        "mass": 10.0,
-        "collisionRadius": 1.0,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 1.6,
-        "loadTime": 1.3,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "ignorePushback": true,
-        "areaDamageRadius": 1.3,
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "SkeletonKing"
   },
   {
     "id": "archerqueen",
@@ -3320,33 +590,7 @@
     "type": "TROOP",
     "rarity": "Champion",
     "cost": 5,
-    "units": [
-      {
-        "name": "ArcherQueen",
-        "health": 391,
-        "damage": 88,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.2,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "ArcherQueenArrow",
-          "damage": 88,
-          "speed": 800,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "ArcherQueen"
   },
   {
     "id": "goldenknight",
@@ -3354,37 +598,7 @@
     "type": "TROOP",
     "rarity": "Champion",
     "cost": 4,
-    "units": [
-      {
-        "name": "GoldenKnight",
-        "health": 703,
-        "damage": 63,
-        "speed": 60.0,
-        "mass": 10.0,
-        "collisionRadius": 0.8,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 0.9,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "abilities": [
-          {
-            "type": "DASH",
-            "damage": 131,
-            "pushback": 2.0,
-            "immuneTimeMs": 100,
-            "landingTime": 0.2,
-            "dashCount": 10,
-            "dashSecondaryRange": 5.5,
-            "dashToTargetRadius": true
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GoldenKnight"
   },
   {
     "id": "monk",
@@ -3392,44 +606,7 @@
     "type": "TROOP",
     "rarity": "Champion",
     "cost": 5,
-    "units": [
-      {
-        "name": "Monk",
-        "health": 865,
-        "damage": 55,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.2,
-        "attackCooldown": 0.8,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "abilities": [
-          {
-            "type": "VARIABLE_DAMAGE",
-            "stages": [
-              {
-                "damage": 55,
-                "timeMs": 0
-              },
-              {
-                "damage": 55,
-                "timeMs": 0
-              },
-              {
-                "damage": 165,
-                "timeMs": 0
-              }
-            ]
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Monk"
   },
   {
     "id": "skeletondragons",
@@ -3437,60 +614,9 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 4,
-    "units": [
-      {
-        "name": "SkeletonDragon",
-        "health": 219,
-        "damage": 63,
-        "speed": 90.0,
-        "mass": 4.0,
-        "collisionRadius": 0.9,
-        "sightRange": 5.5,
-        "range": 3.5,
-        "attackCooldown": 1.9,
-        "loadTime": 1.5,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "SkeletonDragonProjectile",
-          "damage": 63,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 0.8
-        },
-        "offsetX": 2.4,
-        "offsetY": 0.0
-      },
-      {
-        "name": "SkeletonDragon",
-        "health": 219,
-        "damage": 63,
-        "speed": 90.0,
-        "mass": 4.0,
-        "collisionRadius": 0.9,
-        "sightRange": 5.5,
-        "range": 3.5,
-        "attackCooldown": 1.9,
-        "loadTime": 1.5,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "projectile": {
-          "name": "SkeletonDragonProjectile",
-          "damage": 63,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 0.8
-        },
-        "offsetX": -2.4,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "SkeletonDragon",
+    "count": 2,
+    "summonRadius": 1500.0
   },
   {
     "id": "witchmother",
@@ -3498,39 +624,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "WitchMother",
-        "health": 207,
-        "damage": 52,
-        "speed": 60.0,
-        "mass": 6.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.0,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "VoodooProjectile",
-          "damage": 52,
-          "speed": 600,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false,
-          "targetBuff": "VoodooCurse",
-          "buffDuration": 5.0
-        },
-        "buffOnDamage": {
-          "buff": "VoodooCurse",
-          "duration": 5.0
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "WitchMother"
   },
   {
     "id": "electrospirit",
@@ -3538,40 +632,7 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 1,
-    "units": [
-      {
-        "name": "ElectroSpirit",
-        "health": 90,
-        "damage": 39,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.4,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 0.3,
-        "loadTime": 0.1,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "ElectroSpiritProjectile",
-          "damage": 39,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false,
-          "targetBuff": "ZapFreeze",
-          "buffDuration": 0.5,
-          "chainedHitRadius": 4.0,
-          "chainedHitCount": 9,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "ElectroSpirit"
   },
   {
     "id": "electrogiant",
@@ -3579,37 +640,7 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 7,
-    "units": [
-      {
-        "name": "ElectroGiant",
-        "health": 1506,
-        "damage": 64,
-        "speed": 45.0,
-        "mass": 18.0,
-        "collisionRadius": 0.75,
-        "sightRange": 7.5,
-        "range": 1.2,
-        "attackCooldown": 2.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "targetOnlyBuildings": true,
-        "ignorePushback": true,
-        "abilities": [
-          {
-            "type": "REFLECT",
-            "damage": 75,
-            "radius": 2.0,
-            "buff": "ZapFreeze",
-            "buffDuration": 0.5,
-            "crownTowerDamagePercent": 50
-          }
-        ],
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "ElectroGiant"
   },
   {
     "id": "phoenix",
@@ -3617,37 +648,7 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "units": [
-      {
-        "name": "Phoenix",
-        "health": 411,
-        "damage": 85,
-        "speed": 60.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 1.6,
-        "attackCooldown": 1.0,
-        "loadTime": 0.4,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "AIR",
-        "deathSpawnProjectile": {
-          "name": "PhoenixFireball",
-          "damage": 64,
-          "speed": 600,
-          "homing": false,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 2.5,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Phoenix"
   },
   {
     "id": "littleprince",
@@ -3655,33 +656,7 @@
     "type": "TROOP",
     "rarity": "Champion",
     "cost": 3,
-    "units": [
-      {
-        "name": "LittlePrince",
-        "health": 273,
-        "damage": 41,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.2,
-        "loadTime": 0.8,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "LittlePrinceProjectile",
-          "damage": 41,
-          "speed": 800,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "LittlePrince"
   },
   {
     "id": "fireball",
@@ -3689,18 +664,7 @@
     "type": "SPELL",
     "rarity": "Rare",
     "cost": 4,
-    "projectile": {
-      "name": "FireballSpell",
-      "damage": 269,
-      "speed": 600,
-      "homing": false,
-      "aoeToAir": true,
-      "aoeToGround": true,
-      "radius": 2.5,
-      "deflectBehaviours": [
-        "UseSpellsTowerDamageMul"
-      ]
-    }
+    "projectile": "FireballSpell"
   },
   {
     "id": "arrows",
@@ -3708,19 +672,7 @@
     "type": "SPELL",
     "rarity": "Common",
     "cost": 3,
-    "projectile": {
-      "name": "ArrowsSpell",
-      "damage": 48,
-      "speed": 1100,
-      "homing": true,
-      "aoeToAir": true,
-      "aoeToGround": true,
-      "radius": 1.4,
-      "deflectBehaviours": [
-        "CheckOnlyTargetPosition",
-        "UseSpellsTowerDamageMul"
-      ]
-    }
+    "projectile": "ArrowsSpell"
   },
   {
     "id": "rage",
@@ -3736,18 +688,7 @@
     "type": "SPELL",
     "rarity": "Rare",
     "cost": 6,
-    "projectile": {
-      "name": "RocketSpell",
-      "damage": 580,
-      "speed": 350,
-      "homing": false,
-      "aoeToAir": true,
-      "aoeToGround": true,
-      "radius": 2.0,
-      "deflectBehaviours": [
-        "UseSpellsTowerDamageMul"
-      ]
-    }
+    "projectile": "RocketSpell"
   },
   {
     "id": "goblinbarrel",
@@ -3755,20 +696,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 3,
-    "projectile": {
-      "name": "GoblinBarrelSpell",
-      "damage": 0,
-      "speed": 400,
-      "homing": false,
-      "aoeToAir": false,
-      "aoeToGround": true,
-      "radius": 1.5,
-      "spawn": {
-        "spawnCharacter": "Goblin",
-        "spawnNumber": 3,
-        "deployTime": 1.1
-      }
-    }
+    "projectile": "GoblinBarrelSpell"
   },
   {
     "id": "freeze",
@@ -3858,31 +786,7 @@
     "type": "SPELL",
     "rarity": "Legendary",
     "cost": 2,
-    "projectile": {
-      "name": "LogProjectile",
-      "damage": 0,
-      "speed": 360,
-      "homing": false,
-      "aoeToAir": false,
-      "aoeToGround": true,
-      "radius": 1.95,
-      "spawnProjectile": {
-        "name": "LogProjectileRolling",
-        "damage": 105,
-        "speed": 200,
-        "homing": false,
-        "aoeToAir": false,
-        "aoeToGround": true,
-        "projectileRange": 10.1,
-        "deflectBehaviours": [
-          "InvertDirection",
-          "UseSpellsTowerDamageMul"
-        ]
-      },
-      "deflectBehaviours": [
-        "NoDeflect"
-      ]
-    }
+    "projectile": "LogProjectile"
   },
   {
     "id": "tornado",
@@ -3938,35 +842,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 2,
-    "projectile": {
-      "name": "BarbLogProjectile",
-      "damage": 0,
-      "speed": 360,
-      "homing": false,
-      "aoeToAir": false,
-      "aoeToGround": true,
-      "radius": 1.3,
-      "spawnProjectile": {
-        "name": "BarbLogProjectileRolling",
-        "damage": 91,
-        "speed": 200,
-        "homing": false,
-        "aoeToAir": false,
-        "aoeToGround": true,
-        "projectileRange": 4.5,
-        "deflectBehaviours": [
-          "InvertDirection",
-          "UseSpellsTowerDamageMul"
-        ]
-      },
-      "deflectBehaviours": [
-        "NoDeflect"
-      ],
-      "spawn": {
-        "spawnCharacter": "Barbarian",
-        "deployTime": 1.0
-      }
-    }
+    "projectile": "BarbLogProjectile"
   },
   {
     "id": "heal",
@@ -3982,20 +858,7 @@
     "type": "SPELL",
     "rarity": "Common",
     "cost": 2,
-    "projectile": {
-      "name": "SnowballSpell",
-      "damage": 70,
-      "speed": 800,
-      "homing": false,
-      "aoeToAir": true,
-      "aoeToGround": true,
-      "radius": 2.5,
-      "targetBuff": "IceWizardSlowDown",
-      "buffDuration": 3.0,
-      "deflectBehaviours": [
-        "UseSpellsTowerDamageMul"
-      ]
-    }
+    "projectile": "SnowballSpell"
   },
   {
     "id": "royaldelivery",
@@ -4058,35 +921,7 @@
     "type": "BUILDING",
     "rarity": "Common",
     "cost": 3,
-    "units": [
-      {
-        "name": "Cannon",
-        "health": 322,
-        "damage": 83,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.6,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.0,
-        "loadTime": 0.1,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "projectile": {
-          "name": "TowerCannonball",
-          "damage": 83,
-          "speed": 1000,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "lifeTime": 30.0
-      }
-    ]
+    "unit": "Cannon"
   },
   {
     "id": "goblinhut",
@@ -4094,64 +929,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "GoblinHut",
-        "health": 331,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 10.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "SpearGoblin",
-            "spawnNumber": 1
-          }
-        ],
-        "lifeTime": 29.0,
-        "liveSpawn": {
-          "spawnCharacter": "SpearGoblin",
-          "spawnNumber": 3,
-          "spawnPauseTime": 10.0,
-          "spawnInterval": 0.5
-        }
-      },
-      {
-        "name": "SpearGoblin",
-        "health": 52,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "SpearGoblinProjectile",
-          "damage": 32,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GoblinHut"
   },
   {
     "id": "mortar",
@@ -4159,37 +937,7 @@
     "type": "BUILDING",
     "rarity": "Common",
     "cost": 4,
-    "units": [
-      {
-        "name": "Mortar",
-        "health": 535,
-        "damage": 104,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.6,
-        "sightRange": 11.5,
-        "range": 11.5,
-        "attackCooldown": 5.0,
-        "loadTime": 4.0,
-        "deployTime": 3.5,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "projectile": {
-          "name": "MortarProjectile",
-          "damage": 104,
-          "speed": 300,
-          "homing": false,
-          "aoeToAir": false,
-          "aoeToGround": true,
-          "radius": 2.0
-        },
-        "minimumRange": 3.5,
-        "lifeTime": 30.0
-      }
-    ]
+    "unit": "Mortar"
   },
   {
     "id": "infernotower",
@@ -4197,46 +945,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 5,
-    "units": [
-      {
-        "name": "InfernoTower",
-        "health": 683,
-        "damage": 17,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.6,
-        "sightRange": 6.0,
-        "range": 6.0,
-        "attackCooldown": 0.4,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "lifeTime": 30.0,
-        "abilities": [
-          {
-            "type": "VARIABLE_DAMAGE",
-            "stages": [
-              {
-                "damage": 17,
-                "timeMs": 0
-              },
-              {
-                "damage": 62,
-                "timeMs": 2000
-              },
-              {
-                "damage": 331,
-                "timeMs": 2000
-              }
-            ]
-          }
-        ]
-      }
-    ]
+    "unit": "InfernoTower"
   },
   {
     "id": "bombtower",
@@ -4244,42 +953,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "BombTower",
-        "health": 530,
-        "damage": 87,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.6,
-        "sightRange": 6.0,
-        "range": 6.0,
-        "attackCooldown": 1.8,
-        "loadTime": 1.3,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "projectile": {
-          "name": "BombTowerProjectile",
-          "damage": 87,
-          "speed": 500,
-          "homing": false,
-          "aoeToAir": false,
-          "aoeToGround": true,
-          "radius": 1.5
-        },
-        "deathSpawn": [
-          {
-            "spawnCharacter": "BombTowerBomb",
-            "spawnNumber": 1
-          }
-        ],
-        "lifeTime": 30.0
-      }
-    ]
+    "unit": "BombTower"
   },
   {
     "id": "barbarianhut",
@@ -4287,56 +961,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 6,
-    "units": [
-      {
-        "name": "BarbarianHut",
-        "health": 455,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 10.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Barbarian",
-            "spawnNumber": 1
-          }
-        ],
-        "lifeTime": 30.0,
-        "liveSpawn": {
-          "spawnCharacter": "Barbarian",
-          "spawnNumber": 3,
-          "spawnPauseTime": 14.0,
-          "spawnInterval": 0.5
-        }
-      },
-      {
-        "name": "Barbarian",
-        "health": 262,
-        "damage": 75,
-        "speed": 60.0,
-        "mass": 4.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.7,
-        "attackCooldown": 1.3,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "BarbarianHut"
   },
   {
     "id": "tesla",
@@ -4344,30 +969,7 @@
     "type": "BUILDING",
     "rarity": "Common",
     "cost": 4,
-    "units": [
-      {
-        "name": "Tesla",
-        "health": 450,
-        "damage": 86,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.0,
-        "stealth": {
-          "hideTimeMs": 800
-        },
-        "lifeTime": 30.0
-      }
-    ]
+    "unit": "Tesla"
   },
   {
     "id": "elixircollector",
@@ -4375,27 +977,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 6,
-    "units": [
-      {
-        "name": "ElixirCollector",
-        "health": 418,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "lifeTime": 93.0
-      }
-    ]
+    "unit": "ElixirCollector"
   },
   {
     "id": "xbow",
@@ -4403,35 +985,7 @@
     "type": "BUILDING",
     "rarity": "Epic",
     "cost": 6,
-    "units": [
-      {
-        "name": "Xbow",
-        "health": 625,
-        "damage": 17,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.6,
-        "sightRange": 11.5,
-        "range": 11.5,
-        "attackCooldown": 0.3,
-        "loadTime": 0.0,
-        "deployTime": 3.5,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "projectile": {
-          "name": "xbow_projectile",
-          "damage": 17,
-          "speed": 1400,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "lifeTime": 30.0
-      }
-    ]
+    "unit": "Xbow"
   },
   {
     "id": "tombstone",
@@ -4439,56 +993,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 3,
-    "units": [
-      {
-        "name": "Tombstone",
-        "health": 207,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 10.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Skeleton",
-            "spawnNumber": 4
-          }
-        ],
-        "lifeTime": 30.0,
-        "liveSpawn": {
-          "spawnCharacter": "Skeleton",
-          "spawnNumber": 2,
-          "spawnPauseTime": 3.5,
-          "spawnInterval": 0.5
-        }
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "Tombstone"
   },
   {
     "id": "giantskeletonbomb",
@@ -4496,32 +1001,7 @@
     "type": "BUILDING",
     "rarity": "",
     "cost": 0,
-
-    "units": [
-      {
-        "name": "GiantSkeletonBomb",
-        "health": 0,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.45,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 3.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "crownTowerDamagePercent": 100,
-        "deathDamage": {
-          "damage": 209,
-          "radius": 3.0
-        },
-        "ignoreBuff": "Event_Berserk_OnStartBuff"
-      }
-    ]
+    "unit": "GiantSkeletonBomb"
   },
   {
     "id": "balloonbomb",
@@ -4529,30 +1009,7 @@
     "type": "BUILDING",
     "rarity": "",
     "cost": 0,
-    "units": [
-      {
-        "name": "BalloonBomb",
-        "health": 0,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.45,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 3.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "deathDamage": {
-          "damage": 94,
-          "radius": 3.0
-        },
-        "ignoreBuff": "Event_Berserk_OnStartBuff"
-      }
-    ]
+    "unit": "BalloonBomb"
   },
   {
     "id": "firespirithut",
@@ -4560,67 +1017,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "FirespiritHut",
-        "health": 331,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 6.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "FireSpirits",
-            "spawnNumber": 1
-          }
-        ],
-        "lifeTime": 28.0,
-        "liveSpawn": {
-          "spawnCharacter": "FireSpirits",
-          "spawnNumber": 1,
-          "spawnPauseTime": 5.0
-        }
-      },
-      {
-        "name": "FireSpirits",
-        "health": 90,
-        "damage": 81,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.4,
-        "sightRange": 5.5,
-        "range": 2.5,
-        "attackCooldown": 0.3,
-        "loadTime": 0.1,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "FireSpiritsProjectile",
-          "damage": 81,
-          "speed": 400,
-          "homing": true,
-          "aoeToAir": true,
-          "aoeToGround": true,
-          "radius": 2.3,
-          "deflectBehaviours": [
-            "NoDeflect"
-          ]
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "FirespiritHut"
   },
   {
     "id": "ragebarbarianbottle",
@@ -4628,36 +1025,7 @@
     "type": "BUILDING",
     "rarity": "",
     "cost": 0,
-    "units": [
-      {
-        "name": "RageBarbarianBottle",
-        "health": 0,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 0.5,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "ignoreBuff": "Event_Berserk_OnStartBuff",
-        "deathAreaEffect": {
-          "name": "BarbarianRage",
-          "radius": 3.0,
-          "lifeDuration": 5.5,
-          "hitsGround": true,
-          "hitsAir": true,
-          "hitSpeed": 0.3,
-          "buff": "Rage",
-          "buffDuration": 1.0
-        }
-      }
-    ]
+    "unit": "RageBarbarianBottle"
   },
   {
     "id": "skeletoncontainer",
@@ -4665,54 +1033,7 @@
     "type": "BUILDING",
     "rarity": "",
     "cost": 0,
-    "units": [
-      {
-        "name": "SkeletonContainer",
-        "health": 0,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 0.6,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "deathDamage": {
-          "damage": 57,
-          "radius": 2.0
-        },
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Skeleton",
-            "spawnNumber": 7,
-            "spawnRadius": 1.48
-          }
-        ],
-        "ignoreBuff": "Event_Berserk_OnStartBuff"
-      },
-      {
-        "name": "Skeleton",
-        "health": 32,
-        "damage": 32,
-        "speed": 90.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.6,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "SkeletonContainer"
   },
   {
     "id": "goblincage",
@@ -4720,50 +1041,7 @@
     "type": "BUILDING",
     "rarity": "Rare",
     "cost": 4,
-    "units": [
-      {
-        "name": "GoblinCage",
-        "health": 305,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 20.0,
-        "range": 5.0,
-        "attackCooldown": 10.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1.5,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "GoblinBrawler",
-            "spawnNumber": 1
-          }
-        ],
-        "lifeTime": 20.0
-      },
-      {
-        "name": "GoblinBrawler",
-        "health": 422,
-        "damage": 132,
-        "speed": 90.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.8,
-        "attackCooldown": 1.1,
-        "loadTime": 0.9,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GoblinCage"
   },
   {
     "id": "goblinpartyhut",
@@ -4771,79 +1049,7 @@
     "type": "BUILDING",
     "rarity": "Legendary",
     "cost": 5,
-    "units": [
-      {
-        "name": "GoblinPartyHut",
-        "health": 461,
-        "damage": 59,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 11.0,
-        "range": 11.0,
-        "attackCooldown": 0.7,
-        "loadTime": 0.35,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "projectile": {
-          "name": "BlowdartGoblinProjectileParty",
-          "damage": 59,
-          "speed": 800,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "deathSpawn": [
-          {
-            "spawnCharacter": "SpearGoblin",
-            "spawnNumber": 3,
-            "spawnRadius": 1.5
-          },
-          {
-            "spawnCharacter": "GoblinBrawler",
-            "spawnNumber": 1,
-            "spawnRadius": 1.5
-          }
-        ],
-        "deathSpawnProjectile": {
-          "name": "GoblinProjectile",
-          "damage": 0,
-          "speed": 100,
-          "homing": false,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "lifeTime": 30.0
-      },
-      {
-        "name": "SpearGoblin",
-        "health": 52,
-        "damage": 32,
-        "speed": 120.0,
-        "mass": 1.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 5.0,
-        "attackCooldown": 1.7,
-        "loadTime": 1.2,
-        "deployTime": 1.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "projectile": {
-          "name": "SpearGoblinProjectile",
-          "damage": 32,
-          "speed": 500,
-          "homing": true,
-          "aoeToAir": false,
-          "aoeToGround": false
-        },
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GoblinPartyHut"
   },
   {
     "id": "barbarianlauncher",
@@ -4851,36 +1057,7 @@
     "type": "BUILDING",
     "rarity": "Common",
     "cost": 5,
-    "units": [
-      {
-        "name": "BarbarianLauncher",
-        "health": 575,
-        "damage": 1,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.6,
-        "sightRange": 11.5,
-        "range": 11.5,
-        "attackCooldown": 3.0,
-        "loadTime": 2.0,
-        "deployTime": 3.5,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "projectile": {
-          "name": "BarbarianLauncherProjectile",
-          "damage": 1,
-          "speed": 300,
-          "homing": false,
-          "aoeToAir": false,
-          "aoeToGround": true,
-          "radius": 2.0
-        },
-        "minimumRange": 3.5,
-        "lifeTime": 30.0
-      }
-    ]
+    "unit": "BarbarianLauncher"
   },
   {
     "id": "bombtowerbomb",
@@ -4888,30 +1065,7 @@
     "type": "BUILDING",
     "rarity": "",
     "cost": 0,
-    "units": [
-      {
-        "name": "BombTowerBomb",
-        "health": 0,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.45,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 3.0,
-        "targetType": "ALL",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "deathDamage": {
-          "damage": 87,
-          "radius": 3.0
-        },
-        "ignoreBuff": "Event_Berserk_OnStartBuff"
-      }
-    ]
+    "unit": "BombTowerBomb"
   },
   {
     "id": "goblindrill",
@@ -4919,57 +1073,7 @@
     "type": "BUILDING",
     "rarity": "Epic",
     "cost": 4,
-    "units": [
-      {
-        "name": "GoblinDrill",
-        "health": 513,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 0.5,
-        "sightRange": 2.0,
-        "range": 2.0,
-        "attackCooldown": 1.1,
-        "loadTime": 0.2,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "visualRadius": 1,
-        "deathSpawn": [
-          {
-            "spawnCharacter": "Goblin",
-            "spawnNumber": 2,
-            "spawnRadius": 0.5
-          }
-        ],
-        "lifeTime": 10.0,
-        "liveSpawn": {
-          "spawnCharacter": "Goblin",
-          "spawnNumber": 1,
-          "spawnPauseTime": 3.0,
-          "spawnStartTime": 1.0
-        }
-      },
-      {
-        "name": "Goblin",
-        "health": 79,
-        "damage": 47,
-        "speed": 120.0,
-        "mass": 2.0,
-        "collisionRadius": 0.5,
-        "sightRange": 5.5,
-        "range": 0.5,
-        "attackCooldown": 1.1,
-        "loadTime": 0.7,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0
-      }
-    ]
+    "unit": "GoblinDrill"
   },
   {
     "id": "darkelixir_bottle",
@@ -4977,35 +1081,7 @@
     "type": "BUILDING",
     "rarity": "Champion",
     "cost": 3,
-    "units": [
-      {
-        "name": "DarkElixir_Bottle",
-        "health": 0,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 0.5,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "deathAreaEffect": {
-          "name": "DarkElixirAOE",
-          "radius": 3.5,
-          "lifeDuration": 12.0,
-          "hitsGround": true,
-          "hitsAir": true,
-          "hitSpeed": 1.0,
-          "buff": "DarkElixirBuff",
-          "buffDuration": 1.0
-        }
-      }
-    ]
+    "unit": "DarkElixir_Bottle"
   },
   {
     "id": "elixirbarrel",
@@ -5013,26 +1089,6 @@
     "type": "BUILDING",
     "rarity": "Legendary",
     "cost": 6,
-    "units": [
-      {
-        "name": "ElixirBarrel",
-        "health": 977,
-        "damage": 0,
-        "speed": 0.0,
-        "mass": 0.0,
-        "collisionRadius": 1.0,
-        "sightRange": 0.0,
-        "range": 0.0,
-        "attackCooldown": 0.0,
-        "loadTime": 0.0,
-        "deployTime": 1.0,
-        "targetType": "GROUND",
-        "movementType": "GROUND",
-        "offsetX": 0.0,
-        "offsetY": 0.0,
-        "manaOnDeathForOpponent": 4000,
-        "lifeTime": 21.0
-      }
-    ]
+    "unit": "ElixirBarrel"
   }
 ]

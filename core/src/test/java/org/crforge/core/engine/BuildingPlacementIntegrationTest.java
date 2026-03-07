@@ -38,7 +38,7 @@ class BuildingPlacementIntegrationTest {
         .name("Big Building")
         .type(CardType.BUILDING)
         .cost(5)
-        .troop(buildingStats)
+        .unitStats(buildingStats)
         .build();
 
     List<Card> cards = new ArrayList<>();

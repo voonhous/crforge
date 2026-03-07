@@ -39,9 +39,9 @@ class BuildingDeployTimeTest {
         .name("Test Building")
         .type(CardType.BUILDING)
         .cost(3)
-        .buildingHealth(100)
-        .troop(TroopStats.builder()
+        .unitStats(TroopStats.builder()
             .name("Test Building")
+            .health(100)
             .deployTime(customDeployTime)
             .build())
         .build();
@@ -86,9 +86,9 @@ class BuildingDeployTimeTest {
         .name("Instant Building")
         .type(CardType.BUILDING)
         .cost(3)
-        .buildingHealth(100)
-        .troop(TroopStats.builder()
+        .unitStats(TroopStats.builder()
             .name("Instant Building")
+            .health(100)
             .deployTime(customDeployTime)
             .build())
         .build();

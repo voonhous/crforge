@@ -177,8 +177,8 @@ class TargetingSystemTest {
   @Test
   void knightShouldIgnoreBabyDragon() {
     // Verify registry config
-    TroopStats knightStats = CardRegistry.get("knight").getTroops().get(0);
-    TroopStats dragonStats = CardRegistry.get("babydragon").getTroops().get(0);
+    TroopStats knightStats = CardRegistry.get("knight").getUnitStats();
+    TroopStats dragonStats = CardRegistry.get("babydragon").getUnitStats();
 
     assertThat(knightStats.getTargetType()).isEqualTo(TargetType.GROUND);
     assertThat(dragonStats.getMovementType()).isEqualTo(MovementType.AIR);

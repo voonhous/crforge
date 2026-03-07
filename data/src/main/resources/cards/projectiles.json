@@ -1,0 +1,556 @@
+{
+  "ArcherArrow": {
+    "name": "ArcherArrow",
+    "damage": 44,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "MinionSpit": {
+    "name": "MinionSpit",
+    "damage": 42,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "WitchProjectile": {
+    "name": "WitchProjectile",
+    "damage": 53,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5
+  },
+  "BombSkeletonProjectile": {
+    "name": "BombSkeletonProjectile",
+    "damage": 88,
+    "speed": 400,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.5
+  },
+  "MusketeerProjectile": {
+    "name": "MusketeerProjectile",
+    "damage": 85,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "BabyDragonProjectile": {
+    "name": "BabyDragonProjectile",
+    "damage": 63,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5
+  },
+  "chr_wizardProjectile": {
+    "name": "chr_wizardProjectile",
+    "damage": 110,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5
+  },
+  "SpearGoblinProjectile": {
+    "name": "SpearGoblinProjectile",
+    "damage": 32,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "ice_wizardProjectile": {
+    "name": "ice_wizardProjectile",
+    "damage": 35,
+    "speed": 700,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5,
+    "targetBuff": "IceWizardSlowDown",
+    "buffDuration": 2.5
+  },
+  "RoyalGiantProjectile": {
+    "name": "RoyalGiantProjectile",
+    "damage": 120,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "deflectBehaviours": [
+      "IgnoreHeight"
+    ]
+  },
+  "PrincessProjectile": {
+    "name": "PrincessProjectile",
+    "damage": 66,
+    "speed": 600,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 2.0
+  },
+  "LavaHoundProjectile": {
+    "name": "LavaHoundProjectile",
+    "damage": 21,
+    "speed": 400,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true
+  },
+  "IceSpiritsProjectile": {
+    "name": "IceSpiritsProjectile",
+    "damage": 43,
+    "speed": 400,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5,
+    "targetBuff": "Freeze",
+    "buffDuration": 1.1,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "FireSpiritsProjectile": {
+    "name": "FireSpiritsProjectile",
+    "damage": 81,
+    "speed": 400,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 2.3,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "ZapMachineProjectile": {
+    "name": "ZapMachineProjectile",
+    "damage": 520,
+    "speed": 1400,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.8
+  },
+  "BowlerProjectile": {
+    "name": "BowlerProjectile",
+    "damage": 113,
+    "speed": 170,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.8,
+    "projectileRange": 7.5,
+    "deflectBehaviours": [
+      "InvertDirection"
+    ]
+  },
+  "MegaMinionSpit": {
+    "name": "MegaMinionSpit",
+    "damage": 122,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "BlowdartGoblinProjectile": {
+    "name": "BlowdartGoblinProjectile",
+    "damage": 59,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "HunterProjectile": {
+    "name": "HunterProjectile",
+    "damage": 33,
+    "speed": 550,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "scatter": "Line",
+    "projectileRange": 6.5
+  },
+  "AxeManProjectile": {
+    "name": "AxeManProjectile",
+    "damage": 66,
+    "speed": 550,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.0,
+    "projectileRange": 7.5
+  },
+  "DartBarrellProjectile": {
+    "name": "DartBarrellProjectile",
+    "damage": 67,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "WallbreakerProjectile": {
+    "name": "WallbreakerProjectile",
+    "damage": 137,
+    "speed": 1000,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5,
+    "projectileRange": 0.001,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "EliteArcherArrow": {
+    "name": "EliteArcherArrow",
+    "damage": 56,
+    "speed": 1000,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 0.25,
+    "projectileRange": 11.0
+  },
+  "ElectroDragonProjectile": {
+    "name": "ElectroDragonProjectile",
+    "damage": 75,
+    "speed": 2000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "targetBuff": "ZapFreeze",
+    "buffDuration": 0.5,
+    "chainedHitRadius": 4.0,
+    "chainedHitCount": 3,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "FirecrackerProjectile": {
+    "name": "FirecrackerProjectile",
+    "damage": 0,
+    "speed": 400,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "scatter": "Line",
+    "spawnProjectile": "FirecrackerExplosion"
+  },
+  "FirecrackerExplosion": {
+    "name": "FirecrackerExplosion",
+    "damage": 25,
+    "speed": 550,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 0.4,
+    "scatter": "Line",
+    "projectileRange": 5.0,
+    "spawnCount": 5,
+    "spawnRadius": 0.08,
+    "deflectBehaviours": [
+      "InvertDirection"
+    ]
+  },
+  "ArcherQueenArrow": {
+    "name": "ArcherQueenArrow",
+    "damage": 88,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "SkeletonDragonProjectile": {
+    "name": "SkeletonDragonProjectile",
+    "damage": 63,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 0.8
+  },
+  "VoodooProjectile": {
+    "name": "VoodooProjectile",
+    "damage": 52,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "targetBuff": "VoodooCurse",
+    "buffDuration": 5.0
+  },
+  "ElectroSpiritProjectile": {
+    "name": "ElectroSpiritProjectile",
+    "damage": 39,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "targetBuff": "ZapFreeze",
+    "buffDuration": 0.5,
+    "chainedHitRadius": 4.0,
+    "chainedHitCount": 9,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "PhoenixFireball": {
+    "name": "PhoenixFireball",
+    "damage": 64,
+    "speed": 600,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 2.5,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ],
+    "spawn": {
+      "spawnCharacter": "PhoenixEgg"
+    }
+  },
+  "LittlePrinceProjectile": {
+    "name": "LittlePrinceProjectile",
+    "damage": 41,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "FireballSpell": {
+    "name": "FireballSpell",
+    "damage": 269,
+    "speed": 600,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 2.5,
+    "deflectBehaviours": [
+      "UseSpellsTowerDamageMul"
+    ]
+  },
+  "ArrowsSpell": {
+    "name": "ArrowsSpell",
+    "damage": 48,
+    "speed": 1100,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.4,
+    "deflectBehaviours": [
+      "CheckOnlyTargetPosition",
+      "UseSpellsTowerDamageMul"
+    ]
+  },
+  "RocketSpell": {
+    "name": "RocketSpell",
+    "damage": 580,
+    "speed": 350,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 2.0,
+    "deflectBehaviours": [
+      "UseSpellsTowerDamageMul"
+    ]
+  },
+  "GoblinBarrelSpell": {
+    "name": "GoblinBarrelSpell",
+    "damage": 0,
+    "speed": 400,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.5,
+    "spawn": {
+      "spawnCharacter": "Goblin",
+      "spawnNumber": 3,
+      "deployTime": 1.1
+    }
+  },
+  "LogProjectile": {
+    "name": "LogProjectile",
+    "damage": 0,
+    "speed": 360,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.95,
+    "spawnProjectile": "LogProjectileRolling",
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "LogProjectileRolling": {
+    "name": "LogProjectileRolling",
+    "damage": 105,
+    "speed": 200,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "projectileRange": 10.1,
+    "deflectBehaviours": [
+      "InvertDirection",
+      "UseSpellsTowerDamageMul"
+    ]
+  },
+  "BarbLogProjectile": {
+    "name": "BarbLogProjectile",
+    "damage": 0,
+    "speed": 360,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.3,
+    "spawnProjectile": "BarbLogProjectileRolling",
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "BarbLogProjectileRolling": {
+    "name": "BarbLogProjectileRolling",
+    "damage": 91,
+    "speed": 200,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "projectileRange": 4.5,
+    "deflectBehaviours": [
+      "InvertDirection",
+      "UseSpellsTowerDamageMul"
+    ],
+    "spawn": {
+      "spawnCharacter": "Barbarian",
+      "deployTime": 1.0
+    }
+  },
+  "HealSpiritProjectile": {
+    "name": "HealSpiritProjectile",
+    "damage": 43,
+    "speed": 400,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 1.5,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "SnowballSpell": {
+    "name": "SnowballSpell",
+    "damage": 70,
+    "speed": 800,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 2.5,
+    "targetBuff": "IceWizardSlowDown",
+    "buffDuration": 3.0,
+    "deflectBehaviours": [
+      "UseSpellsTowerDamageMul"
+    ]
+  },
+  "TowerCannonball": {
+    "name": "TowerCannonball",
+    "damage": 83,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "MortarProjectile": {
+    "name": "MortarProjectile",
+    "damage": 104,
+    "speed": 300,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 2.0
+  },
+  "BombTowerProjectile": {
+    "name": "BombTowerProjectile",
+    "damage": 87,
+    "speed": 500,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 1.5
+  },
+  "xbow_projectile": {
+    "name": "xbow_projectile",
+    "damage": 17,
+    "speed": 1400,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "BlowdartGoblinProjectileParty": {
+    "name": "BlowdartGoblinProjectileParty",
+    "damage": 59,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "GoblinProjectile": {
+    "name": "GoblinProjectile",
+    "damage": 0,
+    "speed": 100,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "spawn": {
+      "spawnCharacter": "Goblin_Stab",
+      "deployTime": 0.1
+    }
+  },
+  "BarbarianLauncherProjectile": {
+    "name": "BarbarianLauncherProjectile",
+    "damage": 1,
+    "speed": 300,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 2.0,
+    "spawn": {
+      "spawnCharacter": "Barbarian",
+      "deployTime": 0.2
+    }
+  },
+  "RamRiderBola": {
+    "name": "RamRiderBola",
+    "damage": 41,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "targetBuff": "BolaSnare",
+    "buffDuration": 2.0
+  },
+  "SpearGoblinGiantProjectile": {
+    "name": "SpearGoblinGiantProjectile",
+    "damage": 32,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
+  "LavaPupProjectile": {
+    "name": "LavaPupProjectile",
+    "damage": 32,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true
+  }
+}

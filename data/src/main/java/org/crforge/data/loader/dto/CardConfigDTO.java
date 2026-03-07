@@ -1,7 +1,6 @@
 package org.crforge.data.loader.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.util.List;
 import lombok.Data;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.Rarity;
@@ -17,11 +16,14 @@ public class CardConfigDTO {
   private int cost;
   private Rarity rarity;
 
-  // Troop specifics
-  private List<UnitConfigDTO> units;
+  // Unit reference (string name into units.json)
+  private String unit;
 
-  // Projectile specifics (For Spells)
-  private ProjectileConfigDTO projectile;
+  // How many copies to spawn (default 1)
+  private int count;
+
+  // Projectile reference for spells (string name into projectiles.json)
+  private String projectile;
 
   // Area effects (spells like Zap, Freeze, Poison)
   private AreaEffectConfigDTO areaEffect;

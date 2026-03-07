@@ -7,6 +7,7 @@ import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.LevelScaling;
+import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
@@ -103,9 +104,16 @@ class DeploymentSystemTest {
 
   @Test
   void testDeploySpawnerBuilding() {
-    // Create a Tombstone-like card
+    // Create a Tombstone-like card with the new model
     TroopStats skeletonStats = TroopStats.builder()
         .name("Skeleton")
+        .build();
+
+    TroopStats buildingStats = TroopStats.builder()
+        .name("TombstoneBuilding")
+        .health(500)
+        .liveSpawn(new LiveSpawnConfig(
+            "Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
         .build();
 
     Card tombstone = Card.builder()
@@ -113,11 +121,8 @@ class DeploymentSystemTest {
         .name("Tombstone")
         .type(CardType.BUILDING)
         .cost(3)
-        .buildingHealth(500)
-        .spawnInterval(3.0f)
-        .deathSpawnCount(4)
-        .troop(TroopStats.builder().name("TombstoneBuilding").build()) // Index 0: Building
-        .troop(skeletonStats) // Index 1: Spawned Unit
+        .unitStats(buildingStats)
+        .spawnTemplate(skeletonStats)
         .build();
 
     // Deck of all Tombstones to bypass shuffle RNG
@@ -149,8 +154,8 @@ class DeploymentSystemTest {
 
     // Check component
     assertThat(entity.getSpawner()).isNotNull();
-    assertThat(entity.getSpawner().getSpawnInterval()).isEqualTo(3.0f);
-    assertThat(entity.getSpawner().getDeathSpawnCount()).isEqualTo(4);
+    assertThat(entity.getSpawner().getSpawnInterval()).isEqualTo(0.5f);
+    assertThat(entity.getSpawner().getSpawnPauseTime()).isEqualTo(3.5f);
   }
 
   @Test
@@ -162,17 +167,20 @@ class DeploymentSystemTest {
 
     float spawnPauseTime = 3.5f;
 
+    TroopStats buildingStats = TroopStats.builder()
+        .name("TombstoneBuilding")
+        .health(500)
+        .liveSpawn(new LiveSpawnConfig(
+            "Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f))
+        .build();
+
     Card tombstone = Card.builder()
         .id("tombstone")
         .name("Tombstone")
         .type(CardType.BUILDING)
         .cost(3)
-        .buildingHealth(500)
-        .spawnInterval(0.5f)
-        .spawnPauseTime(spawnPauseTime)
-        .deathSpawnCount(0)
-        .troop(TroopStats.builder().name("TombstoneBuilding").build())
-        .troop(skeletonStats)
+        .unitStats(buildingStats)
+        .spawnTemplate(skeletonStats)
         .build();
 
     List<Card> deckCards = new ArrayList<>();
@@ -199,13 +207,17 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployRegularBuilding() {
+    TroopStats cannonStats = TroopStats.builder()
+        .name("Cannon")
+        .health(500)
+        .build();
+
     Card cannon = Card.builder()
         .id("cannon")
         .name("Cannon")
         .type(CardType.BUILDING)
         .cost(3)
-        .buildingHealth(500)
-        // No spawn stats
+        .unitStats(cannonStats)
         .build();
 
     // Deck of all Cannons to bypass shuffle RNG
