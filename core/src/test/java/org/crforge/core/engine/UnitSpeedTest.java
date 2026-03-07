@@ -3,7 +3,7 @@ package org.crforge.core.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import org.crfoge.data.card.CardRegistry;
+import org.crforge.data.card.CardRegistry;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.TroopStats;

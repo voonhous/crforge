@@ -9,7 +9,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.crfoge.data.card.CardRegistry;
+import org.crforge.data.card.CardRegistry;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;

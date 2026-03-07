@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
-import org.crfoge.data.card.CardRegistry;
+import org.crforge.data.card.CardRegistry;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.unit.Troop;

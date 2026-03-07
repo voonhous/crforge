@@ -1,4 +1,4 @@
-package org.crfoge.data.loader.dto;
+package org.crforge.data.loader.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
