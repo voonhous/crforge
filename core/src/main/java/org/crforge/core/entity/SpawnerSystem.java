@@ -2,6 +2,8 @@ package org.crforge.core.entity;
 
 import java.util.Collections;
 import org.crforge.core.card.DeathSpawnEntry;
+import org.crforge.core.card.LevelScaling;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Combat;
@@ -58,7 +60,8 @@ public class SpawnerSystem {
         float collisionRadius = spawner.getSpawnStats().getCollisionRadius();
         Vector2 offset = FormationLayout.calculateOffset(
             spawnIndex, total, formationRadius, collisionRadius);
-        doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats());
+        doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats(),
+            spawner.getRarity(), spawner.getLevel());
       }
     }
   }
@@ -94,7 +97,8 @@ public class SpawnerSystem {
         for (int i = 0; i < entry.count(); i++) {
           Vector2 offset = FormationLayout.calculateOffset(
               i, entry.count(), entry.radius(), entry.stats().getCollisionRadius());
-          doSpawn(entity.getPosition(), offset, entity.getTeam(), entry.stats());
+          doSpawn(entity.getPosition(), offset, entity.getTeam(), entry.stats(),
+              spawner.getRarity(), spawner.getLevel());
         }
       }
 
@@ -104,7 +108,8 @@ public class SpawnerSystem {
           Vector2 offset = FormationLayout.calculateOffset(
               i, spawner.getDeathSpawnCount(), spawner.getFormationRadius(),
               spawner.getSpawnStats().getCollisionRadius());
-          doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats());
+          doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats(),
+              spawner.getRarity(), spawner.getLevel());
         }
       }
     }
@@ -123,17 +128,25 @@ public class SpawnerSystem {
     if (stats == null) {
       return;
     }
-    // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset
-    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats);
+    // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
+    // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
+    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats,
+        Rarity.COMMON, 1);
   }
 
-  private void doSpawn(Position origin, Vector2 offset, Team team, TroopStats stats) {
+  private void doSpawn(Position origin, Vector2 offset, Team team, TroopStats stats,
+      Rarity rarity, int level) {
     float x = origin.getX() + offset.getX();
     float y = origin.getY() + offset.getY();
 
+    int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
+    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
+    int scaledShield = stats.getShieldHitpoints() > 0
+        ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level) : 0;
+
     float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
     Combat combat = Combat.builder()
-        .damage(stats.getDamage())
+        .damage(scaledDamage)
         .range(stats.getRange())
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
@@ -147,7 +160,7 @@ public class SpawnerSystem {
         .name(stats.getName())
         .team(team)
         .position(new Position(x, y))
-        .health(new Health(stats.getHealth()))
+        .health(new Health(scaledHp, scaledShield))
         .movement(new Movement(
             stats.getSpeed(),
             stats.getMass(),
