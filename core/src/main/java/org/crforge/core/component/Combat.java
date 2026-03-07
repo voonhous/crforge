@@ -231,7 +231,4 @@ public class Combat {
     this.accumulatedLoadTime = 0; // Stun resets charge
   }
 
-  public void resetCooldown() {
-    currentCooldown = attackCooldown;
-  }
 }
