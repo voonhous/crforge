@@ -41,13 +41,6 @@ public class Movement {
   }
 
   /**
-   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
-   */
-  public void setMovementDisabled(boolean disabled) {
-    setMovementDisabled(ModifierSource.STATUS_EFFECT, disabled);
-  }
-
-  /**
    * Returns true if any source has disabled movement.
    */
   public boolean isMovementDisabled() {
@@ -63,13 +56,6 @@ public class Movement {
     } else {
       speedMultipliers.put(source, multiplier);
     }
-  }
-
-  /**
-   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
-   */
-  public void setSpeedMultiplier(float multiplier) {
-    setSpeedMultiplier(ModifierSource.STATUS_EFFECT, multiplier);
   }
 
   /**
