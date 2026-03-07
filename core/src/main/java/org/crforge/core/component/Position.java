@@ -45,6 +45,10 @@ public class Position {
     return position.distanceTo(other.position);
   }
 
+  public float distanceTo(float x, float y) {
+    return Vector2.distance(position.getX(), position.getY(), x, y);
+  }
+
   public float angleTo(Position other) {
     return position.angleTo(other.position);
   }

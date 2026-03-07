@@ -16,6 +16,7 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.Vector2;
 
 /**
  * Handles attack execution, damage dealing, and projectile management.
@@ -431,7 +432,7 @@ public class CombatSystem {
     // Calculate travel direction for non-homing spawned projectiles
     float dx = hitX - projectile.getOriginX();
     float dy = hitY - projectile.getOriginY();
-    float dist = (float) Math.sqrt(dx * dx + dy * dy);
+    float dist = Vector2.distance(projectile.getOriginX(), projectile.getOriginY(), hitX, hitY);
     float dirX = dist > 0 ? dx / dist : 0;
     float dirY = dist > 0 ? dy / dist : 1;
 
@@ -514,9 +515,7 @@ public class CombatSystem {
         continue;
       }
 
-      float dx = entity.getPosition().getX() - centerX;
-      float dy = entity.getPosition().getY() - centerY;
-      float distance = (float) Math.sqrt(dx * dx + dy * dy);
+      float distance = entity.getPosition().distanceTo(centerX, centerY);
 
       // Use Collision Radius for AOE check
       float effectiveRadius = radius + entity.getCollisionRadius();
@@ -544,9 +543,7 @@ public class CombatSystem {
         continue;
       }
 
-      float dx = entity.getPosition().getX() - centerX;
-      float dy = entity.getPosition().getY() - centerY;
-      float distance = (float) Math.sqrt(dx * dx + dy * dy);
+      float distance = entity.getPosition().distanceTo(centerX, centerY);
 
       // Use Collision Radius for spell AOE check
       float effectiveRadius = radius + entity.getCollisionRadius();

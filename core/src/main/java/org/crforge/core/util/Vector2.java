@@ -41,10 +41,17 @@ public class Vector2 {
     this.y += other.y;
   }
 
-  public float distanceTo(Vector2 other) {
-    float dx = other.x - this.x;
-    float dy = other.y - this.y;
+  /**
+   * Returns the Euclidean distance between two arbitrary points.
+   */
+  public static float distance(float x1, float y1, float x2, float y2) {
+    float dx = x2 - x1;
+    float dy = y2 - y1;
     return (float) Math.sqrt(dx * dx + dy * dy);
+  }
+
+  public float distanceTo(Vector2 other) {
+    return distance(this.x, this.y, other.x, other.y);
   }
 
   public float distanceToSquared(Vector2 other) {

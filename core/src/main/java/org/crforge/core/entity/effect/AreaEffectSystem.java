@@ -75,9 +75,7 @@ public class AreaEffectSystem {
         continue;
       }
 
-      float dx = target.getPosition().getX() - centerX;
-      float dy = target.getPosition().getY() - centerY;
-      float distance = (float) Math.sqrt(dx * dx + dy * dy);
+      float distance = target.getPosition().distanceTo(centerX, centerY);
       float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
 
       if (distance <= effectiveRadius) {
