@@ -13,6 +13,9 @@ import org.crforge.core.player.Team;
 
 public class TargetingSystem {
 
+  // How far beyond sight range a target remains valid before being dropped
+  private static final float TARGET_RETENTION_RANGE_MULTIPLIER = 1.5f;
+
   public void updateTargets(Collection<Entity> entities) {
     for (Entity entity : entities) {
       if (!entity.isAlive()) {
@@ -73,7 +76,7 @@ public class TargetingSystem {
 
     // Check if target is still in range (with leeway)
     float distance = getDistance(attacker, target);
-    if (distance > combat.getSightRange() * 1.5f) {
+    if (distance > combat.getSightRange() * TARGET_RETENTION_RANGE_MULTIPLIER) {
       return false;
     }
 

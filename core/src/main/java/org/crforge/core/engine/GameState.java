@@ -21,6 +21,9 @@ import org.crforge.core.player.Team;
 @Getter
 public class GameState {
 
+  // Destroying the crown tower awards all 3 crowns
+  private static final int CROWN_TOWER_CROWN_VALUE = 3;
+
   private final List<Entity> entities;
   private final List<Projectile> projectiles;
   private final List<Entity> pendingSpawns;
@@ -183,7 +186,7 @@ public class GameState {
     // Check enemy crown tower
     Tower enemyCrown = getCrownTower(enemy);
     if (enemyCrown != null && !enemyCrown.isAlive()) {
-      crowns = 3; // Destroying crown tower = 3 crowns
+      crowns = CROWN_TOWER_CROWN_VALUE;
     } else {
       // Count destroyed princess towers
       crowns = (int) getPrincessTowers(enemy).stream().filter(t -> !t.isAlive()).count();

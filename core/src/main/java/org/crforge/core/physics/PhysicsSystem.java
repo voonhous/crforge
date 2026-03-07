@@ -18,6 +18,8 @@ import org.crforge.core.player.Team;
 public class PhysicsSystem {
 
   private static final float SLIDE_FACTOR = 0.5f;
+  // Minimum distance to compute meaningful collision direction; below this, use default direction
+  private static final float COLLISION_EPSILON = 0.001f;
 
   private final Arena arena;
   private final Pathfinder pathfinder;
@@ -329,7 +331,7 @@ public class PhysicsSystem {
     float overlap = minDist - dist;
 
     // Normalize direction (from B toward A)
-    if (dist > 0.001f) {
+    if (dist > COLLISION_EPSILON) {
       dx /= dist;
       dy /= dist;
     } else {

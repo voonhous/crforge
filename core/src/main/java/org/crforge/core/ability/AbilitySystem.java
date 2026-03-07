@@ -187,7 +187,7 @@ public class AbilitySystem {
         float dy = ability.getDashTargetY() - pos.getY();
         float dist = pos.distanceTo(ability.getDashTargetX(), ability.getDashTargetY());
 
-        float dashSpeed = 15f; // Fast dash movement
+        float dashSpeed = DASH_SPEED;
         float moveAmount = dashSpeed * deltaTime;
 
         if (dist <= moveAmount || dist < 0.1f) {
@@ -256,6 +256,7 @@ public class AbilitySystem {
 
   // -- HOOK --
 
+  private static final float DASH_SPEED = 15f; // Tiles per second during dash movement
   private static final float SPEED_BASE = 60.0f;
 
   private void updateHook(Troop troop, AbilityComponent ability, float deltaTime) {
