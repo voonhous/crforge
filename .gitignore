@@ -42,3 +42,9 @@ __pycache__/
 dist/
 venv/
 .venv/
+
+# Backup files
+*.bak
+
+# IDE build output
+bin/
