@@ -1,6 +1,8 @@
 package org.crforge.core.component;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,7 +14,6 @@ import org.crforge.core.entity.base.TargetType;
 
 @Getter
 @Builder
-@Setter
 public class Combat {
 
   @Builder.Default
@@ -54,6 +55,7 @@ public class Combat {
 
   // Ability-driven damage override (e.g. variable damage / inferno)
   // When > 0, used instead of base damage
+  @Setter
   @Builder.Default
   private int damageOverride = 0;
 
@@ -61,18 +63,27 @@ public class Combat {
   private Entity currentTarget;
   private boolean targetLocked;
 
+  @Setter
   private float currentCooldown; // Time remaining in "Hit Speed" wait after an attack
+  @Setter
   private float currentWindup;   // Time remaining in "Attack Animation" before damage
 
+  @Setter
   @Builder.Default
   private float accumulatedLoadTime = 0f; // Time charged while moving/deploying/idling
 
+  // Source-tracked combat disable -- any source present means combat is disabled
   @Builder.Default
-  private float attackSpeedMultiplier = 1.0f;
+  private final EnumSet<ModifierSource> combatDisableSources =
+      EnumSet.noneOf(ModifierSource.class);
+
+  // Source-tracked attack speed multipliers -- effective multiplier is the product of all
   @Builder.Default
-  private boolean combatDisabled = false;
+  private final EnumMap<ModifierSource, Float> attackSpeedMultipliers =
+      new EnumMap<>(ModifierSource.class);
 
   // Track if we are currently in the middle of an attack sequence (winding up)
+  @Setter
   @Builder.Default
   private boolean isAttacking = false;
 
@@ -102,8 +113,73 @@ public class Combat {
     setCurrentTarget(null);
   }
 
+  /**
+   * Set combat disabled state for a specific source.
+   */
+  public void setCombatDisabled(ModifierSource source, boolean disabled) {
+    if (disabled) {
+      combatDisableSources.add(source);
+    } else {
+      combatDisableSources.remove(source);
+    }
+  }
+
+  /**
+   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
+   */
+  public void setCombatDisabled(boolean disabled) {
+    setCombatDisabled(ModifierSource.STATUS_EFFECT, disabled);
+  }
+
+  /**
+   * Returns true if any source has disabled combat.
+   */
+  public boolean isCombatDisabled() {
+    return !combatDisableSources.isEmpty();
+  }
+
+  /**
+   * Set attack speed multiplier for a specific source.
+   */
+  public void setAttackSpeedMultiplier(ModifierSource source, float multiplier) {
+    if (multiplier == 1.0f) {
+      attackSpeedMultipliers.remove(source);
+    } else {
+      attackSpeedMultipliers.put(source, multiplier);
+    }
+  }
+
+  /**
+   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
+   */
+  public void setAttackSpeedMultiplier(float multiplier) {
+    setAttackSpeedMultiplier(ModifierSource.STATUS_EFFECT, multiplier);
+  }
+
+  /**
+   * Returns the product of all active attack speed multipliers.
+   */
+  public float getAttackSpeedMultiplier() {
+    if (attackSpeedMultipliers.isEmpty()) {
+      return 1.0f;
+    }
+    float product = 1.0f;
+    for (float mult : attackSpeedMultipliers.values()) {
+      product *= mult;
+    }
+    return product;
+  }
+
+  /**
+   * Clears all modifiers (disable + attack speed) for the given source.
+   */
+  public void clearModifiers(ModifierSource source) {
+    combatDisableSources.remove(source);
+    attackSpeedMultipliers.remove(source);
+  }
+
   public boolean canAttack() {
-    return !combatDisabled && currentCooldown <= 0;
+    return !isCombatDisabled() && currentCooldown <= 0;
   }
 
   public boolean isWindingUp() {
@@ -138,7 +214,8 @@ public class Combat {
    * @param canAccumulateLoad If true, we are moving/deploying/idle and can charge up.
    */
   public void update(float deltaTime, boolean canAccumulateLoad) {
-    float effectiveDelta = deltaTime * (combatDisabled ? 0 : attackSpeedMultiplier);
+    boolean disabled = isCombatDisabled();
+    float effectiveDelta = deltaTime * (disabled ? 0 : getAttackSpeedMultiplier());
 
     if (currentCooldown > 0) {
       currentCooldown -= effectiveDelta;
@@ -146,7 +223,7 @@ public class Combat {
 
     if (isAttacking) {
       currentWindup -= effectiveDelta;
-    } else if (canAccumulateLoad && !combatDisabled) {
+    } else if (canAccumulateLoad && !disabled) {
       // Charge up logic
       accumulatedLoadTime += effectiveDelta;
       if (accumulatedLoadTime > loadTime) {

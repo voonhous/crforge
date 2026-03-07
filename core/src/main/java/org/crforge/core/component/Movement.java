@@ -1,5 +1,7 @@
 package org.crforge.core.component;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -17,27 +19,95 @@ public class Movement {
   private final MovementType type;
 
   @Setter
-  private float speedMultiplier = 1.0f;
-  @Setter
   private boolean canMoveFlag = true;
 
-  @Setter
-  private boolean movementDisabled = false;
+  // Source-tracked movement disable -- any source present means movement is disabled
+  private final EnumSet<ModifierSource> movementDisableSources =
+      EnumSet.noneOf(ModifierSource.class);
+
+  // Source-tracked speed multipliers -- effective multiplier is the product of all
+  private final EnumMap<ModifierSource, Float> speedMultipliers =
+      new EnumMap<>(ModifierSource.class);
+
+  /**
+   * Set movement disabled state for a specific source.
+   */
+  public void setMovementDisabled(ModifierSource source, boolean disabled) {
+    if (disabled) {
+      movementDisableSources.add(source);
+    } else {
+      movementDisableSources.remove(source);
+    }
+  }
+
+  /**
+   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
+   */
+  public void setMovementDisabled(boolean disabled) {
+    setMovementDisabled(ModifierSource.STATUS_EFFECT, disabled);
+  }
+
+  /**
+   * Returns true if any source has disabled movement.
+   */
+  public boolean isMovementDisabled() {
+    return !movementDisableSources.isEmpty();
+  }
+
+  /**
+   * Set speed multiplier for a specific source.
+   */
+  public void setSpeedMultiplier(ModifierSource source, float multiplier) {
+    if (multiplier == 1.0f) {
+      speedMultipliers.remove(source);
+    } else {
+      speedMultipliers.put(source, multiplier);
+    }
+  }
+
+  /**
+   * Backward-compatible setter -- defaults to STATUS_EFFECT source.
+   */
+  public void setSpeedMultiplier(float multiplier) {
+    setSpeedMultiplier(ModifierSource.STATUS_EFFECT, multiplier);
+  }
+
+  /**
+   * Returns the product of all active speed multipliers.
+   */
+  public float getSpeedMultiplier() {
+    if (speedMultipliers.isEmpty()) {
+      return 1.0f;
+    }
+    float product = 1.0f;
+    for (float mult : speedMultipliers.values()) {
+      product *= mult;
+    }
+    return product;
+  }
+
+  /**
+   * Clears all modifiers (disable + speed) for the given source.
+   */
+  public void clearModifiers(ModifierSource source) {
+    movementDisableSources.remove(source);
+    speedMultipliers.remove(source);
+  }
 
   public float getBaseSpeed() {
     return speed;
   }
 
   public float getEffectiveSpeed() {
-    return speed * speedMultiplier;
+    return speed * getSpeedMultiplier();
   }
 
   public void resetSpeedMultiplier() {
-    this.speedMultiplier = 1.0f;
+    speedMultipliers.clear();
   }
 
   public boolean canMove() {
-    return !movementDisabled && canMoveFlag && type != MovementType.BUILDING;
+    return !isMovementDisabled() && canMoveFlag && type != MovementType.BUILDING;
   }
 
   public boolean isBuilding() {

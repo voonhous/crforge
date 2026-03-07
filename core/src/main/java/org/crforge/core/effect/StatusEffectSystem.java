@@ -2,12 +2,14 @@ package org.crforge.core.effect;
 
 import java.util.List;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 
 /**
  * Handles the calculation of final attributes based on active status effects.
+ * Only touches the STATUS_EFFECT modifier source, leaving ability sources untouched.
  */
 public class StatusEffectSystem {
 
@@ -52,30 +54,29 @@ public class StatusEffectSystem {
       }
     }
 
-    // Apply to components
+    // Apply to components -- only STATUS_EFFECT source
     Movement move = entity.getMovement();
     if (move != null) {
-      move.setMovementDisabled(isStunned);
-      move.setSpeedMultiplier(moveSpeedMult);
+      move.setMovementDisabled(ModifierSource.STATUS_EFFECT, isStunned);
+      move.setSpeedMultiplier(ModifierSource.STATUS_EFFECT, moveSpeedMult);
     }
 
     Combat combat = entity.getCombat();
     if (combat != null) {
-      combat.setCombatDisabled(isStunned);
-      combat.setAttackSpeedMultiplier(attackSpeedMult);
+      combat.setCombatDisabled(ModifierSource.STATUS_EFFECT, isStunned);
+      combat.setAttackSpeedMultiplier(ModifierSource.STATUS_EFFECT, attackSpeedMult);
     }
   }
 
   private void resetMultipliers(Entity entity) {
+    // Only clear STATUS_EFFECT source, leaving ability sources untouched
     Movement move = entity.getMovement();
     if (move != null) {
-      move.setMovementDisabled(false);
-      move.setSpeedMultiplier(1.0f);
+      move.clearModifiers(ModifierSource.STATUS_EFFECT);
     }
     Combat combat = entity.getCombat();
     if (combat != null) {
-      combat.setCombatDisabled(false);
-      combat.setAttackSpeedMultiplier(1.0f);
+      combat.clearModifiers(ModifierSource.STATUS_EFFECT);
     }
   }
 }
