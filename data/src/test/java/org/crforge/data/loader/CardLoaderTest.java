@@ -8,7 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.crfoge.data.loader.CardLoader;
+import org.crforge.data.loader.CardLoader;
 import org.crforge.core.ability.AbilityType;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;

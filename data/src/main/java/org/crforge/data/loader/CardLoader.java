@@ -1,4 +1,4 @@
-package org.crfoge.data.loader;
+package org.crforge.data.loader;
 
 import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 
@@ -16,16 +16,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.crfoge.data.loader.dto.AbilityConfigDTO;
-import org.crfoge.data.loader.dto.AreaEffectConfigDTO;
-import org.crfoge.data.loader.dto.BuffOnDamageConfigDTO;
-import org.crfoge.data.loader.dto.CardConfigDTO;
-import org.crfoge.data.loader.dto.DeathDamageConfigDTO;
-import org.crfoge.data.loader.dto.DeathSpawnConfigDTO;
-import org.crfoge.data.loader.dto.EffectConfigDTO;
-import org.crfoge.data.loader.dto.LiveSpawnConfigDTO;
-import org.crfoge.data.loader.dto.ProjectileConfigDTO;
-import org.crfoge.data.loader.dto.UnitConfigDTO;
+import org.crforge.data.loader.dto.AbilityConfigDTO;
+import org.crforge.data.loader.dto.AreaEffectConfigDTO;
+import org.crforge.data.loader.dto.BuffOnDamageConfigDTO;
+import org.crforge.data.loader.dto.CardConfigDTO;
+import org.crforge.data.loader.dto.DeathDamageConfigDTO;
+import org.crforge.data.loader.dto.DeathSpawnConfigDTO;
+import org.crforge.data.loader.dto.EffectConfigDTO;
+import org.crforge.data.loader.dto.LiveSpawnConfigDTO;
+import org.crforge.data.loader.dto.ProjectileConfigDTO;
+import org.crforge.data.loader.dto.UnitConfigDTO;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilityType;
 import org.crforge.core.ability.VariableDamageStage;
