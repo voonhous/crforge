@@ -177,7 +177,7 @@ public class Projectile {
     Position targetPos = target.getPosition();
     float dx = targetPos.getX() - position.getX();
     float dy = targetPos.getY() - position.getY();
-    float distance = (float) Math.sqrt(dx * dx + dy * dy);
+    float distance = position.distanceTo(targetPos);
 
     float moveDistance = speed * deltaTime;
 
@@ -202,7 +202,7 @@ public class Projectile {
   private boolean updatePositionTargeted(float deltaTime) {
     float dx = targetX - position.getX();
     float dy = targetY - position.getY();
-    float distance = (float) Math.sqrt(dx * dx + dy * dy);
+    float distance = position.distanceTo(targetX, targetY);
 
     float moveDistance = speed * deltaTime;
 

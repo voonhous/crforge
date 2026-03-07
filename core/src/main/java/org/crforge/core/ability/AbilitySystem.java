@@ -185,7 +185,7 @@ public class AbilitySystem {
         Position pos = troop.getPosition();
         float dx = ability.getDashTargetX() - pos.getX();
         float dy = ability.getDashTargetY() - pos.getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        float dist = pos.distanceTo(ability.getDashTargetX(), ability.getDashTargetY());
 
         float dashSpeed = 15f; // Fast dash movement
         float moveAmount = dashSpeed * deltaTime;
@@ -316,7 +316,7 @@ public class AbilitySystem {
 
         float dx = hookerPos.getX() - targetPos.getX();
         float dy = hookerPos.getY() - targetPos.getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        float dist = hookerPos.distanceTo(targetPos);
 
         float pullSpeed = data.getHookDragBackSpeed() / SPEED_BASE;
         float moveAmount = pullSpeed * deltaTime;
@@ -346,7 +346,7 @@ public class AbilitySystem {
 
         float dx = targetPos.getX() - hookerPos.getX();
         float dy = targetPos.getY() - hookerPos.getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        float dist = hookerPos.distanceTo(targetPos);
 
         float selfSpeed = data.getHookDragSelfSpeed() / SPEED_BASE;
         float moveAmount = selfSpeed * deltaTime;
