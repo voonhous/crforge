@@ -58,7 +58,7 @@ class BuildingDeployTimeTest {
         .build();
 
     deploymentSystem.queueAction(player, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
 
     // 4. Verify
@@ -103,7 +103,7 @@ class BuildingDeployTimeTest {
         .build();
 
     deploymentSystem.queueAction(player, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
 
     Entity entity = gameState.getEntities().get(0);

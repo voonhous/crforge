@@ -1,13 +1,15 @@
 package org.crforge.core.engine;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
@@ -33,9 +35,18 @@ import org.crforge.core.util.Vector2;
 /**
  * Handles the processing of Player Actions and the spawning of cards (Troops, Spells, Buildings).
  * Decouples game rules (Elixir spending, Card Cycling) and Entity Creation from the main loop.
+ *
+ * <p>Deployments go through a server sync delay before entities actually spawn on the arena.
+ * Elixir is spent and the hand is cycled immediately, but the entity appears after
+ * {@link #PLACEMENT_SYNC_DELAY} seconds -- matching real Clash Royale's server latency buffer.
  */
 @RequiredArgsConstructor
 public class DeploymentSystem {
+
+  /**
+   * Server synchronization delay before a card's deploy timer starts (seconds).
+   */
+  public static final float PLACEMENT_SYNC_DELAY = 1.0f;
 
   private static final float SPELL_TRAVEL_DISTANCE = 10f;
 
@@ -45,14 +56,35 @@ public class DeploymentSystem {
   // Internal queue to hold requests associated with the player who made them
   private final Queue<DeploymentRequest> requestQueue = new ConcurrentLinkedQueue<>();
 
+  // Deployments waiting for the sync delay to expire before spawning
+  @Getter
+  private final List<PendingDeployment> pendingDeployments = new ArrayList<>();
+
   public void queueAction(Player player, PlayerActionDTO action) {
     requestQueue.offer(new DeploymentRequest(player, action));
   }
 
-  public void update() {
+  /**
+   * Processes queued actions and ticks pending deployment timers.
+   *
+   * @param deltaTime time elapsed since last update (seconds)
+   */
+  public void update(float deltaTime) {
+    // 1. Drain request queue -> create PendingDeployments
     while (!requestQueue.isEmpty()) {
       DeploymentRequest request = requestQueue.poll();
       processRequest(request);
+    }
+
+    // 2. Tick pending deployment timers and spawn when ready
+    Iterator<PendingDeployment> it = pendingDeployments.iterator();
+    while (it.hasNext()) {
+      PendingDeployment pending = it.next();
+      pending.remainingDelay -= deltaTime;
+      if (pending.remainingDelay <= 0) {
+        spawnCard(pending.team, pending.card, pending.x, pending.y, pending.level);
+        it.remove();
+      }
     }
   }
 
@@ -60,13 +92,15 @@ public class DeploymentSystem {
     Player player = request.player;
     PlayerActionDTO action = request.action;
 
-    // 1. Validate Resources & Cycle Card
+    // 1. Validate Resources & Cycle Card (elixir spent immediately)
     Card card = player.tryPlayCard(action);
 
     if (card != null) {
       int cardLevel = player.getLevelConfig().getLevelFor(card);
-      // 2. Spawn the Entity
-      spawnCard(player.getTeam(), card, action.getX(), action.getY(), cardLevel);
+      // 2. Queue for spawn after sync delay
+      pendingDeployments.add(new PendingDeployment(
+          player.getTeam(), card, action.getX(), action.getY(), cardLevel,
+          PLACEMENT_SYNC_DELAY));
     }
   }
 
@@ -121,7 +155,8 @@ public class DeploymentSystem {
       boolean hasUnitDeathMechanics =
           stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty();
       if (hasUnitDeathMechanics) {
-        int scaledDeathDmg = LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(), level);
+        int scaledDeathDmg = LevelScaling.scaleCard(stats.getDeathDamage(), card.getRarity(),
+            level);
 
         if (spawner == null) {
           // Create a death-only SpawnerComponent
@@ -400,5 +435,29 @@ public class DeploymentSystem {
   // Simple container for the queue
   private record DeploymentRequest(Player player, PlayerActionDTO action) {
 
+  }
+
+  /**
+   * Holds a resolved deployment during the server sync delay. Elixir has already been spent and the
+   * hand cycled; the entity spawns once {@code remainingDelay} reaches zero.
+   */
+  @Getter
+  public static class PendingDeployment {
+
+    final Team team;
+    final Card card;
+    final float x;
+    final float y;
+    final int level;
+    float remainingDelay;
+
+    PendingDeployment(Team team, Card card, float x, float y, int level, float remainingDelay) {
+      this.team = team;
+      this.card = card;
+      this.x = x;
+      this.y = y;
+      this.level = level;
+      this.remainingDelay = remainingDelay;
+    }
   }
 }

@@ -11,8 +11,8 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 
 /**
- * Orchestrator for the debug renderer. Delegates all drawing to focused sub-renderers
- * and controls the render pass ordering.
+ * Orchestrator for the debug renderer. Delegates all drawing to focused sub-renderers and controls
+ * the render pass ordering.
  */
 public class DebugRenderer {
 
@@ -48,8 +48,8 @@ public class DebugRenderer {
   }
 
   public void render(GameEngine engine, OrthographicCamera camera,
-                     int hoverX, int hoverY,
-                     int selectedHandIndex, Team selectedTeam) {
+      int hoverX, int hoverY,
+      int selectedHandIndex, Team selectedTeam) {
     GameState state = engine.getGameState();
     Arena arena = engine.getArena();
     Match match = engine.getMatch();
@@ -72,44 +72,48 @@ public class DebugRenderer {
       arenaRenderer.renderHover(hoverX, hoverY, selectedCard, player, match, selectedHandIndex);
     }
 
-    // 4. Entities
+    // 4. Pending deployment ghosts (sync delay silhouettes, rendered under entities)
+    debugOverlayRenderer.renderPendingDeployments(
+        engine.getDeploymentSystem().getPendingDeployments());
+
+    // 5. Entities
     entityRenderer.render(state);
 
-    // 5. Deploy timers (radial countdown overlay on deploying entities)
+    // 6. Deploy timers (radial countdown overlay on deploying entities)
     debugOverlayRenderer.renderDeployTimers(state);
 
-    // 6. Projectiles
+    // 7. Projectiles
     projectileRenderer.render(state);
 
-    // 7. Health bars
+    // 8. Health bars
     healthBarRenderer.render(state);
 
-    // 8. Targeting lines
+    // 9. Targeting lines
     debugOverlayRenderer.renderTargetingLines(state);
 
-    // 9. Path lines
+    // 10. Path lines
     if (drawPaths) {
       debugOverlayRenderer.renderPathLines(state);
     }
 
-    // 10. Attack range circles
+    // 11. Attack range circles
     if (drawRanges) {
       debugOverlayRenderer.renderAttackRanges(state);
     }
 
-    // 11. Entity names
+    // 12. Entity names
     debugOverlayRenderer.renderEntityNames(state);
 
-    // 12. Area effect zones
+    // 13. Area effect zones
     debugOverlayRenderer.renderAreaEffects(state);
 
-    // 13. Ability indicators (charge, dash, hook, reflect, variable damage)
+    // 14. Ability indicators (charge, dash, hook, reflect, variable damage)
     debugOverlayRenderer.renderAbilityIndicators(state);
 
-    // 14. Spawner timers
+    // 15. Spawner timers
     debugOverlayRenderer.renderSpawnerTimers(state);
 
-    // 15. HUD (timer, cards, elixir)
+    // 16. HUD (timer, cards, elixir)
     hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
         drawPaths, drawRanges);
   }

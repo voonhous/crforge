@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
-import org.crforge.data.card.CardRegistry;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
@@ -15,12 +14,13 @@ import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests that troops with liveSpawn (e.g. Witch) correctly create a SpawnerComponent
- * at deployment time, and that the spawner produces units after the expected delay.
+ * Tests that troops with liveSpawn (e.g. Witch) correctly create a SpawnerComponent at deployment
+ * time, and that the spawner produces units after the expected delay.
  */
 class LiveSpawnDeploymentTest {
 
@@ -67,8 +67,8 @@ class LiveSpawnDeploymentTest {
   }
 
   /**
-   * Cycle through the hand by playing cheap cards until the target card appears.
-   * Gives enough elixir before each play. Returns the slot index of the target card.
+   * Cycle through the hand by playing cheap cards until the target card appears. Gives enough
+   * elixir before each play. Returns the slot index of the target card.
    */
   private int cycleUntilInHand(String cardName) {
     for (int attempt = 0; attempt < 8; attempt++) {
@@ -104,8 +104,9 @@ class LiveSpawnDeploymentTest {
     giveMaxElixir();
     engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
 
-    engine.tick();
-    engine.tick();
+    // Tick past the 1s placement sync delay + 1 to process pending spawns
+    int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
+    engine.tick(syncTicks + 1);
 
     Troop witch = engine.getGameState().getAliveEntities().stream()
         .filter(e -> "Witch".equals(e.getName()))
@@ -130,14 +131,14 @@ class LiveSpawnDeploymentTest {
     giveMaxElixir();
     engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
 
-    // Run past deployment time (1.0s) but not past spawnStartTime (1.0s)
-    engine.runSeconds(0.5f);
+    // Run past sync delay (1.0s) but not past deploy time -- still in sync + deploy phase
+    engine.runSeconds(1.5f);
 
     // No skeletons yet (still deploying)
     long skeletonCount = countEntitiesByName("Skeleton");
     assertThat(skeletonCount).as("No skeletons during deploy phase").isZero();
 
-    // Run past deploy time (1.0s) + spawnStartTime (1.0s)
+    // Run past sync (1.0s) + deploy time (1.0s) + spawnStartTime (1.0s)
     engine.runSeconds(2.0f);
 
     // Skeletons should have spawned (4 per wave)
@@ -154,9 +155,9 @@ class LiveSpawnDeploymentTest {
     giveMaxElixir();
     engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
 
-    // Run past deploy (1.0s) + spawnStartTime (1.0s) + spawnPauseTime (7.0s) + margin
-    // First wave at ~2.0s, second wave at ~9.0s
-    engine.runSeconds(10.0f);
+    // Run past sync (1.0s) + deploy (1.0s) + spawnStartTime (1.0s) + spawnPauseTime (7.0s) + margin
+    // First wave at ~3.0s, second wave at ~10.0s
+    engine.runSeconds(11.0f);
 
     // Use getEntities() (all, not just alive) to count total spawned
     long totalSpawned = engine.getGameState().getEntities().stream()
@@ -174,8 +175,8 @@ class LiveSpawnDeploymentTest {
     giveMaxElixir();
     engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
 
-    // Run past deploy (1.0s) + spawnStartTime (1.0s) + margin to get first wave of 4 skeletons
-    engine.runSeconds(2.5f);
+    // Run past sync (1.0s) + deploy (1.0s) + spawnStartTime (1.0s) + margin for first wave
+    engine.runSeconds(3.5f);
 
     List<Entity> skeletons = engine.getGameState().getAliveEntities().stream()
         .filter(e -> "Skeleton".equals(e.getName()))

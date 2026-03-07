@@ -71,7 +71,7 @@ class LoadTimeMechanicTest {
 
     // 1. Simulate Deploy Phase
     float deployStep = 0.1f;
-    for(float t=0; t<1.0f; t+=deployStep) {
+    for (float t = 0; t < 1.0f; t += deployStep) {
       attacker.update(deployStep);
     }
 
@@ -91,7 +91,7 @@ class LoadTimeMechanicTest {
 
     // 4. Wait 0.5s for First Hit
     // We need 6 ticks to be safe (5 * 0.1 = 0.5 exactly, but float precision/order might mean 6th tick executes)
-    for(int i=0; i<6; i++) {
+    for (int i = 0; i < 6; i++) {
       attacker.update(0.1f); // Decrement windup
       combatSystem.update(0.1f); // Check execute
     }
@@ -109,12 +109,11 @@ class LoadTimeMechanicTest {
   }
 
   /**
-   * Tests for the "preloaded" behaviour described in:
-   * https://royaleapi.com/blog/secret-stats
-   *
-   * Troops enter the arena with their Load Time already fully charged, so their
-   * first attack windup is max(0, attackCooldown - loadTime) rather than the full
-   * attackCooldown. Sparky is the only exception (noPreload = true).
+   * Tests for the "preloaded" behaviour described in: https://royaleapi.com/blog/secret-stats
+   * <p>
+   * Troops enter the arena with their Load Time already fully charged, so their first attack windup
+   * is max(0, attackCooldown - loadTime) rather than the full attackCooldown. Sparky is the only
+   * exception (noPreload = true).
    */
   @Nested
   class PreloadBehavior {
@@ -139,7 +138,7 @@ class LoadTimeMechanicTest {
       Player player = new Player(Team.BLUE, new Deck(cards), false);
       deploymentSystem.queueAction(player,
           PlayerActionDTO.builder().handIndex(0).x(9f).y(9f).build());
-      deploymentSystem.update();
+      deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
       gameState.processPending();
     }
 

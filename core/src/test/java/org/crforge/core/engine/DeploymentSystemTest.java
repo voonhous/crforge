@@ -13,8 +13,8 @@ import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Deck;
 import org.crforge.core.player.LevelConfig;
@@ -66,7 +66,7 @@ class DeploymentSystemTest {
 
     // Queue and Update
     deploymentSystem.queueAction(player, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // 1. Verify Elixir Spent (5.0 - 3.0 = 2.0)
     assertThat(player.getElixir().getCurrent()).isEqualTo(initialElixir - 3);
@@ -92,7 +92,7 @@ class DeploymentSystemTest {
 
     // Queue and Update
     deploymentSystem.queueAction(player, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // 1. Verify Elixir Unchanged
     assertThat(player.getElixir().getCurrent()).isEqualTo(1.0f);
@@ -135,7 +135,7 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(spawnerPlayer, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Process pending spawns to move them to the active entity list
     gameState.processPending();
@@ -189,7 +189,7 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(player, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
 
     Entity entity = gameState.getEntities().get(0);
@@ -223,7 +223,7 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(buildingPlayer, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Process pending spawns
     gameState.processPending();
@@ -280,7 +280,7 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(spellPlayer, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Verify spell effect (damage) was applied immediately via CombatSystem.applySpellDamage
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(50);
@@ -327,7 +327,7 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(spellPlayer, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Traveling spell should NOT deal immediate damage
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(500);
@@ -386,7 +386,7 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(spellPlayer, action);
-    deploymentSystem.update();
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Damage should be scaled, not raw
     int expectedDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
