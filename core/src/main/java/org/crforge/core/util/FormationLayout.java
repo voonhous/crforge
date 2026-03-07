@@ -6,7 +6,7 @@ package org.crforge.core.util;
  *
  * Given N units to place around a center point:
  * - N == 1: offset is (0, 0)
- * - N > 1: units are placed in a circle with radius = formationRadius + collisionRadius.
+ * - N > 1: units are placed in a circle with radius = spawnRadius.
  *   Even N starts at angle 0, odd N starts at pi/2 (first unit at top).
  */
 public final class FormationLayout {
@@ -25,17 +25,17 @@ public final class FormationLayout {
    *
    * @param index           zero-based index of the unit being placed
    * @param total           total number of units in the formation
-   * @param formationRadius radius of the formation circle (already in tile units)
-   * @param collisionRadius collision radius of the unit being placed
+   * @param spawnRadius radius from center at which units are placed (in tile units)
+   * @param collisionRadius collision radius of the unit being placed (unused, reserved)
    * @return offset vector (relative to deploy center), rounded to 3 decimal places
    */
-  public static Vector2 calculateOffset(int index, int total, float formationRadius,
+  public static Vector2 calculateOffset(int index, int total, float spawnRadius,
       float collisionRadius) {
     if (total <= 1) {
       return new Vector2(0, 0);
     }
 
-    float r = formationRadius + collisionRadius;
+    float r = spawnRadius;
     float startAngle = (total % 2 == 0) ? 0f : (float) (Math.PI / 2.0);
     float step = (float) (2.0 * Math.PI / total);
     float angle = startAngle + index * step;
