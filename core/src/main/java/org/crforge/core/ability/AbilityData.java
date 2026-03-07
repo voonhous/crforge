@@ -64,4 +64,10 @@ public class AbilityData {
   private final float reflectBuffDuration = 0f;
   @Builder.Default
   private final int reflectCrownTowerDamagePercent = 0;
+
+  /**
+   * Original buff name for the reflect buff (e.g. "ZapFreeze").
+   * Used to look up BuffDefinition for data-driven multiplier resolution.
+   */
+  private final String reflectBuffName;
 }

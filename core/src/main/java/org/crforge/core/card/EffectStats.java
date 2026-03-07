@@ -32,4 +32,10 @@ public class EffectStats {
    * For CURSE effects: Defines the unit that spawns when the cursed entity dies.
    */
   private final TroopStats spawnSpecies;
+
+  /**
+   * Original buff name from parsed data (e.g. "ZapFreeze", "IceWizardCold").
+   * Used to look up BuffDefinition for data-driven multiplier resolution.
+   */
+  private final String buffName;
 }

@@ -26,6 +26,19 @@ public class AreaEffect extends AbstractEntity {
   @Builder.Default
   private final int scaledDamage = 0;
 
+  /**
+   * Crown tower damage percent resolved from BuffDefinition at deploy time.
+   * Overrides stats.getCrownTowerDamagePercent() when non-zero.
+   */
+  @Builder.Default
+  private final int resolvedCrownTowerDamagePercent = 0;
+
+  /**
+   * Building damage percent bonus from BuffDefinition (e.g. Earthquake 350 = 3.5x to buildings).
+   */
+  @Builder.Default
+  private final int buildingDamagePercent = 0;
+
   /** Remaining lifetime in seconds. Decremented each tick. */
   @Setter
   private float remainingLifetime;
@@ -73,6 +86,16 @@ public class AreaEffect extends AbstractEntity {
    */
   public int getEffectiveDamage() {
     return scaledDamage > 0 ? scaledDamage : stats.getDamage();
+  }
+
+  /**
+   * Returns the effective crown tower damage percent, using the resolved value from BuffDefinition
+   * if set, otherwise falling back to stats.getCrownTowerDamagePercent().
+   */
+  public int getEffectiveCrownTowerDamagePercent() {
+    return resolvedCrownTowerDamagePercent != 0
+        ? resolvedCrownTowerDamagePercent
+        : stats.getCrownTowerDamagePercent();
   }
 
   /**

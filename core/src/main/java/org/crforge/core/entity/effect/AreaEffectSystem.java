@@ -3,12 +3,12 @@ package org.crforge.core.entity.effect;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.card.AreaEffectStats;
-import org.crforge.core.card.EffectStats;
 import org.crforge.core.combat.DamageUtil;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.player.Team;
 
@@ -63,6 +63,7 @@ public class AreaEffectSystem {
     float centerX = effect.getPosition().getX();
     float centerY = effect.getPosition().getY();
     int damage = effect.getEffectiveDamage();
+    int ctdp = effect.getEffectiveCrownTowerDamagePercent();
 
     for (Entity target : gameState.getAliveEntities()) {
       if (target.getTeam() != enemyTeam) {
@@ -82,9 +83,16 @@ public class AreaEffectSystem {
         // Apply buff first (before damage, consistent with CombatSystem convention)
         applyBuff(effect, target);
 
-        // Apply damage with crown tower modifier
+        // Apply damage with crown tower and building damage modifiers
         if (damage > 0) {
-          int effectiveDamage = DamageUtil.adjustForCrownTower(damage, target, stats.getCrownTowerDamagePercent());
+          int effectiveDamage = DamageUtil.adjustForCrownTower(damage, target, ctdp);
+
+          // Apply building damage percent bonus (e.g. Earthquake deals 3.5x to buildings)
+          if (effect.getBuildingDamagePercent() > 0
+              && target.getEntityType() == EntityType.BUILDING) {
+            effectiveDamage = effectiveDamage * effect.getBuildingDamagePercent() / 100;
+          }
+
           target.getHealth().takeDamage(effectiveDamage);
         }
       }
@@ -110,9 +118,9 @@ public class AreaEffectSystem {
       return;
     }
 
-    // Use EffectStats intensity defaults (0 = use system default for that type)
+    // Pass buff name for data-driven multiplier resolution in StatusEffectSystem
     float duration = stats.getBuffDuration() > 0 ? stats.getBuffDuration() : 1.0f;
-    target.addEffect(new AppliedEffect(effectType, duration, 0f));
+    target.addEffect(new AppliedEffect(effectType, duration, stats.getBuff()));
   }
 
 }

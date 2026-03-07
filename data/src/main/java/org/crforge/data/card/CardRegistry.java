@@ -9,8 +9,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.crforge.data.loader.CardLoader;
 import org.crforge.core.card.Card;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
+import org.crforge.data.loader.BuffLoader;
+import org.crforge.data.loader.CardLoader;
 
 @Slf4j
 public class CardRegistry {
@@ -19,6 +22,7 @@ public class CardRegistry {
 
   static {
     loadDefaultCards();
+    loadDefaultBuffs();
   }
 
   private static void loadDefaultCards() {
@@ -30,6 +34,18 @@ public class CardRegistry {
       }
     } catch (IOException e) {
       log.error("Error loading default cards", e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static void loadDefaultBuffs() {
+    try (InputStream is = CardRegistry.class.getResourceAsStream("/cards/buffs.json")) {
+      Map<String, BuffDefinition> buffs = BuffLoader.loadBuffs(is);
+      for (Map.Entry<String, BuffDefinition> entry : buffs.entrySet()) {
+        BuffRegistry.register(entry.getKey(), entry.getValue());
+      }
+    } catch (IOException e) {
+      log.error("Error loading default buffs", e);
       throw new RuntimeException(e);
     }
   }

@@ -1,0 +1,80 @@
+{
+  "BolaSnare": {
+    "name": "BolaSnare",
+    "speedMultiplier": -70
+  },
+  "DarkElixirBuff": {
+    "name": "DarkElixirBuff",
+    "speedMultiplier": 200,
+    "hitSpeedMultiplier": 200,
+    "spawnSpeedMultiplier": 200,
+    "damageReduction": -100,
+    "noEffectToCrownTowers": true
+  },
+  "Earthquake": {
+    "name": "Earthquake",
+    "damagePerSecond": 32,
+    "speedMultiplier": -50,
+    "crownTowerDamagePercent": -35,
+    "buildingDamagePercent": 350,
+    "hitFrequency": 1.0,
+    "enableStacking": true,
+    "hitTickFromSource": true
+  },
+  "Freeze": {
+    "name": "Freeze",
+    "speedMultiplier": -100,
+    "hitSpeedMultiplier": -100,
+    "spawnSpeedMultiplier": -100
+  },
+  "IceWizardCold": {
+    "name": "IceWizardCold",
+    "speedMultiplier": -30,
+    "hitSpeedMultiplier": -30,
+    "spawnSpeedMultiplier": -30
+  },
+  "IceWizardSlowDown": {
+    "name": "IceWizardSlowDown",
+    "speedMultiplier": -30,
+    "hitSpeedMultiplier": -30,
+    "spawnSpeedMultiplier": -30
+  },
+  "Invisibility": {
+    "name": "Invisibility",
+    "invisible": true
+  },
+  "Poison": {
+    "name": "Poison",
+    "damagePerSecond": 36,
+    "speedMultiplier": -15,
+    "crownTowerDamagePercent": -75,
+    "hitFrequency": 1.0,
+    "enableStacking": true
+  },
+  "Rage": {
+    "name": "Rage",
+    "speedMultiplier": 130,
+    "hitSpeedMultiplier": 130,
+    "spawnSpeedMultiplier": 130
+  },
+  "Tornado": {
+    "name": "Tornado",
+    "damagePerSecond": 60,
+    "crownTowerDamagePercent": -70,
+    "attractPercentage": 360,
+    "hitFrequency": 0.55,
+    "enableStacking": true
+  },
+  "VoodooCurse": {
+    "name": "VoodooCurse",
+    "deathSpawnCount": 1,
+    "deathSpawnIsEnemy": true,
+    "deathSpawn": "VoodooHog"
+  },
+  "ZapFreeze": {
+    "name": "ZapFreeze",
+    "speedMultiplier": -100,
+    "hitSpeedMultiplier": -100,
+    "spawnSpeedMultiplier": -100
+  }
+}
