@@ -75,38 +75,41 @@ public class DebugRenderer {
     // 4. Entities
     entityRenderer.render(state);
 
-    // 5. Projectiles
+    // 5. Deploy timers (radial countdown overlay on deploying entities)
+    debugOverlayRenderer.renderDeployTimers(state);
+
+    // 6. Projectiles
     projectileRenderer.render(state);
 
-    // 6. Health bars
+    // 7. Health bars
     healthBarRenderer.render(state);
 
-    // 7. Targeting lines
+    // 8. Targeting lines
     debugOverlayRenderer.renderTargetingLines(state);
 
-    // 8. Path lines
+    // 9. Path lines
     if (drawPaths) {
       debugOverlayRenderer.renderPathLines(state);
     }
 
-    // 9. Attack range circles
+    // 10. Attack range circles
     if (drawRanges) {
       debugOverlayRenderer.renderAttackRanges(state);
     }
 
-    // 10. Entity names
+    // 11. Entity names
     debugOverlayRenderer.renderEntityNames(state);
 
-    // 11. Area effect zones
+    // 12. Area effect zones
     debugOverlayRenderer.renderAreaEffects(state);
 
-    // 12. Ability indicators (charge, dash, hook, reflect, variable damage)
+    // 13. Ability indicators (charge, dash, hook, reflect, variable damage)
     debugOverlayRenderer.renderAbilityIndicators(state);
 
-    // 13. Spawner timers
+    // 14. Spawner timers
     debugOverlayRenderer.renderSpawnerTimers(state);
 
-    // 14. HUD (timer, cards, elixir)
+    // 15. HUD (timer, cards, elixir)
     hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
         drawPaths, drawRanges);
   }

@@ -117,6 +117,9 @@ public final class RenderConstants {
   /** Base color for area effect zone overlays. */
   public static final Color COLOR_AREA_EFFECT = new Color(0.8f, 0.8f, 0.2f, 0.4f);
 
+  /** Semi-transparent light blue for deploy timer radial overlay. */
+  public static final Color COLOR_DEPLOY_TIMER = new Color(0.4f, 0.75f, 1f, 0.6f);
+
   // Ability indicator colors
   public static final Color COLOR_CHARGE_BAR = new Color(1f, 0.6f, 0.1f, 0.9f);
   public static final Color COLOR_CHARGE_READY = new Color(1f, 1f, 1f, 0.9f);
