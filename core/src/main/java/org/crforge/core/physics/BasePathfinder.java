@@ -97,9 +97,10 @@ public class BasePathfinder implements Pathfinder {
           ? RIVER_Y_MAX + BOUNDARY_EPSILON
           : RIVER_Y_MIN - BOUNDARY_EPSILON;
 
-      // Find which bridge we are currently on
+      // Find which bridge we are currently on (same logic as pre-crossing selection)
       float distToLeft = Math.abs(curX - LEFT_BRIDGE_CENTER_X);
-      float bridgeX = (distToLeft < (Arena.WIDTH / 4f)) ? LEFT_BRIDGE_CENTER_X : RIGHT_BRIDGE_CENTER_X;
+      float distToRight = Math.abs(curX - RIGHT_BRIDGE_CENTER_X);
+      float bridgeX = (distToLeft < distToRight) ? LEFT_BRIDGE_CENTER_X : RIGHT_BRIDGE_CENTER_X;
 
       float targetBridgeX = bridgeX;
 
