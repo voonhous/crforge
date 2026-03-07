@@ -57,10 +57,6 @@ public class Building extends AbstractEntity {
     if (remainingLifetime == 0 && lifetime > 0) {
       remainingLifetime = lifetime;
     }
-    // Sync deploy timer with deploy time if not manually set
-    if (deployTimer == 0 && deployTime > 0) {
-      deployTimer = deployTime;
-    }
     if (deployTime <= 0) {
       deployTimer = 0;
       spawned = true; // Instant spawn

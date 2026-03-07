@@ -91,10 +91,6 @@ public class Troop extends AbstractEntity {
   @Override
   public void onSpawn() {
     super.onSpawn();
-    // Sync deploy timer with deploy time if not manually set
-    if (deployTimer == 0 && deployTime > 0) {
-      deployTimer = deployTime;
-    }
     if (deployTime <= 0) {
       deployTimer = 0;
     }
