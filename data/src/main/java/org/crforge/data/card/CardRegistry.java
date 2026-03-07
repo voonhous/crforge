@@ -10,10 +10,14 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
 import org.crforge.data.loader.BuffLoader;
 import org.crforge.data.loader.CardLoader;
+import org.crforge.data.loader.ProjectileLoader;
+import org.crforge.data.loader.UnitLoader;
 
 @Slf4j
 public class CardRegistry {
@@ -21,21 +25,11 @@ public class CardRegistry {
   private static final Map<String, Card> CARDS = new LinkedHashMap<>();
 
   static {
-    loadDefaultCards();
+    // Loading order matters: buffs -> projectiles -> units -> cards
     loadDefaultBuffs();
-  }
-
-  private static void loadDefaultCards() {
-    // Load from classpath resource
-    try (InputStream is = CardRegistry.class.getResourceAsStream("/cards/cards.json")) {
-      List<Card> loadedCards = CardLoader.loadCards(is);
-      for (Card card : loadedCards) {
-        register(card);
-      }
-    } catch (IOException e) {
-      log.error("Error loading default cards", e);
-      throw new RuntimeException(e);
-    }
+    Map<String, ProjectileStats> projectileMap = loadDefaultProjectiles();
+    Map<String, TroopStats> unitMap = loadDefaultUnits(projectileMap);
+    loadDefaultCards(unitMap, projectileMap);
   }
 
   private static void loadDefaultBuffs() {
@@ -46,6 +40,38 @@ public class CardRegistry {
       }
     } catch (IOException e) {
       log.error("Error loading default buffs", e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static Map<String, ProjectileStats> loadDefaultProjectiles() {
+    try (InputStream is = CardRegistry.class.getResourceAsStream("/cards/projectiles.json")) {
+      return ProjectileLoader.loadProjectiles(is);
+    } catch (IOException e) {
+      log.error("Error loading default projectiles", e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static Map<String, TroopStats> loadDefaultUnits(
+      Map<String, ProjectileStats> projectileMap) {
+    try (InputStream is = CardRegistry.class.getResourceAsStream("/cards/units.json")) {
+      return UnitLoader.loadUnits(is, projectileMap);
+    } catch (IOException e) {
+      log.error("Error loading default units", e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static void loadDefaultCards(Map<String, TroopStats> unitMap,
+      Map<String, ProjectileStats> projectileMap) {
+    try (InputStream is = CardRegistry.class.getResourceAsStream("/cards/cards.json")) {
+      List<Card> loadedCards = CardLoader.loadCards(is, unitMap, projectileMap);
+      for (Card card : loadedCards) {
+        register(card);
+      }
+    } catch (IOException e) {
+      log.error("Error loading default cards", e);
       throw new RuntimeException(e);
     }
   }

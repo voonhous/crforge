@@ -130,7 +130,7 @@ class LoadTimeMechanicTest {
           .name(stats.getName())
           .cost(1)
           .type(CardType.TROOP)
-          .troops(List.of(stats))
+          .unitStats(stats)
           .build();
       // Fill all 8 slots with the same card - Hand shuffles on init, so this ensures
       // whichever slot ends up at index 0 will always have troops defined.

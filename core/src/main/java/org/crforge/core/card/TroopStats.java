@@ -51,21 +51,16 @@ public class TroopStats {
   @Builder.Default
   private final float deployTime = DEFAULT_DEPLOY_TIME;
   @Builder.Default
-  private final float offsetX = 0f;
-  @Builder.Default
-  private final float offsetY = 0f;
-  @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
 
-  // Spawn Mechanics (Enter the Arena effects)
-  @Builder.Default
-  private final int spawnDamage = 0;
-  @Builder.Default
-  private final float spawnRadius = 0f;
-  @Builder.Default
-  private final List<EffectStats> spawnEffects = new ArrayList<>();
-
   private final ProjectileStats projectile;
+
+  // Building lifetime (seconds); 0 means no lifetime limit
+  @Builder.Default
+  private final float lifeTime = 0f;
+
+  // Live spawn configuration (for spawner troops/buildings like Witch, Tombstone)
+  private final LiveSpawnConfig liveSpawn;
 
   // Death mechanics
   @Builder.Default
@@ -103,9 +98,5 @@ public class TroopStats {
 
   public boolean isRanged() {
     return range >= 2.0f;
-  }
-
-  public boolean hasSpawnEffect() {
-    return spawnDamage > 0 || !spawnEffects.isEmpty();
   }
 }

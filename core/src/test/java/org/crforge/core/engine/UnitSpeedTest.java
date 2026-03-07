@@ -45,7 +45,7 @@ class UnitSpeedTest {
     Card card = CardRegistry.get(cardId);
     assertThat(card).isNotNull();
 
-    TroopStats stats = card.getTroops().get(0);
+    TroopStats stats = card.getUnitStats();
 
     // Spawn at (3.5, 5.0) -> moving straight up towards bridge
     float startX = 3.5f;
