@@ -8,6 +8,7 @@ import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
@@ -48,20 +49,16 @@ class AbilitySystemTest {
   // -- CHARGE tests --
 
   @Test
-  void charge_shouldBuildUpWhileMovingTowardTarget() {
+  void charge_shouldBuildUpWhileMoving() {
     Troop prince = createChargeTroop(Team.BLUE, 5, 5);
-    Troop target = createDummyTarget(Team.RED, 15, 5);
 
     gameState.spawnEntity(prince);
-    gameState.spawnEntity(target);
     gameState.processPending();
 
     // Finish deploy
     prince.update(2.0f);
-    target.update(2.0f);
 
-    // Set target (has target, not attacking -> charge should build)
-    prince.getCombat().setCurrentTarget(target);
+    // No target needed -- charge builds while unit is moving (speed > 0)
 
     // Run ability system for 1 second
     for (int i = 0; i < 30; i++) {
@@ -77,18 +74,13 @@ class AbilitySystemTest {
   @Test
   void charge_shouldActivateAfterChargeTime() {
     Troop prince = createChargeTroop(Team.BLUE, 5, 5);
-    Troop target = createDummyTarget(Team.RED, 15, 5);
 
     gameState.spawnEntity(prince);
-    gameState.spawnEntity(target);
     gameState.processPending();
 
     prince.update(2.0f);
-    target.update(2.0f);
 
-    prince.getCombat().setCurrentTarget(target);
-
-    // Run for 2.5s (charge time threshold)
+    // Run for 2.5s (charge time threshold) -- no target needed
     for (int i = 0; i < 76; i++) { // 76 ticks = 2.533s
       abilitySystem.update(DT);
     }
@@ -101,7 +93,7 @@ class AbilitySystemTest {
   }
 
   @Test
-  void charge_shouldResetOnTargetLoss() {
+  void charge_shouldNotResetOnTargetLoss() {
     Troop prince = createChargeTroop(Team.BLUE, 5, 5);
     Troop target = createDummyTarget(Team.RED, 15, 5);
 
@@ -112,23 +104,47 @@ class AbilitySystemTest {
     prince.update(2.0f);
     target.update(2.0f);
 
-    prince.getCombat().setCurrentTarget(target);
-
-    // Build up 2.6s of charge
+    // Build up charge while moving (no target needed)
     for (int i = 0; i < 78; i++) {
       abilitySystem.update(DT);
     }
     assertThat(prince.getAbility().isCharged()).isTrue();
 
-    // Lose target
+    // Set and then lose target -- charge should persist (unit is still moving)
+    prince.getCombat().setCurrentTarget(target);
     prince.getCombat().clearTarget();
     abilitySystem.update(DT);
 
-    // Charge should be reset
     AbilityComponent ability = prince.getAbility();
-    assertThat(ability.isCharged()).isFalse();
+    assertThat(ability.isCharged()).isTrue();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
+  }
+
+  @Test
+  void charge_shouldResetWhenMovementStopsBeforeFullyCharged() {
+    // Stationary troop (speed=0) should not build charge
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+
+    gameState.spawnEntity(prince);
+    gameState.processPending();
+
+    prince.update(2.0f);
+
+    // Build partial charge (1s)
+    for (int i = 0; i < 30; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().getChargeTimer()).isGreaterThan(0f);
+
+    // Simulate stopped movement (e.g. stun zeroes effective speed)
+    prince.getMovement().setSpeedMultiplier(
+        ModifierSource.STATUS_EFFECT, 0f);
+    abilitySystem.update(DT);
+
+    // Charge should be lost -- must restart from zero
+    AbilityComponent ability = prince.getAbility();
     assertThat(ability.getChargeTimer()).isEqualTo(0f);
-    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(1.0f);
+    assertThat(ability.isCharged()).isFalse();
   }
 
   @Test
@@ -143,13 +159,14 @@ class AbilitySystemTest {
     prince.update(2.0f);
     target.update(2.0f);
 
-    prince.getCombat().setCurrentTarget(target);
-
-    // Build up charge (2.6s)
+    // Build up charge while moving (no target needed)
     for (int i = 0; i < 78; i++) {
       abilitySystem.update(DT);
     }
     assertThat(prince.getAbility().isCharged()).isTrue();
+
+    // Now acquire target for the attack
+    prince.getCombat().setCurrentTarget(target);
 
     // Verify getChargeDamage returns charge damage
     int chargeDmg = AbilitySystem.getChargeDamage(prince.getAbility(), 100);
@@ -181,9 +198,8 @@ class AbilitySystemTest {
     prince.update(2.0f);
     target.update(2.0f);
 
-    prince.getCombat().setCurrentTarget(target);
-
     // Do NOT charge -- attack immediately
+    prince.getCombat().setCurrentTarget(target);
     assertThat(prince.getAbility().isCharged()).isFalse();
 
     int normalDmg = AbilitySystem.getChargeDamage(prince.getAbility(), 100);
