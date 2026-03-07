@@ -147,6 +147,8 @@ public class DeploymentSystem {
               .deathSpawnCount(card.getDeathSpawnCount())
               .spawnStats(spawnStats)
               .formationRadius(card.getLiveSpawnRadius())
+              .rarity(card.getRarity())
+              .level(level)
               .build();
         }
       }
@@ -164,6 +166,8 @@ public class DeploymentSystem {
               .deathDamage(scaledDeathDmg)
               .deathDamageRadius(stats.getDeathDamageRadius())
               .deathSpawns(stats.getDeathSpawns())
+              .rarity(card.getRarity())
+              .level(level)
               .build();
         } else {
           // Merge death mechanics into existing spawner
@@ -337,6 +341,8 @@ public class DeploymentSystem {
           .deathDamage(scaledDeathDmg)
           .deathDamageRadius(stats != null ? stats.getDeathDamageRadius() : 0f)
           .deathSpawns(stats != null ? stats.getDeathSpawns() : List.of())
+          .rarity(card.getRarity())
+          .level(level)
           .build();
     }
 

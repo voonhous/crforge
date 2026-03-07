@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.DeathSpawnEntry;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 
 /**
@@ -44,6 +45,14 @@ public class SpawnerComponent {
 
   private int deathSpawnCount;
   private TroopStats spawnStats;
+
+  /**
+   * Rarity and level of the parent card, used to scale spawned unit stats.
+   */
+  @Builder.Default
+  private final Rarity rarity = Rarity.COMMON;
+  @Builder.Default
+  private final int level = 1;
 
   /**
    * Formation radius for live spawn placement (in tile units).
