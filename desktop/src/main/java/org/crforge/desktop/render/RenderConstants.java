@@ -111,6 +111,9 @@ public final class RenderConstants {
 
   // ---- New feature colors ----
 
+  /** Electric blue color for chain lightning lines. */
+  public static final Color COLOR_CHAIN_LIGHTNING = new Color(0.4f, 0.8f, 1f, 1f);
+
   /** Golden color for shield bar segments. */
   public static final Color COLOR_SHIELD = new Color(1f, 0.85f, 0.2f, 1f);
 

@@ -54,6 +54,10 @@ public class Projectile {
   // Effective speed for chain sub-projectile creation
   private final float projectileSpeed;
 
+  // Chain lightning origin entity (the entity this chain "jumps from")
+  @Setter
+  private Entity chainOrigin;
+
   private boolean active;
   private boolean hit;
 

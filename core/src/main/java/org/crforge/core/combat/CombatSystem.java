@@ -375,6 +375,9 @@ public class CombatSystem {
           projectile.getSource(), chainTarget,
           projectile.getDamage(), 0, projectile.getProjectileSpeed(),
           projectile.getEffects(), projectile.getCrownTowerDamagePercent());
+      chain.setChainOrigin(primaryTarget);
+      // Start chain from primary target position so it visually jumps between targets
+      chain.getPosition().set(primaryTarget.getPosition().getX(), primaryTarget.getPosition().getY());
       gameState.spawnProjectile(chain);
     }
   }
