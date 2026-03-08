@@ -228,7 +228,8 @@ public class CombatSystem {
     if (buff == null || !target.isAlive()) {
       return;
     }
-    target.addEffect(new AppliedEffect(buff.getType(), buff.getDuration(), buff.getBuffName()));
+    // Route through applyEffects so stun/freeze charge reset logic is triggered
+    applyEffects(target, List.of(buff));
   }
 
   private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
@@ -239,8 +240,12 @@ public class CombatSystem {
 
     // Apply reflect buff (e.g. ZapFreeze stun) to attacker
     if (data.getReflectBuff() != null && data.getReflectBuffDuration() > 0) {
-      attacker.addEffect(new AppliedEffect(
-          data.getReflectBuff(), data.getReflectBuffDuration(), data.getReflectBuffName()));
+      EffectStats reflectEffect = EffectStats.builder()
+          .type(data.getReflectBuff())
+          .duration(data.getReflectBuffDuration())
+          .buffName(data.getReflectBuffName())
+          .build();
+      applyEffects(attacker, List.of(reflectEffect));
     }
   }
 
@@ -301,6 +306,7 @@ public class CombatSystem {
 
   /**
    * Applies the projectile's targetBuff as a status effect on the hit target.
+   * Routes through applyEffects so stun/freeze charge reset logic is triggered.
    */
   private void applyTargetBuff(Projectile projectile) {
     if (projectile.getTargetBuff() == null || projectile.getTarget() == null
@@ -308,20 +314,12 @@ public class CombatSystem {
       return;
     }
 
-    AppliedEffect effect = new AppliedEffect(
-        projectile.getTargetBuff(),
-        projectile.getBuffDuration(),
-        projectile.getTargetBuffName()
-    );
-    projectile.getTarget().addEffect(effect);
-
-    // Stun resets attack state
-    if (projectile.getTargetBuff() == StatusEffectType.STUN) {
-      Combat combat = projectile.getTarget().getCombat();
-      if (combat != null) {
-        combat.resetAttackState();
-      }
-    }
+    EffectStats effect = EffectStats.builder()
+        .type(projectile.getTargetBuff())
+        .duration(projectile.getBuffDuration())
+        .buffName(projectile.getTargetBuffName())
+        .build();
+    applyEffects(projectile.getTarget(), List.of(effect));
   }
 
   /**
@@ -474,11 +472,16 @@ public class CombatSystem {
       );
       target.addEffect(effect);
 
-      // Handle Stun Reset Logic (Reset attack windup/charge)
-      if (stats.getType() == StatusEffectType.STUN) {
+      // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)
+      if (stats.getType() == StatusEffectType.STUN
+          || stats.getType() == StatusEffectType.FREEZE) {
         Combat combat = target.getCombat();
         if (combat != null) {
           combat.resetAttackState();
+        }
+        // Reset charge ability state (Prince, Dark Prince, Battle Ram)
+        if (target instanceof Troop troop) {
+          AbilitySystem.consumeCharge(troop);
         }
       }
     }
