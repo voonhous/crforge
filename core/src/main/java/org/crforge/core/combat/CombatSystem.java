@@ -33,16 +33,19 @@ public class CombatSystem {
    * Process combat for all entities. Called each tick.
    */
   public void update(float deltaTime) {
+    // Capture alive entities once for the entire combat update
+    List<Entity> aliveEntities = gameState.getAliveEntities();
+
     // Process attacks for ANY entity with a combat component (Troop or Building)
-    for (Entity entity : gameState.getAliveEntities()) {
-      processEntityCombat(entity);
+    for (Entity entity : aliveEntities) {
+      processEntityCombat(entity, aliveEntities);
     }
 
     // Update and process projectiles
     updateProjectiles(deltaTime);
   }
 
-  private void processEntityCombat(Entity entity) {
+  private void processEntityCombat(Entity entity, List<Entity> aliveEntities) {
     // Inactive towers or waking up towers cannot attack
     if (entity instanceof Tower tower) {
       if (!tower.isActive() || tower.isWakingUp()) {
@@ -111,7 +114,7 @@ public class CombatSystem {
 
     // Multiple targets: attack additional enemies simultaneously (e.g. EWiz hits 2)
     if (combat.getMultipleTargets() > 1) {
-      attackAdditionalTargets(entity, target, combat);
+      attackAdditionalTargets(entity, target, combat, aliveEntities);
     }
   }
 
@@ -181,12 +184,13 @@ public class CombatSystem {
    * Finds and attacks additional targets for units with multipleTargets > 1 (e.g. EWiz).
    * The primary target has already been attacked; this method handles the extras.
    */
-  private void attackAdditionalTargets(Entity attacker, Entity primaryTarget, Combat combat) {
+  private void attackAdditionalTargets(Entity attacker, Entity primaryTarget, Combat combat,
+      List<Entity> aliveEntities) {
     int extraTargets = combat.getMultipleTargets() - 1;
     Team enemyTeam = attacker.getTeam().opposite();
 
     List<Entity> candidates = new ArrayList<>();
-    for (Entity e : gameState.getAliveEntities()) {
+    for (Entity e : aliveEntities) {
       if (e == primaryTarget || e.getTeam() != enemyTeam || !e.isTargetable()) {
         continue;
       }
