@@ -179,6 +179,26 @@ public class GameState {
     return (int) towers.get(team).stream().filter(Entity::isAlive).count();
   }
 
+  /**
+   * Checks if a princess tower is alive for the given team and lane.
+   *
+   * @param team       the team whose princess tower to check
+   * @param leftLane   true for left lane, false for right lane
+   * @param centerX    arena center X for lane determination
+   * @return true if a matching princess tower is alive
+   */
+  public boolean isPrincessTowerAlive(Team team, boolean leftLane, float centerX) {
+    for (Tower tower : towers.get(team)) {
+      if (tower.isPrincessTower() && tower.isAlive()) {
+        boolean towerIsLeft = tower.getPosition().getX() < centerX;
+        if (towerIsLeft == leftLane) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   public int getCrownCount(Team team) {
     Team enemy = team.opposite();
     int crowns = 0;
