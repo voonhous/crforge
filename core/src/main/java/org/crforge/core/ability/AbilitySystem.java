@@ -103,6 +103,23 @@ public class AbilitySystem {
     }
   }
 
+  /**
+   * Resets variable damage (inferno) back to stage 0. Called when the troop is
+   * stunned or frozen -- a core counter-play mechanic (see src_og.js line 2279).
+   */
+  public static void resetVariableDamage(Troop troop) {
+    AbilityComponent ability = troop.getAbility();
+    if (ability != null && ability.getData().getType() == AbilityType.VARIABLE_DAMAGE) {
+      ability.setCurrentStage(0);
+      ability.setStageTimer(0f);
+      ability.setLastTargetId(-1);
+      Combat combat = troop.getCombat();
+      if (combat != null) {
+        combat.setDamageOverride(ability.getCurrentStageDamage());
+      }
+    }
+  }
+
   private void updateVariableDamage(Troop troop, AbilityComponent ability, float deltaTime) {
     Combat combat = troop.getCombat();
     if (combat == null) {

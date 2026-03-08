@@ -514,8 +514,10 @@ public class CombatSystem {
           combat.resetAttackState();
         }
         // Reset charge ability state (Prince, Dark Prince, Battle Ram)
+        // Reset variable damage state (Inferno Dragon, Inferno Tower)
         if (target instanceof Troop troop) {
           AbilitySystem.consumeCharge(troop);
+          AbilitySystem.resetVariableDamage(troop);
         }
       }
     }

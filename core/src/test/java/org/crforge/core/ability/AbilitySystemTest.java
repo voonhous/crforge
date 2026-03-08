@@ -583,6 +583,91 @@ class AbilitySystemTest {
     assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(165);
   }
 
+  @Test
+  void variableDamage_shouldResetOnMeleeStun() {
+    Troop inferno = createVariableDamageTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 8, 5);
+    Troop ewiz = createStunOnHitAttacker(Team.RED, 6, 5, 1.5f); // melee range
+
+    gameState.spawnEntity(inferno);
+    gameState.spawnEntity(target);
+    gameState.spawnEntity(ewiz);
+    gameState.processPending();
+
+    inferno.update(2.0f);
+    target.update(2.0f);
+    ewiz.update(2.0f);
+
+    // Lock on target and escalate to stage 1 (2s)
+    inferno.getCombat().setCurrentTarget(target);
+    for (int i = 0; i < 61; i++) { // just over 2s
+      abilitySystem.update(DT);
+    }
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(1);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(47);
+
+    // EWiz melee attacks Inferno Dragon -- buffOnDamage applies STUN
+    ewiz.getCombat().setCurrentTarget(inferno);
+    ewiz.getCombat().startAttackSequence();
+    ewiz.getCombat().setCurrentWindup(0);
+    combatSystem.update(DT);
+
+    // Variable damage should be fully reset to stage 0
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(0);
+    assertThat(inferno.getAbility().getStageTimer()).isEqualTo(0f);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(14);
+  }
+
+  @Test
+  void variableDamage_shouldResetOnSpellFreeze() {
+    Troop inferno = createVariableDamageTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 8, 5);
+
+    gameState.spawnEntity(inferno);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    inferno.update(2.0f);
+    target.update(2.0f);
+
+    // Lock on target and escalate to stage 2 (4s+)
+    inferno.getCombat().setCurrentTarget(target);
+    for (int i = 0; i < 130; i++) { // ~4.3s, past both stage transitions
+      abilitySystem.update(DT);
+    }
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(2);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(165);
+
+    // Cast Freeze spell via AreaEffectSystem
+    AreaEffectStats freezeStats = AreaEffectStats.builder()
+        .name("Freeze")
+        .radius(3.0f)
+        .lifeDuration(0.1f)
+        .buff("Freeze")
+        .buffDuration(4.0f)
+        .damage(0)
+        .build();
+    AreaEffect freeze = AreaEffect.builder()
+        .name("Freeze")
+        .team(Team.RED)
+        .position(new Position(5, 5))
+        .health(new Health(1))
+        .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
+        .stats(freezeStats)
+        .remainingLifetime(0.1f)
+        .build();
+    gameState.spawnEntity(freeze);
+    gameState.processPending();
+
+    areaEffectSystem.update(DT);
+
+    // Variable damage should be fully reset to stage 0
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(0);
+    assertThat(inferno.getAbility().getStageTimer()).isEqualTo(0f);
+    assertThat(inferno.getAbility().getLastTargetId()).isEqualTo(-1);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(14);
+  }
+
   // -- DASH tests --
 
   @Test
