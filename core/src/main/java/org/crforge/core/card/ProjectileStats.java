@@ -65,4 +65,30 @@ public class ProjectileStats {
   private final int spawnCount = 0;
   @Builder.Default
   private final float spawnRadius = 0f;
+
+  /**
+   * Returns a copy of this ProjectileStats with a different damage value.
+   * All other fields are preserved.
+   */
+  public ProjectileStats withDamage(int newDamage) {
+    return ProjectileStats.builder()
+        .name(name)
+        .damage(newDamage)
+        .speed(speed)
+        .radius(radius)
+        .homing(homing)
+        .hitEffects(hitEffects)
+        .targetBuff(targetBuff)
+        .buffDuration(buffDuration)
+        .buffName(buffName)
+        .chainedHitRadius(chainedHitRadius)
+        .chainedHitCount(chainedHitCount)
+        .aoeToAir(aoeToAir)
+        .aoeToGround(aoeToGround)
+        .projectileRange(projectileRange)
+        .spawnProjectile(spawnProjectile)
+        .spawnCount(spawnCount)
+        .spawnRadius(spawnRadius)
+        .build();
+  }
 }

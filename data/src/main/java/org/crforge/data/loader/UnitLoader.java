@@ -140,24 +140,7 @@ public class UnitLoader {
       if (projStats != null) {
         // If unit has damage but projectile has 0 damage, use unit damage as fallback
         if (projStats.getDamage() == 0 && dto.getDamage() > 0) {
-          projStats = ProjectileStats.builder()
-              .name(projStats.getName())
-              .damage(dto.getDamage())
-              .speed(projStats.getSpeed())
-              .radius(projStats.getRadius())
-              .homing(projStats.isHoming())
-              .targetBuff(projStats.getTargetBuff())
-              .buffDuration(projStats.getBuffDuration())
-              .buffName(projStats.getBuffName())
-              .aoeToAir(projStats.isAoeToAir())
-              .aoeToGround(projStats.isAoeToGround())
-              .chainedHitRadius(projStats.getChainedHitRadius())
-              .chainedHitCount(projStats.getChainedHitCount())
-              .projectileRange(projStats.getProjectileRange())
-              .spawnProjectile(projStats.getSpawnProjectile())
-              .spawnCount(projStats.getSpawnCount())
-              .spawnRadius(projStats.getSpawnRadius())
-              .build();
+          projStats = projStats.withDamage(dto.getDamage());
         }
         builder.projectile(projStats);
       }
