@@ -465,11 +465,11 @@ public class CombatSystem {
         continue;
       }
 
-      // Pass spawnSpecies (if any) to the AppliedEffect
+      // Pass buffName and spawnSpecies (if any) to the AppliedEffect
       AppliedEffect effect = new AppliedEffect(
           stats.getType(),
           stats.getDuration(),
-          stats.getIntensity(),
+          stats.getBuffName(),
           stats.getSpawnSpecies()
       );
       target.addEffect(effect);

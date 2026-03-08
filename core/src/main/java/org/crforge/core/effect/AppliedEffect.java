@@ -13,15 +13,6 @@ public class AppliedEffect {
   private final String buffName; // Original buff name from parsed_buffs.json (e.g. "Poison", "IceWizardCold")
   private float remainingDuration;
 
-  public AppliedEffect(StatusEffectType type, float duration, float intensity,
-      TroopStats spawnSpecies) {
-    this(type, duration, intensity, spawnSpecies, null);
-  }
-
-  public AppliedEffect(StatusEffectType type, float duration, float intensity) {
-    this(type, duration, intensity, null, null);
-  }
-
   /**
    * Constructor with buff name for data-driven multiplier resolution.
    */

@@ -44,7 +44,7 @@ public class StatusEffectSystem {
         continue;
       }
 
-      // Data-driven path: use BuffDefinition multipliers if available
+      // Data-driven path: use BuffDefinition multipliers
       BuffDefinition buffDef = effect.getBuffDefinition();
       if (buffDef != null) {
         float speedMult = buffDef.computeSpeedMultiplier();
@@ -55,23 +55,6 @@ public class StatusEffectSystem {
         if (speedMult <= 0f || hitSpeedMult <= 0f) {
           isStunned = true;
         }
-        continue;
-      }
-
-      // Legacy fallback: use intensity-based calculation for effects without BuffDefinition
-      switch (effect.getType()) {
-        case SLOW:
-        case POISON:
-        case EARTHQUAKE:
-          moveSpeedMult *= (1.0f - effect.getIntensity());
-          attackSpeedMult *= (1.0f - effect.getIntensity());
-          break;
-        case RAGE:
-          moveSpeedMult *= (1.0f + effect.getIntensity());
-          attackSpeedMult *= (1.0f + effect.getIntensity());
-          break;
-        default:
-          break;
       }
     }
 
