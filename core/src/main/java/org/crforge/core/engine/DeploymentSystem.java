@@ -256,45 +256,40 @@ public class DeploymentSystem {
 
   private void spawnBuilding(Team team, Card card, float x, float y, int level) {
     TroopStats unitStats = card.getUnitStats();
+    if (unitStats == null) {
+      return;
+    }
+
+    int scaledBuildingHp = LevelScaling.scaleCard(unitStats.getHealth(), card.getRarity(), level);
+    int scaledBuildingDamage = LevelScaling.scaleCard(unitStats.getDamage(), card.getRarity(), level);
 
     Combat combat = null;
-    int scaledBuildingHp = unitStats != null
-        ? LevelScaling.scaleCard(unitStats.getHealth(), card.getRarity(), level) : 0;
-    int scaledBuildingDamage = unitStats != null
-        ? LevelScaling.scaleCard(unitStats.getDamage(), card.getRarity(), level) : 0;
-
-    if (unitStats != null && unitStats.getDamage() > 0) {
+    if (unitStats.getDamage() > 0) {
       float initialLoad = unitStats.isNoPreload() ? 0f : unitStats.getLoadTime();
       combat = buildCombatComponent(unitStats, scaledBuildingDamage, initialLoad).build();
     }
 
-    float collisionRadius = unitStats != null ? unitStats.getCollisionRadius() : 1.0f;
-    float visualRadius = unitStats != null ? unitStats.getVisualRadius() : 1.0f;
-    float deployTime = unitStats != null ? unitStats.getDeployTime() : 1.0f;
-    float lifeTime = unitStats != null ? unitStats.getLifeTime() : 0f;
-
     // Create Spawner Component if needed
     SpawnerComponent spawner = null;
-    boolean hasLiveSpawn = unitStats != null && unitStats.getLiveSpawn() != null;
-    boolean hasUnitLevelDeath = unitStats != null
-        && (unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty());
+    boolean hasLiveSpawn = unitStats.getLiveSpawn() != null;
+    boolean hasUnitLevelDeath =
+        unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
 
     if (hasLiveSpawn || hasUnitLevelDeath) {
       LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
       TroopStats spawnStats = card.getSpawnTemplate();
-      int scaledDeathDmg = unitStats != null
-          ? LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level) : 0;
+      int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(),
+          level);
 
       SpawnerComponent.SpawnerComponentBuilder spawnerBuilder = SpawnerComponent.builder()
           .deathDamage(scaledDeathDmg)
-          .deathDamageRadius(unitStats != null ? unitStats.getDeathDamageRadius() : 0f)
-          .deathSpawns(unitStats != null ? unitStats.getDeathSpawns() : List.of())
+          .deathDamageRadius(unitStats.getDeathDamageRadius())
+          .deathSpawns(unitStats.getDeathSpawns())
           .rarity(card.getRarity())
           .level(level);
 
       if (ls != null) {
-        float initialTimer = ls.spawnStartTime() > 0
-            ? ls.spawnStartTime() : ls.spawnPauseTime();
+        float initialTimer = resolveInitialSpawnerTimer(ls);
         spawnerBuilder
             .spawnInterval(ls.spawnInterval())
             .spawnPauseTime(ls.spawnPauseTime())
@@ -319,13 +314,14 @@ public class DeploymentSystem {
         .team(team)
         .position(new Position(x, y))
         .health(new Health(scaledBuildingHp))
-        .movement(new Movement(0, 0, collisionRadius, visualRadius, MovementType.BUILDING))
+        .movement(new Movement(0, 0, unitStats.getCollisionRadius(),
+            unitStats.getVisualRadius(), MovementType.BUILDING))
         .combat(combat)
-        .lifetime(lifeTime)
-        .remainingLifetime(lifeTime)
+        .lifetime(unitStats.getLifeTime())
+        .remainingLifetime(unitStats.getLifeTime())
         .spawner(spawner)
-        .deployTime(deployTime)
-        .deployTimer(deployTime) // Explicitly set timer to match time
+        .deployTime(unitStats.getDeployTime())
+        .deployTimer(unitStats.getDeployTime())
         .build();
 
     state.spawnEntity(building);
