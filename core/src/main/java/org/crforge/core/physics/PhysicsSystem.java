@@ -1,5 +1,6 @@
 package org.crforge.core.physics;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import lombok.Setter;
@@ -60,11 +61,13 @@ public class PhysicsSystem {
    * @param deltaTime Time elapsed since last update (in seconds).
    */
   public void update(Collection<Entity> entities, float deltaTime) {
-    List<Entity> movableEntities =
-        entities.stream()
-            .filter(Entity::isAlive)
-            .filter(e -> e.getMovementType() != MovementType.BUILDING)
-            .toList();
+    // Build movable entity list without stream (input is already alive from cache)
+    List<Entity> movableEntities = new ArrayList<>();
+    for (Entity e : entities) {
+      if (e.getMovementType() != MovementType.BUILDING) {
+        movableEntities.add(e);
+      }
+    }
 
     // 1. Apply movement based on pathfinding
     for (Entity entity : movableEntities) {
@@ -180,8 +183,13 @@ public class PhysicsSystem {
   }
 
   private void resolveCollisions(Collection<Entity> entities) {
-    List<Entity> collidable =
-        entities.stream().filter(Entity::isAlive).filter(Entity::isTargetable).toList();
+    // Build collidable list without stream (input is already alive from cache)
+    List<Entity> collidable = new ArrayList<>();
+    for (Entity e : entities) {
+      if (e.isTargetable()) {
+        collidable.add(e);
+      }
+    }
 
     for (int i = 0; i < collidable.size(); i++) {
       for (int j = i + 1; j < collidable.size(); j++) {
