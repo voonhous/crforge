@@ -459,11 +459,14 @@ class CombatSystemTest {
     Troop target1 = createChainTarget(Team.RED, 7, 5);
     Troop target2 = createChainTarget(Team.RED, 8, 5);
     Troop target3 = createChainTarget(Team.RED, 9, 5);
+    // 4th target within chain radius -- should NOT be hit since chainedHitCount=3 means 3 total
+    Troop target4 = createChainTarget(Team.RED, 10, 5);
 
     gameState.spawnEntity(attacker);
     gameState.spawnEntity(target1);
     gameState.spawnEntity(target2);
     gameState.spawnEntity(target3);
+    gameState.spawnEntity(target4);
     gameState.processPending();
 
     // Set target and fire
@@ -479,10 +482,13 @@ class CombatSystemTest {
     // Primary target should have taken 75 damage
     assertThat(target1.getHealth().getCurrent()).isEqualTo(500 - 75);
 
-    // Chain targets should also have taken 75 damage each
-    // target2 and target3 are within chain radius (4.0) of target1
+    // chainedHitCount=3 means 3 total enemies hit (1 primary + 2 chains)
+    // target2 and target3 are the 2 closest chain candidates
     assertThat(target2.getHealth().getCurrent()).isEqualTo(500 - 75);
     assertThat(target3.getHealth().getCurrent()).isEqualTo(500 - 75);
+
+    // target4 is within chain radius but should NOT be hit (chain limit reached)
+    assertThat(target4.getHealth().getCurrent()).isEqualTo(500);
   }
 
   private Troop createChainTarget(Team team, float x, float y) {

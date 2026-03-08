@@ -367,7 +367,8 @@ public class CombatSystem {
       return Float.compare(da, db);
     });
 
-    int chainsToSpawn = Math.min(chainCount, candidates.size());
+    // chainedHitCount includes the primary target, so spawn (count - 1) chain projectiles
+    int chainsToSpawn = Math.min(chainCount - 1, candidates.size());
     for (int i = 0; i < chainsToSpawn; i++) {
       Entity chainTarget = candidates.get(i);
       Projectile chain = new Projectile(
