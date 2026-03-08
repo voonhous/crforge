@@ -1,11 +1,11 @@
 package org.crforge.core.engine;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import java.util.function.Predicate;
 import lombok.Getter;
 import org.crforge.core.entity.SpawnerSystem;
@@ -30,6 +30,7 @@ public class GameState {
   private final List<Entity> pendingRemovals;
 
   private final Map<Team, List<Tower>> towers;
+  private List<Entity> cachedAliveEntities;
   private int frameCount;
   private boolean gameOver;
   private Team winner;
@@ -42,6 +43,7 @@ public class GameState {
     this.towers = new EnumMap<>(Team.class);
     this.towers.put(Team.BLUE, new ArrayList<>());
     this.towers.put(Team.RED, new ArrayList<>());
+    this.cachedAliveEntities = Collections.emptyList();
     this.frameCount = 0;
     this.gameOver = false;
     this.winner = null;
@@ -89,6 +91,9 @@ public class GameState {
 
     // Remove dead projectiles
     projectiles.removeIf(p -> !p.isActive());
+
+    // Rebuild cached alive list after structural changes
+    refreshCaches();
   }
 
   /**
@@ -117,6 +122,9 @@ public class GameState {
         checkWinCondition(entity);
       }
     }
+
+    // Refresh cache since entities may have died
+    refreshCaches();
   }
 
   // Overload for legacy/testing compatibility
@@ -147,8 +155,22 @@ public class GameState {
     return entities.stream().filter(e -> e.getTeam() == team).toList();
   }
 
+  /**
+   * Rebuilds the cached alive entities list. Call once at the start of each tick,
+   * after processPending(), so all systems share a single snapshot.
+   */
+  public void refreshCaches() {
+    List<Entity> alive = new ArrayList<>(entities.size());
+    for (Entity e : entities) {
+      if (e.isAlive()) {
+        alive.add(e);
+      }
+    }
+    cachedAliveEntities = alive;
+  }
+
   public List<Entity> getAliveEntities() {
-    return entities.stream().filter(Entity::isAlive).toList();
+    return cachedAliveEntities;
   }
 
   public List<Entity> getTargetableEntities() {
@@ -222,6 +244,7 @@ public class GameState {
     pendingRemovals.clear();
     towers.get(Team.BLUE).clear();
     towers.get(Team.RED).clear();
+    cachedAliveEntities = Collections.emptyList();
     frameCount = 0;
     gameOver = false;
     winner = null;
