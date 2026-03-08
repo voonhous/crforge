@@ -132,8 +132,7 @@ public class DeploymentSystem {
         LiveSpawnConfig ls = unitStats.getLiveSpawn();
         TroopStats spawnStats = card.getSpawnTemplate();
         if (spawnStats != null) {
-          float initialTimer = ls.spawnStartTime() > 0
-              ? ls.spawnStartTime() : ls.spawnPauseTime();
+          float initialTimer = resolveInitialSpawnerTimer(ls);
           spawner = SpawnerComponent.builder()
               .spawnInterval(ls.spawnInterval())
               .spawnPauseTime(ls.spawnPauseTime())
@@ -410,6 +409,10 @@ public class DeploymentSystem {
         .build();
 
     state.spawnEntity(effect);
+  }
+
+  private static float resolveInitialSpawnerTimer(LiveSpawnConfig ls) {
+    return ls.spawnStartTime() > 0 ? ls.spawnStartTime() : ls.spawnPauseTime();
   }
 
   /**
