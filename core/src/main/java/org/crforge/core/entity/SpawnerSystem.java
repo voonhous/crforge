@@ -52,6 +52,11 @@ public class SpawnerSystem {
         continue;
       }
 
+      // Skip spawner tick while stunned/frozen (timer pauses, does not reset)
+      if (entity.getMovement().isMovementDisabled()) {
+        continue;
+      }
+
       // Only tick periodic spawning for entities with live spawn capability
       if (spawner.hasLiveSpawn() && spawner.tick(deltaTime)) {
         int spawnIndex = spawner.getLastSpawnIndex();

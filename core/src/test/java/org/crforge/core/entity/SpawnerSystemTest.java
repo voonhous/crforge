@@ -7,6 +7,7 @@ import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
@@ -260,5 +261,85 @@ class SpawnerSystemTest {
       freshSystem.update(0.1f);
     }
     assertThat(freshState.getPendingSpawns()).isEmpty();
+  }
+
+  @Test
+  void stun_shouldPauseSpawnTimer() {
+    // Tick 1s toward the 3s spawn timer
+    spawnerSystem.update(1.0f);
+    assertThat(gameState.getPendingSpawns()).isEmpty();
+
+    // Stun the building (simulates Zap/Lightning hitting it)
+    spawnerBuilding.getMovement().setMovementDisabled(ModifierSource.STATUS_EFFECT, true);
+
+    // Tick 3s while stunned -- should NOT spawn despite exceeding the 3s timer
+    spawnerSystem.update(1.0f);
+    spawnerSystem.update(1.0f);
+    spawnerSystem.update(1.0f);
+    assertThat(gameState.getPendingSpawns()).isEmpty();
+
+    // Remove stun
+    spawnerBuilding.getMovement().setMovementDisabled(ModifierSource.STATUS_EFFECT, false);
+
+    // Timer should resume from 1s already elapsed, so 2 more seconds needed
+    spawnerSystem.update(1.9f);
+    assertThat(gameState.getPendingSpawns()).isEmpty();
+
+    // This should push it over the 3s total (1s before stun + 1.9s + 0.2s = 3.1s)
+    spawnerSystem.update(0.2f);
+    assertThat(gameState.getPendingSpawns()).hasSize(1);
+    assertThat(gameState.getPendingSpawns().get(0).getName()).isEqualTo("Skeleton");
+  }
+
+  @Test
+  void freeze_shouldPauseSpawnTimer() {
+    // Use a fresh state to isolate this test
+    GameState freshState = new GameState();
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+
+    SpawnerComponent spawner = SpawnerComponent.builder()
+        .spawnPauseTime(2.0f)
+        .unitsPerWave(1)
+        .spawnStats(skeletonStats)
+        .build();
+    spawner.initialize();
+
+    Building hut = Building.builder()
+        .name("GoblinHut")
+        .team(Team.RED)
+        .position(new Position(5, 5))
+        .health(new Health(200))
+        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+        .lifetime(60f)
+        .spawner(spawner)
+        .build();
+
+    freshState.spawnEntity(hut);
+    freshState.processPending();
+    hut.update(1.0f); // finish deploy
+
+    // First spawn at 2s
+    freshSystem.update(2.0f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+    freshState.processPending();
+
+    // Tick 1s toward next spawn, then freeze
+    freshSystem.update(1.0f);
+    hut.getMovement().setMovementDisabled(ModifierSource.STATUS_EFFECT, true);
+
+    // 5s frozen -- timer should not advance
+    for (int i = 0; i < 5; i++) {
+      freshSystem.update(1.0f);
+    }
+    assertThat(freshState.getPendingSpawns()).isEmpty();
+
+    // Unfreeze -- 1s more needed to complete the 2s cycle
+    hut.getMovement().setMovementDisabled(ModifierSource.STATUS_EFFECT, false);
+    freshSystem.update(0.9f);
+    assertThat(freshState.getPendingSpawns()).isEmpty();
+
+    freshSystem.update(0.2f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+    assertThat(freshState.getPendingSpawns().get(0).getName()).isEqualTo("Skeleton");
   }
 }
