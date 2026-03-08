@@ -952,12 +952,13 @@ class AbilitySystemTest {
   }
 
   @Test
-  void reflect_shouldNotTriggerOnRangedAttack() {
+  void reflect_shouldTriggerOnRangedAttackWithinRadius() {
     Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
+    // Place ranged attacker within reflect radius (2.0 tiles + collision radii)
     Troop rangedAttacker = Troop.builder()
         .name("Ranged")
         .team(Team.RED)
-        .position(new Position(10, 5))
+        .position(new Position(7, 5))
         .health(new Health(500))
         .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
         .combat(Combat.builder()
@@ -975,15 +976,65 @@ class AbilitySystemTest {
 
     eGiant.update(2.0f);
 
-    // Ranged attacker fires a projectile (no direct melee hit)
-    rangedAttacker.getCombat().setCurrentTarget(eGiant);
-    rangedAttacker.getCombat().startAttackSequence();
-    rangedAttacker.getCombat().setCurrentWindup(0);
+    // Create a projectile that is about to hit eGiant (simulates ranged attack)
+    Projectile projectile = new Projectile(
+        rangedAttacker, eGiant, 100, 0, 15f, List.of());
+    // Place projectile at eGiant's position so it hits on next update
+    projectile.getPosition().set(
+        eGiant.getPosition().getX(), eGiant.getPosition().getY());
+    gameState.spawnProjectile(projectile);
 
     combatSystem.update(DT);
 
-    // A projectile is spawned, but reflect doesn't trigger on ranged
-    // Attacker should NOT take reflect damage
+    // eGiant should take 100 damage from the projectile
+    assertThat(eGiant.getHealth().getCurrent()).isEqualTo(3000 - 100);
+
+    // Attacker should take 75 reflect damage (within reflect radius)
+    assertThat(rangedAttacker.getHealth().getCurrent()).isEqualTo(500 - 75);
+
+    // Attacker should be stunned by the reflect buff (ZapFreeze)
+    assertThat(rangedAttacker.getAppliedEffects())
+        .anyMatch(e -> e.getType() == StatusEffectType.STUN);
+  }
+
+  @Test
+  void reflect_shouldNotTriggerOnRangedAttackOutsideRadius() {
+    Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
+    // Place ranged attacker far outside reflect radius (2.0 tiles + collision radii)
+    Troop rangedAttacker = Troop.builder()
+        .name("Ranged")
+        .team(Team.RED)
+        .position(new Position(12, 5))
+        .health(new Health(500))
+        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(100)
+            .range(8.0f)
+            .sightRange(8.0f)
+            .attackCooldown(1.0f)
+            .build())
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(eGiant);
+    gameState.spawnEntity(rangedAttacker);
+    gameState.processPending();
+
+    eGiant.update(2.0f);
+
+    // Create a projectile that is about to hit eGiant
+    Projectile projectile = new Projectile(
+        rangedAttacker, eGiant, 100, 0, 15f, List.of());
+    projectile.getPosition().set(
+        eGiant.getPosition().getX(), eGiant.getPosition().getY());
+    gameState.spawnProjectile(projectile);
+
+    combatSystem.update(DT);
+
+    // eGiant should take 100 damage from the projectile
+    assertThat(eGiant.getHealth().getCurrent()).isEqualTo(3000 - 100);
+
+    // Attacker should NOT take reflect damage (outside reflect radius)
     assertThat(rangedAttacker.getHealth().getCurrent()).isEqualTo(500);
   }
 

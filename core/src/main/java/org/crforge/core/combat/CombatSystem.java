@@ -164,11 +164,16 @@ public class CombatSystem {
       // Apply buff-on-damage for melee attacks
       applyBuffOnDamage(combat, target);
 
-      // Reflect: if target has REFLECT ability, deal counter-damage to attacker
+      // Reflect: if target has REFLECT ability and attacker is within reflect radius, deal counter-damage
       if (target instanceof Troop reflector) {
         int reflectDmg = AbilitySystem.getReflectDamage(reflector);
         if (reflectDmg > 0) {
-          applyReflectDamage(reflector, attacker, reflectDmg);
+          AbilityData data = reflector.getAbility().getData();
+          float dist = attacker.getPosition().distanceTo(reflector.getPosition());
+          float effectiveRadius = data.getReflectRadius() + attacker.getCollisionRadius();
+          if (dist <= effectiveRadius) {
+            applyReflectDamage(reflector, attacker, reflectDmg);
+          }
         }
       }
     }
@@ -295,6 +300,25 @@ public class CombatSystem {
       dealDamage(target, effectiveDamage);
       // Apply post-damage effects (e.g. Ice Wizard SLOW, EWiz STUN)
       applyEffects(target, filterEffects(projectile.getEffects(), true));
+    }
+
+    // Reflect: if a projectile hits a REFLECT target and the source is within reflect radius, zap them
+    if (!projectile.isPositionTargeted()) {
+      Entity target = projectile.getTarget();
+      if (target instanceof Troop reflector) {
+        int reflectDmg = AbilitySystem.getReflectDamage(reflector);
+        if (reflectDmg > 0) {
+          Entity source = projectile.getSource();
+          if (source != null && source.isAlive()) {
+            float dist = source.getPosition().distanceTo(reflector.getPosition());
+            AbilityData data = reflector.getAbility().getData();
+            float effectiveRadius = data.getReflectRadius() + source.getCollisionRadius();
+            if (dist <= effectiveRadius) {
+              applyReflectDamage(reflector, source, reflectDmg);
+            }
+          }
+        }
+      }
     }
 
     // Chain lightning: spawn sub-projectiles to nearby enemies
