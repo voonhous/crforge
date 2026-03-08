@@ -65,7 +65,8 @@ public class AreaEffectSystem {
     int damage = effect.getEffectiveDamage();
     int ctdp = effect.getEffectiveCrownTowerDamagePercent();
 
-    for (Entity target : gameState.getAliveEntities()) {
+    List<Entity> aliveEntities = gameState.getAliveEntities();
+    for (Entity target : aliveEntities) {
       if (target.getTeam() != enemyTeam) {
         continue;
       }
