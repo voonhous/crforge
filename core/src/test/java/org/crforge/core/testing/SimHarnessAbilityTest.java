@@ -7,8 +7,13 @@ import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.AbilityType;
 import org.crforge.core.component.ModifierSource;
+import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -16,6 +21,14 @@ import org.junit.jupiter.api.Test;
  * Validates both the SimHarness API and the ModifierSource system.
  */
 class SimHarnessAbilityTest {
+
+  @BeforeEach
+  void setUp() {
+    // Register a test Rage buff (140 -> 1.4x speed/hit speed)
+    BuffRegistry.clear();
+    BuffRegistry.register("TestRage", BuffDefinition.builder()
+        .name("TestRage").speedMultiplier(140).hitSpeedMultiplier(140).build());
+  }
 
   private static AbilityData hookData() {
     return AbilityData.builder()
@@ -230,8 +243,7 @@ class SimHarnessAbilityTest {
     assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
 
     // Apply rage (40% speed boost) via status effect
-    prince.addEffect(new org.crforge.core.effect.AppliedEffect(
-        org.crforge.core.effect.StatusEffectType.RAGE, 5.0f, 0.4f));
+    prince.addEffect(new AppliedEffect(StatusEffectType.RAGE, 5.0f, "TestRage"));
 
     // Tick once to let StatusEffectSystem apply rage
     sim.tick();
@@ -263,8 +275,7 @@ class SimHarnessAbilityTest {
     assertThat(prince.getAbility().isCharged()).isTrue();
 
     // Apply rage
-    prince.addEffect(new org.crforge.core.effect.AppliedEffect(
-        org.crforge.core.effect.StatusEffectType.RAGE, 5.0f, 0.4f));
+    prince.addEffect(new AppliedEffect(StatusEffectType.RAGE, 5.0f, "TestRage"));
     sim.tick();
 
     // Consume charge via static helper (simulates CombatSystem consuming after attack)

@@ -26,7 +26,7 @@ class AbstractEntityTest {
 
   @Test
   void addEffect_shouldAddNewEffect() {
-    AppliedEffect effect = new AppliedEffect(StatusEffectType.SLOW, 5.0f, 0.5f);
+    AppliedEffect effect = new AppliedEffect(StatusEffectType.SLOW, 5.0f, "TestSlow");
 
     entity.addEffect(effect);
 
@@ -38,11 +38,11 @@ class AbstractEntityTest {
   @Test
   void addEffect_shouldRefreshExistingEffect() {
     // Add initial effect: 2.0s duration
-    AppliedEffect initialEffect = new AppliedEffect(StatusEffectType.SLOW, 2.0f, 0.5f);
+    AppliedEffect initialEffect = new AppliedEffect(StatusEffectType.SLOW, 2.0f, "TestSlow");
     entity.addEffect(initialEffect);
 
     // Apply same effect type with longer duration (5.0s)
-    AppliedEffect newEffect = new AppliedEffect(StatusEffectType.SLOW, 5.0f, 0.5f);
+    AppliedEffect newEffect = new AppliedEffect(StatusEffectType.SLOW, 5.0f, "TestSlow");
     entity.addEffect(newEffect);
 
     // Should still have only 1 effect, but duration should be updated to 5.0s
@@ -54,11 +54,11 @@ class AbstractEntityTest {
   @Test
   void addEffect_shouldNotShortenDurationOnRefresh() {
     // Add initial effect: 5.0s duration
-    AppliedEffect initialEffect = new AppliedEffect(StatusEffectType.SLOW, 5.0f, 0.5f);
+    AppliedEffect initialEffect = new AppliedEffect(StatusEffectType.SLOW, 5.0f, "TestSlow");
     entity.addEffect(initialEffect);
 
     // Apply same effect type with shorter duration (2.0s)
-    AppliedEffect newEffect = new AppliedEffect(StatusEffectType.SLOW, 2.0f, 0.5f);
+    AppliedEffect newEffect = new AppliedEffect(StatusEffectType.SLOW, 2.0f, "TestSlow");
     entity.addEffect(newEffect);
 
     // Duration should remain 5.0s (Math.max logic)
@@ -69,11 +69,11 @@ class AbstractEntityTest {
   @Test
   void addEffect_shouldAllowDifferentTypesToStack() {
     // Add Slow
-    AppliedEffect slow = new AppliedEffect(StatusEffectType.SLOW, 5.0f, 0.5f);
+    AppliedEffect slow = new AppliedEffect(StatusEffectType.SLOW, 5.0f, "TestSlow");
     entity.addEffect(slow);
 
     // Add Poison
-    AppliedEffect poison = new AppliedEffect(StatusEffectType.POISON, 5.0f, 0.5f);
+    AppliedEffect poison = new AppliedEffect(StatusEffectType.POISON, 5.0f, "TestPoison");
     entity.addEffect(poison);
 
     // Should have both
@@ -86,7 +86,7 @@ class AbstractEntityTest {
   @Test
   void addEffect_shouldHandleCurseEffect() {
     TroopStats hogStats = TroopStats.builder().name("Voodoo Hog").build();
-    AppliedEffect curse = new AppliedEffect(StatusEffectType.CURSE, 5.0f, 0f, hogStats);
+    AppliedEffect curse = new AppliedEffect(StatusEffectType.CURSE, 5.0f, (String) null, hogStats);
 
     entity.addEffect(curse);
 
