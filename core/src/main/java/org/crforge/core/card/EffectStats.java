@@ -38,4 +38,13 @@ public class EffectStats {
    * Used to look up BuffDefinition for data-driven multiplier resolution.
    */
   private final String buffName;
+
+  /**
+   * Whether this effect should be applied after damage (true) or before damage (false).
+   * Before-damage is the default, important for effects like Curse where dying from damage
+   * should still trigger the curse. After-damage is used for targetBuff effects (e.g. Ice
+   * Wizard slow, EWiz stun) that are applied post-hit.
+   */
+  @Builder.Default
+  private final boolean applyAfterDamage = false;
 }

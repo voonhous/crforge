@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.data.loader.dto.ProjectileConfigDTO;
@@ -66,15 +69,25 @@ public class ProjectileLoader {
       Map<String, ProjectileStats> projectileMap) {
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
 
+    // Merge targetBuff into hitEffects as a post-damage effect
+    List<EffectStats> hitEffects = new ArrayList<>();
+    StatusEffectType buffType = StatusEffectType.fromBuffName(dto.getTargetBuff());
+    if (buffType != null) {
+      hitEffects.add(EffectStats.builder()
+          .type(buffType)
+          .duration(dto.getBuffDuration())
+          .buffName(dto.getTargetBuff())
+          .applyAfterDamage(true)
+          .build());
+    }
+
     ProjectileStats.ProjectileStatsBuilder builder = ProjectileStats.builder()
         .name(dto.getName())
         .damage(dto.getDamage())
         .speed(effectiveSpeed)
         .radius(dto.getRadius())
         .homing(dto.getHoming() != null ? dto.getHoming() : true)
-        .targetBuff(StatusEffectType.fromBuffName(dto.getTargetBuff()))
-        .buffDuration(dto.getBuffDuration())
-        .buffName(dto.getTargetBuff())
+        .hitEffects(hitEffects)
         .aoeToAir(dto.isAoeToAir())
         .aoeToGround(dto.isAoeToGround())
         .chainedHitRadius(dto.getChainedHitRadius())

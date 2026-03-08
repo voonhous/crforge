@@ -354,7 +354,12 @@ class AbilitySystemTest {
     // Create a stun projectile about to hit the Prince (simulates EWiz ranged attack)
     Projectile stunProjectile = new Projectile(
         ewiz, prince, 50, 0, 15f,
-        List.of(), StatusEffectType.STUN, 0.5f, 0, "ZapFreeze");
+        List.of(EffectStats.builder()
+            .type(StatusEffectType.STUN)
+            .duration(0.5f)
+            .buffName("ZapFreeze")
+            .applyAfterDamage(true)
+            .build()));
     // Place projectile at the target so it hits on next update
     stunProjectile.getPosition().set(
         prince.getPosition().getX(), prince.getPosition().getY());

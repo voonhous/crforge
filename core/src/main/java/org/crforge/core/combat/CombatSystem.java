@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
@@ -287,14 +288,14 @@ public class CombatSystem {
           projectile.getAoeRadius(),
           projectile.getEffects());
     } else {
-      int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, projectile.getTarget(), ctdp);
-      // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
-      applyEffects(projectile.getTarget(), projectile.getEffects());
-      dealDamage(projectile.getTarget(), effectiveDamage);
+      Entity target = projectile.getTarget();
+      int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, target, ctdp);
+      // Apply pre-damage effects (e.g. Curse -- dying from damage should still trigger)
+      applyEffects(target, filterEffects(projectile.getEffects(), false));
+      dealDamage(target, effectiveDamage);
+      // Apply post-damage effects (e.g. Ice Wizard SLOW, EWiz STUN)
+      applyEffects(target, filterEffects(projectile.getEffects(), true));
     }
-
-    // Apply projectile-level targetBuff (e.g. Ice Wizard SLOW, EWiz STUN)
-    applyTargetBuff(projectile);
 
     // Chain lightning: spawn sub-projectiles to nearby enemies
     if (projectile.getChainedHitCount() > 0 && projectile.getChainedHitRadius() > 0) {
@@ -305,24 +306,6 @@ public class CombatSystem {
     if (projectile.getSpawnProjectile() != null) {
       processSpawnProjectile(projectile);
     }
-  }
-
-  /**
-   * Applies the projectile's targetBuff as a status effect on the hit target.
-   * Routes through applyEffects so stun/freeze charge reset logic is triggered.
-   */
-  private void applyTargetBuff(Projectile projectile) {
-    if (projectile.getTargetBuff() == null || projectile.getTarget() == null
-        || !projectile.getTarget().isAlive()) {
-      return;
-    }
-
-    EffectStats effect = EffectStats.builder()
-        .type(projectile.getTargetBuff())
-        .duration(projectile.getBuffDuration())
-        .buffName(projectile.getTargetBuffName())
-        .build();
-    applyEffects(projectile.getTarget(), List.of(effect));
   }
 
   /**
@@ -366,9 +349,7 @@ public class CombatSystem {
       Projectile chain = new Projectile(
           projectile.getSource(), chainTarget,
           projectile.getDamage(), 0, projectile.getProjectileSpeed(),
-          projectile.getEffects(),
-          projectile.getTargetBuff(), projectile.getBuffDuration(),
-          projectile.getCrownTowerDamagePercent(), projectile.getTargetBuffName());
+          projectile.getEffects(), projectile.getCrownTowerDamagePercent());
       gameState.spawnProjectile(chain);
     }
   }
@@ -422,21 +403,30 @@ public class CombatSystem {
 
     float speed = (stats != null) ? stats.getSpeed() : 0;
     float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
-    List<EffectStats> effects = (stats != null) ? stats.getHitEffects() : combat.getHitEffects();
-    StatusEffectType targetBuff = (stats != null) ? stats.getTargetBuff() : null;
-    float buffDuration = (stats != null) ? stats.getBuffDuration() : 0f;
-    String targetBuffName = (stats != null) ? stats.getBuffName() : null;
+    List<EffectStats> effects = new ArrayList<>(
+        (stats != null) ? stats.getHitEffects() : combat.getHitEffects());
 
-    // Use buff-on-damage as targetBuff if no projectile-level buff is set
-    if (targetBuff == null && combat.getBuffOnDamage() != null) {
-      targetBuff = combat.getBuffOnDamage().getType();
-      buffDuration = combat.getBuffOnDamage().getDuration();
-      targetBuffName = combat.getBuffOnDamage().getBuffName();
+    // Merge buffOnDamage as a post-damage effect if no projectile-level post-damage effect exists
+    boolean hasPostDamageEffect = false;
+    for (EffectStats e : effects) {
+      if (e.isApplyAfterDamage()) {
+        hasPostDamageEffect = true;
+        break;
+      }
+    }
+    if (!hasPostDamageEffect && combat.getBuffOnDamage() != null) {
+      EffectStats bod = combat.getBuffOnDamage();
+      effects.add(EffectStats.builder()
+          .type(bod.getType())
+          .duration(bod.getDuration())
+          .buffName(bod.getBuffName())
+          .applyAfterDamage(true)
+          .build());
     }
 
     Projectile projectile = new Projectile(
-        attacker, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration,
-        combat.getCrownTowerDamagePercent(), targetBuffName);
+        attacker, target, damage, aoeRadius, speed, effects,
+        combat.getCrownTowerDamagePercent());
 
     // Wire advanced projectile features from stats
     if (stats != null) {
@@ -446,6 +436,22 @@ public class CombatSystem {
     }
 
     return projectile;
+  }
+
+  /**
+   * Filters effects by their applyAfterDamage flag. Returns only effects matching the given phase.
+   */
+  private List<EffectStats> filterEffects(List<EffectStats> effects, boolean afterDamage) {
+    if (effects == null || effects.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<EffectStats> filtered = new ArrayList<>();
+    for (EffectStats e : effects) {
+      if (e.isApplyAfterDamage() == afterDamage) {
+        filtered.add(e);
+      }
+    }
+    return filtered;
   }
 
   private void dealDamage(Entity target, int damage) {
@@ -521,9 +527,11 @@ public class CombatSystem {
       // Use Collision Radius for spell AOE check (squared distance avoids sqrt)
       float effectiveRadius = radius + entity.getCollisionRadius();
       if (distanceSq <= effectiveRadius * effectiveRadius) {
-        // Apply effects BEFORE damage
-        applyEffects(entity, effects);
+        // Apply pre-damage effects (e.g. Curse)
+        applyEffects(entity, filterEffects(effects, false));
         dealDamage(entity, damage);
+        // Apply post-damage effects (e.g. slow, stun)
+        applyEffects(entity, filterEffects(effects, true));
       }
     }
   }
