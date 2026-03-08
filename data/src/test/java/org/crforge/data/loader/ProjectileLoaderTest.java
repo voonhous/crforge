@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.effect.StatusEffectType;
 import org.junit.jupiter.api.Test;
@@ -65,9 +66,13 @@ class ProjectileLoaderTest {
     Map<String, ProjectileStats> map = ProjectileLoader.loadProjectiles(toStream(json));
 
     ProjectileStats proj = map.get("ice_wizardProjectile");
-    assertThat(proj.getTargetBuff()).isEqualTo(StatusEffectType.SLOW);
-    assertThat(proj.getBuffDuration()).isCloseTo(2.5f, within(0.01f));
-    assertThat(proj.getBuffName()).isEqualTo("IceWizardSlowDown");
+    // targetBuff is now merged into hitEffects as a post-damage effect
+    assertThat(proj.getHitEffects()).hasSize(1);
+    EffectStats slowEffect = proj.getHitEffects().get(0);
+    assertThat(slowEffect.getType()).isEqualTo(StatusEffectType.SLOW);
+    assertThat(slowEffect.getDuration()).isCloseTo(2.5f, within(0.01f));
+    assertThat(slowEffect.getBuffName()).isEqualTo("IceWizardSlowDown");
+    assertThat(slowEffect.isApplyAfterDamage()).isTrue();
     assertThat(proj.getRadius()).isCloseTo(1.5f, within(0.01f));
   }
 
@@ -95,7 +100,9 @@ class ProjectileLoaderTest {
     ProjectileStats proj = map.get("ElectroDragonProjectile");
     assertThat(proj.getChainedHitRadius()).isCloseTo(4.0f, within(0.01f));
     assertThat(proj.getChainedHitCount()).isEqualTo(3);
-    assertThat(proj.getTargetBuff()).isEqualTo(StatusEffectType.STUN);
+    // targetBuff is now merged into hitEffects
+    assertThat(proj.getHitEffects()).hasSize(1);
+    assertThat(proj.getHitEffects().get(0).getType()).isEqualTo(StatusEffectType.STUN);
   }
 
   @Test

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
-import org.crforge.core.effect.StatusEffectType;
 
 /**
  * Defines the configuration for a projectile. Used by Troops (ranged attacks) and Spells (e.g.
@@ -25,23 +24,6 @@ public class ProjectileStats {
   private final boolean homing = true;
   @Builder.Default
   private final List<EffectStats> hitEffects = new ArrayList<>();
-
-  /**
-   * Status effect applied to the target on hit (e.g. SLOW for Ice Wizard). Null if none.
-   */
-  private final StatusEffectType targetBuff;
-
-  /**
-   * Duration of the targetBuff in seconds.
-   */
-  @Builder.Default
-  private final float buffDuration = 0f;
-
-  /**
-   * Original buff name from parsed data (e.g. "IceWizardCold", "ZapFreeze"). Used to look up
-   * BuffDefinition for data-driven multiplier resolution.
-   */
-  private final String buffName;
 
   // Chain lightning: after primary hit, chain to N more targets within radius
   @Builder.Default
@@ -78,9 +60,6 @@ public class ProjectileStats {
         .radius(radius)
         .homing(homing)
         .hitEffects(hitEffects)
-        .targetBuff(targetBuff)
-        .buffDuration(buffDuration)
-        .buffName(buffName)
         .chainedHitRadius(chainedHitRadius)
         .chainedHitCount(chainedHitCount)
         .aoeToAir(aoeToAir)
