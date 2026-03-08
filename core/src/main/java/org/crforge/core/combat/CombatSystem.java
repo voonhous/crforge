@@ -116,7 +116,7 @@ public class CombatSystem {
   }
 
   private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
-    float distance = attacker.getPosition().distanceTo(target.getPosition());
+    float distanceSq = attacker.getPosition().distanceToSquared(target.getPosition());
     // Use Collision Radius for range calculation
     float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
 
@@ -124,12 +124,12 @@ public class CombatSystem {
     if (combat.getMinimumRange() > 0) {
       float effectiveMinRange = combat.getMinimumRange() + attacker.getCollisionRadius()
           + target.getCollisionRadius();
-      if (distance < effectiveMinRange) {
+      if (distanceSq < effectiveMinRange * effectiveMinRange) {
         return false;
       }
     }
 
-    return distance <= effectiveRange;
+    return distanceSq <= effectiveRange * effectiveRange;
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
@@ -199,10 +199,10 @@ public class CombatSystem {
       candidates.add(e);
     }
 
-    // Sort by distance and pick closest extras
+    // Sort by squared distance (preserves ordering, avoids sqrt)
     candidates.sort((a, b) -> {
-      float da = attacker.getPosition().distanceTo(a.getPosition());
-      float db = attacker.getPosition().distanceTo(b.getPosition());
+      float da = attacker.getPosition().distanceToSquared(a.getPosition());
+      float db = attacker.getPosition().distanceToSquared(b.getPosition());
       return Float.compare(da, db);
     });
 
@@ -342,16 +342,17 @@ public class CombatSystem {
       if (e == primaryTarget || e.getTeam() == team || !e.isTargetable()) {
         continue;
       }
-      float dist = e.getPosition().distanceTo(primaryTarget.getPosition());
-      if (dist <= chainRadius + e.getCollisionRadius()) {
+      float distSq = e.getPosition().distanceToSquared(primaryTarget.getPosition());
+      float effectiveRadius = chainRadius + e.getCollisionRadius();
+      if (distSq <= effectiveRadius * effectiveRadius) {
         candidates.add(e);
       }
     }
 
-    // Sort by distance, pick closest N
+    // Sort by squared distance (preserves ordering, avoids sqrt)
     candidates.sort((a, b) -> {
-      float da = a.getPosition().distanceTo(primaryTarget.getPosition());
-      float db = b.getPosition().distanceTo(primaryTarget.getPosition());
+      float da = a.getPosition().distanceToSquared(primaryTarget.getPosition());
+      float db = b.getPosition().distanceToSquared(primaryTarget.getPosition());
       return Float.compare(da, db);
     });
 
@@ -511,11 +512,11 @@ public class CombatSystem {
         continue;
       }
 
-      float distance = entity.getPosition().distanceTo(centerX, centerY);
+      float distanceSq = entity.getPosition().distanceToSquared(centerX, centerY);
 
-      // Use Collision Radius for spell AOE check
+      // Use Collision Radius for spell AOE check (squared distance avoids sqrt)
       float effectiveRadius = radius + entity.getCollisionRadius();
-      if (distance <= effectiveRadius) {
+      if (distanceSq <= effectiveRadius * effectiveRadius) {
         // Apply effects BEFORE damage
         applyEffects(entity, effects);
         dealDamage(entity, damage);
@@ -543,11 +544,10 @@ public class CombatSystem {
       return false;
     }
 
-    float distance = attacker.getPosition().distanceTo(target.getPosition());
-    // Updated to use Collision Radius
+    float distanceSq = attacker.getPosition().distanceToSquared(target.getPosition());
     float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
 
-    if (distance > effectiveRange) {
+    if (distanceSq > effectiveRange * effectiveRange) {
       return false;
     }
 
@@ -555,7 +555,7 @@ public class CombatSystem {
     if (combat.getMinimumRange() > 0) {
       float effectiveMinRange = combat.getMinimumRange() + attacker.getCollisionRadius()
           + target.getCollisionRadius();
-      if (distance < effectiveMinRange) {
+      if (distanceSq < effectiveMinRange * effectiveMinRange) {
         return false;
       }
     }

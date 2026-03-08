@@ -49,6 +49,14 @@ public class Position {
     return Vector2.distance(position.getX(), position.getY(), x, y);
   }
 
+  public float distanceToSquared(Position other) {
+    return position.distanceToSquared(other.position);
+  }
+
+  public float distanceToSquared(float x, float y) {
+    return Vector2.distanceSquared(position.getX(), position.getY(), x, y);
+  }
+
   public float angleTo(Position other) {
     return position.angleTo(other.position);
   }
