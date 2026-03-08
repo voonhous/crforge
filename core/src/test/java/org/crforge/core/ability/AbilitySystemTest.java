@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.card.EffectStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
@@ -11,11 +12,12 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.effect.StatusEffectSystem;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
-import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.physics.PhysicsSystem;
@@ -263,6 +265,108 @@ class AbilitySystemTest {
 
     // Charge should not build during deploy
     assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
+  }
+
+  // -- STUN/FREEZE reset charge tests --
+  // These tests verify that stun-on-hit resets charge state on the target,
+  // through both the melee (applyBuffOnDamage) and ranged (applyTargetBuff) paths.
+
+  @Test
+  void meleeStunOnHit_shouldResetPartialCharge() {
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+    Troop ewiz = createStunOnHitAttacker(Team.RED, 6, 5, 1.5f); // melee range
+
+    gameState.spawnEntity(prince);
+    gameState.spawnEntity(ewiz);
+    gameState.processPending();
+
+    prince.update(2.0f);
+    ewiz.update(2.0f);
+
+    // Build partial charge (1s out of 2.5s needed)
+    for (int i = 0; i < 30; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().getChargeTimer()).isGreaterThan(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
+
+    // EWiz melee attacks Prince -- buffOnDamage applies STUN
+    ewiz.getCombat().setCurrentTarget(prince);
+    ewiz.getCombat().startAttackSequence();
+    ewiz.getCombat().setCurrentWindup(0);
+    combatSystem.update(DT);
+
+    // Charge should be fully reset by the stun
+    assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
+  }
+
+  @Test
+  void meleeStunOnHit_shouldResetFullCharge() {
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+    Troop ewiz = createStunOnHitAttacker(Team.RED, 6, 5, 1.5f); // melee range
+
+    gameState.spawnEntity(prince);
+    gameState.spawnEntity(ewiz);
+    gameState.processPending();
+
+    prince.update(2.0f);
+    ewiz.update(2.0f);
+
+    // Build full charge (2.5s+)
+    for (int i = 0; i < 78; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().isCharged()).isTrue();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
+
+    // EWiz melee attacks Prince -- buffOnDamage applies STUN
+    ewiz.getCombat().setCurrentTarget(prince);
+    ewiz.getCombat().startAttackSequence();
+    ewiz.getCombat().setCurrentWindup(0);
+    combatSystem.update(DT);
+
+    // Charge and speed multiplier should be fully reset
+    assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(1.0f);
+  }
+
+  @Test
+  void rangedStunProjectile_shouldResetFullCharge() {
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+    Troop ewiz = createStunOnHitAttacker(Team.RED, 10, 5, 5.0f); // ranged
+
+    gameState.spawnEntity(prince);
+    gameState.spawnEntity(ewiz);
+    gameState.processPending();
+
+    prince.update(2.0f);
+    ewiz.update(2.0f);
+
+    // Build full charge (2.5s+)
+    for (int i = 0; i < 78; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().isCharged()).isTrue();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
+
+    // Create a stun projectile about to hit the Prince (simulates EWiz ranged attack)
+    Projectile stunProjectile = new Projectile(
+        ewiz, prince, 50, 0, 15f,
+        List.of(), StatusEffectType.STUN, 0.5f, 0, "ZapFreeze");
+    // Place projectile at the target so it hits on next update
+    stunProjectile.getPosition().set(
+        prince.getPosition().getX(), prince.getPosition().getY());
+    gameState.spawnProjectile(stunProjectile);
+
+    // Process projectile hit through CombatSystem
+    combatSystem.update(DT);
+
+    // Charge and speed multiplier should be fully reset
+    assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(1.0f);
   }
 
   // -- VARIABLE DAMAGE tests --
@@ -916,6 +1020,35 @@ class AbilitySystemTest {
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(reflectData))
+        .build();
+  }
+
+  /**
+   * Creates an attacker with buffOnDamage STUN (simulates Electro Wizard).
+   * Use range < 2.0 for melee path, >= 2.0 for ranged/projectile path.
+   */
+  private Troop createStunOnHitAttacker(Team team, float x, float y, float range) {
+    EffectStats stunBuff = EffectStats.builder()
+        .type(StatusEffectType.STUN)
+        .duration(0.5f)
+        .buffName("ZapFreeze")
+        .build();
+
+    return Troop.builder()
+        .name("EWiz")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(500))
+        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(50)
+            .range(range)
+            .sightRange(7.5f)
+            .attackCooldown(1.8f)
+            .buffOnDamage(stunBuff)
+            .build())
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
         .build();
   }
 
