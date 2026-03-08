@@ -323,31 +323,23 @@ public class DebugGameScreen implements Screen {
 
   @Override
   public void resize(int width, int height) {
-    // Keep arena centered with correct aspect ratio
-    // TODO: Disable resize feature (Although it is not working now, we should remove it entirely)
-    float arenaWidth = Arena.WIDTH * RenderConstants.TILE_PIXELS;
-    float arenaHeight = Arena.HEIGHT * RenderConstants.TILE_PIXELS;
-    float totalHeight = arenaHeight + RenderConstants.TOP_UI_HEIGHT + RenderConstants.BOTTOM_UI_HEIGHT;
-
-    camera.viewportWidth = arenaWidth;
-    camera.viewportHeight = totalHeight;
-    camera.position.set(arenaWidth / 2, totalHeight / 2, 0); // Center includes UI
-    camera.update();
+    // No-op: fixed-size debug window
   }
 
   @Override
   public void show() {
-    log.info("=== CRForge Debug Visualizer ===\n"
-        + "Controls:\n"
-        + "  SPACE - Pause/Resume\n"
-        + "  R     - Reset match\n"
-        + "  P     - Toggle path visualization\n"
-        + "  O     - Toggle attack range circles\n"
-        + "  +/-   - Speed up/slow down\n"
-        + "  1-4   - Play blue card\n"
-        + "  5-8   - Play red card\n"
-        + "  Click - Deploy at position\n"
-        + "================================");
+    log.info("""
+        === CRForge Debug Visualizer ===
+        Controls:
+          SPACE - Pause/Resume
+          R     - Reset match
+          P     - Toggle path visualization
+          O     - Toggle attack range circles
+          +/-   - Speed up/slow down
+          1-4   - Play blue card
+          5-8   - Play red card
+          Click - Deploy at position
+        ================================""");
   }
 
   @Override
