@@ -53,7 +53,7 @@ public class HudRenderer {
    */
   public void render(GameEngine engine, Match match, OrthographicCamera camera,
                      int selectedHandIndex, Team selectedTeam,
-                     boolean drawPaths, boolean drawRanges) {
+                     boolean drawPaths, boolean drawRanges, boolean drawDamageNumbers) {
     float screenWidth = camera.viewportWidth;
     float screenHeight = camera.viewportHeight;
 
@@ -108,6 +108,10 @@ public class HudRenderer {
     }
     if (drawRanges) {
       ctx.getFont().draw(ctx.getSpriteBatch(), "Ranges: ON",
+          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
+    }
+    if (drawDamageNumbers) {
+      ctx.getFont().draw(ctx.getSpriteBatch(), "Damage: ON",
           screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
 

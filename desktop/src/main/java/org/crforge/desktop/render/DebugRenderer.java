@@ -23,11 +23,14 @@ public class DebugRenderer {
   private final HealthBarRenderer healthBarRenderer;
   private final DebugOverlayRenderer debugOverlayRenderer;
   private final HudRenderer hudRenderer;
+  private final DamageNumberRenderer damageNumberRenderer;
 
   @Getter
   private boolean drawPaths = false;
   @Getter
   private boolean drawRanges = false;
+  @Getter
+  private boolean drawDamageNumbers = false;
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
@@ -37,6 +40,7 @@ public class DebugRenderer {
     this.healthBarRenderer = new HealthBarRenderer(ctx);
     this.debugOverlayRenderer = new DebugOverlayRenderer(ctx);
     this.hudRenderer = new HudRenderer(ctx);
+    this.damageNumberRenderer = new DamageNumberRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -45,6 +49,10 @@ public class DebugRenderer {
 
   public void toggleDrawRanges() {
     drawRanges = !drawRanges;
+  }
+
+  public void toggleDrawDamageNumbers() {
+    drawDamageNumbers = !drawDamageNumbers;
   }
 
   public void render(GameEngine engine, OrthographicCamera camera,
@@ -104,6 +112,12 @@ public class DebugRenderer {
     // 12. Entity names
     debugOverlayRenderer.renderEntityNames(state);
 
+    // 12.5. Damage numbers (always update to keep snapshots current; only render when toggled on)
+    damageNumberRenderer.update(state);
+    if (drawDamageNumbers) {
+      damageNumberRenderer.render();
+    }
+
     // 13. Area effect zones
     debugOverlayRenderer.renderAreaEffects(state);
 
@@ -115,7 +129,7 @@ public class DebugRenderer {
 
     // 16. HUD (timer, cards, elixir)
     hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
-        drawPaths, drawRanges);
+        drawPaths, drawRanges, drawDamageNumbers);
   }
 
   private Player getPlayer(Match match, Team selectedTeam) {

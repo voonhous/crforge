@@ -32,6 +32,7 @@ import org.crforge.desktop.render.RenderConstants;
  * <li>R: Reset match</li>
  * <li>P: Toggle path visualization</li>
  * <li>O: Toggle attack range circles</li>
+ * <li>D: Toggle floating damage numbers</li>
  * <li>1-4: Play card from blue player's hand at random position</li>
  * <li>5-8: Play card from red player's hand at random position</li>
  * <li>+/-: Speed up/slow down simulation</li>
@@ -142,6 +143,10 @@ public class DebugGameScreen implements Screen {
           case Input.Keys.O -> {
             renderer.toggleDrawRanges();
             log.info("Range circles: {}", renderer.isDrawRanges() ? "ON" : "OFF");
+          }
+          case Input.Keys.D -> {
+            renderer.toggleDrawDamageNumbers();
+            log.info("Damage numbers: {}", renderer.isDrawDamageNumbers() ? "ON" : "OFF");
           }
           case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
           case Input.Keys.MINUS -> adjustSpeed(0.5f);
@@ -335,6 +340,7 @@ public class DebugGameScreen implements Screen {
           R     - Reset match
           P     - Toggle path visualization
           O     - Toggle attack range circles
+          D     - Toggle floating damage numbers
           +/-   - Speed up/slow down
           1-4   - Play blue card
           5-8   - Play red card

@@ -127,4 +127,12 @@ public final class RenderConstants {
   public static final Color COLOR_DASH_LINE = new Color(0.2f, 1f, 0.5f, 0.6f);
   public static final Color COLOR_HOOK_LINE = new Color(0.8f, 0.8f, 0.8f, 0.8f);
   public static final Color COLOR_REFLECT_AURA = new Color(1f, 0.3f, 1f, 0.5f);
+
+  // ---- Damage number colors ----
+
+  /** Red color for floating HP damage numbers. */
+  public static final Color COLOR_DAMAGE_NUMBER = new Color(1f, 0.2f, 0.2f, 1f);
+
+  /** Gold color for floating shield damage numbers. */
+  public static final Color COLOR_SHIELD_DAMAGE_NUMBER = new Color(1f, 0.85f, 0.2f, 1f);
 }
