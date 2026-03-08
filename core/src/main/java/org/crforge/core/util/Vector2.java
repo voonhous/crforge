@@ -42,12 +42,20 @@ public class Vector2 {
   }
 
   /**
+   * Returns the squared Euclidean distance between two arbitrary points.
+   * Use when only relative ordering matters (avoids sqrt).
+   */
+  public static float distanceSquared(float x1, float y1, float x2, float y2) {
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+    return dx * dx + dy * dy;
+  }
+
+  /**
    * Returns the Euclidean distance between two arbitrary points.
    */
   public static float distance(float x1, float y1, float x2, float y2) {
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-    return (float) Math.sqrt(dx * dx + dy * dy);
+    return (float) Math.sqrt(distanceSquared(x1, y1, x2, y2));
   }
 
   public float distanceTo(Vector2 other) {

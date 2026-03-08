@@ -58,14 +58,14 @@ public class TargetingSystem {
 
   private Entity findBestTarget(Entity attacker, Combat combat, Collection<Entity> entities) {
     Team enemyTeam = attacker.getTeam().opposite();
-    float sightRange = combat.getSightRange();
+    float sightRangeSq = combat.getSightRange() * combat.getSightRange();
 
     return entities.stream()
         .filter(e -> e.getTeam() == enemyTeam)
         .filter(Entity::isTargetable)
         .filter(e -> canTarget(combat, e))
-        .filter(e -> getDistance(attacker, e) <= sightRange)
-        .min(Comparator.comparingDouble(e -> getDistance(attacker, e)))
+        .filter(e -> getDistanceSq(attacker, e) <= sightRangeSq)
+        .min(Comparator.comparingDouble(e -> getDistanceSq(attacker, e)))
         .orElse(null);
   }
 
@@ -74,9 +74,10 @@ public class TargetingSystem {
       return false;
     }
 
-    // Check if target is still in range (with leeway)
-    float distance = getDistance(attacker, target);
-    if (distance > combat.getSightRange() * TARGET_RETENTION_RANGE_MULTIPLIER) {
+    // Check if target is still in range (with leeway), using squared distance to avoid sqrt
+    float retentionRange = combat.getSightRange() * TARGET_RETENTION_RANGE_MULTIPLIER;
+    float distanceSq = getDistanceSq(attacker, target);
+    if (distanceSq > retentionRange * retentionRange) {
       return false;
     }
 
@@ -117,5 +118,9 @@ public class TargetingSystem {
 
   private float getDistance(Entity a, Entity b) {
     return a.getPosition().distanceTo(b.getPosition());
+  }
+
+  private float getDistanceSq(Entity a, Entity b) {
+    return a.getPosition().distanceToSquared(b.getPosition());
   }
 }

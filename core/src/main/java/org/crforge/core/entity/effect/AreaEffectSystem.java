@@ -76,10 +76,10 @@ public class AreaEffectSystem {
         continue;
       }
 
-      float distance = target.getPosition().distanceTo(centerX, centerY);
+      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
       float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
 
-      if (distance <= effectiveRadius) {
+      if (distanceSq <= effectiveRadius * effectiveRadius) {
         // Apply buff first (before damage, consistent with CombatSystem convention)
         applyBuff(effect, target);
 

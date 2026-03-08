@@ -240,8 +240,9 @@ public class AbilitySystem {
         if (!entity.isTargetable()) {
           continue;
         }
-        float dist = dasher.getPosition().distanceTo(entity.getPosition());
-        if (dist <= radius + entity.getCollisionRadius()) {
+        float distSq = dasher.getPosition().distanceToSquared(entity.getPosition());
+        float effectiveRadius = radius + entity.getCollisionRadius();
+        if (distSq <= effectiveRadius * effectiveRadius) {
           entity.getHealth().takeDamage(damage);
         }
       }
