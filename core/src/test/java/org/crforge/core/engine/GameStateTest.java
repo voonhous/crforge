@@ -75,6 +75,7 @@ class GameStateTest {
     gameState.processPending();
 
     deadTroop.getHealth().takeDamage(200);
+    gameState.refreshCaches();
 
     assertThat(gameState.getAliveEntities()).containsExactly(aliveTroop);
   }

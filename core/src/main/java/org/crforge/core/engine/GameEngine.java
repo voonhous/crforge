@@ -90,7 +90,7 @@ public class GameEngine {
       std1v1.createTowers(gameState::spawnEntity);
     }
 
-    // Process initial spawns
+    // Process initial spawns (also refreshes alive cache)
     gameState.processPending();
   }
 
@@ -102,7 +102,7 @@ public class GameEngine {
       return;
     }
 
-    // 1. Process pending spawns/removals from previous tick
+    // 1. Process pending spawns/removals from previous tick (also refreshes alive cache)
     gameState.processPending();
 
     // 2. Update match (player elixir regen, etc.)
