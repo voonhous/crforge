@@ -250,23 +250,22 @@ public class CombatSystem {
   }
 
   private void updateProjectiles(float deltaTime) {
-    List<Projectile> toRemove = new ArrayList<>();
+    List<Projectile> projectiles = gameState.getProjectiles();
+    // Use index-based loop: onProjectileHit may spawn new projectiles (chain lightning,
+    // spawn-on-impact) which append to the list. We only process projectiles that existed
+    // at the start of this tick by capturing the initial size.
+    int count = projectiles.size();
 
-    for (Projectile projectile : gameState.getProjectiles()) {
+    for (int i = 0; i < count; i++) {
+      Projectile projectile = projectiles.get(i);
       boolean hit = projectile.update(deltaTime);
 
       if (hit) {
         onProjectileHit(projectile);
       }
-
-      if (!projectile.isActive()) {
-        toRemove.add(projectile);
-      }
     }
 
-    for (Projectile projectile : toRemove) {
-      gameState.removeProjectile(projectile);
-    }
+    projectiles.removeIf(p -> !p.isActive());
   }
 
   private void onProjectileHit(Projectile projectile) {
