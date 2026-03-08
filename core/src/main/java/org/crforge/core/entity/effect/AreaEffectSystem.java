@@ -2,14 +2,17 @@ package org.crforge.core.entity.effect;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.combat.DamageUtil;
+import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**
@@ -122,6 +125,18 @@ public class AreaEffectSystem {
     // Pass buff name for data-driven multiplier resolution in StatusEffectSystem
     float duration = stats.getBuffDuration() > 0 ? stats.getBuffDuration() : 1.0f;
     target.addEffect(new AppliedEffect(effectType, duration, stats.getBuff()));
+
+    // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)
+    if (effectType == StatusEffectType.STUN || effectType == StatusEffectType.FREEZE) {
+      Combat combat = target.getCombat();
+      if (combat != null) {
+        combat.resetAttackState();
+      }
+      // Reset charge ability state (Prince, Dark Prince, Battle Ram, Ram Rider)
+      if (target instanceof Troop troop) {
+        AbilitySystem.consumeCharge(troop);
+      }
+    }
   }
 
 }

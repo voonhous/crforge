@@ -290,6 +290,59 @@ class AreaEffectSystemTest {
   }
 
   @Test
+  void oneShot_shouldSurviveEntityUpdateBeforeProcessing() {
+    // Reproduces the real GameEngine tick order: entity.update() runs BEFORE
+    // areaEffectSystem.update(). One-shot effects with very short lifeDuration
+    // (like Zap at 0.001s) must not die before being applied.
+    AreaEffectStats stats = AreaEffectStats.builder()
+        .name("Zap")
+        .radius(2.5f)
+        .lifeDuration(0.001f)
+        .hitsGround(true)
+        .hitsAir(true)
+        .damage(75)
+        .buff("ZapFreeze")
+        .buffDuration(0.5f)
+        .build();
+
+    AreaEffect effect = AreaEffect.builder()
+        .name("Zap")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .stats(stats)
+        .scaledDamage(75)
+        .remainingLifetime(0.001f)
+        .build();
+
+    Troop enemy = Troop.builder()
+        .name("Enemy")
+        .team(Team.RED)
+        .position(new Position(11, 10))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(enemy);
+    gameState.processPending();
+    enemy.update(1.0f);
+
+    // Simulate real tick order: entity.update() BEFORE areaEffectSystem.update()
+    float dt = 1.0f / 30;
+    effect.update(dt);  // lifetime goes negative, but one-shot must stay alive
+    system.update(dt);  // should still process and apply damage + buff
+
+    assertThat(enemy.getHealth().getCurrent()).isEqualTo(425); // 500 - 75
+    assertThat(enemy.getAppliedEffects()).hasSize(1);
+    assertThat(enemy.getAppliedEffects().get(0).getType())
+        .isEqualTo(org.crforge.core.effect.StatusEffectType.STUN);
+
+    // After application, the next update should mark it dead
+    effect.update(dt);
+    assertThat(effect.isAlive()).isFalse();
+  }
+
+  @Test
   void freeze_shouldApplyFreezeBuffToEnemies() {
     // Freeze spell: damage + FREEZE buff
     AreaEffectStats stats = AreaEffectStats.builder()

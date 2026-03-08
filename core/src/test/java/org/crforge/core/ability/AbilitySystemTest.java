@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
@@ -17,6 +18,8 @@ import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.effect.AreaEffect;
+import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
@@ -33,6 +36,7 @@ class AbilitySystemTest {
   private TargetingSystem targetingSystem;
   private PhysicsSystem physicsSystem;
   private StatusEffectSystem statusEffectSystem;
+  private AreaEffectSystem areaEffectSystem;
 
   private static final float DT = 1.0f / 30;
 
@@ -46,6 +50,7 @@ class AbilitySystemTest {
     targetingSystem = new TargetingSystem();
     physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
     statusEffectSystem = new StatusEffectSystem();
+    areaEffectSystem = new AreaEffectSystem(gameState);
   }
 
   // -- CHARGE tests --
@@ -372,6 +377,100 @@ class AbilitySystemTest {
     assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
     assertThat(prince.getAbility().isCharged()).isFalse();
     assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(1.0f);
+  }
+
+  // -- SPELL (AreaEffectSystem) stun/freeze reset charge tests --
+  // These tests verify that spell-based stuns (Zap, Freeze) reset charge state,
+  // going through AreaEffectSystem.applyBuff() rather than CombatSystem.applyEffects().
+
+  @Test
+  void spellStun_shouldResetFullCharge() {
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+
+    gameState.spawnEntity(prince);
+    gameState.processPending();
+
+    prince.update(2.0f);
+
+    // Build full charge (2.5s+)
+    for (int i = 0; i < 78; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().isCharged()).isTrue();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
+
+    // Cast Zap on the Prince via AreaEffectSystem (one-shot stun spell)
+    AreaEffectStats zapStats = AreaEffectStats.builder()
+        .name("Zap")
+        .radius(2.5f)
+        .lifeDuration(0.1f)
+        .buff("ZapFreeze")
+        .buffDuration(0.5f)
+        .damage(75)
+        .build();
+    AreaEffect zap = AreaEffect.builder()
+        .name("Zap")
+        .team(Team.RED)
+        .position(new Position(5, 5))
+        .health(new Health(1))
+        .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
+        .stats(zapStats)
+        .remainingLifetime(0.1f)
+        .build();
+    gameState.spawnEntity(zap);
+    gameState.processPending();
+
+    // Process the area effect -- should stun the Prince and reset charge
+    areaEffectSystem.update(DT);
+
+    // Charge and speed multiplier should be fully reset
+    assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
+    assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(1.0f);
+  }
+
+  @Test
+  void spellStun_shouldResetPartialCharge() {
+    Troop prince = createChargeTroop(Team.BLUE, 5, 5);
+
+    gameState.spawnEntity(prince);
+    gameState.processPending();
+
+    prince.update(2.0f);
+
+    // Build partial charge (1s out of 2.5s needed)
+    for (int i = 0; i < 30; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(prince.getAbility().getChargeTimer()).isGreaterThan(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
+
+    // Cast Zap on the Prince via AreaEffectSystem
+    AreaEffectStats zapStats = AreaEffectStats.builder()
+        .name("Zap")
+        .radius(2.5f)
+        .lifeDuration(0.1f)
+        .buff("ZapFreeze")
+        .buffDuration(0.5f)
+        .damage(75)
+        .build();
+    AreaEffect zap = AreaEffect.builder()
+        .name("Zap")
+        .team(Team.RED)
+        .position(new Position(5, 5))
+        .health(new Health(1))
+        .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
+        .stats(zapStats)
+        .remainingLifetime(0.1f)
+        .build();
+    gameState.spawnEntity(zap);
+    gameState.processPending();
+
+    areaEffectSystem.update(DT);
+
+    // Partial charge should be fully reset by the stun
+    assertThat(prince.getAbility().getChargeTimer()).isEqualTo(0f);
+    assertThat(prince.getAbility().isCharged()).isFalse();
   }
 
   // -- VARIABLE DAMAGE tests --

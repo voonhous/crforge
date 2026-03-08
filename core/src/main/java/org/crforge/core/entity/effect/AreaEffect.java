@@ -76,6 +76,12 @@ public class AreaEffect extends AbstractEntity {
     }
     remainingLifetime -= deltaTime;
     if (remainingLifetime <= 0) {
+      // One-shot effects must survive until AreaEffectSystem applies them.
+      // Without this guard, effects with very short lifeDuration (e.g. Zap 0.001s)
+      // die during the entity update step before AreaEffectSystem processes them.
+      if (isOneShot() && !initialApplied) {
+        return;
+      }
       markDead();
     }
   }
