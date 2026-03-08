@@ -25,7 +25,8 @@ public class AbilitySystem {
   }
 
   public void update(float deltaTime) {
-    for (Entity entity : gameState.getAliveEntities()) {
+    List<Entity> aliveEntities = gameState.getAliveEntities();
+    for (Entity entity : aliveEntities) {
       if (!(entity instanceof Troop troop)) {
         continue;
       }
