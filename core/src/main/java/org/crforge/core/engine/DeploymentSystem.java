@@ -220,20 +220,8 @@ public class DeploymentSystem {
     int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
 
-    Combat combat = Combat.builder()
-        .damage(scaledDamage)
-        .range(stats.getRange())
-        .sightRange(stats.getSightRange())
-        .attackCooldown(stats.getAttackCooldown())
-        .loadTime(stats.getLoadTime())
-        .accumulatedLoadTime(initialLoad)
+    Combat combat = buildCombatComponent(stats, scaledDamage, initialLoad)
         .aoeRadius(stats.getAoeRadius())
-        .targetType(stats.getTargetType())
-        .hitEffects(stats.getHitEffects())
-        .projectileStats(stats.getProjectile())
-        .targetOnlyBuildings(stats.isTargetOnlyBuildings())
-        .minimumRange(stats.getMinimumRange())
-        .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .multipleTargets(stats.getMultipleTargets())
         .multipleProjectiles(stats.getMultipleProjectiles())
         .buffOnDamage(stats.getBuffOnDamage())
@@ -278,20 +266,7 @@ public class DeploymentSystem {
 
     if (unitStats != null && unitStats.getDamage() > 0) {
       float initialLoad = unitStats.isNoPreload() ? 0f : unitStats.getLoadTime();
-      combat = Combat.builder()
-          .damage(scaledBuildingDamage)
-          .range(unitStats.getRange())
-          .sightRange(unitStats.getSightRange())
-          .attackCooldown(unitStats.getAttackCooldown())
-          .loadTime(unitStats.getLoadTime())
-          .accumulatedLoadTime(initialLoad)
-          .targetType(unitStats.getTargetType())
-          .hitEffects(unitStats.getHitEffects())
-          .projectileStats(unitStats.getProjectile())
-          .targetOnlyBuildings(unitStats.isTargetOnlyBuildings())
-          .minimumRange(unitStats.getMinimumRange())
-          .crownTowerDamagePercent(unitStats.getCrownTowerDamagePercent())
-          .build();
+      combat = buildCombatComponent(unitStats, scaledBuildingDamage, initialLoad).build();
     }
 
     float collisionRadius = unitStats != null ? unitStats.getCollisionRadius() : 1.0f;
@@ -435,6 +410,27 @@ public class DeploymentSystem {
         .build();
 
     state.spawnEntity(effect);
+  }
+
+  /**
+   * Builds the shared subset of Combat fields common to both troops and buildings.
+   * Callers can chain additional builder calls for troop-specific fields before .build().
+   */
+  private static Combat.CombatBuilder buildCombatComponent(TroopStats stats, int scaledDamage,
+      float initialLoad) {
+    return Combat.builder()
+        .damage(scaledDamage)
+        .range(stats.getRange())
+        .sightRange(stats.getSightRange())
+        .attackCooldown(stats.getAttackCooldown())
+        .loadTime(stats.getLoadTime())
+        .accumulatedLoadTime(initialLoad)
+        .targetType(stats.getTargetType())
+        .hitEffects(stats.getHitEffects())
+        .projectileStats(stats.getProjectile())
+        .targetOnlyBuildings(stats.isTargetOnlyBuildings())
+        .minimumRange(stats.getMinimumRange())
+        .crownTowerDamagePercent(stats.getCrownTowerDamagePercent());
   }
 
   // Simple container for the queue
