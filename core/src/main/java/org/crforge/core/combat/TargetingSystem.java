@@ -60,13 +60,23 @@ public class TargetingSystem {
     Team enemyTeam = attacker.getTeam().opposite();
     float sightRangeSq = combat.getSightRange() * combat.getSightRange();
 
-    return entities.stream()
-        .filter(e -> e.getTeam() == enemyTeam)
-        .filter(Entity::isTargetable)
-        .filter(e -> canTarget(combat, e))
-        .filter(e -> getDistanceSq(attacker, e) <= sightRangeSq)
-        .min(Comparator.comparingDouble(e -> getDistanceSq(attacker, e)))
-        .orElse(null);
+    Entity best = null;
+    float bestDistSq = Float.MAX_VALUE;
+
+    for (Entity e : entities) {
+      if (e.getTeam() != enemyTeam || !e.isTargetable()) {
+        continue;
+      }
+      if (!canTarget(combat, e)) {
+        continue;
+      }
+      float distSq = getDistanceSq(attacker, e);
+      if (distSq <= sightRangeSq && distSq < bestDistSq) {
+        bestDistSq = distSq;
+        best = e;
+      }
+    }
+    return best;
   }
 
   private boolean isValidTarget(Entity attacker, Combat combat, Entity target) {
