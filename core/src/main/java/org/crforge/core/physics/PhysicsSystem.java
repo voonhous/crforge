@@ -90,6 +90,11 @@ public class PhysicsSystem {
       return;
     }
 
+    // Dash movement is handled by AbilitySystem -- skip normal pathfinding
+    if (troop.getAbility() != null && troop.getAbility().isDashing()) {
+      return;
+    }
+
     // Don't move if already in range to attack current target
     if (troop.isInAttackRange()) {
       return;
@@ -204,6 +209,11 @@ public class PhysicsSystem {
   }
 
   private boolean shouldCollide(Entity a, Entity b) {
+    // Dashing entities skip collision (like reference JS "noCol" flag)
+    if (isDashing(a) || isDashing(b)) {
+      return false;
+    }
+
     MovementType typeA = a.getMovementType();
     MovementType typeB = b.getMovementType();
 
@@ -212,6 +222,12 @@ public class PhysicsSystem {
       return typeB == MovementType.AIR;
     }
     return typeB != MovementType.AIR;
+  }
+
+  private boolean isDashing(Entity entity) {
+    return entity instanceof Troop troop
+        && troop.getAbility() != null
+        && troop.getAbility().isDashing();
   }
 
   /**

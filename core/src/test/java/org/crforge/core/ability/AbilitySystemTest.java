@@ -652,6 +652,61 @@ class AbilitySystemTest {
     assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.IDLE);
   }
 
+  @Test
+  void dash_shouldNotOrbitAroundBuilding() {
+    // Bandit dashes toward a building -- should move in a straight line and stop
+    // at the collision boundary, not orbit around it due to sliding physics.
+    Troop bandit = createDashTroop(Team.BLUE, 9, 5);
+    Building cannon = Building.builder()
+        .name("Cannon")
+        .team(Team.RED)
+        .position(new Position(9, 12))
+        .health(new Health(500))
+        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+        .lifetime(30f)
+        .remainingLifetime(30f)
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(cannon);
+    gameState.processPending();
+
+    bandit.update(2.0f);
+    cannon.update(2.0f);
+
+    // Manually set target and trigger dash
+    bandit.getCombat().setCurrentTarget(cannon);
+    abilitySystem.update(DT);
+
+    assertThat(bandit.getAbility().getDashState())
+        .isEqualTo(AbilityComponent.DashState.DASHING);
+
+    // Record starting X -- Bandit and Cannon share the same X coordinate,
+    // so the Bandit should move straight up (Y only) with X unchanged.
+    float startX = bandit.getPosition().getX();
+
+    // Run full system loop (ability + physics) for enough ticks to complete the dash
+    for (int i = 0; i < 60; i++) {
+      abilitySystem.update(DT);
+      physicsSystem.update(gameState.getAliveEntities(), DT);
+    }
+
+    // Bandit should NOT have drifted sideways (orbiting).
+    // Allow a tiny epsilon for float imprecision.
+    assertThat(bandit.getPosition().getX())
+        .as("Bandit X should stay constant (no orbiting) during dash into building")
+        .isCloseTo(startX, org.assertj.core.data.Offset.offset(0.01f));
+
+    // Dash should have completed (landed or returned to idle)
+    assertThat(bandit.getAbility().getDashState())
+        .as("Dash should have completed")
+        .isNotEqualTo(AbilityComponent.DashState.DASHING);
+
+    // Cannon should have taken at least dash damage (may also take melee hits after landing)
+    assertThat(cannon.getHealth().getCurrent()).isLessThanOrEqualTo(500 - 152);
+  }
+
   // -- HOOK tests --
 
   @Test

@@ -166,11 +166,22 @@ public class AbilitySystem {
             - troop.getCollisionRadius() - target.getCollisionRadius();
 
         if (distance >= data.getDashMinRange() && distance <= data.getDashMaxRange()) {
-          // Start dash toward target
+          // Start dash toward target -- stop at collision boundary, not center
           ability.setDashState(AbilityComponent.DashState.DASHING);
           ability.setDashTimer(0f);
-          ability.setDashTargetX(target.getPosition().getX());
-          ability.setDashTargetY(target.getPosition().getY());
+          float tx = target.getPosition().getX();
+          float ty = target.getPosition().getY();
+          float dx = tx - troop.getPosition().getX();
+          float dy = ty - troop.getPosition().getY();
+          float dist = (float) Math.sqrt(dx * dx + dy * dy);
+          float stopDist = troop.getCollisionRadius() + target.getCollisionRadius();
+          if (dist > stopDist) {
+            float ratio = (dist - stopDist) / dist;
+            tx = troop.getPosition().getX() + dx * ratio;
+            ty = troop.getPosition().getY() + dy * ratio;
+          }
+          ability.setDashTargetX(tx);
+          ability.setDashTargetY(ty);
           // Immune during dash
           troop.setInvulnerable(true);
           // Disable normal combat during dash (set once, survives StatusEffectSystem)
