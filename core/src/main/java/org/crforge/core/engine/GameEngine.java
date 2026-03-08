@@ -59,6 +59,7 @@ public class GameEngine {
   public void setMatch(Match match) {
     this.match = match;
     this.physicsSystem = new PhysicsSystem(match.getArena());
+    this.physicsSystem.setGameState(gameState);
   }
 
   /**

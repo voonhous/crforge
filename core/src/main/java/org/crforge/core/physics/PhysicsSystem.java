@@ -2,8 +2,10 @@ package org.crforge.core.physics;
 
 import java.util.Collection;
 import java.util.List;
+import lombok.Setter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
+import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Building;
@@ -23,6 +25,13 @@ public class PhysicsSystem {
 
   private final Arena arena;
   private final Pathfinder pathfinder;
+
+  /**
+   * Optional GameState reference for O(1) tower lookups. If set, princess tower alive checks
+   * use the typed tower list instead of scanning all entities.
+   */
+  @Setter
+  private GameState gameState;
 
   /**
    * Creates a PhysicsSystem with a specific Arena and Pathfinder.
@@ -117,18 +126,19 @@ public class PhysicsSystem {
     float targetY;
 
     // Check if Princess Tower in this lane is alive
-    boolean princessAlive = false;
-
-    // TODO: Find a better way to do this, can we abstract this up into Match or something else to see if princess tower is still alive
-    // Naive search in the provided alive entities list
-    for (Entity e : allEntities) {
-      if (e.getTeam() == enemyTeam && e instanceof Tower tower && tower.isPrincessTower()) {
-        float tx = tower.getPosition().getX();
-        // Check if tower is in the same lane (Left/Right)
-        boolean towerIsLeft = tx < centerX;
-        if (towerIsLeft == isLeftLane) {
-          princessAlive = true;
-          break;
+    boolean princessAlive;
+    if (gameState != null) {
+      princessAlive = gameState.isPrincessTowerAlive(enemyTeam, isLeftLane, centerX);
+    } else {
+      // Fallback for tests without GameState
+      princessAlive = false;
+      for (Entity e : allEntities) {
+        if (e.getTeam() == enemyTeam && e instanceof Tower tower && tower.isPrincessTower()) {
+          boolean towerIsLeft = tower.getPosition().getX() < centerX;
+          if (towerIsLeft == isLeftLane) {
+            princessAlive = true;
+            break;
+          }
         }
       }
     }
