@@ -5,7 +5,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
+
 import java.util.function.Predicate;
 import lombok.Getter;
 import org.crforge.core.entity.SpawnerSystem;
@@ -35,8 +35,8 @@ public class GameState {
   private Team winner;
 
   public GameState() {
-    this.entities = new CopyOnWriteArrayList<>();
-    this.projectiles = new CopyOnWriteArrayList<>();
+    this.entities = new ArrayList<>();
+    this.projectiles = new ArrayList<>();
     this.pendingSpawns = new ArrayList<>();
     this.pendingRemovals = new ArrayList<>();
     this.towers = new EnumMap<>(Team.class);
