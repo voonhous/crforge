@@ -104,24 +104,6 @@ public class Projectile {
   }
 
   /**
-   * Entity-targeted projectile with optional targetBuff and crown tower modifier (legacy, no buff name).
-   */
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
-      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration,
-      int crownTowerDamagePercent) {
-    this(source, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration,
-        crownTowerDamagePercent, null);
-  }
-
-  /**
-   * Entity-targeted projectile with targetBuff but no crown tower modifier (convenience).
-   */
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
-      List<EffectStats> effects, StatusEffectType targetBuff, float buffDuration) {
-    this(source, target, damage, aoeRadius, speed, effects, targetBuff, buffDuration, 0, null);
-  }
-
-  /**
    * Entity-targeted projectile without targetBuff (convenience).
    */
   public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
@@ -155,11 +137,6 @@ public class Projectile {
     this.projectileSpeed = this.speed;
     this.active = true;
     this.hit = false;
-  }
-
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius,
-      List<EffectStats> effects) {
-    this(source, target, damage, aoeRadius, DEFAULT_SPEED, effects);
   }
 
   public Projectile(Entity source, Entity target, int damage, float aoeRadius) {
