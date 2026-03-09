@@ -57,6 +57,12 @@ public class SpawnerSystem {
         continue;
       }
 
+      // Self-destruct: kill bomb entities once their deploy phase finishes
+      if (spawner.isSelfDestruct()) {
+        entity.getHealth().takeDamage(entity.getHealth().getCurrent());
+        continue;
+      }
+
       // Only tick periodic spawning for entities with live spawn capability
       if (spawner.hasLiveSpawn() && spawner.tick(deltaTime)) {
         int spawnIndex = spawner.getLastSpawnIndex();
@@ -144,7 +150,11 @@ public class SpawnerSystem {
     float x = origin.getX() + offset.getX();
     float y = origin.getY() + offset.getY();
 
-    int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
+    // Bomb entities (health=0) survive their deploy phase with 1 HP, then self-destruct
+    boolean isBomb = stats.getHealth() <= 0;
+    int baseHp = isBomb ? 1 : stats.getHealth();
+
+    int scaledHp = LevelScaling.scaleCard(baseHp, rarity, level);
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
     int scaledShield = stats.getShieldHitpoints() > 0
         ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level) : 0;
@@ -161,6 +171,27 @@ public class SpawnerSystem {
         .targetType(stats.getTargetType())
         .build();
 
+    // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),
+    // otherwise spawned units deploy instantly
+    float deployTime = isBomb ? stats.getDeployTime() : 0f;
+
+    // Build SpawnerComponent for units with death mechanics or bomb behavior
+    boolean hasDeathMechanics = stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty();
+    SpawnerComponent spawner = null;
+    if (hasDeathMechanics || isBomb) {
+      int scaledDeathDamage = stats.getDeathDamage() > 0
+          ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level) : 0;
+
+      spawner = SpawnerComponent.builder()
+          .deathDamage(scaledDeathDamage)
+          .deathDamageRadius(stats.getDeathDamageRadius())
+          .deathSpawns(stats.getDeathSpawns())
+          .rarity(rarity)
+          .level(level)
+          .selfDestruct(isBomb)
+          .build();
+    }
+
     Troop unit = Troop.builder()
         .name(stats.getName())
         .team(team)
@@ -173,7 +204,9 @@ public class SpawnerSystem {
             stats.getVisualRadius(),
             stats.getMovementType()))
         .combat(combat)
-        .deployTime(0f) // Spawned units deploy instantly (no landing animation)
+        .deployTime(deployTime)
+        .deployTimer(deployTime)
+        .spawner(spawner)
         .build();
 
     gameState.spawnEntity(unit);

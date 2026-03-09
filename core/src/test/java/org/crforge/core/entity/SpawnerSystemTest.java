@@ -389,6 +389,173 @@ class SpawnerSystemTest {
   }
 
   @Test
+  void deathSpawn_bombEntity_shouldExplodeAfterDeployTime() {
+    // BalloonBomb-like entity: health=0, deployTime=3.0, deathDamage=100, radius=2.0
+    GameState freshState = new GameState();
+    CombatSystem combatSystem = new CombatSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+
+    TroopStats bombStats = TroopStats.builder()
+        .name("BalloonBomb")
+        .health(0)
+        .deployTime(3.0f)
+        .deathDamage(100)
+        .deathDamageRadius(2.0f)
+        .build();
+
+    // Parent entity (Balloon) that death-spawns the bomb
+    SpawnerComponent balloonSpawner = SpawnerComponent.builder()
+        .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f)))
+        .build();
+
+    Troop balloon = Troop.builder()
+        .name("Balloon")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(1))
+        .deployTime(0f)
+        .spawner(balloonSpawner)
+        .build();
+
+    // Enemy nearby (should take bomb death damage)
+    Troop nearEnemy = Troop.builder()
+        .name("NearEnemy")
+        .team(Team.RED)
+        .position(new Position(11, 10))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    // Enemy far away (should NOT take bomb death damage)
+    Troop farEnemy = Troop.builder()
+        .name("FarEnemy")
+        .team(Team.RED)
+        .position(new Position(20, 20))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    freshState.spawnEntity(balloon);
+    freshState.spawnEntity(nearEnemy);
+    freshState.spawnEntity(farEnemy);
+    freshState.processPending();
+
+    // Finish deploying enemies so they're targetable
+    nearEnemy.update(1.0f);
+    farEnemy.update(1.0f);
+
+    // Kill the balloon -> should death-spawn a BalloonBomb
+    freshState.processDeaths(freshSystem);
+    balloon.getHealth().takeDamage(1);
+    freshState.processDeaths(freshSystem);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+
+    Entity bomb = freshState.getPendingSpawns().get(0);
+    assertThat(bomb.getName()).isEqualTo("BalloonBomb");
+    assertThat(bomb).isInstanceOf(Troop.class);
+
+    // Bomb should have SpawnerComponent with selfDestruct and death damage
+    assertThat(bomb.getSpawner()).isNotNull();
+    assertThat(bomb.getSpawner().isSelfDestruct()).isTrue();
+    assertThat(bomb.getSpawner().getDeathDamage()).isEqualTo(100);
+
+    // Bomb should have 1 HP (not 0, so it survives deploy phase)
+    assertThat(bomb.getHealth().getMax()).isEqualTo(1);
+
+    freshState.processPending();
+
+    // Bomb is deploying -- should NOT be targetable
+    Troop bombTroop = (Troop) bomb;
+    assertThat(bombTroop.isDeploying()).isTrue();
+    assertThat(bombTroop.isTargetable()).isFalse();
+
+    // SpawnerSystem should not self-destruct during deploy
+    freshSystem.update(0.1f);
+    assertThat(bomb.getHealth().isAlive()).isTrue();
+
+    // Advance the bomb's deploy timer past 3.0s
+    bombTroop.update(3.1f);
+    assertThat(bombTroop.isDeploying()).isFalse();
+
+    // Now SpawnerSystem should self-destruct the bomb
+    freshSystem.update(0.1f);
+    assertThat(bomb.getHealth().isAlive()).isFalse();
+
+    // processDeaths fires onDeath -> death damage AOE
+    freshState.processDeaths(freshSystem);
+
+    assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(400); // 500 - 100
+    assertThat(farEnemy.getHealth().getCurrent()).isEqualTo(500); // No damage
+  }
+
+  @Test
+  void deathSpawn_normalUnitWithDeathMechanics_shouldGetSpawnerComponent() {
+    // Golemite-like unit: has health AND deathDamage
+    GameState freshState = new GameState();
+    CombatSystem combatSystem = new CombatSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+
+    TroopStats golemiteStats = TroopStats.builder()
+        .name("Golemite")
+        .health(394)
+        .damage(26)
+        .deathDamage(50)
+        .deathDamageRadius(1.5f)
+        .speed(0.75f)
+        .mass(5.0f)
+        .movementType(MovementType.GROUND)
+        .targetType(TargetType.ALL)
+        .build();
+
+    // Parent Golem that death-spawns Golemites
+    SpawnerComponent golemSpawner = SpawnerComponent.builder()
+        .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f)))
+        .build();
+
+    Troop golem = Troop.builder()
+        .name("Golem")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(1))
+        .deployTime(0f)
+        .spawner(golemSpawner)
+        .build();
+
+    // Enemy nearby to verify death damage propagation
+    Troop nearEnemy = Troop.builder()
+        .name("NearEnemy")
+        .team(Team.RED)
+        .position(new Position(10.5f, 10))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    freshState.spawnEntity(golem);
+    freshState.spawnEntity(nearEnemy);
+    freshState.processPending();
+    nearEnemy.update(1.0f); // finish deploy
+
+    // Kill Golem -> spawns 2 Golemites
+    golem.getHealth().takeDamage(1);
+    freshState.processDeaths(freshSystem);
+    assertThat(freshState.getPendingSpawns()).hasSize(2);
+
+    // Golemites should have SpawnerComponent with death damage (NOT selfDestruct since health > 0)
+    Entity golemite = freshState.getPendingSpawns().get(0);
+    assertThat(golemite.getSpawner()).isNotNull();
+    assertThat(golemite.getSpawner().getDeathDamage()).isEqualTo(50);
+    assertThat(golemite.getSpawner().isSelfDestruct()).isFalse();
+
+    freshState.processPending();
+
+    // Kill a Golemite -> should fire its death damage
+    golemite.getHealth().takeDamage(golemite.getHealth().getCurrent());
+    freshState.processDeaths(freshSystem);
+
+    assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(450); // 500 - 50
+  }
+
+  @Test
   void spawner_shouldRespectSpawnStartTimeWhenSet() {
     // A spawner with explicit spawnStartTime should wait that duration before first wave
     GameState freshState = new GameState();

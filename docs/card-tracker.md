@@ -18,7 +18,7 @@ the live game name.
 | 4  | Giant             | giant            | `DONE`    |                             |
 | 5  | P.E.K.K.A         | pekka            | `DONE`    |                             |
 | 6  | Minions           | minions          |           | count=3                     |
-| 7  | Balloon           | balloon          |           |                             |
+| 7  | Balloon           | balloon          | `DONE`    |                             |
 | 8  | Witch             | witch            | `DONE`    |                             |
 | 9  | Barbarians        | barbarians       |           | count=5                     |
 | 10 | Golem             | golem            |           |                             |
@@ -32,7 +32,7 @@ the live game name.
 | 18 | Wizard            | wizard           |           |                             |
 | 19 | Mini P.E.K.K.A    | minipekka        | `DONE`    |                             |
 | 20 | Spear Goblins     | speargoblins     |           | count=3                     |
-| 21 | Giant Skeleton    | giantskeleton    |           |                             |
+| 21 | Giant Skeleton    | giantskeleton    | `DONE`    |                             |
 | 22 | Hog Rider         | hogrider         |           | jump over river             |
 | 23 | Minion Horde      | minionhorde      |           | count=6                     |
 | 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect               |

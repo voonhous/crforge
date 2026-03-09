@@ -61,6 +61,14 @@ public class SpawnerComponent {
   @Builder.Default
   private float formationRadius = 0f;
 
+  /**
+   * When true, SpawnerSystem kills the entity as soon as it finishes deploying,
+   * triggering its death mechanics. Used for bomb entities (BalloonBomb, GiantSkeletonBomb, etc.)
+   * that fall/animate for their deployTime, then explode via death damage.
+   */
+  @Builder.Default
+  private boolean selfDestruct = false;
+
   // Death mechanics
   @Builder.Default
   private int deathDamage = 0;
