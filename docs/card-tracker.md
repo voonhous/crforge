@@ -138,7 +138,7 @@ the live game name.
 | 7  | Tesla              | tesla             |        |                 |
 | 8  | Elixir Collector   | elixircollector   |        |                 |
 | 9  | X-Bow              | xbow              |        |                 |
-| 10 | Tombstone          | tombstone         |        | spawner         |
+| 10 | Tombstone          | tombstone         | `DONE` | spawner         |
 | 11 | Furnace            | firespirithut     |        | spawner         |
 | 12 | Goblin Cage        | goblincage        |        | death spawn     |
 | 13 | Goblin Drill       | goblindrill       |        |                 |

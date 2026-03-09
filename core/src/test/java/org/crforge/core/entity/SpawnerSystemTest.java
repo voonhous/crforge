@@ -77,16 +77,8 @@ class SpawnerSystemTest {
 
   @Test
   void update_shouldSpawnUnitPeriodically() {
-    // Initial update (0s) -> Timer starts at 3.0. No spawn.
+    // First tick -- timer starts at 0, so first wave spawns immediately
     spawnerSystem.update(0f);
-    assertThat(gameState.getPendingSpawns()).isEmpty();
-
-    // Update 1s -> Timer at 2.0. No spawn.
-    spawnerSystem.update(1.0f);
-    assertThat(gameState.getPendingSpawns()).isEmpty();
-
-    // Update 2s (Total 3s) -> Timer <= 0. Should spawn.
-    spawnerSystem.update(2.0f);
     assertThat(gameState.getPendingSpawns()).hasSize(1);
 
     Entity spawned = gameState.getPendingSpawns().get(0);
@@ -97,11 +89,12 @@ class SpawnerSystemTest {
 
     gameState.processPending();
 
-    // Update another 2.9s (Total 5.9s) -> Timer reloaded to 3.0, now at 0.1. No spawn.
+    // After first spawn, timer reloads to spawnPauseTime (3.0s).
+    // Update 2.9s -> Timer at 0.1. No spawn yet.
     spawnerSystem.update(2.9f);
     assertThat(gameState.getPendingSpawns()).isEmpty();
 
-    // Update 0.2s (Total 6.1s) -> Timer <= 0. Should spawn second unit.
+    // Update 0.2s (Total 3.1s after first spawn) -> Timer <= 0. Should spawn second unit.
     spawnerSystem.update(0.2f);
     assertThat(gameState.getPendingSpawns()).hasSize(1);
   }
@@ -265,7 +258,12 @@ class SpawnerSystemTest {
 
   @Test
   void stun_shouldPauseSpawnTimer() {
-    // Tick 1s toward the 3s spawn timer
+    // First wave spawns immediately
+    spawnerSystem.update(0f);
+    assertThat(gameState.getPendingSpawns()).hasSize(1);
+    gameState.processPending();
+
+    // Tick 1s toward the 3s pause between waves
     spawnerSystem.update(1.0f);
     assertThat(gameState.getPendingSpawns()).isEmpty();
 
@@ -318,12 +316,12 @@ class SpawnerSystemTest {
     freshState.processPending();
     hut.update(1.0f); // finish deploy
 
-    // First spawn at 2s
-    freshSystem.update(2.0f);
+    // First spawn is immediate (no spawnStartTime)
+    freshSystem.update(0f);
     assertThat(freshState.getPendingSpawns()).hasSize(1);
     freshState.processPending();
 
-    // Tick 1s toward next spawn, then freeze
+    // Tick 1s toward next spawn (2s pause), then freeze
     freshSystem.update(1.0f);
     hut.getMovement().setMovementDisabled(ModifierSource.STATUS_EFFECT, true);
 
@@ -341,5 +339,102 @@ class SpawnerSystemTest {
     freshSystem.update(0.2f);
     assertThat(freshState.getPendingSpawns()).hasSize(1);
     assertThat(freshState.getPendingSpawns().get(0).getName()).isEqualTo("Skeleton");
+  }
+
+  @Test
+  void spawner_shouldSpawnFirstWaveImmediately() {
+    // A spawner with no spawnStartTime should spawn its first wave on the first tick
+    GameState freshState = new GameState();
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+
+    SpawnerComponent spawner = SpawnerComponent.builder()
+        .spawnPauseTime(3.5f)
+        .unitsPerWave(2)
+        .spawnInterval(0.5f)
+        .spawnStats(skeletonStats)
+        .build();
+    spawner.initialize();
+
+    Building tombstone = Building.builder()
+        .name("Tombstone")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(100))
+        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+        .lifetime(40f)
+        .spawner(spawner)
+        .build();
+
+    freshState.spawnEntity(tombstone);
+    freshState.processPending();
+    tombstone.update(1.0f); // finish deploy
+
+    // First tick -- first unit of the wave spawns immediately
+    freshSystem.update(0f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+    assertThat(freshState.getPendingSpawns().get(0).getName()).isEqualTo("Skeleton");
+    freshState.processPending();
+
+    // After 0.5s spawnInterval, second unit of the wave spawns
+    freshSystem.update(0.5f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+    freshState.processPending();
+
+    // Now waiting for spawnPauseTime (3.5s) before next wave
+    freshSystem.update(3.4f);
+    assertThat(freshState.getPendingSpawns()).isEmpty();
+
+    freshSystem.update(0.2f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+  }
+
+  @Test
+  void spawner_shouldRespectSpawnStartTimeWhenSet() {
+    // A spawner with explicit spawnStartTime should wait that duration before first wave
+    GameState freshState = new GameState();
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+
+    SpawnerComponent spawner = SpawnerComponent.builder()
+        .spawnPauseTime(5.0f)
+        .spawnStartTime(1.0f)
+        .unitsPerWave(1)
+        .spawnStats(skeletonStats)
+        .build();
+    spawner.initialize();
+
+    Building witchBuilding = Building.builder()
+        .name("TestWitch")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(100))
+        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+        .lifetime(40f)
+        .spawner(spawner)
+        .build();
+
+    freshState.spawnEntity(witchBuilding);
+    freshState.processPending();
+    witchBuilding.update(1.0f); // finish deploy
+
+    // First tick -- should NOT spawn (spawnStartTime=1.0)
+    freshSystem.update(0f);
+    assertThat(freshState.getPendingSpawns()).isEmpty();
+
+    // At 0.9s -- still waiting
+    freshSystem.update(0.9f);
+    assertThat(freshState.getPendingSpawns()).isEmpty();
+
+    // At 1.1s -- spawnStartTime elapsed, first wave spawns
+    freshSystem.update(0.2f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+    assertThat(freshState.getPendingSpawns().get(0).getName()).isEqualTo("Skeleton");
+    freshState.processPending();
+
+    // After first wave, subsequent waves use spawnPauseTime (5.0s)
+    freshSystem.update(4.9f);
+    assertThat(freshState.getPendingSpawns()).isEmpty();
+
+    freshSystem.update(0.2f);
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
   }
 }

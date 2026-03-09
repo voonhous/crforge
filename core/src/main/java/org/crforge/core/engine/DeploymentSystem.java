@@ -408,7 +408,7 @@ public class DeploymentSystem {
   }
 
   private static float resolveInitialSpawnerTimer(LiveSpawnConfig ls) {
-    return ls.spawnStartTime() > 0 ? ls.spawnStartTime() : ls.spawnPauseTime();
+    return ls.spawnStartTime();
   }
 
   /**

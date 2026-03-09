@@ -110,7 +110,7 @@ public class SpawnerComponent {
    * Uses spawnStartTime for the initial delay if set, otherwise spawnPauseTime.
    */
   public void initialize() {
-    this.currentTimer = spawnStartTime > 0 ? spawnStartTime : spawnPauseTime;
+    this.currentTimer = spawnStartTime > 0 ? spawnStartTime : 0;
     this.state = SpawnerState.WAITING_FOR_WAVE;
   }
 
