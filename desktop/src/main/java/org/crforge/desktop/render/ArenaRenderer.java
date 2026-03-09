@@ -16,6 +16,8 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
 
+import java.util.List;
+
 /**
  * Renders the arena: tiles, grid lines, hover highlights, and ghost card previews.
  */
@@ -139,18 +141,28 @@ public class ArenaRenderer {
     } else {
       TroopStats unitStats = card.getUnitStats();
       if (unitStats != null) {
-        int total = card.getUnitCount();
+        List<float[]> formationOffsets = card.getFormationOffsets();
+        int primaryCount = card.getUnitCount();
+        int totalUnits = card.getTotalDeployCount();
         float summonRadius = card.getSummonRadius();
-        float visRadius = unitStats.getVisualRadius() * TILE_PIXELS;
 
-        for (int idx = 0; idx < total; idx++) {
+        for (int idx = 0; idx < totalUnits; idx++) {
+          boolean isSecondary = idx >= primaryCount;
+          TroopStats stats = isSecondary ? card.getSecondaryUnitStats() : unitStats;
+          if (stats == null) continue;
+          float visRadius = stats.getVisualRadius() * TILE_PIXELS;
+
           float offsetX = 0f;
           float offsetY = 0f;
 
-          if (total > 1 && summonRadius > 0) {
+          if (formationOffsets != null && idx < formationOffsets.size()) {
+            float[] offset = formationOffsets.get(idx);
+            offsetX = offset[0];
+            offsetY = offset[1];
+          } else if (totalUnits > 1 && summonRadius > 0) {
             org.crforge.core.util.Vector2 offset =
                 org.crforge.core.util.FormationLayout.calculateDeployOffset(
-                    idx, total, summonRadius, unitStats.getCollisionRadius());
+                    idx, totalUnits, summonRadius, stats.getCollisionRadius());
             offsetX = offset.getX();
             offsetY = offset.getY();
           }
