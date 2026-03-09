@@ -190,6 +190,14 @@
     "radius": 1.0,
     "projectileRange": 7.5
   },
+  "RascalGirlProjectile": {
+    "name": "RascalGirlProjectile",
+    "damage": 49,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
   "DartBarrellProjectile": {
     "name": "DartBarrellProjectile",
     "damage": 67,
@@ -527,6 +535,14 @@
       "deployTime": 0.2
     }
   },
+  "LavaPupProjectile": {
+    "name": "LavaPupProjectile",
+    "damage": 32,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true
+  },
   "RamRiderBola": {
     "name": "RamRiderBola",
     "damage": 41,
@@ -544,13 +560,5 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false
-  },
-  "LavaPupProjectile": {
-    "name": "LavaPupProjectile",
-    "damage": 32,
-    "speed": 500,
-    "homing": true,
-    "aoeToAir": true,
-    "aoeToGround": true
   }
 }

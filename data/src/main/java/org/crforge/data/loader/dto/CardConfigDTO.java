@@ -1,6 +1,7 @@
 package org.crforge.data.loader.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
 import lombok.Data;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.Rarity;
@@ -36,4 +37,13 @@ public class CardConfigDTO {
 
   // Raw CSV summonRadius for troop deploy formation
   private float summonRadius;
+
+  // Pre-computed formation offsets in tile units: [[x1,y1], [x2,y2], ...]
+  private List<List<Float>> formationOffsets;
+
+  // Secondary unit reference (string name into units.json)
+  private String secondaryUnit;
+
+  // How many secondary units to spawn (default 0)
+  private int secondaryCount;
 }

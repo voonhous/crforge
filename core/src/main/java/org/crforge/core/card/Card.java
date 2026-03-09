@@ -1,5 +1,6 @@
 package org.crforge.core.card;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -58,6 +59,28 @@ public class Card {
    * Resolved summon template for spells that summon a character (e.g. Rage -> RageBottle).
    */
   private final TroopStats summonTemplate;
+
+  /**
+   * Pre-computed formation offsets in tile units. Each float[] is [x, y]. Null = use circular
+   * algorithm.
+   */
+  private final List<float[]> formationOffsets;
+
+  /**
+   * Secondary unit type for dual-unit cards (e.g., SpearGoblin in GoblinGang). Null for
+   * single-unit cards.
+   */
+  private final TroopStats secondaryUnitStats;
+
+  /**
+   * How many secondary units to deploy (default 0).
+   */
+  @Builder.Default
+  private final int secondaryUnitCount = 0;
+
+  public int getTotalDeployCount() {
+    return unitCount + secondaryUnitCount;
+  }
 
   public boolean isTroop() {
     return type == CardType.TROOP;

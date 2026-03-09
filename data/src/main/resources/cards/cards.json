@@ -14,7 +14,17 @@
     "rarity": "Common",
     "cost": 3,
     "unit": "Archer",
-    "count": 2
+    "count": 2,
+    "formationOffsets": [
+      [
+        0.5,
+        0.0
+      ],
+      [
+        -0.5,
+        0.0
+      ]
+    ]
   },
   {
     "id": "goblins",
@@ -24,7 +34,25 @@
     "cost": 2,
     "unit": "Goblin_Stab",
     "count": 4,
-    "summonRadius": 700.0
+    "summonRadius": 700.0,
+    "formationOffsets": [
+      [
+        -0.849,
+        -0.849
+      ],
+      [
+        -0.849,
+        0.849
+      ],
+      [
+        0.849,
+        0.849
+      ],
+      [
+        0.849,
+        -0.849
+      ]
+    ]
   },
   {
     "id": "giant",
@@ -49,7 +77,21 @@
     "rarity": "Common",
     "cost": 3,
     "unit": "Minion",
-    "count": 3
+    "count": 3,
+    "formationOffsets": [
+      [
+        -0.5,
+        -0.289
+      ],
+      [
+        -0.0,
+        0.577
+      ],
+      [
+        0.5,
+        -0.289
+      ]
+    ]
   },
   {
     "id": "balloon",
@@ -75,7 +117,29 @@
     "cost": 5,
     "unit": "Barbarian",
     "count": 5,
-    "summonRadius": 700.0
+    "summonRadius": 700.0,
+    "formationOffsets": [
+      [
+        0.0,
+        1.2
+      ],
+      [
+        1.141,
+        0.371
+      ],
+      [
+        0.705,
+        -0.971
+      ],
+      [
+        -0.705,
+        -0.971
+      ],
+      [
+        -1.141,
+        0.371
+      ]
+    ]
   },
   {
     "id": "golem",
@@ -93,7 +157,21 @@
     "cost": 1,
     "unit": "Skeleton",
     "count": 3,
-    "summonRadius": 700.0
+    "summonRadius": 700.0,
+    "formationOffsets": [
+      [
+        0.0,
+        -0.5
+      ],
+      [
+        -0.6,
+        0.2
+      ],
+      [
+        0.6,
+        0.2
+      ]
+    ]
   },
   {
     "id": "valkyrie",
@@ -110,7 +188,69 @@
     "rarity": "Epic",
     "cost": 3,
     "unit": "Skeleton",
-    "count": 15
+    "count": 15,
+    "formationOffsets": [
+      [
+        -2.3,
+        -1.75
+      ],
+      [
+        -1.2,
+        -0.8
+      ],
+      [
+        -1.4,
+        1.4
+      ],
+      [
+        -0.5,
+        1.4
+      ],
+      [
+        -2.8,
+        1.0
+      ],
+      [
+        -1.6,
+        0.6
+      ],
+      [
+        -0.5,
+        1.0
+      ],
+      [
+        -1.3,
+        -0.1
+      ],
+      [
+        0.2,
+        -1.3
+      ],
+      [
+        0.3,
+        0.0
+      ],
+      [
+        0.9,
+        1.15
+      ],
+      [
+        1.7,
+        2.1
+      ],
+      [
+        -0.1,
+        1.7
+      ],
+      [
+        1.9,
+        0.85
+      ],
+      [
+        1.9,
+        -0.5
+      ]
+    ]
   },
   {
     "id": "bomber",
@@ -167,7 +307,21 @@
     "rarity": "Common",
     "cost": 2,
     "unit": "SpearGoblin",
-    "count": 3
+    "count": 3,
+    "formationOffsets": [
+      [
+        0.0,
+        -0.5
+      ],
+      [
+        -0.7,
+        0.2
+      ],
+      [
+        0.7,
+        0.2
+      ]
+    ]
   },
   {
     "id": "giantskeleton",
@@ -193,7 +347,33 @@
     "cost": 5,
     "unit": "Minion",
     "count": 6,
-    "summonRadius": 600.0
+    "summonRadius": 600.0,
+    "formationOffsets": [
+      [
+        0.0,
+        -1.1
+      ],
+      [
+        -0.953,
+        -0.55
+      ],
+      [
+        -0.953,
+        0.55
+      ],
+      [
+        -0.0,
+        1.1
+      ],
+      [
+        0.953,
+        0.55
+      ],
+      [
+        0.953,
+        -0.55
+      ]
+    ]
   },
   {
     "id": "icewizard",
@@ -229,7 +409,21 @@
     "rarity": "Epic",
     "cost": 3,
     "unit": "SkeletonWarrior",
-    "count": 3
+    "count": 3,
+    "formationOffsets": [
+      [
+        0.0,
+        -0.5
+      ],
+      [
+        -0.7,
+        0.2
+      ],
+      [
+        0.7,
+        0.2
+      ]
+    ]
   },
   {
     "id": "princess",
@@ -351,7 +545,35 @@
     "cost": 3,
     "unit": "Goblin_Stab",
     "count": 3,
-    "summonRadius": 1000.0
+    "secondaryUnit": "SpearGoblin",
+    "secondaryCount": 3,
+    "summonRadius": 1000.0,
+    "formationOffsets": [
+      [
+        -0.093,
+        1.519
+      ],
+      [
+        -1.223,
+        -0.884
+      ],
+      [
+        1.288,
+        -0.856
+      ],
+      [
+        0.0,
+        -0.2
+      ],
+      [
+        -0.7,
+        -1.6
+      ],
+      [
+        0.7,
+        -1.6
+      ]
+    ]
   },
   {
     "id": "electrowizard",
@@ -380,7 +602,17 @@
     "cost": 6,
     "unit": "AngryBarbarian",
     "count": 2,
-    "summonRadius": 700.0
+    "summonRadius": 700.0,
+    "formationOffsets": [
+      [
+        0.7,
+        0.0
+      ],
+      [
+        -0.7,
+        0.0
+      ]
+    ]
   },
   {
     "id": "hunter",
@@ -414,7 +646,33 @@
     "cost": 7,
     "unit": "Recruit",
     "count": 6,
-    "summonRadius": 500.0
+    "summonRadius": 500.0,
+    "formationOffsets": [
+      [
+        -5.0,
+        0.0
+      ],
+      [
+        -3.0,
+        -0.0
+      ],
+      [
+        -1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        3.0,
+        0.0
+      ],
+      [
+        5.0,
+        0.0
+      ]
+    ]
   },
   {
     "id": "darkwitch",
@@ -432,7 +690,29 @@
     "cost": 2,
     "unit": "Bat",
     "count": 5,
-    "summonRadius": 750.0
+    "summonRadius": 750.0,
+    "formationOffsets": [
+      [
+        0.735,
+        1.011
+      ],
+      [
+        1.189,
+        -0.386
+      ],
+      [
+        0.0,
+        -1.25
+      ],
+      [
+        -1.189,
+        -0.386
+      ],
+      [
+        -0.735,
+        1.011
+      ]
+    ]
   },
   {
     "id": "ghost",
@@ -458,7 +738,21 @@
     "cost": 4,
     "unit": "MiniZapMachine",
     "count": 3,
-    "summonRadius": 1000.0
+    "summonRadius": 1000.0,
+    "formationOffsets": [
+      [
+        0.0,
+        1.0
+      ],
+      [
+        -0.866,
+        -0.5
+      ],
+      [
+        0.866,
+        -0.5
+      ]
+    ]
   },
   {
     "id": "rascals",
@@ -466,7 +760,24 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 5,
-    "unit": "RascalBoy"
+    "unit": "RascalBoy",
+    "secondaryUnit": "RascalGirl",
+    "secondaryCount": 2,
+    "summonRadius": 3000.0,
+    "formationOffsets": [
+      [
+        0.0,
+        0.5
+      ],
+      [
+        -0.7,
+        -0.3
+      ],
+      [
+        0.7,
+        -0.3
+      ]
+    ]
   },
   {
     "id": "megaknight",
@@ -500,7 +811,17 @@
     "cost": 2,
     "unit": "Wallbreaker",
     "count": 2,
-    "summonRadius": 750.0
+    "summonRadius": 750.0,
+    "formationOffsets": [
+      [
+        0.75,
+        0.0
+      ],
+      [
+        -0.75,
+        0.0
+      ]
+    ]
   },
   {
     "id": "royalhogs",
@@ -510,7 +831,25 @@
     "cost": 5,
     "unit": "RoyalHog",
     "count": 4,
-    "summonRadius": 1.0
+    "summonRadius": 1.0,
+    "formationOffsets": [
+      [
+        -2.0,
+        0.0
+      ],
+      [
+        -0.7,
+        0.0
+      ],
+      [
+        0.7,
+        0.0
+      ],
+      [
+        2.0,
+        0.0
+      ]
+    ]
   },
   {
     "id": "goblingiant",
@@ -616,7 +955,17 @@
     "cost": 4,
     "unit": "SkeletonDragon",
     "count": 2,
-    "summonRadius": 1500.0
+    "summonRadius": 1500.0,
+    "formationOffsets": [
+      [
+        1.5,
+        0.0
+      ],
+      [
+        -1.5,
+        0.0
+      ]
+    ]
   },
   {
     "id": "witchmother",

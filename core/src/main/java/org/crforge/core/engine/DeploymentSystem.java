@@ -116,16 +116,26 @@ public class DeploymentSystem {
   }
 
   private void spawnTroops(Team team, Card card, float x, float y, int level) {
-    TroopStats unitStats = card.getUnitStats();
-    if (unitStats == null) {
+    TroopStats primaryStats = card.getUnitStats();
+    if (primaryStats == null) {
       return;
     }
 
-    int totalUnits = card.getUnitCount();
+    int primaryCount = card.getUnitCount();
+    int secondaryCount = card.getSecondaryUnitCount();
+    int totalUnits = primaryCount + secondaryCount;
+    TroopStats secondaryStats = card.getSecondaryUnitStats();
+    List<float[]> formationOffsets = card.getFormationOffsets();
     float summonRadius = card.getSummonRadius();
 
     for (int idx = 0; idx < totalUnits; idx++) {
-      // Check for spawner capability (Witch/Mother Witch logic)
+      boolean isSecondary = idx >= primaryCount;
+      TroopStats unitStats = isSecondary ? secondaryStats : primaryStats;
+      if (unitStats == null) {
+        continue;
+      }
+
+      // Check for spawner capability (Witch/Mother Witch logic) -- only first primary unit
       SpawnerComponent spawner = null;
 
       if (idx == 0 && unitStats.getLiveSpawn() != null) {
@@ -172,7 +182,7 @@ public class DeploymentSystem {
       }
 
       Troop troop = createTroop(team, unitStats, x, y, spawner, level, card.getRarity(),
-          idx, totalUnits, summonRadius);
+          idx, totalUnits, summonRadius, formationOffsets);
       state.spawnEntity(troop);
     }
 
@@ -191,12 +201,17 @@ public class DeploymentSystem {
    */
   private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
       SpawnerComponent spawner, int level, Rarity rarity,
-      int index, int total, float summonRadius) {
+      int index, int total, float summonRadius, List<float[]> formationOffsets) {
     float offsetX = 0f;
     float offsetY = 0f;
 
-    if (total > 1 && summonRadius > 0) {
-      // Use calculated circular formation offsets
+    if (formationOffsets != null && index < formationOffsets.size()) {
+      // Pre-computed offsets (already in tile units, no TILE_SCALE conversion needed)
+      float[] offset = formationOffsets.get(index);
+      offsetX = offset[0];
+      offsetY = offset[1];
+    } else if (total > 1 && summonRadius > 0) {
+      // Fallback: circular formation algorithm
       Vector2 offset = FormationLayout.calculateDeployOffset(
           index, total, summonRadius, stats.getCollisionRadius());
       offsetX = offset.getX();
@@ -331,7 +346,7 @@ public class DeploymentSystem {
     // Summon character spells (Rage -> RageBottle, Heal -> HealSpirit)
     if (card.getSummonTemplate() != null) {
       Troop summoned = createTroop(team, card.getSummonTemplate(), x, y, null, level,
-          card.getRarity(), 0, 1, 0f);
+          card.getRarity(), 0, 1, 0f, null);
       state.spawnEntity(summoned);
     }
 

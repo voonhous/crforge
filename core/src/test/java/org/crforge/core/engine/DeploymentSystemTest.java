@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -404,5 +405,233 @@ class DeploymentSystemTest {
     int expectedDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
     assertThat(expectedDamage).isGreaterThan(baseDamage); // Sanity check scaling did something
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(10000 - expectedDamage);
+  }
+
+  // -- Formation offset tests --
+
+  @Test
+  void testDeployWithFormationOffsets_shouldUsePrecomputedPositions() {
+    TroopStats archerStats = TroopStats.builder()
+        .name("Archer")
+        .health(100)
+        .damage(50)
+        .build();
+
+    List<float[]> offsets = List.of(
+        new float[]{0.5f, 0.0f},
+        new float[]{-0.5f, 0.0f}
+    );
+
+    Card archers = Card.builder()
+        .id("archer")
+        .name("Archer")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(archerStats)
+        .unitCount(2)
+        .formationOffsets(offsets)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(archers);
+    }
+
+    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(9f)
+        .y(10f)
+        .build();
+
+    deploymentSystem.queueAction(archerPlayer, action);
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+
+    assertThat(gameState.getEntities()).hasSize(2);
+    List<Troop> troops = gameState.getEntities().stream()
+        .filter(e -> e instanceof Troop)
+        .map(e -> (Troop) e)
+        .toList();
+
+    // First archer at (9 + 0.5, 10 + 0.0)
+    assertThat(troops.get(0).getPosition().getX()).isCloseTo(9.5f, within(0.01f));
+    assertThat(troops.get(0).getPosition().getY()).isCloseTo(10.0f, within(0.01f));
+    // Second archer at (9 - 0.5, 10 + 0.0)
+    assertThat(troops.get(1).getPosition().getX()).isCloseTo(8.5f, within(0.01f));
+    assertThat(troops.get(1).getPosition().getY()).isCloseTo(10.0f, within(0.01f));
+  }
+
+  @Test
+  void testDeployWithFormationOffsets_redTeamNegatesOffsets() {
+    TroopStats archerStats = TroopStats.builder()
+        .name("Archer")
+        .health(100)
+        .damage(50)
+        .build();
+
+    List<float[]> offsets = List.of(
+        new float[]{0.5f, 1.0f},
+        new float[]{-0.5f, -1.0f}
+    );
+
+    Card archers = Card.builder()
+        .id("archer")
+        .name("Archer")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(archerStats)
+        .unitCount(2)
+        .formationOffsets(offsets)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(archers);
+    }
+
+    Player redPlayer = new Player(Team.RED, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(9f)
+        .y(20f)
+        .build();
+
+    deploymentSystem.queueAction(redPlayer, action);
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+
+    List<Troop> troops = gameState.getEntities().stream()
+        .filter(e -> e instanceof Troop)
+        .map(e -> (Troop) e)
+        .toList();
+
+    // Red team negates offsets: first at (9 - 0.5, 20 - 1.0)
+    assertThat(troops.get(0).getPosition().getX()).isCloseTo(8.5f, within(0.01f));
+    assertThat(troops.get(0).getPosition().getY()).isCloseTo(19.0f, within(0.01f));
+    // Second at (9 + 0.5, 20 + 1.0)
+    assertThat(troops.get(1).getPosition().getX()).isCloseTo(9.5f, within(0.01f));
+    assertThat(troops.get(1).getPosition().getY()).isCloseTo(21.0f, within(0.01f));
+  }
+
+  @Test
+  void testDeployDualUnitCard_shouldSpawnBothUnitTypes() {
+    TroopStats goblinStab = TroopStats.builder()
+        .name("Goblin_Stab")
+        .health(80)
+        .damage(50)
+        .build();
+
+    TroopStats spearGoblin = TroopStats.builder()
+        .name("SpearGoblin")
+        .health(52)
+        .damage(24)
+        .build();
+
+    // 3 primary + 3 secondary = 6 total, 6 offsets
+    List<float[]> offsets = List.of(
+        new float[]{-0.1f, 1.5f}, new float[]{-1.2f, -0.9f}, new float[]{1.3f, -0.9f},
+        new float[]{0.0f, -0.2f}, new float[]{-0.7f, -1.6f}, new float[]{0.7f, -1.6f}
+    );
+
+    Card goblinGang = Card.builder()
+        .id("goblingang")
+        .name("GoblinGang")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(goblinStab)
+        .unitCount(3)
+        .secondaryUnitStats(spearGoblin)
+        .secondaryUnitCount(3)
+        .formationOffsets(offsets)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(goblinGang);
+    }
+
+    Player gangPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(9f)
+        .y(10f)
+        .build();
+
+    deploymentSystem.queueAction(gangPlayer, action);
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+
+    assertThat(gameState.getEntities()).hasSize(6);
+
+    List<Troop> troops = gameState.getEntities().stream()
+        .filter(e -> e instanceof Troop)
+        .map(e -> (Troop) e)
+        .toList();
+
+    // First 3 should be Goblin_Stab (primary)
+    long stabCount = troops.stream().filter(t -> "Goblin_Stab".equals(t.getName())).count();
+    assertThat(stabCount).isEqualTo(3);
+
+    // Last 3 should be SpearGoblin (secondary)
+    long spearCount = troops.stream().filter(t -> "SpearGoblin".equals(t.getName())).count();
+    assertThat(spearCount).isEqualTo(3);
+
+    // Verify positions use formation offsets
+    assertThat(troops.get(0).getPosition().getX()).isCloseTo(9f - 0.1f, within(0.01f));
+    assertThat(troops.get(0).getPosition().getY()).isCloseTo(10f + 1.5f, within(0.01f));
+  }
+
+  @Test
+  void testDeployWithoutFormationOffsets_shouldFallbackToCircular() {
+    TroopStats archerStats = TroopStats.builder()
+        .name("Archer")
+        .health(100)
+        .damage(50)
+        .collisionRadius(0.2f)
+        .build();
+
+    // No formationOffsets, but with raw CSV summonRadius -> should use circular algorithm
+    Card archers = Card.builder()
+        .id("archer")
+        .name("Archer")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(archerStats)
+        .unitCount(2)
+        .summonRadius(355.0f)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(archers);
+    }
+
+    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0)
+        .x(9f)
+        .y(10f)
+        .build();
+
+    deploymentSystem.queueAction(archerPlayer, action);
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+
+    assertThat(gameState.getEntities()).hasSize(2);
+    List<Troop> troops = gameState.getEntities().stream()
+        .filter(e -> e instanceof Troop)
+        .map(e -> (Troop) e)
+        .toList();
+
+    // Both should be offset from base position (not at exact base)
+    boolean anyOffset = troops.stream().anyMatch(t ->
+        Math.abs(t.getPosition().getX() - 9f) > 0.01f
+            || Math.abs(t.getPosition().getY() - 10f) > 0.01f);
+    assertThat(anyOffset).isTrue();
   }
 }

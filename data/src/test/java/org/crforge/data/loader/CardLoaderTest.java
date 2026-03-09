@@ -362,6 +362,119 @@ class CardLoaderTest {
   }
 
   @Test
+  void loadCards_shouldParseFormationOffsets() {
+    TroopStats archer = TroopStats.builder()
+        .name("Archer")
+        .health(119)
+        .damage(44)
+        .movementType(MovementType.GROUND)
+        .targetType(TargetType.ALL)
+        .build();
+
+    String json = """
+        [
+          {
+            "id": "archer",
+            "name": "Archer",
+            "type": "TROOP",
+            "cost": 3,
+            "unit": "Archer",
+            "count": 2,
+            "formationOffsets": [[0.5, 0.0], [-0.5, 0.0]]
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(archer), Map.of());
+
+    Card card = cards.get(0);
+    assertThat(card.getFormationOffsets()).isNotNull();
+    assertThat(card.getFormationOffsets()).hasSize(2);
+    assertThat(card.getFormationOffsets().get(0)[0]).isCloseTo(0.5f, within(0.001f));
+    assertThat(card.getFormationOffsets().get(0)[1]).isCloseTo(0.0f, within(0.001f));
+    assertThat(card.getFormationOffsets().get(1)[0]).isCloseTo(-0.5f, within(0.001f));
+    assertThat(card.getFormationOffsets().get(1)[1]).isCloseTo(0.0f, within(0.001f));
+  }
+
+  @Test
+  void loadCards_shouldParseSecondaryUnit() {
+    TroopStats goblin = TroopStats.builder()
+        .name("Goblin_Stab")
+        .health(80)
+        .damage(50)
+        .movementType(MovementType.GROUND)
+        .targetType(TargetType.GROUND)
+        .build();
+
+    TroopStats spearGoblin = TroopStats.builder()
+        .name("SpearGoblin")
+        .health(52)
+        .damage(24)
+        .movementType(MovementType.GROUND)
+        .targetType(TargetType.ALL)
+        .build();
+
+    String json = """
+        [
+          {
+            "id": "goblingang",
+            "name": "GoblinGang",
+            "type": "TROOP",
+            "cost": 3,
+            "unit": "Goblin_Stab",
+            "count": 3,
+            "secondaryUnit": "SpearGoblin",
+            "secondaryCount": 3,
+            "formationOffsets": [
+              [-0.093, 1.519], [-1.223, -0.884], [1.288, -0.856],
+              [0.0, -0.2], [-0.7, -1.6], [0.7, -1.6]
+            ]
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(goblin, spearGoblin), Map.of());
+
+    Card card = cards.get(0);
+    assertThat(card.getUnitStats().getName()).isEqualTo("Goblin_Stab");
+    assertThat(card.getUnitCount()).isEqualTo(3);
+    assertThat(card.getSecondaryUnitStats()).isNotNull();
+    assertThat(card.getSecondaryUnitStats().getName()).isEqualTo("SpearGoblin");
+    assertThat(card.getSecondaryUnitCount()).isEqualTo(3);
+    assertThat(card.getTotalDeployCount()).isEqualTo(6);
+    assertThat(card.getFormationOffsets()).hasSize(6);
+  }
+
+  @Test
+  void loadCards_shouldDefaultToNullFormationAndZeroSecondary() {
+    TroopStats knight = TroopStats.builder()
+        .name("Knight")
+        .movementType(MovementType.GROUND)
+        .targetType(TargetType.GROUND)
+        .build();
+
+    String json = """
+        [
+          {
+            "id": "knight",
+            "name": "Knight",
+            "type": "TROOP",
+            "cost": 3,
+            "unit": "Knight"
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(knight), Map.of());
+
+    Card card = cards.get(0);
+    assertThat(card.getFormationOffsets()).isNull();
+    assertThat(card.getSecondaryUnitStats()).isNull();
+    assertThat(card.getSecondaryUnitCount()).isEqualTo(0);
+    assertThat(card.getTotalDeployCount()).isEqualTo(1);
+  }
+
+  @Test
   void loadCards_shouldParseRarity() {
     String json = """
         [
@@ -547,6 +660,37 @@ class CardLoaderTest {
       assertThat(eGiant).isNotNull();
       assertThat(eGiant.getUnitStats().getAbility()).isNotNull();
       assertThat(eGiant.getUnitStats().getAbility().getType()).isEqualTo(AbilityType.REFLECT);
+
+      // Formation offsets: Barbarians should have 5 offsets
+      assertThat(barbarians.getFormationOffsets()).isNotNull();
+      assertThat(barbarians.getFormationOffsets()).hasSize(5);
+
+      // Dual-unit card: GoblinGang (3 primary + 3 secondary)
+      Card goblinGang = cards.stream().filter(c -> "goblingang".equals(c.getId())).findFirst()
+          .orElse(null);
+      assertThat(goblinGang).isNotNull();
+      assertThat(goblinGang.getUnitCount()).isEqualTo(3);
+      assertThat(goblinGang.getSecondaryUnitStats()).isNotNull();
+      assertThat(goblinGang.getSecondaryUnitStats().getName()).isEqualTo("SpearGoblin");
+      assertThat(goblinGang.getSecondaryUnitCount()).isEqualTo(3);
+      assertThat(goblinGang.getTotalDeployCount()).isEqualTo(6);
+      assertThat(goblinGang.getFormationOffsets()).hasSize(6);
+
+      // Dual-unit card: Rascals (1 primary + 2 secondary)
+      Card rascals = cards.stream().filter(c -> "rascals".equals(c.getId())).findFirst()
+          .orElse(null);
+      assertThat(rascals).isNotNull();
+      assertThat(rascals.getUnitCount()).isEqualTo(1);
+      assertThat(rascals.getSecondaryUnitStats()).isNotNull();
+      assertThat(rascals.getSecondaryUnitStats().getName()).isEqualTo("RascalGirl");
+      assertThat(rascals.getSecondaryUnitCount()).isEqualTo(2);
+      assertThat(rascals.getTotalDeployCount()).isEqualTo(3);
+      assertThat(rascals.getFormationOffsets()).hasSize(3);
+
+      // Single-unit card should have no formation offsets or secondary unit
+      assertThat(knight.getFormationOffsets()).isNull();
+      assertThat(knight.getSecondaryUnitStats()).isNull();
+      assertThat(knight.getSecondaryUnitCount()).isEqualTo(0);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

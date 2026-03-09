@@ -120,6 +120,23 @@ public class CardLoader {
     // summonRadius for troop deploy formation
     builder.summonRadius(dto.getSummonRadius());
 
+    // Formation offsets (pre-computed tile-unit positions)
+    if (dto.getFormationOffsets() != null && !dto.getFormationOffsets().isEmpty()) {
+      List<float[]> offsets = dto.getFormationOffsets().stream()
+          .map(pair -> new float[]{pair.get(0), pair.get(1)})
+          .toList();
+      builder.formationOffsets(offsets);
+    }
+
+    // Secondary unit for dual-unit cards (e.g., GoblinGang, Rascals)
+    if (dto.getSecondaryUnit() != null) {
+      TroopStats secondaryStats = unitMap.get(dto.getSecondaryUnit());
+      if (secondaryStats != null) {
+        builder.secondaryUnitStats(secondaryStats);
+      }
+    }
+    builder.secondaryUnitCount(dto.getSecondaryCount());
+
     // Resolve spawn template from unitStats.liveSpawn if present
     if (unitStats != null && unitStats.getLiveSpawn() != null) {
       LiveSpawnConfig liveSpawn = unitStats.getLiveSpawn();
