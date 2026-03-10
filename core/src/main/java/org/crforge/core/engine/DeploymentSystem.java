@@ -127,6 +127,12 @@ public class DeploymentSystem {
                 pending.x, pending.y, pending.card.getRarity(), pending.level);
             pending.deployEffectFired = true;
           }
+
+          // Fire spawn projectile only on the first unit (e.g. MegaKnight landing damage)
+          if (!pending.spawnProjectileFired && pending.card.getSpawnProjectile() != null) {
+            fireSpawnProjectile(pending.team, pending.card, pending.x, pending.y, pending.level);
+            pending.spawnProjectileFired = true;
+          }
         } else {
           // Non-staggered: buildings and spells
           spawnCard(pending.team, pending.card, pending.x, pending.y, pending.level);
@@ -434,6 +440,15 @@ public class DeploymentSystem {
     }
   }
 
+  private void fireSpawnProjectile(Team team, Card card, float x, float y, int level) {
+    ProjectileStats stats = card.getSpawnProjectile();
+    int damage = LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level);
+    float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+    Projectile p = new Projectile(team, x, startY, x, y, damage, stats.getRadius(),
+        stats.getSpeed(), stats.getHitEffects());
+    state.spawnProjectile(p);
+  }
+
   private void deployAreaEffect(Team team, AreaEffectStats stats, float x, float y,
       Rarity rarity, int level) {
     int scaledDamage = stats.getDamage() > 0
@@ -535,6 +550,7 @@ public class DeploymentSystem {
     float staggerTimer;
     boolean syncComplete;
     boolean deployEffectFired;
+    boolean spawnProjectileFired;
 
     PendingDeployment(Team team, Card card, float x, float y, int level, float remainingDelay) {
       this.team = team;

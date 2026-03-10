@@ -41,6 +41,9 @@ public class CardConfigDTO {
   // Pre-computed formation offsets in tile units: [[x1,y1], [x2,y2], ...]
   private List<List<Float>> formationOffsets;
 
+  // Projectile spawned on card deployment (e.g. MegaKnight landing damage)
+  private String spawnProjectile;
+
   // Secondary unit reference (string name into units.json)
   private String secondaryUnit;
 

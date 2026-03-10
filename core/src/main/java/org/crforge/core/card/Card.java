@@ -61,6 +61,12 @@ public class Card {
   private final TroopStats summonTemplate;
 
   /**
+   * Projectile spawned at the deploy location when the card enters the arena
+   * (e.g. MegaKnight landing damage). Null for most cards.
+   */
+  private final ProjectileStats spawnProjectile;
+
+  /**
    * Pre-computed formation offsets in tile units. Each float[] is [x, y]. Null = use circular
    * algorithm.
    */

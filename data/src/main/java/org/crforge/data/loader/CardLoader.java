@@ -137,6 +137,14 @@ public class CardLoader {
     }
     builder.secondaryUnitCount(dto.getSecondaryCount());
 
+    // Resolve spawn projectile for deploy-time damage (e.g. MegaKnight landing)
+    if (dto.getSpawnProjectile() != null) {
+      ProjectileStats spawnProj = projectileMap.get(dto.getSpawnProjectile());
+      if (spawnProj != null) {
+        builder.spawnProjectile(spawnProj);
+      }
+    }
+
     // Resolve spawn template from unitStats.liveSpawn if present
     if (unitStats != null && unitStats.getLiveSpawn() != null) {
       LiveSpawnConfig liveSpawn = unitStats.getLiveSpawn();

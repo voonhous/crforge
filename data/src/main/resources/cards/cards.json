@@ -785,7 +785,8 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 7,
-    "unit": "MegaKnight"
+    "unit": "MegaKnight",
+    "spawnProjectile": "MegaKnightAppear"
   },
   {
     "id": "skeletonballoon",

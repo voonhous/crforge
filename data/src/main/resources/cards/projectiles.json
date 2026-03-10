@@ -198,6 +198,18 @@
     "aoeToAir": false,
     "aoeToGround": false
   },
+  "MegaKnightAppear": {
+    "name": "MegaKnightAppear",
+    "damage": 168,
+    "speed": 1000,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "radius": 2.2,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
   "DartBarrellProjectile": {
     "name": "DartBarrellProjectile",
     "damage": 67,
@@ -535,14 +547,6 @@
       "deployTime": 0.2
     }
   },
-  "LavaPupProjectile": {
-    "name": "LavaPupProjectile",
-    "damage": 32,
-    "speed": 500,
-    "homing": true,
-    "aoeToAir": true,
-    "aoeToGround": true
-  },
   "RamRiderBola": {
     "name": "RamRiderBola",
     "damage": 41,
@@ -560,5 +564,13 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false
+  },
+  "LavaPupProjectile": {
+    "name": "LavaPupProjectile",
+    "damage": 32,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true
   }
 }

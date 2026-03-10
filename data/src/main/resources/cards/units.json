@@ -1249,7 +1249,16 @@
     "loadTime": 1.2,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "spawnAreaEffect": {
+      "name": "BattleHealerSpawnHeal",
+      "radius": 2.5,
+      "lifeDuration": 1.0,
+      "hitsGround": true,
+      "hitsAir": true,
+      "buff": "BattleHealerSpawnBuff",
+      "buffDuration": 1.0
+    }
   },
   "SkeletonKing": {
     "name": "SkeletonKing",
@@ -1967,6 +1976,15 @@
       "spawnNumber": 1,
       "spawnPauseTime": 3.0,
       "spawnStartTime": 1.0
+    },
+    "spawnAreaEffect": {
+      "name": "GoblinDrillDamage",
+      "radius": 2.0,
+      "lifeDuration": 0.001,
+      "hitsGround": true,
+      "hitsAir": false,
+      "damage": 33,
+      "crownTowerDamagePercent": -70
     }
   },
   "Goblin": {
@@ -2026,22 +2044,6 @@
     "manaOnDeathForOpponent": 4000,
     "lifeTime": 21.0
   },
-  "LavaPups": {
-    "name": "LavaPups",
-    "health": 84,
-    "damage": 32,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.45,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.7,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "LavaPupProjectile"
-  },
   "PhoenixEgg": {
     "name": "PhoenixEgg",
     "health": 94,
@@ -2084,26 +2086,6 @@
     "targetOnlyTroops": true,
     "ignoreTargetsWithBuff": "BolaSnare",
     "ignoreBuff": "VoodooCurse"
-  },
-  "Golemite": {
-    "name": "Golemite",
-    "health": 406,
-    "damage": 33,
-    "speed": 45.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 7.0,
-    "range": 0.25,
-    "attackCooldown": 2.5,
-    "loadTime": 1.5,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "deathDamage": {
-      "damage": 39,
-      "radius": 2.0
-    }
   },
   "DeliveryRecruit": {
     "name": "DeliveryRecruit",
@@ -2168,6 +2150,42 @@
     ],
     "manaOnDeathForOpponent": 500,
     "ignoreBuff": "VoodooCurse"
+  },
+  "Golemite": {
+    "name": "Golemite",
+    "health": 406,
+    "damage": 33,
+    "speed": 45.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.0,
+    "range": 0.25,
+    "attackCooldown": 2.5,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "deathDamage": {
+      "damage": 39,
+      "radius": 2.0
+    }
+  },
+  "LavaPups": {
+    "name": "LavaPups",
+    "health": 84,
+    "damage": 32,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.45,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.7,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "LavaPupProjectile"
   },
   "ElixirGolem4": {
     "name": "ElixirGolem4",

@@ -1,4 +1,10 @@
 {
+  "BattleHealerSpawnBuff": {
+    "name": "BattleHealerSpawnBuff",
+    "healPerSecond": 79,
+    "hitFrequency": 0.25,
+    "enableStacking": true
+  },
   "BolaSnare": {
     "name": "BolaSnare",
     "speedMultiplier": -70
