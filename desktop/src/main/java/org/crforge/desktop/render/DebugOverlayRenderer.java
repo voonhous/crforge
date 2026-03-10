@@ -26,7 +26,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import java.util.List;
 import java.util.Optional;
 import org.crforge.core.ability.AbilityComponent;
-import org.crforge.core.ability.AbilityType;
+import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
@@ -437,12 +438,11 @@ public class DebugOverlayRenderer {
       }
 
       AbilityComponent ability = troop.getAbility();
-      AbilityType type = ability.getData().getType();
       float x = troop.getPosition().getX() * TILE_PIXELS;
       float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float visualRadius = troop.getVisualRadius() * TILE_PIXELS;
 
-      switch (type) {
+      switch (ability.getData().type()) {
         case CHARGE -> renderChargeBar(x, y, visualRadius, ability);
         case VARIABLE_DAMAGE -> renderVariableDamageDots(x, y, visualRadius, ability);
         default -> {
@@ -461,12 +461,11 @@ public class DebugOverlayRenderer {
       }
 
       AbilityComponent ability = troop.getAbility();
-      AbilityType type = ability.getData().getType();
       float x = troop.getPosition().getX() * TILE_PIXELS;
       float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float visualRadius = troop.getVisualRadius() * TILE_PIXELS;
 
-      switch (type) {
+      switch (ability.getData().type()) {
         case DASH -> {
           if (ability.isDashing()) {
             renderDashLine(x, y, ability);
@@ -551,7 +550,7 @@ public class DebugOverlayRenderer {
 
   private void renderVariableDamageDots(float x, float y, float visualRadius,
       AbilityComponent ability) {
-    int totalStages = ability.getData().getStages().size();
+    int totalStages = ((VariableDamageAbility) ability.getData()).stages().size();
     int currentStage = ability.getCurrentStage();
 
     float dotRadius = 2f;
@@ -596,7 +595,7 @@ public class DebugOverlayRenderer {
   }
 
   private void renderReflectAura(float x, float y, AbilityComponent ability) {
-    float reflectRadius = ability.getData().getReflectRadius() * TILE_PIXELS;
+    float reflectRadius = ((ReflectAbility) ability.getData()).reflectRadius() * TILE_PIXELS;
     if (reflectRadius > 0) {
       ctx.getShapeRenderer().setColor(COLOR_REFLECT_AURA);
       ctx.getShapeRenderer().circle(x, y, reflectRadius, CIRCLE_SEGMENTS);

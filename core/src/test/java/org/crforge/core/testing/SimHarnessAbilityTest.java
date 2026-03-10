@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
-import org.crforge.core.ability.AbilityType;
+import org.crforge.core.ability.ChargeAbility;
+import org.crforge.core.ability.DashAbility;
+import org.crforge.core.ability.HookAbility;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.BuffDefinition;
@@ -31,45 +33,19 @@ class SimHarnessAbilityTest {
   }
 
   private static AbilityData hookData() {
-    return AbilityData.builder()
-        .type(AbilityType.HOOK)
-        .hookRange(7.0f)
-        .hookMinimumRange(3.5f)
-        .hookLoadTime(1.3f)
-        .hookDragBackSpeed(850f)
-        .hookDragSelfSpeed(450f)
-        .build();
+    return new HookAbility(7.0f, 3.5f, 1.3f, 850f, 450f);
   }
 
   private static AbilityData longWindupHookData() {
-    return AbilityData.builder()
-        .type(AbilityType.HOOK)
-        .hookRange(7.0f)
-        .hookMinimumRange(3.5f)
-        .hookLoadTime(9999f)
-        .hookDragBackSpeed(850f)
-        .hookDragSelfSpeed(450f)
-        .build();
+    return new HookAbility(7.0f, 3.5f, 9999f, 850f, 450f);
   }
 
   private static AbilityData chargeData() {
-    return AbilityData.builder()
-        .type(AbilityType.CHARGE)
-        .chargeDamage(306)
-        .speedMultiplier(2.0f)
-        .build();
+    return new ChargeAbility(306, 2.0f);
   }
 
   private static AbilityData dashData() {
-    return AbilityData.builder()
-        .type(AbilityType.DASH)
-        .dashDamage(152)
-        .dashMinRange(3.5f)
-        .dashMaxRange(6.0f)
-        .dashCooldown(0.8f)
-        .dashImmuneTime(0.1f)
-        .dashLandingTime(0.2f)
-        .build();
+    return new DashAbility(152, 3.5f, 6.0f, 0f, 0.8f, 0.1f, 0.2f, 0f, 0f);
   }
 
   // -- Hook tests via SimHarness --

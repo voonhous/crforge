@@ -39,7 +39,7 @@ public class AbilitySystem {
         continue;
       }
 
-      switch (ability.getData().getType()) {
+      switch (ability.getData().type()) {
         case CHARGE -> updateCharge(troop, ability, deltaTime);
         case VARIABLE_DAMAGE -> updateVariableDamage(troop, ability, deltaTime);
         case DASH -> updateDash(troop, ability, deltaTime);
@@ -71,8 +71,9 @@ public class AbilitySystem {
       if (!ability.isCharged() && ability.getChargeTimer() >= ability.getChargeTime()) {
         ability.setCharged(true);
         // Apply speed multiplier via ABILITY_CHARGE source
+        ChargeAbility charge = (ChargeAbility) ability.getData();
         troop.getMovement().setSpeedMultiplier(
-            ModifierSource.ABILITY_CHARGE, ability.getData().getSpeedMultiplier());
+            ModifierSource.ABILITY_CHARGE, charge.speedMultiplier());
       }
     } else if (!ability.isCharged() && ability.getChargeTimer() > 0) {
       // Stopped moving before fully charged -- charge is lost, restart from zero
@@ -86,9 +87,9 @@ public class AbilitySystem {
    * Returns the damage to use for this attack (charge damage if charged).
    */
   public static int getChargeDamage(AbilityComponent ability, int baseDamage) {
-    if (ability != null && ability.getData().getType() == AbilityType.CHARGE
+    if (ability != null && ability.getData() instanceof ChargeAbility charge
         && ability.isCharged()) {
-      return ability.getData().getChargeDamage();
+      return charge.chargeDamage();
     }
     return baseDamage;
   }
@@ -98,7 +99,7 @@ public class AbilitySystem {
    */
   public static void consumeCharge(Troop troop) {
     AbilityComponent ability = troop.getAbility();
-    if (ability != null && ability.getData().getType() == AbilityType.CHARGE) {
+    if (ability != null && ability.getData() instanceof ChargeAbility) {
       ability.reset();
       troop.getMovement().clearModifiers(ModifierSource.ABILITY_CHARGE);
     }
@@ -110,7 +111,7 @@ public class AbilitySystem {
    */
   public static void resetVariableDamage(Troop troop) {
     AbilityComponent ability = troop.getAbility();
-    if (ability != null && ability.getData().getType() == AbilityType.VARIABLE_DAMAGE) {
+    if (ability != null && ability.getData() instanceof VariableDamageAbility) {
       ability.setCurrentStage(0);
       ability.setStageTimer(0f);
       ability.setLastTargetId(-1);
@@ -141,7 +142,7 @@ public class AbilitySystem {
     }
 
     // Accumulate time and advance stages
-    List<VariableDamageStage> stages = ability.getData().getStages();
+    List<VariableDamageStage> stages = ((VariableDamageAbility) ability.getData()).stages();
     if (stages.isEmpty()) {
       return;
     }
@@ -165,7 +166,7 @@ public class AbilitySystem {
   // -- DASH --
 
   private void updateDash(Troop troop, AbilityComponent ability, float deltaTime) {
-    AbilityData data = ability.getData();
+    DashAbility data = (DashAbility) ability.getData();
     Combat combat = troop.getCombat();
 
     switch (ability.getDashState()) {
@@ -177,9 +178,9 @@ public class AbilitySystem {
         float distance = troop.getPosition().distanceTo(target.getPosition())
             - troop.getCollisionRadius() - target.getCollisionRadius();
 
-        boolean inAcquisitionRange = distance >= data.getDashMinRange()
-            && distance <= data.getDashMaxRange();
-        boolean inDashableRange = distance <= data.getDashMaxRange();
+        boolean inAcquisitionRange = distance >= data.dashMinRange()
+            && distance <= data.dashMaxRange();
+        boolean inDashableRange = distance <= data.dashMaxRange();
 
         // Acquire candidate when target enters [minRange, maxRange]
         if (inAcquisitionRange && !ability.isDashCandidateAcquired()) {
@@ -189,7 +190,7 @@ public class AbilitySystem {
         // Target exceeded maxRange -- reset candidate and cooldown
         if (!inDashableRange) {
           ability.setDashCandidateAcquired(false);
-          ability.setDashCooldownTimer(data.getDashCooldown());
+          ability.setDashCooldownTimer(data.dashCooldown());
           troop.getMovement().clearModifiers(ModifierSource.ABILITY_DASH);
           combat.clearModifiers(ModifierSource.ABILITY_DASH);
           return;
@@ -233,8 +234,8 @@ public class AbilitySystem {
           ability.setDashTargetY(ty);
           // Calculate dash speed: fixed-duration flight or constant speed
           float dashDistance = troop.getPosition().distanceTo(tx, ty);
-          if (data.getDashConstantTime() > 0 && dashDistance > 0) {
-            ability.setDashSpeed(dashDistance / data.getDashConstantTime());
+          if (data.dashConstantTime() > 0 && dashDistance > 0) {
+            ability.setDashSpeed(dashDistance / data.dashConstantTime());
           } else {
             ability.setDashSpeed(DASH_SPEED);
           }
@@ -278,12 +279,12 @@ public class AbilitySystem {
       }
       case LANDING -> {
         ability.setDashTimer(ability.getDashTimer() + deltaTime);
-        float landTime = data.getDashLandingTime() > 0 ? data.getDashLandingTime() : 0.2f;
+        float landTime = data.dashLandingTime() > 0 ? data.dashLandingTime() : 0.2f;
 
         if (ability.getDashTimer() >= landTime) {
           // Done landing, back to idle -- clear ABILITY_DASH source
           ability.setDashState(AbilityComponent.DashState.IDLE);
-          ability.setDashCooldownTimer(data.getDashCooldown());
+          ability.setDashCooldownTimer(data.dashCooldown());
           if (combat != null) {
             combat.clearModifiers(ModifierSource.ABILITY_DASH);
           }
@@ -295,14 +296,14 @@ public class AbilitySystem {
   private static final float KNOCKBACK_DURATION = 0.5f;
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
-  private void applyDashDamage(Troop dasher, AbilityData data) {
-    int damage = data.getDashDamage();
+  private void applyDashDamage(Troop dasher, DashAbility data) {
+    int damage = data.dashDamage();
     if (damage <= 0) {
       return;
     }
 
-    float pushback = data.getDashPushback();
-    float radius = data.getDashRadius();
+    float pushback = data.dashPushback();
+    float radius = data.dashRadius();
     if (radius > 0) {
       // AOE dash damage (MegaKnight)
       for (Entity entity : gameState.getAliveEntities()) {
@@ -361,7 +362,7 @@ public class AbilitySystem {
   private static final float SPEED_BASE = 60.0f;
 
   private void updateHook(Troop troop, AbilityComponent ability, float deltaTime) {
-    AbilityData data = ability.getData();
+    HookAbility data = (HookAbility) ability.getData();
     Combat combat = troop.getCombat();
 
     switch (ability.getHookState()) {
@@ -374,7 +375,7 @@ public class AbilitySystem {
             - troop.getCollisionRadius() - target.getCollisionRadius();
 
         // Hook triggers when target is in [minimumRange, range]
-        if (distance >= data.getHookMinimumRange() && distance <= data.getHookRange()) {
+        if (distance >= data.hookMinimumRange() && distance <= data.hookRange()) {
           ability.setHookState(AbilityComponent.HookState.WINDING_UP);
           ability.setHookTimer(0f);
           ability.setHookedTargetId(target.getId());
@@ -388,7 +389,7 @@ public class AbilitySystem {
       case WINDING_UP -> {
         // No re-assert needed -- ABILITY_HOOK source persists across StatusEffectSystem resets
         ability.setHookTimer(ability.getHookTimer() + deltaTime);
-        if (ability.getHookTimer() >= data.getHookLoadTime()) {
+        if (ability.getHookTimer() >= data.hookLoadTime()) {
           Entity target = findEntityById(ability.getHookedTargetId());
           if (target == null || !target.isAlive()) {
             resetHook(troop, ability);
@@ -420,7 +421,7 @@ public class AbilitySystem {
         float dy = hookerPos.getY() - targetPos.getY();
         float dist = hookerPos.distanceTo(targetPos);
 
-        float pullSpeed = data.getHookDragBackSpeed() / SPEED_BASE;
+        float pullSpeed = data.hookDragBackSpeed() / SPEED_BASE;
         float moveAmount = pullSpeed * deltaTime;
 
         if (dist <= moveAmount + troop.getCollisionRadius() + target.getCollisionRadius()) {
@@ -450,7 +451,7 @@ public class AbilitySystem {
         float dy = targetPos.getY() - hookerPos.getY();
         float dist = hookerPos.distanceTo(targetPos);
 
-        float selfSpeed = data.getHookDragSelfSpeed() / SPEED_BASE;
+        float selfSpeed = data.hookDragSelfSpeed() / SPEED_BASE;
         float moveAmount = selfSpeed * deltaTime;
 
         if (dist <= moveAmount + troop.getCollisionRadius() + target.getCollisionRadius()) {
@@ -494,9 +495,9 @@ public class AbilitySystem {
    */
   public static int getReflectDamage(Troop target) {
     AbilityComponent ability = target.getAbility();
-    if (ability == null || ability.getData().getType() != AbilityType.REFLECT) {
+    if (ability == null || !(ability.getData() instanceof ReflectAbility reflect)) {
       return 0;
     }
-    return ability.getData().getReflectDamage();
+    return reflect.reflectDamage();
   }
 }

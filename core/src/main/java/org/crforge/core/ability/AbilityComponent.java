@@ -47,8 +47,8 @@ public class AbilityComponent {
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
-    if (data.getType() == AbilityType.DASH) {
-      this.dashCooldownTimer = data.getDashCooldown();
+    if (data instanceof DashAbility dash) {
+      this.dashCooldownTimer = dash.dashCooldown();
     }
   }
 
@@ -68,7 +68,10 @@ public class AbilityComponent {
    * from the first stage if not yet escalated.
    */
   public int getCurrentStageDamage() {
-    List<VariableDamageStage> stages = data.getStages();
+    if (!(data instanceof VariableDamageAbility varDmg)) {
+      return 0;
+    }
+    List<VariableDamageStage> stages = varDmg.stages();
     if (stages.isEmpty()) {
       return 0;
     }

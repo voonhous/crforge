@@ -1194,14 +1194,7 @@ class AbilitySystemTest {
     // Use an absurdly long hookLoadTime so the Fisherman never exits WINDING_UP.
     // Run the full system loop (targeting + ability + physics) to verify that
     // PhysicsSystem respects movementDisabled and the Fisherman truly stops.
-    AbilityData hookData = AbilityData.builder()
-        .type(AbilityType.HOOK)
-        .hookRange(7.0f)
-        .hookMinimumRange(3.5f)
-        .hookLoadTime(9999f)
-        .hookDragBackSpeed(850f)
-        .hookDragSelfSpeed(450f)
-        .build();
+    AbilityData hookData = new HookAbility(7.0f, 3.5f, 9999f, 850f, 450f);
 
     Troop fisher = Troop.builder()
         .name("Fisherman")
@@ -1453,11 +1446,7 @@ class AbilitySystemTest {
   // -- Helper methods --
 
   private Troop createChargeTroop(Team team, float x, float y) {
-    AbilityData chargeData = AbilityData.builder()
-        .type(AbilityType.CHARGE)
-        .chargeDamage(306)
-        .speedMultiplier(2.0f)
-        .build();
+    AbilityData chargeData = new ChargeAbility(306, 2.0f);
 
     return Troop.builder()
         .name("Prince")
@@ -1478,14 +1467,11 @@ class AbilitySystemTest {
   }
 
   private Troop createVariableDamageTroop(Team team, float x, float y) {
-    AbilityData varDmgData = AbilityData.builder()
-        .type(AbilityType.VARIABLE_DAMAGE)
-        .stages(List.of(
-            new VariableDamageStage(14, 0f),   // Stage 0: immediate
-            new VariableDamageStage(47, 2.0f), // Stage 1: after 2s
-            new VariableDamageStage(165, 2.0f) // Stage 2: after 2 more s
-        ))
-        .build();
+    AbilityData varDmgData = new VariableDamageAbility(List.of(
+        new VariableDamageStage(14, 0f),   // Stage 0: immediate
+        new VariableDamageStage(47, 2.0f), // Stage 1: after 2s
+        new VariableDamageStage(165, 2.0f) // Stage 2: after 2 more s
+    ));
 
     return Troop.builder()
         .name("InfernoDragon")
@@ -1506,15 +1492,7 @@ class AbilitySystemTest {
   }
 
   private Troop createDashTroop(Team team, float x, float y) {
-    AbilityData dashData = AbilityData.builder()
-        .type(AbilityType.DASH)
-        .dashDamage(152)
-        .dashMinRange(3.5f)
-        .dashMaxRange(6.0f)
-        .dashCooldown(0.8f)
-        .dashImmuneTime(0.1f)
-        .dashLandingTime(0.2f)
-        .build();
+    AbilityData dashData = new DashAbility(152, 3.5f, 6.0f, 0f, 0.8f, 0.1f, 0.2f, 0f, 0f);
 
     return Troop.builder()
         .name("Bandit")
@@ -1535,17 +1513,7 @@ class AbilitySystemTest {
   }
 
   private Troop createConstantTimeDashTroop(Team team, float x, float y) {
-    AbilityData dashData = AbilityData.builder()
-        .type(AbilityType.DASH)
-        .dashDamage(480)
-        .dashMinRange(3.5f)
-        .dashMaxRange(7.0f)
-        .dashRadius(2.5f)
-        .dashCooldown(0.9f)
-        .dashImmuneTime(0.1f)
-        .dashLandingTime(0.3f)
-        .dashConstantTime(0.8f)
-        .build();
+    AbilityData dashData = new DashAbility(480, 3.5f, 7.0f, 2.5f, 0.9f, 0.1f, 0.3f, 0.8f, 0f);
 
     return Troop.builder()
         .name("MegaKnight")
@@ -1566,14 +1534,7 @@ class AbilitySystemTest {
   }
 
   private Troop createHookTroop(Team team, float x, float y) {
-    AbilityData hookData = AbilityData.builder()
-        .type(AbilityType.HOOK)
-        .hookRange(7.0f)
-        .hookMinimumRange(3.5f)
-        .hookLoadTime(1.3f)
-        .hookDragBackSpeed(850f)
-        .hookDragSelfSpeed(450f)
-        .build();
+    AbilityData hookData = new HookAbility(7.0f, 3.5f, 1.3f, 850f, 450f);
 
     return Troop.builder()
         .name("Fisherman")
@@ -1594,14 +1555,8 @@ class AbilitySystemTest {
   }
 
   private Troop createReflectTroop(Team team, float x, float y) {
-    AbilityData reflectData = AbilityData.builder()
-        .type(AbilityType.REFLECT)
-        .reflectDamage(75)
-        .reflectRadius(2.0f)
-        .reflectBuff(org.crforge.core.effect.StatusEffectType.STUN)
-        .reflectBuffDuration(0.5f)
-        .reflectCrownTowerDamagePercent(50)
-        .build();
+    AbilityData reflectData = new ReflectAbility(
+        75, 2.0f, org.crforge.core.effect.StatusEffectType.STUN, 0.5f, 50, null);
 
     return Troop.builder()
         .name("ElectroGiant")

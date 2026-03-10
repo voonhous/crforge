@@ -14,6 +14,11 @@ import java.util.Map;
 import java.util.Objects;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilityType;
+import org.crforge.core.ability.ChargeAbility;
+import org.crforge.core.ability.DashAbility;
+import org.crforge.core.ability.HookAbility;
+import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.ability.VariableDamageStage;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
@@ -212,49 +217,41 @@ public class UnitLoader {
       return null; // Unknown ability type, skip
     }
 
-    AbilityData.AbilityDataBuilder builder = AbilityData.builder().type(type);
-
-    switch (type) {
-      case CHARGE -> {
-        builder.chargeDamage(dto.getDamage());
-        builder.speedMultiplier(dto.getSpeedMultiplier() > 0 ? dto.getSpeedMultiplier() : 2.0f);
-      }
+    return switch (type) {
+      case CHARGE -> new ChargeAbility(
+          dto.getDamage(),
+          dto.getSpeedMultiplier() > 0 ? dto.getSpeedMultiplier() : 2.0f);
       case VARIABLE_DAMAGE -> {
-        if (dto.getStages() != null) {
-          List<VariableDamageStage> stages = dto.getStages().stream()
-              .map(s -> new VariableDamageStage(s.getDamage(), s.getTimeMs() / 1000f))
-              .toList();
-          builder.stages(stages);
-        }
+        List<VariableDamageStage> stages = dto.getStages() != null
+            ? dto.getStages().stream()
+                .map(s -> new VariableDamageStage(s.getDamage(), s.getTimeMs() / 1000f))
+                .toList()
+            : List.of();
+        yield new VariableDamageAbility(stages);
       }
-      case DASH -> {
-        builder.dashDamage(dto.getDamage());
-        builder.dashMinRange(dto.getMinRange());
-        builder.dashMaxRange(dto.getMaxRange());
-        builder.dashRadius(dto.getRadius());
-        builder.dashCooldown(dto.getCooldown());
-        builder.dashImmuneTime(dto.getImmuneTimeMs() / 1000f);
-        builder.dashLandingTime(dto.getLandingTime());
-        builder.dashConstantTime(dto.getConstantTime());
-        builder.dashPushback(dto.getPushback());
-      }
-      case HOOK -> {
-        builder.hookRange(dto.getRange());
-        builder.hookMinimumRange(dto.getMinimumRange());
-        builder.hookLoadTime(dto.getLoadTime());
-        builder.hookDragBackSpeed(dto.getDragBackSpeed());
-        builder.hookDragSelfSpeed(dto.getDragSelfSpeed());
-      }
-      case REFLECT -> {
-        builder.reflectDamage(dto.getDamage());
-        builder.reflectRadius(dto.getRadius());
-        builder.reflectBuff(StatusEffectType.fromBuffName(dto.getBuff()));
-        builder.reflectBuffDuration(dto.getBuffDuration());
-        builder.reflectCrownTowerDamagePercent(dto.getCrownTowerDamagePercent());
-        builder.reflectBuffName(dto.getBuff());
-      }
-    }
-
-    return builder.build();
+      case DASH -> new DashAbility(
+          dto.getDamage(),
+          dto.getMinRange(),
+          dto.getMaxRange(),
+          dto.getRadius(),
+          dto.getCooldown(),
+          dto.getImmuneTimeMs() / 1000f,
+          dto.getLandingTime(),
+          dto.getConstantTime(),
+          dto.getPushback());
+      case HOOK -> new HookAbility(
+          dto.getRange(),
+          dto.getMinimumRange(),
+          dto.getLoadTime(),
+          dto.getDragBackSpeed(),
+          dto.getDragSelfSpeed());
+      case REFLECT -> new ReflectAbility(
+          dto.getDamage(),
+          dto.getRadius(),
+          StatusEffectType.fromBuffName(dto.getBuff()),
+          dto.getBuffDuration(),
+          dto.getCrownTowerDamagePercent(),
+          dto.getBuff());
+    };
   }
 }

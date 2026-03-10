@@ -6,7 +6,7 @@ import java.util.Collections;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
-import org.crforge.core.ability.AbilityType;
+import org.crforge.core.ability.DashAbility;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -227,14 +227,7 @@ class KnockbackTest {
   @Test
   void dashLanding_shouldKnockbackEnemies() {
     // Create a MegaKnight-like dasher with AOE dash and pushback
-    AbilityData dashAbility = AbilityData.builder()
-        .type(AbilityType.DASH)
-        .dashDamage(200)
-        .dashRadius(2.0f)
-        .dashPushback(1.0f)
-        .dashMinRange(4f)
-        .dashMaxRange(5f)
-        .build();
+    AbilityData dashAbility = new DashAbility(200, 4f, 5f, 2.0f, 0f, 0f, 0f, 0f, 1.0f);
 
     Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
     Troop dasher = Troop.builder()
@@ -296,14 +289,7 @@ class KnockbackTest {
 
   @Test
   void dashLanding_shouldNotKnockbackPushbackImmuneEntities() {
-    AbilityData dashAbility = AbilityData.builder()
-        .type(AbilityType.DASH)
-        .dashDamage(200)
-        .dashRadius(2.0f)
-        .dashPushback(1.0f)
-        .dashMinRange(4f)
-        .dashMaxRange(5f)
-        .build();
+    AbilityData dashAbility = new DashAbility(200, 4f, 5f, 2.0f, 0f, 0f, 0f, 0f, 1.0f);
 
     Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
     Troop dasher = Troop.builder()

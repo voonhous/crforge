@@ -3,8 +3,8 @@ package org.crforge.core.combat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
+import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
@@ -178,10 +178,9 @@ public class CombatSystem {
       // Reflect: if target has REFLECT ability and attacker is within reflect radius, deal counter-damage
       if (target instanceof Troop reflector) {
         int reflectDmg = AbilitySystem.getReflectDamage(reflector);
-        if (reflectDmg > 0) {
-          AbilityData data = reflector.getAbility().getData();
+        if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
           float dist = attacker.getPosition().distanceTo(reflector.getPosition());
-          float effectiveRadius = data.getReflectRadius() + attacker.getCollisionRadius();
+          float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
           if (dist <= effectiveRadius) {
             applyReflectDamage(reflector, attacker, reflectDmg);
           }
@@ -254,17 +253,17 @@ public class CombatSystem {
   }
 
   private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
-    AbilityData data = reflector.getAbility().getData();
+    ReflectAbility reflect = (ReflectAbility) reflector.getAbility().getData();
     int effectiveDamage = DamageUtil.adjustForCrownTower(reflectDamage, attacker,
-        data.getReflectCrownTowerDamagePercent());
+        reflect.reflectCrownTowerDamagePercent());
     dealDamage(attacker, effectiveDamage);
 
     // Apply reflect buff (e.g. ZapFreeze stun) to attacker
-    if (data.getReflectBuff() != null && data.getReflectBuffDuration() > 0) {
+    if (reflect.reflectBuff() != null && reflect.reflectBuffDuration() > 0) {
       EffectStats reflectEffect = EffectStats.builder()
-          .type(data.getReflectBuff())
-          .duration(data.getReflectBuffDuration())
-          .buffName(data.getReflectBuffName())
+          .type(reflect.reflectBuff())
+          .duration(reflect.reflectBuffDuration())
+          .buffName(reflect.reflectBuffName())
           .build();
       applyEffects(attacker, List.of(reflectEffect));
     }
@@ -323,12 +322,11 @@ public class CombatSystem {
       Entity target = projectile.getTarget();
       if (target instanceof Troop reflector) {
         int reflectDmg = AbilitySystem.getReflectDamage(reflector);
-        if (reflectDmg > 0) {
+        if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
           Entity source = projectile.getSource();
           if (source != null && source.isAlive()) {
             float dist = source.getPosition().distanceTo(reflector.getPosition());
-            AbilityData data = reflector.getAbility().getData();
-            float effectiveRadius = data.getReflectRadius() + source.getCollisionRadius();
+            float effectiveRadius = reflect.reflectRadius() + source.getCollisionRadius();
             if (dist <= effectiveRadius) {
               applyReflectDamage(reflector, source, reflectDmg);
             }

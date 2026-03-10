@@ -603,7 +603,7 @@ class CardLoaderTest {
           .orElse(null);
       assertThat(prince).isNotNull();
       assertThat(prince.getUnitStats().getAbility()).isNotNull();
-      assertThat(prince.getUnitStats().getAbility().getType()).isEqualTo(AbilityType.CHARGE);
+      assertThat(prince.getUnitStats().getAbility().type()).isEqualTo(AbilityType.CHARGE);
 
       // Targeting modifier (Giant -> targetOnlyBuildings)
       Card giant = cards.stream().filter(c -> "giant".equals(c.getId())).findFirst().orElse(null);
@@ -636,30 +636,32 @@ class CardLoaderTest {
           .orElse(null);
       assertThat(infernoDragon).isNotNull();
       assertThat(infernoDragon.getUnitStats().getAbility()).isNotNull();
-      assertThat(infernoDragon.getUnitStats().getAbility().getType())
+      assertThat(infernoDragon.getUnitStats().getAbility().type())
           .isEqualTo(AbilityType.VARIABLE_DAMAGE);
-      assertThat(infernoDragon.getUnitStats().getAbility().getStages()).hasSize(3);
+      assertThat(infernoDragon.getUnitStats().getAbility())
+          .isInstanceOf(org.crforge.core.ability.VariableDamageAbility.class);
+      assertThat(((org.crforge.core.ability.VariableDamageAbility) infernoDragon.getUnitStats().getAbility()).stages()).hasSize(3);
 
       // Bandit dash
       Card bandit = cards.stream().filter(c -> "assassin".equals(c.getId())).findFirst()
           .orElse(null);
       assertThat(bandit).isNotNull();
       assertThat(bandit.getUnitStats().getAbility()).isNotNull();
-      assertThat(bandit.getUnitStats().getAbility().getType()).isEqualTo(AbilityType.DASH);
+      assertThat(bandit.getUnitStats().getAbility().type()).isEqualTo(AbilityType.DASH);
 
       // Fisherman hook
       Card fisherman = cards.stream().filter(c -> "fisherman".equals(c.getId())).findFirst()
           .orElse(null);
       assertThat(fisherman).isNotNull();
       assertThat(fisherman.getUnitStats().getAbility()).isNotNull();
-      assertThat(fisherman.getUnitStats().getAbility().getType()).isEqualTo(AbilityType.HOOK);
+      assertThat(fisherman.getUnitStats().getAbility().type()).isEqualTo(AbilityType.HOOK);
 
       // ElectroGiant reflect
       Card eGiant = cards.stream().filter(c -> "electrogiant".equals(c.getId())).findFirst()
           .orElse(null);
       assertThat(eGiant).isNotNull();
       assertThat(eGiant.getUnitStats().getAbility()).isNotNull();
-      assertThat(eGiant.getUnitStats().getAbility().getType()).isEqualTo(AbilityType.REFLECT);
+      assertThat(eGiant.getUnitStats().getAbility().type()).isEqualTo(AbilityType.REFLECT);
 
       // Formation offsets: Barbarians should have 5 offsets
       assertThat(barbarians.getFormationOffsets()).isNotNull();
