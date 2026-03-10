@@ -68,6 +68,14 @@ public class DeploymentSystem {
   }
 
   /**
+   * Clears all queued actions and pending deployments. Called on match reset.
+   */
+  public void reset() {
+    requestQueue.clear();
+    pendingDeployments.clear();
+  }
+
+  /**
    * Processes queued actions and ticks pending deployment timers.
    *
    * @param deltaTime time elapsed since last update (seconds)

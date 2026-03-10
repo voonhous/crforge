@@ -291,6 +291,7 @@ public class DebugGameScreen implements Screen {
 
   private void resetMatch() {
     engine.getGameState().reset();
+    engine.getDeploymentSystem().reset();
     setupMatch();
     paused = false;
     log.info("Match reset");
