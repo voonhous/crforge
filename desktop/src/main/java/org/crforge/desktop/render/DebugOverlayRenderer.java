@@ -305,7 +305,7 @@ public class DebugOverlayRenderer {
     var card = pending.getCard();
 
     // Single-unit or non-troop cards: single ghost at center
-    if (!pending.isMultiUnit() || card.getUnitStats() == null) {
+    if (pending.getTotalUnits() <= 1 || card.getUnitStats() == null) {
       return List.of(new float[]{0f, 0f, defaultRadius});
     }
 

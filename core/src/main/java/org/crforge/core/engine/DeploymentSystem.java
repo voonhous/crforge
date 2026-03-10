@@ -115,8 +115,9 @@ public class DeploymentSystem {
       }
 
       while (pending.staggerTimer <= 0 && pending.nextUnitIndex < pending.totalUnits) {
-        if (pending.isMultiUnit()) {
-          // Spawn one troop at a time
+        if (pending.isTroop()) {
+          // Spawn one troop at a time (single-unit cards have staggerDelay=0, so the
+          // while loop spawns the one unit instantly with no behavioral change)
           spawnSingleTroop(pending.team, pending.card, pending.x, pending.y,
               pending.level, pending.nextUnitIndex);
 
@@ -127,7 +128,7 @@ public class DeploymentSystem {
             pending.deployEffectFired = true;
           }
         } else {
-          // Non-staggered: buildings, spells, single-unit troops -- spawn all at once
+          // Non-staggered: buildings and spells
           spawnCard(pending.team, pending.card, pending.x, pending.y, pending.level);
           pending.nextUnitIndex = pending.totalUnits; // mark complete
           break;
@@ -160,32 +161,15 @@ public class DeploymentSystem {
     }
   }
 
+  /**
+   * Spawns a non-troop card (building or spell). Troop cards are handled directly
+   * by the stagger loop in {@link #update(float)}.
+   */
   private void spawnCard(Team team, Card card, float x, float y, int level) {
     switch (card.getType()) {
-      case TROOP -> spawnTroops(team, card, x, y, level);
       case BUILDING -> spawnBuilding(team, card, x, y, level);
       case SPELL -> castSpell(team, card, x, y, level);
-    }
-  }
-
-  /**
-   * Spawns all troops for a card at once (used for single-unit troops via spawnCard()).
-   * Multi-unit cards use staggered spawning via spawnSingleTroop() in update().
-   */
-  private void spawnTroops(Team team, Card card, float x, float y, int level) {
-    TroopStats primaryStats = card.getUnitStats();
-    if (primaryStats == null) {
-      return;
-    }
-
-    int totalUnits = card.getTotalDeployCount();
-    for (int idx = 0; idx < totalUnits; idx++) {
-      spawnSingleTroop(team, card, x, y, level, idx);
-    }
-
-    // Deploy effect (e.g. ElectroWizard stun, IceWizard slow on entry)
-    if (card.getDeployEffect() != null) {
-      deployAreaEffect(team, card.getDeployEffect(), x, y, card.getRarity(), level);
+      default -> { }
     }
   }
 
@@ -566,10 +550,10 @@ public class DeploymentSystem {
     }
 
     /**
-     * Whether this deployment is a multi-unit troop card with staggered spawning.
+     * Whether this deployment is a troop card (all troops go through the stagger path).
      */
-    public boolean isMultiUnit() {
-      return totalUnits > 1 && card.getType() == CardType.TROOP;
+    public boolean isTroop() {
+      return card.getType() == CardType.TROOP;
     }
 
     /**

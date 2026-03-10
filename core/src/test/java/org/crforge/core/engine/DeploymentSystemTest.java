@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.LevelScaling;
@@ -16,6 +18,7 @@ import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Deck;
@@ -52,6 +55,26 @@ class DeploymentSystemTest {
     // Player starts with 5.0 Elixir by default
     player = new Player(Team.BLUE, deck, false);
   }
+
+  // -- Test helpers --
+
+  /**
+   * Creates a player with a deck of 8 copies of the given card.
+   */
+  private Player createPlayerWithCard(Team team, Card card) {
+    return new Player(team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false);
+  }
+
+  private Player createPlayerWithCard(Team team, Card card, LevelConfig levelConfig) {
+    return new Player(team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false,
+        levelConfig);
+  }
+
+  private PlayerActionDTO playAt(float x, float y) {
+    return PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+  }
+
+  // -- Core deployment tests --
 
   @Test
   void testSuccessfulDeployment() {
@@ -126,21 +149,9 @@ class DeploymentSystemTest {
         .spawnTemplate(skeletonStats)
         .build();
 
-    // Deck of all Tombstones to bypass shuffle RNG
-    List<Card> allTombstones = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      allTombstones.add(tombstone);
-    }
+    Player spawnerPlayer = createPlayerWithCard(Team.RED, tombstone);
 
-    Player spawnerPlayer = new Player(Team.RED, new Deck(allTombstones), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(5f)
-        .y(5f)
-        .build();
-
-    deploymentSystem.queueAction(spawnerPlayer, action);
+    deploymentSystem.queueAction(spawnerPlayer, playAt(5f, 5f));
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Process pending spawns to move them to the active entity list
@@ -184,20 +195,9 @@ class DeploymentSystemTest {
         .spawnTemplate(skeletonStats)
         .build();
 
-    List<Card> deckCards = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deckCards.add(tombstone);
-    }
+    Player player = createPlayerWithCard(Team.RED, tombstone);
 
-    Player player = new Player(Team.RED, new Deck(deckCards), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(5f)
-        .y(5f)
-        .build();
-
-    deploymentSystem.queueAction(player, action);
+    deploymentSystem.queueAction(player, playAt(5f, 5f));
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
 
@@ -221,21 +221,9 @@ class DeploymentSystemTest {
         .unitStats(cannonStats)
         .build();
 
-    // Deck of all Cannons to bypass shuffle RNG
-    List<Card> allCannons = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      allCannons.add(cannon);
-    }
+    Player buildingPlayer = createPlayerWithCard(Team.BLUE, cannon);
 
-    Player buildingPlayer = new Player(Team.BLUE, new Deck(allCannons), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(buildingPlayer, action);
+    deploymentSystem.queueAction(buildingPlayer, playAt(10f, 10f));
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Process pending spawns
@@ -275,24 +263,12 @@ class DeploymentSystemTest {
             .build())
         .build();
 
-    // Deck of all Fireballs
-    List<Card> allFireballs = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      allFireballs.add(fireball);
-    }
-
-    Player spellPlayer = new Player(Team.BLUE, new Deck(allFireballs), false);
+    Player spellPlayer = createPlayerWithCard(Team.BLUE, fireball);
     // Give enough elixir
     spellPlayer.getElixir().update(100f);
 
     // Cast fireball at enemy position
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(spellPlayer, action);
+    deploymentSystem.queueAction(spellPlayer, playAt(10f, 10f));
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Verify spell effect (damage) was applied immediately via CombatSystem.applySpellDamage
@@ -325,21 +301,10 @@ class DeploymentSystemTest {
             .build())
         .build();
 
-    List<Card> allArrows = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      allArrows.add(arrows);
-    }
-
-    Player spellPlayer = new Player(Team.BLUE, new Deck(allArrows), false);
+    Player spellPlayer = createPlayerWithCard(Team.BLUE, arrows);
     spellPlayer.getElixir().update(100f);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(spellPlayer, action);
+    deploymentSystem.queueAction(spellPlayer, playAt(10f, 10f));
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Traveling spell should NOT deal immediate damage
@@ -382,23 +347,11 @@ class DeploymentSystemTest {
             .build())
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(fireball);
-    }
-
     // Player at level 11 with Rare card
-    Player spellPlayer = new Player(Team.BLUE, new Deck(deck), false,
-        new LevelConfig(level));
+    Player spellPlayer = createPlayerWithCard(Team.BLUE, fireball, new LevelConfig(level));
     spellPlayer.getElixir().update(100f);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(spellPlayer, action);
+    deploymentSystem.queueAction(spellPlayer, playAt(10f, 10f));
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Damage should be scaled, not raw
@@ -432,20 +385,9 @@ class DeploymentSystemTest {
         .formationOffsets(offsets)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(archers);
-    }
+    Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
-    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(9f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(archerPlayer, action);
+    deploymentSystem.queueAction(archerPlayer, playAt(9f, 10f));
     // Sync delay expires and first unit spawns; stagger delay = 0.1s for second unit
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
@@ -488,20 +430,9 @@ class DeploymentSystemTest {
         .formationOffsets(offsets)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(archers);
-    }
+    Player redPlayer = createPlayerWithCard(Team.RED, archers);
 
-    Player redPlayer = new Player(Team.RED, new Deck(deck), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(9f)
-        .y(20f)
-        .build();
-
-    deploymentSystem.queueAction(redPlayer, action);
+    deploymentSystem.queueAction(redPlayer, playAt(9f, 20f));
     // Sync delay + stagger for 2-unit card
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
@@ -552,20 +483,9 @@ class DeploymentSystemTest {
         .formationOffsets(offsets)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(goblinGang);
-    }
+    Player gangPlayer = createPlayerWithCard(Team.BLUE, goblinGang);
 
-    Player gangPlayer = new Player(Team.BLUE, new Deck(deck), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(9f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(gangPlayer, action);
+    deploymentSystem.queueAction(gangPlayer, playAt(9f, 10f));
     // Sync delay spawns first unit; remaining 5 units need full stagger window
     // staggerDelay = 0.1s, total stagger = 5 * 0.1 = 0.5s
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -612,20 +532,9 @@ class DeploymentSystemTest {
         .summonRadius(355.0f)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(archers);
-    }
+    Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
-    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
-
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(9f)
-        .y(10f)
-        .build();
-
-    deploymentSystem.queueAction(archerPlayer, action);
+    deploymentSystem.queueAction(archerPlayer, playAt(9f, 10f));
     // Sync delay + stagger for 2-unit card
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
@@ -663,15 +572,9 @@ class DeploymentSystemTest {
         .unitCount(2)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(archers);
-    }
-    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
+    Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0).x(9f).y(10f).build();
-    deploymentSystem.queueAction(archerPlayer, action);
+    deploymentSystem.queueAction(archerPlayer, playAt(9f, 10f));
 
     // After sync delay, only the first unit should have spawned
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -701,15 +604,9 @@ class DeploymentSystemTest {
         .unitCount(4)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(goblins);
-    }
-    Player goblinPlayer = new Player(Team.BLUE, new Deck(deck), false);
+    Player goblinPlayer = createPlayerWithCard(Team.BLUE, goblins);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0).x(9f).y(10f).build();
-    deploymentSystem.queueAction(goblinPlayer, action);
+    deploymentSystem.queueAction(goblinPlayer, playAt(9f, 10f));
 
     // After sync delay, first unit spawns
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -747,15 +644,9 @@ class DeploymentSystemTest {
         .unitCount(1)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(knight);
-    }
-    Player knightPlayer = new Player(Team.BLUE, new Deck(deck), false);
+    Player knightPlayer = createPlayerWithCard(Team.BLUE, knight);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0).x(9f).y(10f).build();
-    deploymentSystem.queueAction(knightPlayer, action);
+    deploymentSystem.queueAction(knightPlayer, playAt(9f, 10f));
 
     // Single-unit troop spawns immediately after sync delay (no stagger)
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -776,13 +667,12 @@ class DeploymentSystemTest {
         .build();
 
     // Create a deploy effect that should only fire once
-    org.crforge.core.card.AreaEffectStats deployEffect =
-        org.crforge.core.card.AreaEffectStats.builder()
-            .name("EWizStun")
-            .radius(3.5f)
-            .damage(50)
-            .lifeDuration(0.5f)
-            .build();
+    AreaEffectStats deployEffect = AreaEffectStats.builder()
+        .name("EWizStun")
+        .radius(3.5f)
+        .damage(50)
+        .lifeDuration(0.5f)
+        .build();
 
     Card ewiz = Card.builder()
         .id("electro_wizard")
@@ -794,15 +684,9 @@ class DeploymentSystemTest {
         .deployEffect(deployEffect)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(ewiz);
-    }
-    Player ewizPlayer = new Player(Team.BLUE, new Deck(deck), false);
+    Player ewizPlayer = createPlayerWithCard(Team.BLUE, ewiz);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0).x(9f).y(10f).build();
-    deploymentSystem.queueAction(ewizPlayer, action);
+    deploymentSystem.queueAction(ewizPlayer, playAt(9f, 10f));
 
     // Sync delay: first unit + deploy effect
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -810,7 +694,7 @@ class DeploymentSystemTest {
 
     // Should have 1 troop + 1 area effect entity
     long areaEffectCount = gameState.getEntities().stream()
-        .filter(e -> e instanceof org.crforge.core.entity.effect.AreaEffect)
+        .filter(e -> e instanceof AreaEffect)
         .count();
     assertThat(areaEffectCount).isEqualTo(1);
 
@@ -819,7 +703,7 @@ class DeploymentSystemTest {
     gameState.processPending();
 
     long finalAreaEffectCount = gameState.getEntities().stream()
-        .filter(e -> e instanceof org.crforge.core.entity.effect.AreaEffect)
+        .filter(e -> e instanceof AreaEffect)
         .count();
     // Still only 1 area effect (deploy effect should not fire again)
     assertThat(finalAreaEffectCount).isEqualTo(1);
@@ -842,15 +726,9 @@ class DeploymentSystemTest {
         .unitCount(2)
         .build();
 
-    List<Card> deck = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      deck.add(archers);
-    }
-    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
+    Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0).x(9f).y(10f).build();
-    deploymentSystem.queueAction(archerPlayer, action);
+    deploymentSystem.queueAction(archerPlayer, playAt(9f, 10f));
 
     // During sync delay, pending deployment exists
     deploymentSystem.update(0.5f);
