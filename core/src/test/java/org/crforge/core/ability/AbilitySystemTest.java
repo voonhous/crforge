@@ -685,8 +685,10 @@ class AbilitySystemTest {
 
     bandit.getCombat().setCurrentTarget(target);
 
-    // Tick to trigger dash
-    abilitySystem.update(DT);
+    // Burn through initial cooldown (0.8s = 24 ticks), then trigger dash
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
 
     AbilityComponent ability = bandit.getAbility();
     assertThat(ability.getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
@@ -707,8 +709,8 @@ class AbilitySystemTest {
 
     bandit.getCombat().setCurrentTarget(target);
 
-    // Run enough ticks for bandit to arrive (dash speed is 15 tiles/s, 5 tiles distance)
-    for (int i = 0; i < 30; i++) {
+    // Burn through initial cooldown (0.8s = 24 ticks) + enough ticks to arrive
+    for (int i = 0; i < 60; i++) {
       abilitySystem.update(DT);
     }
 
@@ -732,8 +734,13 @@ class AbilitySystemTest {
     target.update(2.0f);
 
     bandit.getCombat().setCurrentTarget(target);
-    abilitySystem.update(DT);
 
+    // Burn through initial cooldown (0.8s = 24 ticks)
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
+
+    // Should still be IDLE because target is too close (below minRange)
     assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.IDLE);
   }
 
@@ -760,9 +767,11 @@ class AbilitySystemTest {
     bandit.update(2.0f);
     cannon.update(2.0f);
 
-    // Manually set target and trigger dash
+    // Manually set target and burn through initial cooldown, then trigger dash
     bandit.getCombat().setCurrentTarget(cannon);
-    abilitySystem.update(DT);
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
 
     assertThat(bandit.getAbility().getDashState())
         .isEqualTo(AbilityComponent.DashState.DASHING);
@@ -793,6 +802,130 @@ class AbilitySystemTest {
   }
 
   @Test
+  void dash_shouldHoldPositionWhileCooldownActiveAndTargetInRange() {
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    // Target in dash range [3.5, 6.0]
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    bandit.update(2.0f);
+    target.update(2.0f);
+    bandit.getCombat().setCurrentTarget(target);
+
+    // Initial cooldown is active (0.8s). Tick a few times -- should hold position.
+    float startX = bandit.getPosition().getX();
+    for (int i = 0; i < 10; i++) {
+      abilitySystem.update(DT);
+    }
+
+    assertThat(bandit.getAbility().getDashState())
+        .as("Should still be IDLE during cooldown")
+        .isEqualTo(AbilityComponent.DashState.IDLE);
+    assertThat(bandit.getMovement().isMovementDisabled())
+        .as("Movement should be disabled while waiting for cooldown")
+        .isTrue();
+    assertThat(bandit.getCombat().isCombatDisabled())
+        .as("Combat should be disabled while waiting for cooldown")
+        .isTrue();
+    assertThat(bandit.getPosition().getX())
+        .as("Should not have moved during cooldown hold")
+        .isEqualTo(startX);
+  }
+
+  @Test
+  void dash_cooldownResetsWhenTargetExceedsMaxRange() {
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    // Target in acquisition range [3.5, 6.0]
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    bandit.update(2.0f);
+    target.update(2.0f);
+    bandit.getCombat().setCurrentTarget(target);
+
+    float initialCooldown = bandit.getAbility().getDashCooldownTimer();
+    assertThat(initialCooldown).as("Initial cooldown should be 0.8s").isGreaterThan(0);
+
+    // Tick 10 times with target in range -- cooldown should decrease
+    for (int i = 0; i < 10; i++) {
+      abilitySystem.update(DT);
+    }
+
+    assertThat(bandit.getAbility().getDashCooldownTimer())
+        .as("Cooldown should tick down when target is in dash range")
+        .isLessThan(initialCooldown);
+
+    // Move target beyond maxRange -- cooldown should reset to full
+    target.getPosition().set(15, 5);
+    abilitySystem.update(DT);
+
+    assertThat(bandit.getAbility().getDashCooldownTimer())
+        .as("Cooldown should reset when target exceeds maxRange")
+        .isEqualTo(initialCooldown);
+  }
+
+  @Test
+  void dash_shouldStillFireWhenTargetMovedBelowMinRange() {
+    // Target enters acquisition range [3.5, 6.0], then walks closer (below minRange).
+    // Dash should still fire once cooldown expires -- target just needs to be within maxRange.
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    // Target at edge distance ~4.0, within acquisition range [3.5, 6.0]
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    bandit.update(2.0f);
+    target.update(2.0f);
+    bandit.getCombat().setCurrentTarget(target);
+
+    // Tick a few times to partially consume cooldown and acquire candidate
+    for (int i = 0; i < 5; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(bandit.getAbility().isDashCandidateAcquired()).isTrue();
+
+    // Move target below minRange (edge distance ~2.0) but still within maxRange
+    target.getPosition().set(8, 5);
+
+    // Burn through remaining cooldown
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
+
+    // Dash should have fired even though target is below minRange
+    assertThat(bandit.getAbility().getDashState())
+        .as("Should dash to target even though it moved below minRange")
+        .isNotEqualTo(AbilityComponent.DashState.IDLE);
+  }
+
+  @Test
+  void dash_shouldReleaseHoldWhenCooldownExpires() {
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    bandit.update(2.0f);
+    target.update(2.0f);
+    bandit.getCombat().setCurrentTarget(target);
+
+    // Burn through cooldown (0.8s = 24 ticks) -- should dash on the tick it expires
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
+
+    // Should have started dashing (hold released, dash triggered)
+    assertThat(bandit.getAbility().getDashState())
+        .isEqualTo(AbilityComponent.DashState.DASHING);
+  }
+
+  @Test
   void dash_constantTime_shouldTakeFixedDurationRegardlessOfDistance() {
     // MegaKnight-style: constantTime=0.8s -> 24 ticks at 30fps
     // Place troop and target ~4 tiles apart (edge-to-edge)
@@ -807,8 +940,10 @@ class AbilitySystemTest {
 
     mk.getCombat().setCurrentTarget(target);
 
-    // Trigger dash
-    abilitySystem.update(DT);
+    // Burn through initial cooldown (0.9s = 27 ticks), then trigger dash
+    for (int i = 0; i < 28; i++) {
+      abilitySystem.update(DT);
+    }
     assertThat(mk.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     // At constant speed (15 tiles/sec), a ~4-tile dash would finish in ~8 ticks.
@@ -842,7 +977,10 @@ class AbilitySystemTest {
     mk1.update(2.0f);
     target1.update(2.0f);
     mk1.getCombat().setCurrentTarget(target1);
-    abilitySystem.update(DT);
+    // Burn through initial cooldown (0.9s = 27 ticks)
+    for (int i = 0; i < 28; i++) {
+      abilitySystem.update(DT);
+    }
     assertThat(mk1.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     // Count ticks until dash 1 finishes
@@ -867,7 +1005,10 @@ class AbilitySystemTest {
     mk2.update(2.0f);
     target2.update(2.0f);
     mk2.getCombat().setCurrentTarget(target2);
-    as2.update(DT);
+    // Burn through initial cooldown (0.9s = 27 ticks)
+    for (int i = 0; i < 28; i++) {
+      as2.update(DT);
+    }
     assertThat(mk2.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     int ticks2 = 1;
@@ -901,7 +1042,10 @@ class AbilitySystemTest {
     target.update(2.0f);
     bandit.getCombat().setCurrentTarget(target);
 
-    abilitySystem.update(DT);
+    // Burn through initial cooldown (0.8s = 24 ticks)
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
     assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     // At 15 tiles/sec, a ~4-tile dash should finish well before 0.8s (24 ticks)

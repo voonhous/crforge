@@ -33,6 +33,9 @@ public class AbilityComponent {
   private float dashTargetX = 0f;
   private float dashTargetY = 0f;
   private float dashSpeed = 0f;
+  // True once a target entered the acquisition range [minRange, maxRange].
+  // While acquired, the target stays valid as long as it is within maxRange.
+  private boolean dashCandidateAcquired = false;
 
   // HOOK state
   private HookState hookState = HookState.IDLE;
@@ -43,6 +46,10 @@ public class AbilityComponent {
 
   public AbilityComponent(AbilityData data) {
     this.data = data;
+    // First dash must also wait for the cooldown before triggering
+    if (data.getType() == AbilityType.DASH) {
+      this.dashCooldownTimer = data.getDashCooldown();
+    }
   }
 
   /**

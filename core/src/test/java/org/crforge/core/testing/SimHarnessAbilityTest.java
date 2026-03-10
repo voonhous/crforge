@@ -194,15 +194,16 @@ class SimHarnessAbilityTest {
         .spawn(TroopTemplate.melee("Bandit", Team.BLUE)
             .at(5, 5).hp(750).damage(80).speed(2.0f)
             .sightRange(5.5f).cooldown(1.0f).ability(dashData()))
-        .spawn(TroopTemplate.target("Target", Team.RED).at(10, 5))
+        .spawn(TroopTemplate.target("Target", Team.RED).at(12, 5))
         .deployed()
         .build();
 
     Troop bandit = sim.troop("Bandit");
     bandit.getCombat().setCurrentTarget(sim.troop("Target"));
 
-    // Trigger dash
-    sim.tick();
+    // Burn through initial cooldown (0.8s = 24 ticks) then trigger dash.
+    // Target placed far enough so Bandit stays in [3.5, 6.0] window after walking during cooldown.
+    sim.tick(25);
     assertThat(bandit.getAbility().getDashState())
         .isEqualTo(AbilityComponent.DashState.DASHING);
 

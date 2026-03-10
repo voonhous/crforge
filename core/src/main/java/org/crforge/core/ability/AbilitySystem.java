@@ -167,22 +167,53 @@ public class AbilitySystem {
     AbilityData data = ability.getData();
     Combat combat = troop.getCombat();
 
-    // Tick cooldown
-    if (ability.getDashCooldownTimer() > 0) {
-      ability.setDashCooldownTimer(ability.getDashCooldownTimer() - deltaTime);
-    }
-
     switch (ability.getDashState()) {
       case IDLE -> {
-        // Check if we should start a dash
-        if (combat == null || !combat.hasTarget() || ability.getDashCooldownTimer() > 0) {
+        if (combat == null || !combat.hasTarget()) {
           return;
         }
         Entity target = combat.getCurrentTarget();
         float distance = troop.getPosition().distanceTo(target.getPosition())
             - troop.getCollisionRadius() - target.getCollisionRadius();
 
-        if (distance >= data.getDashMinRange() && distance <= data.getDashMaxRange()) {
+        boolean inAcquisitionRange = distance >= data.getDashMinRange()
+            && distance <= data.getDashMaxRange();
+        boolean inDashableRange = distance <= data.getDashMaxRange();
+
+        // Acquire candidate when target enters [minRange, maxRange]
+        if (inAcquisitionRange && !ability.isDashCandidateAcquired()) {
+          ability.setDashCandidateAcquired(true);
+        }
+
+        // Target exceeded maxRange -- reset candidate and cooldown
+        if (!inDashableRange) {
+          ability.setDashCandidateAcquired(false);
+          ability.setDashCooldownTimer(data.getDashCooldown());
+          troop.getMovement().clearModifiers(ModifierSource.ABILITY_DASH);
+          combat.clearModifiers(ModifierSource.ABILITY_DASH);
+          return;
+        }
+
+        // No candidate yet (target never entered acquisition range) -- walk normally
+        if (!ability.isDashCandidateAcquired()) {
+          return;
+        }
+
+        // Candidate acquired and within maxRange -- tick cooldown or dash
+        if (ability.getDashCooldownTimer() > 0) {
+          // Cooldown active -- hold position, tick cooldown
+          ability.setDashCooldownTimer(ability.getDashCooldownTimer() - deltaTime);
+          troop.getMovement().setMovementDisabled(ModifierSource.ABILITY_DASH, true);
+          combat.setCombatDisabled(ModifierSource.ABILITY_DASH, true);
+          return;
+        }
+
+        // Cooldown expired -- release hold and start dash
+        troop.getMovement().clearModifiers(ModifierSource.ABILITY_DASH);
+        combat.clearModifiers(ModifierSource.ABILITY_DASH);
+        ability.setDashCandidateAcquired(false);
+
+        {
           // Start dash toward target -- stop at collision boundary, not center
           ability.setDashState(AbilityComponent.DashState.DASHING);
           ability.setDashTimer(0f);
