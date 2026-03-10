@@ -13,14 +13,14 @@ the live game name.
 | #  | CR Name           | Internal ID      | Status    | Notes                       |
 |----|-------------------|------------------|-----------|-----------------------------|
 | 1  | Knight            | knight           | `DONE`    |                             |
-| 2  | Archers           | archer           |           | count=2                     |
-| 3  | Goblins           | goblins          |           | count=4                     |
+| 2  | Archers           | archer           | `DONE`    | count=2                     |
+| 3  | Goblins           | goblins          | `DONE`    | count=4                     |
 | 4  | Giant             | giant            | `DONE`    |                             |
 | 5  | P.E.K.K.A         | pekka            | `DONE`    |                             |
-| 6  | Minions           | minions          |           | count=3                     |
+| 6  | Minions           | minions          | `DONE`    | count=3                     |
 | 7  | Balloon           | balloon          | `DONE`    |                             |
 | 8  | Witch             | witch            | `DONE`    |                             |
-| 9  | Barbarians        | barbarians       |           | count=5                     |
+| 9  | Barbarians        | barbarians       | `DONE`    | count=5                     |
 | 10 | Golem             | golem            |           |                             |
 | 11 | Skeletons         | skeletons        |           | count=3                     |
 | 12 | Valkyrie          | valkyrie         |           |                             |
