@@ -117,6 +117,10 @@ public final class RenderConstants {
   /** Golden color for shield bar segments. */
   public static final Color COLOR_SHIELD = new Color(1f, 0.85f, 0.2f, 1f);
 
+  /** Semi-transparent landing zone indicators for position-targeted AOE projectiles. */
+  public static final Color COLOR_BLUE_LANDING_ZONE = new Color(0.3f, 0.5f, 1f, 0.2f);
+  public static final Color COLOR_RED_LANDING_ZONE = new Color(1f, 0.3f, 0.3f, 0.2f);
+
   /** Base color for area effect zone overlays. */
   public static final Color COLOR_AREA_EFFECT = new Color(0.8f, 0.8f, 0.2f, 0.4f);
 

@@ -2,13 +2,17 @@ package org.crforge.desktop.render;
 
 import static org.crforge.desktop.render.RenderConstants.*;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.player.Team;
 
 /**
  * Renders active projectiles. Regular projectiles as small yellow circles,
  * chain lightning projectiles as electric blue lines jumping between targets.
+ * Position-targeted AOE projectiles also show a landing zone indicator at the target.
  */
 public class ProjectileRenderer {
 
@@ -19,6 +23,27 @@ public class ProjectileRenderer {
   }
 
   public void render(GameState state) {
+    // Pass 0: Landing zone indicators for position-targeted AOE projectiles
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+    ctx.getShapeRenderer().begin(ShapeType.Filled);
+
+    for (Projectile projectile : state.getProjectiles()) {
+      if (!projectile.isActive() || !projectile.isPositionTargeted() || !projectile.hasAoe()) {
+        continue;
+      }
+
+      float landX = projectile.getTargetX() * TILE_PIXELS;
+      float landY = projectile.getTargetY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float zoneRadius = projectile.getAoeRadius() * TILE_PIXELS;
+
+      ctx.getShapeRenderer().setColor(
+          projectile.getTeam() == Team.BLUE ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE);
+      ctx.getShapeRenderer().circle(landX, landY, zoneRadius, CIRCLE_SEGMENTS);
+    }
+
+    ctx.getShapeRenderer().end();
+
     // Pass 1: Regular projectiles as circles
     ctx.getShapeRenderer().begin(ShapeType.Filled);
     ctx.getShapeRenderer().setColor(COLOR_PROJECTILE);
@@ -32,7 +57,14 @@ public class ProjectileRenderer {
       float x = projectile.getPosition().getX() * TILE_PIXELS;
       float y = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
-      ctx.getShapeRenderer().circle(x, y, PROJECTILE_RADIUS);
+      // Scale projectile dot for position-targeted AOE projectiles
+      float radius = PROJECTILE_RADIUS;
+      if (projectile.isPositionTargeted() && projectile.hasAoe()) {
+        radius = Math.min(projectile.getAoeRadius() * TILE_PIXELS * 0.3f, 10f);
+        radius = Math.max(radius, PROJECTILE_RADIUS);
+      }
+
+      ctx.getShapeRenderer().circle(x, y, radius);
     }
 
     ctx.getShapeRenderer().end();
