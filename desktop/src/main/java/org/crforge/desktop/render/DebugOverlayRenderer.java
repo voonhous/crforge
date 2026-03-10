@@ -28,6 +28,8 @@ import java.util.Optional;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityType;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.CardType;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.StatusEffectType;
@@ -39,6 +41,8 @@ import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.FormationLayout;
+import org.crforge.core.util.Vector2;
 
 /**
  * Renders debug overlays: targeting lines, path direction indicators, attack range circles, entity
@@ -201,54 +205,80 @@ public class DebugOverlayRenderer {
   }
 
   /**
-   * Render ghost silhouettes for pending deployments (during the server sync delay). Shows a
-   * translucent team-colored circle with a radial countdown and the card name.
+   * Render ghost silhouettes for pending deployments. Shows per-unit ghost circles at formation
+   * positions with radial countdown during sync delay, and only not-yet-spawned units during
+   * stagger phase.
    */
   public void renderPendingDeployments(List<PendingDeployment> pendingDeployments) {
     if (pendingDeployments.isEmpty()) {
       return;
     }
 
-    float ghostRadius = TILE_PIXELS * 0.8f;
+    float defaultGhostRadius = TILE_PIXELS * 0.8f;
 
-    // Pass 1: Filled ghost circle + radial countdown
+    // Pass 1: Filled ghost circles + radial countdown
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Filled);
 
     for (PendingDeployment pending : pendingDeployments) {
-      float x = pending.getX() * TILE_PIXELS;
-      float y = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
-      // Ghost fill
       Color ghostColor = pending.getTeam() == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
-      ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.3f);
-      ctx.getShapeRenderer().circle(x, y, ghostRadius, CIRCLE_SEGMENTS);
+      float centerX = pending.getX() * TILE_PIXELS;
+      float centerY = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
-      // Radial countdown arc (sweeps from full to nothing as delay expires)
-      float progress = DeploymentSystem.PLACEMENT_SYNC_DELAY > 0
-          ? pending.getRemainingDelay() / DeploymentSystem.PLACEMENT_SYNC_DELAY
-          : 0f;
-      ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.5f);
-      ctx.getShapeRenderer().arc(x, y, ghostRadius, 90, progress * 360, CIRCLE_SEGMENTS);
+      // Compute radial countdown progress
+      float progress;
+      if (!pending.isSyncComplete()) {
+        progress = DeploymentSystem.PLACEMENT_SYNC_DELAY > 0
+            ? pending.getRemainingDelay() / DeploymentSystem.PLACEMENT_SYNC_DELAY
+            : 0f;
+      } else {
+        progress = 0f;
+      }
+
+      List<float[]> ghostPositions = getGhostPositions(pending);
+
+      for (float[] pos : ghostPositions) {
+        float gx = centerX + pos[0] * TILE_PIXELS;
+        float gy = centerY + pos[1] * TILE_PIXELS;
+        float radius = pos[2] * TILE_PIXELS;
+
+        // Ghost fill
+        ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.3f);
+        ctx.getShapeRenderer().circle(gx, gy, radius, CIRCLE_SEGMENTS);
+
+        // Radial countdown arc (only during sync delay)
+        if (progress > 0) {
+          ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.5f);
+          ctx.getShapeRenderer().arc(gx, gy, radius, 90, progress * 360, CIRCLE_SEGMENTS);
+        }
+      }
     }
 
     ctx.getShapeRenderer().end();
 
-    // Pass 2: Outline ring
+    // Pass 2: Outline rings
     ctx.getShapeRenderer().begin(ShapeType.Line);
 
     for (PendingDeployment pending : pendingDeployments) {
-      float x = pending.getX() * TILE_PIXELS;
-      float y = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-
       Color ghostColor = pending.getTeam() == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
-      ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.7f);
-      ctx.getShapeRenderer().circle(x, y, ghostRadius, CIRCLE_SEGMENTS);
+      float centerX = pending.getX() * TILE_PIXELS;
+      float centerY = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+
+      List<float[]> ghostPositions = getGhostPositions(pending);
+
+      for (float[] pos : ghostPositions) {
+        float gx = centerX + pos[0] * TILE_PIXELS;
+        float gy = centerY + pos[1] * TILE_PIXELS;
+        float radius = pos[2] * TILE_PIXELS;
+
+        ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.7f);
+        ctx.getShapeRenderer().circle(gx, gy, radius, CIRCLE_SEGMENTS);
+      }
     }
 
     ctx.getShapeRenderer().end();
 
-    // Pass 3: Card name label
+    // Pass 3: Card name label at center position
     ctx.getSpriteBatch().begin();
 
     for (PendingDeployment pending : pendingDeployments) {
@@ -259,10 +289,66 @@ public class DebugOverlayRenderer {
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), name);
       float textWidth = ctx.getGlyphLayout().width;
       ctx.getEntityNameFont().draw(
-          ctx.getSpriteBatch(), name, x - textWidth / 2, y + ghostRadius + 10);
+          ctx.getSpriteBatch(), name, x - textWidth / 2, y + defaultGhostRadius + 10);
     }
 
     ctx.getSpriteBatch().end();
+  }
+
+  /**
+   * Computes ghost positions for a pending deployment. Returns a list of [offsetX, offsetY, radius]
+   * arrays in tile units relative to the deployment center. During sync delay, all units are shown.
+   * During stagger, only not-yet-spawned units are shown.
+   */
+  private List<float[]> getGhostPositions(PendingDeployment pending) {
+    float defaultRadius = 0.8f;
+    var card = pending.getCard();
+
+    // Single-unit or non-troop cards: single ghost at center
+    if (!pending.isMultiUnit() || card.getUnitStats() == null) {
+      return List.of(new float[]{0f, 0f, defaultRadius});
+    }
+
+    List<float[]> positions = new java.util.ArrayList<>();
+    int primaryCount = card.getUnitCount();
+    int totalUnits = pending.getTotalUnits();
+    TroopStats primaryStats = card.getUnitStats();
+    TroopStats secondaryStats = card.getSecondaryUnitStats();
+    List<float[]> formationOffsets = card.getFormationOffsets();
+    float summonRadius = card.getSummonRadius();
+
+    // During stagger, skip already-spawned units
+    int startIdx = pending.isSyncComplete() ? pending.getNextUnitIndex() : 0;
+
+    for (int idx = startIdx; idx < totalUnits; idx++) {
+      boolean isSecondary = idx >= primaryCount;
+      TroopStats stats = isSecondary ? secondaryStats : primaryStats;
+      if (stats == null) continue;
+
+      float visRadius = stats.getVisualRadius() > 0 ? stats.getVisualRadius() : defaultRadius;
+      float offsetX = 0f;
+      float offsetY = 0f;
+
+      if (formationOffsets != null && idx < formationOffsets.size()) {
+        float[] offset = formationOffsets.get(idx);
+        offsetX = offset[0];
+        offsetY = offset[1];
+      } else if (totalUnits > 1 && summonRadius > 0) {
+        Vector2 offset = FormationLayout.calculateDeployOffset(
+            idx, totalUnits, summonRadius, stats.getCollisionRadius());
+        offsetX = offset.getX();
+        offsetY = offset.getY();
+      }
+
+      if (pending.getTeam() == Team.RED) {
+        offsetX = -offsetX;
+        offsetY = -offsetY;
+      }
+
+      positions.add(new float[]{offsetX, offsetY, visRadius});
+    }
+
+    return positions;
   }
 
   // ---- New Feature Visualizations ----

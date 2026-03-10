@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.CardType;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
@@ -77,6 +78,7 @@ public class DeploymentSystem {
 
   /**
    * Processes queued actions and ticks pending deployment timers.
+   * Multi-unit TROOP cards spawn one unit at a time with stagger delay after the sync delay expires.
    *
    * @param deltaTime time elapsed since last update (seconds)
    */
@@ -87,13 +89,51 @@ public class DeploymentSystem {
       processRequest(request);
     }
 
-    // 2. Tick pending deployment timers and spawn when ready
+    // 2. Tick pending deployment timers with two-phase spawning
     Iterator<PendingDeployment> it = pendingDeployments.iterator();
     while (it.hasNext()) {
       PendingDeployment pending = it.next();
-      pending.remainingDelay -= deltaTime;
-      if (pending.remainingDelay <= 0) {
-        spawnCard(pending.team, pending.card, pending.x, pending.y, pending.level);
+
+      // Phase 1: Sync delay countdown
+      if (!pending.syncComplete) {
+        pending.remainingDelay -= deltaTime;
+        if (pending.remainingDelay <= 0) {
+          pending.syncComplete = true;
+          // Carry over leftover time from sync into stagger phase
+          pending.staggerTimer = pending.remainingDelay; // negative or zero
+        } else {
+          continue;
+        }
+      } else {
+        // Phase 2 tick: only subtract deltaTime on ticks after sync completed
+        pending.staggerTimer -= deltaTime;
+      }
+
+      while (pending.staggerTimer <= 0 && pending.nextUnitIndex < pending.totalUnits) {
+        if (pending.isMultiUnit()) {
+          // Spawn one troop at a time
+          spawnSingleTroop(pending.team, pending.card, pending.x, pending.y,
+              pending.level, pending.nextUnitIndex);
+
+          // Fire deploy effect only on the first unit
+          if (!pending.deployEffectFired && pending.card.getDeployEffect() != null) {
+            deployAreaEffect(pending.team, pending.card.getDeployEffect(),
+                pending.x, pending.y, pending.card.getRarity(), pending.level);
+            pending.deployEffectFired = true;
+          }
+        } else {
+          // Non-staggered: buildings, spells, single-unit troops -- spawn all at once
+          spawnCard(pending.team, pending.card, pending.x, pending.y, pending.level);
+          pending.nextUnitIndex = pending.totalUnits; // mark complete
+          break;
+        }
+
+        pending.nextUnitIndex++;
+        pending.staggerTimer += pending.staggerDelay;
+      }
+
+      // Remove when all units have spawned
+      if (pending.nextUnitIndex >= pending.totalUnits) {
         it.remove();
       }
     }
@@ -123,81 +163,99 @@ public class DeploymentSystem {
     }
   }
 
+  /**
+   * Spawns all troops for a card at once (used for single-unit troops via spawnCard()).
+   * Multi-unit cards use staggered spawning via spawnSingleTroop() in update().
+   */
   private void spawnTroops(Team team, Card card, float x, float y, int level) {
     TroopStats primaryStats = card.getUnitStats();
     if (primaryStats == null) {
       return;
     }
 
-    int primaryCount = card.getUnitCount();
-    int secondaryCount = card.getSecondaryUnitCount();
-    int totalUnits = primaryCount + secondaryCount;
-    TroopStats secondaryStats = card.getSecondaryUnitStats();
-    List<float[]> formationOffsets = card.getFormationOffsets();
-    float summonRadius = card.getSummonRadius();
-
+    int totalUnits = card.getTotalDeployCount();
     for (int idx = 0; idx < totalUnits; idx++) {
-      boolean isSecondary = idx >= primaryCount;
-      TroopStats unitStats = isSecondary ? secondaryStats : primaryStats;
-      if (unitStats == null) {
-        continue;
-      }
-
-      // Check for spawner capability (Witch/Mother Witch logic) -- only first primary unit
-      SpawnerComponent spawner = null;
-
-      if (idx == 0 && unitStats.getLiveSpawn() != null) {
-        LiveSpawnConfig ls = unitStats.getLiveSpawn();
-        TroopStats spawnStats = card.getSpawnTemplate();
-        if (spawnStats != null) {
-          float initialTimer = resolveInitialSpawnerTimer(ls);
-          spawner = SpawnerComponent.builder()
-              .spawnInterval(ls.spawnInterval())
-              .spawnPauseTime(ls.spawnPauseTime())
-              .unitsPerWave(ls.spawnNumber())
-              .spawnStartTime(ls.spawnStartTime())
-              .currentTimer(initialTimer)
-              .spawnStats(spawnStats)
-              .formationRadius(ls.spawnRadius())
-              .rarity(card.getRarity())
-              .level(level)
-              .build();
-        }
-      }
-
-      // Unit-level death mechanics (e.g. Golem death damage + death spawn)
-      boolean hasUnitDeathMechanics =
-          unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
-      if (hasUnitDeathMechanics) {
-        int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(),
-            level);
-
-        if (spawner == null) {
-          // Create a death-only SpawnerComponent
-          spawner = SpawnerComponent.builder()
-              .deathDamage(scaledDeathDmg)
-              .deathDamageRadius(unitStats.getDeathDamageRadius())
-              .deathSpawns(unitStats.getDeathSpawns())
-              .rarity(card.getRarity())
-              .level(level)
-              .build();
-        } else {
-          // Merge death mechanics into existing spawner
-          spawner.setDeathDamage(scaledDeathDmg);
-          spawner.setDeathDamageRadius(unitStats.getDeathDamageRadius());
-          spawner.setDeathSpawns(unitStats.getDeathSpawns());
-        }
-      }
-
-      Troop troop = createTroop(team, unitStats, x, y, spawner, level, card.getRarity(),
-          idx, totalUnits, summonRadius, formationOffsets);
-      state.spawnEntity(troop);
+      spawnSingleTroop(team, card, x, y, level, idx);
     }
 
     // Deploy effect (e.g. ElectroWizard stun, IceWizard slow on entry)
     if (card.getDeployEffect() != null) {
       deployAreaEffect(team, card.getDeployEffect(), x, y, card.getRarity(), level);
     }
+  }
+
+  /**
+   * Spawns a single troop at the given index within the card's formation.
+   * Handles primary/secondary unit selection, spawner components (idx==0 only),
+   * death mechanics, and formation offset positioning.
+   */
+  private void spawnSingleTroop(Team team, Card card, float x, float y, int level, int idx) {
+    TroopStats primaryStats = card.getUnitStats();
+    if (primaryStats == null) {
+      return;
+    }
+
+    int primaryCount = card.getUnitCount();
+    int totalUnits = card.getTotalDeployCount();
+    TroopStats secondaryStats = card.getSecondaryUnitStats();
+    List<float[]> formationOffsets = card.getFormationOffsets();
+    float summonRadius = card.getSummonRadius();
+
+    boolean isSecondary = idx >= primaryCount;
+    TroopStats unitStats = isSecondary ? secondaryStats : primaryStats;
+    if (unitStats == null) {
+      return;
+    }
+
+    // Check for spawner capability (Witch/Mother Witch logic) -- only first primary unit
+    SpawnerComponent spawner = null;
+
+    if (idx == 0 && unitStats.getLiveSpawn() != null) {
+      LiveSpawnConfig ls = unitStats.getLiveSpawn();
+      TroopStats spawnStats = card.getSpawnTemplate();
+      if (spawnStats != null) {
+        float initialTimer = resolveInitialSpawnerTimer(ls);
+        spawner = SpawnerComponent.builder()
+            .spawnInterval(ls.spawnInterval())
+            .spawnPauseTime(ls.spawnPauseTime())
+            .unitsPerWave(ls.spawnNumber())
+            .spawnStartTime(ls.spawnStartTime())
+            .currentTimer(initialTimer)
+            .spawnStats(spawnStats)
+            .formationRadius(ls.spawnRadius())
+            .rarity(card.getRarity())
+            .level(level)
+            .build();
+      }
+    }
+
+    // Unit-level death mechanics (e.g. Golem death damage + death spawn)
+    boolean hasUnitDeathMechanics =
+        unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
+    if (hasUnitDeathMechanics) {
+      int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(),
+          level);
+
+      if (spawner == null) {
+        // Create a death-only SpawnerComponent
+        spawner = SpawnerComponent.builder()
+            .deathDamage(scaledDeathDmg)
+            .deathDamageRadius(unitStats.getDeathDamageRadius())
+            .deathSpawns(unitStats.getDeathSpawns())
+            .rarity(card.getRarity())
+            .level(level)
+            .build();
+      } else {
+        // Merge death mechanics into existing spawner
+        spawner.setDeathDamage(scaledDeathDmg);
+        spawner.setDeathDamageRadius(unitStats.getDeathDamageRadius());
+        spawner.setDeathSpawns(unitStats.getDeathSpawns());
+      }
+    }
+
+    Troop troop = createTroop(team, unitStats, x, y, spawner, level, card.getRarity(),
+        idx, totalUnits, summonRadius, formationOffsets);
+    state.spawnEntity(troop);
   }
 
   /**
@@ -461,8 +519,15 @@ public class DeploymentSystem {
   }
 
   /**
-   * Holds a resolved deployment during the server sync delay. Elixir has already been spent and the
-   * hand cycled; the entity spawns once {@code remainingDelay} reaches zero.
+   * Holds a resolved deployment during the server sync delay and staggered unit spawning.
+   * Elixir has already been spent and the hand cycled.
+   *
+   * <p>Two-phase lifecycle:
+   * <ol>
+   *   <li>Sync delay: {@code remainingDelay} counts down to zero</li>
+   *   <li>Stagger: multi-unit TROOP cards spawn one unit at a time with {@code staggerDelay}
+   *       between each; buildings/spells/single-unit troops spawn all at once</li>
+   * </ol>
    */
   @Getter
   public static class PendingDeployment {
@@ -474,6 +539,14 @@ public class DeploymentSystem {
     final int level;
     float remainingDelay;
 
+    // Stagger state
+    int nextUnitIndex;
+    final int totalUnits;
+    final float staggerDelay;
+    float staggerTimer;
+    boolean syncComplete;
+    boolean deployEffectFired;
+
     PendingDeployment(Team team, Card card, float x, float y, int level, float remainingDelay) {
       this.team = team;
       this.card = card;
@@ -481,6 +554,36 @@ public class DeploymentSystem {
       this.y = y;
       this.level = level;
       this.remainingDelay = remainingDelay;
+
+      // Multi-unit TROOP cards get staggered spawning
+      this.totalUnits = card.getType() == CardType.TROOP ? card.getTotalDeployCount() : 1;
+      if (totalUnits > 1 && card.getUnitStats() != null) {
+        this.staggerDelay = card.getUnitStats().getDeployTime() / totalUnits;
+      } else {
+        this.staggerDelay = 0f;
+      }
+    }
+
+    /**
+     * Whether this deployment is a multi-unit troop card with staggered spawning.
+     */
+    public boolean isMultiUnit() {
+      return totalUnits > 1 && card.getType() == CardType.TROOP;
+    }
+
+    /**
+     * Whether this deployment is currently in the stagger phase (sync delay expired,
+     * but not all units have spawned yet).
+     */
+    public boolean isStaggering() {
+      return syncComplete && nextUnitIndex < totalUnits;
+    }
+
+    /**
+     * Returns the fraction of stagger progress (0.0 = no units spawned, 1.0 = all spawned).
+     */
+    public float getStaggerProgress() {
+      return totalUnits > 0 ? (float) nextUnitIndex / totalUnits : 1f;
     }
   }
 }

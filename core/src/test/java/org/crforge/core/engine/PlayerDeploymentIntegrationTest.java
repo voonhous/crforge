@@ -161,9 +161,11 @@ class PlayerDeploymentIntegrationTest {
     PlayerActionDTO action = PlayerActionDTO.play(goblinsSlot, 9f, 10f);
     engine.queueAction(bluePlayer, action);
 
-    // Tick past sync delay + 1 extra to process pending spawns
+    // Tick past sync delay + full stagger window + 1 extra to process pending spawns.
+    // Goblins: 4 units, deployTime=1.0s, staggerDelay=0.25s, total stagger=0.75s
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
-    engine.tick(syncTicks + 1);
+    int staggerTicks = (int) Math.ceil(1.0f * GameEngine.TICKS_PER_SECOND); // full deployTime covers stagger
+    engine.tick(syncTicks + staggerTicks + 1);
 
     int newTroopCount = (int) engine.getGameState().getAliveEntities().stream()
         .filter(e -> e.getEntityType() == EntityType.TROOP)

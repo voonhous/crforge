@@ -446,7 +446,10 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(archerPlayer, action);
+    // Sync delay expires and first unit spawns; staggerDelay = 1.0/2 = 0.5s for second unit
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    // Spawn the second unit after stagger delay
+    deploymentSystem.update(0.5f);
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(2);
@@ -500,7 +503,9 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(redPlayer, action);
+    // Sync delay + stagger for 2-unit card (staggerDelay = 1.0/2 = 0.5s)
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    deploymentSystem.update(0.5f);
     gameState.processPending();
 
     List<Troop> troops = gameState.getEntities().stream()
@@ -562,7 +567,10 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(gangPlayer, action);
+    // Sync delay spawns first unit; remaining 5 units need full stagger window
+    // staggerDelay = 1.0/6, total stagger = 5 * (1.0/6) = 0.833s
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    deploymentSystem.update(1.0f); // enough to cover entire stagger window
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(6);
@@ -619,7 +627,9 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(archerPlayer, action);
+    // Sync delay + stagger for 2-unit card
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    deploymentSystem.update(0.5f);
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(2);
@@ -633,5 +643,229 @@ class DeploymentSystemTest {
         Math.abs(t.getPosition().getX() - 9f) > 0.01f
             || Math.abs(t.getPosition().getY() - 10f) > 0.01f);
     assertThat(anyOffset).isTrue();
+  }
+
+  // -- Staggered deployment tests --
+
+  @Test
+  void testStaggeredDeployment_unitsSpawnSequentially() {
+    TroopStats archerStats = TroopStats.builder()
+        .name("Archer")
+        .health(100)
+        .damage(50)
+        .build();
+
+    Card archers = Card.builder()
+        .id("archer")
+        .name("Archer")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(archerStats)
+        .unitCount(2)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(archers);
+    }
+    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0).x(9f).y(10f).build();
+    deploymentSystem.queueAction(archerPlayer, action);
+
+    // After sync delay, only the first unit should have spawned
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(1);
+
+    // After stagger delay (0.5s for 2-unit card), second unit should spawn
+    deploymentSystem.update(0.5f);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(2);
+  }
+
+  @Test
+  void testStaggeredDeployment_fourUnits() {
+    TroopStats goblinStats = TroopStats.builder()
+        .name("Goblin")
+        .health(80)
+        .damage(50)
+        .build();
+
+    Card goblins = Card.builder()
+        .id("goblins")
+        .name("Goblins")
+        .type(CardType.TROOP)
+        .cost(2)
+        .unitStats(goblinStats)
+        .unitCount(4)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(goblins);
+    }
+    Player goblinPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0).x(9f).y(10f).build();
+    deploymentSystem.queueAction(goblinPlayer, action);
+
+    // staggerDelay = 1.0/4 = 0.25s
+    float staggerDelay = 1.0f / 4;
+
+    // After sync delay, first unit spawns
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(1);
+
+    // Each subsequent stagger tick spawns one more
+    deploymentSystem.update(staggerDelay);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(2);
+
+    deploymentSystem.update(staggerDelay);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(3);
+
+    deploymentSystem.update(staggerDelay);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(4);
+  }
+
+  @Test
+  void testStaggeredDeployment_singleUnit_noStagger() {
+    TroopStats knightStats = TroopStats.builder()
+        .name("Knight")
+        .health(200)
+        .damage(75)
+        .build();
+
+    Card knight = Card.builder()
+        .id("knight")
+        .name("Knight")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(knightStats)
+        .unitCount(1)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(knight);
+    }
+    Player knightPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0).x(9f).y(10f).build();
+    deploymentSystem.queueAction(knightPlayer, action);
+
+    // Single-unit troop spawns immediately after sync delay (no stagger)
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+    assertThat(gameState.getEntities()).hasSize(1);
+    assertThat(gameState.getEntities().get(0).getName()).isEqualTo("Knight");
+
+    // No pending deployments remaining
+    assertThat(deploymentSystem.getPendingDeployments()).isEmpty();
+  }
+
+  @Test
+  void testStaggeredDeployment_deployEffect_firesOnce() {
+    TroopStats ewizStats = TroopStats.builder()
+        .name("ElectroWizard")
+        .health(200)
+        .damage(75)
+        .build();
+
+    // Create a deploy effect that should only fire once
+    org.crforge.core.card.AreaEffectStats deployEffect =
+        org.crforge.core.card.AreaEffectStats.builder()
+            .name("EWizStun")
+            .radius(3.5f)
+            .damage(50)
+            .lifeDuration(0.5f)
+            .build();
+
+    Card ewiz = Card.builder()
+        .id("electro_wizard")
+        .name("ElectroWizard")
+        .type(CardType.TROOP)
+        .cost(4)
+        .unitStats(ewizStats)
+        .unitCount(2)
+        .deployEffect(deployEffect)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(ewiz);
+    }
+    Player ewizPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0).x(9f).y(10f).build();
+    deploymentSystem.queueAction(ewizPlayer, action);
+
+    // Sync delay: first unit + deploy effect
+    deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
+    gameState.processPending();
+
+    // Should have 1 troop + 1 area effect entity
+    long areaEffectCount = gameState.getEntities().stream()
+        .filter(e -> e instanceof org.crforge.core.entity.effect.AreaEffect)
+        .count();
+    assertThat(areaEffectCount).isEqualTo(1);
+
+    // Second unit spawns, but no duplicate deploy effect
+    deploymentSystem.update(0.5f);
+    gameState.processPending();
+
+    long finalAreaEffectCount = gameState.getEntities().stream()
+        .filter(e -> e instanceof org.crforge.core.entity.effect.AreaEffect)
+        .count();
+    // Still only 1 area effect (deploy effect should not fire again)
+    assertThat(finalAreaEffectCount).isEqualTo(1);
+  }
+
+  @Test
+  void testStaggeredDeployment_pendingRemovedAfterAllUnits() {
+    TroopStats archerStats = TroopStats.builder()
+        .name("Archer")
+        .health(100)
+        .damage(50)
+        .build();
+
+    Card archers = Card.builder()
+        .id("archer")
+        .name("Archer")
+        .type(CardType.TROOP)
+        .cost(3)
+        .unitStats(archerStats)
+        .unitCount(2)
+        .build();
+
+    List<Card> deck = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      deck.add(archers);
+    }
+    Player archerPlayer = new Player(Team.BLUE, new Deck(deck), false);
+
+    PlayerActionDTO action = PlayerActionDTO.builder()
+        .handIndex(0).x(9f).y(10f).build();
+    deploymentSystem.queueAction(archerPlayer, action);
+
+    // During sync delay, pending deployment exists
+    deploymentSystem.update(0.5f);
+    assertThat(deploymentSystem.getPendingDeployments()).hasSize(1);
+
+    // After sync delay, first unit spawns but pending still exists (second unit pending)
+    deploymentSystem.update(0.5f);
+    assertThat(deploymentSystem.getPendingDeployments()).hasSize(1);
+
+    // After stagger delay, second unit spawns and pending is removed
+    deploymentSystem.update(0.5f);
+    assertThat(deploymentSystem.getPendingDeployments()).isEmpty();
   }
 }
