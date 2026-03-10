@@ -52,6 +52,11 @@ public class DeploymentSystem {
    */
   public static final float PLACEMENT_SYNC_DELAY = 1.0f;
 
+  /**
+   * Fixed delay between each unit spawn for multi-unit troop cards (seconds).
+   */
+  public static final float STAGGER_DELAY = 0.1f;
+
   private static final float SPELL_TRAVEL_DISTANCE = 10f;
 
   private final GameState state;
@@ -557,11 +562,7 @@ public class DeploymentSystem {
 
       // Multi-unit TROOP cards get staggered spawning
       this.totalUnits = card.getType() == CardType.TROOP ? card.getTotalDeployCount() : 1;
-      if (totalUnits > 1 && card.getUnitStats() != null) {
-        this.staggerDelay = card.getUnitStats().getDeployTime() / totalUnits;
-      } else {
-        this.staggerDelay = 0f;
-      }
+      this.staggerDelay = totalUnits > 1 ? STAGGER_DELAY : 0f;
     }
 
     /**

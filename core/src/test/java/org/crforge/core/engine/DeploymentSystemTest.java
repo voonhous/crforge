@@ -446,10 +446,9 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(archerPlayer, action);
-    // Sync delay expires and first unit spawns; staggerDelay = 1.0/2 = 0.5s for second unit
+    // Sync delay expires and first unit spawns; stagger delay = 0.1s for second unit
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
-    // Spawn the second unit after stagger delay
-    deploymentSystem.update(0.5f);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(2);
@@ -503,9 +502,9 @@ class DeploymentSystemTest {
         .build();
 
     deploymentSystem.queueAction(redPlayer, action);
-    // Sync delay + stagger for 2-unit card (staggerDelay = 1.0/2 = 0.5s)
+    // Sync delay + stagger for 2-unit card
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
-    deploymentSystem.update(0.5f);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
 
     List<Troop> troops = gameState.getEntities().stream()
@@ -568,9 +567,9 @@ class DeploymentSystemTest {
 
     deploymentSystem.queueAction(gangPlayer, action);
     // Sync delay spawns first unit; remaining 5 units need full stagger window
-    // staggerDelay = 1.0/6, total stagger = 5 * (1.0/6) = 0.833s
+    // staggerDelay = 0.1s, total stagger = 5 * 0.1 = 0.5s
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
-    deploymentSystem.update(1.0f); // enough to cover entire stagger window
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY * 5); // cover entire stagger window
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(6);
@@ -629,7 +628,7 @@ class DeploymentSystemTest {
     deploymentSystem.queueAction(archerPlayer, action);
     // Sync delay + stagger for 2-unit card
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
-    deploymentSystem.update(0.5f);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(2);
@@ -679,8 +678,8 @@ class DeploymentSystemTest {
     gameState.processPending();
     assertThat(gameState.getEntities()).hasSize(1);
 
-    // After stagger delay (0.5s for 2-unit card), second unit should spawn
-    deploymentSystem.update(0.5f);
+    // After stagger delay (0.1s), second unit should spawn
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
     assertThat(gameState.getEntities()).hasSize(2);
   }
@@ -712,24 +711,21 @@ class DeploymentSystemTest {
         .handIndex(0).x(9f).y(10f).build();
     deploymentSystem.queueAction(goblinPlayer, action);
 
-    // staggerDelay = 1.0/4 = 0.25s
-    float staggerDelay = 1.0f / 4;
-
     // After sync delay, first unit spawns
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
     assertThat(gameState.getEntities()).hasSize(1);
 
-    // Each subsequent stagger tick spawns one more
-    deploymentSystem.update(staggerDelay);
+    // Each subsequent stagger tick (0.1s) spawns one more
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
     assertThat(gameState.getEntities()).hasSize(2);
 
-    deploymentSystem.update(staggerDelay);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
     assertThat(gameState.getEntities()).hasSize(3);
 
-    deploymentSystem.update(staggerDelay);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
     assertThat(gameState.getEntities()).hasSize(4);
   }
@@ -819,7 +815,7 @@ class DeploymentSystemTest {
     assertThat(areaEffectCount).isEqualTo(1);
 
     // Second unit spawns, but no duplicate deploy effect
-    deploymentSystem.update(0.5f);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
 
     long finalAreaEffectCount = gameState.getEntities().stream()
@@ -865,7 +861,7 @@ class DeploymentSystemTest {
     assertThat(deploymentSystem.getPendingDeployments()).hasSize(1);
 
     // After stagger delay, second unit spawns and pending is removed
-    deploymentSystem.update(0.5f);
+    deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     assertThat(deploymentSystem.getPendingDeployments()).isEmpty();
   }
 }
