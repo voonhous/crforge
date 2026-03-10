@@ -48,6 +48,12 @@ public class ProjectileStats {
   @Builder.Default
   private final float spawnRadius = 0f;
 
+  // Knockback on hit (in tile units)
+  @Builder.Default
+  private final float pushback = 0f;
+  @Builder.Default
+  private final boolean pushbackAll = false;
+
   /**
    * Returns a copy of this ProjectileStats with a different damage value.
    * All other fields are preserved.
@@ -68,6 +74,8 @@ public class ProjectileStats {
         .spawnProjectile(spawnProjectile)
         .spawnCount(spawnCount)
         .spawnRadius(spawnRadius)
+        .pushback(pushback)
+        .pushbackAll(pushbackAll)
         .build();
   }
 }

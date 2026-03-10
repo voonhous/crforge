@@ -212,7 +212,8 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "areaDamageRadius": 2.0
+    "areaDamageRadius": 2.0,
+    "selfAsAoeCenter": true
   },
   "Bomber": {
     "name": "Bomber",
@@ -2044,29 +2045,28 @@
     "manaOnDeathForOpponent": 4000,
     "lifeTime": 21.0
   },
-  "PhoenixEgg": {
-    "name": "PhoenixEgg",
-    "health": 94,
-    "damage": 0,
-    "speed": 1.0,
-    "mass": 3.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.0,
-    "loadTime": 0.5,
+  "SpearGoblinGiant": {
+    "name": "SpearGoblinGiant",
+    "health": 52,
+    "damage": 32,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.0,
+    "range": 5.0,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
     "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignoreBuff": "VoodooCurse",
-    "liveSpawn": {
-      "spawnCharacter": "PhoenixNoRespawn",
-      "spawnNumber": 1,
-      "spawnPauseTime": 4.3,
-      "spawnStartTime": 4.3,
-      "spawnLimit": 1,
-      "destroyAtLimit": true
-    }
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "SpearGoblinGiantProjectile",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SpearGoblin",
+        "spawnNumber": 1
+      }
+    ],
+    "ignoreBuff": "VoodooCurse"
   },
   "RamRider": {
     "name": "RamRider",
@@ -2103,28 +2103,65 @@
     "movementType": "GROUND",
     "shieldHitpoints": 94
   },
-  "SpearGoblinGiant": {
-    "name": "SpearGoblinGiant",
-    "health": 52,
+  "LavaPups": {
+    "name": "LavaPups",
+    "health": 84,
     "damage": 32,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.0,
-    "range": 5.0,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.45,
+    "sightRange": 5.5,
+    "range": 1.6,
     "attackCooldown": 1.7,
-    "loadTime": 1.2,
+    "loadTime": 0.7,
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "SpearGoblinGiantProjectile",
-    "deathSpawn": [
-      {
-        "spawnCharacter": "SpearGoblin",
-        "spawnNumber": 1
-      }
-    ],
-    "ignoreBuff": "VoodooCurse"
+    "projectile": "LavaPupProjectile"
+  },
+  "PhoenixEgg": {
+    "name": "PhoenixEgg",
+    "health": 94,
+    "damage": 0,
+    "speed": 1.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.0,
+    "loadTime": 0.5,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignoreBuff": "VoodooCurse",
+    "liveSpawn": {
+      "spawnCharacter": "PhoenixNoRespawn",
+      "spawnNumber": 1,
+      "spawnPauseTime": 4.3,
+      "spawnStartTime": 4.3,
+      "spawnLimit": 1,
+      "destroyAtLimit": true
+    }
+  },
+  "Golemite": {
+    "name": "Golemite",
+    "health": 406,
+    "damage": 33,
+    "speed": 45.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.0,
+    "range": 0.25,
+    "attackCooldown": 2.5,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "deathDamage": {
+      "damage": 39,
+      "radius": 2.0
+    }
   },
   "ElixirGolem2": {
     "name": "ElixirGolem2",
@@ -2150,42 +2187,6 @@
     ],
     "manaOnDeathForOpponent": 500,
     "ignoreBuff": "VoodooCurse"
-  },
-  "Golemite": {
-    "name": "Golemite",
-    "health": 406,
-    "damage": 33,
-    "speed": 45.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 7.0,
-    "range": 0.25,
-    "attackCooldown": 2.5,
-    "loadTime": 1.5,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "deathDamage": {
-      "damage": 39,
-      "radius": 2.0
-    }
-  },
-  "LavaPups": {
-    "name": "LavaPups",
-    "health": 84,
-    "damage": 32,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.45,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.7,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "LavaPupProjectile"
   },
   "ElixirGolem4": {
     "name": "ElixirGolem4",

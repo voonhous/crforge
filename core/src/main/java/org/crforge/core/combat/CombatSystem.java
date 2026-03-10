@@ -8,6 +8,7 @@ import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Movement;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
@@ -23,6 +24,11 @@ import org.crforge.core.util.Vector2;
  * Handles attack execution, damage dealing, and projectile management.
  */
 public class CombatSystem {
+
+  // Knockback: 15 active frames at 30fps = 0.5s displacement duration
+  private static final float KNOCKBACK_DURATION = 0.5f;
+  // Speed calculation base: distance / 1.0s (reference JS uses 30 frames for speed calc)
+  private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
   private final GameState gameState;
 
@@ -63,6 +69,11 @@ public class CombatSystem {
 
     // Troops cannot attack while deploying
     if (entity instanceof Troop troop && troop.isDeploying()) {
+      return;
+    }
+
+    // Entities cannot attack while being knocked back
+    if (entity.getMovement() != null && entity.getMovement().isKnockedBack()) {
       return;
     }
 
@@ -302,6 +313,11 @@ public class CombatSystem {
       applyEffects(target, filterEffects(projectile.getEffects(), true));
     }
 
+    // Apply knockback to entities hit by the projectile
+    if (projectile.getPushback() > 0) {
+      applyKnockback(projectile);
+    }
+
     // Reflect: if a projectile hits a REFLECT target and the source is within reflect radius, zap them
     if (!projectile.isPositionTargeted()) {
       Entity target = projectile.getTarget();
@@ -461,6 +477,8 @@ public class CombatSystem {
       projectile.setChainedHitRadius(stats.getChainedHitRadius());
       projectile.setChainedHitCount(stats.getChainedHitCount());
       projectile.setSpawnProjectile(stats.getSpawnProjectile());
+      projectile.setPushback(stats.getPushback());
+      projectile.setPushbackAll(stats.isPushbackAll());
     }
 
     return projectile;
@@ -563,6 +581,65 @@ public class CombatSystem {
         // Apply post-damage effects (e.g. slow, stun)
         applyEffects(entity, filterEffects(effects, true));
       }
+    }
+  }
+
+  /**
+   * Applies knockback displacement to entities hit by a projectile.
+   * AOE projectiles push all enemies within radius; non-AOE pushes only the direct target.
+   * Buildings and entities with ignorePushback are immune.
+   */
+  private void applyKnockback(Projectile projectile) {
+    float pushback = projectile.getPushback();
+
+    // Determine impact center
+    float centerX, centerY;
+    if (projectile.isPositionTargeted()) {
+      centerX = projectile.getTargetX();
+      centerY = projectile.getTargetY();
+    } else if (projectile.getTarget() != null) {
+      centerX = projectile.getTarget().getPosition().getX();
+      centerY = projectile.getTarget().getPosition().getY();
+    } else {
+      return;
+    }
+
+    float radius = projectile.getAoeRadius();
+    Team projectileTeam = projectile.getTeam();
+    Team enemyTeam = projectileTeam.opposite();
+
+    for (Entity entity : gameState.getAliveEntities()) {
+      if (entity.getTeam() != enemyTeam || !entity.isTargetable()) {
+        continue;
+      }
+      if (entity.getMovementType() == MovementType.BUILDING) {
+        continue;
+      }
+
+      Movement movement = entity.getMovement();
+      if (movement == null || movement.isIgnorePushback()) {
+        continue;
+      }
+
+      // AOE: check radius. Non-AOE (pushbackAll=false): only the direct target.
+      if (radius > 0 || projectile.isPushbackAll()) {
+        float distSq = entity.getPosition().distanceToSquared(centerX, centerY);
+        float effectiveRadius = radius + entity.getCollisionRadius();
+        if (radius > 0 && distSq > effectiveRadius * effectiveRadius) {
+          continue;
+        }
+      } else if (projectile.getTarget() != entity) {
+        continue;
+      }
+
+      // Direction from impact center to entity
+      float dx = entity.getPosition().getX() - centerX;
+      float dy = entity.getPosition().getY() - centerY;
+      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+      float dirX = dist > 0.001f ? dx / dist : 0f;
+      float dirY = dist > 0.001f ? dy / dist : 1f;
+
+      movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
     }
   }
 

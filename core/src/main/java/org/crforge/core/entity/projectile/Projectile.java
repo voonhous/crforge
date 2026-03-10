@@ -47,6 +47,12 @@ public class Projectile {
   @Setter
   private ProjectileStats spawnProjectile;
 
+  // Knockback on hit
+  @Setter
+  private float pushback;
+  @Setter
+  private boolean pushbackAll;
+
   // Origin position (for spawn projectile direction calculation)
   private final float originX;
   private final float originY;

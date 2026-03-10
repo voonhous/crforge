@@ -21,6 +21,15 @@ public class Movement {
   @Setter
   private boolean canMoveFlag = true;
 
+  @Setter
+  private boolean ignorePushback;
+
+  // Knockback displacement state
+  private float knockbackDirX;
+  private float knockbackDirY;
+  private float knockbackSpeed; // tiles per second
+  private float knockbackTimeRemaining;
+
   // Source-tracked movement disable -- any source present means movement is disabled
   private final EnumSet<ModifierSource> movementDisableSources =
       EnumSet.noneOf(ModifierSource.class);
@@ -106,5 +115,37 @@ public class Movement {
 
   public boolean isGround() {
     return type == MovementType.GROUND;
+  }
+
+  public boolean isKnockedBack() {
+    return knockbackTimeRemaining > 0;
+  }
+
+  /**
+   * Starts a knockback displacement in the given direction.
+   *
+   * @param dirX     normalized X direction
+   * @param dirY     normalized Y direction
+   * @param distance total displacement distance in tiles
+   * @param duration active knockback duration in seconds
+   * @param maxTime  time base for speed calculation (distance / maxTime = speed)
+   */
+  public void startKnockback(float dirX, float dirY, float distance, float duration,
+      float maxTime) {
+    this.knockbackDirX = dirX;
+    this.knockbackDirY = dirY;
+    this.knockbackSpeed = distance / maxTime;
+    this.knockbackTimeRemaining = duration;
+  }
+
+  /**
+   * Ticks the knockback displacement, moving the position each frame.
+   */
+  public void tickKnockback(Position position, float deltaTime) {
+    if (knockbackTimeRemaining > 0) {
+      position.add(knockbackDirX * knockbackSpeed * deltaTime,
+          knockbackDirY * knockbackSpeed * deltaTime);
+      knockbackTimeRemaining -= deltaTime;
+    }
   }
 }

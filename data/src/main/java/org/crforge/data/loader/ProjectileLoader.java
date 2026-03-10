@@ -95,7 +95,9 @@ public class ProjectileLoader {
         .projectileRange(dto.getProjectileRange())
         // Own spawnCount/spawnRadius (e.g. FirecrackerExplosion has these directly)
         .spawnCount(dto.getSpawnCount())
-        .spawnRadius(dto.getSpawnRadius());
+        .spawnRadius(dto.getSpawnRadius())
+        .pushback(dto.getPushback() / 1000f)
+        .pushbackAll(dto.isPushbackAll());
 
     // Resolve spawnProjectile string reference
     if (dto.getSpawnProjectile() != null && projectileMap != null) {

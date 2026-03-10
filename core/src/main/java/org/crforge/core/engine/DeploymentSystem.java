@@ -310,18 +310,21 @@ public class DeploymentSystem {
     AbilityComponent abilityComponent = stats.getAbility() != null
         ? new AbilityComponent(stats.getAbility()) : null;
 
+    Movement movement = new Movement(
+        stats.getSpeed(),
+        stats.getMass(),
+        stats.getCollisionRadius(),
+        stats.getVisualRadius(),
+        stats.getMovementType());
+    movement.setIgnorePushback(stats.isIgnorePushback());
+
     // Explicitly set deployTimer to deployTime to avoid default value issues
     return Troop.builder()
         .name(stats.getName())
         .team(team)
         .position(new Position(spawnX, spawnY))
         .health(new Health(scaledHp, scaledShield))
-        .movement(new Movement(
-            stats.getSpeed(),
-            stats.getMass(),
-            stats.getCollisionRadius(),
-            stats.getVisualRadius(),
-            stats.getMovementType()))
+        .movement(movement)
         .combat(combat)
         .deployTime(stats.getDeployTime())
         .deployTimer(stats.getDeployTime())
@@ -433,6 +436,8 @@ public class DeploymentSystem {
       // Traveling spell
       float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
       Projectile p = new Projectile(team, x, startY, x, y, damage, radius, speed, effects);
+      p.setPushback(proj.getPushback());
+      p.setPushbackAll(proj.isPushbackAll());
       state.spawnProjectile(p);
     } else {
       // Instant spell
@@ -446,6 +451,8 @@ public class DeploymentSystem {
     float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
     Projectile p = new Projectile(team, x, startY, x, y, damage, stats.getRadius(),
         stats.getSpeed(), stats.getHitEffects());
+    p.setPushback(stats.getPushback());
+    p.setPushbackAll(stats.isPushbackAll());
     state.spawnProjectile(p);
   }
 

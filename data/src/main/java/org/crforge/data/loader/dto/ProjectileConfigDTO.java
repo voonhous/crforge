@@ -44,6 +44,10 @@ public class ProjectileConfigDTO {
   // Character spawning on impact (GoblinBarrel, BarbLog)
   private SpawnConfigDTO spawn;
 
+  // Knockback on hit (raw CSV units: divide by 1000 for tiles)
+  private int pushback;
+  private boolean pushbackAll;
+
   // Deflect behaviours (stored for future use)
   private List<String> deflectBehaviours;
 }

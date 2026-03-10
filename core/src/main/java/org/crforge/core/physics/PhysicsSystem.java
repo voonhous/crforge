@@ -86,6 +86,12 @@ public class PhysicsSystem {
   }
 
   private void applyMovement(Troop troop, Collection<Entity> allEntities, float deltaTime) {
+    // Knockback overrides all normal movement
+    if (troop.getMovement().isKnockedBack()) {
+      troop.getMovement().tickKnockback(troop.getPosition(), deltaTime);
+      return;
+    }
+
     if (!troop.getMovement().canMove() || troop.isDeploying()) {
       return;
     }
@@ -214,6 +220,11 @@ public class PhysicsSystem {
       return false;
     }
 
+    // Knocked-back entities skip collision
+    if (isKnockedBack(a) || isKnockedBack(b)) {
+      return false;
+    }
+
     MovementType typeA = a.getMovementType();
     MovementType typeB = b.getMovementType();
 
@@ -228,6 +239,10 @@ public class PhysicsSystem {
     return entity instanceof Troop troop
         && troop.getAbility() != null
         && troop.getAbility().isDashing();
+  }
+
+  private boolean isKnockedBack(Entity entity) {
+    return entity.getMovement() != null && entity.getMovement().isKnockedBack();
   }
 
   /**

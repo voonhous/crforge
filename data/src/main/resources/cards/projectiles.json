@@ -150,6 +150,7 @@
     "aoeToGround": true,
     "radius": 1.8,
     "projectileRange": 7.5,
+    "pushback": 1000,
     "deflectBehaviours": [
       "InvertDirection"
     ]
@@ -206,6 +207,7 @@
     "aoeToAir": false,
     "aoeToGround": true,
     "radius": 2.2,
+    "pushback": 1000,
     "deflectBehaviours": [
       "NoDeflect"
     ]
@@ -332,6 +334,7 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "radius": 2.5,
+    "pushback": 2000,
     "deflectBehaviours": [
       "NoDeflect"
     ],
@@ -355,6 +358,7 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "radius": 2.5,
+    "pushback": 1000,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
     ]
@@ -380,6 +384,7 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "radius": 2.0,
+    "pushback": 1800,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
     ]
@@ -419,6 +424,8 @@
     "aoeToAir": false,
     "aoeToGround": true,
     "projectileRange": 10.1,
+    "pushback": 700,
+    "pushbackAll": true,
     "deflectBehaviours": [
       "InvertDirection",
       "UseSpellsTowerDamageMul"
@@ -476,6 +483,7 @@
     "radius": 2.5,
     "targetBuff": "IceWizardSlowDown",
     "buffDuration": 3.0,
+    "pushback": 1800,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
     ]
@@ -547,6 +555,14 @@
       "deployTime": 0.2
     }
   },
+  "SpearGoblinGiantProjectile": {
+    "name": "SpearGoblinGiantProjectile",
+    "damage": 32,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false
+  },
   "RamRiderBola": {
     "name": "RamRiderBola",
     "damage": 41,
@@ -556,14 +572,6 @@
     "aoeToGround": true,
     "targetBuff": "BolaSnare",
     "buffDuration": 2.0
-  },
-  "SpearGoblinGiantProjectile": {
-    "name": "SpearGoblinGiantProjectile",
-    "damage": 32,
-    "speed": 500,
-    "homing": true,
-    "aoeToAir": false,
-    "aoeToGround": false
   },
   "LavaPupProjectile": {
     "name": "LavaPupProjectile",
