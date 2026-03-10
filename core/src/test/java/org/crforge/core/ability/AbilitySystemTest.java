@@ -792,6 +792,134 @@ class AbilitySystemTest {
     assertThat(cannon.getHealth().getCurrent()).isLessThanOrEqualTo(500 - 152);
   }
 
+  @Test
+  void dash_constantTime_shouldTakeFixedDurationRegardlessOfDistance() {
+    // MegaKnight-style: constantTime=0.8s -> 24 ticks at 30fps
+    // Place troop and target ~4 tiles apart (edge-to-edge)
+    Troop mk = createConstantTimeDashTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(mk);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    mk.update(2.0f);
+    target.update(2.0f);
+
+    mk.getCombat().setCurrentTarget(target);
+
+    // Trigger dash
+    abilitySystem.update(DT);
+    assertThat(mk.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+
+    // At constant speed (15 tiles/sec), a ~4-tile dash would finish in ~8 ticks.
+    // With constantTime=0.8s, it should still be DASHING at tick 20.
+    for (int i = 1; i < 20; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(mk.getAbility().getDashState())
+        .as("Should still be dashing at tick 20 (0.8s flight = ~24 ticks)")
+        .isEqualTo(AbilityComponent.DashState.DASHING);
+
+    // By tick 26 it should have arrived and transitioned to LANDING
+    for (int i = 20; i < 26; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(mk.getAbility().getDashState())
+        .as("Should have landed by tick 26")
+        .isNotEqualTo(AbilityComponent.DashState.DASHING);
+  }
+
+  @Test
+  void dash_constantTime_differentDistancesSameFlightDuration() {
+    // Two MK dashes at different distances should both take ~24 ticks (0.8s)
+
+    // Dash 1: ~4 tiles apart
+    Troop mk1 = createConstantTimeDashTroop(Team.BLUE, 5, 5);
+    Troop target1 = createDummyTarget(Team.RED, 10, 5);
+    gameState.spawnEntity(mk1);
+    gameState.spawnEntity(target1);
+    gameState.processPending();
+    mk1.update(2.0f);
+    target1.update(2.0f);
+    mk1.getCombat().setCurrentTarget(target1);
+    abilitySystem.update(DT);
+    assertThat(mk1.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+
+    // Count ticks until dash 1 finishes
+    int ticks1 = 1;
+    for (int i = 0; i < 60; i++) {
+      abilitySystem.update(DT);
+      ticks1++;
+      if (mk1.getAbility().getDashState() != AbilityComponent.DashState.DASHING) {
+        break;
+      }
+    }
+
+    // Dash 2: ~6 tiles apart (larger distance), separate GameState
+    GameState gs2 = new GameState();
+    AbilitySystem as2 = new AbilitySystem(gs2);
+
+    Troop mk2 = createConstantTimeDashTroop(Team.BLUE, 5, 5);
+    Troop target2 = createDummyTarget(Team.RED, 12, 5);
+    gs2.spawnEntity(mk2);
+    gs2.spawnEntity(target2);
+    gs2.processPending();
+    mk2.update(2.0f);
+    target2.update(2.0f);
+    mk2.getCombat().setCurrentTarget(target2);
+    as2.update(DT);
+    assertThat(mk2.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+
+    int ticks2 = 1;
+    for (int i = 0; i < 60; i++) {
+      as2.update(DT);
+      ticks2++;
+      if (mk2.getAbility().getDashState() != AbilityComponent.DashState.DASHING) {
+        break;
+      }
+    }
+
+    // Both dashes should complete in ~24 ticks (within 1 tick tolerance)
+    assertThat(ticks1).as("Short dash flight ticks").isBetween(23, 25);
+    assertThat(ticks2).as("Long dash flight ticks").isBetween(23, 25);
+    assertThat(Math.abs(ticks1 - ticks2))
+        .as("Both distances should take roughly the same number of ticks")
+        .isLessThanOrEqualTo(1);
+  }
+
+  @Test
+  void dash_banditWithoutConstantTime_usesConstantSpeed() {
+    // Bandit has no constantTime -- closer targets should be reached faster
+    Troop bandit = createDashTroop(Team.BLUE, 5, 5);
+    // Target ~4 tiles away (edge-to-edge after collision radii)
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(bandit);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    bandit.update(2.0f);
+    target.update(2.0f);
+    bandit.getCombat().setCurrentTarget(target);
+
+    abilitySystem.update(DT);
+    assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+
+    // At 15 tiles/sec, a ~4-tile dash should finish well before 0.8s (24 ticks)
+    int ticks = 1;
+    for (int i = 0; i < 60; i++) {
+      abilitySystem.update(DT);
+      ticks++;
+      if (bandit.getAbility().getDashState() != AbilityComponent.DashState.DASHING) {
+        break;
+      }
+    }
+
+    // Should complete much faster than 24 ticks (constantTime=0.8s equivalent)
+    assertThat(ticks)
+        .as("Bandit dash at constant speed should complete faster than MK constantTime flight")
+        .isLessThan(15);
+  }
+
   // -- HOOK tests --
 
   @Test
@@ -1255,6 +1383,37 @@ class AbilitySystemTest {
             .range(1.5f)
             .sightRange(5.5f)
             .attackCooldown(1.0f)
+            .build())
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .ability(new AbilityComponent(dashData))
+        .build();
+  }
+
+  private Troop createConstantTimeDashTroop(Team team, float x, float y) {
+    AbilityData dashData = AbilityData.builder()
+        .type(AbilityType.DASH)
+        .dashDamage(480)
+        .dashMinRange(3.5f)
+        .dashMaxRange(7.0f)
+        .dashRadius(2.5f)
+        .dashCooldown(0.9f)
+        .dashImmuneTime(0.1f)
+        .dashLandingTime(0.3f)
+        .dashConstantTime(0.8f)
+        .build();
+
+    return Troop.builder()
+        .name("MegaKnight")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(4000))
+        .movement(new Movement(1.5f, 8f, 1.0f, 1.0f, MovementType.GROUND))
+        .combat(Combat.builder()
+            .damage(222)
+            .range(1.5f)
+            .sightRange(7.5f)
+            .attackCooldown(1.5f)
             .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)

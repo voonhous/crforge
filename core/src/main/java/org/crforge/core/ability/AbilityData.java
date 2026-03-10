@@ -40,6 +40,8 @@ public class AbilityData {
   private final float dashImmuneTime = 0f;
   @Builder.Default
   private final float dashLandingTime = 0f;
+  @Builder.Default
+  private final float dashConstantTime = 0f;
 
   // HOOK fields
   @Builder.Default

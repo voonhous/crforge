@@ -199,6 +199,13 @@ public class AbilitySystem {
           }
           ability.setDashTargetX(tx);
           ability.setDashTargetY(ty);
+          // Calculate dash speed: fixed-duration flight or constant speed
+          float dashDistance = troop.getPosition().distanceTo(tx, ty);
+          if (data.getDashConstantTime() > 0 && dashDistance > 0) {
+            ability.setDashSpeed(dashDistance / data.getDashConstantTime());
+          } else {
+            ability.setDashSpeed(DASH_SPEED);
+          }
           // Immune during dash
           troop.setInvulnerable(true);
           // Disable normal combat during dash (set once, survives StatusEffectSystem)
@@ -216,7 +223,7 @@ public class AbilitySystem {
         float dy = ability.getDashTargetY() - pos.getY();
         float dist = pos.distanceTo(ability.getDashTargetX(), ability.getDashTargetY());
 
-        float dashSpeed = DASH_SPEED;
+        float dashSpeed = ability.getDashSpeed();
         float moveAmount = dashSpeed * deltaTime;
 
         if (dist <= moveAmount || dist < 0.1f) {

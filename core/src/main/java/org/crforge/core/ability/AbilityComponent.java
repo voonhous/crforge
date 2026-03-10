@@ -32,6 +32,7 @@ public class AbilityComponent {
   private float dashCooldownTimer = 0f;
   private float dashTargetX = 0f;
   private float dashTargetY = 0f;
+  private float dashSpeed = 0f;
 
   // HOOK state
   private HookState hookState = HookState.IDLE;
