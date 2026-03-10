@@ -243,6 +243,35 @@ class UnitLoaderTest {
   }
 
   @Test
+  void loadUnits_shouldParseAreaDamageRadius() {
+    String json = """
+        {
+          "Valkyrie": {
+            "name": "Valkyrie",
+            "health": 880,
+            "damage": 120,
+            "speed": 60.0,
+            "mass": 8.0,
+            "sightRange": 5.5,
+            "range": 1.2,
+            "attackCooldown": 1.5,
+            "loadTime": 0.4,
+            "deployTime": 1.0,
+            "areaDamageRadius": 1.3,
+            "targetType": "GROUND",
+            "movementType": "GROUND"
+          }
+        }
+        """;
+
+    Map<String, TroopStats> map = UnitLoader.loadUnits(toStream(json), Map.of());
+
+    TroopStats valkyrie = map.get("Valkyrie");
+    assertThat(valkyrie).isNotNull();
+    assertThat(valkyrie.getAoeRadius()).isCloseTo(1.3f, within(0.01f));
+  }
+
+  @Test
   void loadUnits_shouldLoadAllFromResource() {
     // Load projectiles first, then units
     Map<String, ProjectileStats> projMap;
@@ -265,6 +294,11 @@ class UnitLoaderTest {
       TroopStats witch = map.get("Witch");
       assertThat(witch).isNotNull();
       assertThat(witch.getLiveSpawn()).isNotNull();
+
+      // Verify splash troops have areaDamageRadius loaded correctly
+      TroopStats valkyrie = map.get("Valkyrie");
+      assertThat(valkyrie).isNotNull();
+      assertThat(valkyrie.getAoeRadius()).isGreaterThan(0f);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

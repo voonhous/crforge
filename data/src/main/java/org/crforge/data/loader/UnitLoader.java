@@ -117,7 +117,7 @@ public class UnitLoader {
         .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
         .attackCooldown(dto.getAttackCooldown())
         .loadTime(dto.getLoadTime() != null ? dto.getLoadTime() : 0f)
-        .aoeRadius(dto.getAoeRadius())
+        .aoeRadius(dto.getAreaDamageRadius())
         .movementType(dto.getMovementType())
         .targetType(dto.getTargetType())
         .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)

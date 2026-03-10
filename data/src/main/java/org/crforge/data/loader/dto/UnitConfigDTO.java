@@ -25,7 +25,7 @@ public class UnitConfigDTO {
   private float sightRange;
   private float attackCooldown;
   private Float loadTime;
-  private float aoeRadius;
+  private float areaDamageRadius;
   private MovementType movementType;
   private TargetType targetType;
   private Float deployTime;
