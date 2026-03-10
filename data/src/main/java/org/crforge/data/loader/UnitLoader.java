@@ -236,6 +236,7 @@ public class UnitLoader {
         builder.dashImmuneTime(dto.getImmuneTimeMs() / 1000f);
         builder.dashLandingTime(dto.getLandingTime());
         builder.dashConstantTime(dto.getConstantTime());
+        builder.dashPushback(dto.getPushback());
       }
       case HOOK -> {
         builder.hookRange(dto.getRange());

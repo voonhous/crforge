@@ -42,6 +42,8 @@ public class AbilityData {
   private final float dashLandingTime = 0f;
   @Builder.Default
   private final float dashConstantTime = 0f;
+  @Builder.Default
+  private final float dashPushback = 0f;
 
   // HOOK fields
   @Builder.Default

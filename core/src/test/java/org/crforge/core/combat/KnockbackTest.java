@@ -3,6 +3,10 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.AbilityData;
+import org.crforge.core.ability.AbilitySystem;
+import org.crforge.core.ability.AbilityType;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -218,6 +222,129 @@ class KnockbackTest {
     // Only direct target should be knocked back
     assertThat(directTarget.getMovement().isKnockedBack()).isTrue();
     assertThat(bystander.getMovement().isKnockedBack()).isFalse();
+  }
+
+  @Test
+  void dashLanding_shouldKnockbackEnemies() {
+    // Create a MegaKnight-like dasher with AOE dash and pushback
+    AbilityData dashAbility = AbilityData.builder()
+        .type(AbilityType.DASH)
+        .dashDamage(200)
+        .dashRadius(2.0f)
+        .dashPushback(1.0f)
+        .dashMinRange(4f)
+        .dashMaxRange(5f)
+        .build();
+
+    Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    Troop dasher = Troop.builder()
+        .name("MegaKnightTest")
+        .team(Team.BLUE)
+        .position(new Position(10f, 16f))
+        .health(new Health(3000))
+        .movement(dasherMovement)
+        .combat(Combat.builder()
+            .damage(200)
+            .range(1.5f)
+            .sightRange(7.5f)
+            .attackCooldown(1.7f)
+            .build())
+        .ability(new AbilityComponent(dashAbility))
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .build();
+
+    // Create two enemies near the dasher's position (within dash AOE radius)
+    Troop enemy1 = createTroop(Team.RED, 10f, 15f, false);
+    Troop enemy2 = createTroop(Team.RED, 11f, 16f, false);
+
+    gameState.spawnEntity(dasher);
+    gameState.spawnEntity(enemy1);
+    gameState.spawnEntity(enemy2);
+    gameState.processPending();
+    dasher.update(2.0f);
+    enemy1.update(2.0f);
+    enemy2.update(2.0f);
+
+    AbilitySystem abilitySystem = new AbilitySystem(gameState);
+
+    // Set up dash state: simulate arriving at target (DASHING -> LANDING transition)
+    AbilityComponent abilityComp = dasher.getAbility();
+    abilityComp.setDashState(AbilityComponent.DashState.DASHING);
+    abilityComp.setDashTargetX(dasher.getPosition().getX());
+    abilityComp.setDashTargetY(dasher.getPosition().getY());
+    abilityComp.setDashSpeed(15f);
+    dasher.getCombat().setCombatDisabled(
+        org.crforge.core.component.ModifierSource.ABILITY_DASH, true);
+
+    // Tick the ability system -- dasher is at target, so it transitions to LANDING
+    // and applyDashDamage fires
+    abilitySystem.update(1.0f / 30f);
+
+    // Both enemies should be in knockback state
+    assertThat(enemy1.getMovement().isKnockedBack())
+        .as("enemy1 should be knocked back by dash landing")
+        .isTrue();
+    assertThat(enemy2.getMovement().isKnockedBack())
+        .as("enemy2 should be knocked back by dash landing")
+        .isTrue();
+
+    // Enemies should have taken dash damage
+    assertThat(enemy1.getHealth().getCurrent()).isLessThan(500);
+    assertThat(enemy2.getHealth().getCurrent()).isLessThan(500);
+  }
+
+  @Test
+  void dashLanding_shouldNotKnockbackPushbackImmuneEntities() {
+    AbilityData dashAbility = AbilityData.builder()
+        .type(AbilityType.DASH)
+        .dashDamage(200)
+        .dashRadius(2.0f)
+        .dashPushback(1.0f)
+        .dashMinRange(4f)
+        .dashMaxRange(5f)
+        .build();
+
+    Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    Troop dasher = Troop.builder()
+        .name("MegaKnightTest")
+        .team(Team.BLUE)
+        .position(new Position(10f, 16f))
+        .health(new Health(3000))
+        .movement(dasherMovement)
+        .combat(Combat.builder()
+            .damage(200)
+            .range(1.5f)
+            .sightRange(7.5f)
+            .attackCooldown(1.7f)
+            .build())
+        .ability(new AbilityComponent(dashAbility))
+        .deployTime(1.0f)
+        .deployTimer(1.0f)
+        .build();
+
+    // Immune enemy (ignorePushback = true)
+    Troop immune = createTroop(Team.RED, 10f, 15f, true);
+
+    gameState.spawnEntity(dasher);
+    gameState.spawnEntity(immune);
+    gameState.processPending();
+    dasher.update(2.0f);
+    immune.update(2.0f);
+
+    AbilitySystem abilitySystem = new AbilitySystem(gameState);
+
+    AbilityComponent abilityComp = dasher.getAbility();
+    abilityComp.setDashState(AbilityComponent.DashState.DASHING);
+    abilityComp.setDashTargetX(dasher.getPosition().getX());
+    abilityComp.setDashTargetY(dasher.getPosition().getY());
+    abilityComp.setDashSpeed(15f);
+
+    abilitySystem.update(1.0f / 30f);
+
+    // Immune entity should take damage but NOT be knocked back
+    assertThat(immune.getHealth().getCurrent()).isLessThan(500);
+    assertThat(immune.getMovement().isKnockedBack()).isFalse();
   }
 
   /**

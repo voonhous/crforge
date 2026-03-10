@@ -3,6 +3,7 @@ package org.crforge.core.ability;
 import java.util.List;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
+import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -291,12 +292,16 @@ public class AbilitySystem {
     }
   }
 
+  private static final float KNOCKBACK_DURATION = 0.5f;
+  private static final float KNOCKBACK_MAX_TIME = 1.0f;
+
   private void applyDashDamage(Troop dasher, AbilityData data) {
     int damage = data.getDashDamage();
     if (damage <= 0) {
       return;
     }
 
+    float pushback = data.getDashPushback();
     float radius = data.getDashRadius();
     if (radius > 0) {
       // AOE dash damage (MegaKnight)
@@ -311,15 +316,43 @@ public class AbilitySystem {
         float effectiveRadius = radius + entity.getCollisionRadius();
         if (distSq <= effectiveRadius * effectiveRadius) {
           entity.getHealth().takeDamage(damage);
+          applyDashKnockback(dasher, entity, pushback);
         }
       }
     } else {
       // Single target dash damage (Bandit)
       Combat combat = dasher.getCombat();
       if (combat != null && combat.hasTarget()) {
-        combat.getCurrentTarget().getHealth().takeDamage(damage);
+        Entity target = combat.getCurrentTarget();
+        target.getHealth().takeDamage(damage);
+        applyDashKnockback(dasher, target, pushback);
       }
     }
+  }
+
+  /**
+   * Applies knockback to an entity hit by a dash landing.
+   * Buildings and entities with ignorePushback are immune.
+   */
+  private void applyDashKnockback(Troop dasher, Entity target, float pushback) {
+    if (pushback <= 0) {
+      return;
+    }
+    Movement movement = target.getMovement();
+    if (movement == null) {
+      return;
+    }
+    if (movement.isBuilding() || movement.isIgnorePushback()) {
+      return;
+    }
+
+    float dx = target.getPosition().getX() - dasher.getPosition().getX();
+    float dy = target.getPosition().getY() - dasher.getPosition().getY();
+    float dist = (float) Math.sqrt(dx * dx + dy * dy);
+    float dirX = dist > 0.001f ? dx / dist : 0f;
+    float dirY = dist > 0.001f ? dy / dist : 1f;
+
+    movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
   }
 
   // -- HOOK --
