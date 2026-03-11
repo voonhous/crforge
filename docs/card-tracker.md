@@ -1,7 +1,5 @@
 # Card Implementation Tracker
 
-**109 Done / 12 Partial / 13 Missing**
-
 Internal names often differ from the in-game display names (e.g. `zapmachine` = Sparky,
 `assassin` = Bandit). See the "Internal ID" column for our internal identifier and "CR Name" for
 the live game name.
@@ -38,50 +36,50 @@ the live game name.
 | 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect                   |
 | 25 | Royal Giant       | royalgiant       | `DONE`    |                                 |
 | 26 | Guards            | skeletonwarriors | `DONE`    | count=3                         |
-| 27 | Princess          | princess         |           |                                 |
+| 27 | Princess          | princess         | `MISSING` |                                 |
 | 28 | Dark Prince       | darkprince       | `DONE`    |                                 |
 | 29 | Lava Hound        | lavahound        | `PARTIAL` | needs pup death spawn logic     |
 | 30 | Ice Spirit        | icespirits       | `DONE`    |                                 |
 | 31 | Fire Spirit       | firespirits      | `DONE`    |                                 |
-| 32 | Miner             | miner            |           |                                 |
+| 32 | Miner             | miner            | `MISSING` |                                 |
 | 33 | Sparky            | zapmachine       | `DONE`    | noPreload                       |
-| 34 | Bowler            | bowler           |           |                                 |
-| 35 | Lumberjack        | ragebarbarian    |           |                                 |
+| 34 | Bowler            | bowler           | `MISSING` |                                 |
+| 35 | Lumberjack        | ragebarbarian    | `MISSING` |                                 |
 | 36 | Battle Ram        | battleram        | `DONE`    | charge + kamikaze + death spawn |
 | 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                 |
-| 38 | Ice Golem         | icegolemite      |           |                                 |
+| 38 | Ice Golem         | icegolemite      | `MISSING` |                                 |
 | 39 | Mega Minion       | megaminion       | `DONE`    |                                 |
 | 40 | Dart Goblin       | blowdartgoblin   | `DONE`    |                                 |
 | 41 | Goblin Gang       | goblingang       | `DONE`    | count=3                         |
 | 42 | Electro Wizard    | electrowizard    | `DONE`    | deploy effect                   |
 | 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                         |
-| 44 | Hunter            | hunter           |           | shotgun burst                   |
-| 45 | Executioner       | axeman           |           |                                 |
+| 44 | Hunter            | hunter           | `MISSING` | shotgun burst                   |
+| 45 | Executioner       | axeman           | `MISSING` |                                 |
 | 46 | Bandit            | assassin         | `DONE`    | dash ability                    |
-| 47 | Royal Recruits    | royalrecruits    |           | count=6                         |
+| 47 | Royal Recruits    | royalrecruits    | `MISSING` | count=6                         |
 | 48 | Night Witch       | darkwitch        | `DONE`    |                                 |
-| 49 | Bats              | bats             |           | count=5                         |
-| 50 | Royal Ghost       | ghost            |           |                                 |
-| 51 | Ram Rider         | ramrider         |           |                                 |
+| 49 | Bats              | bats             | `MISSING` | count=5                         |
+| 50 | Royal Ghost       | ghost            | `MISSING` |                                 |
+| 51 | Ram Rider         | ramrider         | `MISSING` |                                 |
 | 52 | Zappies           | minisparkys      | `DONE`    | count=3                         |
-| 53 | Rascals           | rascals          |           |                                 |
+| 53 | Rascals           | rascals          | `MISSING` |                                 |
 | 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE            |
-| 55 | Skeleton Barrel   | skeletonballoon  |           |                                 |
-| 56 | Cannon Cart       | dartbarrell      |           |                                 |
-| 57 | Wall Breakers     | wallbreakers     |           | count=2                         |
-| 58 | Royal Hogs        | royalhogs        |           | count=4, jump over river        |
-| 59 | Goblin Giant      | goblingiant      |           |                                 |
+| 55 | Skeleton Barrel   | skeletonballoon  | `MISSING` |                                 |
+| 56 | Cannon Cart       | dartbarrell      | `MISSING` |                                 |
+| 57 | Wall Breakers     | wallbreakers     | `MISSING` | count=2                         |
+| 58 | Royal Hogs        | royalhogs        | `MISSING` | count=4, jump over river        |
+| 59 | Goblin Giant      | goblingiant      | `MISSING` |                                 |
 | 60 | Fisherman         | fisherman        | `DONE`    | hook ability                    |
-| 61 | Magic Archer      | elitearcher      |           |                                 |
+| 61 | Magic Archer      | elitearcher      | `MISSING` |                                 |
 | 62 | Electro Dragon    | electrodragon    | `DONE`    | chain lightning                 |
-| 63 | Firecracker       | firecracker      |           |                                 |
-| 64 | Elixir Golem      | elixirgolem      |           |                                 |
-| 65 | Battle Healer     | battlehealer     |           |                                 |
+| 63 | Firecracker       | firecracker      | `MISSING` |                                 |
+| 64 | Elixir Golem      | elixirgolem      | `MISSING` |                                 |
+| 65 | Battle Healer     | battlehealer     | `MISSING` |                                 |
 | 66 | Skeleton Dragons  | skeletondragons  | `DONE`    | count=2                         |
 | 67 | Mother Witch      | witchmother      | `DONE`    |                                 |
 | 68 | Electro Spirit    | electrospirit    | `DONE`    |                                 |
 | 69 | Electro Giant     | electrogiant     | `DONE`    | reflect damage                  |
-| 70 | Phoenix           | phoenix          |           |                                 |
+| 70 | Phoenix           | phoenix          | `MISSING` |                                 |
 | 71 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling           |
 | 72 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling           |
 | 73 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling           |
@@ -102,24 +100,24 @@ the live game name.
 | #  | CR Name          | Internal ID   | Status    | Notes                     |
 |----|------------------|---------------|-----------|---------------------------|
 | 1  | Fireball         | fireball      | `DONE`    | projectile spell          |
-| 2  | Arrows           | arrows        |           | projectile spell          |
-| 3  | Rage             | rage          |           | summons RageBottle        |
+| 2  | Arrows           | arrows        | `MISSING` | projectile spell          |
+| 3  | Rage             | rage          | `MISSING` | summons RageBottle        |
 | 4  | Rocket           | rocket        | `DONE`    | projectile spell          |
-| 5  | Goblin Barrel    | goblinbarrel  |           | projectile spell          |
+| 5  | Goblin Barrel    | goblinbarrel  | `MISSING` | projectile spell          |
 | 6  | Freeze           | freeze        | `DONE`    | area effect               |
 | 7  | Mirror           | mirror        | `PARTIAL` | needs meta replay logic   |
-| 8  | Lightning        | lightning     |           | area effect               |
+| 8  | Lightning        | lightning     | `MISSING` | area effect               |
 | 9  | Zap              | zap           | `DONE`    | area effect               |
 | 10 | Poison           | poison        | `DONE`    | area effect, ticking      |
 | 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic  |
-| 12 | The Log          | log           |           | projectile spell          |
+| 12 | The Log          | log           | `MISSING` | projectile spell          |
 | 13 | Tornado          | tornado       | `PARTIAL` | needs pull mechanic       |
 | 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic      |
-| 15 | Earthquake       | earthquake    |           | area effect, ticking      |
-| 16 | Barbarian Barrel | barblog       |           | projectile spell          |
+| 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking      |
+| 16 | Barbarian Barrel | barblog       | `MISSING` | projectile spell          |
 | 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit        |
-| 18 | Snowball         | snowball      |           | projectile spell          |
-| 19 | Royal Delivery   | royaldelivery |           | area effect + troop spawn |
+| 18 | Snowball         | snowball      | `MISSING` | projectile spell          |
+| 19 | Royal Delivery   | royaldelivery | `MISSING` | area effect + troop spawn |
 | 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics     |
 | 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics     |
 | 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics     |
@@ -127,23 +125,23 @@ the live game name.
 
 ## Buildings
 
-| #  | CR Name            | Internal ID       | Status | Notes           |
-|----|--------------------|-------------------|--------|-----------------|
-| 1  | Cannon             | cannon            | `DONE` |                 |
-| 2  | Goblin Hut         | goblinhut         |        | spawner         |
-| 3  | Mortar             | mortar            |        |                 |
-| 4  | Inferno Tower      | infernotower      |        | variable damage |
-| 5  | Bomb Tower         | bombtower         |        |                 |
-| 6  | Barbarian Hut      | barbarianhut      |        | spawner         |
-| 7  | Tesla              | tesla             |        |                 |
-| 8  | Elixir Collector   | elixircollector   |        |                 |
-| 9  | X-Bow              | xbow              |        |                 |
-| 10 | Tombstone          | tombstone         | `DONE` | spawner         |
-| 11 | Furnace            | firespirithut     |        | spawner         |
-| 12 | Goblin Cage        | goblincage        |        | death spawn     |
-| 13 | Goblin Drill       | goblindrill       |        |                 |
-| 14 | Goblin Party Hut   | goblinpartyhut    |        | newer building  |
-| 15 | Barbarian Launcher | barbarianlauncher |        | newer building  |
+| #  | CR Name            | Internal ID       | Status    | Notes           |
+|----|--------------------|-------------------|-----------|-----------------|
+| 1  | Cannon             | cannon            | `DONE`    |                 |
+| 2  | Goblin Hut         | goblinhut         | `MISSING` | spawner         |
+| 3  | Mortar             | mortar            | `MISSING` |                 |
+| 4  | Inferno Tower      | infernotower      | `MISSING` | variable damage |
+| 5  | Bomb Tower         | bombtower         | `MISSING` |                 |
+| 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner         |
+| 7  | Tesla              | tesla             | `MISSING` |                 |
+| 8  | Elixir Collector   | elixircollector   | `MISSING` |                 |
+| 9  | X-Bow              | xbow              | `MISSING` |                 |
+| 10 | Tombstone          | tombstone         | `DONE`    | spawner         |
+| 11 | Furnace            | firespirithut     | `MISSING` | spawner         |
+| 12 | Goblin Cage        | goblincage        | `MISSING` | death spawn     |
+| 13 | Goblin Drill       | goblindrill       | `MISSING` |                 |
+| 14 | Goblin Party Hut   | goblinpartyhut    | `MISSING` | newer building  |
+| 15 | Barbarian Launcher | barbarianlauncher | `MISSING` | newer building  |
 
 ## Sub-Entity Buildings (not playable cards)
 
@@ -175,13 +173,13 @@ Crown Towers. This system is not yet implemented in crforge.
 
 ## Summary by Status
 
-| Status     | Count | Description                                    |
-|------------|-------|------------------------------------------------|
-| `DONE`     |       | Fully functional in simulation                 |
-| `PARTIAL`  |       | In cards.json but missing complex mechanics    |
-| `MISSING`  |       | Not in cards.json (newer cards + tower troops) |
-| Sub-entity |       | Internal buildings, not playable cards         |
-| **Total**  |       |                                                |
+| Status     | Count   | Description                                    |
+|------------|---------|------------------------------------------------|
+| `DONE`     | 55      | Fully functional in simulation                 |
+| `PARTIAL`  | 15      | In cards.json but missing complex mechanics    |
+| `MISSING`  | 52      | Not in cards.json (newer cards + tower troops) |
+| Sub-entity | 5       | Internal buildings, not playable cards         |
+| **Total**  | **122** | Playable cards (excluding sub-entities)        |
 
 ### Partial cards breakdown
 
