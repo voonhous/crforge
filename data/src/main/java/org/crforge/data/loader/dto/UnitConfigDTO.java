@@ -48,6 +48,9 @@ public class UnitConfigDTO {
   private boolean selfAsAoeCenter;
   private BuffOnDamageConfigDTO buffOnDamage;
 
+  // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
+  private boolean dieOnAttack;
+
   // Death mechanics
   private DeathDamageConfigDTO deathDamage;
 

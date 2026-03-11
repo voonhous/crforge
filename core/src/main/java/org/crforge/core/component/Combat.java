@@ -47,6 +47,10 @@ public class Combat {
   // Buff applied to target when dealing damage (e.g. EWiz stun on hit)
   private final EffectStats buffOnDamage;
 
+  // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
+  @Builder.Default
+  private final boolean dieOnAttack = false;
+
   // Targeting and combat modifiers
   @Builder.Default
   private final boolean targetOnlyBuildings = false;

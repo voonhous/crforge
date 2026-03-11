@@ -100,6 +100,10 @@ public class TroopStats {
   @Builder.Default
   private final boolean ignorePushback = false;
 
+  // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
+  @Builder.Default
+  private final boolean dieOnAttack = false;
+
   public boolean isRanged() {
     return range >= 2.0f;
   }

@@ -261,6 +261,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
+    "dieOnAttack": true,
     "deathSpawn": [
       {
         "spawnCharacter": "Barbarian",

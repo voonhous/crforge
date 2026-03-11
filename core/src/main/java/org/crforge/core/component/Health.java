@@ -75,6 +75,14 @@ public class Health {
     shield = Math.max(0, amount);
   }
 
+  /**
+   * Instantly kills this entity by setting HP to 0.
+   * Bypasses shield absorption (shields are irrelevant for self-destruct).
+   */
+  public void kill() {
+    current = 0;
+  }
+
   public Health copy() {
     Health copy = new Health(max, shieldMax);
     copy.current = this.current;

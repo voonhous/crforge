@@ -522,7 +522,8 @@ public class DeploymentSystem {
         .targetOnlyBuildings(stats.isTargetOnlyBuildings())
         .minimumRange(stats.getMinimumRange())
         .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
-        .selfAsAoeCenter(stats.isSelfAsAoeCenter());
+        .selfAsAoeCenter(stats.isSelfAsAoeCenter())
+        .dieOnAttack(stats.isDieOnAttack());
   }
 
   // Simple container for the queue
