@@ -25,6 +25,7 @@ subprojects {
 
     spotless {
         java {
+            removeUnusedImports()
             endWithNewline()
         }
     }

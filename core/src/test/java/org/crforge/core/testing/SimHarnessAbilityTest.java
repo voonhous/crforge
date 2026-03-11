@@ -8,7 +8,6 @@ import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.HookAbility;
-import org.crforge.core.component.ModifierSource;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;

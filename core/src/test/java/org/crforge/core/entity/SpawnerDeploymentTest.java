@@ -3,7 +3,6 @@ package org.crforge.core.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.card.TroopStats;
-import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;

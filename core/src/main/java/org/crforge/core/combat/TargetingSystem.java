@@ -1,7 +1,6 @@
 package org.crforge.core.combat;
 
 import java.util.Collection;
-import java.util.Comparator;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;

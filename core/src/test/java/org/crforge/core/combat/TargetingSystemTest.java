@@ -6,7 +6,6 @@ import java.util.List;
 import org.crforge.data.card.CardRegistry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
-import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.AbstractEntity;

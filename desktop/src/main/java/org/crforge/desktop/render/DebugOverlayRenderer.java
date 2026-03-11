@@ -29,7 +29,6 @@ import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.card.AreaEffectStats;
-import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.SpawnerComponent;
