@@ -604,4 +604,97 @@ class SpawnerSystemTest {
     freshSystem.update(0.2f);
     assertThat(freshState.getPendingSpawns()).hasSize(1);
   }
+
+  @Test
+  void onDeath_shouldApplyDeathPushback() {
+    // Golem-like unit with death damage + pushback
+    GameState freshState = new GameState();
+    CombatSystem combatSystem = new CombatSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+
+    SpawnerComponent golemSpawner = SpawnerComponent.builder()
+        .deathDamage(259)
+        .deathDamageRadius(2.0f)
+        .deathPushback(1.8f)
+        .build();
+
+    Troop golem = Troop.builder()
+        .name("Golem")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(1))
+        .deployTime(0f)
+        .spawner(golemSpawner)
+        .build();
+
+    // Enemy nearby -- should take damage AND be knocked back
+    Troop nearEnemy = Troop.builder()
+        .name("NearEnemy")
+        .team(Team.RED)
+        .position(new Position(11, 10))
+        .health(new Health(500))
+        .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+        .deployTime(0f)
+        .build();
+
+    freshState.spawnEntity(golem);
+    freshState.spawnEntity(nearEnemy);
+    freshState.processPending();
+    nearEnemy.update(1.0f); // finish deploy
+
+    freshSystem.onDeath(golem);
+
+    // Should take death damage
+    assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(241); // 500 - 259
+    // Should be knocked back
+    assertThat(nearEnemy.getMovement().isKnockedBack()).isTrue();
+  }
+
+  @Test
+  void onDeath_deathPushbackShouldRespectIgnorePushback() {
+    // Same setup but enemy has ignorePushback=true
+    GameState freshState = new GameState();
+    CombatSystem combatSystem = new CombatSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+
+    SpawnerComponent golemSpawner = SpawnerComponent.builder()
+        .deathDamage(259)
+        .deathDamageRadius(2.0f)
+        .deathPushback(1.8f)
+        .build();
+
+    Troop golem = Troop.builder()
+        .name("Golem")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .health(new Health(1))
+        .deployTime(0f)
+        .spawner(golemSpawner)
+        .build();
+
+    // Enemy with ignorePushback -- should take damage but NOT be knocked back
+    Movement immuneMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    immuneMovement.setIgnorePushback(true);
+
+    Troop immune = Troop.builder()
+        .name("ImmuneEnemy")
+        .team(Team.RED)
+        .position(new Position(11, 10))
+        .health(new Health(500))
+        .movement(immuneMovement)
+        .deployTime(0f)
+        .build();
+
+    freshState.spawnEntity(golem);
+    freshState.spawnEntity(immune);
+    freshState.processPending();
+    immune.update(1.0f); // finish deploy
+
+    freshSystem.onDeath(golem);
+
+    // Should take death damage
+    assertThat(immune.getHealth().getCurrent()).isEqualTo(241); // 500 - 259
+    // Should NOT be knocked back (ignorePushback)
+    assertThat(immune.getMovement().isKnockedBack()).isFalse();
+  }
 }

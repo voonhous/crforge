@@ -75,6 +75,8 @@ public class SpawnerComponent {
   @Builder.Default
   private float deathDamageRadius = 0f;
   @Builder.Default
+  private float deathPushback = 0f;
+  @Builder.Default
   private List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
   // Runtime state

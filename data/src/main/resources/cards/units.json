@@ -863,7 +863,8 @@
     "crownTowerDamagePercent": 100,
     "deathDamage": {
       "damage": 209,
-      "radius": 3.0
+      "radius": 3.0,
+      "pushback": 1800
     },
     "ignoreBuff": "Event_Berserk_OnStartBuff"
   },
@@ -1100,7 +1101,8 @@
     "ignorePushback": true,
     "deathDamage": {
       "damage": 88,
-      "radius": 2.0
+      "radius": 2.0,
+      "pushback": 1800
     },
     "deathSpawn": [
       {
@@ -1128,7 +1130,8 @@
     "targetOnlyBuildings": true,
     "deathDamage": {
       "damage": 39,
-      "radius": 2.0
+      "radius": 2.0,
+      "pushback": 900
     }
   },
   "HealSpirit": {
@@ -1943,7 +1946,8 @@
     "movementType": "GROUND",
     "deathDamage": {
       "damage": 57,
-      "radius": 2.0
+      "radius": 2.0,
+      "pushback": 1000
     },
     "deathSpawn": [
       {

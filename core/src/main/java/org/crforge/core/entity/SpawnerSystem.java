@@ -15,6 +15,7 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -101,6 +102,11 @@ public class SpawnerSystem {
             spawner.getDeathDamage(),
             spawner.getDeathDamageRadius(),
             Collections.emptyList());
+
+        // Apply knockback to nearby enemies (e.g. Golem, Giant Skeleton death explosion)
+        if (spawner.getDeathPushback() > 0) {
+          applyDeathKnockback(entity, spawner);
+        }
       }
 
       // 2. Handle resolved death spawns (e.g. Golem -> 2 Golemites)
@@ -145,6 +151,50 @@ public class SpawnerSystem {
         Rarity.COMMON, 1);
   }
 
+  private static final float KNOCKBACK_DURATION = 0.5f;
+  private static final float KNOCKBACK_MAX_TIME = 1.0f;
+
+  /**
+   * Applies knockback to nearby enemies from a death explosion.
+   * Buildings and entities with ignorePushback are immune.
+   */
+  private void applyDeathKnockback(Entity source, SpawnerComponent spawner) {
+    float centerX = source.getPosition().getX();
+    float centerY = source.getPosition().getY();
+    float radius = spawner.getDeathDamageRadius();
+    float pushback = spawner.getDeathPushback();
+    Team enemyTeam = source.getTeam().opposite();
+
+    for (Entity entity : gameState.getAliveEntities()) {
+      if (entity.getTeam() != enemyTeam || !entity.isTargetable()) {
+        continue;
+      }
+      if (entity.getMovementType() == MovementType.BUILDING) {
+        continue;
+      }
+
+      Movement movement = entity.getMovement();
+      if (movement == null || movement.isIgnorePushback()) {
+        continue;
+      }
+
+      float distSq = entity.getPosition().distanceToSquared(centerX, centerY);
+      float effectiveRadius = radius + entity.getCollisionRadius();
+      if (distSq > effectiveRadius * effectiveRadius) {
+        continue;
+      }
+
+      // Direction from death center to target
+      float dx = entity.getPosition().getX() - centerX;
+      float dy = entity.getPosition().getY() - centerY;
+      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+      float dirX = dist > 0.001f ? dx / dist : 0f;
+      float dirY = dist > 0.001f ? dy / dist : 1f;
+
+      movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
+    }
+  }
+
   private void doSpawn(Position origin, Vector2 offset, Team team, TroopStats stats,
       Rarity rarity, int level) {
     float x = origin.getX() + offset.getX();
@@ -185,6 +235,7 @@ public class SpawnerSystem {
       spawner = SpawnerComponent.builder()
           .deathDamage(scaledDeathDamage)
           .deathDamageRadius(stats.getDeathDamageRadius())
+          .deathPushback(stats.getDeathPushback())
           .deathSpawns(stats.getDeathSpawns())
           .rarity(rarity)
           .level(level)

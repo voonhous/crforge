@@ -68,6 +68,8 @@ public class TroopStats {
   @Builder.Default
   private final float deathDamageRadius = 0f;
   @Builder.Default
+  private final float deathPushback = 0f;
+  @Builder.Default
   private final List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
   // Shield

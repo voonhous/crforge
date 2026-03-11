@@ -156,6 +156,7 @@ public class UnitLoader {
     if (deathDmg != null) {
       builder.deathDamage(deathDmg.getDamage());
       builder.deathDamageRadius(deathDmg.getRadius());
+      builder.deathPushback(deathDmg.getPushback() / 1000f);
     }
 
     // Buff on damage (e.g. EWiz stun, Mother Witch curse)

@@ -13,4 +13,5 @@ public class DeathDamageConfigDTO {
 
   private int damage;
   private float radius;
+  private int pushback;
 }
