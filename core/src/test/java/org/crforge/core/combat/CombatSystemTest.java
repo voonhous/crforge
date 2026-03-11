@@ -433,6 +433,48 @@ class CombatSystemTest {
   }
 
   @Test
+  void multipleTargets_singleEnemy_shouldFireAllProjectilesAtSameTarget() {
+    // EWiz with multipleTargets=2 but only 1 enemy in range -- should still fire 2 projectiles
+    Troop attacker = Troop.builder()
+        .name("EWiz")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(46)
+            .range(5.0f)
+            .sightRange(5.5f)
+            .attackCooldown(1.8f)
+            .multipleTargets(2)
+            .build())
+        .build();
+
+    Troop target = Troop.builder()
+        .name("Target")
+        .team(Team.RED)
+        .position(new Position(8, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(attacker);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    attacker.getCombat().setCurrentTarget(target);
+    attacker.getCombat().startAttackSequence();
+    attacker.getCombat().setCurrentWindup(0); // Skip windup
+
+    combatSystem.update(1.0f / 30);
+
+    // Both projectiles should target the same enemy
+    assertThat(gameState.getProjectiles()).hasSize(2);
+    assertThat(gameState.getProjectiles().get(0).getTarget()).isEqualTo(target);
+    assertThat(gameState.getProjectiles().get(1).getTarget()).isEqualTo(target);
+  }
+
+  @Test
   void chainLightning_shouldDamageChainTargets() {
     // Ranged attacker with chain lightning (like ElectroDragon)
     Troop attacker = Troop.builder()

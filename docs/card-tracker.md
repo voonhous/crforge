@@ -53,7 +53,7 @@ the live game name.
 | 39 | Mega Minion       | megaminion       | `DONE`    |                             |
 | 40 | Dart Goblin       | blowdartgoblin   | `DONE`    |                             |
 | 41 | Goblin Gang       | goblingang       | `DONE`    | count=3                     |
-| 42 | Electro Wizard    | electrowizard    |           | deploy effect               |
+| 42 | Electro Wizard    | electrowizard    | `DONE`    | deploy effect               |
 | 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                     |
 | 44 | Hunter            | hunter           |           | shotgun burst               |
 | 45 | Executioner       | axeman           |           |                             |

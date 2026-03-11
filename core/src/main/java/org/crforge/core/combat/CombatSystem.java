@@ -226,9 +226,11 @@ public class CombatSystem {
       return Float.compare(da, db);
     });
 
-    for (int i = 0; i < Math.min(extraTargets, candidates.size()); i++) {
+    int baseDamage = combat.getDamage();
+    int fired = Math.min(extraTargets, candidates.size());
+
+    for (int i = 0; i < fired; i++) {
       Entity extraTarget = candidates.get(i);
-      int baseDamage = combat.getDamage();
 
       if (combat.isRanged()) {
         Projectile projectile = createAttackProjectile(attacker, extraTarget, baseDamage, combat);
@@ -239,6 +241,21 @@ public class CombatSystem {
         applyEffects(extraTarget, combat.getHitEffects());
         dealDamage(extraTarget, effectiveDamage);
         applyBuffOnDamage(combat, extraTarget);
+      }
+    }
+
+    // If we couldn't find enough unique targets, fire remaining shots at the primary target
+    int remaining = extraTargets - fired;
+    for (int i = 0; i < remaining; i++) {
+      if (combat.isRanged()) {
+        Projectile projectile = createAttackProjectile(attacker, primaryTarget, baseDamage, combat);
+        gameState.spawnProjectile(projectile);
+      } else {
+        int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, primaryTarget,
+            combat.getCrownTowerDamagePercent());
+        applyEffects(primaryTarget, combat.getHitEffects());
+        dealDamage(primaryTarget, effectiveDamage);
+        applyBuffOnDamage(combat, primaryTarget);
       }
     }
   }
