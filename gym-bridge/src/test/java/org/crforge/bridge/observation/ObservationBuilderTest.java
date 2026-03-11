@@ -120,4 +120,56 @@ class ObservationBuilderTest {
       assertThat(card.cost()).isGreaterThan(0);
     }
   }
+
+  @Test
+  void handCardsHaveCardIndex() {
+    ObservationDTO obs = ObservationBuilder.build(engine, bluePlayer, redPlayer);
+
+    var hand = obs.bluePlayer().hand();
+    for (var card : hand) {
+      // Card index should be a valid non-negative index into CardRegistry
+      assertThat(card.cardIndex()).isGreaterThanOrEqualTo(0);
+      assertThat(card.cardIndex()).isLessThan(CardRegistry.size());
+    }
+
+    // Next card should also have a valid index
+    assertThat(obs.bluePlayer().nextCard().cardIndex()).isGreaterThanOrEqualTo(0);
+  }
+
+  @Test
+  void towerEntitiesHaveCombatState() {
+    ObservationDTO obs = ObservationBuilder.build(engine, bluePlayer, redPlayer);
+
+    // At start, towers have no target and are not attacking
+    for (EntityDTO entity : obs.entities()) {
+      assertThat(entity.entityType()).isEqualTo("TOWER");
+      assertThat(entity.isAttacking()).isFalse();
+      assertThat(entity.hasTarget()).isFalse();
+      // Attack cooldown readiness should be between 0 and 1
+      assertThat(entity.attackCooldownFraction()).isBetween(0f, 1f);
+    }
+  }
+
+  @Test
+  void towerEntitiesHaveNoStatusEffects() {
+    ObservationDTO obs = ObservationBuilder.build(engine, bluePlayer, redPlayer);
+
+    for (EntityDTO entity : obs.entities()) {
+      assertThat(entity.stunned()).isFalse();
+      assertThat(entity.slowed()).isFalse();
+      assertThat(entity.raged()).isFalse();
+      assertThat(entity.frozen()).isFalse();
+      assertThat(entity.poisoned()).isFalse();
+    }
+  }
+
+  @Test
+  void towerEntitiesHaveZeroLifetimeFraction() {
+    ObservationDTO obs = ObservationBuilder.build(engine, bluePlayer, redPlayer);
+
+    // Towers don't have a lifetime, so lifetimeFraction should be 0
+    for (EntityDTO entity : obs.entities()) {
+      assertThat(entity.lifetimeFraction()).isEqualTo(0f);
+    }
+  }
 }

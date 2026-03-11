@@ -19,16 +19,16 @@ class FlattenedObsWrapper(gym.ObservationWrapper):
 
     The flattened vector concatenates all observation fields in a fixed order:
     frame, game_time, is_overtime, elixir, crowns, hand_costs, hand_types,
-    next_card_cost, next_card_type, towers (flattened), entities (flattened),
-    num_entities.
+    hand_card_ids, next_card_cost, next_card_type, next_card_id,
+    towers (flattened), entities (flattened), num_entities.
     """
 
     # Fixed ordering of observation keys for consistent flattening
     _OBS_KEYS = [
         "frame", "game_time", "is_overtime",
         "elixir", "crowns",
-        "hand_costs", "hand_types",
-        "next_card_cost", "next_card_type",
+        "hand_costs", "hand_types", "hand_card_ids",
+        "next_card_cost", "next_card_type", "next_card_id",
         "towers", "entities", "num_entities",
     ]
 

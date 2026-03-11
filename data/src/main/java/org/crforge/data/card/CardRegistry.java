@@ -24,6 +24,9 @@ public class CardRegistry {
 
   private static final Map<String, Card> CARDS = new LinkedHashMap<>();
 
+  // Card ID -> insertion index (0-based), for observation encoding
+  private static final Map<String, Integer> CARD_INDEX = new LinkedHashMap<>();
+
   static {
     // Loading order matters: buffs -> projectiles -> units -> cards
     loadDefaultBuffs();
@@ -77,6 +80,7 @@ public class CardRegistry {
   }
 
   private static void register(Card card) {
+    CARD_INDEX.put(card.getId(), CARDS.size());
     CARDS.put(card.getId(), card);
   }
 
@@ -94,5 +98,16 @@ public class CardRegistry {
 
   public static boolean exists(String id) {
     return CARDS.containsKey(id);
+  }
+
+  /** Returns the 0-based index of the card in the registry, or -1 if not found. */
+  public static int getIndex(String id) {
+    Integer idx = CARD_INDEX.get(id);
+    return idx != null ? idx : -1;
+  }
+
+  /** Returns the total number of registered cards. */
+  public static int size() {
+    return CARDS.size();
   }
 }

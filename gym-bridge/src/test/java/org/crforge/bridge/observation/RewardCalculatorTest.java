@@ -6,9 +6,13 @@ import static org.assertj.core.data.Offset.offset;
 import java.util.List;
 import org.crforge.bridge.dto.RewardDTO;
 import org.crforge.core.card.Card;
+import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Deck;
 import org.crforge.core.player.LevelConfig;
@@ -133,5 +137,54 @@ class RewardCalculatorTest {
     RewardDTO reward = calculator.computeReward(state);
     // Blue should have time penalty + elixir waste penalty
     assertThat(reward.blue()).isLessThan(TIME_PENALTY);
+  }
+
+  @Test
+  void unitKillYieldsPositiveReward() {
+    // Spawn a red troop and take snapshot
+    Troop redTroop = createTestTroop(Team.RED, 9, 20, 50);
+    state.spawnEntity(redTroop);
+    state.processPending();
+
+    // Reset calculator to capture the new entity count
+    calculator.reset(state, bluePlayer, redPlayer);
+
+    // Kill the red troop
+    redTroop.getHealth().takeDamage(50);
+    state.processDeaths();
+
+    RewardDTO reward = calculator.computeReward(state);
+    // Blue killed a red unit -> positive reward (beyond just time penalty)
+    assertThat(reward.blue()).isGreaterThan(0f);
+    assertThat(reward.red()).isLessThan(TIME_PENALTY);
+  }
+
+  @Test
+  void unitDamageYieldsPositiveReward() {
+    // Spawn a red troop
+    Troop redTroop = createTestTroop(Team.RED, 9, 20, 200);
+    state.spawnEntity(redTroop);
+    state.processPending();
+
+    calculator.reset(state, bluePlayer, redPlayer);
+
+    // Damage but don't kill the red troop
+    redTroop.getHealth().takeDamage(100);
+
+    RewardDTO reward = calculator.computeReward(state);
+    // Blue dealt unit damage to red -> positive reward
+    assertThat(reward.blue()).isGreaterThan(0f);
+  }
+
+  private Troop createTestTroop(Team team, float x, float y, int hp) {
+    return Troop.builder()
+        .name("TestTroop")
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(hp))
+        .deployTime(0f)
+        .combat(
+            Combat.builder().damage(10).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+        .build();
   }
 }

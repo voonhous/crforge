@@ -30,8 +30,18 @@ ARENA_HEIGHT = 32
 # Max entities the observation can hold (padded/truncated)
 MAX_ENTITIES = 64
 
+# Number of features per entity in the observation vector
+# team, entity_type, movement_type, x_norm, y_norm, hp_fraction, shield_fraction,
+# attack_cooldown_readiness, is_attacking, has_target,
+# stunned, slowed, raged, frozen, poisoned,
+# lifetime_fraction
+ENTITY_FEATURES = 16
+
 # Penalty applied when the agent submits an action that fails (not enough elixir, etc.)
 INVALID_ACTION_PENALTY = -0.01
+
+# Max card index value (upper bound for observation space, can grow with new cards)
+MAX_CARD_INDEX = 200
 
 
 def _build_observation_space() -> spaces.Dict:
@@ -52,13 +62,19 @@ def _build_observation_space() -> spaces.Dict:
             # Hand: 4 slots -- cost normalized to [0, 1] (cost/10), type as float
             "hand_costs": spaces.Box(low=0.0, high=1.0, shape=(4,), dtype=np.float32),
             "hand_types": spaces.Box(low=0.0, high=2.0, shape=(4,), dtype=np.float32),
+            # A1: Card identity -- 0-based index into card vocabulary
+            "hand_card_ids": spaces.Box(low=-1.0, high=float(MAX_CARD_INDEX), shape=(4,), dtype=np.float32),
             # Next card
             "next_card_cost": spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32),
             "next_card_type": spaces.Box(low=0.0, high=2.0, shape=(1,), dtype=np.float32),
+            "next_card_id": spaces.Box(low=-1.0, high=float(MAX_CARD_INDEX), shape=(1,), dtype=np.float32),
             # Towers: 6 towers (3 per team) x [hp_fraction, x_norm, y_norm, alive]
             "towers": spaces.Box(low=0.0, high=1.0, shape=(6, 4), dtype=np.float32),
-            # Entities: MAX_ENTITIES x [team, entity_type, movement_type, x_norm, y_norm, hp_fraction, shield_fraction]
-            "entities": spaces.Box(low=0.0, high=5.0, shape=(MAX_ENTITIES, 7), dtype=np.float32),
+            # Entities: MAX_ENTITIES x ENTITY_FEATURES
+            # Features: team, entity_type, movement_type, x_norm, y_norm, hp_fraction, shield_fraction,
+            #   attack_cooldown_readiness, is_attacking, has_target,
+            #   stunned, slowed, raged, frozen, poisoned, lifetime_fraction
+            "entities": spaces.Box(low=0.0, high=5.0, shape=(MAX_ENTITIES, ENTITY_FEATURES), dtype=np.float32),
             "num_entities": spaces.Box(low=0.0, high=float(MAX_ENTITIES), shape=(1,), dtype=np.float32),
         }
     )
@@ -77,6 +93,7 @@ class CRForgeEnv(gym.Env):
     The agent controls the blue player. The red player can be:
     - "random": plays random valid cards at random positions
     - "noop": does nothing
+    - "rule_based": plays cards using heuristic rules (prefers high-value plays)
     - A callable that receives an observation dict and returns an action dict
 
     Args:
@@ -85,7 +102,7 @@ class CRForgeEnv(gym.Env):
         red_deck: list of 8 card IDs for the red player
         level: card/tower level (1-15, default 11)
         ticks_per_step: how many simulation ticks per env.step() call (default 6 = ~5 decisions/sec)
-        opponent: opponent policy ("random", "noop", or callable)
+        opponent: opponent policy ("random", "noop", "rule_based", or callable)
         invalid_action_penalty: reward penalty for submitting an action that fails (default -0.01)
     """
 
@@ -119,6 +136,9 @@ class CRForgeEnv(gym.Env):
         self._rng = np.random.default_rng()
         self._last_obs_raw = None
         self._init_seed = None
+
+        # Lazily initialized rule-based opponent
+        self._rule_based_opponent = None
 
     def _default_deck(self) -> list[str]:
         return [
@@ -220,6 +240,8 @@ class CRForgeEnv(gym.Env):
             return None
         elif self.opponent == "random":
             return self._random_action()
+        elif self.opponent == "rule_based":
+            return self._rule_based_action()
         elif callable(self.opponent):
             return self.opponent(self._last_obs_raw)
         return None
@@ -241,6 +263,14 @@ class CRForgeEnv(gym.Env):
             "x": tile_x + 0.5,
             "y": tile_y + 0.5,
         }
+
+    def _rule_based_action(self) -> dict | None:
+        """Rule-based opponent using heuristic strategy (C1)."""
+        from crforge_gym.opponents import RuleBasedOpponent
+
+        if self._rule_based_opponent is None:
+            self._rule_based_opponent = RuleBasedOpponent(rng=self._rng)
+        return self._rule_based_opponent.act(self._last_obs_raw, player="red")
 
     def _parse_observation(self, obs_raw: dict) -> dict[str, np.ndarray]:
         """Convert raw JSON observation to numpy arrays matching the observation space.
@@ -267,9 +297,11 @@ class CRForgeEnv(gym.Env):
         hand = blue.get("hand", [])
         hand_costs = np.zeros(4, dtype=np.float32)
         hand_types = np.zeros(4, dtype=np.float32)
+        hand_card_ids = np.full(4, -1.0, dtype=np.float32)
         for i, card in enumerate(hand[:4]):
             hand_costs[i] = card.get("cost", 0) / 10.0
             hand_types[i] = float(_CARD_TYPE_MAP.get(card.get("type", "TROOP"), 0))
+            hand_card_ids[i] = float(card.get("cardIndex", -1))
 
         next_card = blue.get("nextCard")
         if next_card:
@@ -277,9 +309,11 @@ class CRForgeEnv(gym.Env):
             next_card_type = np.array(
                 [float(_CARD_TYPE_MAP.get(next_card.get("type", "TROOP"), 0))], dtype=np.float32
             )
+            next_card_id = np.array([float(next_card.get("cardIndex", -1))], dtype=np.float32)
         else:
             next_card_cost = np.zeros(1, dtype=np.float32)
             next_card_type = np.zeros(1, dtype=np.float32)
+            next_card_id = np.full(1, -1.0, dtype=np.float32)
 
         # Towers: [hp_fraction, x_norm, y_norm, alive]
         # Order: blue crown, blue princess L, blue princess R, red crown, red princess L, red princess R
@@ -291,9 +325,9 @@ class CRForgeEnv(gym.Env):
         for i, tower in enumerate(red_towers[:3]):
             towers_array[3 + i] = self._tower_to_array(tower)
 
-        # Entities -- spatial coords normalized to [0, 1]
+        # Entities -- spatial coords normalized to [0, 1], with combat state and effects
         entities_raw = obs_raw.get("entities", [])
-        entities_array = np.zeros((MAX_ENTITIES, 7), dtype=np.float32)
+        entities_array = np.zeros((MAX_ENTITIES, ENTITY_FEATURES), dtype=np.float32)
         num_entities = min(len(entities_raw), MAX_ENTITIES)
         for i in range(num_entities):
             e = entities_raw[i]
@@ -308,6 +342,18 @@ class CRForgeEnv(gym.Env):
                 e.get("y", 0.0) / ARENA_HEIGHT,
                 e.get("hp", 0) / max_hp,
                 e.get("shield", 0) / max_hp,
+                # A2: Combat state
+                e.get("attackCooldownFraction", 0.0),
+                1.0 if e.get("isAttacking", False) else 0.0,
+                1.0 if e.get("hasTarget", False) else 0.0,
+                # A3: Status effects
+                1.0 if e.get("stunned", False) else 0.0,
+                1.0 if e.get("slowed", False) else 0.0,
+                1.0 if e.get("raged", False) else 0.0,
+                1.0 if e.get("frozen", False) else 0.0,
+                1.0 if e.get("poisoned", False) else 0.0,
+                # A4: Building lifetime
+                e.get("lifetimeFraction", 0.0),
             ]
 
         return {
@@ -318,8 +364,10 @@ class CRForgeEnv(gym.Env):
             "crowns": crowns,
             "hand_costs": hand_costs,
             "hand_types": hand_types,
+            "hand_card_ids": hand_card_ids,
             "next_card_cost": next_card_cost,
             "next_card_type": next_card_type,
+            "next_card_id": next_card_id,
             "towers": towers_array,
             "entities": entities_array,
             "num_entities": np.array([num_entities], dtype=np.float32),
