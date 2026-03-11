@@ -62,7 +62,7 @@ the live game name.
 | 50 | Royal Ghost       | ghost            | `MISSING` |                                 |
 | 51 | Ram Rider         | ramrider         | `MISSING` |                                 |
 | 52 | Zappies           | minisparkys      | `DONE`    | count=3                         |
-| 53 | Rascals           | rascals          | `MISSING` |                                 |
+| 53 | Rascals           | rascals          | `DONE`    |                                 |
 | 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE            |
 | 55 | Skeleton Barrel   | skeletonballoon  | `MISSING` |                                 |
 | 56 | Cannon Cart       | dartbarrell      | `MISSING` |                                 |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 56      | Fully functional in simulation                 |
+| `DONE`     | 57      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 52      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 51      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **122** | Playable cards (excluding sub-entities)        |
 
