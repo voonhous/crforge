@@ -259,6 +259,7 @@ public class SpawnerSystem {
         .deployTime(deployTime)
         .deployTimer(deployTime)
         .spawner(spawner)
+        .level(level)
         .build();
 
     gameState.spawnEntity(unit);

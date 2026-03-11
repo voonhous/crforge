@@ -37,6 +37,7 @@ public class Tower extends Building {
         .movement(new Movement(0, 0, 1.4f, 2.0f, MovementType.BUILDING))
         .towerType(TowerType.CROWN)
         .active(false)
+        .level(level)
         .combat(
             Combat.builder()
                 .damage(LevelScaling.scaleKingDamage(level))
@@ -57,6 +58,7 @@ public class Tower extends Building {
         .movement(new Movement(0, 0, 1.0f, 1.5f, MovementType.BUILDING))
         .towerType(TowerType.PRINCESS)
         .active(true)
+        .level(level)
         .combat(
             Combat.builder()
                 .damage(LevelScaling.scalePrincessDamage(level))

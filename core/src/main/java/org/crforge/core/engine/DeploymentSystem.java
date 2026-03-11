@@ -331,6 +331,7 @@ public class DeploymentSystem {
         .deployTimer(stats.getDeployTime())
         .spawner(spawner)
         .ability(abilityComponent)
+        .level(level)
         .build();
   }
 
@@ -402,6 +403,7 @@ public class DeploymentSystem {
         .spawner(spawner)
         .deployTime(unitStats.getDeployTime())
         .deployTimer(unitStats.getDeployTime())
+        .level(level)
         .build();
 
     state.spawnEntity(building);

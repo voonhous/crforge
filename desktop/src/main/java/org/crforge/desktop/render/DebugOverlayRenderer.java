@@ -148,11 +148,16 @@ public class DebugOverlayRenderer {
       }
       float textY = y + radius + barsHeight + 10;
 
-      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), entity.getName());
+      // Prefix level like the game does (e.g. "Lvl 11 Witch"), only when scaled
+      String label = entity.getLevel() > 1
+          ? "Lvl " + entity.getLevel() + " " + entity.getName()
+          : entity.getName();
+
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
       float textWidth = ctx.getGlyphLayout().width;
 
       ctx.getEntityNameFont().draw(
-          ctx.getSpriteBatch(), entity.getName(), x - textWidth / 2, textY);
+          ctx.getSpriteBatch(), label, x - textWidth / 2, textY);
     }
     ctx.getSpriteBatch().end();
   }

@@ -43,6 +43,10 @@ public abstract class AbstractEntity implements Entity {
   @Builder.Default
   protected final List<AppliedEffect> appliedEffects = new ArrayList<>();
 
+  // Level used when this entity was created (1 = base stats, no scaling)
+  @Builder.Default
+  protected final int level = 1;
+
   @Builder.Default
   protected boolean spawned = false;
 

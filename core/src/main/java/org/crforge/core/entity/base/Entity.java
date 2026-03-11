@@ -27,6 +27,8 @@ public interface Entity {
 
   SpawnerComponent getSpawner();
 
+  int getLevel();
+
   /**
    * The radius used for collision detection and range calculations.
    */
