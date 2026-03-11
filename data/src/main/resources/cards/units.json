@@ -1,15 +1,15 @@
 {
-  "Knight": {
-    "name": "Knight",
-    "health": 690,
-    "damage": 79,
-    "speed": 60.0,
-    "mass": 6.0,
+  "AngryBarbarian": {
+    "name": "AngryBarbarian",
+    "health": 524,
+    "damage": 150,
+    "speed": 90.0,
+    "mass": 4.0,
     "collisionRadius": 0.5,
-    "sightRange": 5.5,
+    "sightRange": 6.0,
     "range": 1.2,
-    "attackCooldown": 1.2,
-    "loadTime": 0.7,
+    "attackCooldown": 1.4,
+    "loadTime": 0.9,
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND"
@@ -30,69 +30,78 @@
     "movementType": "GROUND",
     "projectile": "ArcherArrow"
   },
-  "Goblin_Stab": {
-    "name": "Goblin_Stab",
-    "health": 79,
-    "damage": 47,
-    "speed": 120.0,
-    "mass": 2.0,
+  "ArcherQueen": {
+    "name": "ArcherQueen",
+    "health": 391,
+    "damage": 88,
+    "speed": 60.0,
+    "mass": 6.0,
     "collisionRadius": 0.5,
     "sightRange": 5.5,
-    "range": 0.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.5,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "Giant": {
-    "name": "Giant",
-    "health": 1550,
-    "damage": 99,
-    "speed": 45.0,
-    "mass": 18.0,
-    "collisionRadius": 0.75,
-    "sightRange": 7.5,
-    "range": 1.2,
-    "attackCooldown": 1.5,
-    "loadTime": 1.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "ignorePushback": true
-  },
-  "Pekka": {
-    "name": "Pekka",
-    "health": 1469,
-    "damage": 319,
-    "speed": 45.0,
-    "mass": 18.0,
-    "collisionRadius": 0.75,
-    "sightRange": 5.0,
-    "range": 1.2,
-    "attackCooldown": 1.8,
-    "loadTime": 1.3,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignorePushback": true
-  },
-  "Minion": {
-    "name": "Minion",
-    "health": 90,
-    "damage": 42,
-    "speed": 90.0,
-    "mass": 2.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 2.5,
+    "range": 5.0,
     "attackCooldown": 1.2,
-    "loadTime": 0.7,
+    "loadTime": 0.9,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "ArcherQueenArrow"
+  },
+  "Assassin": {
+    "name": "Assassin",
+    "health": 354,
+    "damage": 76,
+    "speed": 90.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 0.75,
+    "attackCooldown": 1.0,
+    "loadTime": 0.6,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "abilities": [
+      {
+        "type": "DASH",
+        "damage": 152,
+        "minRange": 3.5,
+        "maxRange": 6.0,
+        "cooldown": 0.8,
+        "immuneTimeMs": 100
+      }
+    ]
+  },
+  "AxeMan": {
+    "name": "AxeMan",
+    "health": 500,
+    "damage": 66,
+    "speed": 60.0,
+    "mass": 4.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 4.5,
+    "attackCooldown": 0.9,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "AxeManProjectile"
+  },
+  "BabyDragon": {
+    "name": "BabyDragon",
+    "health": 450,
+    "damage": 63,
+    "speed": 90.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 1.5,
+    "loadTime": 1.2,
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "MinionSpit"
+    "projectile": "BabyDragonProjectile"
   },
   "Balloon": {
     "name": "Balloon",
@@ -116,28 +125,25 @@
       }
     ]
   },
-  "Witch": {
-    "name": "Witch",
-    "health": 328,
-    "damage": 53,
-    "speed": 60.0,
-    "mass": 8.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.4,
-    "deployTime": 1.0,
+  "BalloonBomb": {
+    "name": "BalloonBomb",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.45,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 3.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "WitchProjectile",
-    "liveSpawn": {
-      "spawnCharacter": "Skeleton",
-      "spawnNumber": 4,
-      "spawnPauseTime": 7.0,
-      "spawnStartTime": 1.0,
-      "spawnRadius": 2.0
-    }
+    "deathDamage": {
+      "damage": 94,
+      "radius": 3.0
+    },
+    "ignoreBuff": "Event_Berserk_OnStartBuff"
   },
   "Barbarian": {
     "name": "Barbarian",
@@ -154,446 +160,91 @@
     "targetType": "GROUND",
     "movementType": "GROUND"
   },
-  "Golem": {
-    "name": "Golem",
-    "health": 2000,
-    "damage": 122,
-    "speed": 45.0,
-    "mass": 20.0,
-    "collisionRadius": 0.75,
-    "sightRange": 7.0,
-    "range": 0.75,
-    "attackCooldown": 2.5,
-    "loadTime": 1.5,
-    "deployTime": 3.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "ignorePushback": true,
-    "deathDamage": {
-      "damage": 88,
-      "radius": 2.0
-    },
-    "deathSpawn": [
-      {
-        "spawnCharacter": "Golemite",
-        "spawnNumber": 2,
-        "spawnRadius": 1.5
-      }
-    ],
-    "ignoreBuff": "VoodooCurse"
-  },
-  "Skeleton": {
-    "name": "Skeleton",
-    "health": 32,
-    "damage": 32,
-    "speed": 90.0,
-    "mass": 1.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 0.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.6,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "Valkyrie": {
-    "name": "Valkyrie",
-    "health": 745,
-    "damage": 104,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.5,
-    "loadTime": 1.4,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "areaDamageRadius": 2.0,
-    "selfAsAoeCenter": true
-  },
-  "Bomber": {
-    "name": "Bomber",
-    "health": 119,
-    "damage": 88,
-    "speed": 60.0,
-    "mass": 4.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 4.5,
-    "attackCooldown": 1.8,
-    "loadTime": 1.6,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "projectile": "BombSkeletonProjectile"
-  },
-  "Musketeer": {
-    "name": "Musketeer",
-    "health": 282,
-    "damage": 85,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 6.0,
-    "range": 6.0,
-    "attackCooldown": 1.0,
-    "loadTime": 0.3,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "MusketeerProjectile"
-  },
-  "BabyDragon": {
-    "name": "BabyDragon",
-    "health": 450,
-    "damage": 63,
-    "speed": 90.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 3.5,
-    "attackCooldown": 1.5,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "BabyDragonProjectile"
-  },
-  "Prince": {
-    "name": "Prince",
-    "health": 750,
-    "damage": 153,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.4,
-    "loadTime": 0.9,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignorePushback": true,
-    "abilities": [
-      {
-        "type": "CHARGE",
-        "damage": 306,
-        "triggerRange": 0.25,
-        "speedMultiplier": 2.0
-      }
-    ]
-  },
-  "Wizard": {
-    "name": "Wizard",
-    "health": 295,
-    "damage": 110,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.4,
-    "loadTime": 1.0,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "chr_wizardProjectile"
-  },
-  "MiniPekka": {
-    "name": "MiniPekka",
-    "health": 543,
-    "damage": 295,
-    "speed": 90.0,
-    "mass": 4.0,
-    "collisionRadius": 0.45,
-    "sightRange": 5.5,
-    "range": 0.8,
-    "attackCooldown": 1.6,
-    "loadTime": 1.1,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "SpearGoblin": {
-    "name": "SpearGoblin",
-    "health": 52,
-    "damage": 32,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.0,
-    "attackCooldown": 1.7,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "SpearGoblinProjectile"
-  },
-  "GiantSkeleton": {
-    "name": "GiantSkeleton",
-    "health": 1413,
-    "damage": 108,
-    "speed": 60.0,
-    "mass": 18.0,
+  "BarbarianHut": {
+    "name": "BarbarianHut",
+    "health": 455,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
     "collisionRadius": 1.0,
-    "sightRange": 5.0,
-    "range": 0.8,
-    "attackCooldown": 1.3,
-    "loadTime": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 10.0,
+    "loadTime": 0.0,
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "ignorePushback": true,
+    "visualRadius": 1.5,
     "deathSpawn": [
       {
-        "spawnCharacter": "GiantSkeletonBomb",
+        "spawnCharacter": "Barbarian",
         "spawnNumber": 1
       }
-    ]
+    ],
+    "lifeTime": 30.0,
+    "liveSpawn": {
+      "spawnCharacter": "Barbarian",
+      "spawnNumber": 3,
+      "spawnPauseTime": 14.0,
+      "spawnInterval": 0.5
+    }
   },
-  "HogRider": {
-    "name": "HogRider",
-    "health": 663,
-    "damage": 124,
-    "speed": 120.0,
-    "mass": 4.0,
+  "BarbarianLauncher": {
+    "name": "BarbarianLauncher",
+    "health": 575,
+    "damage": 1,
+    "speed": 0.0,
+    "mass": 0.0,
     "collisionRadius": 0.6,
-    "sightRange": 9.5,
-    "range": 0.8,
-    "attackCooldown": 1.6,
-    "loadTime": 1.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true
-  },
-  "IceWizard": {
-    "name": "IceWizard",
-    "health": 269,
-    "damage": 35,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.7,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "ice_wizardProjectile"
-  },
-  "RoyalGiant": {
-    "name": "RoyalGiant",
-    "health": 1236,
-    "damage": 120,
-    "speed": 45.0,
-    "mass": 18.0,
-    "collisionRadius": 0.75,
-    "sightRange": 7.5,
-    "range": 5.0,
-    "attackCooldown": 1.7,
-    "loadTime": 0.8,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "projectile": "RoyalGiantProjectile",
-    "targetOnlyBuildings": true,
-    "ignorePushback": true
-  },
-  "SkeletonWarrior": {
-    "name": "SkeletonWarrior",
-    "health": 32,
-    "damage": 46,
-    "speed": 90.0,
-    "mass": 1.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.0,
-    "loadTime": 0.5,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "shieldHitpoints": 100
-  },
-  "Princess": {
-    "name": "Princess",
-    "health": 102,
-    "damage": 66,
-    "speed": 60.0,
-    "mass": 3.0,
-    "collisionRadius": 0.5,
-    "sightRange": 9.5,
-    "range": 9.0,
+    "sightRange": 11.5,
+    "range": 11.5,
     "attackCooldown": 3.0,
-    "loadTime": 2.7,
-    "deployTime": 1.2,
-    "targetType": "ALL",
+    "loadTime": 2.0,
+    "deployTime": 3.5,
+    "targetType": "GROUND",
     "movementType": "GROUND",
-    "projectile": "PrincessProjectile",
-    "areaDamageRadius": 2.5,
-    "multipleProjectiles": 5
+    "projectile": "BarbarianLauncherProjectile",
+    "minimumRange": 3.5,
+    "lifeTime": 30.0
   },
-  "DarkPrince": {
-    "name": "DarkPrince",
-    "health": 469,
-    "damage": 104,
+  "Bat": {
+    "name": "Bat",
+    "health": 32,
+    "damage": 32,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.3,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR"
+  },
+  "BattleHealer": {
+    "name": "BattleHealer",
+    "health": 671,
+    "damage": 58,
     "speed": 60.0,
     "mass": 6.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.3,
-    "loadTime": 0.9,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignorePushback": true,
-    "areaDamageRadius": 1.1,
-    "shieldHitpoints": 94,
-    "abilities": [
-      {
-        "type": "CHARGE",
-        "damage": 208,
-        "triggerRange": 0.3,
-        "speedMultiplier": 2.0
-      }
-    ]
-  },
-  "LavaHound": {
-    "name": "LavaHound",
-    "health": 1399,
-    "damage": 21,
-    "speed": 45.0,
-    "mass": 5.0,
-    "collisionRadius": 0.75,
-    "sightRange": 5.5,
-    "range": 3.5,
-    "attackCooldown": 1.3,
-    "loadTime": 0.3,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "LavaHoundProjectile",
-    "targetOnlyBuildings": true,
-    "ignorePushback": true,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "LavaPups",
-        "spawnNumber": 6,
-        "spawnRadius": 2.5
-      }
-    ],
-    "ignoreBuff": "VoodooCurse"
-  },
-  "IceSpirits": {
-    "name": "IceSpirits",
-    "health": 90,
-    "damage": 43,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.4,
-    "sightRange": 5.5,
-    "range": 2.5,
-    "attackCooldown": 0.3,
-    "loadTime": 0.1,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "IceSpiritsProjectile"
-  },
-  "FireSpirits": {
-    "name": "FireSpirits",
-    "health": 90,
-    "damage": 81,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.4,
-    "sightRange": 5.5,
-    "range": 2.5,
-    "attackCooldown": 0.3,
-    "loadTime": 0.1,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "FireSpiritsProjectile"
-  },
-  "Miner": {
-    "name": "Miner",
-    "health": 473,
-    "damage": 76,
-    "speed": 90.0,
-    "mass": 6.0,
     "collisionRadius": 0.5,
     "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.3,
-    "loadTime": 0.8,
+    "range": 1.6,
+    "attackCooldown": 1.5,
+    "loadTime": 1.2,
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "crownTowerDamagePercent": -75
-  },
-  "ZapMachine": {
-    "name": "ZapMachine",
-    "health": 567,
-    "damage": 520,
-    "speed": 45.0,
-    "mass": 18.0,
-    "collisionRadius": 1.0,
-    "sightRange": 5.0,
-    "range": 5.0,
-    "attackCooldown": 4.0,
-    "loadTime": 3.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "projectile": "ZapMachineProjectile",
-    "ignorePushback": true
-  },
-  "Bowler": {
-    "name": "Bowler",
-    "health": 813,
-    "damage": 113,
-    "speed": 45.0,
-    "mass": 18.0,
-    "collisionRadius": 0.75,
-    "sightRange": 5.5,
-    "range": 4.0,
-    "attackCooldown": 2.5,
-    "loadTime": 2.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "projectile": "BowlerProjectile",
-    "ignorePushback": true
-  },
-  "RageBarbarian": {
-    "name": "RageBarbarian",
-    "health": 501,
-    "damage": 100,
-    "speed": 120.0,
-    "mass": 4.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 0.7,
-    "attackCooldown": 0.8,
-    "loadTime": 0.4,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "deathSpawn": [
-      {
-        "spawnCharacter": "RageBarbarianBottle",
-        "spawnNumber": 1
-      }
-    ]
+    "spawnAreaEffect": {
+      "name": "BattleHealerSpawnHeal",
+      "radius": 2.5,
+      "lifeDuration": 1.0,
+      "hitsGround": true,
+      "hitsAir": true,
+      "buff": "BattleHealerSpawnBuff",
+      "buffDuration": 1.0
+    }
   },
   "BattleRam": {
     "name": "BattleRam",
@@ -627,85 +278,6 @@
       }
     ]
   },
-  "InfernoDragon": {
-    "name": "InfernoDragon",
-    "health": 506,
-    "damage": 14,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 3.5,
-    "attackCooldown": 0.4,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "abilities": [
-      {
-        "type": "VARIABLE_DAMAGE",
-        "stages": [
-          {
-            "damage": 14,
-            "timeMs": 0
-          },
-          {
-            "damage": 47,
-            "timeMs": 2000
-          },
-          {
-            "damage": 165,
-            "timeMs": 2000
-          }
-        ]
-      }
-    ]
-  },
-  "IceGolemite": {
-    "name": "IceGolemite",
-    "health": 514,
-    "damage": 33,
-    "speed": 45.0,
-    "mass": 6.0,
-    "collisionRadius": 0.7,
-    "sightRange": 7.0,
-    "range": 0.75,
-    "attackCooldown": 2.5,
-    "loadTime": 1.5,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "deathDamage": {
-      "damage": 33,
-      "radius": 2.0
-    },
-    "deathAreaEffect": {
-      "name": "FreezeIceGolemite",
-      "radius": 2.0,
-      "lifeDuration": 1.0,
-      "hitsGround": true,
-      "hitsAir": true,
-      "buff": "IceWizardSlowDown",
-      "buffDuration": 2.0
-    }
-  },
-  "MegaMinion": {
-    "name": "MegaMinion",
-    "health": 327,
-    "damage": 122,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.5,
-    "loadTime": 1.1,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "MegaMinionSpit"
-  },
   "BlowdartGoblin": {
     "name": "BlowdartGoblin",
     "health": 102,
@@ -722,115 +294,151 @@
     "movementType": "GROUND",
     "projectile": "BlowdartGoblinProjectile"
   },
-  "ElectroWizard": {
-    "name": "ElectroWizard",
-    "health": 279,
-    "damage": 46,
-    "speed": 90.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.0,
+  "BombTower": {
+    "name": "BombTower",
+    "health": 530,
+    "damage": 87,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 6.0,
     "attackCooldown": 1.8,
-    "loadTime": 1.2,
+    "loadTime": 1.3,
     "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "projectile": "BombTowerProjectile",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "BombTowerBomb",
+        "spawnNumber": 1
+      }
+    ],
+    "lifeTime": 30.0
+  },
+  "BombTowerBomb": {
+    "name": "BombTowerBomb",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.45,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 3.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "multipleTargets": 2,
-    "buffOnDamage": {
-      "buff": "ZapFreeze",
-      "duration": 0.5
-    }
+    "deathDamage": {
+      "damage": 87,
+      "radius": 3.0
+    },
+    "ignoreBuff": "Event_Berserk_OnStartBuff"
   },
-  "AngryBarbarian": {
-    "name": "AngryBarbarian",
-    "health": 524,
-    "damage": 150,
-    "speed": 90.0,
+  "Bomber": {
+    "name": "Bomber",
+    "health": 119,
+    "damage": 88,
+    "speed": 60.0,
     "mass": 4.0,
     "collisionRadius": 0.5,
-    "sightRange": 6.0,
+    "sightRange": 5.5,
+    "range": 4.5,
+    "attackCooldown": 1.8,
+    "loadTime": 1.6,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "BombSkeletonProjectile"
+  },
+  "Bowler": {
+    "name": "Bowler",
+    "health": 813,
+    "damage": 113,
+    "speed": 45.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.5,
+    "range": 4.0,
+    "attackCooldown": 2.5,
+    "loadTime": 2.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "BowlerProjectile",
+    "ignorePushback": true
+  },
+  "Cannon": {
+    "name": "Cannon",
+    "health": 322,
+    "damage": 83,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.0,
+    "loadTime": 0.1,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "projectile": "TowerCannonball",
+    "lifeTime": 30.0
+  },
+  "DarkElixir_Bottle": {
+    "name": "DarkElixir_Bottle",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.5,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "deathAreaEffect": {
+      "name": "DarkElixirAOE",
+      "radius": 3.5,
+      "lifeDuration": 12.0,
+      "hitsGround": true,
+      "hitsAir": true,
+      "hitSpeed": 1.0,
+      "buff": "DarkElixirBuff",
+      "buffDuration": 1.0
+    }
+  },
+  "DarkPrince": {
+    "name": "DarkPrince",
+    "health": 469,
+    "damage": 104,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
     "range": 1.2,
-    "attackCooldown": 1.4,
+    "attackCooldown": 1.3,
     "loadTime": 0.9,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "Hunter": {
-    "name": "Hunter",
-    "health": 346,
-    "damage": 33,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 4.0,
-    "attackCooldown": 2.2,
-    "loadTime": 1.5,
-    "deployTime": 1.0,
-    "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "HunterProjectile",
-    "areaDamageRadius": 0.07,
-    "multipleProjectiles": 10
-  },
-  "AxeMan": {
-    "name": "AxeMan",
-    "health": 500,
-    "damage": 66,
-    "speed": 60.0,
-    "mass": 4.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 4.5,
-    "attackCooldown": 0.9,
-    "loadTime": 0.4,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "AxeManProjectile"
-  },
-  "Assassin": {
-    "name": "Assassin",
-    "health": 354,
-    "damage": 76,
-    "speed": 90.0,
-    "mass": 3.0,
-    "collisionRadius": 0.6,
-    "sightRange": 6.0,
-    "range": 0.75,
-    "attackCooldown": 1.0,
-    "loadTime": 0.6,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
+    "ignorePushback": true,
+    "areaDamageRadius": 1.1,
+    "shieldHitpoints": 94,
     "abilities": [
       {
-        "type": "DASH",
-        "damage": 152,
-        "minRange": 3.5,
-        "maxRange": 6.0,
-        "cooldown": 0.8,
-        "immuneTimeMs": 100
+        "type": "CHARGE",
+        "damage": 208,
+        "triggerRange": 0.3,
+        "speedMultiplier": 2.0
       }
     ]
-  },
-  "Recruit": {
-    "name": "Recruit",
-    "health": 214,
-    "damage": 52,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.3,
-    "loadTime": 0.8,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "shieldHitpoints": 94
   },
   "DarkWitch": {
     "name": "DarkWitch",
@@ -862,173 +470,6 @@
       "spawnAngleShift": 90
     }
   },
-  "Bat": {
-    "name": "Bat",
-    "health": 32,
-    "damage": 32,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.3,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR"
-  },
-  "Ghost": {
-    "name": "Ghost",
-    "health": 473,
-    "damage": 102,
-    "speed": 90.0,
-    "mass": 3.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.8,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "areaDamageRadius": 1.0,
-    "stealth": {
-      "hideTimeMs": 400,
-      "notAttackingTimeMs": 1800,
-      "buff": "Invisibility"
-    }
-  },
-  "Ram": {
-    "name": "Ram",
-    "health": 663,
-    "damage": 98,
-    "speed": 60.0,
-    "mass": 4.0,
-    "collisionRadius": 0.6,
-    "sightRange": 7.5,
-    "range": 0.8,
-    "attackCooldown": 1.7,
-    "loadTime": 1.1,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "liveSpawn": {
-      "spawnCharacter": "RamRider",
-      "spawnNumber": 1
-    },
-    "abilities": [
-      {
-        "type": "CHARGE",
-        "damage": 196,
-        "triggerRange": 0.25,
-        "speedMultiplier": 2.0
-      }
-    ]
-  },
-  "MiniZapMachine": {
-    "name": "MiniZapMachine",
-    "health": 207,
-    "damage": 46,
-    "speed": 60.0,
-    "mass": 4.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.0,
-    "range": 4.5,
-    "attackCooldown": 2.1,
-    "loadTime": 1.3,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "buffOnDamage": {
-      "buff": "ZapFreeze",
-      "duration": 0.5
-    }
-  },
-  "RascalBoy": {
-    "name": "RascalBoy",
-    "health": 758,
-    "damage": 85,
-    "speed": 60.0,
-    "mass": 10.0,
-    "collisionRadius": 0.75,
-    "sightRange": 5.5,
-    "range": 0.8,
-    "attackCooldown": 1.5,
-    "loadTime": 1.1,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "RascalGirl": {
-    "name": "RascalGirl",
-    "health": 102,
-    "damage": 49,
-    "speed": 60.0,
-    "mass": 2.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.0,
-    "attackCooldown": 1.0,
-    "loadTime": 0.5,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "RascalGirlProjectile"
-  },
-  "MegaKnight": {
-    "name": "MegaKnight",
-    "health": 1560,
-    "damage": 105,
-    "speed": 60.0,
-    "mass": 18.0,
-    "collisionRadius": 0.75,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.7,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignorePushback": true,
-    "areaDamageRadius": 1.3,
-    "abilities": [
-      {
-        "type": "DASH",
-        "damage": 210,
-        "minRange": 3.5,
-        "maxRange": 5.0,
-        "radius": 2.2,
-        "cooldown": 0.9,
-        "pushback": 1.0,
-        "landingTime": 0.3,
-        "constantTime": 0.8
-      }
-    ]
-  },
-  "SkeletonBalloon": {
-    "name": "SkeletonBalloon",
-    "health": 208,
-    "damage": 0,
-    "speed": 90.0,
-    "mass": 7.0,
-    "collisionRadius": 0.5,
-    "sightRange": 7.7,
-    "range": 0.35,
-    "attackCooldown": 0.3,
-    "loadTime": 0.2,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "AIR",
-    "targetOnlyBuildings": true,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "SkeletonContainer",
-        "spawnNumber": 1
-      }
-    ],
-    "ignoreBuff": "VoodooCurse"
-  },
   "DartBarrell": {
     "name": "DartBarrell",
     "health": 240,
@@ -1045,104 +486,21 @@
     "movementType": "AIR",
     "projectile": "DartBarrellProjectile"
   },
-  "Wallbreaker": {
-    "name": "Wallbreaker",
-    "health": 129,
-    "damage": 137,
-    "speed": 120.0,
-    "mass": 4.0,
-    "collisionRadius": 0.4,
-    "sightRange": 7.0,
-    "range": 0.5,
-    "attackCooldown": 1.2,
-    "loadTime": 1.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "projectile": "WallbreakerProjectile",
-    "targetOnlyBuildings": true,
-    "areaDamageRadius": 1.5
-  },
-  "RoyalHog": {
-    "name": "RoyalHog",
-    "health": 327,
-    "damage": 29,
-    "speed": 120.0,
-    "mass": 2.0,
-    "collisionRadius": 0.6,
-    "sightRange": 9.5,
-    "range": 0.75,
-    "attackCooldown": 1.2,
+  "DeliveryRecruit": {
+    "name": "DeliveryRecruit",
+    "health": 214,
+    "damage": 52,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.3,
     "loadTime": 0.8,
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "targetOnlyBuildings": true
-  },
-  "GoblinGiant": {
-    "name": "GoblinGiant",
-    "health": 1180,
-    "damage": 69,
-    "speed": 60.0,
-    "mass": 18.0,
-    "collisionRadius": 0.75,
-    "sightRange": 7.5,
-    "range": 1.2,
-    "attackCooldown": 1.5,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "ignorePushback": true,
-    "liveSpawn": {
-      "spawnCharacter": "SpearGoblinGiant",
-      "spawnNumber": 2,
-      "spawnRadius": 0.9
-    }
-  },
-  "Fisherman": {
-    "name": "Fisherman",
-    "health": 340,
-    "damage": 76,
-    "speed": 60.0,
-    "mass": 10.0,
-    "collisionRadius": 0.5,
-    "sightRange": 7.5,
-    "range": 1.2,
-    "attackCooldown": 1.3,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "abilities": [
-      {
-        "type": "HOOK",
-        "range": 7.0,
-        "minimumRange": 3.5,
-        "loadTime": 1.3,
-        "dragBackSpeed": 850,
-        "dragSelfSpeed": 450,
-        "targetBuff": "IceWizardSlowDown",
-        "buffDuration": 1.5
-      }
-    ]
-  },
-  "EliteArcher": {
-    "name": "EliteArcher",
-    "health": 207,
-    "damage": 56,
-    "speed": 60.0,
-    "mass": 3.0,
-    "collisionRadius": 0.6,
-    "sightRange": 7.5,
-    "range": 7.0,
-    "attackCooldown": 1.1,
-    "loadTime": 0.4,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "EliteArcherArrow"
+    "shieldHitpoints": 94
   },
   "ElectroDragon": {
     "name": "ElectroDragon",
@@ -1159,253 +517,6 @@
     "targetType": "ALL",
     "movementType": "AIR",
     "projectile": "ElectroDragonProjectile"
-  },
-  "Firecracker": {
-    "name": "Firecracker",
-    "health": 119,
-    "damage": 0,
-    "speed": 90.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 8.0,
-    "range": 6.0,
-    "attackCooldown": 3.0,
-    "loadTime": 2.35,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "FirecrackerProjectile"
-  },
-  "MightyMiner": {
-    "name": "MightyMiner",
-    "health": 879,
-    "damage": 16,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 0.4,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignorePushback": true,
-    "abilities": [
-      {
-        "type": "VARIABLE_DAMAGE",
-        "stages": [
-          {
-            "damage": 16,
-            "timeMs": 0
-          },
-          {
-            "damage": 80,
-            "timeMs": 2000
-          },
-          {
-            "damage": 160,
-            "timeMs": 2000
-          }
-        ]
-      }
-    ]
-  },
-  "ElixirGolem1": {
-    "name": "ElixirGolem1",
-    "health": 613,
-    "damage": 99,
-    "speed": 45.0,
-    "mass": 15.0,
-    "collisionRadius": 0.6,
-    "sightRange": 7.5,
-    "range": 0.8,
-    "attackCooldown": 1.1,
-    "loadTime": 0.3,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "targetOnlyBuildings": true,
-    "ignorePushback": true,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "ElixirGolem2",
-        "spawnNumber": 2,
-        "spawnRadius": 0.75
-      }
-    ],
-    "manaOnDeathForOpponent": 1000,
-    "ignoreBuff": "VoodooCurse"
-  },
-  "BattleHealer": {
-    "name": "BattleHealer",
-    "health": 671,
-    "damage": 58,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.5,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "spawnAreaEffect": {
-      "name": "BattleHealerSpawnHeal",
-      "radius": 2.5,
-      "lifeDuration": 1.0,
-      "hitsGround": true,
-      "hitsAir": true,
-      "buff": "BattleHealerSpawnBuff",
-      "buffDuration": 1.0
-    }
-  },
-  "SkeletonKing": {
-    "name": "SkeletonKing",
-    "health": 898,
-    "damage": 80,
-    "speed": 60.0,
-    "mass": 10.0,
-    "collisionRadius": 1.0,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 1.6,
-    "loadTime": 1.3,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignorePushback": true,
-    "areaDamageRadius": 1.3
-  },
-  "ArcherQueen": {
-    "name": "ArcherQueen",
-    "health": 391,
-    "damage": 88,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.0,
-    "attackCooldown": 1.2,
-    "loadTime": 0.9,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "ArcherQueenArrow"
-  },
-  "GoldenKnight": {
-    "name": "GoldenKnight",
-    "health": 703,
-    "damage": 63,
-    "speed": 60.0,
-    "mass": 10.0,
-    "collisionRadius": 0.8,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 0.9,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "abilities": [
-      {
-        "type": "DASH",
-        "damage": 131,
-        "pushback": 2.0,
-        "immuneTimeMs": 100,
-        "landingTime": 0.2,
-        "dashCount": 10,
-        "dashSecondaryRange": 5.5,
-        "dashToTargetRadius": true
-      }
-    ]
-  },
-  "Monk": {
-    "name": "Monk",
-    "health": 865,
-    "damage": 55,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.2,
-    "attackCooldown": 0.8,
-    "loadTime": 0.6,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "abilities": [
-      {
-        "type": "VARIABLE_DAMAGE",
-        "stages": [
-          {
-            "damage": 55,
-            "timeMs": 0
-          },
-          {
-            "damage": 55,
-            "timeMs": 0
-          },
-          {
-            "damage": 165,
-            "timeMs": 0
-          }
-        ]
-      }
-    ]
-  },
-  "SkeletonDragon": {
-    "name": "SkeletonDragon",
-    "health": 219,
-    "damage": 63,
-    "speed": 90.0,
-    "mass": 4.0,
-    "collisionRadius": 0.9,
-    "sightRange": 5.5,
-    "range": 3.5,
-    "attackCooldown": 1.9,
-    "loadTime": 1.5,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "SkeletonDragonProjectile"
-  },
-  "WitchMother": {
-    "name": "WitchMother",
-    "health": 207,
-    "damage": 52,
-    "speed": 60.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.0,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "VoodooProjectile",
-    "buffOnDamage": {
-      "buff": "VoodooCurse",
-      "duration": 5.0
-    }
-  },
-  "ElectroSpirit": {
-    "name": "ElectroSpirit",
-    "health": 90,
-    "damage": 39,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.4,
-    "sightRange": 5.5,
-    "range": 2.5,
-    "attackCooldown": 0.3,
-    "loadTime": 0.1,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "ElectroSpiritProjectile"
   },
   "ElectroGiant": {
     "name": "ElectroGiant",
@@ -1434,42 +545,10 @@
       }
     ]
   },
-  "Phoenix": {
-    "name": "Phoenix",
-    "health": 411,
-    "damage": 85,
-    "speed": 60.0,
-    "mass": 2.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.0,
-    "loadTime": 0.4,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "deathSpawnProjectile": "PhoenixFireball"
-  },
-  "LittlePrince": {
-    "name": "LittlePrince",
-    "health": 273,
-    "damage": 41,
-    "speed": 60.0,
-    "mass": 4.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.2,
-    "loadTime": 0.8,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "LittlePrinceProjectile"
-  },
-  "HealSpirit": {
-    "name": "HealSpirit",
+  "ElectroSpirit": {
+    "name": "ElectroSpirit",
     "health": 90,
-    "damage": 43,
+    "damage": 39,
     "speed": 120.0,
     "mass": 1.0,
     "collisionRadius": 0.4,
@@ -1480,553 +559,43 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "HealSpiritProjectile"
+    "projectile": "ElectroSpiritProjectile"
   },
-  "Cannon": {
-    "name": "Cannon",
-    "health": 322,
-    "damage": 83,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.6,
+  "ElectroWizard": {
+    "name": "ElectroWizard",
+    "health": 279,
+    "damage": 46,
+    "speed": 90.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
     "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.0,
-    "loadTime": 0.1,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "projectile": "TowerCannonball",
-    "lifeTime": 30.0
-  },
-  "GoblinHut": {
-    "name": "GoblinHut",
-    "health": 331,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 10.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "SpearGoblin",
-        "spawnNumber": 1
-      }
-    ],
-    "lifeTime": 29.0,
-    "liveSpawn": {
-      "spawnCharacter": "SpearGoblin",
-      "spawnNumber": 3,
-      "spawnPauseTime": 10.0,
-      "spawnInterval": 0.5
-    }
-  },
-  "Mortar": {
-    "name": "Mortar",
-    "health": 535,
-    "damage": 104,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.6,
-    "sightRange": 11.5,
-    "range": 11.5,
-    "attackCooldown": 5.0,
-    "loadTime": 4.0,
-    "deployTime": 3.5,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "projectile": "MortarProjectile",
-    "minimumRange": 3.5,
-    "lifeTime": 30.0
-  },
-  "InfernoTower": {
-    "name": "InfernoTower",
-    "health": 683,
-    "damage": 17,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.6,
-    "sightRange": 6.0,
-    "range": 6.0,
-    "attackCooldown": 0.4,
+    "range": 5.0,
+    "attackCooldown": 1.8,
     "loadTime": 1.2,
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "lifeTime": 30.0,
-    "abilities": [
-      {
-        "type": "VARIABLE_DAMAGE",
-        "stages": [
-          {
-            "damage": 17,
-            "timeMs": 0
-          },
-          {
-            "damage": 62,
-            "timeMs": 2000
-          },
-          {
-            "damage": 331,
-            "timeMs": 2000
-          }
-        ]
-      }
-    ]
-  },
-  "BombTower": {
-    "name": "BombTower",
-    "health": 530,
-    "damage": 87,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.6,
-    "sightRange": 6.0,
-    "range": 6.0,
-    "attackCooldown": 1.8,
-    "loadTime": 1.3,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "projectile": "BombTowerProjectile",
-    "deathSpawn": [
-      {
-        "spawnCharacter": "BombTowerBomb",
-        "spawnNumber": 1
-      }
-    ],
-    "lifeTime": 30.0
-  },
-  "BarbarianHut": {
-    "name": "BarbarianHut",
-    "health": 455,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 10.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "Barbarian",
-        "spawnNumber": 1
-      }
-    ],
-    "lifeTime": 30.0,
-    "liveSpawn": {
-      "spawnCharacter": "Barbarian",
-      "spawnNumber": 3,
-      "spawnPauseTime": 14.0,
-      "spawnInterval": 0.5
+    "multipleTargets": 2,
+    "buffOnDamage": {
+      "buff": "ZapFreeze",
+      "duration": 0.5
     }
   },
-  "Tesla": {
-    "name": "Tesla",
-    "health": 450,
-    "damage": 86,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "visualRadius": 1.0,
-    "stealth": {
-      "hideTimeMs": 800
-    },
-    "lifeTime": 30.0
-  },
-  "ElixirCollector": {
-    "name": "ElixirCollector",
-    "health": 418,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "lifeTime": 93.0
-  },
-  "Xbow": {
-    "name": "Xbow",
-    "health": 625,
-    "damage": 17,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.6,
-    "sightRange": 11.5,
-    "range": 11.5,
-    "attackCooldown": 0.3,
-    "loadTime": 0.0,
-    "deployTime": 3.5,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "projectile": "xbow_projectile",
-    "lifeTime": 30.0
-  },
-  "Tombstone": {
-    "name": "Tombstone",
+  "EliteArcher": {
+    "name": "EliteArcher",
     "health": 207,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 10.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "Skeleton",
-        "spawnNumber": 4
-      }
-    ],
-    "lifeTime": 30.0,
-    "liveSpawn": {
-      "spawnCharacter": "Skeleton",
-      "spawnNumber": 2,
-      "spawnPauseTime": 3.5,
-      "spawnInterval": 0.5
-    }
-  },
-  "GiantSkeletonBomb": {
-    "name": "GiantSkeletonBomb",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.45,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 3.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "crownTowerDamagePercent": 100,
-    "deathDamage": {
-      "damage": 209,
-      "radius": 3.0
-    },
-    "ignoreBuff": "Event_Berserk_OnStartBuff"
-  },
-  "BalloonBomb": {
-    "name": "BalloonBomb",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.45,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 3.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "deathDamage": {
-      "damage": 94,
-      "radius": 3.0
-    },
-    "ignoreBuff": "Event_Berserk_OnStartBuff"
-  },
-  "FirespiritHut": {
-    "name": "FirespiritHut",
-    "health": 331,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 6.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "FireSpirits",
-        "spawnNumber": 1
-      }
-    ],
-    "lifeTime": 28.0,
-    "liveSpawn": {
-      "spawnCharacter": "FireSpirits",
-      "spawnNumber": 1,
-      "spawnPauseTime": 5.0
-    }
-  },
-  "RageBarbarianBottle": {
-    "name": "RageBarbarianBottle",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 0.5,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignoreBuff": "Event_Berserk_OnStartBuff",
-    "deathAreaEffect": {
-      "name": "BarbarianRage",
-      "radius": 3.0,
-      "lifeDuration": 5.5,
-      "hitsGround": true,
-      "hitsAir": true,
-      "hitSpeed": 0.3,
-      "buff": "Rage",
-      "buffDuration": 1.0
-    }
-  },
-  "SkeletonContainer": {
-    "name": "SkeletonContainer",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 0.6,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "deathDamage": {
-      "damage": 57,
-      "radius": 2.0
-    },
-    "deathSpawn": [
-      {
-        "spawnCharacter": "Skeleton",
-        "spawnNumber": 7,
-        "spawnRadius": 1.48
-      }
-    ],
-    "ignoreBuff": "Event_Berserk_OnStartBuff"
-  },
-  "GoblinCage": {
-    "name": "GoblinCage",
-    "health": 305,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 20.0,
-    "range": 5.0,
-    "attackCooldown": 10.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "GoblinBrawler",
-        "spawnNumber": 1
-      }
-    ],
-    "lifeTime": 20.0
-  },
-  "GoblinBrawler": {
-    "name": "GoblinBrawler",
-    "health": 422,
-    "damage": 132,
-    "speed": 90.0,
-    "mass": 2.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 0.8,
-    "attackCooldown": 1.1,
-    "loadTime": 0.9,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "GoblinPartyHut": {
-    "name": "GoblinPartyHut",
-    "health": 461,
-    "damage": 59,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 11.0,
-    "range": 11.0,
-    "attackCooldown": 0.7,
-    "loadTime": 0.35,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "BlowdartGoblinProjectileParty",
-    "deathSpawn": [
-      {
-        "spawnCharacter": "SpearGoblin",
-        "spawnNumber": 3,
-        "spawnRadius": 1.5
-      },
-      {
-        "spawnCharacter": "GoblinBrawler",
-        "spawnNumber": 1,
-        "spawnRadius": 1.5
-      }
-    ],
-    "deathSpawnProjectile": "GoblinProjectile",
-    "lifeTime": 30.0
-  },
-  "BarbarianLauncher": {
-    "name": "BarbarianLauncher",
-    "health": 575,
-    "damage": 1,
-    "speed": 0.0,
-    "mass": 0.0,
+    "damage": 56,
+    "speed": 60.0,
+    "mass": 3.0,
     "collisionRadius": 0.6,
-    "sightRange": 11.5,
-    "range": 11.5,
-    "attackCooldown": 3.0,
-    "loadTime": 2.0,
-    "deployTime": 3.5,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "projectile": "BarbarianLauncherProjectile",
-    "minimumRange": 3.5,
-    "lifeTime": 30.0
-  },
-  "BombTowerBomb": {
-    "name": "BombTowerBomb",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.45,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 3.0,
+    "sightRange": 7.5,
+    "range": 7.0,
+    "attackCooldown": 1.1,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "deathDamage": {
-      "damage": 87,
-      "radius": 3.0
-    },
-    "ignoreBuff": "Event_Berserk_OnStartBuff"
-  },
-  "GoblinDrill": {
-    "name": "GoblinDrill",
-    "health": 513,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 0.5,
-    "sightRange": 2.0,
-    "range": 2.0,
-    "attackCooldown": 1.1,
-    "loadTime": 0.2,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "Goblin",
-        "spawnNumber": 2,
-        "spawnRadius": 0.5
-      }
-    ],
-    "lifeTime": 10.0,
-    "liveSpawn": {
-      "spawnCharacter": "Goblin",
-      "spawnNumber": 1,
-      "spawnPauseTime": 3.0,
-      "spawnStartTime": 1.0
-    },
-    "spawnAreaEffect": {
-      "name": "GoblinDrillDamage",
-      "radius": 2.0,
-      "lifeDuration": 0.001,
-      "hitsGround": true,
-      "hitsAir": false,
-      "damage": 33,
-      "crownTowerDamagePercent": -70
-    }
-  },
-  "Goblin": {
-    "name": "Goblin",
-    "health": 79,
-    "damage": 47,
-    "speed": 120.0,
-    "mass": 2.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 0.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND"
-  },
-  "DarkElixir_Bottle": {
-    "name": "DarkElixir_Bottle",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 0.5,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "deathAreaEffect": {
-      "name": "DarkElixirAOE",
-      "radius": 3.5,
-      "lifeDuration": 12.0,
-      "hitsGround": true,
-      "hitsAir": true,
-      "hitSpeed": 1.0,
-      "buff": "DarkElixirBuff",
-      "buffDuration": 1.0
-    }
+    "projectile": "EliteArcherArrow"
   },
   "ElixirBarrel": {
     "name": "ElixirBarrel",
@@ -2045,123 +614,48 @@
     "manaOnDeathForOpponent": 4000,
     "lifeTime": 21.0
   },
-  "SpearGoblinGiant": {
-    "name": "SpearGoblinGiant",
-    "health": 52,
-    "damage": 32,
-    "speed": 120.0,
-    "mass": 1.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.0,
-    "range": 5.0,
-    "attackCooldown": 1.7,
-    "loadTime": 1.2,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "SpearGoblinGiantProjectile",
-    "deathSpawn": [
-      {
-        "spawnCharacter": "SpearGoblin",
-        "spawnNumber": 1
-      }
-    ],
-    "ignoreBuff": "VoodooCurse"
-  },
-  "RamRider": {
-    "name": "RamRider",
-    "health": 232,
-    "damage": 41,
-    "speed": 60.0,
-    "mass": 3.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "GROUND",
-    "projectile": "RamRiderBola",
-    "targetOnlyTroops": true,
-    "ignoreTargetsWithBuff": "BolaSnare",
-    "ignoreBuff": "VoodooCurse"
-  },
-  "DeliveryRecruit": {
-    "name": "DeliveryRecruit",
-    "health": 214,
-    "damage": 52,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.3,
-    "loadTime": 0.8,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "shieldHitpoints": 94
-  },
-  "LavaPups": {
-    "name": "LavaPups",
-    "health": 84,
-    "damage": 32,
-    "speed": 60.0,
-    "mass": 5.0,
-    "collisionRadius": 0.45,
-    "sightRange": 5.5,
-    "range": 1.6,
-    "attackCooldown": 1.7,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "ALL",
-    "movementType": "AIR",
-    "projectile": "LavaPupProjectile"
-  },
-  "PhoenixEgg": {
-    "name": "PhoenixEgg",
-    "health": 94,
+  "ElixirCollector": {
+    "name": "ElixirCollector",
+    "health": 418,
     "damage": 0,
-    "speed": 1.0,
-    "mass": 3.0,
-    "collisionRadius": 0.6,
-    "sightRange": 5.5,
-    "range": 5.5,
-    "attackCooldown": 1.0,
-    "loadTime": 0.5,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "ignoreBuff": "VoodooCurse",
-    "liveSpawn": {
-      "spawnCharacter": "PhoenixNoRespawn",
-      "spawnNumber": 1,
-      "spawnPauseTime": 4.3,
-      "spawnStartTime": 4.3,
-      "spawnLimit": 1,
-      "destroyAtLimit": true
-    }
+    "visualRadius": 1.5,
+    "lifeTime": 93.0
   },
-  "Golemite": {
-    "name": "Golemite",
-    "health": 406,
-    "damage": 33,
+  "ElixirGolem1": {
+    "name": "ElixirGolem1",
+    "health": 613,
+    "damage": 99,
     "speed": 45.0,
-    "mass": 6.0,
-    "collisionRadius": 0.5,
-    "sightRange": 7.0,
-    "range": 0.25,
-    "attackCooldown": 2.5,
-    "loadTime": 1.5,
+    "mass": 15.0,
+    "collisionRadius": 0.6,
+    "sightRange": 7.5,
+    "range": 0.8,
+    "attackCooldown": 1.1,
+    "loadTime": 0.3,
     "deployTime": 1.0,
-    "targetType": "ALL",
+    "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
-    "deathDamage": {
-      "damage": 39,
-      "radius": 2.0
-    }
+    "ignorePushback": true,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "ElixirGolem2",
+        "spawnNumber": 2,
+        "spawnRadius": 0.75
+      }
+    ],
+    "manaOnDeathForOpponent": 1000,
+    "ignoreBuff": "VoodooCurse"
   },
   "ElixirGolem2": {
     "name": "ElixirGolem2",
@@ -2205,6 +699,964 @@
     "targetOnlyBuildings": true,
     "manaOnDeathForOpponent": 500
   },
+  "FireSpirits": {
+    "name": "FireSpirits",
+    "health": 90,
+    "damage": 81,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.4,
+    "sightRange": 5.5,
+    "range": 2.5,
+    "attackCooldown": 0.3,
+    "loadTime": 0.1,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "FireSpiritsProjectile"
+  },
+  "Firecracker": {
+    "name": "Firecracker",
+    "health": 119,
+    "damage": 0,
+    "speed": 90.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 8.0,
+    "range": 6.0,
+    "attackCooldown": 3.0,
+    "loadTime": 2.35,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "FirecrackerProjectile"
+  },
+  "FirespiritHut": {
+    "name": "FirespiritHut",
+    "health": 331,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 6.0,
+    "loadTime": 0.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "FireSpirits",
+        "spawnNumber": 1
+      }
+    ],
+    "lifeTime": 28.0,
+    "liveSpawn": {
+      "spawnCharacter": "FireSpirits",
+      "spawnNumber": 1,
+      "spawnPauseTime": 5.0
+    }
+  },
+  "Fisherman": {
+    "name": "Fisherman",
+    "health": 340,
+    "damage": 76,
+    "speed": 60.0,
+    "mass": 10.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.5,
+    "range": 1.2,
+    "attackCooldown": 1.3,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "abilities": [
+      {
+        "type": "HOOK",
+        "range": 7.0,
+        "minimumRange": 3.5,
+        "loadTime": 1.3,
+        "dragBackSpeed": 850,
+        "dragSelfSpeed": 450,
+        "targetBuff": "IceWizardSlowDown",
+        "buffDuration": 1.5
+      }
+    ]
+  },
+  "Ghost": {
+    "name": "Ghost",
+    "health": 473,
+    "damage": 102,
+    "speed": 90.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.8,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "areaDamageRadius": 1.0,
+    "stealth": {
+      "hideTimeMs": 400,
+      "notAttackingTimeMs": 1800,
+      "buff": "Invisibility"
+    }
+  },
+  "Giant": {
+    "name": "Giant",
+    "health": 1550,
+    "damage": 99,
+    "speed": 45.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.5,
+    "range": 1.2,
+    "attackCooldown": 1.5,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true
+  },
+  "GiantSkeleton": {
+    "name": "GiantSkeleton",
+    "health": 1413,
+    "damage": 108,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 1.0,
+    "sightRange": 5.0,
+    "range": 0.8,
+    "attackCooldown": 1.3,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "GiantSkeletonBomb",
+        "spawnNumber": 1
+      }
+    ]
+  },
+  "GiantSkeletonBomb": {
+    "name": "GiantSkeletonBomb",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.45,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 3.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "crownTowerDamagePercent": 100,
+    "deathDamage": {
+      "damage": 209,
+      "radius": 3.0
+    },
+    "ignoreBuff": "Event_Berserk_OnStartBuff"
+  },
+  "Goblin": {
+    "name": "Goblin",
+    "health": 79,
+    "damage": 47,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "GoblinBrawler": {
+    "name": "GoblinBrawler",
+    "health": 422,
+    "damage": 132,
+    "speed": 90.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.8,
+    "attackCooldown": 1.1,
+    "loadTime": 0.9,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "GoblinCage": {
+    "name": "GoblinCage",
+    "health": 305,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 20.0,
+    "range": 5.0,
+    "attackCooldown": 10.0,
+    "loadTime": 0.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "GoblinBrawler",
+        "spawnNumber": 1
+      }
+    ],
+    "lifeTime": 20.0
+  },
+  "GoblinDrill": {
+    "name": "GoblinDrill",
+    "health": 513,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.5,
+    "sightRange": 2.0,
+    "range": 2.0,
+    "attackCooldown": 1.1,
+    "loadTime": 0.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "Goblin",
+        "spawnNumber": 2,
+        "spawnRadius": 0.5
+      }
+    ],
+    "lifeTime": 10.0,
+    "liveSpawn": {
+      "spawnCharacter": "Goblin",
+      "spawnNumber": 1,
+      "spawnPauseTime": 3.0,
+      "spawnStartTime": 1.0
+    },
+    "spawnAreaEffect": {
+      "name": "GoblinDrillDamage",
+      "radius": 2.0,
+      "lifeDuration": 0.001,
+      "hitsGround": true,
+      "hitsAir": false,
+      "damage": 33,
+      "crownTowerDamagePercent": -70
+    }
+  },
+  "GoblinGiant": {
+    "name": "GoblinGiant",
+    "health": 1180,
+    "damage": 69,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.5,
+    "range": 1.2,
+    "attackCooldown": 1.5,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true,
+    "liveSpawn": {
+      "spawnCharacter": "SpearGoblinGiant",
+      "spawnNumber": 2,
+      "spawnRadius": 0.9
+    }
+  },
+  "GoblinHut": {
+    "name": "GoblinHut",
+    "health": 331,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 10.0,
+    "loadTime": 0.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SpearGoblin",
+        "spawnNumber": 1
+      }
+    ],
+    "lifeTime": 29.0,
+    "liveSpawn": {
+      "spawnCharacter": "SpearGoblin",
+      "spawnNumber": 3,
+      "spawnPauseTime": 10.0,
+      "spawnInterval": 0.5
+    }
+  },
+  "GoblinPartyHut": {
+    "name": "GoblinPartyHut",
+    "health": 461,
+    "damage": 59,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 11.0,
+    "range": 11.0,
+    "attackCooldown": 0.7,
+    "loadTime": 0.35,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "BlowdartGoblinProjectileParty",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SpearGoblin",
+        "spawnNumber": 3,
+        "spawnRadius": 1.5
+      },
+      {
+        "spawnCharacter": "GoblinBrawler",
+        "spawnNumber": 1,
+        "spawnRadius": 1.5
+      }
+    ],
+    "deathSpawnProjectile": "GoblinProjectile",
+    "lifeTime": 30.0
+  },
+  "Goblin_Stab": {
+    "name": "Goblin_Stab",
+    "health": 79,
+    "damage": 47,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.5,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "GoldenKnight": {
+    "name": "GoldenKnight",
+    "health": 703,
+    "damage": 63,
+    "speed": 60.0,
+    "mass": 10.0,
+    "collisionRadius": 0.8,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 0.9,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "abilities": [
+      {
+        "type": "DASH",
+        "damage": 131,
+        "pushback": 2.0,
+        "immuneTimeMs": 100,
+        "landingTime": 0.2,
+        "dashCount": 10,
+        "dashSecondaryRange": 5.5,
+        "dashToTargetRadius": true
+      }
+    ]
+  },
+  "Golem": {
+    "name": "Golem",
+    "health": 2000,
+    "damage": 122,
+    "speed": 45.0,
+    "mass": 20.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.0,
+    "range": 0.75,
+    "attackCooldown": 2.5,
+    "loadTime": 1.5,
+    "deployTime": 3.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true,
+    "deathDamage": {
+      "damage": 88,
+      "radius": 2.0
+    },
+    "deathSpawn": [
+      {
+        "spawnCharacter": "Golemite",
+        "spawnNumber": 2,
+        "spawnRadius": 1.5
+      }
+    ],
+    "ignoreBuff": "VoodooCurse"
+  },
+  "Golemite": {
+    "name": "Golemite",
+    "health": 406,
+    "damage": 33,
+    "speed": 45.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.0,
+    "range": 0.25,
+    "attackCooldown": 2.5,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "deathDamage": {
+      "damage": 39,
+      "radius": 2.0
+    }
+  },
+  "HealSpirit": {
+    "name": "HealSpirit",
+    "health": 90,
+    "damage": 43,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.4,
+    "sightRange": 5.5,
+    "range": 2.5,
+    "attackCooldown": 0.3,
+    "loadTime": 0.1,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "HealSpiritProjectile"
+  },
+  "HogRider": {
+    "name": "HogRider",
+    "health": 663,
+    "damage": 124,
+    "speed": 120.0,
+    "mass": 4.0,
+    "collisionRadius": 0.6,
+    "sightRange": 9.5,
+    "range": 0.8,
+    "attackCooldown": 1.6,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true
+  },
+  "Hunter": {
+    "name": "Hunter",
+    "health": 346,
+    "damage": 33,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 4.0,
+    "attackCooldown": 2.2,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "HunterProjectile",
+    "areaDamageRadius": 0.07,
+    "multipleProjectiles": 10
+  },
+  "IceGolemite": {
+    "name": "IceGolemite",
+    "health": 514,
+    "damage": 33,
+    "speed": 45.0,
+    "mass": 6.0,
+    "collisionRadius": 0.7,
+    "sightRange": 7.0,
+    "range": 0.75,
+    "attackCooldown": 2.5,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "deathDamage": {
+      "damage": 33,
+      "radius": 2.0
+    },
+    "deathAreaEffect": {
+      "name": "FreezeIceGolemite",
+      "radius": 2.0,
+      "lifeDuration": 1.0,
+      "hitsGround": true,
+      "hitsAir": true,
+      "buff": "IceWizardSlowDown",
+      "buffDuration": 2.0
+    }
+  },
+  "IceSpirits": {
+    "name": "IceSpirits",
+    "health": 90,
+    "damage": 43,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.4,
+    "sightRange": 5.5,
+    "range": 2.5,
+    "attackCooldown": 0.3,
+    "loadTime": 0.1,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "IceSpiritsProjectile"
+  },
+  "IceWizard": {
+    "name": "IceWizard",
+    "health": 269,
+    "damage": 35,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "ice_wizardProjectile"
+  },
+  "InfernoDragon": {
+    "name": "InfernoDragon",
+    "health": 506,
+    "damage": 14,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 0.4,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "abilities": [
+      {
+        "type": "VARIABLE_DAMAGE",
+        "stages": [
+          {
+            "damage": 14,
+            "timeMs": 0
+          },
+          {
+            "damage": 47,
+            "timeMs": 2000
+          },
+          {
+            "damage": 165,
+            "timeMs": 2000
+          }
+        ]
+      }
+    ]
+  },
+  "InfernoTower": {
+    "name": "InfernoTower",
+    "health": 683,
+    "damage": 17,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 6.0,
+    "attackCooldown": 0.4,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "lifeTime": 30.0,
+    "abilities": [
+      {
+        "type": "VARIABLE_DAMAGE",
+        "stages": [
+          {
+            "damage": 17,
+            "timeMs": 0
+          },
+          {
+            "damage": 62,
+            "timeMs": 2000
+          },
+          {
+            "damage": 331,
+            "timeMs": 2000
+          }
+        ]
+      }
+    ]
+  },
+  "Knight": {
+    "name": "Knight",
+    "health": 690,
+    "damage": 79,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.2,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "LavaHound": {
+    "name": "LavaHound",
+    "health": 1399,
+    "damage": 21,
+    "speed": 45.0,
+    "mass": 5.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 1.3,
+    "loadTime": 0.3,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "LavaHoundProjectile",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "LavaPups",
+        "spawnNumber": 6,
+        "spawnRadius": 2.5
+      }
+    ],
+    "ignoreBuff": "VoodooCurse"
+  },
+  "LavaPups": {
+    "name": "LavaPups",
+    "health": 84,
+    "damage": 32,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.45,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.7,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "LavaPupProjectile"
+  },
+  "LittlePrince": {
+    "name": "LittlePrince",
+    "health": 273,
+    "damage": 41,
+    "speed": 60.0,
+    "mass": 4.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.2,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "LittlePrinceProjectile"
+  },
+  "MegaKnight": {
+    "name": "MegaKnight",
+    "health": 1560,
+    "damage": 105,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true,
+    "areaDamageRadius": 1.3,
+    "abilities": [
+      {
+        "type": "DASH",
+        "damage": 210,
+        "minRange": 3.5,
+        "maxRange": 5.0,
+        "radius": 2.2,
+        "cooldown": 0.9,
+        "pushback": 1.0,
+        "landingTime": 0.3,
+        "constantTime": 0.8
+      }
+    ]
+  },
+  "MegaMinion": {
+    "name": "MegaMinion",
+    "health": 327,
+    "damage": 122,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.5,
+    "loadTime": 1.1,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "MegaMinionSpit"
+  },
+  "MightyMiner": {
+    "name": "MightyMiner",
+    "health": 879,
+    "damage": 16,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 0.4,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true,
+    "abilities": [
+      {
+        "type": "VARIABLE_DAMAGE",
+        "stages": [
+          {
+            "damage": 16,
+            "timeMs": 0
+          },
+          {
+            "damage": 80,
+            "timeMs": 2000
+          },
+          {
+            "damage": 160,
+            "timeMs": 2000
+          }
+        ]
+      }
+    ]
+  },
+  "Miner": {
+    "name": "Miner",
+    "health": 473,
+    "damage": 76,
+    "speed": 90.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.3,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "crownTowerDamagePercent": -75
+  },
+  "MiniPekka": {
+    "name": "MiniPekka",
+    "health": 543,
+    "damage": 295,
+    "speed": 90.0,
+    "mass": 4.0,
+    "collisionRadius": 0.45,
+    "sightRange": 5.5,
+    "range": 0.8,
+    "attackCooldown": 1.6,
+    "loadTime": 1.1,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "MiniZapMachine": {
+    "name": "MiniZapMachine",
+    "health": 207,
+    "damage": 46,
+    "speed": 60.0,
+    "mass": 4.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.0,
+    "range": 4.5,
+    "attackCooldown": 2.1,
+    "loadTime": 1.3,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "buffOnDamage": {
+      "buff": "ZapFreeze",
+      "duration": 0.5
+    }
+  },
+  "Minion": {
+    "name": "Minion",
+    "health": 90,
+    "damage": 42,
+    "speed": 90.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 2.5,
+    "attackCooldown": 1.2,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "MinionSpit"
+  },
+  "Monk": {
+    "name": "Monk",
+    "health": 865,
+    "damage": 55,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 0.8,
+    "loadTime": 0.6,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "abilities": [
+      {
+        "type": "VARIABLE_DAMAGE",
+        "stages": [
+          {
+            "damage": 55,
+            "timeMs": 0
+          },
+          {
+            "damage": 55,
+            "timeMs": 0
+          },
+          {
+            "damage": 165,
+            "timeMs": 0
+          }
+        ]
+      }
+    ]
+  },
+  "Mortar": {
+    "name": "Mortar",
+    "health": 535,
+    "damage": 104,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.6,
+    "sightRange": 11.5,
+    "range": 11.5,
+    "attackCooldown": 5.0,
+    "loadTime": 4.0,
+    "deployTime": 3.5,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "projectile": "MortarProjectile",
+    "minimumRange": 3.5,
+    "lifeTime": 30.0
+  },
+  "Musketeer": {
+    "name": "Musketeer",
+    "health": 282,
+    "damage": 85,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 6.0,
+    "range": 6.0,
+    "attackCooldown": 1.0,
+    "loadTime": 0.3,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "MusketeerProjectile"
+  },
+  "Pekka": {
+    "name": "Pekka",
+    "health": 1469,
+    "damage": 319,
+    "speed": 45.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.0,
+    "range": 1.2,
+    "attackCooldown": 1.8,
+    "loadTime": 1.3,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true
+  },
+  "Phoenix": {
+    "name": "Phoenix",
+    "health": 411,
+    "damage": 85,
+    "speed": 60.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.0,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "deathSpawnProjectile": "PhoenixFireball"
+  },
+  "PhoenixEgg": {
+    "name": "PhoenixEgg",
+    "health": 94,
+    "damage": 0,
+    "speed": 1.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.0,
+    "loadTime": 0.5,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignoreBuff": "VoodooCurse",
+    "liveSpawn": {
+      "spawnCharacter": "PhoenixNoRespawn",
+      "spawnNumber": 1,
+      "spawnPauseTime": 4.3,
+      "spawnStartTime": 4.3,
+      "spawnLimit": 1,
+      "destroyAtLimit": true
+    }
+  },
   "PhoenixNoRespawn": {
     "name": "PhoenixNoRespawn",
     "health": 411,
@@ -2219,5 +1671,553 @@
     "deployTime": 0.733,
     "targetType": "ALL",
     "movementType": "AIR"
+  },
+  "Prince": {
+    "name": "Prince",
+    "health": 750,
+    "damage": 153,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.4,
+    "loadTime": 0.9,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true,
+    "abilities": [
+      {
+        "type": "CHARGE",
+        "damage": 306,
+        "triggerRange": 0.25,
+        "speedMultiplier": 2.0
+      }
+    ]
+  },
+  "Princess": {
+    "name": "Princess",
+    "health": 102,
+    "damage": 66,
+    "speed": 60.0,
+    "mass": 3.0,
+    "collisionRadius": 0.5,
+    "sightRange": 9.5,
+    "range": 9.0,
+    "attackCooldown": 3.0,
+    "loadTime": 2.7,
+    "deployTime": 1.2,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "PrincessProjectile",
+    "areaDamageRadius": 2.5,
+    "multipleProjectiles": 5
+  },
+  "RageBarbarian": {
+    "name": "RageBarbarian",
+    "health": 501,
+    "damage": 100,
+    "speed": 120.0,
+    "mass": 4.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.7,
+    "attackCooldown": 0.8,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "RageBarbarianBottle",
+        "spawnNumber": 1
+      }
+    ]
+  },
+  "RageBarbarianBottle": {
+    "name": "RageBarbarianBottle",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.5,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignoreBuff": "Event_Berserk_OnStartBuff",
+    "deathAreaEffect": {
+      "name": "BarbarianRage",
+      "radius": 3.0,
+      "lifeDuration": 5.5,
+      "hitsGround": true,
+      "hitsAir": true,
+      "hitSpeed": 0.3,
+      "buff": "Rage",
+      "buffDuration": 1.0
+    }
+  },
+  "Ram": {
+    "name": "Ram",
+    "health": 663,
+    "damage": 98,
+    "speed": 60.0,
+    "mass": 4.0,
+    "collisionRadius": 0.6,
+    "sightRange": 7.5,
+    "range": 0.8,
+    "attackCooldown": 1.7,
+    "loadTime": 1.1,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "liveSpawn": {
+      "spawnCharacter": "RamRider",
+      "spawnNumber": 1
+    },
+    "abilities": [
+      {
+        "type": "CHARGE",
+        "damage": 196,
+        "triggerRange": 0.25,
+        "speedMultiplier": 2.0
+      }
+    ]
+  },
+  "RamRider": {
+    "name": "RamRider",
+    "health": 232,
+    "damage": 41,
+    "speed": 60.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "RamRiderBola",
+    "targetOnlyTroops": true,
+    "ignoreTargetsWithBuff": "BolaSnare",
+    "ignoreBuff": "VoodooCurse"
+  },
+  "RascalBoy": {
+    "name": "RascalBoy",
+    "health": 758,
+    "damage": 85,
+    "speed": 60.0,
+    "mass": 10.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.5,
+    "range": 0.8,
+    "attackCooldown": 1.5,
+    "loadTime": 1.1,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "RascalGirl": {
+    "name": "RascalGirl",
+    "health": 102,
+    "damage": 49,
+    "speed": 60.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.0,
+    "attackCooldown": 1.0,
+    "loadTime": 0.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "RascalGirlProjectile"
+  },
+  "Recruit": {
+    "name": "Recruit",
+    "health": 214,
+    "damage": 52,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.3,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "shieldHitpoints": 94
+  },
+  "RoyalGiant": {
+    "name": "RoyalGiant",
+    "health": 1236,
+    "damage": 120,
+    "speed": 45.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.5,
+    "range": 5.0,
+    "attackCooldown": 1.7,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "RoyalGiantProjectile",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true
+  },
+  "RoyalHog": {
+    "name": "RoyalHog",
+    "health": 327,
+    "damage": 29,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.6,
+    "sightRange": 9.5,
+    "range": 0.75,
+    "attackCooldown": 1.2,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true
+  },
+  "Skeleton": {
+    "name": "Skeleton",
+    "health": 32,
+    "damage": 32,
+    "speed": 90.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.6,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
+  "SkeletonBalloon": {
+    "name": "SkeletonBalloon",
+    "health": 208,
+    "damage": 0,
+    "speed": 90.0,
+    "mass": 7.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.7,
+    "range": 0.35,
+    "attackCooldown": 0.3,
+    "loadTime": 0.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "AIR",
+    "targetOnlyBuildings": true,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SkeletonContainer",
+        "spawnNumber": 1
+      }
+    ],
+    "ignoreBuff": "VoodooCurse"
+  },
+  "SkeletonContainer": {
+    "name": "SkeletonContainer",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.6,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "deathDamage": {
+      "damage": 57,
+      "radius": 2.0
+    },
+    "deathSpawn": [
+      {
+        "spawnCharacter": "Skeleton",
+        "spawnNumber": 7,
+        "spawnRadius": 1.48
+      }
+    ],
+    "ignoreBuff": "Event_Berserk_OnStartBuff"
+  },
+  "SkeletonDragon": {
+    "name": "SkeletonDragon",
+    "health": 219,
+    "damage": 63,
+    "speed": 90.0,
+    "mass": 4.0,
+    "collisionRadius": 0.9,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 1.9,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "SkeletonDragonProjectile"
+  },
+  "SkeletonKing": {
+    "name": "SkeletonKing",
+    "health": 898,
+    "damage": 80,
+    "speed": 60.0,
+    "mass": 10.0,
+    "collisionRadius": 1.0,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.6,
+    "loadTime": 1.3,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true,
+    "areaDamageRadius": 1.3
+  },
+  "SkeletonWarrior": {
+    "name": "SkeletonWarrior",
+    "health": 32,
+    "damage": 46,
+    "speed": 90.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.6,
+    "attackCooldown": 1.0,
+    "loadTime": 0.5,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "shieldHitpoints": 100
+  },
+  "SpearGoblin": {
+    "name": "SpearGoblin",
+    "health": 52,
+    "damage": 32,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.0,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "SpearGoblinProjectile"
+  },
+  "SpearGoblinGiant": {
+    "name": "SpearGoblinGiant",
+    "health": 52,
+    "damage": 32,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.0,
+    "range": 5.0,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "SpearGoblinGiantProjectile",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SpearGoblin",
+        "spawnNumber": 1
+      }
+    ],
+    "ignoreBuff": "VoodooCurse"
+  },
+  "Tesla": {
+    "name": "Tesla",
+    "health": 450,
+    "damage": 86,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "visualRadius": 1.0,
+    "stealth": {
+      "hideTimeMs": 800
+    },
+    "lifeTime": 30.0
+  },
+  "Tombstone": {
+    "name": "Tombstone",
+    "health": 207,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 10.0,
+    "loadTime": 0.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "Skeleton",
+        "spawnNumber": 4
+      }
+    ],
+    "lifeTime": 30.0,
+    "liveSpawn": {
+      "spawnCharacter": "Skeleton",
+      "spawnNumber": 2,
+      "spawnPauseTime": 3.5,
+      "spawnInterval": 0.5
+    }
+  },
+  "Valkyrie": {
+    "name": "Valkyrie",
+    "health": 745,
+    "damage": 104,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.5,
+    "loadTime": 1.4,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "areaDamageRadius": 2.0,
+    "selfAsAoeCenter": true
+  },
+  "Wallbreaker": {
+    "name": "Wallbreaker",
+    "health": 129,
+    "damage": 137,
+    "speed": 120.0,
+    "mass": 4.0,
+    "collisionRadius": 0.4,
+    "sightRange": 7.0,
+    "range": 0.5,
+    "attackCooldown": 1.2,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "WallbreakerProjectile",
+    "targetOnlyBuildings": true,
+    "areaDamageRadius": 1.5
+  },
+  "Witch": {
+    "name": "Witch",
+    "health": 328,
+    "damage": 53,
+    "speed": 60.0,
+    "mass": 8.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "WitchProjectile",
+    "liveSpawn": {
+      "spawnCharacter": "Skeleton",
+      "spawnNumber": 4,
+      "spawnPauseTime": 7.0,
+      "spawnStartTime": 1.0,
+      "spawnRadius": 2.0
+    }
+  },
+  "WitchMother": {
+    "name": "WitchMother",
+    "health": 207,
+    "damage": 52,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.0,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "VoodooProjectile",
+    "buffOnDamage": {
+      "buff": "VoodooCurse",
+      "duration": 5.0
+    }
+  },
+  "Wizard": {
+    "name": "Wizard",
+    "health": 295,
+    "damage": 110,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.4,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "chr_wizardProjectile"
+  },
+  "Xbow": {
+    "name": "Xbow",
+    "health": 625,
+    "damage": 17,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.6,
+    "sightRange": 11.5,
+    "range": 11.5,
+    "attackCooldown": 0.3,
+    "loadTime": 0.0,
+    "deployTime": 3.5,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "visualRadius": 1.5,
+    "projectile": "xbow_projectile",
+    "lifeTime": 30.0
+  },
+  "ZapMachine": {
+    "name": "ZapMachine",
+    "health": 567,
+    "damage": 520,
+    "speed": 45.0,
+    "mass": 18.0,
+    "collisionRadius": 1.0,
+    "sightRange": 5.0,
+    "range": 5.0,
+    "attackCooldown": 4.0,
+    "loadTime": 3.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "ZapMachineProjectile",
+    "ignorePushback": true
   }
 }
