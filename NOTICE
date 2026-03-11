@@ -1,0 +1,20 @@
+crforge
+Copyright 2025-2026 voonhous
+
+This product includes software developed by voonhous.
+
+---
+
+Clash Royale is a game created and published by Supercell Oy.
+"Clash Royale", "Supercell", and related names, characters, and imagery
+are trademarks of Supercell Oy. This project is an independent fan-made
+simulator for educational and research purposes and is not affiliated with,
+endorsed by, or associated with Supercell in any way.
+
+Card statistics used in this project are community-decoded from publicly
+available game data.
+
+---
+
+This project uses LibGDX (https://libgdx.com/), licensed under the
+Apache License 2.0.
