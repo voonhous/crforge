@@ -38,7 +38,7 @@ the live game name.
 | 26 | Guards            | skeletonwarriors | `DONE`    | count=3                         |
 | 27 | Princess          | princess         | `MISSING` |                                 |
 | 28 | Dark Prince       | darkprince       | `DONE`    |                                 |
-| 29 | Lava Hound        | lavahound        | `PARTIAL` | needs pup death spawn logic     |
+| 29 | Lava Hound        | lavahound        | `DONE`    |                                 |
 | 30 | Ice Spirit        | icespirits       | `DONE`    |                                 |
 | 31 | Fire Spirit       | firespirits      | `DONE`    |                                 |
 | 32 | Miner             | miner            | `MISSING` |                                 |
@@ -175,8 +175,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 55      | Fully functional in simulation                 |
-| `PARTIAL`  | 15      | In cards.json but missing complex mechanics    |
+| `DONE`     | 56      | Fully functional in simulation                 |
+| `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
 | `MISSING`  | 52      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **122** | Playable cards (excluding sub-entities)        |
@@ -189,4 +189,3 @@ Crown Towers. This system is not yet implemented in crforge.
 | Meta spells     | Mirror                                                                        | Replay last card at +1 level                          |
 | Complex spells  | Clone, Tornado, Graveyard                                                     | Clone duplication, pull physics, random spawn pattern |
 | Newer stubs     | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                                    |
-| Composite units | Lava Hound (pups), Mega Knight (spawn jump)                                   | Death sub-unit spawning, deploy AOE                   |
