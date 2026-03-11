@@ -158,14 +158,16 @@ public class HudRenderer {
       Card card = hand.getCard(i);
       float cx = CardLayout.cardX(width, i);
       boolean isSelected = i == selectedHandIndex && player.getTeam() == selectedTeam;
-      renderCard(card, cx, cy, CARD_WIDTH, CARD_HEIGHT, isSelected);
+      int level = card != null ? player.getLevelConfig().getLevelFor(card) : 1;
+      renderCard(card, cx, cy, CARD_WIDTH, CARD_HEIGHT, isSelected, level);
     }
 
     // 3. Draw Next Card
     Card nextCard = hand.getNextCard();
     float nextX = CardLayout.nextCardX(width);
+    int nextLevel = nextCard != null ? player.getLevelConfig().getLevelFor(nextCard) : 1;
 
-    renderCard(nextCard, nextX, cy + 10, CARD_WIDTH * 0.8f, CARD_HEIGHT * 0.8f, false);
+    renderCard(nextCard, nextX, cy + 10, CARD_WIDTH * 0.8f, CARD_HEIGHT * 0.8f, false, nextLevel);
 
     // Label for Next
     ctx.getSpriteBatch().begin();
@@ -173,7 +175,8 @@ public class HudRenderer {
     ctx.getSpriteBatch().end();
   }
 
-  private void renderCard(Card card, float x, float y, float w, float h, boolean selected) {
+  private void renderCard(Card card, float x, float y, float w, float h, boolean selected,
+                          int level) {
     if (card == null) {
       return;
     }
@@ -212,6 +215,11 @@ public class HudRenderer {
     ctx.getGlyphLayout().setText(ctx.getFont(), name);
     ctx.getFont().draw(ctx.getSpriteBatch(), name,
         x + (w - ctx.getGlyphLayout().width) / 2, y + h / 2);
+
+    // Level indicator (bottom-left corner)
+    ctx.getFont().setColor(Color.LIGHT_GRAY);
+    String lvlText = "Lv" + level;
+    ctx.getFont().draw(ctx.getSpriteBatch(), lvlText, x + 3, y + 12);
 
     ctx.getFont().getData().setScale(1.0f);
     ctx.getSpriteBatch().end();
