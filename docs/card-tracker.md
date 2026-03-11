@@ -24,7 +24,7 @@ the live game name.
 | 10 | Golem             | golem            | `DONE`    |                             |
 | 11 | Skeletons         | skeletons        | `DONE`    | count=3                     |
 | 12 | Valkyrie          | valkyrie         | `DONE`    |                             |
-| 13 | Skeleton Army     | skeletonarmy     |           | count=15                    |
+| 13 | Skeleton Army     | skeletonarmy     | `DONE`     | count=15                    |
 | 14 | Bomber            | bomber           |           |                             |
 | 15 | Musketeer         | musketeer        | `DONE`    |                             |
 | 16 | Baby Dragon       | babydragon       |           |                             |
