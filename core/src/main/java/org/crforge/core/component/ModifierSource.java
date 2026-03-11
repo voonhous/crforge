@@ -9,5 +9,6 @@ public enum ModifierSource {
   STATUS_EFFECT,   // StatusEffectSystem (stun, freeze, slow, rage)
   ABILITY_HOOK,    // Hook wind-up/pull/drag
   ABILITY_DASH,    // Dash sequence
-  ABILITY_CHARGE   // Charge speed boost
+  ABILITY_CHARGE,  // Charge speed boost
+  ABILITY_JUMP     // River jump speed boost
 }

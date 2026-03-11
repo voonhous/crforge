@@ -4,12 +4,14 @@ import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
+import org.crforge.core.entity.base.MovementType;
 
 @Getter
 @SuperBuilder
@@ -27,9 +29,19 @@ public class Troop extends AbstractEntity {
   @Builder.Default
   private final AbilityComponent ability = null;
 
+  // River jump state: true while the troop is leaping over the river
+  @Setter
+  private boolean jumping;
+
   @Override
   public EntityType getEntityType() {
     return EntityType.TROOP;
+  }
+
+  @Override
+  public MovementType getMovementType() {
+    // While jumping, behave as AIR for pathfinding, collision, and targeting
+    return jumping ? MovementType.AIR : super.getMovementType();
   }
 
   public boolean isDeploying() {
@@ -98,6 +110,6 @@ public class Troop extends AbstractEntity {
 
   @Override
   public boolean isTargetable() {
-    return super.isTargetable() && !isDeploying();
+    return super.isTargetable() && !isDeploying() && !jumping;
   }
 }

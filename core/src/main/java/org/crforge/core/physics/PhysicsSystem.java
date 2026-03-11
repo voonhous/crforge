@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import lombok.Setter;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -23,6 +24,13 @@ public class PhysicsSystem {
   private static final float SLIDE_FACTOR = 0.5f;
   // Minimum distance to compute meaningful collision direction; below this, use default direction
   private static final float COLLISION_EPSILON = 0.001f;
+
+  // River zone boundaries for jump detection (same as BasePathfinder)
+  private static final float RIVER_Y_MIN = Arena.RIVER_Y - 1.0f; // 15.0
+  private static final float RIVER_Y_MAX = Arena.RIVER_Y + 1.0f; // 17.0
+
+  // Speed multiplier applied while a troop is jumping over the river
+  private static final float JUMP_SPEED_MULTIPLIER = 4f / 3f;
 
   private final Arena arena;
   private final Pathfinder pathfinder;
@@ -95,6 +103,9 @@ public class PhysicsSystem {
     if (!troop.getMovement().canMove() || troop.isDeploying()) {
       return;
     }
+
+    // Update river jump state before pathfinding so the troop gets AIR movement type
+    updateJumpState(troop);
 
     // Dash movement is handled by AbilitySystem -- skip normal pathfinding
     if (troop.getAbility() != null && troop.getAbility().isDashing()) {
@@ -191,6 +202,43 @@ public class PhysicsSystem {
 
     troop.getPosition().add(dx, dy);
     troop.getPosition().setRotation(angle);
+  }
+
+  /**
+   * Updates the jumping state for a troop based on its position relative to the river.
+   * Jump-enabled troops entering the river zone outside of bridge positions will leap over,
+   * gaining AIR movement type and a speed boost. The jump ends when the troop exits the river zone.
+   */
+  private void updateJumpState(Troop troop) {
+    if (!troop.getMovement().isJumpEnabled()) {
+      return;
+    }
+
+    float y = troop.getPosition().getY();
+    float x = troop.getPosition().getX();
+
+    boolean inRiverZone = y >= RIVER_Y_MIN && y <= RIVER_Y_MAX;
+    boolean onBridge = isOnBridge(x);
+
+    if (inRiverZone && !onBridge) {
+      if (!troop.isJumping()) {
+        troop.setJumping(true);
+        troop.getMovement().setSpeedMultiplier(ModifierSource.ABILITY_JUMP, JUMP_SPEED_MULTIPLIER);
+      }
+    } else {
+      if (troop.isJumping()) {
+        troop.setJumping(false);
+        troop.getMovement().clearModifiers(ModifierSource.ABILITY_JUMP);
+      }
+    }
+  }
+
+  /**
+   * Returns true if the given X coordinate is within a bridge's horizontal bounds.
+   */
+  private static boolean isOnBridge(float x) {
+    return (x >= Arena.LEFT_BRIDGE_X && x < Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH)
+        || (x >= Arena.RIGHT_BRIDGE_X && x < Arena.RIGHT_BRIDGE_X + Arena.BRIDGE_WIDTH);
   }
 
   private void resolveCollisions(Collection<Entity> entities) {

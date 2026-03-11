@@ -317,6 +317,7 @@ public class DeploymentSystem {
         stats.getVisualRadius(),
         stats.getMovementType());
     movement.setIgnorePushback(stats.isIgnorePushback());
+    movement.setJumpEnabled(stats.isJumpEnabled());
 
     // Explicitly set deployTimer to deployTime to avoid default value issues
     return Troop.builder()

@@ -24,6 +24,9 @@ public class Movement {
   @Setter
   private boolean ignorePushback;
 
+  @Setter
+  private boolean jumpEnabled;
+
   // Knockback displacement state
   private float knockbackDirX;
   private float knockbackDirY;

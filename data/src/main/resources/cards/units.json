@@ -430,6 +430,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "ignorePushback": true,
+    "jumpEnabled": true,
     "areaDamageRadius": 1.1,
     "shieldHitpoints": 94,
     "abilities": [
@@ -1165,7 +1166,8 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "targetOnlyBuildings": true
+    "targetOnlyBuildings": true,
+    "jumpEnabled": true
   },
   "Hunter": {
     "name": "Hunter",
@@ -1691,6 +1693,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "ignorePushback": true,
+    "jumpEnabled": true,
     "abilities": [
       {
         "type": "CHARGE",
@@ -1780,6 +1783,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
+    "jumpEnabled": true,
     "liveSpawn": {
       "spawnCharacter": "RamRider",
       "spawnNumber": 1
@@ -1891,7 +1895,8 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "targetOnlyBuildings": true
+    "targetOnlyBuildings": true,
+    "jumpEnabled": true
   },
   "Skeleton": {
     "name": "Skeleton",

@@ -104,6 +104,10 @@ public class TroopStats {
   @Builder.Default
   private final boolean dieOnAttack = false;
 
+  // River jump: unit can leap over the river instead of routing through bridges
+  @Builder.Default
+  private final boolean jumpEnabled = false;
+
   public boolean isRanged() {
     return range >= 2.0f;
   }
