@@ -321,14 +321,15 @@ public class CombatSystem {
 
     if (projectile.isPositionTargeted()) {
       applySpellDamage(projectile.getTeam(), projectile.getTargetX(), projectile.getTargetY(),
-          baseDamage, projectile.getAoeRadius(), projectile.getEffects());
+          baseDamage, projectile.getAoeRadius(), projectile.getEffects(), ctdp);
     } else if (projectile.hasAoe()) {
       dealAoeDamage(
           projectile.getSource(),
           projectile.getTarget(),
           baseDamage,
           projectile.getAoeRadius(),
-          projectile.getEffects());
+          projectile.getEffects(),
+          ctdp);
     } else {
       Entity target = projectile.getTarget();
       int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, target, ctdp);
@@ -607,19 +608,33 @@ public class CombatSystem {
 
   private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius,
       List<EffectStats> effects) {
+    dealAoeDamage(source, primaryTarget, damage, radius, effects, 0);
+  }
+
+  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius,
+      List<EffectStats> effects, int crownTowerDamagePercent) {
     if (primaryTarget == null) {
       return;
     }
     applySpellDamage(source.getTeam(), primaryTarget.getPosition().getX(),
-        primaryTarget.getPosition().getY(), damage, radius, effects);
+        primaryTarget.getPosition().getY(), damage, radius, effects, crownTowerDamagePercent);
   }
 
   /**
    * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
-   * for entity size in the radius check.
+   * for entity size in the radius check. No crown tower damage reduction.
    */
   public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
       int damage, float radius, List<EffectStats> effects) {
+    applySpellDamage(sourceTeam, centerX, centerY, damage, radius, effects, 0);
+  }
+
+  /**
+   * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
+   * for entity size in the radius check. Applies crown tower damage reduction to Towers.
+   */
+  public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
+      int damage, float radius, List<EffectStats> effects, int crownTowerDamagePercent) {
     if (radius > 0) {
       gameState.recordAoeDamage(centerX, centerY, radius, sourceTeam);
     }
@@ -639,9 +654,11 @@ public class CombatSystem {
       // Use Collision Radius for spell AOE check (squared distance avoids sqrt)
       float effectiveRadius = radius + entity.getCollisionRadius();
       if (distanceSq <= effectiveRadius * effectiveRadius) {
+        int effectiveDamage = DamageUtil.adjustForCrownTower(damage, entity,
+            crownTowerDamagePercent);
         // Apply pre-damage effects (e.g. Curse)
         applyEffects(entity, filterEffects(effects, false));
-        dealDamage(entity, damage);
+        dealDamage(entity, effectiveDamage);
         // Apply post-damage effects (e.g. slow, stun)
         applyEffects(entity, filterEffects(effects, true));
       }

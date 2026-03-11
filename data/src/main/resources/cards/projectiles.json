@@ -26,7 +26,8 @@
     "deflectBehaviours": [
       "CheckOnlyTargetPosition",
       "UseSpellsTowerDamageMul"
-    ]
+    ],
+    "crownTowerDamagePercent": -75
   },
   "AxeManProjectile": {
     "name": "AxeManProjectile",
@@ -209,7 +210,8 @@
     "pushback": 1000,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
-    ]
+    ],
+    "crownTowerDamagePercent": -70
   },
   "FirecrackerExplosion": {
     "name": "FirecrackerExplosion",
@@ -358,7 +360,8 @@
     "deflectBehaviours": [
       "InvertDirection",
       "UseSpellsTowerDamageMul"
-    ]
+    ],
+    "crownTowerDamagePercent": -85
   },
   "MegaKnightAppear": {
     "name": "MegaKnightAppear",
@@ -460,7 +463,8 @@
     "pushback": 1800,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
-    ]
+    ],
+    "crownTowerDamagePercent": -75
   },
   "RoyalGiantProjectile": {
     "name": "RoyalGiantProjectile",
@@ -495,7 +499,8 @@
     "pushback": 1800,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
-    ]
+    ],
+    "crownTowerDamagePercent": -70
   },
   "SpearGoblinGiantProjectile": {
     "name": "SpearGoblinGiantProjectile",

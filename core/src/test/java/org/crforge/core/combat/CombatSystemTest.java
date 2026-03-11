@@ -3,6 +3,7 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.List;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -682,6 +683,88 @@ class CombatSystemTest {
     assertThat(secondaryTarget.getHealth().getCurrent())
         .as("Secondary target far from primary should NOT take damage (target-centered AOE)")
         .isEqualTo(100);
+  }
+
+  @Test
+  void spellProjectile_crownTowerDamagePercent_shouldReduceDamageToTower() {
+    // Fireball-like spell projectile with -70 crownTowerDamagePercent
+    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    tower.onSpawn();
+    int towerMaxHp = tower.getHealth().getMax();
+
+    // A regular troop next to the tower (within AOE)
+    Troop troop = Troop.builder()
+        .name("Target")
+        .team(Team.RED)
+        .position(new Position(10.5f, 10))
+        .health(new Health(1000))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(tower);
+    gameState.spawnEntity(troop);
+    gameState.processPending();
+
+    int spellDamage = 200;
+    float aoeRadius = 2.5f;
+    int ctdp = -70;
+
+    // Create a position-targeted spell projectile with crown tower damage reduction
+    Projectile fireball = new Projectile(Team.BLUE, 10, 0, 10, 10,
+        spellDamage, aoeRadius, 15f, List.of(), ctdp);
+    gameState.spawnProjectile(fireball);
+
+    // Run enough ticks for the projectile to arrive and hit
+    for (int i = 0; i < 60; i++) {
+      combatSystem.update(1.0f / 30);
+    }
+
+    // Tower should take reduced damage: 200 * (100 + (-70)) / 100 = 60
+    int expectedTowerDamage = 60;
+    assertThat(tower.getHealth().getCurrent())
+        .as("Tower should take reduced spell damage (30% of base)")
+        .isEqualTo(towerMaxHp - expectedTowerDamage);
+
+    // Regular troop should take full damage
+    assertThat(troop.getHealth().getCurrent())
+        .as("Non-tower troop should take full spell damage")
+        .isEqualTo(1000 - spellDamage);
+  }
+
+  @Test
+  void applySpellDamage_crownTowerDamagePercent_shouldReduceDamageToTower() {
+    // Test the instant spell path (applySpellDamage with ctdp parameter)
+    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    tower.onSpawn();
+    int towerMaxHp = tower.getHealth().getMax();
+
+    Troop troop = Troop.builder()
+        .name("Target")
+        .team(Team.RED)
+        .position(new Position(10.5f, 10))
+        .health(new Health(1000))
+        .deployTime(0f)
+        .build();
+
+    gameState.spawnEntity(tower);
+    gameState.spawnEntity(troop);
+    gameState.processPending();
+
+    int spellDamage = 300;
+    int ctdp = -75;
+
+    combatSystem.applySpellDamage(Team.BLUE, 10f, 10f, spellDamage, 3.0f,
+        Collections.emptyList(), ctdp);
+
+    // Tower: 300 * (100 + (-75)) / 100 = 75
+    assertThat(tower.getHealth().getCurrent())
+        .as("Tower should take reduced damage via applySpellDamage")
+        .isEqualTo(towerMaxHp - 75);
+
+    // Troop: full 300 damage
+    assertThat(troop.getHealth().getCurrent())
+        .as("Non-tower should take full damage")
+        .isEqualTo(1000 - 300);
   }
 
   private Troop createChainTarget(Team team, float x, float y) {

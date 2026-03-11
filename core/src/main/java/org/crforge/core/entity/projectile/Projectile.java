@@ -106,10 +106,11 @@ public class Projectile {
   }
 
   /**
-   * Position-targeted projectile (spell projectiles like Fireball/Arrows).
+   * Position-targeted projectile with crown tower damage modifier (spell projectiles).
    */
   public Projectile(Team team, float startX, float startY, float destX, float destY,
-      int damage, float aoeRadius, float speed, List<EffectStats> effects) {
+      int damage, float aoeRadius, float speed, List<EffectStats> effects,
+      int crownTowerDamagePercent) {
     this.id = nextId++;
     this.source = null;
     this.target = null;
@@ -119,7 +120,7 @@ public class Projectile {
     this.aoeRadius = aoeRadius;
     this.speed = speed > 0 ? speed : DEFAULT_SPEED;
     this.effects = effects != null ? effects : Collections.emptyList();
-    this.crownTowerDamagePercent = 0;
+    this.crownTowerDamagePercent = crownTowerDamagePercent;
     this.targetX = destX;
     this.targetY = destY;
     this.positionTargeted = true;
@@ -128,6 +129,14 @@ public class Projectile {
     this.projectileSpeed = this.speed;
     this.active = true;
     this.hit = false;
+  }
+
+  /**
+   * Position-targeted projectile without crown tower damage modifier (convenience).
+   */
+  public Projectile(Team team, float startX, float startY, float destX, float destY,
+      int damage, float aoeRadius, float speed, List<EffectStats> effects) {
+    this(team, startX, startY, destX, destY, damage, aoeRadius, speed, effects, 0);
   }
 
   public Projectile(Entity source, Entity target, int damage, float aoeRadius) {

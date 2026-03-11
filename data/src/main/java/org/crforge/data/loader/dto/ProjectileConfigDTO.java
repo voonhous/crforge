@@ -51,6 +51,9 @@ public class ProjectileConfigDTO {
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
   private AreaEffectConfigDTO spawnAreaEffect;
 
+  // Crown tower damage reduction (e.g. -70 = 30% damage to towers)
+  private int crownTowerDamagePercent;
+
   // Deflect behaviours (stored for future use)
   private List<String> deflectBehaviours;
 }

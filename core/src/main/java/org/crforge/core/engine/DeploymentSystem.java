@@ -436,13 +436,15 @@ public class DeploymentSystem {
     if (speed > 0) {
       // Traveling spell
       float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
-      Projectile p = new Projectile(team, x, startY, x, y, damage, radius, speed, effects);
+      Projectile p = new Projectile(team, x, startY, x, y, damage, radius, speed, effects,
+          proj.getCrownTowerDamagePercent());
       p.setPushback(proj.getPushback());
       p.setPushbackAll(proj.isPushbackAll());
       state.spawnProjectile(p);
     } else {
       // Instant spell
-      combatSystem.applySpellDamage(team, x, y, damage, radius, effects);
+      combatSystem.applySpellDamage(team, x, y, damage, radius, effects,
+          proj.getCrownTowerDamagePercent());
     }
   }
 
@@ -451,7 +453,7 @@ public class DeploymentSystem {
     int damage = LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level);
     float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
     Projectile p = new Projectile(team, x, startY, x, y, damage, stats.getRadius(),
-        stats.getSpeed(), stats.getHitEffects());
+        stats.getSpeed(), stats.getHitEffects(), stats.getCrownTowerDamagePercent());
     p.setPushback(stats.getPushback());
     p.setPushbackAll(stats.isPushbackAll());
     state.spawnProjectile(p);

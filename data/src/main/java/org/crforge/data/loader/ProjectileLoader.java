@@ -98,6 +98,7 @@ public class ProjectileLoader {
         .spawnRadius(dto.getSpawnRadius())
         .pushback(dto.getPushback() / 1000f)
         .pushbackAll(dto.isPushbackAll())
+        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
         .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
 
     // Resolve spawnProjectile string reference

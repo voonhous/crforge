@@ -54,6 +54,10 @@ public class ProjectileStats {
   @Builder.Default
   private final boolean pushbackAll = false;
 
+  // Crown tower damage reduction (e.g. -70 = 30% damage to towers)
+  @Builder.Default
+  private final int crownTowerDamagePercent = 0;
+
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
   private final AreaEffectStats spawnAreaEffect;
 
@@ -79,6 +83,7 @@ public class ProjectileStats {
         .spawnRadius(spawnRadius)
         .pushback(pushback)
         .pushbackAll(pushbackAll)
+        .crownTowerDamagePercent(crownTowerDamagePercent)
         .spawnAreaEffect(spawnAreaEffect)
         .build();
   }
