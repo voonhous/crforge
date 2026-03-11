@@ -164,7 +164,9 @@ public class CombatSystem {
           combat.getCrownTowerDamagePercent());
 
       if (combat.getAoeRadius() > 0) {
-        dealAoeDamage(attacker, target, effectiveDamage, combat.getAoeRadius(),
+        // selfAsAoeCenter: AOE is centered on the attacker (e.g. Valkyrie 360-degree splash)
+        Entity aoeCenter = combat.isSelfAsAoeCenter() ? attacker : target;
+        dealAoeDamage(attacker, aoeCenter, effectiveDamage, combat.getAoeRadius(),
             combat.getHitEffects());
       } else {
         // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)

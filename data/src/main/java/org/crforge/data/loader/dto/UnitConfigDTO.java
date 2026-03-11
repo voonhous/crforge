@@ -45,6 +45,7 @@ public class UnitConfigDTO {
   // Combat modifiers
   private int multipleTargets;
   private int multipleProjectiles;
+  private boolean selfAsAoeCenter;
   private BuffOnDamageConfigDTO buffOnDamage;
 
   // Death mechanics

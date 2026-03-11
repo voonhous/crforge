@@ -591,6 +591,103 @@ class CombatSystemTest {
     assertThat(target3.getHealth().getCurrent()).isEqualTo(500);
   }
 
+  @Test
+  void selfAsAoeCenter_shouldDealDamageAroundAttacker() {
+    // Valkyrie-like unit: melee AOE centered on herself, not on the target
+    Troop attacker = Troop.builder()
+        .name("Valkyrie")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(100)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .aoeRadius(2.0f)
+            .selfAsAoeCenter(true)
+            .build())
+        .build();
+
+    // Primary target at range 1.0 (within melee range)
+    Troop primaryTarget = createMeleeTroop(Team.RED, 6, 5, 50);
+
+    // Secondary enemy: near the attacker but far from primary target
+    // Position (3, 4) is ~2.24 tiles from attacker at (5,5), within effective AOE (2.0 + 0.5 collision)
+    // Position (3, 4) is ~3.16 tiles from primary target at (6,5), outside effective AOE (2.0 + 0.5)
+    Troop secondaryTarget = createMeleeTroop(Team.RED, 3, 4, 50);
+
+    gameState.spawnEntity(attacker);
+    gameState.spawnEntity(primaryTarget);
+    gameState.spawnEntity(secondaryTarget);
+    gameState.processPending();
+
+    attacker.update(2.0f);
+    primaryTarget.update(2.0f);
+    secondaryTarget.update(2.0f);
+
+    // Set target and run attack
+    attacker.getCombat().setCurrentTarget(primaryTarget);
+    runCombatUpdates(1.2f);
+
+    // Both enemies should take damage (AOE centered on attacker, not primary target)
+    assertThat(primaryTarget.getHealth().getCurrent())
+        .as("Primary target should take AOE damage")
+        .isLessThan(100);
+    assertThat(secondaryTarget.getHealth().getCurrent())
+        .as("Secondary target near attacker should take AOE damage (self-centered AOE)")
+        .isLessThan(100);
+  }
+
+  @Test
+  void nonSelfAsAoeCenter_shouldDealDamageAroundTarget() {
+    // Normal AOE melee (selfAsAoeCenter=false): AOE centered on the target
+    Troop attacker = Troop.builder()
+        .name("NormalAoeMelee")
+        .team(Team.BLUE)
+        .position(new Position(5, 5))
+        .health(new Health(500))
+        .deployTime(0f)
+        .combat(Combat.builder()
+            .damage(100)
+            .range(1.5f)
+            .sightRange(5.5f)
+            .attackCooldown(1.0f)
+            .aoeRadius(2.0f)
+            .selfAsAoeCenter(false)
+            .build())
+        .build();
+
+    // Primary target at range 1.0
+    Troop primaryTarget = createMeleeTroop(Team.RED, 6, 5, 50);
+
+    // Secondary enemy: near the attacker but far from primary target (same positions as above)
+    // Position (3, 4) is ~3.16 tiles from primary target at (6,5), outside effective AOE (2.0 + 0.5)
+    Troop secondaryTarget = createMeleeTroop(Team.RED, 3, 4, 50);
+
+    gameState.spawnEntity(attacker);
+    gameState.spawnEntity(primaryTarget);
+    gameState.spawnEntity(secondaryTarget);
+    gameState.processPending();
+
+    attacker.update(2.0f);
+    primaryTarget.update(2.0f);
+    secondaryTarget.update(2.0f);
+
+    attacker.getCombat().setCurrentTarget(primaryTarget);
+    runCombatUpdates(1.2f);
+
+    // Primary target takes damage
+    assertThat(primaryTarget.getHealth().getCurrent())
+        .as("Primary target should take AOE damage")
+        .isLessThan(100);
+    // Secondary target is ~3.16 tiles from primary target, outside effective AOE (2.0 + 0.5) -- should NOT be hit
+    assertThat(secondaryTarget.getHealth().getCurrent())
+        .as("Secondary target far from primary should NOT take damage (target-centered AOE)")
+        .isEqualTo(100);
+  }
+
   private Troop createChainTarget(Team team, float x, float y) {
     return Troop.builder()
         .name("ChainTarget")

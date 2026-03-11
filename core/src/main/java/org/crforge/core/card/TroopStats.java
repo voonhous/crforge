@@ -81,6 +81,8 @@ public class TroopStats {
   private final int multipleTargets = 0;
   @Builder.Default
   private final int multipleProjectiles = 0;
+  @Builder.Default
+  private final boolean selfAsAoeCenter = false;
 
   // Buff applied to target when dealing damage (e.g. EWiz stun, Mother Witch curse)
   private final EffectStats buffOnDamage;

@@ -131,6 +131,7 @@ public class UnitLoader {
         // Combat modifiers
         .multipleTargets(dto.getMultipleTargets())
         .multipleProjectiles(dto.getMultipleProjectiles())
+        .selfAsAoeCenter(dto.isSelfAsAoeCenter())
         // Targeting and combat modifiers
         .targetOnlyBuildings(dto.isTargetOnlyBuildings())
         .minimumRange(dto.getMinimumRange())
