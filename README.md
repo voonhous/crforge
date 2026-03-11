@@ -54,6 +54,16 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 | `Left click` | Select card from hand UI, or deploy selected card on arena |
 | `Right click` | Deselect card |
 
+## Code Style
+
+This project uses [Google Java Format](https://github.com/google/google-java-format) enforced via [Spotless](https://github.com/diffplug/spotless).
+
+Formatting is checked automatically on build. To fix violations:
+
+```bash
+./gradlew spotlessApply
+```
+
 ## Card Data
 
 Card statistics are loaded from JSON files in `data/src/main/resources/cards/`. The stats are community-decoded from publicly available game data and stored across four files: `cards.json`, `units.json`, `projectiles.json`, and `buffs.json`.
