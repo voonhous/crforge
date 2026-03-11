@@ -261,7 +261,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
-    "dieOnAttack": true,
+    "kamikaze": true,
     "deathSpawn": [
       {
         "spawnCharacter": "Barbarian",
@@ -561,7 +561,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "ElectroSpiritProjectile"
+    "projectile": "ElectroSpiritProjectile",
+    "kamikaze": true
   },
   "ElectroWizard": {
     "name": "ElectroWizard",
@@ -715,7 +716,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "FireSpiritsProjectile"
+    "projectile": "FireSpiritsProjectile",
+    "kamikaze": true
   },
   "Firecracker": {
     "name": "Firecracker",
@@ -1150,7 +1152,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "HealSpiritProjectile"
+    "projectile": "HealSpiritProjectile",
+    "kamikaze": true
   },
   "HogRider": {
     "name": "HogRider",
@@ -1230,7 +1233,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "IceSpiritsProjectile"
+    "projectile": "IceSpiritsProjectile",
+    "kamikaze": true
   },
   "IceWizard": {
     "name": "IceWizard",
@@ -1928,6 +1932,7 @@
     "targetType": "GROUND",
     "movementType": "AIR",
     "targetOnlyBuildings": true,
+    "kamikaze": true,
     "deathSpawn": [
       {
         "spawnCharacter": "SkeletonContainer",
@@ -2134,6 +2139,7 @@
     "movementType": "GROUND",
     "projectile": "WallbreakerProjectile",
     "targetOnlyBuildings": true,
+    "kamikaze": true,
     "areaDamageRadius": 1.5
   },
   "Witch": {

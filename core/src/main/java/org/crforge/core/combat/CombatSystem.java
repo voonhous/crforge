@@ -198,7 +198,7 @@ public class CombatSystem {
     combat.finishAttack();
 
     // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
-    if (combat.isDieOnAttack()) {
+    if (combat.isKamikaze()) {
       attacker.getHealth().kill();
     }
   }

@@ -49,7 +49,7 @@ public class Combat {
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default
-  private final boolean dieOnAttack = false;
+  private final boolean kamikaze = false;
 
   // Targeting and combat modifiers
   @Builder.Default

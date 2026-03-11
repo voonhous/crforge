@@ -137,7 +137,7 @@ public class UnitLoader {
         .minimumRange(dto.getMinimumRange())
         .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
         .ignorePushback(dto.isIgnorePushback())
-        .dieOnAttack(dto.isDieOnAttack())
+        .kamikaze(dto.isKamikaze())
         .jumpEnabled(dto.isJumpEnabled())
         // Building lifetime
         .lifeTime(dto.getLifeTime());

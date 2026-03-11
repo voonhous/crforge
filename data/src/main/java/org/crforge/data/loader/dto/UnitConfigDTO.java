@@ -49,7 +49,7 @@ public class UnitConfigDTO {
   private BuffOnDamageConfigDTO buffOnDamage;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
-  private boolean dieOnAttack;
+  private boolean kamikaze;
 
   // River jump: unit can leap over the river instead of routing through bridges
   private boolean jumpEnabled;

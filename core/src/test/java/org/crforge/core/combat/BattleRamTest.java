@@ -192,7 +192,7 @@ class BattleRamTest {
         .loadTime(0.35f)
         .accumulatedLoadTime(0.35f) // Preloaded
         .targetOnlyBuildings(true)
-        .dieOnAttack(true)
+        .kamikaze(true)
         .targetType(TargetType.GROUND)
         .build();
 

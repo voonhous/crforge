@@ -47,7 +47,7 @@ the live game name.
 | 33 | Sparky            | zapmachine       | `DONE`    | noPreload                          |
 | 34 | Bowler            | bowler           |           |                                    |
 | 35 | Lumberjack        | ragebarbarian    |           |                                    |
-| 36 | Battle Ram        | battleram        | `DONE`    | charge + dieOnAttack + death spawn |
+| 36 | Battle Ram        | battleram        | `DONE`    | charge + kamikaze + death spawn |
 | 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                    |
 | 38 | Ice Golem         | icegolemite      |           |                                    |
 | 39 | Mega Minion       | megaminion       | `DONE`    |                                    |
