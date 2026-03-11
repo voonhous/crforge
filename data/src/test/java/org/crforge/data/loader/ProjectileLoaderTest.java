@@ -20,7 +20,8 @@ class ProjectileLoaderTest {
 
   @Test
   void loadProjectiles_shouldParseBasicProjectile() {
-    String json = """
+    String json =
+        """
         {
           "ArcherArrow": {
             "name": "ArcherArrow",
@@ -47,7 +48,8 @@ class ProjectileLoaderTest {
 
   @Test
   void loadProjectiles_shouldParseProjectileWithBuff() {
-    String json = """
+    String json =
+        """
         {
           "ice_wizardProjectile": {
             "name": "ice_wizardProjectile",
@@ -78,7 +80,8 @@ class ProjectileLoaderTest {
 
   @Test
   void loadProjectiles_shouldParseChainLightning() {
-    String json = """
+    String json =
+        """
         {
           "ElectroDragonProjectile": {
             "name": "ElectroDragonProjectile",
@@ -107,7 +110,8 @@ class ProjectileLoaderTest {
 
   @Test
   void loadProjectiles_shouldResolveSpawnProjectile() {
-    String json = """
+    String json =
+        """
         {
           "FirecrackerProjectile": {
             "name": "FirecrackerProjectile",
@@ -144,7 +148,8 @@ class ProjectileLoaderTest {
 
   @Test
   void loadProjectiles_shouldParseProjectileRange() {
-    String json = """
+    String json =
+        """
         {
           "HunterProjectile": {
             "name": "HunterProjectile",

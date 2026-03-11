@@ -9,7 +9,6 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.crforge.data.card.CardRegistry;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
@@ -19,25 +18,27 @@ import org.crforge.core.player.LevelConfig;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.data.card.CardRegistry;
 import org.crforge.desktop.render.CardLayout;
 import org.crforge.desktop.render.DebugRenderer;
 import org.crforge.desktop.render.RenderConstants;
 
 /**
  * Debug screen for visualizing the game simulation.
- * <p>
- * Controls:
+ *
+ * <p>Controls:
+ *
  * <ul>
- * <li>SPACE: Pause/resume simulation</li>
- * <li>R: Reset match</li>
- * <li>P: Toggle path visualization</li>
- * <li>O: Toggle attack range circles</li>
- * <li>D: Toggle floating damage numbers</li>
- * <li>A: Toggle AOE damage indicators</li>
- * <li>1-4: Play card from blue player's hand at random position</li>
- * <li>5-8: Play card from red player's hand at random position</li>
- * <li>+/-: Speed up/slow down simulation</li>
- * <li>Click: Deploy selected card at position</li>
+ *   <li>SPACE: Pause/resume simulation
+ *   <li>R: Reset match
+ *   <li>P: Toggle path visualization
+ *   <li>O: Toggle attack range circles
+ *   <li>D: Toggle floating damage numbers
+ *   <li>A: Toggle AOE damage indicators
+ *   <li>1-4: Play card from blue player's hand at random position
+ *   <li>5-8: Play card from red player's hand at random position
+ *   <li>+/-: Speed up/slow down simulation
+ *   <li>Click: Deploy selected card at position
  * </ul>
  */
 @Slf4j
@@ -74,7 +75,8 @@ public class DebugGameScreen implements Screen {
 
     // Viewport includes UI margins
     float viewWidth = arenaWidth;
-    float viewHeight = arenaHeight + RenderConstants.TOP_UI_HEIGHT + RenderConstants.BOTTOM_UI_HEIGHT;
+    float viewHeight =
+        arenaHeight + RenderConstants.TOP_UI_HEIGHT + RenderConstants.BOTTOM_UI_HEIGHT;
 
     this.camera = new OrthographicCamera(viewWidth, viewHeight);
     camera.position.set(viewWidth / 2, viewHeight / 2, 0);
@@ -90,28 +92,30 @@ public class DebugGameScreen implements Screen {
 
     // Decks showcasing special abilities and effects:
     // Blue: charge, hook, variable damage, deploy effect, spawner, area effect spells, shield
-    List<Card> blueCards = List.of(
-        CardRegistry.get("darkprince"),    // Charge + Shield
-        CardRegistry.get("prince"),        // Charge
-        CardRegistry.get("fisherman"),     // Hook
-        CardRegistry.get("infernodragon"), // Variable damage (inferno stages)
-        CardRegistry.get("electrowizard"), // Deploy stun effect
-        CardRegistry.get("witch"),         // Live spawner (skeletons)
-        CardRegistry.get("zap"),           // Area effect spell (stun)
-        CardRegistry.get("electrospirit")         // Area effect spell (ticking)
-    );
+    List<Card> blueCards =
+        List.of(
+            CardRegistry.get("darkprince"), // Charge + Shield
+            CardRegistry.get("prince"), // Charge
+            CardRegistry.get("fisherman"), // Hook
+            CardRegistry.get("infernodragon"), // Variable damage (inferno stages)
+            CardRegistry.get("electrowizard"), // Deploy stun effect
+            CardRegistry.get("witch"), // Live spawner (skeletons)
+            CardRegistry.get("zap"), // Area effect spell (stun)
+            CardRegistry.get("electrospirit") // Area effect spell (ticking)
+            );
 
     // Red: dash, reflect, shield, spawner building, live spawn, area effect, charge
-    List<Card> redCards = List.of(
-        CardRegistry.get("megaknight"),       // Dash
-        CardRegistry.get("electrogiant"),     // Reflect
-        CardRegistry.get("assassin"),         // Dash
-        CardRegistry.get("skeletonwarriors"), // Shield
-        CardRegistry.get("tombstone"),        // Spawner building
-        CardRegistry.get("darkwitch"),        // Live spawn + death spawn
-        CardRegistry.get("freeze"),           // Area effect spell
-        CardRegistry.get("ramrider")          // Charge + live spawn
-    );
+    List<Card> redCards =
+        List.of(
+            CardRegistry.get("megaknight"), // Dash
+            CardRegistry.get("electrogiant"), // Reflect
+            CardRegistry.get("assassin"), // Dash
+            CardRegistry.get("skeletonwarriors"), // Shield
+            CardRegistry.get("tombstone"), // Spawner building
+            CardRegistry.get("darkwitch"), // Live spawn + death spawn
+            CardRegistry.get("freeze"), // Area effect spell
+            CardRegistry.get("ramrider") // Charge + live spawn
+            );
 
     Deck blueDeck = new Deck(blueCards);
     Deck redDeck = new Deck(redCards);
@@ -131,71 +135,73 @@ public class DebugGameScreen implements Screen {
   }
 
   private void setupInput() {
-    Gdx.input.setInputProcessor(new InputAdapter() {
-      @Override
-      public boolean keyDown(int keycode) {
-        switch (keycode) {
-          case Input.Keys.SPACE -> paused = !paused;
-          case Input.Keys.R -> resetMatch();
-          case Input.Keys.P -> {
-            renderer.toggleDrawPaths();
-            log.info("Path visualization: {}", renderer.isDrawPaths() ? "ON" : "OFF");
-          }
-          case Input.Keys.O -> {
-            renderer.toggleDrawRanges();
-            log.info("Range circles: {}", renderer.isDrawRanges() ? "ON" : "OFF");
-          }
-          case Input.Keys.D -> {
-            renderer.toggleDrawDamageNumbers();
-            log.info("Damage numbers: {}", renderer.isDrawDamageNumbers() ? "ON" : "OFF");
-          }
-          case Input.Keys.A -> {
-            renderer.toggleDrawAoeDamage();
-            log.info("AOE damage indicators: {}", renderer.isDrawAoeDamage() ? "ON" : "OFF");
-          }
-          case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
-          case Input.Keys.MINUS -> adjustSpeed(0.5f);
+    Gdx.input.setInputProcessor(
+        new InputAdapter() {
+          @Override
+          public boolean keyDown(int keycode) {
+            switch (keycode) {
+              case Input.Keys.SPACE -> paused = !paused;
+              case Input.Keys.R -> resetMatch();
+              case Input.Keys.P -> {
+                renderer.toggleDrawPaths();
+                log.info("Path visualization: {}", renderer.isDrawPaths() ? "ON" : "OFF");
+              }
+              case Input.Keys.O -> {
+                renderer.toggleDrawRanges();
+                log.info("Range circles: {}", renderer.isDrawRanges() ? "ON" : "OFF");
+              }
+              case Input.Keys.D -> {
+                renderer.toggleDrawDamageNumbers();
+                log.info("Damage numbers: {}", renderer.isDrawDamageNumbers() ? "ON" : "OFF");
+              }
+              case Input.Keys.A -> {
+                renderer.toggleDrawAoeDamage();
+                log.info("AOE damage indicators: {}", renderer.isDrawAoeDamage() ? "ON" : "OFF");
+              }
+              case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
+              case Input.Keys.MINUS -> adjustSpeed(0.5f);
 
-          // Select card from hand (Blue Player) via keyboard
-          case Input.Keys.NUM_1 -> selectCard(bluePlayer, 0);
-          case Input.Keys.NUM_2 -> selectCard(bluePlayer, 1);
-          case Input.Keys.NUM_3 -> selectCard(bluePlayer, 2);
-          case Input.Keys.NUM_4 -> selectCard(bluePlayer, 3);
+              // Select card from hand (Blue Player) via keyboard
+              case Input.Keys.NUM_1 -> selectCard(bluePlayer, 0);
+              case Input.Keys.NUM_2 -> selectCard(bluePlayer, 1);
+              case Input.Keys.NUM_3 -> selectCard(bluePlayer, 2);
+              case Input.Keys.NUM_4 -> selectCard(bluePlayer, 3);
 
-          // Select card from hand (Red Player) via keyboard
-          case Input.Keys.NUM_5 -> selectCard(redPlayer, 0);
-          case Input.Keys.NUM_6 -> selectCard(redPlayer, 1);
-          case Input.Keys.NUM_7 -> selectCard(redPlayer, 2);
-          case Input.Keys.NUM_8 -> selectCard(redPlayer, 3);
+              // Select card from hand (Red Player) via keyboard
+              case Input.Keys.NUM_5 -> selectCard(redPlayer, 0);
+              case Input.Keys.NUM_6 -> selectCard(redPlayer, 1);
+              case Input.Keys.NUM_7 -> selectCard(redPlayer, 2);
+              case Input.Keys.NUM_8 -> selectCard(redPlayer, 3);
 
-          default -> {
+              default -> {
+                return false;
+              }
+            }
+            return true;
+          }
+
+          @Override
+          public boolean mouseMoved(int screenX, int screenY) {
+            updateHover(screenX, screenY);
             return false;
           }
-        }
-        return true;
-      }
 
-      @Override
-      public boolean mouseMoved(int screenX, int screenY) {
-        updateHover(screenX, screenY);
-        return false;
-      }
-
-      @Override
-      public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        if (button == Input.Buttons.LEFT) {
-          handleLeftClick(screenX, screenY);
-        } else if (button == Input.Buttons.RIGHT) {
-          selectedHandIndex = -1;
-          selectedPlayer = null;
-        }
-        return true;
-      }
-    });
+          @Override
+          public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (button == Input.Buttons.LEFT) {
+              handleLeftClick(screenX, screenY);
+            } else if (button == Input.Buttons.RIGHT) {
+              selectedHandIndex = -1;
+              selectedPlayer = null;
+            }
+            return true;
+          }
+        });
   }
 
   private void updateHover(int screenX, int screenY) {
-    // Use camera unproject to handle coordinates correctly even if resized (though fixed size for now)
+    // Use camera unproject to handle coordinates correctly even if resized (though fixed size for
+    // now)
     touchPos.set(screenX, screenY, 0);
     camera.unproject(touchPos);
 
@@ -231,8 +237,12 @@ public class DebugGameScreen implements Screen {
     }
 
     // 2. Play Card (Clicking on Arena)
-    if (selectedHandIndex != -1 && selectedPlayer != null && hoverTileX >= 0
-        && hoverTileX < Arena.WIDTH && hoverTileY >= 0 && hoverTileY < Arena.HEIGHT) {
+    if (selectedHandIndex != -1
+        && selectedPlayer != null
+        && hoverTileX >= 0
+        && hoverTileX < Arena.WIDTH
+        && hoverTileY >= 0
+        && hoverTileY < Arena.HEIGHT) {
       float playX = hoverTileX + 0.5f;
       float playY = hoverTileY + 0.5f;
 
@@ -248,21 +258,33 @@ public class DebugGameScreen implements Screen {
       boolean canAfford = selectedPlayer.getElixir().has(card.getCost());
 
       if (!validPlacement) {
-        log.warn("[{}s] Invalid placement for {} at ({}, {})",
-            engine.getGameTimeSeconds(), card.getName(), playX, playY);
+        log.warn(
+            "[{}s] Invalid placement for {} at ({}, {})",
+            engine.getGameTimeSeconds(),
+            card.getName(),
+            playX,
+            playY);
         return;
       }
 
       if (!canAfford) {
-        log.warn("[{}s] Not enough elixir for {} (cost {}, have {})",
-            engine.getGameTimeSeconds(), card.getName(), card.getCost(),
+        log.warn(
+            "[{}s] Not enough elixir for {} (cost {}, have {})",
+            engine.getGameTimeSeconds(),
+            card.getName(),
+            card.getCost(),
             selectedPlayer.getElixir().getFloor());
         return;
       }
 
       engine.queueAction(selectedPlayer, action);
-      log.info("[{}s] {} played {} at ({}, {})",
-          engine.getGameTimeSeconds(), selectedPlayer.getTeam(), card.getName(), playX, playY);
+      log.info(
+          "[{}s] {} played {} at ({}, {})",
+          engine.getGameTimeSeconds(),
+          selectedPlayer.getTeam(),
+          card.getName(),
+          playX,
+          playY);
 
       // Deselect after successful play (matches real CR)
       selectedHandIndex = -1;
@@ -271,8 +293,8 @@ public class DebugGameScreen implements Screen {
   }
 
   private void checkHandSelection(float worldX, float worldY, Player player, boolean isTop) {
-    int index = CardLayout.hitTest(worldX, worldY, isTop,
-        camera.viewportWidth, camera.viewportHeight);
+    int index =
+        CardLayout.hitTest(worldX, worldY, isTop, camera.viewportWidth, camera.viewportHeight);
     if (index != -1) {
       selectCard(player, index);
     }
@@ -284,8 +306,12 @@ public class DebugGameScreen implements Screen {
 
     Card c = player.getHand().getCard(index);
     if (c != null) {
-      log.info("[{}s] Selected ({}): {} (cost {})",
-          engine.getGameTimeSeconds(), player.getTeam(), c.getName(), c.getCost());
+      log.info(
+          "[{}s] Selected ({}): {} (cost {})",
+          engine.getGameTimeSeconds(),
+          player.getTeam(),
+          c.getName(),
+          c.getCost());
     }
   }
 
@@ -339,7 +365,8 @@ public class DebugGameScreen implements Screen {
 
   @Override
   public void show() {
-    log.info("""
+    log.info(
+        """
         === CRForge Debug Visualizer ===
         Controls:
           SPACE - Pause/Resume
@@ -356,16 +383,13 @@ public class DebugGameScreen implements Screen {
   }
 
   @Override
-  public void hide() {
-  }
+  public void hide() {}
 
   @Override
-  public void pause() {
-  }
+  public void pause() {}
 
   @Override
-  public void resume() {
-  }
+  public void resume() {}
 
   @Override
   public void dispose() {

@@ -25,7 +25,9 @@ subprojects {
 
     spotless {
         java {
+            googleJavaFormat("1.25.2")
             removeUnusedImports()
+            trimTrailingWhitespace()
             endWithNewline()
         }
     }

@@ -19,11 +19,11 @@ import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.physics.PhysicsSystem;
 
 /**
- * Fluent test harness for the simulation. Handles system wiring, entity creation,
- * and tick execution in the canonical GameEngine order. Eliminates boilerplate
- * from test classes.
+ * Fluent test harness for the simulation. Handles system wiring, entity creation, and tick
+ * execution in the canonical GameEngine order. Eliminates boilerplate from test classes.
  *
  * <p>Usage:
+ *
  * <pre>
  * SimHarness sim = SimHarness.create()
  *     .withAllSystems()
@@ -57,27 +57,29 @@ public class SimHarness {
     this.enabledSystems = builder.enabledSystems;
 
     // Initialize enabled systems
-    this.statusEffectSystem = enabledSystems.contains(SimSystems.STATUS_EFFECTS)
-        ? new StatusEffectSystem() : null;
+    this.statusEffectSystem =
+        enabledSystems.contains(SimSystems.STATUS_EFFECTS) ? new StatusEffectSystem() : null;
 
-    this.targetingSystem = enabledSystems.contains(SimSystems.TARGETING)
-        ? new TargetingSystem() : null;
+    this.targetingSystem =
+        enabledSystems.contains(SimSystems.TARGETING) ? new TargetingSystem() : null;
 
-    this.combatSystem = enabledSystems.contains(SimSystems.COMBAT)
-        ? new CombatSystem(gameState) : null;
+    this.combatSystem =
+        enabledSystems.contains(SimSystems.COMBAT) ? new CombatSystem(gameState) : null;
 
-    this.abilitySystem = enabledSystems.contains(SimSystems.ABILITY)
-        ? new AbilitySystem(gameState) : null;
+    this.abilitySystem =
+        enabledSystems.contains(SimSystems.ABILITY) ? new AbilitySystem(gameState) : null;
 
     Arena arena = new Arena("Test Arena");
-    this.physicsSystem = enabledSystems.contains(SimSystems.PHYSICS)
-        ? new PhysicsSystem(arena) : null;
+    this.physicsSystem =
+        enabledSystems.contains(SimSystems.PHYSICS) ? new PhysicsSystem(arena) : null;
 
-    this.spawnerSystem = enabledSystems.contains(SimSystems.SPAWNER)
-        ? new SpawnerSystem(gameState, combatSystem) : null;
+    this.spawnerSystem =
+        enabledSystems.contains(SimSystems.SPAWNER)
+            ? new SpawnerSystem(gameState, combatSystem)
+            : null;
 
-    this.areaEffectSystem = enabledSystems.contains(SimSystems.AREA_EFFECT)
-        ? new AreaEffectSystem(gameState) : null;
+    this.areaEffectSystem =
+        enabledSystems.contains(SimSystems.AREA_EFFECT) ? new AreaEffectSystem(gameState) : null;
 
     // Spawn entities and process pending
     for (Entity entity : builder.entities) {
@@ -103,8 +105,8 @@ public class SimHarness {
   // -- Tick execution --
 
   /**
-   * Runs a single tick in the canonical GameEngine order:
-   * StatusEffects -> entity.update -> AreaEffects -> Targeting -> Ability -> Combat -> Physics -> Deaths
+   * Runs a single tick in the canonical GameEngine order: StatusEffects -> entity.update ->
+   * AreaEffects -> Targeting -> Ability -> Combat -> Physics -> Deaths
    */
   public void tick() {
     gameState.processPending();

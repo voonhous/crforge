@@ -18,10 +18,11 @@ import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**
- * Processes all active AreaEffect entities each tick, applying damage and buffs
- * to enemies within the effect radius.
+ * Processes all active AreaEffect entities each tick, applying damage and buffs to enemies within
+ * the effect radius.
  *
  * <p>One-shot effects (hitSpeed <= 0): apply once on first tick, then expire.
+ *
  * <p>Ticking effects (hitSpeed > 0): apply every hitSpeed seconds for the duration.
  */
 @RequiredArgsConstructor
@@ -29,9 +30,7 @@ public class AreaEffectSystem {
 
   private final GameState gameState;
 
-  /**
-   * Update all active area effects. Should be called once per tick.
-   */
+  /** Update all active area effects. Should be called once per tick. */
   public void update(float deltaTime) {
     List<AreaEffect> effects = gameState.getEntitiesOfType(AreaEffect.class);
     for (AreaEffect effect : effects) {
@@ -113,9 +112,9 @@ public class AreaEffectSystem {
   }
 
   /**
-   * Heals friendly units within the area effect radius. Used when the buff defines
-   * healPerSecond (e.g. HealSpiritBuff). Heal amount is healPerSecond * buffDuration
-   * for one-shot effects, or healPerSecond * hitSpeed for ticking effects.
+   * Heals friendly units within the area effect radius. Used when the buff defines healPerSecond
+   * (e.g. HealSpiritBuff). Heal amount is healPerSecond * buffDuration for one-shot effects, or
+   * healPerSecond * hitSpeed for ticking effects.
    */
   private void applyHealToFriendlies(AreaEffect effect, BuffDefinition buffDef) {
     AreaEffectStats stats = effect.getStats();
@@ -182,5 +181,4 @@ public class AreaEffectSystem {
       }
     }
   }
-
 }

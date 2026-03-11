@@ -31,31 +31,29 @@ class SpawnerDeathIntegrationTest {
   @Test
   void tombstoneShouldSpawnSkeletonsOnDeath() {
     // 1. Create Tombstone with death spawn
-    TroopStats skeletonStats = TroopStats.builder()
-        .name("Skeleton")
-        .health(67)
-        .damage(67)
-        .speed(1.0f)
-        .build();
+    TroopStats skeletonStats =
+        TroopStats.builder().name("Skeleton").health(67).damage(67).speed(1.0f).build();
 
     // Set a high spawnPauseTime and initialize currentTimer
     // so it doesn't cause a wave spawn immediately
-    SpawnerComponent spawner = SpawnerComponent.builder()
-        .deathSpawnCount(4)
-        .spawnStats(skeletonStats)
-        .spawnPauseTime(10.0f)
-        .currentTimer(10.0f)
-        .build();
+    SpawnerComponent spawner =
+        SpawnerComponent.builder()
+            .deathSpawnCount(4)
+            .spawnStats(skeletonStats)
+            .spawnPauseTime(10.0f)
+            .currentTimer(10.0f)
+            .build();
 
-    Building tombstone = Building.builder()
-        .name("Tombstone")
-        .team(Team.BLUE)
-        .position(new Position(10f, 10f))
-        .health(new Health(200))
-        .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
-        .lifetime(30f)
-        .spawner(spawner)
-        .build();
+    Building tombstone =
+        Building.builder()
+            .name("Tombstone")
+            .team(Team.BLUE)
+            .position(new Position(10f, 10f))
+            .health(new Health(200))
+            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .lifetime(30f)
+            .spawner(spawner)
+            .build();
 
     tombstone.onSpawn();
     engine.spawn(tombstone);
@@ -71,10 +69,11 @@ class SpawnerDeathIntegrationTest {
     engine.tick();
 
     // 5. Verify Skeletons spawned
-    long skeletonCount = engine.getGameState().getAliveEntities().stream()
-        .filter(e -> e.getEntityType() == EntityType.TROOP)
-        .filter(e -> "Skeleton".equals(e.getName()))
-        .count();
+    long skeletonCount =
+        engine.getGameState().getAliveEntities().stream()
+            .filter(e -> e.getEntityType() == EntityType.TROOP)
+            .filter(e -> "Skeleton".equals(e.getName()))
+            .count();
 
     assertThat(skeletonCount).as("Should spawn 4 skeletons on death").isEqualTo(4);
   }
@@ -82,15 +81,16 @@ class SpawnerDeathIntegrationTest {
   @Test
   void buildingShouldDieWhenLifetimeExpires() {
     // 1. Create Building with short lifetime
-    Building cannon = Building.builder()
-        .name("Cannon")
-        .team(Team.BLUE)
-        .position(new Position(10f, 10f))
-        .health(new Health(200))
-        .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
-        .lifetime(1.0f) // 1 second lifetime
-        .deployTime(0f)
-        .build();
+    Building cannon =
+        Building.builder()
+            .name("Cannon")
+            .team(Team.BLUE)
+            .position(new Position(10f, 10f))
+            .health(new Health(200))
+            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .lifetime(1.0f) // 1 second lifetime
+            .deployTime(0f)
+            .build();
 
     cannon.onSpawn();
     engine.spawn(cannon);

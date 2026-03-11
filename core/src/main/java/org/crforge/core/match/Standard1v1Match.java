@@ -8,11 +8,12 @@ import org.crforge.core.player.Team;
 
 /**
  * Standard 1v1 match configuration.
+ *
  * <ul>
- *   <li>Arena: 18x32 tiles</li>
- *   <li>Players: 1 per team</li>
- *   <li>Duration: 3 minutes + 2 minutes overtime</li>
- *   <li>Towers: 1 Crown + 2 Princess per team</li>
+ *   <li>Arena: 18x32 tiles
+ *   <li>Players: 1 per team
+ *   <li>Duration: 3 minutes + 2 minutes overtime
+ *   <li>Towers: 1 Crown + 2 Princess per team
  * </ul>
  */
 public class Standard1v1Match extends Match {
@@ -54,8 +55,8 @@ public class Standard1v1Match extends Match {
   }
 
   /**
-   * Creates the standard tower layout for this match.
-   * Call this after adding the match to GameEngine.
+   * Creates the standard tower layout for this match. Call this after adding the match to
+   * GameEngine.
    *
    * @param spawnCallback callback to spawn each tower into the game state
    */
@@ -68,25 +69,41 @@ public class Standard1v1Match extends Match {
     Arena arena = getArena();
 
     if (team == Team.BLUE) {
-      callback.spawn(Tower.createCrownTower(team,
-          arena.getBlueCrownTowerX(), arena.getBlueCrownTowerY(), towerLevel));
-      callback.spawn(Tower.createPrincessTower(team,
-          arena.getBlueLeftPrincessTowerX(), arena.getBlueLeftPrincessTowerY(), towerLevel));
-      callback.spawn(Tower.createPrincessTower(team,
-          arena.getBlueRightPrincessTowerX(), arena.getBlueRightPrincessTowerY(), towerLevel));
+      callback.spawn(
+          Tower.createCrownTower(
+              team, arena.getBlueCrownTowerX(), arena.getBlueCrownTowerY(), towerLevel));
+      callback.spawn(
+          Tower.createPrincessTower(
+              team,
+              arena.getBlueLeftPrincessTowerX(),
+              arena.getBlueLeftPrincessTowerY(),
+              towerLevel));
+      callback.spawn(
+          Tower.createPrincessTower(
+              team,
+              arena.getBlueRightPrincessTowerX(),
+              arena.getBlueRightPrincessTowerY(),
+              towerLevel));
     } else {
-      callback.spawn(Tower.createCrownTower(team,
-          arena.getRedCrownTowerX(), arena.getRedCrownTowerY(), towerLevel));
-      callback.spawn(Tower.createPrincessTower(team,
-          arena.getRedLeftPrincessTowerX(), arena.getRedLeftPrincessTowerY(), towerLevel));
-      callback.spawn(Tower.createPrincessTower(team,
-          arena.getRedRightPrincessTowerX(), arena.getRedRightPrincessTowerY(), towerLevel));
+      callback.spawn(
+          Tower.createCrownTower(
+              team, arena.getRedCrownTowerX(), arena.getRedCrownTowerY(), towerLevel));
+      callback.spawn(
+          Tower.createPrincessTower(
+              team,
+              arena.getRedLeftPrincessTowerX(),
+              arena.getRedLeftPrincessTowerY(),
+              towerLevel));
+      callback.spawn(
+          Tower.createPrincessTower(
+              team,
+              arena.getRedRightPrincessTowerX(),
+              arena.getRedRightPrincessTowerY(),
+              towerLevel));
     }
   }
 
-  /**
-   * Callback interface for tower spawning.
-   */
+  /** Callback interface for tower spawning. */
   @FunctionalInterface
   public interface TowerSpawnCallback {
     void spawn(Tower tower);

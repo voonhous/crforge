@@ -39,8 +39,8 @@ class BasePathfinderTest {
     float targetX = 10;
     float targetY = 8; // Still south of river (River starts at 15)
 
-    float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY, arena);
 
     float expected = (float) Math.atan2(3, 5);
     assertEquals(expected, angle, 0.001f);
@@ -53,8 +53,8 @@ class BasePathfinderTest {
     float targetX = 15; // Far right
     float targetY = 25; // North
 
-    float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY, arena);
 
     // Should target Left Bridge because 1 is closer to left bridge than right
     float bridgeX = Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH / 2f;
@@ -74,8 +74,8 @@ class BasePathfinderTest {
     float targetX = 5; // Far left
     float targetY = 25; // North
 
-    float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY, arena);
 
     // Should target Right Bridge
     float bridgeX = Arena.RIGHT_BRIDGE_X + Arena.BRIDGE_WIDTH / 2f;
@@ -93,8 +93,8 @@ class BasePathfinderTest {
     float targetX = 10;
     float targetY = 25;
 
-    float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY, arena);
 
     // In River Zone (on bridge), it should aim for River Max (Exit)
     float exitY = Arena.RIVER_Y + 1.0f;
@@ -121,8 +121,8 @@ class BasePathfinderTest {
     float targetX = bridgeX; // Target is directly North across bridge
     float targetY = Arena.RIVER_Y + 5.0f;
 
-    float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY, arena);
 
     // We expect it to aim at the bridge entrance (bridgeX, RIVER_Y_MIN)
     // RIVER_Y_MIN is roughly 15.0.
@@ -146,8 +146,8 @@ class BasePathfinderTest {
     float targetX = bridgeX + 10f;
     float targetY = Arena.RIVER_Y + 10f;
 
-    float angle = pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY,
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(start, MovementType.GROUND, targetX, targetY, arena);
 
     // Expectation: Move towards bridge exit (RIVER_Y_MAX) keeping X aligned with CURRENT X
     // because we are safely on the bridge.
@@ -156,6 +156,10 @@ class BasePathfinderTest {
     // UPDATED: Now we expect dx = 0, because targetBridgeX == curX
     float expectedAngle = (float) Math.atan2(exitY - Arena.RIVER_Y, 0);
 
-    assertEquals(expectedAngle, angle, 0.01f, "Should walk straight across bridge (parallel to Y axis) before turning");
+    assertEquals(
+        expectedAngle,
+        angle,
+        0.01f,
+        "Should walk straight across bridge (parallel to Y axis) before turning");
   }
 }

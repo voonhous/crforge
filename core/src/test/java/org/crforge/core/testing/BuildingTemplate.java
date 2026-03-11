@@ -9,9 +9,7 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.player.Team;
 
-/**
- * Fluent factory for creating test buildings with sensible defaults.
- */
+/** Fluent factory for creating test buildings with sensible defaults. */
 public class BuildingTemplate {
 
   private String name;

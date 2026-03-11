@@ -13,8 +13,8 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 
 /**
- * Manages floating damage number popups. Detects damage by comparing health snapshots
- * between render frames -- no changes to core module required.
+ * Manages floating damage number popups. Detects damage by comparing health snapshots between
+ * render frames -- no changes to core module required.
  */
 public class DamageNumberRenderer {
 
@@ -101,17 +101,15 @@ public class DamageNumberRenderer {
       float alpha = 1.0f - (popup.elapsed / POPUP_DURATION);
 
       if (popup.isShieldDamage) {
-        ctx.getFont().setColor(
-            COLOR_SHIELD_DAMAGE_NUMBER.r,
-            COLOR_SHIELD_DAMAGE_NUMBER.g,
-            COLOR_SHIELD_DAMAGE_NUMBER.b,
-            alpha);
+        ctx.getFont()
+            .setColor(
+                COLOR_SHIELD_DAMAGE_NUMBER.r,
+                COLOR_SHIELD_DAMAGE_NUMBER.g,
+                COLOR_SHIELD_DAMAGE_NUMBER.b,
+                alpha);
       } else {
-        ctx.getFont().setColor(
-            COLOR_DAMAGE_NUMBER.r,
-            COLOR_DAMAGE_NUMBER.g,
-            COLOR_DAMAGE_NUMBER.b,
-            alpha);
+        ctx.getFont()
+            .setColor(COLOR_DAMAGE_NUMBER.r, COLOR_DAMAGE_NUMBER.g, COLOR_DAMAGE_NUMBER.b, alpha);
       }
 
       String text = "-" + popup.amount;

@@ -18,8 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Proof-of-concept: hook and modifier-source tests rewritten with SimHarness.
- * Validates both the SimHarness API and the ModifierSource system.
+ * Proof-of-concept: hook and modifier-source tests rewritten with SimHarness. Validates both the
+ * SimHarness API and the ModifierSource system.
  */
 class SimHarnessAbilityTest {
 
@@ -27,8 +27,13 @@ class SimHarnessAbilityTest {
   void setUp() {
     // Register a test Rage buff (140 -> 1.4x speed/hit speed)
     BuffRegistry.clear();
-    BuffRegistry.register("TestRage", BuffDefinition.builder()
-        .name("TestRage").speedMultiplier(140).hitSpeedMultiplier(140).build());
+    BuffRegistry.register(
+        "TestRage",
+        BuffDefinition.builder()
+            .name("TestRage")
+            .speedMultiplier(140)
+            .hitSpeedMultiplier(140)
+            .build());
   }
 
   private static AbilityData hookData() {
@@ -51,14 +56,21 @@ class SimHarnessAbilityTest {
 
   @Test
   void hook_shouldTriggerAndPullTarget() {
-    SimHarness sim = SimHarness.create()
-        .withAllSystems()
-        .spawn(TroopTemplate.melee("Fisherman", Team.BLUE)
-            .at(5, 5).hp(900).damage(80).range(1.2f).sightRange(7.5f)
-            .cooldown(1.3f).ability(hookData()))
-        .spawn(TroopTemplate.target("Target", Team.RED).at(10, 5))
-        .deployed()
-        .build();
+    SimHarness sim =
+        SimHarness.create()
+            .withAllSystems()
+            .spawn(
+                TroopTemplate.melee("Fisherman", Team.BLUE)
+                    .at(5, 5)
+                    .hp(900)
+                    .damage(80)
+                    .range(1.2f)
+                    .sightRange(7.5f)
+                    .cooldown(1.3f)
+                    .ability(hookData()))
+            .spawn(TroopTemplate.target("Target", Team.RED).at(10, 5))
+            .deployed()
+            .build();
 
     Troop fisher = sim.troop("Fisherman");
     Troop target = sim.troop("Target");
@@ -67,13 +79,11 @@ class SimHarnessAbilityTest {
 
     // First tick -> WINDING_UP
     sim.tick();
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
     // Wait for load time (1.3s = ~40 ticks)
     sim.tick(40);
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.PULLING);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.PULLING);
 
     // Pull target toward fisherman
     float initialTargetX = target.getPosition().getX();
@@ -86,14 +96,21 @@ class SimHarnessAbilityTest {
     // This is the core test that validates ModifierSource: StatusEffectSystem
     // runs every tick and used to trample ability flags. Now it should leave
     // ABILITY_HOOK source untouched.
-    SimHarness sim = SimHarness.create()
-        .withAllSystems()
-        .spawn(TroopTemplate.melee("Fisherman", Team.BLUE)
-            .at(5, 5).hp(900).damage(80).range(1.2f).sightRange(7.5f)
-            .cooldown(1.3f).ability(longWindupHookData()))
-        .spawn(TroopTemplate.target("Target", Team.RED).at(10, 5))
-        .deployed()
-        .build();
+    SimHarness sim =
+        SimHarness.create()
+            .withAllSystems()
+            .spawn(
+                TroopTemplate.melee("Fisherman", Team.BLUE)
+                    .at(5, 5)
+                    .hp(900)
+                    .damage(80)
+                    .range(1.2f)
+                    .sightRange(7.5f)
+                    .cooldown(1.3f)
+                    .ability(longWindupHookData()))
+            .spawn(TroopTemplate.target("Target", Team.RED).at(10, 5))
+            .deployed()
+            .build();
 
     Troop fisher = sim.troop("Fisherman");
     Troop target = sim.troop("Target");
@@ -102,8 +119,7 @@ class SimHarnessAbilityTest {
 
     // Trigger hook
     sim.tick();
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
     float startX = fisher.getPosition().getX();
     float startY = fisher.getPosition().getY();
@@ -131,14 +147,21 @@ class SimHarnessAbilityTest {
 
   @Test
   void hook_shouldDragSelfToBuilding() {
-    SimHarness sim = SimHarness.create()
-        .withAllSystems()
-        .spawn(TroopTemplate.melee("Fisherman", Team.BLUE)
-            .at(5, 5).hp(900).damage(80).range(1.2f).sightRange(7.5f)
-            .cooldown(1.3f).ability(hookData()))
-        .spawn(BuildingTemplate.defense("Cannon", Team.RED).at(10, 5))
-        .deployed()
-        .build();
+    SimHarness sim =
+        SimHarness.create()
+            .withAllSystems()
+            .spawn(
+                TroopTemplate.melee("Fisherman", Team.BLUE)
+                    .at(5, 5)
+                    .hp(900)
+                    .damage(80)
+                    .range(1.2f)
+                    .sightRange(7.5f)
+                    .cooldown(1.3f)
+                    .ability(hookData()))
+            .spawn(BuildingTemplate.defense("Cannon", Team.RED).at(10, 5))
+            .deployed()
+            .build();
 
     Troop fisher = sim.troop("Fisherman");
 
@@ -164,14 +187,21 @@ class SimHarnessAbilityTest {
 
   @Test
   void dash_combatDisabledSurvivesStatusEffectReset() {
-    SimHarness sim = SimHarness.create()
-        .withAllSystems()
-        .spawn(TroopTemplate.melee("Bandit", Team.BLUE)
-            .at(5, 5).hp(750).damage(80).speed(2.0f)
-            .sightRange(5.5f).cooldown(1.0f).ability(dashData()))
-        .spawn(TroopTemplate.target("Target", Team.RED).at(12, 5))
-        .deployed()
-        .build();
+    SimHarness sim =
+        SimHarness.create()
+            .withAllSystems()
+            .spawn(
+                TroopTemplate.melee("Bandit", Team.BLUE)
+                    .at(5, 5)
+                    .hp(750)
+                    .damage(80)
+                    .speed(2.0f)
+                    .sightRange(5.5f)
+                    .cooldown(1.0f)
+                    .ability(dashData()))
+            .spawn(TroopTemplate.target("Target", Team.RED).at(12, 5))
+            .deployed()
+            .build();
 
     Troop bandit = sim.troop("Bandit");
     bandit.getCombat().setCurrentTarget(sim.troop("Target"));
@@ -179,8 +209,7 @@ class SimHarnessAbilityTest {
     // Burn through initial cooldown (0.8s = 24 ticks) then trigger dash.
     // Target placed far enough so Bandit stays in [3.5, 6.0] window after walking during cooldown.
     sim.tick(25);
-    assertThat(bandit.getAbility().getDashState())
-        .isEqualTo(AbilityComponent.DashState.DASHING);
+    assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     // Combat should be disabled during dash, even with StatusEffectSystem running
     assertThat(bandit.getCombat().isCombatDisabled())
@@ -198,15 +227,22 @@ class SimHarnessAbilityTest {
 
   @Test
   void charge_speedComposesWithRage() {
-    SimHarness sim = SimHarness.create()
-        .withSystems(SimSystems.STATUS_EFFECTS, SimSystems.ABILITY)
-        .spawn(TroopTemplate.melee("Prince", Team.BLUE)
-            .at(5, 5).hp(1000).damage(100).range(1.5f)
-            .sightRange(5.5f).cooldown(1.4f).speed(1.5f)
-            .ability(chargeData()))
-        .spawn(TroopTemplate.target("Target", Team.RED).at(15, 5))
-        .deployed()
-        .build();
+    SimHarness sim =
+        SimHarness.create()
+            .withSystems(SimSystems.STATUS_EFFECTS, SimSystems.ABILITY)
+            .spawn(
+                TroopTemplate.melee("Prince", Team.BLUE)
+                    .at(5, 5)
+                    .hp(1000)
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .cooldown(1.4f)
+                    .speed(1.5f)
+                    .ability(chargeData()))
+            .spawn(TroopTemplate.target("Target", Team.RED).at(15, 5))
+            .deployed()
+            .build();
 
     Troop prince = sim.troop("Prince");
     prince.getCombat().setCurrentTarget(sim.troop("Target"));
@@ -233,15 +269,22 @@ class SimHarnessAbilityTest {
   @Test
   void charge_speedResetDoesNotAffectRage() {
     // Target placed far enough (distance 10) to be outside attack range but within sight
-    SimHarness sim = SimHarness.create()
-        .withSystems(SimSystems.STATUS_EFFECTS, SimSystems.ABILITY)
-        .spawn(TroopTemplate.melee("Prince", Team.BLUE)
-            .at(5, 5).hp(1000).damage(100).range(1.5f)
-            .sightRange(5.5f).cooldown(1.4f).speed(1.5f)
-            .ability(chargeData()))
-        .spawn(TroopTemplate.target("Target", Team.RED).at(15, 5))
-        .deployed()
-        .build();
+    SimHarness sim =
+        SimHarness.create()
+            .withSystems(SimSystems.STATUS_EFFECTS, SimSystems.ABILITY)
+            .spawn(
+                TroopTemplate.melee("Prince", Team.BLUE)
+                    .at(5, 5)
+                    .hp(1000)
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .cooldown(1.4f)
+                    .speed(1.5f)
+                    .ability(chargeData()))
+            .spawn(TroopTemplate.target("Target", Team.RED).at(15, 5))
+            .deployed()
+            .build();
 
     Troop prince = sim.troop("Prince");
     prince.getCombat().setCurrentTarget(sim.troop("Target"));

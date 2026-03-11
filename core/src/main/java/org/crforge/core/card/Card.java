@@ -4,9 +4,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
-/**
- * Represents the static configuration and definition of a Card.
- */
+/** Represents the static configuration and definition of a Card. */
 @Getter
 @Builder
 public class Card {
@@ -16,8 +14,7 @@ public class Card {
   private final String description;
   private final CardType type;
   private final int cost;
-  @Builder.Default
-  private final Rarity rarity = Rarity.COMMON;
+  @Builder.Default private final Rarity rarity = Rarity.COMMON;
 
   /**
    * The unit type this card spawns (null for pure spells without a projectile-spawned character).
@@ -27,27 +24,21 @@ public class Card {
   /**
    * How many copies of the unit to deploy (default 1). For example, Archers = 2, Barbarians = 5.
    */
-  @Builder.Default
-  private final int unitCount = 1;
+  @Builder.Default private final int unitCount = 1;
 
   private final ProjectileStats projectile;
 
-  /**
-   * Area effect for spells (e.g. Zap, Freeze, Poison). Null for non-spell cards.
-   */
+  /** Area effect for spells (e.g. Zap, Freeze, Poison). Null for non-spell cards. */
   private final AreaEffectStats areaEffect;
 
-  /**
-   * Deploy effect triggered when the card enters the arena (e.g. ElectroWizard stun).
-   */
+  /** Deploy effect triggered when the card enters the arena (e.g. ElectroWizard stun). */
   private final AreaEffectStats deployEffect;
 
   /**
    * Raw CSV summonRadius for troop deploy formation (divide by TILE_SCALE at deploy time). When 0,
    * uses default circular formation layout.
    */
-  @Builder.Default
-  private final float summonRadius = 0f;
+  @Builder.Default private final float summonRadius = 0f;
 
   /**
    * Resolved spawn template stats. For spawner cards, this holds the TroopStats for the spawned
@@ -55,14 +46,12 @@ public class Card {
    */
   private final TroopStats spawnTemplate;
 
-  /**
-   * Resolved summon template for spells that summon a character (e.g. Rage -> RageBottle).
-   */
+  /** Resolved summon template for spells that summon a character (e.g. Rage -> RageBottle). */
   private final TroopStats summonTemplate;
 
   /**
-   * Projectile spawned at the deploy location when the card enters the arena
-   * (e.g. MegaKnight landing damage). Null for most cards.
+   * Projectile spawned at the deploy location when the card enters the arena (e.g. MegaKnight
+   * landing damage). Null for most cards.
    */
   private final ProjectileStats spawnProjectile;
 
@@ -73,16 +62,13 @@ public class Card {
   private final List<float[]> formationOffsets;
 
   /**
-   * Secondary unit type for dual-unit cards (e.g., SpearGoblin in GoblinGang). Null for
-   * single-unit cards.
+   * Secondary unit type for dual-unit cards (e.g., SpearGoblin in GoblinGang). Null for single-unit
+   * cards.
    */
   private final TroopStats secondaryUnitStats;
 
-  /**
-   * How many secondary units to deploy (default 0).
-   */
-  @Builder.Default
-  private final int secondaryUnitCount = 0;
+  /** How many secondary units to deploy (default 0). */
+  @Builder.Default private final int secondaryUnitCount = 0;
 
   public int getTotalDeployCount() {
     return unitCount + secondaryUnitCount;
@@ -99,5 +85,4 @@ public class Card {
   public boolean isBuilding() {
     return type == CardType.BUILDING;
   }
-
 }

@@ -27,8 +27,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Battle Ram's kamikaze mechanic: unit dies after delivering its attack,
- * then death-spawns 2 Barbarians via the existing SpawnerSystem.
+ * Tests for Battle Ram's kamikaze mechanic: unit dies after delivering its attack, then
+ * death-spawns 2 Barbarians via the existing SpawnerSystem.
  */
 class BattleRamTest {
 
@@ -37,16 +37,17 @@ class BattleRamTest {
   private SpawnerSystem spawnerSystem;
 
   // Barbarian stats used for death spawn
-  private static final TroopStats BARBARIAN_STATS = TroopStats.builder()
-      .name("Barbarian")
-      .health(300)
-      .damage(75)
-      .speed(1.0f)
-      .range(0.7f)
-      .attackCooldown(1.4f)
-      .movementType(MovementType.GROUND)
-      .targetType(TargetType.GROUND)
-      .build();
+  private static final TroopStats BARBARIAN_STATS =
+      TroopStats.builder()
+          .name("Barbarian")
+          .health(300)
+          .damage(75)
+          .speed(1.0f)
+          .range(0.7f)
+          .attackCooldown(1.4f)
+          .movementType(MovementType.GROUND)
+          .targetType(TargetType.GROUND)
+          .build();
 
   @BeforeEach
   void setUp() {
@@ -92,12 +93,11 @@ class BattleRamTest {
     gameState.processPending();
 
     // 2 Barbarians should have spawned
-    long barbCount = gameState.getAliveEntities().stream()
-        .filter(e -> e instanceof Troop t && "Barbarian".equals(t.getName()))
-        .count();
-    assertThat(barbCount)
-        .as("2 Barbarians should spawn on Battle Ram death")
-        .isEqualTo(2);
+    long barbCount =
+        gameState.getAliveEntities().stream()
+            .filter(e -> e instanceof Troop t && "Barbarian".equals(t.getName()))
+            .count();
+    assertThat(barbCount).as("2 Barbarians should spawn on Battle Ram death").isEqualTo(2);
   }
 
   @Test
@@ -119,7 +119,8 @@ class BattleRamTest {
     // Set target
     battleRam.getCombat().setCurrentTarget(tower);
 
-    // Run combat updates until attack executes (windup = attackCooldown - loadTime = 0.4 - 0.35 = 0.05s)
+    // Run combat updates until attack executes (windup = attackCooldown - loadTime = 0.4 - 0.35 =
+    // 0.05s)
     runCombatUpdates(0.5f);
 
     // Battle Ram should be dead after delivering its uncharged attack
@@ -137,12 +138,11 @@ class BattleRamTest {
     gameState.processPending();
 
     // 2 Barbarians should have spawned
-    long barbCount = gameState.getAliveEntities().stream()
-        .filter(e -> e instanceof Troop t && "Barbarian".equals(t.getName()))
-        .count();
-    assertThat(barbCount)
-        .as("2 Barbarians should spawn on Battle Ram death")
-        .isEqualTo(2);
+    long barbCount =
+        gameState.getAliveEntities().stream()
+            .filter(e -> e instanceof Troop t && "Barbarian".equals(t.getName()))
+            .count();
+    assertThat(barbCount).as("2 Barbarians should spawn on Battle Ram death").isEqualTo(2);
   }
 
   @Test
@@ -164,9 +164,10 @@ class BattleRamTest {
     gameState.processPending();
 
     // 2 Barbarians should still spawn from death spawn
-    long barbCount = gameState.getAliveEntities().stream()
-        .filter(e -> e instanceof Troop t && "Barbarian".equals(t.getName()))
-        .count();
+    long barbCount =
+        gameState.getAliveEntities().stream()
+            .filter(e -> e instanceof Troop t && "Barbarian".equals(t.getName()))
+            .count();
     assertThat(barbCount)
         .as("2 Barbarians should spawn even when Battle Ram is killed before reaching a building")
         .isEqualTo(2);
@@ -174,27 +175,23 @@ class BattleRamTest {
 
   private Troop createBattleRam(Team team, float x, float y) {
     // Death spawn config: 2 Barbarians
-    List<DeathSpawnEntry> deathSpawns = List.of(
-        new DeathSpawnEntry(BARBARIAN_STATS, 2, 0.6f)
-    );
+    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(BARBARIAN_STATS, 2, 0.6f));
 
-    SpawnerComponent spawner = SpawnerComponent.builder()
-        .deathSpawns(deathSpawns)
-        .rarity(Rarity.RARE)
-        .level(1)
-        .build();
+    SpawnerComponent spawner =
+        SpawnerComponent.builder().deathSpawns(deathSpawns).rarity(Rarity.RARE).level(1).build();
 
-    Combat combat = Combat.builder()
-        .damage(112)
-        .range(0.5f)
-        .sightRange(5.5f)
-        .attackCooldown(0.4f)
-        .loadTime(0.35f)
-        .accumulatedLoadTime(0.35f) // Preloaded
-        .targetOnlyBuildings(true)
-        .kamikaze(true)
-        .targetType(TargetType.GROUND)
-        .build();
+    Combat combat =
+        Combat.builder()
+            .damage(112)
+            .range(0.5f)
+            .sightRange(5.5f)
+            .attackCooldown(0.4f)
+            .loadTime(0.35f)
+            .accumulatedLoadTime(0.35f) // Preloaded
+            .targetOnlyBuildings(true)
+            .kamikaze(true)
+            .targetType(TargetType.GROUND)
+            .build();
 
     AbilityComponent ability = new AbilityComponent(new ChargeAbility(224, 2.0f));
 

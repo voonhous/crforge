@@ -22,8 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Ice Spirit: 1-elixir kamikaze unit that fires a homing projectile,
- * dealing AOE damage and applying Freeze (1.1s) to all enemies in radius 1.5.
+ * Tests for Ice Spirit: 1-elixir kamikaze unit that fires a homing projectile, dealing AOE damage
+ * and applying Freeze (1.1s) to all enemies in radius 1.5.
  */
 class IceSpiritTest {
 
@@ -103,10 +103,8 @@ class IceSpiritTest {
         .isEqualTo(500 - ICE_SPIRIT_DAMAGE);
 
     // Both should be frozen
-    assertThat(enemy1.getAppliedEffects())
-        .anyMatch(e -> e.getType() == StatusEffectType.FREEZE);
-    assertThat(enemy2.getAppliedEffects())
-        .anyMatch(e -> e.getType() == StatusEffectType.FREEZE);
+    assertThat(enemy1.getAppliedEffects()).anyMatch(e -> e.getType() == StatusEffectType.FREEZE);
+    assertThat(enemy2.getAppliedEffects()).anyMatch(e -> e.getType() == StatusEffectType.FREEZE);
   }
 
   @Test
@@ -137,29 +135,33 @@ class IceSpiritTest {
   }
 
   private Troop createIceSpirit(Team team, float x, float y) {
-    ProjectileStats projStats = ProjectileStats.builder()
-        .name("IceSpiritsProjectile")
-        .damage(ICE_SPIRIT_DAMAGE)
-        .speed(PROJECTILE_SPEED)
-        .radius(AOE_RADIUS)
-        .hitEffects(List.of(EffectStats.builder()
-            .type(StatusEffectType.FREEZE)
-            .duration(FREEZE_DURATION)
-            .buffName("Freeze")
-            .applyAfterDamage(true)
-            .build()))
-        .build();
+    ProjectileStats projStats =
+        ProjectileStats.builder()
+            .name("IceSpiritsProjectile")
+            .damage(ICE_SPIRIT_DAMAGE)
+            .speed(PROJECTILE_SPEED)
+            .radius(AOE_RADIUS)
+            .hitEffects(
+                List.of(
+                    EffectStats.builder()
+                        .type(StatusEffectType.FREEZE)
+                        .duration(FREEZE_DURATION)
+                        .buffName("Freeze")
+                        .applyAfterDamage(true)
+                        .build()))
+            .build();
 
-    Combat combat = Combat.builder()
-        .damage(ICE_SPIRIT_DAMAGE)
-        .range(2.5f)
-        .sightRange(5.5f)
-        .attackCooldown(0.3f)
-        .loadTime(0.1f)
-        .kamikaze(true)
-        .targetType(TargetType.ALL)
-        .projectileStats(projStats)
-        .build();
+    Combat combat =
+        Combat.builder()
+            .damage(ICE_SPIRIT_DAMAGE)
+            .range(2.5f)
+            .sightRange(5.5f)
+            .attackCooldown(0.3f)
+            .loadTime(0.1f)
+            .kamikaze(true)
+            .targetType(TargetType.ALL)
+            .projectileStats(projStats)
+            .build();
 
     return Troop.builder()
         .name("IceSpirit")

@@ -9,8 +9,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import lombok.Getter;
 
 /**
- * Shared rendering resources used by all sub-renderers.
- * Holds the ShapeRenderer, SpriteBatch, fonts, and GlyphLayout.
+ * Shared rendering resources used by all sub-renderers. Holds the ShapeRenderer, SpriteBatch,
+ * fonts, and GlyphLayout.
  */
 @Getter
 public class RenderContext {

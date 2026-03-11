@@ -11,11 +11,11 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 
 /**
- * Processes ability updates each tick. Handles charge buildup, variable damage
- * (inferno) stage escalation, dash, hook, and reflect.
+ * Processes ability updates each tick. Handles charge buildup, variable damage (inferno) stage
+ * escalation, dash, hook, and reflect.
  *
- * <p>Should run before CombatSystem in the tick loop so damage modifications
- * take effect on the current tick's attacks.
+ * <p>Should run before CombatSystem in the tick loop so damage modifications take effect on the
+ * current tick's attacks.
  */
 public class AbilitySystem {
 
@@ -72,8 +72,9 @@ public class AbilitySystem {
         ability.setCharged(true);
         // Apply speed multiplier via ABILITY_CHARGE source
         ChargeAbility charge = (ChargeAbility) ability.getData();
-        troop.getMovement().setSpeedMultiplier(
-            ModifierSource.ABILITY_CHARGE, charge.speedMultiplier());
+        troop
+            .getMovement()
+            .setSpeedMultiplier(ModifierSource.ABILITY_CHARGE, charge.speedMultiplier());
       }
     } else if (!ability.isCharged() && ability.getChargeTimer() > 0) {
       // Stopped moving before fully charged -- charge is lost, restart from zero
@@ -83,20 +84,19 @@ public class AbilitySystem {
   }
 
   /**
-   * Called by CombatSystem after a charge unit deals its attack.
-   * Returns the damage to use for this attack (charge damage if charged).
+   * Called by CombatSystem after a charge unit deals its attack. Returns the damage to use for this
+   * attack (charge damage if charged).
    */
   public static int getChargeDamage(AbilityComponent ability, int baseDamage) {
-    if (ability != null && ability.getData() instanceof ChargeAbility charge
+    if (ability != null
+        && ability.getData() instanceof ChargeAbility charge
         && ability.isCharged()) {
       return charge.chargeDamage();
     }
     return baseDamage;
   }
 
-  /**
-   * Called after a charge attack lands. Resets the charge state.
-   */
+  /** Called after a charge attack lands. Resets the charge state. */
   public static void consumeCharge(Troop troop) {
     AbilityComponent ability = troop.getAbility();
     if (ability != null && ability.getData() instanceof ChargeAbility) {
@@ -106,8 +106,8 @@ public class AbilitySystem {
   }
 
   /**
-   * Resets variable damage (inferno) back to stage 0. Called when the troop is
-   * stunned or frozen -- a core counter-play mechanic (see src_og.js line 2279).
+   * Resets variable damage (inferno) back to stage 0. Called when the troop is stunned or frozen --
+   * a core counter-play mechanic (see src_og.js line 2279).
    */
   public static void resetVariableDamage(Troop troop) {
     AbilityComponent ability = troop.getAbility();
@@ -153,7 +153,8 @@ public class AbilitySystem {
     int stage = ability.getCurrentStage();
     if (stage < stages.size() - 1) {
       VariableDamageStage nextStage = stages.get(stage + 1);
-      if (nextStage.durationSeconds() > 0 && ability.getStageTimer() >= nextStage.durationSeconds()) {
+      if (nextStage.durationSeconds() > 0
+          && ability.getStageTimer() >= nextStage.durationSeconds()) {
         ability.setStageTimer(ability.getStageTimer() - nextStage.durationSeconds());
         ability.setCurrentStage(stage + 1);
       }
@@ -175,11 +176,13 @@ public class AbilitySystem {
           return;
         }
         Entity target = combat.getCurrentTarget();
-        float distance = troop.getPosition().distanceTo(target.getPosition())
-            - troop.getCollisionRadius() - target.getCollisionRadius();
+        float distance =
+            troop.getPosition().distanceTo(target.getPosition())
+                - troop.getCollisionRadius()
+                - target.getCollisionRadius();
 
-        boolean inAcquisitionRange = distance >= data.dashMinRange()
-            && distance <= data.dashMaxRange();
+        boolean inAcquisitionRange =
+            distance >= data.dashMinRange() && distance <= data.dashMaxRange();
         boolean inDashableRange = distance <= data.dashMaxRange();
 
         // Acquire candidate when target enters [minRange, maxRange]
@@ -332,8 +335,8 @@ public class AbilitySystem {
   }
 
   /**
-   * Applies knockback to an entity hit by a dash landing.
-   * Buildings and entities with ignorePushback are immune.
+   * Applies knockback to an entity hit by a dash landing. Buildings and entities with
+   * ignorePushback are immune.
    */
   private void applyDashKnockback(Troop dasher, Entity target, float pushback) {
     if (pushback <= 0) {
@@ -371,8 +374,10 @@ public class AbilitySystem {
           return;
         }
         Entity target = combat.getCurrentTarget();
-        float distance = troop.getPosition().distanceTo(target.getPosition())
-            - troop.getCollisionRadius() - target.getCollisionRadius();
+        float distance =
+            troop.getPosition().distanceTo(target.getPosition())
+                - troop.getCollisionRadius()
+                - target.getCollisionRadius();
 
         // Hook triggers when target is in [minimumRange, range]
         if (distance >= data.hookMinimumRange() && distance <= data.hookRange()) {
@@ -490,8 +495,8 @@ public class AbilitySystem {
   // -- REFLECT utility --
 
   /**
-   * Called by CombatSystem when a melee attacker hits an entity with REFLECT ability.
-   * Returns the reflect damage to deal back to the attacker, or 0 if no reflect.
+   * Called by CombatSystem when a melee attacker hits an entity with REFLECT ability. Returns the
+   * reflect damage to deal back to the attacker, or 0 if no reflect.
    */
   public static int getReflectDamage(Troop target) {
     AbilityComponent ability = target.getAbility();

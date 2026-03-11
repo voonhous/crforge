@@ -36,16 +36,15 @@ public class PhysicsSystem {
   private final Pathfinder pathfinder;
 
   /**
-   * Optional GameState reference for O(1) tower lookups. If set, princess tower alive checks
-   * use the typed tower list instead of scanning all entities.
+   * Optional GameState reference for O(1) tower lookups. If set, princess tower alive checks use
+   * the typed tower list instead of scanning all entities.
    */
-  @Setter
-  private GameState gameState;
+  @Setter private GameState gameState;
 
   /**
    * Creates a PhysicsSystem with a specific Arena and Pathfinder.
    *
-   * @param arena      The game arena.
+   * @param arena The game arena.
    * @param pathfinder The pathfinding strategy to use.
    */
   public PhysicsSystem(Arena arena, Pathfinder pathfinder) {
@@ -65,7 +64,7 @@ public class PhysicsSystem {
   /**
    * Updates the physics state for all entities.
    *
-   * @param entities  All entities in the game.
+   * @param entities All entities in the game.
    * @param deltaTime Time elapsed since last update (in seconds).
    */
   public void update(Collection<Entity> entities, float deltaTime) {
@@ -129,12 +128,9 @@ public class PhysicsSystem {
     Position pos = troop.getPosition();
     Position targetPos = target.getPosition();
 
-    float angle = pathfinder.getNextMovementAngle(
-        pos,
-        troop.getMovementType(),
-        targetPos.getX(),
-        targetPos.getY(),
-        arena);
+    float angle =
+        pathfinder.getNextMovementAngle(
+            pos, troop.getMovementType(), targetPos.getX(), targetPos.getY(), arena);
 
     applyVelocity(troop, angle, deltaTime);
   }
@@ -187,8 +183,8 @@ public class PhysicsSystem {
       }
     }
 
-    float angle = pathfinder.getNextMovementAngle(
-        pos, troop.getMovementType(), targetX, targetY, arena);
+    float angle =
+        pathfinder.getNextMovementAngle(pos, troop.getMovementType(), targetX, targetY, arena);
 
     applyVelocity(troop, angle, deltaTime);
   }
@@ -205,9 +201,9 @@ public class PhysicsSystem {
   }
 
   /**
-   * Updates the jumping state for a troop based on its position relative to the river.
-   * Jump-enabled troops entering the river zone outside of bridge positions will leap over,
-   * gaining AIR movement type and a speed boost. The jump ends when the troop exits the river zone.
+   * Updates the jumping state for a troop based on its position relative to the river. Jump-enabled
+   * troops entering the river zone outside of bridge positions will leap over, gaining AIR movement
+   * type and a speed boost. The jump ends when the troop exits the river zone.
    */
   private void updateJumpState(Troop troop) {
     if (!troop.getMovement().isJumpEnabled()) {
@@ -233,9 +229,7 @@ public class PhysicsSystem {
     }
   }
 
-  /**
-   * Returns true if the given X coordinate is within a bridge's horizontal bounds.
-   */
+  /** Returns true if the given X coordinate is within a bridge's horizontal bounds. */
   private static boolean isOnBridge(float x) {
     return (x >= Arena.LEFT_BRIDGE_X && x < Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH)
         || (x >= Arena.RIGHT_BRIDGE_X && x < Arena.RIGHT_BRIDGE_X + Arena.BRIDGE_WIDTH);
@@ -293,12 +287,8 @@ public class PhysicsSystem {
     return entity.getMovement() != null && entity.getMovement().isKnockedBack();
   }
 
-  /**
-   * Collision result containing push direction and overlap amount.
-   */
-  private record CollisionResult(float dirX, float dirY, float overlap) {
-
-  }
+  /** Collision result containing push direction and overlap amount. */
+  private record CollisionResult(float dirX, float dirY, float overlap) {}
 
   /**
    * Resolves collision between two entities by pushing them apart. If one entity is a building,
@@ -339,9 +329,7 @@ public class PhysicsSystem {
     }
   }
 
-  /**
-   * Helper class for vector operations to keep resolveCollision clean.
-   */
+  /** Helper class for vector operations to keep resolveCollision clean. */
   private static class Vector2 {
 
     float x, y;
@@ -357,7 +345,7 @@ public class PhysicsSystem {
    * troops slide around buildings instead of getting stuck.
    *
    * @return A Vector2 representing the adjustment to the push vector, or null if no sliding
-   * applies.
+   *     applies.
    */
   private Vector2 calculateSliding(Entity a, Entity b, CollisionResult collision) {
     boolean aIsBuilding = a.getMovementType() == MovementType.BUILDING;
@@ -398,7 +386,8 @@ public class PhysicsSystem {
     }
 
     // If 'a' is the mover, we add the slide directly.
-    // If 'b' is the mover, we need to subtract because the final application logic subtracts the push vector for 'b'.
+    // If 'b' is the mover, we need to subtract because the final application logic subtracts the
+    // push vector for 'b'.
     // (See resolveCollision: b.add(-pushX, -pushY))
     if (a == mover) {
       return new Vector2(slideX, slideY);
@@ -408,12 +397,12 @@ public class PhysicsSystem {
   }
 
   private CollisionResult detectCollision(Entity a, Entity b) {
-    return detectCircleCircleCollision(a.getPosition(), a.getCollisionRadius(), b.getPosition(),
-        b.getCollisionRadius());
+    return detectCircleCircleCollision(
+        a.getPosition(), a.getCollisionRadius(), b.getPosition(), b.getCollisionRadius());
   }
 
-  private CollisionResult detectCircleCircleCollision(Position posA, float radiusA, Position posB,
-      float radiusB) {
+  private CollisionResult detectCircleCircleCollision(
+      Position posA, float radiusA, Position posB, float radiusB) {
     float dx = posA.getX() - posB.getX();
     float dy = posA.getY() - posB.getY();
     float distSq = dx * dx + dy * dy;
@@ -447,11 +436,11 @@ public class PhysicsSystem {
     if (totalMass <= 0) {
       return null;
     } else if (massA <= 0) {
-      return new float[]{0, 1}; // A is immovable
+      return new float[] {0, 1}; // A is immovable
     } else if (massB <= 0) {
-      return new float[]{1, 0}; // B is immovable
+      return new float[] {1, 0}; // B is immovable
     } else {
-      return new float[]{massB / totalMass, massA / totalMass};
+      return new float[] {massB / totalMass, massA / totalMass};
     }
   }
 

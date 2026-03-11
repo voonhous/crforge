@@ -17,15 +17,11 @@ import org.crforge.core.player.Team;
 @SuperBuilder
 public class Tower extends Building {
 
-  @Builder.Default
-  private final TowerType towerType = TowerType.PRINCESS;
+  @Builder.Default private final TowerType towerType = TowerType.PRINCESS;
 
-  @Builder.Default
-  @Setter
-  private boolean active = true;
+  @Builder.Default @Setter private boolean active = true;
 
-  @Builder.Default
-  private float activationTimer = 0f;
+  @Builder.Default private float activationTimer = 0f;
 
   // Factory methods for standard towers
   public static Tower createCrownTower(Team team, float x, float y, int level) {

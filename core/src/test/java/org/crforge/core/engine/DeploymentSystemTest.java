@@ -44,11 +44,7 @@ class DeploymentSystemTest {
     // Create a deck of 8 dummy cards
     List<Card> cards = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      cards.add(Card.builder()
-          .name("Troop " + i)
-          .cost(3)
-          .type(CardType.TROOP)
-          .build());
+      cards.add(Card.builder().name("Troop " + i).cost(3).type(CardType.TROOP).build());
     }
     Deck deck = new Deck(cards);
 
@@ -58,16 +54,14 @@ class DeploymentSystemTest {
 
   // -- Test helpers --
 
-  /**
-   * Creates a player with a deck of 8 copies of the given card.
-   */
+  /** Creates a player with a deck of 8 copies of the given card. */
   private Player createPlayerWithCard(Team team, Card card) {
     return new Player(team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false);
   }
 
   private Player createPlayerWithCard(Team team, Card card, LevelConfig levelConfig) {
-    return new Player(team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false,
-        levelConfig);
+    return new Player(
+        team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false, levelConfig);
   }
 
   private PlayerActionDTO playAt(float x, float y) {
@@ -83,11 +77,7 @@ class DeploymentSystemTest {
     float initialElixir = player.getElixir().getCurrent(); // 5.0
 
     // Create action to play card at slot 0 (Cost 3)
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(20f)
-        .build();
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(20f).build();
 
     // Queue and Update
     deploymentSystem.queueAction(player, action);
@@ -109,11 +99,7 @@ class DeploymentSystemTest {
     Card cardSlot0 = player.getHand().getCard(0);
 
     // Create action
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(20f)
-        .build();
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(20f).build();
 
     // Queue and Update
     deploymentSystem.queueAction(player, action);
@@ -129,25 +115,24 @@ class DeploymentSystemTest {
   @Test
   void testDeploySpawnerBuilding() {
     // Create a Tombstone-like card with the new model
-    TroopStats skeletonStats = TroopStats.builder()
-        .name("Skeleton")
-        .build();
+    TroopStats skeletonStats = TroopStats.builder().name("Skeleton").build();
 
-    TroopStats buildingStats = TroopStats.builder()
-        .name("TombstoneBuilding")
-        .health(500)
-        .liveSpawn(new LiveSpawnConfig(
-            "Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
-        .build();
+    TroopStats buildingStats =
+        TroopStats.builder()
+            .name("TombstoneBuilding")
+            .health(500)
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
+            .build();
 
-    Card tombstone = Card.builder()
-        .id("tombstone")
-        .name("Tombstone")
-        .type(CardType.BUILDING)
-        .cost(3)
-        .unitStats(buildingStats)
-        .spawnTemplate(skeletonStats)
-        .build();
+    Card tombstone =
+        Card.builder()
+            .id("tombstone")
+            .name("Tombstone")
+            .type(CardType.BUILDING)
+            .cost(3)
+            .unitStats(buildingStats)
+            .spawnTemplate(skeletonStats)
+            .build();
 
     Player spawnerPlayer = createPlayerWithCard(Team.RED, tombstone);
 
@@ -173,27 +158,26 @@ class DeploymentSystemTest {
   @Test
   void testDeploySpawnerBuilding_shouldPropagateSpawnPauseTime() {
     // Regression test: Ensure spawnPauseTime is passed to SpawnerComponent
-    TroopStats skeletonStats = TroopStats.builder()
-        .name("Skeleton")
-        .build();
+    TroopStats skeletonStats = TroopStats.builder().name("Skeleton").build();
 
     float spawnPauseTime = 3.5f;
 
-    TroopStats buildingStats = TroopStats.builder()
-        .name("TombstoneBuilding")
-        .health(500)
-        .liveSpawn(new LiveSpawnConfig(
-            "Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f))
-        .build();
+    TroopStats buildingStats =
+        TroopStats.builder()
+            .name("TombstoneBuilding")
+            .health(500)
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f))
+            .build();
 
-    Card tombstone = Card.builder()
-        .id("tombstone")
-        .name("Tombstone")
-        .type(CardType.BUILDING)
-        .cost(3)
-        .unitStats(buildingStats)
-        .spawnTemplate(skeletonStats)
-        .build();
+    Card tombstone =
+        Card.builder()
+            .id("tombstone")
+            .name("Tombstone")
+            .type(CardType.BUILDING)
+            .cost(3)
+            .unitStats(buildingStats)
+            .spawnTemplate(skeletonStats)
+            .build();
 
     Player player = createPlayerWithCard(Team.RED, tombstone);
 
@@ -208,18 +192,16 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployRegularBuilding() {
-    TroopStats cannonStats = TroopStats.builder()
-        .name("Cannon")
-        .health(500)
-        .build();
+    TroopStats cannonStats = TroopStats.builder().name("Cannon").health(500).build();
 
-    Card cannon = Card.builder()
-        .id("cannon")
-        .name("Cannon")
-        .type(CardType.BUILDING)
-        .cost(3)
-        .unitStats(cannonStats)
-        .build();
+    Card cannon =
+        Card.builder()
+            .id("cannon")
+            .name("Cannon")
+            .type(CardType.BUILDING)
+            .cost(3)
+            .unitStats(cannonStats)
+            .build();
 
     Player buildingPlayer = createPlayerWithCard(Team.BLUE, cannon);
 
@@ -240,28 +222,31 @@ class DeploymentSystemTest {
   @Test
   void testCastSpell() {
     // We need a target for the spell to hit to verify damage
-    Troop enemy = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(10f, 10f))
-        .health(new Health(100))
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(10f, 10f))
+            .health(new Health(100))
+            .build();
     enemy.onSpawn();
     gameState.spawnEntity(enemy);
     gameState.processPending(); // Add enemy to alive entities
     enemy.update(2.0f); // Finish deploying so enemy is targetable
 
-    Card fireball = Card.builder()
-        .id("fireball")
-        .name("Fireball")
-        .type(CardType.SPELL)
-        .cost(4)
-        .projectile(ProjectileStats.builder()
-            .damage(50)
-            .radius(2.0f)
-            .speed(0) // 0 speed = Instant/Direct application
-            .build())
-        .build();
+    Card fireball =
+        Card.builder()
+            .id("fireball")
+            .name("Fireball")
+            .type(CardType.SPELL)
+            .cost(4)
+            .projectile(
+                ProjectileStats.builder()
+                    .damage(50)
+                    .radius(2.0f)
+                    .speed(0) // 0 speed = Instant/Direct application
+                    .build())
+            .build();
 
     Player spellPlayer = createPlayerWithCard(Team.BLUE, fireball);
     // Give enough elixir
@@ -278,28 +263,31 @@ class DeploymentSystemTest {
   @Test
   void testCastTravelingSpell_createsProjectile() {
     // Place a target enemy
-    Troop enemy = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(10f, 10f))
-        .health(new Health(500))
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(10f, 10f))
+            .health(new Health(500))
+            .build();
     enemy.onSpawn();
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
     // Use new ProjectileStats structure
-    Card arrows = Card.builder()
-        .id("arrows")
-        .name("Arrows")
-        .type(CardType.SPELL)
-        .cost(3)
-        .projectile(ProjectileStats.builder()
-            .damage(303)
-            .radius(4.0f)
-            .speed(8.0f) // > 0 means it creates a projectile
-            .build())
-        .build();
+    Card arrows =
+        Card.builder()
+            .id("arrows")
+            .name("Arrows")
+            .type(CardType.SPELL)
+            .cost(3)
+            .projectile(
+                ProjectileStats.builder()
+                    .damage(303)
+                    .radius(4.0f)
+                    .speed(8.0f) // > 0 means it creates a projectile
+                    .build())
+            .build();
 
     Player spellPlayer = createPlayerWithCard(Team.BLUE, arrows);
     spellPlayer.getElixir().update(100f);
@@ -319,12 +307,13 @@ class DeploymentSystemTest {
   @Test
   void testCastSpell_shouldScaleDamageByLevel() {
     // Target with high HP so we can measure damage
-    Troop enemy = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(10f, 10f))
-        .health(new Health(10000))
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(10f, 10f))
+            .health(new Health(10000))
+            .build();
     enemy.onSpawn();
     gameState.spawnEntity(enemy);
     gameState.processPending();
@@ -334,18 +323,20 @@ class DeploymentSystemTest {
     Rarity rarity = Rarity.RARE;
     int level = 11;
 
-    Card fireball = Card.builder()
-        .id("fireball")
-        .name("Fireball")
-        .type(CardType.SPELL)
-        .cost(4)
-        .rarity(rarity)
-        .projectile(ProjectileStats.builder()
-            .damage(baseDamage)
-            .radius(2.0f)
-            .speed(0) // Instant
-            .build())
-        .build();
+    Card fireball =
+        Card.builder()
+            .id("fireball")
+            .name("Fireball")
+            .type(CardType.SPELL)
+            .cost(4)
+            .rarity(rarity)
+            .projectile(
+                ProjectileStats.builder()
+                    .damage(baseDamage)
+                    .radius(2.0f)
+                    .speed(0) // Instant
+                    .build())
+            .build();
 
     // Player at level 11 with Rare card
     Player spellPlayer = createPlayerWithCard(Team.BLUE, fireball, new LevelConfig(level));
@@ -364,26 +355,20 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployWithFormationOffsets_shouldUsePrecomputedPositions() {
-    TroopStats archerStats = TroopStats.builder()
-        .name("Archer")
-        .health(100)
-        .damage(50)
-        .build();
+    TroopStats archerStats = TroopStats.builder().name("Archer").health(100).damage(50).build();
 
-    List<float[]> offsets = List.of(
-        new float[]{0.5f, 0.0f},
-        new float[]{-0.5f, 0.0f}
-    );
+    List<float[]> offsets = List.of(new float[] {0.5f, 0.0f}, new float[] {-0.5f, 0.0f});
 
-    Card archers = Card.builder()
-        .id("archer")
-        .name("Archer")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(archerStats)
-        .unitCount(2)
-        .formationOffsets(offsets)
-        .build();
+    Card archers =
+        Card.builder()
+            .id("archer")
+            .name("Archer")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(archerStats)
+            .unitCount(2)
+            .formationOffsets(offsets)
+            .build();
 
     Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
@@ -394,10 +379,11 @@ class DeploymentSystemTest {
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(2);
-    List<Troop> troops = gameState.getEntities().stream()
-        .filter(e -> e instanceof Troop)
-        .map(e -> (Troop) e)
-        .toList();
+    List<Troop> troops =
+        gameState.getEntities().stream()
+            .filter(e -> e instanceof Troop)
+            .map(e -> (Troop) e)
+            .toList();
 
     // First archer at (9 + 0.5, 10 + 0.0)
     assertThat(troops.get(0).getPosition().getX()).isCloseTo(9.5f, within(0.01f));
@@ -409,26 +395,20 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployWithFormationOffsets_redTeamNegatesOffsets() {
-    TroopStats archerStats = TroopStats.builder()
-        .name("Archer")
-        .health(100)
-        .damage(50)
-        .build();
+    TroopStats archerStats = TroopStats.builder().name("Archer").health(100).damage(50).build();
 
-    List<float[]> offsets = List.of(
-        new float[]{0.5f, 1.0f},
-        new float[]{-0.5f, -1.0f}
-    );
+    List<float[]> offsets = List.of(new float[] {0.5f, 1.0f}, new float[] {-0.5f, -1.0f});
 
-    Card archers = Card.builder()
-        .id("archer")
-        .name("Archer")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(archerStats)
-        .unitCount(2)
-        .formationOffsets(offsets)
-        .build();
+    Card archers =
+        Card.builder()
+            .id("archer")
+            .name("Archer")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(archerStats)
+            .unitCount(2)
+            .formationOffsets(offsets)
+            .build();
 
     Player redPlayer = createPlayerWithCard(Team.RED, archers);
 
@@ -438,10 +418,11 @@ class DeploymentSystemTest {
     deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
 
-    List<Troop> troops = gameState.getEntities().stream()
-        .filter(e -> e instanceof Troop)
-        .map(e -> (Troop) e)
-        .toList();
+    List<Troop> troops =
+        gameState.getEntities().stream()
+            .filter(e -> e instanceof Troop)
+            .map(e -> (Troop) e)
+            .toList();
 
     // Red team negates offsets: first at (9 - 0.5, 20 - 1.0)
     assertThat(troops.get(0).getPosition().getX()).isCloseTo(8.5f, within(0.01f));
@@ -453,35 +434,32 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployDualUnitCard_shouldSpawnBothUnitTypes() {
-    TroopStats goblinStab = TroopStats.builder()
-        .name("Goblin_Stab")
-        .health(80)
-        .damage(50)
-        .build();
+    TroopStats goblinStab = TroopStats.builder().name("Goblin_Stab").health(80).damage(50).build();
 
-    TroopStats spearGoblin = TroopStats.builder()
-        .name("SpearGoblin")
-        .health(52)
-        .damage(24)
-        .build();
+    TroopStats spearGoblin = TroopStats.builder().name("SpearGoblin").health(52).damage(24).build();
 
     // 3 primary + 3 secondary = 6 total, 6 offsets
-    List<float[]> offsets = List.of(
-        new float[]{-0.1f, 1.5f}, new float[]{-1.2f, -0.9f}, new float[]{1.3f, -0.9f},
-        new float[]{0.0f, -0.2f}, new float[]{-0.7f, -1.6f}, new float[]{0.7f, -1.6f}
-    );
+    List<float[]> offsets =
+        List.of(
+            new float[] {-0.1f, 1.5f},
+            new float[] {-1.2f, -0.9f},
+            new float[] {1.3f, -0.9f},
+            new float[] {0.0f, -0.2f},
+            new float[] {-0.7f, -1.6f},
+            new float[] {0.7f, -1.6f});
 
-    Card goblinGang = Card.builder()
-        .id("goblingang")
-        .name("GoblinGang")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(goblinStab)
-        .unitCount(3)
-        .secondaryUnitStats(spearGoblin)
-        .secondaryUnitCount(3)
-        .formationOffsets(offsets)
-        .build();
+    Card goblinGang =
+        Card.builder()
+            .id("goblingang")
+            .name("GoblinGang")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(goblinStab)
+            .unitCount(3)
+            .secondaryUnitStats(spearGoblin)
+            .secondaryUnitCount(3)
+            .formationOffsets(offsets)
+            .build();
 
     Player gangPlayer = createPlayerWithCard(Team.BLUE, goblinGang);
 
@@ -494,10 +472,11 @@ class DeploymentSystemTest {
 
     assertThat(gameState.getEntities()).hasSize(6);
 
-    List<Troop> troops = gameState.getEntities().stream()
-        .filter(e -> e instanceof Troop)
-        .map(e -> (Troop) e)
-        .toList();
+    List<Troop> troops =
+        gameState.getEntities().stream()
+            .filter(e -> e instanceof Troop)
+            .map(e -> (Troop) e)
+            .toList();
 
     // First 3 should be Goblin_Stab (primary)
     long stabCount = troops.stream().filter(t -> "Goblin_Stab".equals(t.getName())).count();
@@ -514,23 +493,20 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployWithoutFormationOffsets_shouldFallbackToCircular() {
-    TroopStats archerStats = TroopStats.builder()
-        .name("Archer")
-        .health(100)
-        .damage(50)
-        .collisionRadius(0.2f)
-        .build();
+    TroopStats archerStats =
+        TroopStats.builder().name("Archer").health(100).damage(50).collisionRadius(0.2f).build();
 
     // No formationOffsets, but with raw CSV summonRadius -> should use circular algorithm
-    Card archers = Card.builder()
-        .id("archer")
-        .name("Archer")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(archerStats)
-        .unitCount(2)
-        .summonRadius(355.0f)
-        .build();
+    Card archers =
+        Card.builder()
+            .id("archer")
+            .name("Archer")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(archerStats)
+            .unitCount(2)
+            .summonRadius(355.0f)
+            .build();
 
     Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
@@ -541,15 +517,19 @@ class DeploymentSystemTest {
     gameState.processPending();
 
     assertThat(gameState.getEntities()).hasSize(2);
-    List<Troop> troops = gameState.getEntities().stream()
-        .filter(e -> e instanceof Troop)
-        .map(e -> (Troop) e)
-        .toList();
+    List<Troop> troops =
+        gameState.getEntities().stream()
+            .filter(e -> e instanceof Troop)
+            .map(e -> (Troop) e)
+            .toList();
 
     // Both should be offset from base position (not at exact base)
-    boolean anyOffset = troops.stream().anyMatch(t ->
-        Math.abs(t.getPosition().getX() - 9f) > 0.01f
-            || Math.abs(t.getPosition().getY() - 10f) > 0.01f);
+    boolean anyOffset =
+        troops.stream()
+            .anyMatch(
+                t ->
+                    Math.abs(t.getPosition().getX() - 9f) > 0.01f
+                        || Math.abs(t.getPosition().getY() - 10f) > 0.01f);
     assertThat(anyOffset).isTrue();
   }
 
@@ -557,20 +537,17 @@ class DeploymentSystemTest {
 
   @Test
   void testStaggeredDeployment_unitsSpawnSequentially() {
-    TroopStats archerStats = TroopStats.builder()
-        .name("Archer")
-        .health(100)
-        .damage(50)
-        .build();
+    TroopStats archerStats = TroopStats.builder().name("Archer").health(100).damage(50).build();
 
-    Card archers = Card.builder()
-        .id("archer")
-        .name("Archer")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(archerStats)
-        .unitCount(2)
-        .build();
+    Card archers =
+        Card.builder()
+            .id("archer")
+            .name("Archer")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(archerStats)
+            .unitCount(2)
+            .build();
 
     Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 
@@ -589,20 +566,17 @@ class DeploymentSystemTest {
 
   @Test
   void testStaggeredDeployment_fourUnits() {
-    TroopStats goblinStats = TroopStats.builder()
-        .name("Goblin")
-        .health(80)
-        .damage(50)
-        .build();
+    TroopStats goblinStats = TroopStats.builder().name("Goblin").health(80).damage(50).build();
 
-    Card goblins = Card.builder()
-        .id("goblins")
-        .name("Goblins")
-        .type(CardType.TROOP)
-        .cost(2)
-        .unitStats(goblinStats)
-        .unitCount(4)
-        .build();
+    Card goblins =
+        Card.builder()
+            .id("goblins")
+            .name("Goblins")
+            .type(CardType.TROOP)
+            .cost(2)
+            .unitStats(goblinStats)
+            .unitCount(4)
+            .build();
 
     Player goblinPlayer = createPlayerWithCard(Team.BLUE, goblins);
 
@@ -629,20 +603,17 @@ class DeploymentSystemTest {
 
   @Test
   void testStaggeredDeployment_singleUnit_noStagger() {
-    TroopStats knightStats = TroopStats.builder()
-        .name("Knight")
-        .health(200)
-        .damage(75)
-        .build();
+    TroopStats knightStats = TroopStats.builder().name("Knight").health(200).damage(75).build();
 
-    Card knight = Card.builder()
-        .id("knight")
-        .name("Knight")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(knightStats)
-        .unitCount(1)
-        .build();
+    Card knight =
+        Card.builder()
+            .id("knight")
+            .name("Knight")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(knightStats)
+            .unitCount(1)
+            .build();
 
     Player knightPlayer = createPlayerWithCard(Team.BLUE, knight);
 
@@ -660,29 +631,28 @@ class DeploymentSystemTest {
 
   @Test
   void testStaggeredDeployment_deployEffect_firesOnce() {
-    TroopStats ewizStats = TroopStats.builder()
-        .name("ElectroWizard")
-        .health(200)
-        .damage(75)
-        .build();
+    TroopStats ewizStats =
+        TroopStats.builder().name("ElectroWizard").health(200).damage(75).build();
 
     // Create a deploy effect that should only fire once
-    AreaEffectStats deployEffect = AreaEffectStats.builder()
-        .name("EWizStun")
-        .radius(3.5f)
-        .damage(50)
-        .lifeDuration(0.5f)
-        .build();
+    AreaEffectStats deployEffect =
+        AreaEffectStats.builder()
+            .name("EWizStun")
+            .radius(3.5f)
+            .damage(50)
+            .lifeDuration(0.5f)
+            .build();
 
-    Card ewiz = Card.builder()
-        .id("electro_wizard")
-        .name("ElectroWizard")
-        .type(CardType.TROOP)
-        .cost(4)
-        .unitStats(ewizStats)
-        .unitCount(2)
-        .deployEffect(deployEffect)
-        .build();
+    Card ewiz =
+        Card.builder()
+            .id("electro_wizard")
+            .name("ElectroWizard")
+            .type(CardType.TROOP)
+            .cost(4)
+            .unitStats(ewizStats)
+            .unitCount(2)
+            .deployEffect(deployEffect)
+            .build();
 
     Player ewizPlayer = createPlayerWithCard(Team.BLUE, ewiz);
 
@@ -693,38 +663,33 @@ class DeploymentSystemTest {
     gameState.processPending();
 
     // Should have 1 troop + 1 area effect entity
-    long areaEffectCount = gameState.getEntities().stream()
-        .filter(e -> e instanceof AreaEffect)
-        .count();
+    long areaEffectCount =
+        gameState.getEntities().stream().filter(e -> e instanceof AreaEffect).count();
     assertThat(areaEffectCount).isEqualTo(1);
 
     // Second unit spawns, but no duplicate deploy effect
     deploymentSystem.update(DeploymentSystem.STAGGER_DELAY);
     gameState.processPending();
 
-    long finalAreaEffectCount = gameState.getEntities().stream()
-        .filter(e -> e instanceof AreaEffect)
-        .count();
+    long finalAreaEffectCount =
+        gameState.getEntities().stream().filter(e -> e instanceof AreaEffect).count();
     // Still only 1 area effect (deploy effect should not fire again)
     assertThat(finalAreaEffectCount).isEqualTo(1);
   }
 
   @Test
   void testStaggeredDeployment_pendingRemovedAfterAllUnits() {
-    TroopStats archerStats = TroopStats.builder()
-        .name("Archer")
-        .health(100)
-        .damage(50)
-        .build();
+    TroopStats archerStats = TroopStats.builder().name("Archer").health(100).damage(50).build();
 
-    Card archers = Card.builder()
-        .id("archer")
-        .name("Archer")
-        .type(CardType.TROOP)
-        .cost(3)
-        .unitStats(archerStats)
-        .unitCount(2)
-        .build();
+    Card archers =
+        Card.builder()
+            .id("archer")
+            .name("Archer")
+            .type(CardType.TROOP)
+            .cost(3)
+            .unitStats(archerStats)
+            .unitCount(2)
+            .build();
 
     Player archerPlayer = createPlayerWithCard(Team.BLUE, archers);
 

@@ -29,17 +29,16 @@ class BuildingPlacementIntegrationTest {
     engine.setMatch(match);
 
     // Create a 3x3 building card (Radius 1.5)
-    TroopStats buildingStats = TroopStats.builder()
-        .name("Big Building")
-        .collisionRadius(1.5f)
-        .build();
+    TroopStats buildingStats =
+        TroopStats.builder().name("Big Building").collisionRadius(1.5f).build();
 
-    buildingCard = Card.builder()
-        .name("Big Building")
-        .type(CardType.BUILDING)
-        .cost(5)
-        .unitStats(buildingStats)
-        .build();
+    buildingCard =
+        Card.builder()
+            .name("Big Building")
+            .type(CardType.BUILDING)
+            .cost(5)
+            .unitStats(buildingStats)
+            .build();
 
     List<Card> cards = new ArrayList<>();
     for (int i = 0; i < 8; i++) {

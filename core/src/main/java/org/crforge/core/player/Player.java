@@ -5,9 +5,7 @@ import lombok.Getter;
 import org.crforge.core.card.Card;
 import org.crforge.core.player.dto.PlayerActionDTO;
 
-/**
- * Represents a player in the game, managing their state, resources, and deck.
- */
+/** Represents a player in the game, managing their state, resources, and deck. */
 @Getter
 public class Player {
 

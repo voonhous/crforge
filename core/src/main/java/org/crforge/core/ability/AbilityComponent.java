@@ -5,8 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Runtime ability state attached to an entity. Tracks charge progress,
- * variable damage stage, dash state, hook state, and other dynamic ability state.
+ * Runtime ability state attached to an entity. Tracks charge progress, variable damage stage, dash
+ * state, hook state, and other dynamic ability state.
  */
 @Getter
 @Setter
@@ -52,9 +52,7 @@ public class AbilityComponent {
     }
   }
 
-  /**
-   * Resets all ability state (called on target loss, stun, etc.)
-   */
+  /** Resets all ability state (called on target loss, stun, etc.) */
   public void reset() {
     chargeTimer = 0f;
     charged = false;
@@ -64,8 +62,8 @@ public class AbilityComponent {
   }
 
   /**
-   * Returns the current variable damage stage's damage, or the base damage
-   * from the first stage if not yet escalated.
+   * Returns the current variable damage stage's damage, or the base damage from the first stage if
+   * not yet escalated.
    */
   public int getCurrentStageDamage() {
     if (!(data instanceof VariableDamageAbility varDmg)) {
@@ -81,9 +79,7 @@ public class AbilityComponent {
     return stages.get(currentStage).damage();
   }
 
-  /**
-   * Returns the charge time threshold in seconds.
-   */
+  /** Returns the charge time threshold in seconds. */
   public float getChargeTime() {
     return CHARGE_TIME;
   }

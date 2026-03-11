@@ -56,9 +56,7 @@ public class DebugOverlayRenderer {
     this.ctx = ctx;
   }
 
-  /**
-   * Draw thin red lines from each entity to its current target.
-   */
+  /** Draw thin red lines from each entity to its current target. */
   public void renderTargetingLines(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -84,9 +82,7 @@ public class DebugOverlayRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /**
-   * Draw movement direction lines for all troops.
-   */
+  /** Draw movement direction lines for all troops. */
   public void renderPathLines(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -109,9 +105,7 @@ public class DebugOverlayRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /**
-   * Draw attack range circles for all entities with combat.
-   */
+  /** Draw attack range circles for all entities with combat. */
   public void renderAttackRanges(GameState state) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
@@ -131,9 +125,7 @@ public class DebugOverlayRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /**
-   * Draw entity names above health bars.
-   */
+  /** Draw entity names above health bars. */
   public void renderEntityNames(GameState state) {
     ctx.getSpriteBatch().begin();
     for (Entity entity : state.getAliveEntities()) {
@@ -149,15 +141,15 @@ public class DebugOverlayRenderer {
       float textY = y + radius + barsHeight + 10;
 
       // Prefix level like the game does (e.g. "Lvl 11 Witch"), only when scaled
-      String label = entity.getLevel() > 1
-          ? "Lvl " + entity.getLevel() + " " + entity.getName()
-          : entity.getName();
+      String label =
+          entity.getLevel() > 1
+              ? "Lvl " + entity.getLevel() + " " + entity.getName()
+              : entity.getName();
 
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
       float textWidth = ctx.getGlyphLayout().width;
 
-      ctx.getEntityNameFont().draw(
-          ctx.getSpriteBatch(), label, x - textWidth / 2, textY);
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, x - textWidth / 2, textY);
     }
     ctx.getSpriteBatch().end();
   }
@@ -233,9 +225,10 @@ public class DebugOverlayRenderer {
       // Compute radial countdown progress
       float progress;
       if (!pending.isSyncComplete()) {
-        progress = DeploymentSystem.PLACEMENT_SYNC_DELAY > 0
-            ? pending.getRemainingDelay() / DeploymentSystem.PLACEMENT_SYNC_DELAY
-            : 0f;
+        progress =
+            DeploymentSystem.PLACEMENT_SYNC_DELAY > 0
+                ? pending.getRemainingDelay() / DeploymentSystem.PLACEMENT_SYNC_DELAY
+                : 0f;
       } else {
         progress = 0f;
       }
@@ -293,8 +286,8 @@ public class DebugOverlayRenderer {
       String name = pending.getCard().getName();
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), name);
       float textWidth = ctx.getGlyphLayout().width;
-      ctx.getEntityNameFont().draw(
-          ctx.getSpriteBatch(), name, x - textWidth / 2, y + defaultGhostRadius + 10);
+      ctx.getEntityNameFont()
+          .draw(ctx.getSpriteBatch(), name, x - textWidth / 2, y + defaultGhostRadius + 10);
     }
 
     ctx.getSpriteBatch().end();
@@ -311,7 +304,7 @@ public class DebugOverlayRenderer {
 
     // Single-unit or non-troop cards: single ghost at center
     if (pending.getTotalUnits() <= 1 || card.getUnitStats() == null) {
-      return List.of(new float[]{0f, 0f, defaultRadius});
+      return List.of(new float[] {0f, 0f, defaultRadius});
     }
 
     List<float[]> positions = new java.util.ArrayList<>();
@@ -339,8 +332,9 @@ public class DebugOverlayRenderer {
         offsetX = offset[0];
         offsetY = offset[1];
       } else if (totalUnits > 1 && summonRadius > 0) {
-        Vector2 offset = FormationLayout.calculateDeployOffset(
-            idx, totalUnits, summonRadius, stats.getCollisionRadius());
+        Vector2 offset =
+            FormationLayout.calculateDeployOffset(
+                idx, totalUnits, summonRadius, stats.getCollisionRadius());
         offsetX = offset.getX();
         offsetY = offset.getY();
       }
@@ -350,7 +344,7 @@ public class DebugOverlayRenderer {
         offsetY = -offsetY;
       }
 
-      positions.add(new float[]{offsetX, offsetY, visRadius});
+      positions.add(new float[] {offsetX, offsetY, visRadius});
     }
 
     return positions;
@@ -382,9 +376,10 @@ public class DebugOverlayRenderer {
       float radius = stats.getRadius() * TILE_PIXELS;
 
       // Alpha fades based on remaining lifetime
-      float lifeFraction = stats.getLifeDuration() > 0
-          ? effect.getRemainingLifetime() / stats.getLifeDuration()
-          : 1f;
+      float lifeFraction =
+          stats.getLifeDuration() > 0
+              ? effect.getRemainingLifetime() / stats.getLifeDuration()
+              : 1f;
       float alpha = Math.max(0.1f, lifeFraction * 0.4f);
 
       Color baseColor = getAreaEffectColor(stats);
@@ -449,8 +444,7 @@ public class DebugOverlayRenderer {
       switch (ability.getData().type()) {
         case CHARGE -> renderChargeBar(x, y, visualRadius, ability);
         case VARIABLE_DAMAGE -> renderVariableDamageDots(x, y, visualRadius, ability);
-        default -> {
-        }
+        default -> {}
       }
     }
 
@@ -481,17 +475,14 @@ public class DebugOverlayRenderer {
           }
         }
         case REFLECT -> renderReflectAura(x, y, ability);
-        default -> {
-        }
+        default -> {}
       }
     }
 
     ctx.getShapeRenderer().end();
   }
 
-  /**
-   * Render spawner timer countdowns above entities with active live spawns.
-   */
+  /** Render spawner timer countdowns above entities with active live spawns. */
   public void renderSpawnerTimers(GameState state) {
     boolean hasAny = false;
     for (Entity entity : state.getAliveEntities()) {
@@ -520,16 +511,15 @@ public class DebugOverlayRenderer {
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), timerText);
       float textWidth = ctx.getGlyphLayout().width;
 
-      ctx.getEntityNameFont().draw(
-          ctx.getSpriteBatch(), timerText, x - textWidth / 2, y - radius - 3);
+      ctx.getEntityNameFont()
+          .draw(ctx.getSpriteBatch(), timerText, x - textWidth / 2, y - radius - 3);
     }
     ctx.getSpriteBatch().end();
   }
 
   // ---- Private helpers for ability indicators ----
 
-  private void renderChargeBar(float x, float y, float visualRadius,
-      AbilityComponent ability) {
+  private void renderChargeBar(float x, float y, float visualRadius, AbilityComponent ability) {
     float barWidth = Math.max(visualRadius * 2, 16);
     float barHeight = 3;
     float barY = y - visualRadius - 6;
@@ -544,16 +534,14 @@ public class DebugOverlayRenderer {
       ctx.getShapeRenderer().rect(x - barWidth / 2, barY, barWidth, barHeight);
     } else {
       float chargeTime = ability.getChargeTime();
-      float progress = chargeTime > 0
-          ? Math.min(1f, ability.getChargeTimer() / chargeTime)
-          : 0f;
+      float progress = chargeTime > 0 ? Math.min(1f, ability.getChargeTimer() / chargeTime) : 0f;
       ctx.getShapeRenderer().setColor(COLOR_CHARGE_BAR);
       ctx.getShapeRenderer().rect(x - barWidth / 2, barY, barWidth * progress, barHeight);
     }
   }
 
-  private void renderVariableDamageDots(float x, float y, float visualRadius,
-      AbilityComponent ability) {
+  private void renderVariableDamageDots(
+      float x, float y, float visualRadius, AbilityComponent ability) {
     int totalStages = ((VariableDamageAbility) ability.getData()).stages().size();
     int currentStage = ability.getCurrentStage();
 
@@ -606,9 +594,7 @@ public class DebugOverlayRenderer {
     }
   }
 
-  /**
-   * Determine the color for an area effect based on its buff type.
-   */
+  /** Determine the color for an area effect based on its buff type. */
   private Color getAreaEffectColor(AreaEffectStats stats) {
     if (stats.getBuff() != null) {
       StatusEffectType effectType = StatusEffectType.fromBuffName(stats.getBuff());

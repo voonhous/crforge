@@ -22,9 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Electro Spirit: 1-elixir kamikaze unit that fires a fast homing projectile,
- * dealing single-target damage with STUN (0.5s) and chaining to up to 9 total targets
- * within 4.0 radius.
+ * Tests for Electro Spirit: 1-elixir kamikaze unit that fires a fast homing projectile, dealing
+ * single-target damage with STUN (0.5s) and chaining to up to 9 total targets within 4.0 radius.
  */
 class ElectroSpiritTest {
 
@@ -107,10 +106,8 @@ class ElectroSpiritTest {
         .isEqualTo(500 - ELECTRO_SPIRIT_DAMAGE);
 
     // Chain targets should also be stunned
-    assertThat(enemy2.getAppliedEffects())
-        .anyMatch(e -> e.getType() == StatusEffectType.STUN);
-    assertThat(enemy3.getAppliedEffects())
-        .anyMatch(e -> e.getType() == StatusEffectType.STUN);
+    assertThat(enemy2.getAppliedEffects()).anyMatch(e -> e.getType() == StatusEffectType.STUN);
+    assertThat(enemy3.getAppliedEffects()).anyMatch(e -> e.getType() == StatusEffectType.STUN);
   }
 
   @Test
@@ -150,31 +147,35 @@ class ElectroSpiritTest {
   }
 
   private Troop createElectroSpirit(Team team, float x, float y) {
-    ProjectileStats projStats = ProjectileStats.builder()
-        .name("ElectroSpiritProjectile")
-        .damage(ELECTRO_SPIRIT_DAMAGE)
-        .speed(PROJECTILE_SPEED)
-        .radius(0) // No AOE, uses chain lightning instead
-        .hitEffects(List.of(EffectStats.builder()
-            .type(StatusEffectType.STUN)
-            .duration(STUN_DURATION)
-            .buffName("ZapFreeze")
-            .applyAfterDamage(true)
-            .build()))
-        .chainedHitRadius(CHAIN_RADIUS)
-        .chainedHitCount(CHAIN_HIT_COUNT)
-        .build();
+    ProjectileStats projStats =
+        ProjectileStats.builder()
+            .name("ElectroSpiritProjectile")
+            .damage(ELECTRO_SPIRIT_DAMAGE)
+            .speed(PROJECTILE_SPEED)
+            .radius(0) // No AOE, uses chain lightning instead
+            .hitEffects(
+                List.of(
+                    EffectStats.builder()
+                        .type(StatusEffectType.STUN)
+                        .duration(STUN_DURATION)
+                        .buffName("ZapFreeze")
+                        .applyAfterDamage(true)
+                        .build()))
+            .chainedHitRadius(CHAIN_RADIUS)
+            .chainedHitCount(CHAIN_HIT_COUNT)
+            .build();
 
-    Combat combat = Combat.builder()
-        .damage(ELECTRO_SPIRIT_DAMAGE)
-        .range(2.5f)
-        .sightRange(5.5f)
-        .attackCooldown(0.3f)
-        .loadTime(0.1f)
-        .kamikaze(true)
-        .targetType(TargetType.ALL)
-        .projectileStats(projStats)
-        .build();
+    Combat combat =
+        Combat.builder()
+            .damage(ELECTRO_SPIRIT_DAMAGE)
+            .range(2.5f)
+            .sightRange(5.5f)
+            .attackCooldown(0.3f)
+            .loadTime(0.1f)
+            .kamikaze(true)
+            .targetType(TargetType.ALL)
+            .projectileStats(projStats)
+            .build();
 
     return Troop.builder()
         .name("ElectroSpirit")

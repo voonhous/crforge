@@ -13,8 +13,7 @@ public class Elixir {
   public static final float REGEN_PERIOD_OVERTIME = REGEN_PERIOD_NORMAL / 2;
 
   private float current;
-  @Setter
-  private boolean overtime;
+  @Setter private boolean overtime;
 
   public Elixir(float startAmount) {
     this.current = startAmount;
@@ -43,9 +42,7 @@ public class Elixir {
     }
   }
 
-  /**
-   * Checks if the player has enough elixir.
-   */
+  /** Checks if the player has enough elixir. */
   public boolean has(int cost) {
     return current >= cost;
   }
@@ -63,9 +60,7 @@ public class Elixir {
     return false;
   }
 
-  /**
-   * Returns the current elixir as a usable integer (floor).
-   */
+  /** Returns the current elixir as a usable integer (floor). */
   public int getFloor() {
     return (int) Math.floor(current);
   }

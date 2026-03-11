@@ -18,13 +18,13 @@ import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
-import org.crforge.core.effect.BuffDefinition;
-import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
@@ -40,21 +40,17 @@ import org.crforge.core.util.Vector2;
  * Handles the processing of Player Actions and the spawning of cards (Troops, Spells, Buildings).
  * Decouples game rules (Elixir spending, Card Cycling) and Entity Creation from the main loop.
  *
- * <p>Deployments go through a server sync delay before entities actually spawn on the arena.
- * Elixir is spent and the hand is cycled immediately, but the entity appears after
- * {@link #PLACEMENT_SYNC_DELAY} seconds -- matching real Clash Royale's server latency buffer.
+ * <p>Deployments go through a server sync delay before entities actually spawn on the arena. Elixir
+ * is spent and the hand is cycled immediately, but the entity appears after {@link
+ * #PLACEMENT_SYNC_DELAY} seconds -- matching real Clash Royale's server latency buffer.
  */
 @RequiredArgsConstructor
 public class DeploymentSystem {
 
-  /**
-   * Server synchronization delay before a card's deploy timer starts (seconds).
-   */
+  /** Server synchronization delay before a card's deploy timer starts (seconds). */
   public static final float PLACEMENT_SYNC_DELAY = 1.0f;
 
-  /**
-   * Fixed delay between each unit spawn for multi-unit troop cards (seconds).
-   */
+  /** Fixed delay between each unit spawn for multi-unit troop cards (seconds). */
   public static final float STAGGER_DELAY = 0.1f;
 
   private static final float SPELL_TRAVEL_DISTANCE = 10f;
@@ -66,24 +62,21 @@ public class DeploymentSystem {
   private final Queue<DeploymentRequest> requestQueue = new ConcurrentLinkedQueue<>();
 
   // Deployments waiting for the sync delay to expire before spawning
-  @Getter
-  private final List<PendingDeployment> pendingDeployments = new ArrayList<>();
+  @Getter private final List<PendingDeployment> pendingDeployments = new ArrayList<>();
 
   public void queueAction(Player player, PlayerActionDTO action) {
     requestQueue.offer(new DeploymentRequest(player, action));
   }
 
-  /**
-   * Clears all queued actions and pending deployments. Called on match reset.
-   */
+  /** Clears all queued actions and pending deployments. Called on match reset. */
   public void reset() {
     requestQueue.clear();
     pendingDeployments.clear();
   }
 
   /**
-   * Processes queued actions and ticks pending deployment timers.
-   * Multi-unit TROOP cards spawn one unit at a time with stagger delay after the sync delay expires.
+   * Processes queued actions and ticks pending deployment timers. Multi-unit TROOP cards spawn one
+   * unit at a time with stagger delay after the sync delay expires.
    *
    * @param deltaTime time elapsed since last update (seconds)
    */
@@ -118,13 +111,23 @@ public class DeploymentSystem {
         if (pending.isTroop()) {
           // Spawn one troop at a time (single-unit cards have staggerDelay=0, so the
           // while loop spawns the one unit instantly with no behavioral change)
-          spawnSingleTroop(pending.team, pending.card, pending.x, pending.y,
-              pending.level, pending.nextUnitIndex);
+          spawnSingleTroop(
+              pending.team,
+              pending.card,
+              pending.x,
+              pending.y,
+              pending.level,
+              pending.nextUnitIndex);
 
           // Fire deploy effect only on the first unit
           if (!pending.deployEffectFired && pending.card.getDeployEffect() != null) {
-            deployAreaEffect(pending.team, pending.card.getDeployEffect(),
-                pending.x, pending.y, pending.card.getRarity(), pending.level);
+            deployAreaEffect(
+                pending.team,
+                pending.card.getDeployEffect(),
+                pending.x,
+                pending.y,
+                pending.card.getRarity(),
+                pending.level);
             pending.deployEffectFired = true;
           }
 
@@ -161,28 +164,33 @@ public class DeploymentSystem {
     if (card != null) {
       int cardLevel = player.getLevelConfig().getLevelFor(card);
       // 2. Queue for spawn after sync delay
-      pendingDeployments.add(new PendingDeployment(
-          player.getTeam(), card, action.getX(), action.getY(), cardLevel,
-          PLACEMENT_SYNC_DELAY));
+      pendingDeployments.add(
+          new PendingDeployment(
+              player.getTeam(),
+              card,
+              action.getX(),
+              action.getY(),
+              cardLevel,
+              PLACEMENT_SYNC_DELAY));
     }
   }
 
   /**
-   * Spawns a non-troop card (building or spell). Troop cards are handled directly
-   * by the stagger loop in {@link #update(float)}.
+   * Spawns a non-troop card (building or spell). Troop cards are handled directly by the stagger
+   * loop in {@link #update(float)}.
    */
   private void spawnCard(Team team, Card card, float x, float y, int level) {
     switch (card.getType()) {
       case BUILDING -> spawnBuilding(team, card, x, y, level);
       case SPELL -> castSpell(team, card, x, y, level);
-      default -> { }
+      default -> {}
     }
   }
 
   /**
-   * Spawns a single troop at the given index within the card's formation.
-   * Handles primary/secondary unit selection, spawner components (idx==0 only),
-   * death mechanics, and formation offset positioning.
+   * Spawns a single troop at the given index within the card's formation. Handles primary/secondary
+   * unit selection, spawner components (idx==0 only), death mechanics, and formation offset
+   * positioning.
    */
   private void spawnSingleTroop(Team team, Card card, float x, float y, int level, int idx) {
     TroopStats primaryStats = card.getUnitStats();
@@ -210,17 +218,18 @@ public class DeploymentSystem {
       TroopStats spawnStats = card.getSpawnTemplate();
       if (spawnStats != null) {
         float initialTimer = resolveInitialSpawnerTimer(ls);
-        spawner = SpawnerComponent.builder()
-            .spawnInterval(ls.spawnInterval())
-            .spawnPauseTime(ls.spawnPauseTime())
-            .unitsPerWave(ls.spawnNumber())
-            .spawnStartTime(ls.spawnStartTime())
-            .currentTimer(initialTimer)
-            .spawnStats(spawnStats)
-            .formationRadius(ls.spawnRadius())
-            .rarity(card.getRarity())
-            .level(level)
-            .build();
+        spawner =
+            SpawnerComponent.builder()
+                .spawnInterval(ls.spawnInterval())
+                .spawnPauseTime(ls.spawnPauseTime())
+                .unitsPerWave(ls.spawnNumber())
+                .spawnStartTime(ls.spawnStartTime())
+                .currentTimer(initialTimer)
+                .spawnStats(spawnStats)
+                .formationRadius(ls.spawnRadius())
+                .rarity(card.getRarity())
+                .level(level)
+                .build();
       }
     }
 
@@ -228,18 +237,19 @@ public class DeploymentSystem {
     boolean hasUnitDeathMechanics =
         unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
     if (hasUnitDeathMechanics) {
-      int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(),
-          level);
+      int scaledDeathDmg =
+          LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
 
       if (spawner == null) {
         // Create a death-only SpawnerComponent
-        spawner = SpawnerComponent.builder()
-            .deathDamage(scaledDeathDmg)
-            .deathDamageRadius(unitStats.getDeathDamageRadius())
-            .deathSpawns(unitStats.getDeathSpawns())
-            .rarity(card.getRarity())
-            .level(level)
-            .build();
+        spawner =
+            SpawnerComponent.builder()
+                .deathDamage(scaledDeathDmg)
+                .deathDamageRadius(unitStats.getDeathDamageRadius())
+                .deathSpawns(unitStats.getDeathSpawns())
+                .rarity(card.getRarity())
+                .level(level)
+                .build();
       } else {
         // Merge death mechanics into existing spawner
         spawner.setDeathDamage(scaledDeathDmg);
@@ -248,21 +258,41 @@ public class DeploymentSystem {
       }
     }
 
-    Troop troop = createTroop(team, unitStats, x, y, spawner, level, card.getRarity(),
-        idx, totalUnits, summonRadius, formationOffsets);
+    Troop troop =
+        createTroop(
+            team,
+            unitStats,
+            x,
+            y,
+            spawner,
+            level,
+            card.getRarity(),
+            idx,
+            totalUnits,
+            summonRadius,
+            formationOffsets);
     state.spawnEntity(troop);
   }
 
   /**
    * The Red player's view is rotated 180 degrees relative to the Blue player's view.
-   * <p>
-   * This means that a formation defined with offsets (dx, dy) for Blue (where +y is forward and +x
-   * is right) should be applied as (-dx, -dy) for Red to preserve the formation's relative shape
+   *
+   * <p>This means that a formation defined with offsets (dx, dy) for Blue (where +y is forward and
+   * +x is right) should be applied as (-dx, -dy) for Red to preserve the formation's relative shape
    * and orientation towards the enemy.
    */
-  private Troop createTroop(Team team, TroopStats stats, float baseX, float baseY,
-      SpawnerComponent spawner, int level, Rarity rarity,
-      int index, int total, float summonRadius, List<float[]> formationOffsets) {
+  private Troop createTroop(
+      Team team,
+      TroopStats stats,
+      float baseX,
+      float baseY,
+      SpawnerComponent spawner,
+      int level,
+      Rarity rarity,
+      int index,
+      int total,
+      float summonRadius,
+      List<float[]> formationOffsets) {
     float offsetX = 0f;
     float offsetY = 0f;
 
@@ -273,8 +303,9 @@ public class DeploymentSystem {
       offsetY = offset[1];
     } else if (total > 1 && summonRadius > 0) {
       // Fallback: circular formation algorithm
-      Vector2 offset = FormationLayout.calculateDeployOffset(
-          index, total, summonRadius, stats.getCollisionRadius());
+      Vector2 offset =
+          FormationLayout.calculateDeployOffset(
+              index, total, summonRadius, stats.getCollisionRadius());
       offsetX = offset.getX();
       offsetY = offset.getY();
     }
@@ -295,27 +326,31 @@ public class DeploymentSystem {
     int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
 
-    Combat combat = buildCombatComponent(stats, scaledDamage, initialLoad)
-        .aoeRadius(stats.getAoeRadius())
-        .multipleTargets(stats.getMultipleTargets())
-        .multipleProjectiles(stats.getMultipleProjectiles())
-        .buffOnDamage(stats.getBuffOnDamage())
-        .build();
+    Combat combat =
+        buildCombatComponent(stats, scaledDamage, initialLoad)
+            .aoeRadius(stats.getAoeRadius())
+            .multipleTargets(stats.getMultipleTargets())
+            .multipleProjectiles(stats.getMultipleProjectiles())
+            .buffOnDamage(stats.getBuffOnDamage())
+            .build();
 
     // Scale shield by level
-    int scaledShield = stats.getShieldHitpoints() > 0
-        ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level) : 0;
+    int scaledShield =
+        stats.getShieldHitpoints() > 0
+            ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level)
+            : 0;
 
     // Create ability component if unit has one
-    AbilityComponent abilityComponent = stats.getAbility() != null
-        ? new AbilityComponent(stats.getAbility()) : null;
+    AbilityComponent abilityComponent =
+        stats.getAbility() != null ? new AbilityComponent(stats.getAbility()) : null;
 
-    Movement movement = new Movement(
-        stats.getSpeed(),
-        stats.getMass(),
-        stats.getCollisionRadius(),
-        stats.getVisualRadius(),
-        stats.getMovementType());
+    Movement movement =
+        new Movement(
+            stats.getSpeed(),
+            stats.getMass(),
+            stats.getCollisionRadius(),
+            stats.getVisualRadius(),
+            stats.getMovementType());
     movement.setIgnorePushback(stats.isIgnorePushback());
     movement.setJumpEnabled(stats.isJumpEnabled());
 
@@ -342,7 +377,8 @@ public class DeploymentSystem {
     }
 
     int scaledBuildingHp = LevelScaling.scaleCard(unitStats.getHealth(), card.getRarity(), level);
-    int scaledBuildingDamage = LevelScaling.scaleCard(unitStats.getDamage(), card.getRarity(), level);
+    int scaledBuildingDamage =
+        LevelScaling.scaleCard(unitStats.getDamage(), card.getRarity(), level);
 
     Combat combat = null;
     if (unitStats.getDamage() > 0) {
@@ -359,15 +395,16 @@ public class DeploymentSystem {
     if (hasLiveSpawn || hasUnitLevelDeath) {
       LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
       TroopStats spawnStats = card.getSpawnTemplate();
-      int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(),
-          level);
+      int scaledDeathDmg =
+          LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
 
-      SpawnerComponent.SpawnerComponentBuilder spawnerBuilder = SpawnerComponent.builder()
-          .deathDamage(scaledDeathDmg)
-          .deathDamageRadius(unitStats.getDeathDamageRadius())
-          .deathSpawns(unitStats.getDeathSpawns())
-          .rarity(card.getRarity())
-          .level(level);
+      SpawnerComponent.SpawnerComponentBuilder spawnerBuilder =
+          SpawnerComponent.builder()
+              .deathDamage(scaledDeathDmg)
+              .deathDamageRadius(unitStats.getDeathDamageRadius())
+              .deathSpawns(unitStats.getDeathSpawns())
+              .rarity(card.getRarity())
+              .level(level);
 
       if (ls != null) {
         float initialTimer = resolveInitialSpawnerTimer(ls);
@@ -390,21 +427,27 @@ public class DeploymentSystem {
     }
 
     // Always use Building class, attach components optionally
-    Building building = Building.builder()
-        .name(card.getName())
-        .team(team)
-        .position(new Position(x, y))
-        .health(new Health(scaledBuildingHp))
-        .movement(new Movement(0, 0, unitStats.getCollisionRadius(),
-            unitStats.getVisualRadius(), MovementType.BUILDING))
-        .combat(combat)
-        .lifetime(unitStats.getLifeTime())
-        .remainingLifetime(unitStats.getLifeTime())
-        .spawner(spawner)
-        .deployTime(unitStats.getDeployTime())
-        .deployTimer(unitStats.getDeployTime())
-        .level(level)
-        .build();
+    Building building =
+        Building.builder()
+            .name(card.getName())
+            .team(team)
+            .position(new Position(x, y))
+            .health(new Health(scaledBuildingHp))
+            .movement(
+                new Movement(
+                    0,
+                    0,
+                    unitStats.getCollisionRadius(),
+                    unitStats.getVisualRadius(),
+                    MovementType.BUILDING))
+            .combat(combat)
+            .lifetime(unitStats.getLifeTime())
+            .remainingLifetime(unitStats.getLifeTime())
+            .spawner(spawner)
+            .deployTime(unitStats.getDeployTime())
+            .deployTimer(unitStats.getDeployTime())
+            .level(level)
+            .build();
 
     state.spawnEntity(building);
   }
@@ -412,8 +455,9 @@ public class DeploymentSystem {
   private void castSpell(Team team, Card card, float x, float y, int level) {
     // Summon character spells (Rage -> RageBottle, Heal -> HealSpirit)
     if (card.getSummonTemplate() != null) {
-      Troop summoned = createTroop(team, card.getSummonTemplate(), x, y, null, level,
-          card.getRarity(), 0, 1, 0f, null);
+      Troop summoned =
+          createTroop(
+              team, card.getSummonTemplate(), x, y, null, level, card.getRarity(), 0, 1, 0f, null);
       state.spawnEntity(summoned);
     }
 
@@ -438,15 +482,25 @@ public class DeploymentSystem {
     if (speed > 0) {
       // Traveling spell
       float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
-      Projectile p = new Projectile(team, x, startY, x, y, damage, radius, speed, effects,
-          proj.getCrownTowerDamagePercent());
+      Projectile p =
+          new Projectile(
+              team,
+              x,
+              startY,
+              x,
+              y,
+              damage,
+              radius,
+              speed,
+              effects,
+              proj.getCrownTowerDamagePercent());
       p.setPushback(proj.getPushback());
       p.setPushbackAll(proj.isPushbackAll());
       state.spawnProjectile(p);
     } else {
       // Instant spell
-      combatSystem.applySpellDamage(team, x, y, damage, radius, effects,
-          proj.getCrownTowerDamagePercent());
+      combatSystem.applySpellDamage(
+          team, x, y, damage, radius, effects, proj.getCrownTowerDamagePercent());
     }
   }
 
@@ -454,18 +508,27 @@ public class DeploymentSystem {
     ProjectileStats stats = card.getSpawnProjectile();
     int damage = LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level);
     float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
-    Projectile p = new Projectile(team, x, startY, x, y, damage, stats.getRadius(),
-        stats.getSpeed(), stats.getHitEffects(), stats.getCrownTowerDamagePercent());
+    Projectile p =
+        new Projectile(
+            team,
+            x,
+            startY,
+            x,
+            y,
+            damage,
+            stats.getRadius(),
+            stats.getSpeed(),
+            stats.getHitEffects(),
+            stats.getCrownTowerDamagePercent());
     p.setPushback(stats.getPushback());
     p.setPushbackAll(stats.isPushbackAll());
     state.spawnProjectile(p);
   }
 
-  private void deployAreaEffect(Team team, AreaEffectStats stats, float x, float y,
-      Rarity rarity, int level) {
-    int scaledDamage = stats.getDamage() > 0
-        ? LevelScaling.scaleCard(stats.getDamage(), rarity, level)
-        : 0;
+  private void deployAreaEffect(
+      Team team, AreaEffectStats stats, float x, float y, Rarity rarity, int level) {
+    int scaledDamage =
+        stats.getDamage() > 0 ? LevelScaling.scaleCard(stats.getDamage(), rarity, level) : 0;
     int resolvedCtdp = stats.getCrownTowerDamagePercent();
     int buildingDmgPct = 0;
 
@@ -490,16 +553,17 @@ public class DeploymentSystem {
       }
     }
 
-    AreaEffect effect = AreaEffect.builder()
-        .name(stats.getName())
-        .team(team)
-        .position(new Position(x, y))
-        .stats(stats)
-        .scaledDamage(scaledDamage)
-        .resolvedCrownTowerDamagePercent(resolvedCtdp)
-        .buildingDamagePercent(buildingDmgPct)
-        .remainingLifetime(stats.getLifeDuration())
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name(stats.getName())
+            .team(team)
+            .position(new Position(x, y))
+            .stats(stats)
+            .scaledDamage(scaledDamage)
+            .resolvedCrownTowerDamagePercent(resolvedCtdp)
+            .buildingDamagePercent(buildingDmgPct)
+            .remainingLifetime(stats.getLifeDuration())
+            .build();
 
     state.spawnEntity(effect);
   }
@@ -509,11 +573,11 @@ public class DeploymentSystem {
   }
 
   /**
-   * Builds the shared subset of Combat fields common to both troops and buildings.
-   * Callers can chain additional builder calls for troop-specific fields before .build().
+   * Builds the shared subset of Combat fields common to both troops and buildings. Callers can
+   * chain additional builder calls for troop-specific fields before .build().
    */
-  private static Combat.CombatBuilder buildCombatComponent(TroopStats stats, int scaledDamage,
-      float initialLoad) {
+  private static Combat.CombatBuilder buildCombatComponent(
+      TroopStats stats, int scaledDamage, float initialLoad) {
     return Combat.builder()
         .damage(scaledDamage)
         .range(stats.getRange())
@@ -532,19 +596,18 @@ public class DeploymentSystem {
   }
 
   // Simple container for the queue
-  private record DeploymentRequest(Player player, PlayerActionDTO action) {
-
-  }
+  private record DeploymentRequest(Player player, PlayerActionDTO action) {}
 
   /**
-   * Holds a resolved deployment during the server sync delay and staggered unit spawning.
-   * Elixir has already been spent and the hand cycled.
+   * Holds a resolved deployment during the server sync delay and staggered unit spawning. Elixir
+   * has already been spent and the hand cycled.
    *
    * <p>Two-phase lifecycle:
+   *
    * <ol>
-   *   <li>Sync delay: {@code remainingDelay} counts down to zero</li>
+   *   <li>Sync delay: {@code remainingDelay} counts down to zero
    *   <li>Stagger: multi-unit TROOP cards spawn one unit at a time with {@code staggerDelay}
-   *       between each; buildings/spells/single-unit troops spawn all at once</li>
+   *       between each; buildings/spells/single-unit troops spawn all at once
    * </ol>
    */
   @Getter
@@ -579,24 +642,20 @@ public class DeploymentSystem {
       this.staggerDelay = totalUnits > 1 ? STAGGER_DELAY : 0f;
     }
 
-    /**
-     * Whether this deployment is a troop card (all troops go through the stagger path).
-     */
+    /** Whether this deployment is a troop card (all troops go through the stagger path). */
     public boolean isTroop() {
       return card.getType() == CardType.TROOP;
     }
 
     /**
-     * Whether this deployment is currently in the stagger phase (sync delay expired,
-     * but not all units have spawned yet).
+     * Whether this deployment is currently in the stagger phase (sync delay expired, but not all
+     * units have spawned yet).
      */
     public boolean isStaggering() {
       return syncComplete && nextUnitIndex < totalUnits;
     }
 
-    /**
-     * Returns the fraction of stagger progress (0.0 = no units spawned, 1.0 = all spawned).
-     */
+    /** Returns the fraction of stagger progress (0.0 = no units spawned, 1.0 = all spawned). */
     public float getStaggerProgress() {
       return totalUnits > 0 ? (float) nextUnitIndex / totalUnits : 1f;
     }

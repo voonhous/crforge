@@ -41,27 +41,30 @@ class LoadTimeMechanicTest {
     float attackCooldown = 1.2f;
     float loadTime = 0.7f;
 
-    Troop attacker = Troop.builder()
-        .name("Knight")
-        .team(Team.BLUE)
-        .position(new Position(0, 0))
-        .health(new Health(100))
-        .deployTime(1.0f)
-        .combat(Combat.builder()
-            .damage(10)
-            .range(1.0f)
-            .attackCooldown(attackCooldown)
-            .loadTime(loadTime)
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("Knight")
+            .team(Team.BLUE)
+            .position(new Position(0, 0))
+            .health(new Health(100))
+            .deployTime(1.0f)
+            .combat(
+                Combat.builder()
+                    .damage(10)
+                    .range(1.0f)
+                    .attackCooldown(attackCooldown)
+                    .loadTime(loadTime)
+                    .build())
+            .build();
 
-    Troop target = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(1, 0))
-        .health(new Health(100))
-        .deployTime(0f)
-        .build();
+    Troop target =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(1, 0))
+            .health(new Health(100))
+            .deployTime(0f)
+            .build();
     target.onSpawn();
     attacker.onSpawn();
 
@@ -90,7 +93,8 @@ class LoadTimeMechanicTest {
     assertThat(attacker.getCombat().getCurrentWindup()).isCloseTo(0.5f, within(0.001f));
 
     // 4. Wait 0.5s for First Hit
-    // We need 6 ticks to be safe (5 * 0.1 = 0.5 exactly, but float precision/order might mean 6th tick executes)
+    // We need 6 ticks to be safe (5 * 0.1 = 0.5 exactly, but float precision/order might mean 6th
+    // tick executes)
     for (int i = 0; i < 6; i++) {
       attacker.update(0.1f); // Decrement windup
       combatSystem.update(0.1f); // Check execute
@@ -110,10 +114,10 @@ class LoadTimeMechanicTest {
 
   /**
    * Tests for the "preloaded" behaviour described in: https://royaleapi.com/blog/secret-stats
-   * <p>
-   * Troops enter the arena with their Load Time already fully charged, so their first attack windup
-   * is max(0, attackCooldown - loadTime) rather than the full attackCooldown. Sparky is the only
-   * exception (noPreload = true).
+   *
+   * <p>Troops enter the arena with their Load Time already fully charged, so their first attack
+   * windup is max(0, attackCooldown - loadTime) rather than the full attackCooldown. Sparky is the
+   * only exception (noPreload = true).
    */
   @Nested
   class PreloadBehavior {
@@ -126,18 +130,19 @@ class LoadTimeMechanicTest {
     }
 
     private void deployTroops(TroopStats stats) {
-      Card card = Card.builder()
-          .name(stats.getName())
-          .cost(1)
-          .type(CardType.TROOP)
-          .unitStats(stats)
-          .build();
+      Card card =
+          Card.builder()
+              .name(stats.getName())
+              .cost(1)
+              .type(CardType.TROOP)
+              .unitStats(stats)
+              .build();
       // Fill all 8 slots with the same card - Hand shuffles on init, so this ensures
       // whichever slot ends up at index 0 will always have troops defined.
       List<Card> cards = new ArrayList<>(Collections.nCopies(8, card));
       Player player = new Player(Team.BLUE, new Deck(cards), false);
-      deploymentSystem.queueAction(player,
-          PlayerActionDTO.builder().handIndex(0).x(9f).y(9f).build());
+      deploymentSystem.queueAction(
+          player, PlayerActionDTO.builder().handIndex(0).x(9f).y(9f).build());
       deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
       gameState.processPending();
     }
@@ -153,11 +158,16 @@ class LoadTimeMechanicTest {
     @Test
     void troopIsPreloadedImmediatelyAtSpawn() {
       float loadTime = 0.7f;
-      deployTroops(TroopStats.builder()
-          .name("Knight")
-          .health(100).damage(10).range(1.0f)
-          .attackCooldown(1.2f).loadTime(loadTime).deployTime(1.0f)
-          .build());
+      deployTroops(
+          TroopStats.builder()
+              .name("Knight")
+              .health(100)
+              .damage(10)
+              .range(1.0f)
+              .attackCooldown(1.2f)
+              .loadTime(loadTime)
+              .deployTime(1.0f)
+              .build());
 
       Troop troop = getFirstTroop();
 
@@ -175,11 +185,16 @@ class LoadTimeMechanicTest {
       float attackCooldown = 3.0f;
       float deployTime = 1.0f;
 
-      deployTroops(TroopStats.builder()
-          .name("Balloon")
-          .health(100).damage(10).range(1.5f)
-          .attackCooldown(attackCooldown).loadTime(loadTime).deployTime(deployTime)
-          .build());
+      deployTroops(
+          TroopStats.builder()
+              .name("Balloon")
+              .health(100)
+              .damage(10)
+              .range(1.5f)
+              .attackCooldown(attackCooldown)
+              .loadTime(loadTime)
+              .deployTime(deployTime)
+              .build());
 
       Troop attacker = getFirstTroop();
 
@@ -188,15 +203,17 @@ class LoadTimeMechanicTest {
         attacker.update(0.1f);
       }
       assertThat(attacker.isDeploying()).isFalse();
-      assertThat(attacker.getCombat().getAccumulatedLoadTime())
-          .isCloseTo(loadTime, within(0.001f));
+      assertThat(attacker.getCombat().getAccumulatedLoadTime()).isCloseTo(loadTime, within(0.001f));
 
       // Place target in range and trigger attack
-      Troop target = Troop.builder()
-          .name("Target").team(Team.RED)
-          .position(new Position(9f, 10f))
-          .health(new Health(100)).deployTime(0f)
-          .build();
+      Troop target =
+          Troop.builder()
+              .name("Target")
+              .team(Team.RED)
+              .position(new Position(9f, 10f))
+              .health(new Health(100))
+              .deployTime(0f)
+              .build();
       target.onSpawn();
       gameState.spawnEntity(target);
       gameState.processPending();
@@ -211,12 +228,17 @@ class LoadTimeMechanicTest {
 
     @Test
     void noPreloadUnitStartsWithZeroCharge() {
-      deployTroops(TroopStats.builder()
-          .name("Sparky")
-          .health(100).damage(10).range(3.0f)
-          .attackCooldown(4.0f).loadTime(4.0f).deployTime(1.0f)
-          .noPreload(true)
-          .build());
+      deployTroops(
+          TroopStats.builder()
+              .name("Sparky")
+              .health(100)
+              .damage(10)
+              .range(3.0f)
+              .attackCooldown(4.0f)
+              .loadTime(4.0f)
+              .deployTime(1.0f)
+              .noPreload(true)
+              .build());
 
       Troop troop = getFirstTroop();
 

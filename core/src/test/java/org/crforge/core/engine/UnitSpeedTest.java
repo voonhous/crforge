@@ -3,7 +3,6 @@ package org.crforge.core.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import org.crforge.data.card.CardRegistry;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.TroopStats;
@@ -16,12 +15,11 @@ import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.physics.BasePathfinder;
 import org.crforge.core.physics.PhysicsSystem;
 import org.crforge.core.player.Team;
+import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Tests that units travel correct distances over time based on their configured speeds.
- */
+/** Tests that units travel correct distances over time based on their configured speeds. */
 class UnitSpeedTest {
 
   private PhysicsSystem physicsSystem;
@@ -51,16 +49,22 @@ class UnitSpeedTest {
     float startX = 3.5f;
     float startY = 5.0f;
 
-    Troop unit = Troop.builder()
-        .name(stats.getName())
-        .team(Team.BLUE)
-        .position(new Position(startX, startY))
-        .health(new Health(stats.getHealth()))
-        .movement(new Movement(stats.getSpeed(), stats.getMass(), stats.getCollisionRadius(),
-            stats.getVisualRadius(), stats.getMovementType()))
-        .combat(Combat.builder().build()) // Dummy combat
-        .deployTime(0f) // Instant deploy for test
-        .build();
+    Troop unit =
+        Troop.builder()
+            .name(stats.getName())
+            .team(Team.BLUE)
+            .position(new Position(startX, startY))
+            .health(new Health(stats.getHealth()))
+            .movement(
+                new Movement(
+                    stats.getSpeed(),
+                    stats.getMass(),
+                    stats.getCollisionRadius(),
+                    stats.getVisualRadius(),
+                    stats.getMovementType()))
+            .combat(Combat.builder().build()) // Dummy combat
+            .deployTime(0f) // Instant deploy for test
+            .build();
 
     unit.onSpawn();
     gameState.spawnEntity(unit);

@@ -63,8 +63,8 @@ public class CardRegistry {
     }
   }
 
-  private static void loadDefaultCards(Map<String, TroopStats> unitMap,
-      Map<String, ProjectileStats> projectileMap) {
+  private static void loadDefaultCards(
+      Map<String, TroopStats> unitMap, Map<String, ProjectileStats> projectileMap) {
     try (InputStream is = CardRegistry.class.getResourceAsStream("/cards/cards.json")) {
       List<Card> loadedCards = CardLoader.loadCards(is, unitMap, projectileMap);
       for (Card card : loadedCards) {

@@ -14,24 +14,19 @@ import org.crforge.core.entity.base.EntityType;
 public class Building extends AbstractEntity {
 
   private final Combat combat;
-  @Builder.Default
-  private final float lifetime = 0f;
+  @Builder.Default private final float lifetime = 0f;
 
   // Note: We use @Builder.Default for logic fields we want to initialize
   // based on the lifetime passed to builder
-  @Builder.Default
-  private float remainingLifetime = 0f;
+  @Builder.Default private float remainingLifetime = 0f;
 
   // Accumulator for fractional health decay
-  @Builder.Default
-  private float decayAccumulator = 0f;
+  @Builder.Default private float decayAccumulator = 0f;
 
   // Added deploy fields
-  @Builder.Default
-  private final float deployTime = DEFAULT_DEPLOY_TIME;
+  @Builder.Default private final float deployTime = DEFAULT_DEPLOY_TIME;
 
-  @Builder.Default
-  private float deployTimer = 1.0f;
+  @Builder.Default private float deployTimer = 1.0f;
 
   @Override
   public EntityType getEntityType() {

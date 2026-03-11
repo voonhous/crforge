@@ -8,9 +8,7 @@ import org.crforge.core.component.Health;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 
-/**
- * Renders health bars (and shield bars) above entities.
- */
+/** Renders health bars (and shield bars) above entities. */
 public class HealthBarRenderer {
 
   private final RenderContext ctx;
@@ -39,9 +37,10 @@ public class HealthBarRenderer {
       ctx.getShapeRenderer().setColor(COLOR_HEALTH_BG);
       ctx.getShapeRenderer().rect(barLeft, barY, barWidth, HEALTH_BAR_HEIGHT);
 
-      Color healthColor = healthPercent > HEALTH_THRESHOLD_HIGH ? COLOR_HEALTH_GREEN
-          : healthPercent > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW
-              : COLOR_HEALTH_RED;
+      Color healthColor =
+          healthPercent > HEALTH_THRESHOLD_HIGH
+              ? COLOR_HEALTH_GREEN
+              : healthPercent > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW : COLOR_HEALTH_RED;
       ctx.getShapeRenderer().setColor(healthColor);
       ctx.getShapeRenderer().rect(barLeft, barY, barWidth * healthPercent, HEALTH_BAR_HEIGHT);
 
@@ -54,7 +53,8 @@ public class HealthBarRenderer {
         ctx.getShapeRenderer().rect(barLeft, shieldBarY, barWidth, HEALTH_BAR_HEIGHT);
 
         ctx.getShapeRenderer().setColor(COLOR_SHIELD);
-        ctx.getShapeRenderer().rect(barLeft, shieldBarY, barWidth * shieldPercent, HEALTH_BAR_HEIGHT);
+        ctx.getShapeRenderer()
+            .rect(barLeft, shieldBarY, barWidth * shieldPercent, HEALTH_BAR_HEIGHT);
       }
     }
 

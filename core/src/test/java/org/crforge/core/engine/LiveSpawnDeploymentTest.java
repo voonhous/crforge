@@ -53,9 +53,7 @@ class LiveSpawnDeploymentTest {
     engine.initMatch();
   }
 
-  /**
-   * Find the hand slot containing a card by name, or -1 if not in hand.
-   */
+  /** Find the hand slot containing a card by name, or -1 if not in hand. */
   private int findCardSlot(String name) {
     for (int i = 0; i < 4; i++) {
       Card c = bluePlayer.getHand().getCard(i);
@@ -108,16 +106,18 @@ class LiveSpawnDeploymentTest {
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
     engine.tick(syncTicks + 1);
 
-    Troop witch = engine.getGameState().getAliveEntities().stream()
-        .filter(e -> "Witch".equals(e.getName()))
-        .map(e -> (Troop) e)
-        .findFirst()
-        .orElse(null);
+    Troop witch =
+        engine.getGameState().getAliveEntities().stream()
+            .filter(e -> "Witch".equals(e.getName()))
+            .map(e -> (Troop) e)
+            .findFirst()
+            .orElse(null);
 
     assertThat(witch).as("Witch should be spawned").isNotNull();
     assertThat(witch.getSpawner()).as("Witch should have a SpawnerComponent").isNotNull();
     assertThat(witch.getSpawner().hasLiveSpawn())
-        .as("Witch spawner should be a live spawner").isTrue();
+        .as("Witch spawner should be a live spawner")
+        .isTrue();
     assertThat(witch.getSpawner().getSpawnStats()).isNotNull();
     assertThat(witch.getSpawner().getSpawnStats().getName()).isEqualTo("Skeleton");
     assertThat(witch.getSpawner().getUnitsPerWave()).isEqualTo(4);
@@ -143,7 +143,8 @@ class LiveSpawnDeploymentTest {
 
     // Skeletons should have spawned (4 per wave)
     skeletonCount = countEntitiesByName("Skeleton");
-    assertThat(skeletonCount).as("Witch should spawn skeletons after start delay")
+    assertThat(skeletonCount)
+        .as("Witch should spawn skeletons after start delay")
         .isGreaterThanOrEqualTo(4);
   }
 
@@ -160,10 +161,12 @@ class LiveSpawnDeploymentTest {
     engine.runSeconds(11.0f);
 
     // Use getEntities() (all, not just alive) to count total spawned
-    long totalSpawned = engine.getGameState().getEntities().stream()
-        .filter(e -> "Skeleton".equals(e.getName()))
-        .count();
-    assertThat(totalSpawned).as("Witch should spawn multiple waves of skeletons")
+    long totalSpawned =
+        engine.getGameState().getEntities().stream()
+            .filter(e -> "Skeleton".equals(e.getName()))
+            .count();
+    assertThat(totalSpawned)
+        .as("Witch should spawn multiple waves of skeletons")
         .isGreaterThanOrEqualTo(8);
   }
 
@@ -178,24 +181,26 @@ class LiveSpawnDeploymentTest {
     // Run past sync (1.0s) + deploy (1.0s) + spawnStartTime (1.0s) + margin for first wave
     engine.runSeconds(3.5f);
 
-    List<Entity> skeletons = engine.getGameState().getAliveEntities().stream()
-        .filter(e -> "Skeleton".equals(e.getName()))
-        .toList();
+    List<Entity> skeletons =
+        engine.getGameState().getAliveEntities().stream()
+            .filter(e -> "Skeleton".equals(e.getName()))
+            .toList();
 
     assertThat(skeletons).as("Should have spawned skeletons").hasSizeGreaterThanOrEqualTo(2);
 
     // Verify that not all skeletons are at the exact same position (formation offsets applied)
-    boolean allSamePosition = skeletons.stream()
-        .allMatch(s -> s.getPosition().getX() == skeletons.get(0).getPosition().getX()
-            && s.getPosition().getY() == skeletons.get(0).getPosition().getY());
+    boolean allSamePosition =
+        skeletons.stream()
+            .allMatch(
+                s ->
+                    s.getPosition().getX() == skeletons.get(0).getPosition().getX()
+                        && s.getPosition().getY() == skeletons.get(0).getPosition().getY());
     assertThat(allSamePosition)
         .as("Spawned skeletons should not all be stacked at the same position")
         .isFalse();
   }
 
-  /**
-   * Set the player's elixir to max (10) so card plays always succeed.
-   */
+  /** Set the player's elixir to max (10) so card plays always succeed. */
   private void giveMaxElixir() {
     // Spend all, then update for enough time to fill to 10
     float current = bluePlayer.getElixir().getCurrent();

@@ -74,7 +74,8 @@ class AbilitySystemTest {
 
     // Should have accumulated ~1s of charge, not yet charged (needs 2.5s)
     AbilityComponent ability = prince.getAbility();
-    assertThat(ability.getChargeTimer()).isCloseTo(1.0f, org.assertj.core.data.Offset.offset(0.05f));
+    assertThat(ability.getChargeTimer())
+        .isCloseTo(1.0f, org.assertj.core.data.Offset.offset(0.05f));
     assertThat(ability.isCharged()).isFalse();
   }
 
@@ -144,8 +145,7 @@ class AbilitySystemTest {
     assertThat(prince.getAbility().getChargeTimer()).isGreaterThan(0f);
 
     // Simulate stopped movement (e.g. stun zeroes effective speed)
-    prince.getMovement().setSpeedMultiplier(
-        ModifierSource.STATUS_EFFECT, 0f);
+    prince.getMovement().setSpeedMultiplier(ModifierSource.STATUS_EFFECT, 0f);
     abilitySystem.update(DT);
 
     // Charge should be lost -- must restart from zero
@@ -357,17 +357,22 @@ class AbilitySystemTest {
     assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
 
     // Create a stun projectile about to hit the Prince (simulates EWiz ranged attack)
-    Projectile stunProjectile = new Projectile(
-        ewiz, prince, 50, 0, 15f,
-        List.of(EffectStats.builder()
-            .type(StatusEffectType.STUN)
-            .duration(0.5f)
-            .buffName("ZapFreeze")
-            .applyAfterDamage(true)
-            .build()));
+    Projectile stunProjectile =
+        new Projectile(
+            ewiz,
+            prince,
+            50,
+            0,
+            15f,
+            List.of(
+                EffectStats.builder()
+                    .type(StatusEffectType.STUN)
+                    .duration(0.5f)
+                    .buffName("ZapFreeze")
+                    .applyAfterDamage(true)
+                    .build()));
     // Place projectile at the target so it hits on next update
-    stunProjectile.getPosition().set(
-        prince.getPosition().getX(), prince.getPosition().getY());
+    stunProjectile.getPosition().set(prince.getPosition().getX(), prince.getPosition().getY());
     gameState.spawnProjectile(stunProjectile);
 
     // Process projectile hit through CombatSystem
@@ -400,23 +405,25 @@ class AbilitySystemTest {
     assertThat(prince.getMovement().getSpeedMultiplier()).isEqualTo(2.0f);
 
     // Cast Zap on the Prince via AreaEffectSystem (one-shot stun spell)
-    AreaEffectStats zapStats = AreaEffectStats.builder()
-        .name("Zap")
-        .radius(2.5f)
-        .lifeDuration(0.1f)
-        .buff("ZapFreeze")
-        .buffDuration(0.5f)
-        .damage(75)
-        .build();
-    AreaEffect zap = AreaEffect.builder()
-        .name("Zap")
-        .team(Team.RED)
-        .position(new Position(5, 5))
-        .health(new Health(1))
-        .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
-        .stats(zapStats)
-        .remainingLifetime(0.1f)
-        .build();
+    AreaEffectStats zapStats =
+        AreaEffectStats.builder()
+            .name("Zap")
+            .radius(2.5f)
+            .lifeDuration(0.1f)
+            .buff("ZapFreeze")
+            .buffDuration(0.5f)
+            .damage(75)
+            .build();
+    AreaEffect zap =
+        AreaEffect.builder()
+            .name("Zap")
+            .team(Team.RED)
+            .position(new Position(5, 5))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
+            .stats(zapStats)
+            .remainingLifetime(0.1f)
+            .build();
     gameState.spawnEntity(zap);
     gameState.processPending();
 
@@ -446,23 +453,25 @@ class AbilitySystemTest {
     assertThat(prince.getAbility().isCharged()).isFalse();
 
     // Cast Zap on the Prince via AreaEffectSystem
-    AreaEffectStats zapStats = AreaEffectStats.builder()
-        .name("Zap")
-        .radius(2.5f)
-        .lifeDuration(0.1f)
-        .buff("ZapFreeze")
-        .buffDuration(0.5f)
-        .damage(75)
-        .build();
-    AreaEffect zap = AreaEffect.builder()
-        .name("Zap")
-        .team(Team.RED)
-        .position(new Position(5, 5))
-        .health(new Health(1))
-        .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
-        .stats(zapStats)
-        .remainingLifetime(0.1f)
-        .build();
+    AreaEffectStats zapStats =
+        AreaEffectStats.builder()
+            .name("Zap")
+            .radius(2.5f)
+            .lifeDuration(0.1f)
+            .buff("ZapFreeze")
+            .buffDuration(0.5f)
+            .damage(75)
+            .build();
+    AreaEffect zap =
+        AreaEffect.builder()
+            .name("Zap")
+            .team(Team.RED)
+            .position(new Position(5, 5))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
+            .stats(zapStats)
+            .remainingLifetime(0.1f)
+            .build();
     gameState.spawnEntity(zap);
     gameState.processPending();
 
@@ -639,23 +648,25 @@ class AbilitySystemTest {
     assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(165);
 
     // Cast Freeze spell via AreaEffectSystem
-    AreaEffectStats freezeStats = AreaEffectStats.builder()
-        .name("Freeze")
-        .radius(3.0f)
-        .lifeDuration(0.1f)
-        .buff("Freeze")
-        .buffDuration(4.0f)
-        .damage(0)
-        .build();
-    AreaEffect freeze = AreaEffect.builder()
-        .name("Freeze")
-        .team(Team.RED)
-        .position(new Position(5, 5))
-        .health(new Health(1))
-        .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
-        .stats(freezeStats)
-        .remainingLifetime(0.1f)
-        .build();
+    AreaEffectStats freezeStats =
+        AreaEffectStats.builder()
+            .name("Freeze")
+            .radius(3.0f)
+            .lifeDuration(0.1f)
+            .buff("Freeze")
+            .buffDuration(4.0f)
+            .damage(0)
+            .build();
+    AreaEffect freeze =
+        AreaEffect.builder()
+            .name("Freeze")
+            .team(Team.RED)
+            .position(new Position(5, 5))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
+            .stats(freezeStats)
+            .remainingLifetime(0.1f)
+            .build();
     gameState.spawnEntity(freeze);
     gameState.processPending();
 
@@ -749,16 +760,17 @@ class AbilitySystemTest {
     // Bandit dashes toward a building -- should move in a straight line and stop
     // at the collision boundary, not orbit around it due to sliding physics.
     Troop bandit = createDashTroop(Team.BLUE, 9, 5);
-    Building cannon = Building.builder()
-        .name("Cannon")
-        .team(Team.RED)
-        .position(new Position(9, 12))
-        .health(new Health(500))
-        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
-        .lifetime(30f)
-        .remainingLifetime(30f)
-        .deployTime(0f)
-        .build();
+    Building cannon =
+        Building.builder()
+            .name("Cannon")
+            .team(Team.RED)
+            .position(new Position(9, 12))
+            .health(new Health(500))
+            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .lifetime(30f)
+            .remainingLifetime(30f)
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(bandit);
     gameState.spawnEntity(cannon);
@@ -773,8 +785,7 @@ class AbilitySystemTest {
       abilitySystem.update(DT);
     }
 
-    assertThat(bandit.getAbility().getDashState())
-        .isEqualTo(AbilityComponent.DashState.DASHING);
+    assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     // Record starting X -- Bandit and Cannon share the same X coordinate,
     // so the Bandit should move straight up (Y only) with X unchanged.
@@ -921,8 +932,7 @@ class AbilitySystemTest {
     }
 
     // Should have started dashing (hold released, dash triggered)
-    assertThat(bandit.getAbility().getDashState())
-        .isEqualTo(AbilityComponent.DashState.DASHING);
+    assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
   }
 
   @Test
@@ -1083,8 +1093,7 @@ class AbilitySystemTest {
 
     // First tick -> WINDING_UP
     abilitySystem.update(DT);
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
     // Wait for load time (1.3s)
     for (int i = 0; i < 40; i++) { // ~1.33s
@@ -1092,8 +1101,7 @@ class AbilitySystemTest {
     }
 
     // Should be PULLING now
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.PULLING);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.PULLING);
 
     // Target should start moving toward the fisherman
     float initialTargetX = target.getPosition().getX();
@@ -1113,16 +1121,17 @@ class AbilitySystemTest {
     // After ~3s the building enters hook range and the hook triggers.
     // Then we verify the Fisherman stays put for the 1.3s wind-up.
     Troop fisher = createHookTroop(Team.BLUE, 9, 5);
-    Building cannon = Building.builder()
-        .name("Cannon")
-        .team(Team.RED)
-        .position(new Position(9, 15))
-        .health(new Health(500))
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
-        .lifetime(30f)
-        .remainingLifetime(30f)
-        .deployTime(0f)
-        .build();
+    Building cannon =
+        Building.builder()
+            .name("Cannon")
+            .team(Team.RED)
+            .position(new Position(9, 15))
+            .health(new Health(500))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .lifetime(30f)
+            .remainingLifetime(30f)
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(fisher);
     gameState.spawnEntity(cannon);
@@ -1165,8 +1174,7 @@ class AbilitySystemTest {
     // Phase 2: Hook just triggered -- verify Fisherman stays put during 1.3s wind-up
     float yAtHookTrigger = fisher.getPosition().getY();
 
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
     // Run for 1 second (30 ticks) -- still within 1.3s wind-up
     for (int i = 0; i < 30; i++) {
@@ -1196,22 +1204,24 @@ class AbilitySystemTest {
     // PhysicsSystem respects movementDisabled and the Fisherman truly stops.
     AbilityData hookData = new HookAbility(7.0f, 3.5f, 9999f, 850f, 450f);
 
-    Troop fisher = Troop.builder()
-        .name("Fisherman")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(900))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(80)
-            .range(1.2f)
-            .sightRange(7.5f)
-            .attackCooldown(1.3f)
-            .build())
-        .deployTime(1.0f)
-        .deployTimer(1.0f)
-        .ability(new AbilityComponent(hookData))
-        .build();
+    Troop fisher =
+        Troop.builder()
+            .name("Fisherman")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(900))
+            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .damage(80)
+                    .range(1.2f)
+                    .sightRange(7.5f)
+                    .attackCooldown(1.3f)
+                    .build())
+            .deployTime(1.0f)
+            .deployTimer(1.0f)
+            .ability(new AbilityComponent(hookData))
+            .build();
 
     // Target at distance 5.0 (within [3.5, 7.0] hook window)
     Troop target = createDummyTarget(Team.RED, 10, 5);
@@ -1227,8 +1237,7 @@ class AbilitySystemTest {
     fisher.getCombat().setCurrentTarget(target);
     abilitySystem.update(DT);
 
-    assertThat(fisher.getAbility().getHookState())
-        .isEqualTo(AbilityComponent.HookState.WINDING_UP);
+    assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
     float startX = fisher.getPosition().getX();
     float startY = fisher.getPosition().getY();
@@ -1270,16 +1279,17 @@ class AbilitySystemTest {
   void hook_shouldDragSelfToBuildingInsteadOfPulling() {
     // Place Fisherman 5 tiles from a building (within hook range [3.5, 7.0])
     Troop fisher = createHookTroop(Team.BLUE, 5, 5);
-    Building cannon = Building.builder()
-        .name("Cannon")
-        .team(Team.RED)
-        .position(new Position(10, 5))
-        .health(new Health(500))
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
-        .lifetime(30f)
-        .remainingLifetime(30f)
-        .deployTime(0f)
-        .build();
+    Building cannon =
+        Building.builder()
+            .name("Cannon")
+            .team(Team.RED)
+            .position(new Position(10, 5))
+            .health(new Health(500))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .lifetime(30f)
+            .remainingLifetime(30f)
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(fisher);
     gameState.spawnEntity(cannon);
@@ -1321,20 +1331,22 @@ class AbilitySystemTest {
   @Test
   void reflect_shouldDealCounterDamageOnMeleeHit() {
     Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
-    Troop attacker = Troop.builder()
-        .name("Attacker")
-        .team(Team.RED)
-        .position(new Position(5.5f, 5))
-        .health(new Health(500))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(100)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .build())
-        .deployTime(0f)
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("Attacker")
+            .team(Team.RED)
+            .position(new Position(5.5f, 5))
+            .health(new Health(500))
+            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.0f)
+                    .build())
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(eGiant);
     gameState.spawnEntity(attacker);
@@ -1360,20 +1372,22 @@ class AbilitySystemTest {
   void reflect_shouldTriggerOnRangedAttackWithinRadius() {
     Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
     // Place ranged attacker within reflect radius (2.0 tiles + collision radii)
-    Troop rangedAttacker = Troop.builder()
-        .name("Ranged")
-        .team(Team.RED)
-        .position(new Position(7, 5))
-        .health(new Health(500))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(100)
-            .range(6.0f)
-            .sightRange(6.0f)
-            .attackCooldown(1.0f)
-            .build())
-        .deployTime(0f)
-        .build();
+    Troop rangedAttacker =
+        Troop.builder()
+            .name("Ranged")
+            .team(Team.RED)
+            .position(new Position(7, 5))
+            .health(new Health(500))
+            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(6.0f)
+                    .sightRange(6.0f)
+                    .attackCooldown(1.0f)
+                    .build())
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(eGiant);
     gameState.spawnEntity(rangedAttacker);
@@ -1382,11 +1396,9 @@ class AbilitySystemTest {
     eGiant.update(2.0f);
 
     // Create a projectile that is about to hit eGiant (simulates ranged attack)
-    Projectile projectile = new Projectile(
-        rangedAttacker, eGiant, 100, 0, 15f, List.of());
+    Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, 15f, List.of());
     // Place projectile at eGiant's position so it hits on next update
-    projectile.getPosition().set(
-        eGiant.getPosition().getX(), eGiant.getPosition().getY());
+    projectile.getPosition().set(eGiant.getPosition().getX(), eGiant.getPosition().getY());
     gameState.spawnProjectile(projectile);
 
     combatSystem.update(DT);
@@ -1406,20 +1418,22 @@ class AbilitySystemTest {
   void reflect_shouldNotTriggerOnRangedAttackOutsideRadius() {
     Troop eGiant = createReflectTroop(Team.BLUE, 5, 5);
     // Place ranged attacker far outside reflect radius (2.0 tiles + collision radii)
-    Troop rangedAttacker = Troop.builder()
-        .name("Ranged")
-        .team(Team.RED)
-        .position(new Position(12, 5))
-        .health(new Health(500))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(100)
-            .range(8.0f)
-            .sightRange(8.0f)
-            .attackCooldown(1.0f)
-            .build())
-        .deployTime(0f)
-        .build();
+    Troop rangedAttacker =
+        Troop.builder()
+            .name("Ranged")
+            .team(Team.RED)
+            .position(new Position(12, 5))
+            .health(new Health(500))
+            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(8.0f)
+                    .sightRange(8.0f)
+                    .attackCooldown(1.0f)
+                    .build())
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(eGiant);
     gameState.spawnEntity(rangedAttacker);
@@ -1428,10 +1442,8 @@ class AbilitySystemTest {
     eGiant.update(2.0f);
 
     // Create a projectile that is about to hit eGiant
-    Projectile projectile = new Projectile(
-        rangedAttacker, eGiant, 100, 0, 15f, List.of());
-    projectile.getPosition().set(
-        eGiant.getPosition().getX(), eGiant.getPosition().getY());
+    Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, 15f, List.of());
+    projectile.getPosition().set(eGiant.getPosition().getX(), eGiant.getPosition().getY());
     gameState.spawnProjectile(projectile);
 
     combatSystem.update(DT);
@@ -1454,12 +1466,8 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(1000))
         .movement(new Movement(1.5f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(100)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.4f)
-            .build())
+        .combat(
+            Combat.builder().damage(100).range(1.5f).sightRange(5.5f).attackCooldown(1.4f).build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(chargeData))
@@ -1467,11 +1475,13 @@ class AbilitySystemTest {
   }
 
   private Troop createVariableDamageTroop(Team team, float x, float y) {
-    AbilityData varDmgData = new VariableDamageAbility(List.of(
-        new VariableDamageStage(14, 0f),   // Stage 0: immediate
-        new VariableDamageStage(47, 2.0f), // Stage 1: after 2s
-        new VariableDamageStage(165, 2.0f) // Stage 2: after 2 more s
-    ));
+    AbilityData varDmgData =
+        new VariableDamageAbility(
+            List.of(
+                new VariableDamageStage(14, 0f), // Stage 0: immediate
+                new VariableDamageStage(47, 2.0f), // Stage 1: after 2s
+                new VariableDamageStage(165, 2.0f) // Stage 2: after 2 more s
+                ));
 
     return Troop.builder()
         .name("InfernoDragon")
@@ -1479,12 +1489,13 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(800))
         .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.AIR))
-        .combat(Combat.builder()
-            .damage(14) // base damage, overridden by ability
-            .range(4.0f)
-            .sightRange(5.5f)
-            .attackCooldown(0.4f)
-            .build())
+        .combat(
+            Combat.builder()
+                .damage(14) // base damage, overridden by ability
+                .range(4.0f)
+                .sightRange(5.5f)
+                .attackCooldown(0.4f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(varDmgData))
@@ -1500,12 +1511,8 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(750))
         .movement(new Movement(2.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(80)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .build())
+        .combat(
+            Combat.builder().damage(80).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(dashData))
@@ -1521,12 +1528,8 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(4000))
         .movement(new Movement(1.5f, 8f, 1.0f, 1.0f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(222)
-            .range(1.5f)
-            .sightRange(7.5f)
-            .attackCooldown(1.5f)
-            .build())
+        .combat(
+            Combat.builder().damage(222).range(1.5f).sightRange(7.5f).attackCooldown(1.5f).build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(dashData))
@@ -1542,12 +1545,8 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(900))
         .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(80)
-            .range(1.2f)
-            .sightRange(7.5f)
-            .attackCooldown(1.3f)
-            .build())
+        .combat(
+            Combat.builder().damage(80).range(1.2f).sightRange(7.5f).attackCooldown(1.3f).build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(hookData))
@@ -1555,8 +1554,8 @@ class AbilitySystemTest {
   }
 
   private Troop createReflectTroop(Team team, float x, float y) {
-    AbilityData reflectData = new ReflectAbility(
-        75, 2.0f, org.crforge.core.effect.StatusEffectType.STUN, 0.5f, 50, null);
+    AbilityData reflectData =
+        new ReflectAbility(75, 2.0f, org.crforge.core.effect.StatusEffectType.STUN, 0.5f, 50, null);
 
     return Troop.builder()
         .name("ElectroGiant")
@@ -1564,12 +1563,13 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(3000))
         .movement(new Movement(0.8f, 8f, 1.0f, 1.0f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(0) // ElectroGiant doesn't deal damage directly, reflect does
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .build())
+        .combat(
+            Combat.builder()
+                .damage(0) // ElectroGiant doesn't deal damage directly, reflect does
+                .range(1.5f)
+                .sightRange(5.5f)
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(reflectData))
@@ -1577,15 +1577,16 @@ class AbilitySystemTest {
   }
 
   /**
-   * Creates an attacker with buffOnDamage STUN (simulates Electro Wizard).
-   * Use range < 2.0 for melee path, >= 2.0 for ranged/projectile path.
+   * Creates an attacker with buffOnDamage STUN (simulates Electro Wizard). Use range < 2.0 for
+   * melee path, >= 2.0 for ranged/projectile path.
    */
   private Troop createStunOnHitAttacker(Team team, float x, float y, float range) {
-    EffectStats stunBuff = EffectStats.builder()
-        .type(StatusEffectType.STUN)
-        .duration(0.5f)
-        .buffName("ZapFreeze")
-        .build();
+    EffectStats stunBuff =
+        EffectStats.builder()
+            .type(StatusEffectType.STUN)
+            .duration(0.5f)
+            .buffName("ZapFreeze")
+            .build();
 
     return Troop.builder()
         .name("EWiz")
@@ -1593,13 +1594,14 @@ class AbilitySystemTest {
         .position(new Position(x, y))
         .health(new Health(500))
         .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(50)
-            .range(range)
-            .sightRange(7.5f)
-            .attackCooldown(1.8f)
-            .buffOnDamage(stunBuff)
-            .build())
+        .combat(
+            Combat.builder()
+                .damage(50)
+                .range(range)
+                .sightRange(7.5f)
+                .attackCooldown(1.8f)
+                .buffOnDamage(stunBuff)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

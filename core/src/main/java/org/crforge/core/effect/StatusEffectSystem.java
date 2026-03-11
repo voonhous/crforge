@@ -8,8 +8,8 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 
 /**
- * Handles the calculation of final attributes based on active status effects.
- * Only touches the STATUS_EFFECT modifier source, leaving ability sources untouched.
+ * Handles the calculation of final attributes based on active status effects. Only touches the
+ * STATUS_EFFECT modifier source, leaving ability sources untouched.
  */
 public class StatusEffectSystem {
 
@@ -27,10 +27,11 @@ public class StatusEffectSystem {
     }
 
     // Update durations and remove expired
-    effects.removeIf(effect -> {
-      effect.update(deltaTime);
-      return effect.isExpired();
-    });
+    effects.removeIf(
+        effect -> {
+          effect.update(deltaTime);
+          return effect.isExpired();
+        });
 
     // Calculate multipliers
     float moveSpeedMult = 1.0f;
@@ -39,7 +40,8 @@ public class StatusEffectSystem {
 
     for (AppliedEffect effect : effects) {
       // STUN/FREEZE always stun regardless of buff definition
-      if (effect.getType() == StatusEffectType.STUN || effect.getType() == StatusEffectType.FREEZE) {
+      if (effect.getType() == StatusEffectType.STUN
+          || effect.getType() == StatusEffectType.FREEZE) {
         isStunned = true;
         continue;
       }

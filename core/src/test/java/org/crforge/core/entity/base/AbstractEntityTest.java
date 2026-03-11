@@ -18,10 +18,7 @@ class AbstractEntityTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     // Using Troop as a concrete implementation of AbstractEntity for testing
-    entity = Troop.builder()
-        .name("TestTroop")
-        .team(Team.BLUE)
-        .build();
+    entity = Troop.builder().name("TestTroop").team(Team.BLUE).build();
   }
 
   @Test

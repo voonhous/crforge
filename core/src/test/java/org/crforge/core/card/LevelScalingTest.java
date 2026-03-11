@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Validates LevelScaling against known values from LEVEL_SCALING.md.
- * All expected values are taken directly from the scaling tables in that file.
+ * Validates LevelScaling against known values from LEVEL_SCALING.md. All expected values are taken
+ * directly from the scaling tables in that file.
  */
 class LevelScalingTest {
 

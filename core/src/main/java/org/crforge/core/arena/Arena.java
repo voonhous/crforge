@@ -145,8 +145,8 @@ public class Arena {
   }
 
   /**
-   * Validates if a building with a given radius can be placed at (x,y).
-   * Ensures the entire footprint is within valid tiles for the team.
+   * Validates if a building with a given radius can be placed at (x,y). Ensures the entire
+   * footprint is within valid tiles for the team.
    */
   public boolean isValidBuildingPlacement(float x, float y, float radius, Team team) {
     float minX = x - radius;

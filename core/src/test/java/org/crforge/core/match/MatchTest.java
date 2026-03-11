@@ -31,11 +31,7 @@ class MatchTest {
   private Player createPlayer(Team team) {
     List<Card> cards = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      cards.add(Card.builder()
-          .name("Card " + i)
-          .type(CardType.TROOP)
-          .cost(3)
-          .build());
+      cards.add(Card.builder().name("Card " + i).type(CardType.TROOP).cost(3).build());
     }
     return new Player(team, new Deck(cards), false);
   }
@@ -138,8 +134,8 @@ class MatchTest {
     // Arena Left Bridge starts at X=2, width 3.
     // River tiles are Y=15, 16.
 
-    PlayerActionDTO bridgeAction = PlayerActionDTO.play(0, Arena.LEFT_BRIDGE_X + 1.0f,
-        Arena.RIVER_Y - 0.5f);
+    PlayerActionDTO bridgeAction =
+        PlayerActionDTO.play(0, Arena.LEFT_BRIDGE_X + 1.0f, Arena.RIVER_Y - 0.5f);
 
     // Should be rejected for Troops
     assertThat(match.validateAction(bluePlayer, bridgeAction))

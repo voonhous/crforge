@@ -32,9 +32,7 @@ public class SpawnerSystem {
     this.combatSystem = combatSystem;
   }
 
-  /**
-   * Legacy constructor for tests that don't need death damage.
-   */
+  /** Legacy constructor for tests that don't need death damage. */
   public SpawnerSystem(GameState gameState) {
     this(gameState, null);
   }
@@ -70,10 +68,15 @@ public class SpawnerSystem {
         int total = spawner.getUnitsPerWave();
         float formationRadius = spawner.getFormationRadius();
         float collisionRadius = spawner.getSpawnStats().getCollisionRadius();
-        Vector2 offset = FormationLayout.calculateOffset(
-            spawnIndex, total, formationRadius, collisionRadius);
-        doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats(),
-            spawner.getRarity(), spawner.getLevel());
+        Vector2 offset =
+            FormationLayout.calculateOffset(spawnIndex, total, formationRadius, collisionRadius);
+        doSpawn(
+            entity.getPosition(),
+            offset,
+            entity.getTeam(),
+            spawner.getSpawnStats(),
+            spawner.getRarity(),
+            spawner.getLevel());
       }
     }
   }
@@ -112,21 +115,35 @@ public class SpawnerSystem {
       // 2. Handle resolved death spawns (e.g. Golem -> 2 Golemites)
       for (DeathSpawnEntry entry : spawner.getDeathSpawns()) {
         for (int i = 0; i < entry.count(); i++) {
-          Vector2 offset = FormationLayout.calculateOffset(
-              i, entry.count(), entry.radius(), entry.stats().getCollisionRadius());
-          doSpawn(entity.getPosition(), offset, entity.getTeam(), entry.stats(),
-              spawner.getRarity(), spawner.getLevel());
+          Vector2 offset =
+              FormationLayout.calculateOffset(
+                  i, entry.count(), entry.radius(), entry.stats().getCollisionRadius());
+          doSpawn(
+              entity.getPosition(),
+              offset,
+              entity.getTeam(),
+              entry.stats(),
+              spawner.getRarity(),
+              spawner.getLevel());
         }
       }
 
       // 3. Fallback: legacy death spawn via deathSpawnCount + spawnStats
       if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
         for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
-          Vector2 offset = FormationLayout.calculateOffset(
-              i, spawner.getDeathSpawnCount(), spawner.getFormationRadius(),
-              spawner.getSpawnStats().getCollisionRadius());
-          doSpawn(entity.getPosition(), offset, entity.getTeam(), spawner.getSpawnStats(),
-              spawner.getRarity(), spawner.getLevel());
+          Vector2 offset =
+              FormationLayout.calculateOffset(
+                  i,
+                  spawner.getDeathSpawnCount(),
+                  spawner.getFormationRadius(),
+                  spawner.getSpawnStats().getCollisionRadius());
+          doSpawn(
+              entity.getPosition(),
+              offset,
+              entity.getTeam(),
+              spawner.getSpawnStats(),
+              spawner.getRarity(),
+              spawner.getLevel());
         }
       }
     }
@@ -147,16 +164,15 @@ public class SpawnerSystem {
     }
     // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
     // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
-    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats,
-        Rarity.COMMON, 1);
+    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1);
   }
 
   private static final float KNOCKBACK_DURATION = 0.5f;
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
   /**
-   * Applies knockback to nearby enemies from a death explosion.
-   * Buildings and entities with ignorePushback are immune.
+   * Applies knockback to nearby enemies from a death explosion. Buildings and entities with
+   * ignorePushback are immune.
    */
   private void applyDeathKnockback(Entity source, SpawnerComponent spawner) {
     float centerX = source.getPosition().getX();
@@ -195,8 +211,8 @@ public class SpawnerSystem {
     }
   }
 
-  private void doSpawn(Position origin, Vector2 offset, Team team, TroopStats stats,
-      Rarity rarity, int level) {
+  private void doSpawn(
+      Position origin, Vector2 offset, Team team, TroopStats stats, Rarity rarity, int level) {
     float x = origin.getX() + offset.getX();
     float y = origin.getY() + offset.getY();
 
@@ -206,21 +222,24 @@ public class SpawnerSystem {
 
     int scaledHp = LevelScaling.scaleCard(baseHp, rarity, level);
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
-    int scaledShield = stats.getShieldHitpoints() > 0
-        ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level) : 0;
+    int scaledShield =
+        stats.getShieldHitpoints() > 0
+            ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level)
+            : 0;
 
     float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
-    Combat combat = Combat.builder()
-        .damage(scaledDamage)
-        .range(stats.getRange())
-        .sightRange(stats.getSightRange())
-        .attackCooldown(stats.getAttackCooldown())
-        .loadTime(stats.getLoadTime())
-        .accumulatedLoadTime(initialLoad)
-        .aoeRadius(stats.getAoeRadius())
-        .targetType(stats.getTargetType())
-        .selfAsAoeCenter(stats.isSelfAsAoeCenter())
-        .build();
+    Combat combat =
+        Combat.builder()
+            .damage(scaledDamage)
+            .range(stats.getRange())
+            .sightRange(stats.getSightRange())
+            .attackCooldown(stats.getAttackCooldown())
+            .loadTime(stats.getLoadTime())
+            .accumulatedLoadTime(initialLoad)
+            .aoeRadius(stats.getAoeRadius())
+            .targetType(stats.getTargetType())
+            .selfAsAoeCenter(stats.isSelfAsAoeCenter())
+            .build();
 
     // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),
     // otherwise spawned units deploy instantly
@@ -230,37 +249,42 @@ public class SpawnerSystem {
     boolean hasDeathMechanics = stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty();
     SpawnerComponent spawner = null;
     if (hasDeathMechanics || isBomb) {
-      int scaledDeathDamage = stats.getDeathDamage() > 0
-          ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level) : 0;
+      int scaledDeathDamage =
+          stats.getDeathDamage() > 0
+              ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level)
+              : 0;
 
-      spawner = SpawnerComponent.builder()
-          .deathDamage(scaledDeathDamage)
-          .deathDamageRadius(stats.getDeathDamageRadius())
-          .deathPushback(stats.getDeathPushback())
-          .deathSpawns(stats.getDeathSpawns())
-          .rarity(rarity)
-          .level(level)
-          .selfDestruct(isBomb)
-          .build();
+      spawner =
+          SpawnerComponent.builder()
+              .deathDamage(scaledDeathDamage)
+              .deathDamageRadius(stats.getDeathDamageRadius())
+              .deathPushback(stats.getDeathPushback())
+              .deathSpawns(stats.getDeathSpawns())
+              .rarity(rarity)
+              .level(level)
+              .selfDestruct(isBomb)
+              .build();
     }
 
-    Troop unit = Troop.builder()
-        .name(stats.getName())
-        .team(team)
-        .position(new Position(x, y))
-        .health(new Health(scaledHp, scaledShield))
-        .movement(new Movement(
-            stats.getSpeed(),
-            stats.getMass(),
-            stats.getCollisionRadius(),
-            stats.getVisualRadius(),
-            stats.getMovementType()))
-        .combat(combat)
-        .deployTime(deployTime)
-        .deployTimer(deployTime)
-        .spawner(spawner)
-        .level(level)
-        .build();
+    Troop unit =
+        Troop.builder()
+            .name(stats.getName())
+            .team(team)
+            .position(new Position(x, y))
+            .health(new Health(scaledHp, scaledShield))
+            .movement(
+                new Movement(
+                    stats.getSpeed(),
+                    stats.getMass(),
+                    stats.getCollisionRadius(),
+                    stats.getVisualRadius(),
+                    stats.getMovementType()))
+            .combat(combat)
+            .deployTime(deployTime)
+            .deployTimer(deployTime)
+            .spawner(spawner)
+            .level(level)
+            .build();
 
     gameState.spawnEntity(unit);
   }

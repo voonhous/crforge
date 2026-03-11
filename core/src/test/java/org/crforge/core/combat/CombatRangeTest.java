@@ -121,21 +121,23 @@ class CombatRangeTest {
   }
 
   private Troop createTroop(Team team, float x, float y, float range) {
-    Troop troop = Troop.builder()
-        .name("TestTroop")
-        .team(team)
-        .position(new Position(x, y))
-        .health(new Health(100))
-        // Create troops with size 0 to test raw range
-        .movement(new Movement(0f, 0f, 0f, 0f, MovementType.GROUND)) // Size 0 for range testing
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(10)
-            .range(range)
-            .attackCooldown(1.0f)
-            .loadTime(0f) // Instant windup for this test
-            .build())
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name("TestTroop")
+            .team(team)
+            .position(new Position(x, y))
+            .health(new Health(100))
+            // Create troops with size 0 to test raw range
+            .movement(new Movement(0f, 0f, 0f, 0f, MovementType.GROUND)) // Size 0 for range testing
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(10)
+                    .range(range)
+                    .attackCooldown(1.0f)
+                    .loadTime(0f) // Instant windup for this test
+                    .build())
+            .build();
     troop.onSpawn();
     return troop;
   }

@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 /**
- * DTO for the {@code liveSpawn} block inside a unit definition.
- * Describes periodic spawning behaviour (e.g. Tombstone spawning Skeletons).
+ * DTO for the {@code liveSpawn} block inside a unit definition. Describes periodic spawning
+ * behaviour (e.g. Tombstone spawning Skeletons).
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

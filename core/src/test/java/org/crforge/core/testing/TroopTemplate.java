@@ -12,8 +12,8 @@ import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**
- * Fluent factory for creating test troops with sensible defaults.
- * Avoids boilerplate builder code in test methods.
+ * Fluent factory for creating test troops with sensible defaults. Avoids boilerplate builder code
+ * in test methods.
  */
 public class TroopTemplate {
 
@@ -52,20 +52,17 @@ public class TroopTemplate {
 
   /** Ranged troop with 50 damage, 6.0 range, 100 hp. */
   public static TroopTemplate ranged(String name, Team team) {
-    return new TroopTemplate(name, team)
-        .damage(50).range(6.0f).sightRange(6.0f);
+    return new TroopTemplate(name, team).damage(50).range(6.0f).sightRange(6.0f);
   }
 
   /** Stationary target dummy with 1000 hp, no speed, no damage. */
   public static TroopTemplate target(String name, Team team) {
-    return new TroopTemplate(name, team)
-        .hp(1000).damage(0).speed(0f);
+    return new TroopTemplate(name, team).hp(1000).damage(0).speed(0f);
   }
 
   /** Air troop with AIR movement type. */
   public static TroopTemplate air(String name, Team team) {
-    return new TroopTemplate(name, team)
-        .movementType(MovementType.AIR);
+    return new TroopTemplate(name, team).movementType(MovementType.AIR);
   }
 
   // -- Chainable setters --
@@ -160,8 +157,8 @@ public class TroopTemplate {
 
   /** Creates the Troop entity from this template. */
   public Troop build() {
-    AbilityComponent abilityComponent = abilityData != null
-        ? new AbilityComponent(abilityData) : null;
+    AbilityComponent abilityComponent =
+        abilityData != null ? new AbilityComponent(abilityData) : null;
 
     return Troop.builder()
         .name(name)
@@ -169,16 +166,17 @@ public class TroopTemplate {
         .position(new Position(x, y))
         .health(new Health(hp))
         .movement(new Movement(speed, mass, collisionRadius, visualRadius, movementType))
-        .combat(Combat.builder()
-            .damage(damage)
-            .range(range)
-            .sightRange(sightRange)
-            .attackCooldown(attackCooldown)
-            .loadTime(loadTime)
-            .aoeRadius(aoeRadius)
-            .targetType(targetType)
-            .targetOnlyBuildings(targetOnlyBuildings)
-            .build())
+        .combat(
+            Combat.builder()
+                .damage(damage)
+                .range(range)
+                .sightRange(sightRange)
+                .attackCooldown(attackCooldown)
+                .loadTime(loadTime)
+                .aoeRadius(aoeRadius)
+                .targetType(targetType)
+                .targetOnlyBuildings(targetOnlyBuildings)
+                .build())
         .deployTime(deployTime)
         .deployTimer(deployTime)
         .ability(abilityComponent)

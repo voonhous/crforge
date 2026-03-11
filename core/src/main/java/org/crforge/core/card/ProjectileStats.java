@@ -14,56 +14,41 @@ import lombok.Getter;
 public class ProjectileStats {
 
   private final String name;
-  @Builder.Default
-  private final int damage = 0;
-  @Builder.Default
-  private final float speed = 15.0f;
-  @Builder.Default
-  private final float radius = 0f; // AOE radius
-  @Builder.Default
-  private final boolean homing = true;
-  @Builder.Default
-  private final List<EffectStats> hitEffects = new ArrayList<>();
+  @Builder.Default private final int damage = 0;
+  @Builder.Default private final float speed = 15.0f;
+  @Builder.Default private final float radius = 0f; // AOE radius
+  @Builder.Default private final boolean homing = true;
+  @Builder.Default private final List<EffectStats> hitEffects = new ArrayList<>();
 
   // Chain lightning: after primary hit, chain to N more targets within radius
-  @Builder.Default
-  private final float chainedHitRadius = 0f;
-  @Builder.Default
-  private final int chainedHitCount = 0;
+  @Builder.Default private final float chainedHitRadius = 0f;
+  @Builder.Default private final int chainedHitCount = 0;
 
   // AOE targeting flags
-  @Builder.Default
-  private final boolean aoeToAir = false;
-  @Builder.Default
-  private final boolean aoeToGround = false;
+  @Builder.Default private final boolean aoeToAir = false;
+  @Builder.Default private final boolean aoeToGround = false;
 
   // Non-homing scatter projectiles expire at this range
-  @Builder.Default
-  private final float projectileRange = 0f;
+  @Builder.Default private final float projectileRange = 0f;
 
   // Spawn sub-projectile on impact
   private final ProjectileStats spawnProjectile;
-  @Builder.Default
-  private final int spawnCount = 0;
-  @Builder.Default
-  private final float spawnRadius = 0f;
+  @Builder.Default private final int spawnCount = 0;
+  @Builder.Default private final float spawnRadius = 0f;
 
   // Knockback on hit (in tile units)
-  @Builder.Default
-  private final float pushback = 0f;
-  @Builder.Default
-  private final boolean pushbackAll = false;
+  @Builder.Default private final float pushback = 0f;
+  @Builder.Default private final boolean pushbackAll = false;
 
   // Crown tower damage reduction (e.g. -70 = 30% damage to towers)
-  @Builder.Default
-  private final int crownTowerDamagePercent = 0;
+  @Builder.Default private final int crownTowerDamagePercent = 0;
 
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
   private final AreaEffectStats spawnAreaEffect;
 
   /**
-   * Returns a copy of this ProjectileStats with a different damage value.
-   * All other fields are preserved.
+   * Returns a copy of this ProjectileStats with a different damage value. All other fields are
+   * preserved.
    */
   public ProjectileStats withDamage(int newDamage) {
     return ProjectileStats.builder()

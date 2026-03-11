@@ -7,6 +7,7 @@ import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.DashAbility;
+import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -18,7 +19,6 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.physics.PhysicsSystem;
-import org.crforge.core.arena.Arena;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,8 +56,17 @@ class KnockbackTest {
     float impactY = 17f;
 
     // Create a position-targeted AOE projectile with pushback (like Fireball)
-    Projectile fireball = new Projectile(Team.BLUE, impactX, impactY - 10f,
-        impactX, impactY, 100, 2.5f, 10f, Collections.emptyList());
+    Projectile fireball =
+        new Projectile(
+            Team.BLUE,
+            impactX,
+            impactY - 10f,
+            impactX,
+            impactY,
+            100,
+            2.5f,
+            10f,
+            Collections.emptyList());
     fireball.setPushback(1.0f); // 1 tile knockback
 
     // Advance projectile to hit
@@ -95,8 +104,17 @@ class KnockbackTest {
     float impactX = 10f;
     float impactY = 17f;
 
-    Projectile fireball = new Projectile(Team.BLUE, impactX, impactY - 10f,
-        impactX, impactY, 100, 2.5f, 10f, Collections.emptyList());
+    Projectile fireball =
+        new Projectile(
+            Team.BLUE,
+            impactX,
+            impactY - 10f,
+            impactX,
+            impactY,
+            100,
+            2.5f,
+            10f,
+            Collections.emptyList());
     fireball.setPushback(1.0f);
 
     gameState.spawnProjectile(fireball);
@@ -110,17 +128,18 @@ class KnockbackTest {
 
   @Test
   void buildings_shouldBeImmuneToKnockback() {
-    Building building = Building.builder()
-        .name("Cannon")
-        .team(Team.RED)
-        .position(new Position(10f, 16f))
-        .health(new Health(500))
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
-        .lifetime(30f)
-        .remainingLifetime(30f)
-        .deployTime(1.0f)
-        .deployTimer(0f) // already deployed
-        .build();
+    Building building =
+        Building.builder()
+            .name("Cannon")
+            .team(Team.RED)
+            .position(new Position(10f, 16f))
+            .health(new Health(500))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .lifetime(30f)
+            .remainingLifetime(30f)
+            .deployTime(1.0f)
+            .deployTimer(0f) // already deployed
+            .build();
 
     gameState.spawnEntity(building);
     gameState.processPending();
@@ -128,8 +147,17 @@ class KnockbackTest {
     float impactX = 10f;
     float impactY = 17f;
 
-    Projectile fireball = new Projectile(Team.BLUE, impactX, impactY - 10f,
-        impactX, impactY, 100, 2.5f, 10f, Collections.emptyList());
+    Projectile fireball =
+        new Projectile(
+            Team.BLUE,
+            impactX,
+            impactY - 10f,
+            impactX,
+            impactY,
+            100,
+            2.5f,
+            10f,
+            Collections.emptyList());
     fireball.setPushback(1.0f);
 
     gameState.spawnProjectile(fireball);
@@ -208,8 +236,7 @@ class KnockbackTest {
     bystander.update(2.0f);
 
     // Create entity-targeted projectile with no AOE radius but with pushback
-    Projectile proj = new Projectile(source, directTarget, 50, 0f, 15f,
-        Collections.emptyList());
+    Projectile proj = new Projectile(source, directTarget, 50, 0f, 15f, Collections.emptyList());
     proj.setPushback(1.0f);
 
     gameState.spawnProjectile(proj);
@@ -230,22 +257,24 @@ class KnockbackTest {
     AbilityData dashAbility = new DashAbility(200, 4f, 5f, 2.0f, 0f, 0f, 0f, 0f, 1.0f);
 
     Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
-    Troop dasher = Troop.builder()
-        .name("MegaKnightTest")
-        .team(Team.BLUE)
-        .position(new Position(10f, 16f))
-        .health(new Health(3000))
-        .movement(dasherMovement)
-        .combat(Combat.builder()
-            .damage(200)
-            .range(1.5f)
-            .sightRange(7.5f)
-            .attackCooldown(1.7f)
-            .build())
-        .ability(new AbilityComponent(dashAbility))
-        .deployTime(1.0f)
-        .deployTimer(1.0f)
-        .build();
+    Troop dasher =
+        Troop.builder()
+            .name("MegaKnightTest")
+            .team(Team.BLUE)
+            .position(new Position(10f, 16f))
+            .health(new Health(3000))
+            .movement(dasherMovement)
+            .combat(
+                Combat.builder()
+                    .damage(200)
+                    .range(1.5f)
+                    .sightRange(7.5f)
+                    .attackCooldown(1.7f)
+                    .build())
+            .ability(new AbilityComponent(dashAbility))
+            .deployTime(1.0f)
+            .deployTimer(1.0f)
+            .build();
 
     // Create two enemies near the dasher's position (within dash AOE radius)
     Troop enemy1 = createTroop(Team.RED, 10f, 15f, false);
@@ -267,8 +296,9 @@ class KnockbackTest {
     abilityComp.setDashTargetX(dasher.getPosition().getX());
     abilityComp.setDashTargetY(dasher.getPosition().getY());
     abilityComp.setDashSpeed(15f);
-    dasher.getCombat().setCombatDisabled(
-        org.crforge.core.component.ModifierSource.ABILITY_DASH, true);
+    dasher
+        .getCombat()
+        .setCombatDisabled(org.crforge.core.component.ModifierSource.ABILITY_DASH, true);
 
     // Tick the ability system -- dasher is at target, so it transitions to LANDING
     // and applyDashDamage fires
@@ -292,22 +322,24 @@ class KnockbackTest {
     AbilityData dashAbility = new DashAbility(200, 4f, 5f, 2.0f, 0f, 0f, 0f, 0f, 1.0f);
 
     Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
-    Troop dasher = Troop.builder()
-        .name("MegaKnightTest")
-        .team(Team.BLUE)
-        .position(new Position(10f, 16f))
-        .health(new Health(3000))
-        .movement(dasherMovement)
-        .combat(Combat.builder()
-            .damage(200)
-            .range(1.5f)
-            .sightRange(7.5f)
-            .attackCooldown(1.7f)
-            .build())
-        .ability(new AbilityComponent(dashAbility))
-        .deployTime(1.0f)
-        .deployTimer(1.0f)
-        .build();
+    Troop dasher =
+        Troop.builder()
+            .name("MegaKnightTest")
+            .team(Team.BLUE)
+            .position(new Position(10f, 16f))
+            .health(new Health(3000))
+            .movement(dasherMovement)
+            .combat(
+                Combat.builder()
+                    .damage(200)
+                    .range(1.5f)
+                    .sightRange(7.5f)
+                    .attackCooldown(1.7f)
+                    .build())
+            .ability(new AbilityComponent(dashAbility))
+            .deployTime(1.0f)
+            .deployTimer(1.0f)
+            .build();
 
     // Immune enemy (ignorePushback = true)
     Troop immune = createTroop(Team.RED, 10f, 15f, true);
@@ -333,9 +365,7 @@ class KnockbackTest {
     assertThat(immune.getMovement().isKnockedBack()).isFalse();
   }
 
-  /**
-   * Creates a simple troop with movement for knockback testing.
-   */
+  /** Creates a simple troop with movement for knockback testing. */
   private Troop createTroop(Team team, float x, float y, boolean ignorePushback) {
     Movement movement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
     movement.setIgnorePushback(ignorePushback);
@@ -346,12 +376,8 @@ class KnockbackTest {
         .position(new Position(x, y))
         .health(new Health(500))
         .movement(movement)
-        .combat(Combat.builder()
-            .damage(50)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .build())
+        .combat(
+            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

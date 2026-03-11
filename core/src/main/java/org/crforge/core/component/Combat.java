@@ -16,72 +16,54 @@ import org.crforge.core.entity.base.TargetType;
 @Builder
 public class Combat {
 
-  @Builder.Default
-  private final int damage = 0;
-  @Builder.Default
-  private final float range = 1.0f;
-  @Builder.Default
-  private final float sightRange = 5.5f;
-  @Builder.Default
-  private final float attackCooldown = 1.0f; // "Hit Speed"
-  @Builder.Default
-  private final float loadTime = 0f; // Hidden stat: charges up to reduce first hit delay
-  @Builder.Default
-  private final float aoeRadius = 0;
-  @Builder.Default
-  private final TargetType targetType = TargetType.ALL;
+  @Builder.Default private final int damage = 0;
+  @Builder.Default private final float range = 1.0f;
+  @Builder.Default private final float sightRange = 5.5f;
+  @Builder.Default private final float attackCooldown = 1.0f; // "Hit Speed"
 
   @Builder.Default
-  private final List<EffectStats> hitEffects = new ArrayList<>();
+  private final float loadTime = 0f; // Hidden stat: charges up to reduce first hit delay
+
+  @Builder.Default private final float aoeRadius = 0;
+  @Builder.Default private final TargetType targetType = TargetType.ALL;
+
+  @Builder.Default private final List<EffectStats> hitEffects = new ArrayList<>();
 
   private final ProjectileStats projectileStats;
 
   // Combat modifiers
-  @Builder.Default
-  private final int multipleTargets = 0;
-  @Builder.Default
-  private final int multipleProjectiles = 0;
-  @Builder.Default
-  private final boolean selfAsAoeCenter = false;
+  @Builder.Default private final int multipleTargets = 0;
+  @Builder.Default private final int multipleProjectiles = 0;
+  @Builder.Default private final boolean selfAsAoeCenter = false;
 
   // Buff applied to target when dealing damage (e.g. EWiz stun on hit)
   private final EffectStats buffOnDamage;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
-  @Builder.Default
-  private final boolean kamikaze = false;
+  @Builder.Default private final boolean kamikaze = false;
 
   // Targeting and combat modifiers
-  @Builder.Default
-  private final boolean targetOnlyBuildings = false;
-  @Builder.Default
-  private final float minimumRange = 0f;
-  @Builder.Default
-  private final int crownTowerDamagePercent = 0;
+  @Builder.Default private final boolean targetOnlyBuildings = false;
+  @Builder.Default private final float minimumRange = 0f;
+  @Builder.Default private final int crownTowerDamagePercent = 0;
 
   // Ability-driven damage override (e.g. variable damage / inferno)
   // When > 0, used instead of base damage
-  @Setter
-  @Builder.Default
-  private int damageOverride = 0;
+  @Setter @Builder.Default private int damageOverride = 0;
 
   // Dynamic states
   private Entity currentTarget;
   private boolean targetLocked;
 
-  @Setter
-  private float currentCooldown; // Time remaining in "Hit Speed" wait after an attack
-  @Setter
-  private float currentWindup;   // Time remaining in "Attack Animation" before damage
+  @Setter private float currentCooldown; // Time remaining in "Hit Speed" wait after an attack
+  @Setter private float currentWindup; // Time remaining in "Attack Animation" before damage
 
-  @Setter
-  @Builder.Default
+  @Setter @Builder.Default
   private float accumulatedLoadTime = 0f; // Time charged while moving/deploying/idling
 
   // Source-tracked combat disable -- any source present means combat is disabled
   @Builder.Default
-  private final EnumSet<ModifierSource> combatDisableSources =
-      EnumSet.noneOf(ModifierSource.class);
+  private final EnumSet<ModifierSource> combatDisableSources = EnumSet.noneOf(ModifierSource.class);
 
   // Source-tracked attack speed multipliers -- effective multiplier is the product of all
   @Builder.Default
@@ -89,16 +71,12 @@ public class Combat {
       new EnumMap<>(ModifierSource.class);
 
   // Track if we are currently in the middle of an attack sequence (winding up)
-  @Setter
-  @Builder.Default
-  private boolean isAttacking = false;
+  @Setter @Builder.Default private boolean isAttacking = false;
 
   // Units with range >= this threshold use projectile attacks instead of melee
   private static final float RANGED_THRESHOLD = 2.0f;
 
-  /**
-   * Returns true if the unit is considered ranged (Range >= 2.0 tiles).
-   */
+  /** Returns true if the unit is considered ranged (Range >= 2.0 tiles). */
   public boolean isRanged() {
     return range >= RANGED_THRESHOLD;
   }
@@ -122,9 +100,7 @@ public class Combat {
     setCurrentTarget(null);
   }
 
-  /**
-   * Set combat disabled state for a specific source.
-   */
+  /** Set combat disabled state for a specific source. */
   public void setCombatDisabled(ModifierSource source, boolean disabled) {
     if (disabled) {
       combatDisableSources.add(source);
@@ -133,16 +109,12 @@ public class Combat {
     }
   }
 
-  /**
-   * Returns true if any source has disabled combat.
-   */
+  /** Returns true if any source has disabled combat. */
   public boolean isCombatDisabled() {
     return !combatDisableSources.isEmpty();
   }
 
-  /**
-   * Set attack speed multiplier for a specific source.
-   */
+  /** Set attack speed multiplier for a specific source. */
   public void setAttackSpeedMultiplier(ModifierSource source, float multiplier) {
     if (multiplier == 1.0f) {
       attackSpeedMultipliers.remove(source);
@@ -151,9 +123,7 @@ public class Combat {
     }
   }
 
-  /**
-   * Returns the product of all active attack speed multipliers.
-   */
+  /** Returns the product of all active attack speed multipliers. */
   public float getAttackSpeedMultiplier() {
     if (attackSpeedMultipliers.isEmpty()) {
       return 1.0f;
@@ -165,9 +135,7 @@ public class Combat {
     return product;
   }
 
-  /**
-   * Clears all modifiers (disable + attack speed) for the given source.
-   */
+  /** Clears all modifiers (disable + attack speed) for the given source. */
   public void clearModifiers(ModifierSource source) {
     combatDisableSources.remove(source);
     attackSpeedMultipliers.remove(source);
@@ -182,8 +150,7 @@ public class Combat {
   }
 
   /**
-   * Starts an attack sequence.
-   * Calculates windup based on attackCooldown and accumulatedLoadTime.
+   * Starts an attack sequence. Calculates windup based on attackCooldown and accumulatedLoadTime.
    */
   public void startAttackSequence() {
     // Formula: Windup = HitTime - Charge
@@ -205,6 +172,7 @@ public class Combat {
 
   /**
    * Updates timers and charge.
+   *
    * @param deltaTime Time passed
    * @param canAccumulateLoad If true, we are moving/deploying/idle and can charge up.
    */
@@ -236,5 +204,4 @@ public class Combat {
     this.isAttacking = false;
     this.accumulatedLoadTime = 0; // Stun resets charge
   }
-
 }

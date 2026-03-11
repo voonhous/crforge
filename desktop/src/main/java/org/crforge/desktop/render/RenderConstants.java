@@ -2,9 +2,7 @@ package org.crforge.desktop.render;
 
 import com.badlogic.gdx.graphics.Color;
 
-/**
- * Centralized constants for the debug renderer: colors, dimensions, and thresholds.
- */
+/** Centralized constants for the debug renderer: colors, dimensions, and thresholds. */
 public final class RenderConstants {
 
   private RenderConstants() {}
@@ -119,6 +117,7 @@ public final class RenderConstants {
 
   /** Semi-transparent landing zone indicators for position-targeted AOE projectiles. */
   public static final Color COLOR_BLUE_LANDING_ZONE = new Color(0.3f, 0.5f, 1f, 0.2f);
+
   public static final Color COLOR_RED_LANDING_ZONE = new Color(1f, 0.3f, 0.3f, 0.2f);
 
   /** Base color for area effect zone overlays. */

@@ -13,8 +13,8 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 
 /**
- * Renders the HUD: UI backgrounds, game timer, entity count, win/draw text,
- * debug overlay status, player HUDs (cards + elixir bar).
+ * Renders the HUD: UI backgrounds, game timer, entity count, win/draw text, debug overlay status,
+ * player HUDs (cards + elixir bar).
  */
 public class HudRenderer {
 
@@ -30,31 +30,26 @@ public class HudRenderer {
     ctx.getShapeRenderer().setColor(COLOR_UI_BG);
 
     // Top UI
-    ctx.getShapeRenderer().rect(
-        0,
-        camera.viewportHeight - TOP_UI_HEIGHT,
-        camera.viewportWidth,
-        TOP_UI_HEIGHT
-    );
+    ctx.getShapeRenderer()
+        .rect(0, camera.viewportHeight - TOP_UI_HEIGHT, camera.viewportWidth, TOP_UI_HEIGHT);
 
     // Bottom UI
-    ctx.getShapeRenderer().rect(
-        0,
-        0,
-        camera.viewportWidth,
-        BOTTOM_UI_HEIGHT
-    );
+    ctx.getShapeRenderer().rect(0, 0, camera.viewportWidth, BOTTOM_UI_HEIGHT);
 
     ctx.getShapeRenderer().end();
   }
 
-  /**
-   * Render all HUD elements: timer, entity count, player hands/elixir, debug status.
-   */
-  public void render(GameEngine engine, Match match, OrthographicCamera camera,
-                     int selectedHandIndex, Team selectedTeam,
-                     boolean drawPaths, boolean drawRanges, boolean drawDamageNumbers,
-                     boolean drawAoeDamage) {
+  /** Render all HUD elements: timer, entity count, player hands/elixir, debug status. */
+  public void render(
+      GameEngine engine,
+      Match match,
+      OrthographicCamera camera,
+      int selectedHandIndex,
+      Team selectedTeam,
+      boolean drawPaths,
+      boolean drawRanges,
+      boolean drawDamageNumbers,
+      boolean drawAoeDamage) {
     float screenWidth = camera.viewportWidth;
     float screenHeight = camera.viewportHeight;
 
@@ -75,8 +70,8 @@ public class HudRenderer {
       }
       if (!match.getRedPlayers().isEmpty()) {
         Player red = match.getRedPlayers().get(0);
-        renderPlayerHUD(red, true, screenHeight - TOP_UI_HEIGHT, screenWidth,
-            selectedHandIndex, selectedTeam);
+        renderPlayerHUD(
+            red, true, screenHeight - TOP_UI_HEIGHT, screenWidth, selectedHandIndex, selectedTeam);
       }
     }
 
@@ -84,8 +79,12 @@ public class HudRenderer {
     ctx.getSpriteBatch().begin();
     ctx.getFont().getData().setScale(1.2f);
     ctx.getGlyphLayout().setText(ctx.getFont(), timeText);
-    ctx.getFont().draw(ctx.getSpriteBatch(), timeText,
-        (screenWidth - ctx.getGlyphLayout().width) / 2, screenHeight - 10);
+    ctx.getFont()
+        .draw(
+            ctx.getSpriteBatch(),
+            timeText,
+            (screenWidth - ctx.getGlyphLayout().width) / 2,
+            screenHeight - 10);
 
     ctx.getFont().getData().setScale(1.0f);
     String entityCount = "Entities: " + engine.getGameState().getAliveEntities().size();
@@ -96,35 +95,60 @@ public class HudRenderer {
       String winText = winner != null ? winner + " WINS!" : "DRAW!";
       ctx.getFont().getData().setScale(2.0f);
       ctx.getGlyphLayout().setText(ctx.getFont(), winText);
-      ctx.getFont().draw(ctx.getSpriteBatch(), winText,
-          (screenWidth - ctx.getGlyphLayout().width) / 2, screenHeight / 2);
+      ctx.getFont()
+          .draw(
+              ctx.getSpriteBatch(),
+              winText,
+              (screenWidth - ctx.getGlyphLayout().width) / 2,
+              screenHeight / 2);
       ctx.getFont().getData().setScale(1.0f);
     }
 
     // Debug overlay status
     int overlayLine = 0;
     if (drawPaths) {
-      ctx.getFont().draw(ctx.getSpriteBatch(), "Paths: ON",
-          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
+      ctx.getFont()
+          .draw(
+              ctx.getSpriteBatch(),
+              "Paths: ON",
+              screenWidth - 110,
+              screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
     if (drawRanges) {
-      ctx.getFont().draw(ctx.getSpriteBatch(), "Ranges: ON",
-          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
+      ctx.getFont()
+          .draw(
+              ctx.getSpriteBatch(),
+              "Ranges: ON",
+              screenWidth - 110,
+              screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
     if (drawDamageNumbers) {
-      ctx.getFont().draw(ctx.getSpriteBatch(), "Damage: ON",
-          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
+      ctx.getFont()
+          .draw(
+              ctx.getSpriteBatch(),
+              "Damage: ON",
+              screenWidth - 110,
+              screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
     if (drawAoeDamage) {
-      ctx.getFont().draw(ctx.getSpriteBatch(), "AOE: ON",
-          screenWidth - 110, screenHeight / 2 + 20 + (overlayLine++ * 16));
+      ctx.getFont()
+          .draw(
+              ctx.getSpriteBatch(),
+              "AOE: ON",
+              screenWidth - 110,
+              screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
 
     ctx.getSpriteBatch().end();
   }
 
-  private void renderPlayerHUD(Player player, boolean isTop, float yPos, float width,
-                                int selectedHandIndex, Team selectedTeam) {
+  private void renderPlayerHUD(
+      Player player,
+      boolean isTop,
+      float yPos,
+      float width,
+      int selectedHandIndex,
+      Team selectedTeam) {
     float screenHeight = yPos + (isTop ? TOP_UI_HEIGHT : BOTTOM_UI_HEIGHT);
     float cy = CardLayout.cardY(isTop, screenHeight);
 
@@ -137,8 +161,8 @@ public class HudRenderer {
     ctx.getShapeRenderer().setColor(COLOR_ELIXIR_BG);
     ctx.getShapeRenderer().rect(barX, barY, ELIXIR_BAR_WIDTH, ELIXIR_BAR_HEIGHT);
     ctx.getShapeRenderer().setColor(COLOR_ELIXIR);
-    ctx.getShapeRenderer().rect(
-        barX, barY, ELIXIR_BAR_WIDTH * (elixir / MAX_ELIXIR), ELIXIR_BAR_HEIGHT);
+    ctx.getShapeRenderer()
+        .rect(barX, barY, ELIXIR_BAR_WIDTH * (elixir / MAX_ELIXIR), ELIXIR_BAR_HEIGHT);
     ctx.getShapeRenderer().end();
 
     // Elixir Text
@@ -175,8 +199,8 @@ public class HudRenderer {
     ctx.getSpriteBatch().end();
   }
 
-  private void renderCard(Card card, float x, float y, float w, float h, boolean selected,
-                          int level) {
+  private void renderCard(
+      Card card, float x, float y, float w, float h, boolean selected, int level) {
     if (card == null) {
       return;
     }
@@ -213,8 +237,8 @@ public class HudRenderer {
     }
 
     ctx.getGlyphLayout().setText(ctx.getFont(), name);
-    ctx.getFont().draw(ctx.getSpriteBatch(), name,
-        x + (w - ctx.getGlyphLayout().width) / 2, y + h / 2);
+    ctx.getFont()
+        .draw(ctx.getSpriteBatch(), name, x + (w - ctx.getGlyphLayout().width) / 2, y + h / 2);
 
     // Level indicator (bottom-left corner)
     ctx.getFont().setColor(Color.LIGHT_GRAY);

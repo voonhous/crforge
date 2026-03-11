@@ -26,19 +26,21 @@ class SpawnerDeploymentTest {
   @Test
   void spawnerShouldNotTickDuringDeployment() {
     // Setup spawner with 1s pause
-    SpawnerComponent spawner = SpawnerComponent.builder()
-        .spawnPauseTime(1.0f)
-        .currentTimer(1.0f) // Explicitly set start timer
-        .unitsPerWave(1)
-        .spawnStats(TroopStats.builder().name("Skeleton").build())
-        .build();
+    SpawnerComponent spawner =
+        SpawnerComponent.builder()
+            .spawnPauseTime(1.0f)
+            .currentTimer(1.0f) // Explicitly set start timer
+            .unitsPerWave(1)
+            .spawnStats(TroopStats.builder().name("Skeleton").build())
+            .build();
 
-    Building building = Building.builder()
-        .name("Spawner")
-        .team(Team.BLUE)
-        .deployTime(2.0f) // 2s deploy
-        .spawner(spawner)
-        .build();
+    Building building =
+        Building.builder()
+            .name("Spawner")
+            .team(Team.BLUE)
+            .deployTime(2.0f) // 2s deploy
+            .spawner(spawner)
+            .build();
 
     gameState.spawnEntity(building);
     gameState.processPending();
@@ -48,8 +50,6 @@ class SpawnerDeploymentTest {
 
     // The building is still deploying (2.0s > 1.5s).
     // The spawner should NOT have fired yet.
-    assertThat(gameState.getPendingSpawns())
-        .as("Should not spawn units while deploying")
-        .isEmpty();
+    assertThat(gameState.getPendingSpawns()).as("Should not spawn units while deploying").isEmpty();
   }
 }

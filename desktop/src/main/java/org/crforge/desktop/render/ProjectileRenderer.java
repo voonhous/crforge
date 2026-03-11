@@ -10,9 +10,9 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.player.Team;
 
 /**
- * Renders active projectiles. Regular projectiles as small yellow circles,
- * chain lightning projectiles as electric blue lines jumping between targets.
- * Position-targeted AOE projectiles also show a landing zone indicator at the target.
+ * Renders active projectiles. Regular projectiles as small yellow circles, chain lightning
+ * projectiles as electric blue lines jumping between targets. Position-targeted AOE projectiles
+ * also show a landing zone indicator at the target.
  */
 public class ProjectileRenderer {
 
@@ -37,8 +37,9 @@ public class ProjectileRenderer {
       float landY = projectile.getTargetY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float zoneRadius = projectile.getAoeRadius() * TILE_PIXELS;
 
-      ctx.getShapeRenderer().setColor(
-          projectile.getTeam() == Team.BLUE ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE);
+      ctx.getShapeRenderer()
+          .setColor(
+              projectile.getTeam() == Team.BLUE ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE);
       ctx.getShapeRenderer().circle(landX, landY, zoneRadius, CIRCLE_SEGMENTS);
     }
 
@@ -49,7 +50,8 @@ public class ProjectileRenderer {
     ctx.getShapeRenderer().setColor(COLOR_PROJECTILE);
 
     for (Projectile projectile : state.getProjectiles()) {
-      if (!projectile.isActive() || projectile.getChainOrigin() != null
+      if (!projectile.isActive()
+          || projectile.getChainOrigin() != null
           || projectile.getChainedHitCount() > 0) {
         continue;
       }
@@ -84,7 +86,8 @@ public class ProjectileRenderer {
       if (projectile.getChainOrigin() != null) {
         // Chain sub-projectile: line from chain origin entity to current position
         float fromX = projectile.getChainOrigin().getPosition().getX() * TILE_PIXELS;
-        float fromY = projectile.getChainOrigin().getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+        float fromY =
+            projectile.getChainOrigin().getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
         ctx.getShapeRenderer().line(fromX, fromY, toX, toY);
       } else if (projectile.getChainedHitCount() > 0) {
         // Primary chain projectile: line from origin to current position

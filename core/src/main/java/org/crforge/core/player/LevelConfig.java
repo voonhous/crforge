@@ -5,8 +5,8 @@ import java.util.Map;
 import org.crforge.core.card.Card;
 
 /**
- * Defines card levels for a player. Supports a blanket default level
- * with optional per-card overrides (keyed by card id).
+ * Defines card levels for a player. Supports a blanket default level with optional per-card
+ * overrides (keyed by card id).
  */
 public class LevelConfig {
 

@@ -11,21 +11,17 @@ import org.crforge.core.entity.base.MovementType;
 @RequiredArgsConstructor
 public class Movement {
 
-  @Getter
-  private final float speed;
+  @Getter private final float speed;
   private final float mass;
   private final float collisionRadius;
   private final float visualRadius;
   private final MovementType type;
 
-  @Setter
-  private boolean canMoveFlag = true;
+  @Setter private boolean canMoveFlag = true;
 
-  @Setter
-  private boolean ignorePushback;
+  @Setter private boolean ignorePushback;
 
-  @Setter
-  private boolean jumpEnabled;
+  @Setter private boolean jumpEnabled;
 
   // Knockback displacement state
   private float knockbackDirX;
@@ -41,9 +37,7 @@ public class Movement {
   private final EnumMap<ModifierSource, Float> speedMultipliers =
       new EnumMap<>(ModifierSource.class);
 
-  /**
-   * Set movement disabled state for a specific source.
-   */
+  /** Set movement disabled state for a specific source. */
   public void setMovementDisabled(ModifierSource source, boolean disabled) {
     if (disabled) {
       movementDisableSources.add(source);
@@ -52,16 +46,12 @@ public class Movement {
     }
   }
 
-  /**
-   * Returns true if any source has disabled movement.
-   */
+  /** Returns true if any source has disabled movement. */
   public boolean isMovementDisabled() {
     return !movementDisableSources.isEmpty();
   }
 
-  /**
-   * Set speed multiplier for a specific source.
-   */
+  /** Set speed multiplier for a specific source. */
   public void setSpeedMultiplier(ModifierSource source, float multiplier) {
     if (multiplier == 1.0f) {
       speedMultipliers.remove(source);
@@ -70,9 +60,7 @@ public class Movement {
     }
   }
 
-  /**
-   * Returns the product of all active speed multipliers.
-   */
+  /** Returns the product of all active speed multipliers. */
   public float getSpeedMultiplier() {
     if (speedMultipliers.isEmpty()) {
       return 1.0f;
@@ -84,9 +72,7 @@ public class Movement {
     return product;
   }
 
-  /**
-   * Clears all modifiers (disable + speed) for the given source.
-   */
+  /** Clears all modifiers (disable + speed) for the given source. */
   public void clearModifiers(ModifierSource source) {
     movementDisableSources.remove(source);
     speedMultipliers.remove(source);
@@ -127,27 +113,25 @@ public class Movement {
   /**
    * Starts a knockback displacement in the given direction.
    *
-   * @param dirX     normalized X direction
-   * @param dirY     normalized Y direction
+   * @param dirX normalized X direction
+   * @param dirY normalized Y direction
    * @param distance total displacement distance in tiles
    * @param duration active knockback duration in seconds
-   * @param maxTime  time base for speed calculation (distance / maxTime = speed)
+   * @param maxTime time base for speed calculation (distance / maxTime = speed)
    */
-  public void startKnockback(float dirX, float dirY, float distance, float duration,
-      float maxTime) {
+  public void startKnockback(
+      float dirX, float dirY, float distance, float duration, float maxTime) {
     this.knockbackDirX = dirX;
     this.knockbackDirY = dirY;
     this.knockbackSpeed = distance / maxTime;
     this.knockbackTimeRemaining = duration;
   }
 
-  /**
-   * Ticks the knockback displacement, moving the position each frame.
-   */
+  /** Ticks the knockback displacement, moving the position each frame. */
   public void tickKnockback(Position position, float deltaTime) {
     if (knockbackTimeRemaining > 0) {
-      position.add(knockbackDirX * knockbackSpeed * deltaTime,
-          knockbackDirY * knockbackSpeed * deltaTime);
+      position.add(
+          knockbackDirX * knockbackSpeed * deltaTime, knockbackDirY * knockbackSpeed * deltaTime);
       knockbackTimeRemaining -= deltaTime;
     }
   }

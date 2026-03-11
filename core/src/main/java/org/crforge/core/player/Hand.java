@@ -9,9 +9,7 @@ import java.util.Random;
 import lombok.Getter;
 import org.crforge.core.card.Card;
 
-/**
- * Manages the 4 active cards and the cycle (queue).
- */
+/** Manages the 4 active cards and the cycle (queue). */
 public class Hand {
 
   public static final int HAND_SIZE = 4;
@@ -19,11 +17,11 @@ public class Hand {
   @Getter
   // The 4 play slots (some may be null temporarily if we wanted animations, but logic is instant)
   private final Card[] cards;
+
   // The waiting queue (draw pile)
   private final Queue<Card> cycle;
 
-  @Getter
-  private Card nextCard; // The "Next" card shown in UI
+  @Getter private Card nextCard; // The "Next" card shown in UI
 
   public Hand(Deck deck) {
     this(deck, new Random());
@@ -54,11 +52,12 @@ public class Hand {
 
   /**
    * Plays a card from the specified slot and cycles the deck.
+   *
    * <ol>
-   *  <li>Returns the card at slotIndex.</li>
-   *  <li>Puts that card at the back of the cycle.</li>
-   *  <li>Moves 'Next' card to slotIndex.</li>
-   *  <li>Draws new 'Next' card.</li>
+   *   <li>Returns the card at slotIndex.
+   *   <li>Puts that card at the back of the cycle.
+   *   <li>Moves 'Next' card to slotIndex.
+   *   <li>Draws new 'Next' card.
    * </ol>
    *
    * @param slotIndex 0-3

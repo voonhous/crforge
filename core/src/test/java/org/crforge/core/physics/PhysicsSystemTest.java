@@ -83,13 +83,14 @@ class PhysicsSystemTest {
 
   // Helpers
   private Troop createTroop(String name, float x, float y, float mass) {
-    Troop troop = Troop.builder()
-        .name(name)
-        .team(Team.BLUE)
-        .position(new Position(x, y))
-        .movement(new Movement(5.0f, mass, 0.5f, 0.5f, MovementType.GROUND))
-        .deployTime(0f)
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name(name)
+            .team(Team.BLUE)
+            .position(new Position(x, y))
+            .movement(new Movement(5.0f, mass, 0.5f, 0.5f, MovementType.GROUND))
+            .deployTime(0f)
+            .build();
 
     troop.onSpawn(); // Fix: Mark as spawned so it is targetable/collidable
     return troop;

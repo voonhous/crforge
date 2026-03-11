@@ -23,9 +23,7 @@ import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.Vector2;
 
-/**
- * Handles attack execution, damage dealing, and projectile management.
- */
+/** Handles attack execution, damage dealing, and projectile management. */
 public class CombatSystem {
 
   // Knockback: 15 active frames at 30fps = 0.5s displacement duration
@@ -39,9 +37,7 @@ public class CombatSystem {
     this.gameState = gameState;
   }
 
-  /**
-   * Process combat for all entities. Called each tick.
-   */
+  /** Process combat for all entities. Called each tick. */
   public void update(float deltaTime) {
     // Capture alive entities once for the entire combat update
     List<Entity> aliveEntities = gameState.getAliveEntities();
@@ -107,7 +103,8 @@ public class CombatSystem {
     }
 
     // Charge impact: skip windup and deal damage instantly on contact
-    if (entity instanceof Troop troop && troop.getAbility() != null
+    if (entity instanceof Troop troop
+        && troop.getAbility() != null
         && troop.getAbility().isCharged()) {
       combat.startAttackSequence();
       executeAttack(entity, target, combat);
@@ -136,12 +133,13 @@ public class CombatSystem {
   private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
     float distanceSq = attacker.getPosition().distanceToSquared(target.getPosition());
     // Use Collision Radius for range calculation
-    float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
+    float effectiveRange =
+        combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
 
     // Minimum range check (e.g. Mortar cannot attack nearby enemies)
     if (combat.getMinimumRange() > 0) {
-      float effectiveMinRange = combat.getMinimumRange() + attacker.getCollisionRadius()
-          + target.getCollisionRadius();
+      float effectiveMinRange =
+          combat.getMinimumRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
       if (distanceSq < effectiveMinRange * effectiveMinRange) {
         return false;
       }
@@ -151,7 +149,8 @@ public class CombatSystem {
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
-    int baseDamage = combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getDamage();
+    int baseDamage =
+        combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getDamage();
 
     // Charge ability: override damage for this attack if charged
     if (attacker instanceof Troop troop) {
@@ -163,16 +162,17 @@ public class CombatSystem {
       gameState.spawnProjectile(projectile);
     } else {
       // Melee attack, deal damage immediately
-      int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, target,
-          combat.getCrownTowerDamagePercent());
+      int effectiveDamage =
+          DamageUtil.adjustForCrownTower(baseDamage, target, combat.getCrownTowerDamagePercent());
 
       if (combat.getAoeRadius() > 0) {
         // selfAsAoeCenter: AOE is centered on the attacker (e.g. Valkyrie 360-degree splash)
         Entity aoeCenter = combat.isSelfAsAoeCenter() ? attacker : target;
-        dealAoeDamage(attacker, aoeCenter, effectiveDamage, combat.getAoeRadius(),
-            combat.getHitEffects());
+        dealAoeDamage(
+            attacker, aoeCenter, effectiveDamage, combat.getAoeRadius(), combat.getHitEffects());
       } else {
-        // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
+        // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g.
+        // Curse)
         applyEffects(target, combat.getHitEffects());
         dealDamage(target, effectiveDamage);
       }
@@ -180,7 +180,8 @@ public class CombatSystem {
       // Apply buff-on-damage for melee attacks
       applyBuffOnDamage(combat, target);
 
-      // Reflect: if target has REFLECT ability and attacker is within reflect radius, deal counter-damage
+      // Reflect: if target has REFLECT ability and attacker is within reflect radius, deal
+      // counter-damage
       if (target instanceof Troop reflector) {
         int reflectDmg = AbilitySystem.getReflectDamage(reflector);
         if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
@@ -207,11 +208,11 @@ public class CombatSystem {
   }
 
   /**
-   * Finds and attacks additional targets for units with multipleTargets > 1 (e.g. EWiz).
-   * The primary target has already been attacked; this method handles the extras.
+   * Finds and attacks additional targets for units with multipleTargets > 1 (e.g. EWiz). The
+   * primary target has already been attacked; this method handles the extras.
    */
-  private void attackAdditionalTargets(Entity attacker, Entity primaryTarget, Combat combat,
-      List<Entity> aliveEntities) {
+  private void attackAdditionalTargets(
+      Entity attacker, Entity primaryTarget, Combat combat, List<Entity> aliveEntities) {
     int extraTargets = combat.getMultipleTargets() - 1;
     Team enemyTeam = attacker.getTeam().opposite();
 
@@ -230,11 +231,12 @@ public class CombatSystem {
     }
 
     // Sort by squared distance (preserves ordering, avoids sqrt)
-    candidates.sort((a, b) -> {
-      float da = attacker.getPosition().distanceToSquared(a.getPosition());
-      float db = attacker.getPosition().distanceToSquared(b.getPosition());
-      return Float.compare(da, db);
-    });
+    candidates.sort(
+        (a, b) -> {
+          float da = attacker.getPosition().distanceToSquared(a.getPosition());
+          float db = attacker.getPosition().distanceToSquared(b.getPosition());
+          return Float.compare(da, db);
+        });
 
     int baseDamage = combat.getDamage();
     int fired = Math.min(extraTargets, candidates.size());
@@ -246,8 +248,9 @@ public class CombatSystem {
         Projectile projectile = createAttackProjectile(attacker, extraTarget, baseDamage, combat);
         gameState.spawnProjectile(projectile);
       } else {
-        int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, extraTarget,
-            combat.getCrownTowerDamagePercent());
+        int effectiveDamage =
+            DamageUtil.adjustForCrownTower(
+                baseDamage, extraTarget, combat.getCrownTowerDamagePercent());
         applyEffects(extraTarget, combat.getHitEffects());
         dealDamage(extraTarget, effectiveDamage);
         applyBuffOnDamage(combat, extraTarget);
@@ -261,8 +264,9 @@ public class CombatSystem {
         Projectile projectile = createAttackProjectile(attacker, primaryTarget, baseDamage, combat);
         gameState.spawnProjectile(projectile);
       } else {
-        int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, primaryTarget,
-            combat.getCrownTowerDamagePercent());
+        int effectiveDamage =
+            DamageUtil.adjustForCrownTower(
+                baseDamage, primaryTarget, combat.getCrownTowerDamagePercent());
         applyEffects(primaryTarget, combat.getHitEffects());
         dealDamage(primaryTarget, effectiveDamage);
         applyBuffOnDamage(combat, primaryTarget);
@@ -281,17 +285,19 @@ public class CombatSystem {
 
   private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
     ReflectAbility reflect = (ReflectAbility) reflector.getAbility().getData();
-    int effectiveDamage = DamageUtil.adjustForCrownTower(reflectDamage, attacker,
-        reflect.reflectCrownTowerDamagePercent());
+    int effectiveDamage =
+        DamageUtil.adjustForCrownTower(
+            reflectDamage, attacker, reflect.reflectCrownTowerDamagePercent());
     dealDamage(attacker, effectiveDamage);
 
     // Apply reflect buff (e.g. ZapFreeze stun) to attacker
     if (reflect.reflectBuff() != null && reflect.reflectBuffDuration() > 0) {
-      EffectStats reflectEffect = EffectStats.builder()
-          .type(reflect.reflectBuff())
-          .duration(reflect.reflectBuffDuration())
-          .buffName(reflect.reflectBuffName())
-          .build();
+      EffectStats reflectEffect =
+          EffectStats.builder()
+              .type(reflect.reflectBuff())
+              .duration(reflect.reflectBuffDuration())
+              .buffName(reflect.reflectBuffName())
+              .build();
       applyEffects(attacker, List.of(reflectEffect));
     }
   }
@@ -320,8 +326,14 @@ public class CombatSystem {
     int ctdp = projectile.getCrownTowerDamagePercent();
 
     if (projectile.isPositionTargeted()) {
-      applySpellDamage(projectile.getTeam(), projectile.getTargetX(), projectile.getTargetY(),
-          baseDamage, projectile.getAoeRadius(), projectile.getEffects(), ctdp);
+      applySpellDamage(
+          projectile.getTeam(),
+          projectile.getTargetX(),
+          projectile.getTargetY(),
+          baseDamage,
+          projectile.getAoeRadius(),
+          projectile.getEffects(),
+          ctdp);
     } else if (projectile.hasAoe()) {
       dealAoeDamage(
           projectile.getSource(),
@@ -345,7 +357,8 @@ public class CombatSystem {
       applyKnockback(projectile);
     }
 
-    // Reflect: if a projectile hits a REFLECT target and the source is within reflect radius, zap them
+    // Reflect: if a projectile hits a REFLECT target and the source is within reflect radius, zap
+    // them
     if (!projectile.isPositionTargeted()) {
       Entity target = projectile.getTarget();
       if (target instanceof Troop reflector) {
@@ -380,8 +393,8 @@ public class CombatSystem {
   }
 
   /**
-   * Chain lightning: find N closest enemies within chainedHitRadius and create
-   * sub-projectiles to each. Excludes the primary target.
+   * Chain lightning: find N closest enemies within chainedHitRadius and create sub-projectiles to
+   * each. Excludes the primary target.
    */
   private void processChainLightning(Projectile projectile) {
     Entity primaryTarget = projectile.getTarget();
@@ -408,30 +421,36 @@ public class CombatSystem {
     }
 
     // Sort by squared distance (preserves ordering, avoids sqrt)
-    candidates.sort((a, b) -> {
-      float da = a.getPosition().distanceToSquared(primaryTarget.getPosition());
-      float db = b.getPosition().distanceToSquared(primaryTarget.getPosition());
-      return Float.compare(da, db);
-    });
+    candidates.sort(
+        (a, b) -> {
+          float da = a.getPosition().distanceToSquared(primaryTarget.getPosition());
+          float db = b.getPosition().distanceToSquared(primaryTarget.getPosition());
+          return Float.compare(da, db);
+        });
 
     // chainedHitCount includes the primary target, so spawn (count - 1) chain projectiles
     int chainsToSpawn = Math.min(chainCount - 1, candidates.size());
     for (int i = 0; i < chainsToSpawn; i++) {
       Entity chainTarget = candidates.get(i);
-      Projectile chain = new Projectile(
-          projectile.getSource(), chainTarget,
-          projectile.getDamage(), 0, projectile.getProjectileSpeed(),
-          projectile.getEffects(), projectile.getCrownTowerDamagePercent());
+      Projectile chain =
+          new Projectile(
+              projectile.getSource(),
+              chainTarget,
+              projectile.getDamage(),
+              0,
+              projectile.getProjectileSpeed(),
+              projectile.getEffects(),
+              projectile.getCrownTowerDamagePercent());
       chain.setChainOrigin(primaryTarget);
       // Start chain from primary target position so it visually jumps between targets
-      chain.getPosition().set(primaryTarget.getPosition().getX(), primaryTarget.getPosition().getY());
+      chain
+          .getPosition()
+          .set(primaryTarget.getPosition().getX(), primaryTarget.getPosition().getY());
       gameState.spawnProjectile(chain);
     }
   }
 
-  /**
-   * Spawn sub-projectiles on impact (Log rolling projectile, Firecracker explosion).
-   */
+  /** Spawn sub-projectiles on impact (Log rolling projectile, Firecracker explosion). */
   private void processSpawnProjectile(Projectile projectile) {
     ProjectileStats spawnStats = projectile.getSpawnProjectile();
     if (spawnStats == null) {
@@ -461,16 +480,23 @@ public class CombatSystem {
     float targetX = hitX + dirX * range;
     float targetY = hitY + dirY * range;
 
-    Projectile spawned = new Projectile(
-        projectile.getTeam(), hitX, hitY, targetX, targetY,
-        spawnStats.getDamage(), spawnStats.getRadius(), spawnStats.getSpeed(),
-        spawnStats.getHitEffects());
+    Projectile spawned =
+        new Projectile(
+            projectile.getTeam(),
+            hitX,
+            hitY,
+            targetX,
+            targetY,
+            spawnStats.getDamage(),
+            spawnStats.getRadius(),
+            spawnStats.getSpeed(),
+            spawnStats.getHitEffects());
     gameState.spawnProjectile(spawned);
   }
 
   /**
-   * Spawns an AreaEffect entity at the projectile's impact point.
-   * Used by projectiles that carry a spawnAreaEffect (e.g. Heal Spirit heal zone).
+   * Spawns an AreaEffect entity at the projectile's impact point. Used by projectiles that carry a
+   * spawnAreaEffect (e.g. Heal Spirit heal zone).
    */
   private void spawnAreaEffectOnImpact(Projectile projectile) {
     AreaEffectStats stats = projectile.getSpawnAreaEffect();
@@ -486,13 +512,14 @@ public class CombatSystem {
       return;
     }
 
-    AreaEffect effect = AreaEffect.builder()
-        .name(stats.getName() != null ? stats.getName() : "SpawnedAreaEffect")
-        .team(projectile.getTeam())
-        .position(new Position(centerX, centerY))
-        .stats(stats)
-        .remainingLifetime(stats.getLifeDuration())
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name(stats.getName() != null ? stats.getName() : "SpawnedAreaEffect")
+            .team(projectile.getTeam())
+            .position(new Position(centerX, centerY))
+            .stats(stats)
+            .remainingLifetime(stats.getLifeDuration())
+            .build();
 
     gameState.spawnEntity(effect);
   }
@@ -501,14 +528,14 @@ public class CombatSystem {
    * Creates a projectile for a ranged attack, resolving stats from the combat component's
    * ProjectileStats with fallback to combat-level values.
    */
-  private Projectile createAttackProjectile(Entity attacker, Entity target, int damage,
-      Combat combat) {
+  private Projectile createAttackProjectile(
+      Entity attacker, Entity target, int damage, Combat combat) {
     ProjectileStats stats = combat.getProjectileStats();
 
     float speed = (stats != null) ? stats.getSpeed() : 0;
     float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
-    List<EffectStats> effects = new ArrayList<>(
-        (stats != null) ? stats.getHitEffects() : combat.getHitEffects());
+    List<EffectStats> effects =
+        new ArrayList<>((stats != null) ? stats.getHitEffects() : combat.getHitEffects());
 
     // Merge buffOnDamage as a post-damage effect if no projectile-level post-damage effect exists
     boolean hasPostDamageEffect = false;
@@ -520,17 +547,24 @@ public class CombatSystem {
     }
     if (!hasPostDamageEffect && combat.getBuffOnDamage() != null) {
       EffectStats bod = combat.getBuffOnDamage();
-      effects.add(EffectStats.builder()
-          .type(bod.getType())
-          .duration(bod.getDuration())
-          .buffName(bod.getBuffName())
-          .applyAfterDamage(true)
-          .build());
+      effects.add(
+          EffectStats.builder()
+              .type(bod.getType())
+              .duration(bod.getDuration())
+              .buffName(bod.getBuffName())
+              .applyAfterDamage(true)
+              .build());
     }
 
-    Projectile projectile = new Projectile(
-        attacker, target, damage, aoeRadius, speed, effects,
-        combat.getCrownTowerDamagePercent());
+    Projectile projectile =
+        new Projectile(
+            attacker,
+            target,
+            damage,
+            aoeRadius,
+            speed,
+            effects,
+            combat.getCrownTowerDamagePercent());
 
     // Wire advanced projectile features from stats
     if (stats != null) {
@@ -581,17 +615,13 @@ public class CombatSystem {
       }
 
       // Pass buffName and spawnSpecies (if any) to the AppliedEffect
-      AppliedEffect effect = new AppliedEffect(
-          stats.getType(),
-          stats.getDuration(),
-          stats.getBuffName(),
-          stats.getSpawnSpecies()
-      );
+      AppliedEffect effect =
+          new AppliedEffect(
+              stats.getType(), stats.getDuration(), stats.getBuffName(), stats.getSpawnSpecies());
       target.addEffect(effect);
 
       // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)
-      if (stats.getType() == StatusEffectType.STUN
-          || stats.getType() == StatusEffectType.FREEZE) {
+      if (stats.getType() == StatusEffectType.STUN || stats.getType() == StatusEffectType.FREEZE) {
         Combat combat = target.getCombat();
         if (combat != null) {
           combat.resetAttackState();
@@ -606,26 +636,42 @@ public class CombatSystem {
     }
   }
 
-  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius,
-      List<EffectStats> effects) {
+  private void dealAoeDamage(
+      Entity source, Entity primaryTarget, int damage, float radius, List<EffectStats> effects) {
     dealAoeDamage(source, primaryTarget, damage, radius, effects, 0);
   }
 
-  private void dealAoeDamage(Entity source, Entity primaryTarget, int damage, float radius,
-      List<EffectStats> effects, int crownTowerDamagePercent) {
+  private void dealAoeDamage(
+      Entity source,
+      Entity primaryTarget,
+      int damage,
+      float radius,
+      List<EffectStats> effects,
+      int crownTowerDamagePercent) {
     if (primaryTarget == null) {
       return;
     }
-    applySpellDamage(source.getTeam(), primaryTarget.getPosition().getX(),
-        primaryTarget.getPosition().getY(), damage, radius, effects, crownTowerDamagePercent);
+    applySpellDamage(
+        source.getTeam(),
+        primaryTarget.getPosition().getX(),
+        primaryTarget.getPosition().getY(),
+        damage,
+        radius,
+        effects,
+        crownTowerDamagePercent);
   }
 
   /**
    * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
    * for entity size in the radius check. No crown tower damage reduction.
    */
-  public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
-      int damage, float radius, List<EffectStats> effects) {
+  public void applySpellDamage(
+      Team sourceTeam,
+      float centerX,
+      float centerY,
+      int damage,
+      float radius,
+      List<EffectStats> effects) {
     applySpellDamage(sourceTeam, centerX, centerY, damage, radius, effects, 0);
   }
 
@@ -633,8 +679,14 @@ public class CombatSystem {
    * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
    * for entity size in the radius check. Applies crown tower damage reduction to Towers.
    */
-  public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
-      int damage, float radius, List<EffectStats> effects, int crownTowerDamagePercent) {
+  public void applySpellDamage(
+      Team sourceTeam,
+      float centerX,
+      float centerY,
+      int damage,
+      float radius,
+      List<EffectStats> effects,
+      int crownTowerDamagePercent) {
     if (radius > 0) {
       gameState.recordAoeDamage(centerX, centerY, radius, sourceTeam);
     }
@@ -654,8 +706,8 @@ public class CombatSystem {
       // Use Collision Radius for spell AOE check (squared distance avoids sqrt)
       float effectiveRadius = radius + entity.getCollisionRadius();
       if (distanceSq <= effectiveRadius * effectiveRadius) {
-        int effectiveDamage = DamageUtil.adjustForCrownTower(damage, entity,
-            crownTowerDamagePercent);
+        int effectiveDamage =
+            DamageUtil.adjustForCrownTower(damage, entity, crownTowerDamagePercent);
         // Apply pre-damage effects (e.g. Curse)
         applyEffects(entity, filterEffects(effects, false));
         dealDamage(entity, effectiveDamage);
@@ -666,9 +718,9 @@ public class CombatSystem {
   }
 
   /**
-   * Applies knockback displacement to entities hit by a projectile.
-   * AOE projectiles push all enemies within radius; non-AOE pushes only the direct target.
-   * Buildings and entities with ignorePushback are immune.
+   * Applies knockback displacement to entities hit by a projectile. AOE projectiles push all
+   * enemies within radius; non-AOE pushes only the direct target. Buildings and entities with
+   * ignorePushback are immune.
    */
   private void applyKnockback(Projectile projectile) {
     float pushback = projectile.getPushback();
@@ -724,9 +776,7 @@ public class CombatSystem {
     }
   }
 
-  /**
-   * Check if an entity can attack a target (used for validation).
-   */
+  /** Check if an entity can attack a target (used for validation). */
   public boolean canAttack(Entity attacker, Entity target) {
     if (target == null || !target.isTargetable()) {
       return false;
@@ -745,7 +795,8 @@ public class CombatSystem {
     }
 
     float distanceSq = attacker.getPosition().distanceToSquared(target.getPosition());
-    float effectiveRange = combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
+    float effectiveRange =
+        combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
 
     if (distanceSq > effectiveRange * effectiveRange) {
       return false;
@@ -753,8 +804,8 @@ public class CombatSystem {
 
     // Minimum range check
     if (combat.getMinimumRange() > 0) {
-      float effectiveMinRange = combat.getMinimumRange() + attacker.getCollisionRadius()
-          + target.getCollisionRadius();
+      float effectiveMinRange =
+          combat.getMinimumRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
       if (distanceSq < effectiveMinRange * effectiveMinRange) {
         return false;
       }

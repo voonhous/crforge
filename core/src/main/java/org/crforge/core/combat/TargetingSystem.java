@@ -112,10 +112,11 @@ public class TargetingSystem {
   }
 
   /**
-   * Checks if the given target type can target the given movement type.
-   * Public for reuse by CombatSystem (multiple targets logic).
+   * Checks if the given target type can target the given movement type. Public for reuse by
+   * CombatSystem (multiple targets logic).
    */
-  public static boolean canTargetMovementType(TargetType attackerType, MovementType targetMovement) {
+  public static boolean canTargetMovementType(
+      TargetType attackerType, MovementType targetMovement) {
     return switch (attackerType) {
       case ALL -> true;
       case GROUND ->

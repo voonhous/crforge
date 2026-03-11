@@ -6,8 +6,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Static registry for buff definitions loaded from parsed_buffs.json.
- * Follows the same pattern as CardRegistry.
+ * Static registry for buff definitions loaded from parsed_buffs.json. Follows the same pattern as
+ * CardRegistry.
  */
 public class BuffRegistry {
 
@@ -17,9 +17,7 @@ public class BuffRegistry {
     BUFFS.put(name, definition);
   }
 
-  /**
-   * Returns the BuffDefinition for the given buff name, or null if not registered.
-   */
+  /** Returns the BuffDefinition for the given buff name, or null if not registered. */
   public static BuffDefinition get(String name) {
     if (name == null) {
       return null;

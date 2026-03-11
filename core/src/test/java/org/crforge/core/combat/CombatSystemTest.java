@@ -164,21 +164,23 @@ class CombatSystemTest {
   @Test
   void minimumRange_shouldPreventAttackOnCloseTarget() {
     // Mortar-like unit with minimumRange = 3.5
-    Troop mortar = Troop.builder()
-        .name("Mortar")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(1.0f)
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
-        .combat(Combat.builder()
-            .damage(100)
-            .range(11.5f)
-            .sightRange(11.5f)
-            .attackCooldown(5.0f)
-            .minimumRange(3.5f)
-            .build())
-        .build();
+    Troop mortar =
+        Troop.builder()
+            .name("Mortar")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(1.0f)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(11.5f)
+                    .sightRange(11.5f)
+                    .attackCooldown(5.0f)
+                    .minimumRange(3.5f)
+                    .build())
+            .build();
 
     // Close enemy (distance = 2.0, within minimum range)
     Troop closeEnemy = createMeleeTroop(Team.RED, 7, 5, 50);
@@ -203,20 +205,22 @@ class CombatSystemTest {
   @Test
   void crownTowerDamagePercent_shouldReduceDamageToTower() {
     // Miner-like unit with -75 crownTowerDamagePercent
-    Troop miner = Troop.builder()
-        .name("Miner")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(1000))
-        .deployTime(1.0f)
-        .combat(Combat.builder()
-            .damage(100)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .crownTowerDamagePercent(-75)
-            .build())
-        .build();
+    Troop miner =
+        Troop.builder()
+            .name("Miner")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(1000))
+            .deployTime(1.0f)
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.0f)
+                    .crownTowerDamagePercent(-75)
+                    .build())
+            .build();
 
     // Create a tower as target
     Tower tower = Tower.createPrincessTower(Team.RED, 6, 5, 1);
@@ -243,20 +247,22 @@ class CombatSystemTest {
   @Test
   void crownTowerDamagePercent_shouldNotAffectNonTowerTargets() {
     // Miner attacks a regular troop -- full damage applies
-    Troop miner = Troop.builder()
-        .name("Miner")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(1000))
-        .deployTime(1.0f)
-        .combat(Combat.builder()
-            .damage(100)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .crownTowerDamagePercent(-75)
-            .build())
-        .build();
+    Troop miner =
+        Troop.builder()
+            .name("Miner")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(1000))
+            .deployTime(1.0f)
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.0f)
+                    .crownTowerDamagePercent(-75)
+                    .build())
+            .build();
 
     Troop enemy = createMeleeTroop(Team.RED, 6, 5, 50);
 
@@ -295,13 +301,14 @@ class CombatSystemTest {
   @Test
   void shieldAbsorbsDamageBeforeHealth() {
     // Unit with shield: shield absorbs damage first
-    Troop shielded = Troop.builder()
-        .name("ShieldedUnit")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(100, 50)) // 100 HP + 50 shield
-        .deployTime(0f)
-        .build();
+    Troop shielded =
+        Troop.builder()
+            .name("ShieldedUnit")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(100, 50)) // 100 HP + 50 shield
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(shielded);
     gameState.processPending();
@@ -324,33 +331,34 @@ class CombatSystemTest {
   @Test
   void buffOnDamage_shouldApplyToTargetOnMeleeHit() {
     // Melee attacker with buff-on-damage (e.g. stun on hit)
-    EffectStats stunOnHit = EffectStats.builder()
-        .type(StatusEffectType.STUN)
-        .duration(0.5f)
-        .build();
+    EffectStats stunOnHit =
+        EffectStats.builder().type(StatusEffectType.STUN).duration(0.5f).build();
 
-    Troop attacker = Troop.builder()
-        .name("Stunner")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(50)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .buffOnDamage(stunOnHit)
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("Stunner")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(50)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.0f)
+                    .buffOnDamage(stunOnHit)
+                    .build())
+            .build();
 
-    Troop target = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(5.5f, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop target =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(5.5f, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(attacker);
     gameState.spawnEntity(target);
@@ -372,44 +380,49 @@ class CombatSystemTest {
   @Test
   void multipleTargets_shouldAttackExtraEnemies() {
     // Ranged attacker with multipleTargets=2 (like EWiz)
-    Troop attacker = Troop.builder()
-        .name("EWiz")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(46)
-            .range(5.0f)
-            .sightRange(5.5f)
-            .attackCooldown(1.8f)
-            .multipleTargets(2)
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("EWiz")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(46)
+                    .range(5.0f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.8f)
+                    .multipleTargets(2)
+                    .build())
+            .build();
 
-    Troop target1 = Troop.builder()
-        .name("Target1")
-        .team(Team.RED)
-        .position(new Position(8, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop target1 =
+        Troop.builder()
+            .name("Target1")
+            .team(Team.RED)
+            .position(new Position(8, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
-    Troop target2 = Troop.builder()
-        .name("Target2")
-        .team(Team.RED)
-        .position(new Position(9, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop target2 =
+        Troop.builder()
+            .name("Target2")
+            .team(Team.RED)
+            .position(new Position(9, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
-    Troop target3 = Troop.builder()
-        .name("Target3")
-        .team(Team.RED)
-        .position(new Position(50, 50))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop target3 =
+        Troop.builder()
+            .name("Target3")
+            .team(Team.RED)
+            .position(new Position(50, 50))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(attacker);
     gameState.spawnEntity(target1);
@@ -432,28 +445,31 @@ class CombatSystemTest {
   @Test
   void multipleTargets_singleEnemy_shouldFireAllProjectilesAtSameTarget() {
     // EWiz with multipleTargets=2 but only 1 enemy in range -- should still fire 2 projectiles
-    Troop attacker = Troop.builder()
-        .name("EWiz")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(46)
-            .range(5.0f)
-            .sightRange(5.5f)
-            .attackCooldown(1.8f)
-            .multipleTargets(2)
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("EWiz")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(46)
+                    .range(5.0f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.8f)
+                    .multipleTargets(2)
+                    .build())
+            .build();
 
-    Troop target = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(8, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop target =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(8, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(attacker);
     gameState.spawnEntity(target);
@@ -474,26 +490,29 @@ class CombatSystemTest {
   @Test
   void chainLightning_shouldDamageChainTargets() {
     // Ranged attacker with chain lightning (like ElectroDragon)
-    Troop attacker = Troop.builder()
-        .name("ElectroDragon")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(75)
-            .range(3.5f)
-            .sightRange(5.5f)
-            .attackCooldown(2.1f)
-            .projectileStats(org.crforge.core.card.ProjectileStats.builder()
-                .name("ElectroDragonProjectile")
-                .damage(75)
-                .speed(10f)
-                .chainedHitRadius(4.0f)
-                .chainedHitCount(3)
-                .build())
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("ElectroDragon")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(75)
+                    .range(3.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(2.1f)
+                    .projectileStats(
+                        org.crforge.core.card.ProjectileStats.builder()
+                            .name("ElectroDragonProjectile")
+                            .damage(75)
+                            .speed(10f)
+                            .chainedHitRadius(4.0f)
+                            .chainedHitCount(3)
+                            .build())
+                    .build())
+            .build();
 
     Troop target1 = createChainTarget(Team.RED, 7, 5);
     Troop target2 = createChainTarget(Team.RED, 8, 5);
@@ -532,27 +551,31 @@ class CombatSystemTest {
 
   @Test
   void chainLightning_shouldNotChainToTargetsOutsideRadius() {
-    // Ranged attacker with chain lightning -- chainedHitRadius=4.0 means chain can only jump 4 tiles
-    Troop attacker = Troop.builder()
-        .name("ElectroDragon")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(75)
-            .range(3.5f)
-            .sightRange(5.5f)
-            .attackCooldown(2.1f)
-            .projectileStats(org.crforge.core.card.ProjectileStats.builder()
-                .name("ElectroDragonProjectile")
-                .damage(75)
-                .speed(10f)
-                .chainedHitRadius(4.0f)
-                .chainedHitCount(3)
-                .build())
-            .build())
-        .build();
+    // Ranged attacker with chain lightning -- chainedHitRadius=4.0 means chain can only jump 4
+    // tiles
+    Troop attacker =
+        Troop.builder()
+            .name("ElectroDragon")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(75)
+                    .range(3.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(2.1f)
+                    .projectileStats(
+                        org.crforge.core.card.ProjectileStats.builder()
+                            .name("ElectroDragonProjectile")
+                            .damage(75)
+                            .speed(10f)
+                            .chainedHitRadius(4.0f)
+                            .chainedHitCount(3)
+                            .build())
+                    .build())
+            .build();
 
     // target1 (primary) at (7, 5) -- within attack range
     Troop target1 = createChainTarget(Team.RED, 7, 5);
@@ -591,28 +614,32 @@ class CombatSystemTest {
   @Test
   void selfAsAoeCenter_shouldDealDamageAroundAttacker() {
     // Valkyrie-like unit: melee AOE centered on herself, not on the target
-    Troop attacker = Troop.builder()
-        .name("Valkyrie")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(100)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .aoeRadius(2.0f)
-            .selfAsAoeCenter(true)
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("Valkyrie")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.0f)
+                    .aoeRadius(2.0f)
+                    .selfAsAoeCenter(true)
+                    .build())
+            .build();
 
     // Primary target at range 1.0 (within melee range)
     Troop primaryTarget = createMeleeTroop(Team.RED, 6, 5, 50);
 
     // Secondary enemy: near the attacker but far from primary target
-    // Position (3, 4) is ~2.24 tiles from attacker at (5,5), within effective AOE (2.0 + 0.5 collision)
-    // Position (3, 4) is ~3.16 tiles from primary target at (6,5), outside effective AOE (2.0 + 0.5)
+    // Position (3, 4) is ~2.24 tiles from attacker at (5,5), within effective AOE (2.0 + 0.5
+    // collision)
+    // Position (3, 4) is ~3.16 tiles from primary target at (6,5), outside effective AOE (2.0 +
+    // 0.5)
     Troop secondaryTarget = createMeleeTroop(Team.RED, 3, 4, 50);
 
     gameState.spawnEntity(attacker);
@@ -640,27 +667,30 @@ class CombatSystemTest {
   @Test
   void nonSelfAsAoeCenter_shouldDealDamageAroundTarget() {
     // Normal AOE melee (selfAsAoeCenter=false): AOE centered on the target
-    Troop attacker = Troop.builder()
-        .name("NormalAoeMelee")
-        .team(Team.BLUE)
-        .position(new Position(5, 5))
-        .health(new Health(500))
-        .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(100)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .aoeRadius(2.0f)
-            .selfAsAoeCenter(false)
-            .build())
-        .build();
+    Troop attacker =
+        Troop.builder()
+            .name("NormalAoeMelee")
+            .team(Team.BLUE)
+            .position(new Position(5, 5))
+            .health(new Health(500))
+            .deployTime(0f)
+            .combat(
+                Combat.builder()
+                    .damage(100)
+                    .range(1.5f)
+                    .sightRange(5.5f)
+                    .attackCooldown(1.0f)
+                    .aoeRadius(2.0f)
+                    .selfAsAoeCenter(false)
+                    .build())
+            .build();
 
     // Primary target at range 1.0
     Troop primaryTarget = createMeleeTroop(Team.RED, 6, 5, 50);
 
     // Secondary enemy: near the attacker but far from primary target (same positions as above)
-    // Position (3, 4) is ~3.16 tiles from primary target at (6,5), outside effective AOE (2.0 + 0.5)
+    // Position (3, 4) is ~3.16 tiles from primary target at (6,5), outside effective AOE (2.0 +
+    // 0.5)
     Troop secondaryTarget = createMeleeTroop(Team.RED, 3, 4, 50);
 
     gameState.spawnEntity(attacker);
@@ -679,7 +709,8 @@ class CombatSystemTest {
     assertThat(primaryTarget.getHealth().getCurrent())
         .as("Primary target should take AOE damage")
         .isLessThan(100);
-    // Secondary target is ~3.16 tiles from primary target, outside effective AOE (2.0 + 0.5) -- should NOT be hit
+    // Secondary target is ~3.16 tiles from primary target, outside effective AOE (2.0 + 0.5) --
+    // should NOT be hit
     assertThat(secondaryTarget.getHealth().getCurrent())
         .as("Secondary target far from primary should NOT take damage (target-centered AOE)")
         .isEqualTo(100);
@@ -693,13 +724,14 @@ class CombatSystemTest {
     int towerMaxHp = tower.getHealth().getMax();
 
     // A regular troop next to the tower (within AOE)
-    Troop troop = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(10.5f, 10))
-        .health(new Health(1000))
-        .deployTime(0f)
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(10.5f, 10))
+            .health(new Health(1000))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(tower);
     gameState.spawnEntity(troop);
@@ -710,8 +742,8 @@ class CombatSystemTest {
     int ctdp = -70;
 
     // Create a position-targeted spell projectile with crown tower damage reduction
-    Projectile fireball = new Projectile(Team.BLUE, 10, 0, 10, 10,
-        spellDamage, aoeRadius, 15f, List.of(), ctdp);
+    Projectile fireball =
+        new Projectile(Team.BLUE, 10, 0, 10, 10, spellDamage, aoeRadius, 15f, List.of(), ctdp);
     gameState.spawnProjectile(fireball);
 
     // Run enough ticks for the projectile to arrive and hit
@@ -738,13 +770,14 @@ class CombatSystemTest {
     tower.onSpawn();
     int towerMaxHp = tower.getHealth().getMax();
 
-    Troop troop = Troop.builder()
-        .name("Target")
-        .team(Team.RED)
-        .position(new Position(10.5f, 10))
-        .health(new Health(1000))
-        .deployTime(0f)
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name("Target")
+            .team(Team.RED)
+            .position(new Position(10.5f, 10))
+            .health(new Health(1000))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(tower);
     gameState.spawnEntity(troop);
@@ -753,8 +786,8 @@ class CombatSystemTest {
     int spellDamage = 300;
     int ctdp = -75;
 
-    combatSystem.applySpellDamage(Team.BLUE, 10f, 10f, spellDamage, 3.0f,
-        Collections.emptyList(), ctdp);
+    combatSystem.applySpellDamage(
+        Team.BLUE, 10f, 10f, spellDamage, 3.0f, Collections.emptyList(), ctdp);
 
     // Tower: 300 * (100 + (-75)) / 100 = 75
     assertThat(tower.getHealth().getCurrent())
@@ -774,12 +807,8 @@ class CombatSystemTest {
         .position(new Position(x, y))
         .health(new Health(500))
         .deployTime(0f)
-        .combat(Combat.builder()
-            .damage(0)
-            .range(1.5f)
-            .sightRange(5.5f)
-            .attackCooldown(1.0f)
-            .build())
+        .combat(
+            Combat.builder().damage(0).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
         .build();
   }
 }

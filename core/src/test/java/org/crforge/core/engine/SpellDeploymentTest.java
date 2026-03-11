@@ -28,21 +28,15 @@ class SpellDeploymentTest {
     engine = new GameEngine();
     engine.setMatch(match);
 
-    spellCard = Card.builder()
-        .name("Fireball")
-        .type(CardType.SPELL)
-        .cost(4)
-        .projectile(ProjectileStats.builder()
-            .damage(100)
-            .radius(2.5f)
-            .build())
-        .build();
+    spellCard =
+        Card.builder()
+            .name("Fireball")
+            .type(CardType.SPELL)
+            .cost(4)
+            .projectile(ProjectileStats.builder().damage(100).radius(2.5f).build())
+            .build();
 
-    troopCard = Card.builder()
-        .name("Knight")
-        .type(CardType.TROOP)
-        .cost(3)
-        .build();
+    troopCard = Card.builder().name("Knight").type(CardType.TROOP).cost(3).build();
   }
 
   private Player createPlayerWithAll(Card card, Team team) {

@@ -21,7 +21,8 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldParseBasicUnit() {
-    String json = """
+    String json =
+        """
         {
           "Knight": {
             "name": "Knight",
@@ -59,14 +60,11 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldResolveProjectileReference() {
-    ProjectileStats arrow = ProjectileStats.builder()
-        .name("ArcherArrow")
-        .damage(44)
-        .speed(10.0f)
-        .homing(true)
-        .build();
+    ProjectileStats arrow =
+        ProjectileStats.builder().name("ArcherArrow").damage(44).speed(10.0f).homing(true).build();
 
-    String json = """
+    String json =
+        """
         {
           "Archer": {
             "name": "Archer",
@@ -96,7 +94,8 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldResolveDeathSpawns() {
-    String json = """
+    String json =
+        """
         {
           "Golem": {
             "name": "Golem",
@@ -146,7 +145,8 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldParseLiveSpawn() {
-    String json = """
+    String json =
+        """
         {
           "Witch": {
             "name": "Witch",
@@ -185,7 +185,8 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldParseLifeTime() {
-    String json = """
+    String json =
+        """
         {
           "Cannon": {
             "name": "Cannon",
@@ -215,7 +216,8 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldParseTargetingModifiers() {
-    String json = """
+    String json =
+        """
         {
           "Giant": {
             "name": "Giant",
@@ -244,7 +246,8 @@ class UnitLoaderTest {
 
   @Test
   void loadUnits_shouldParseAreaDamageRadius() {
-    String json = """
+    String json =
+        """
         {
           "Valkyrie": {
             "name": "Valkyrie",

@@ -19,9 +19,7 @@ import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Integration tests for the full player deployment flow.
- */
+/** Integration tests for the full player deployment flow. */
 class PlayerDeploymentIntegrationTest {
 
   private GameEngine engine;
@@ -154,9 +152,11 @@ class PlayerDeploymentIntegrationTest {
       return;
     }
 
-    int initialTroopCount = (int) engine.getGameState().getAliveEntities().stream()
-        .filter(e -> e.getEntityType() == EntityType.TROOP)
-        .count();
+    int initialTroopCount =
+        (int)
+            engine.getGameState().getAliveEntities().stream()
+                .filter(e -> e.getEntityType() == EntityType.TROOP)
+                .count();
 
     PlayerActionDTO action = PlayerActionDTO.play(goblinsSlot, 9f, 10f);
     engine.queueAction(bluePlayer, action);
@@ -164,12 +164,15 @@ class PlayerDeploymentIntegrationTest {
     // Tick past sync delay + full stagger window + 1 extra to process pending spawns.
     // Goblins: 4 units, staggerDelay=0.1s, total stagger=0.3s
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
-    int staggerTicks = (int) Math.ceil(DeploymentSystem.STAGGER_DELAY * 3 * GameEngine.TICKS_PER_SECOND);
+    int staggerTicks =
+        (int) Math.ceil(DeploymentSystem.STAGGER_DELAY * 3 * GameEngine.TICKS_PER_SECOND);
     engine.tick(syncTicks + staggerTicks + 1);
 
-    int newTroopCount = (int) engine.getGameState().getAliveEntities().stream()
-        .filter(e -> e.getEntityType() == EntityType.TROOP)
-        .count();
+    int newTroopCount =
+        (int)
+            engine.getGameState().getAliveEntities().stream()
+                .filter(e -> e.getEntityType() == EntityType.TROOP)
+                .count();
 
     // Goblins spawn 4 units (updated from 3)
     assertThat(newTroopCount - initialTroopCount).isEqualTo(4);
@@ -237,12 +240,13 @@ class PlayerDeploymentIntegrationTest {
     engine.tick(syncTicks + 1);
 
     // Find the spawned knight
-    Troop knight = engine.getGameState().getAliveEntities().stream()
-        .filter(e -> e.getEntityType() == EntityType.TROOP)
-        .filter(e -> "Knight".equals(e.getName()))
-        .map(e -> (Troop) e)
-        .findFirst()
-        .orElse(null);
+    Troop knight =
+        engine.getGameState().getAliveEntities().stream()
+            .filter(e -> e.getEntityType() == EntityType.TROOP)
+            .filter(e -> "Knight".equals(e.getName()))
+            .map(e -> (Troop) e)
+            .findFirst()
+            .orElse(null);
 
     assertThat(knight).isNotNull();
     assertThat(knight.getTeam()).isEqualTo(Team.BLUE);

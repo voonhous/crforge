@@ -14,14 +14,15 @@ import org.crforge.core.player.dto.PlayerActionDTO;
 
 /**
  * Represents an active match with its configuration, players, and mode-specific rules.
- * <p>
- * This is the base class for all match types. Extend this class to create different game modes
+ *
+ * <p>This is the base class for all match types. Extend this class to create different game modes
  * (2v2, Triple Elixir, Draft, etc.) with different:
+ *
  * <ul>
- * <li>Arena layouts (dimensions, tower positions)</li>
- * <li>Player configurations (1v1, 2v2, shared/separate elixir)</li>
- * <li>Timing rules (match duration, overtime duration, elixir rates)</li>
- * <li>Win conditions</li>
+ *   <li>Arena layouts (dimensions, tower positions)
+ *   <li>Player configurations (1v1, 2v2, shared/separate elixir)
+ *   <li>Timing rules (match duration, overtime duration, elixir rates)
+ *   <li>Win conditions
  * </ul>
  *
  * @see Standard1v1Match
@@ -34,8 +35,7 @@ public abstract class Match {
   protected final List<Player> redPlayers;
 
   protected boolean overtime;
-  @Setter
-  protected Team winner;
+  @Setter protected Team winner;
 
   protected Match(Arena arena) {
     this.arena = arena;
@@ -60,16 +60,12 @@ public abstract class Match {
     teamList.add(player);
   }
 
-  /**
-   * Returns all players on a team.
-   */
+  /** Returns all players on a team. */
   public List<Player> getPlayers(Team team) {
     return Collections.unmodifiableList(getPlayersForTeam(team));
   }
 
-  /**
-   * Returns all players in the match.
-   */
+  /** Returns all players in the match. */
   public List<Player> getAllPlayers() {
     List<Player> all = new ArrayList<>(bluePlayers);
     all.addAll(redPlayers);
@@ -80,9 +76,7 @@ public abstract class Match {
     return team == Team.BLUE ? bluePlayers : redPlayers;
   }
 
-  /**
-   * Updates all players (elixir regen, etc.).
-   */
+  /** Updates all players (elixir regen, etc.). */
   public void update(float deltaTime) {
     for (Player player : bluePlayers) {
       player.update(deltaTime);
@@ -92,9 +86,7 @@ public abstract class Match {
     }
   }
 
-  /**
-   * Called when match enters overtime. Updates elixir rates for all players.
-   */
+  /** Called when match enters overtime. Updates elixir rates for all players. */
   public void enterOvertime() {
     if (overtime) {
       return;
@@ -105,9 +97,7 @@ public abstract class Match {
     }
   }
 
-  /**
-   * Checks if the match has ended (has a winner or draw).
-   */
+  /** Checks if the match has ended (has a winner or draw). */
   public boolean isEnded() {
     return winner != null;
   }
@@ -154,23 +144,15 @@ public abstract class Match {
 
   // --- Abstract methods for subclasses to implement ---
 
-  /**
-   * Returns the maximum number of players per team for this mode.
-   */
+  /** Returns the maximum number of players per team for this mode. */
   public abstract int getMaxPlayersPerTeam();
 
-  /**
-   * Returns the match duration in ticks (before overtime).
-   */
+  /** Returns the match duration in ticks (before overtime). */
   public abstract int getMatchDurationTicks();
 
-  /**
-   * Returns the overtime duration in ticks.
-   */
+  /** Returns the overtime duration in ticks. */
   public abstract int getOvertimeDurationTicks();
 
-  /**
-   * Returns the game mode identifier.
-   */
+  /** Returns the game mode identifier. */
   public abstract GameMode getGameMode();
 }

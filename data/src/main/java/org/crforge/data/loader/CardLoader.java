@@ -21,16 +21,16 @@ import org.crforge.data.loader.dto.AreaEffectConfigDTO;
 import org.crforge.data.loader.dto.CardConfigDTO;
 
 /**
- * Loads card definitions from cards.json (slim format) and resolves unit/projectile references
- * from pre-loaded maps.
+ * Loads card definitions from cards.json (slim format) and resolves unit/projectile references from
+ * pre-loaded maps.
  */
 public class CardLoader {
 
   private static final ObjectMapper mapper = createMapper();
 
   private static ObjectMapper createMapper() {
-    ObjectMapper om = new ObjectMapper()
-        .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
+    ObjectMapper om =
+        new ObjectMapper().configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
     SimpleModule module = new SimpleModule();
     module.addDeserializer(Rarity.class, new RarityDeserializer());
     om.registerModule(module);
@@ -44,44 +44,44 @@ public class CardLoader {
     }
 
     @Override
-    public Rarity deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException {
+    public Rarity deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
       return Rarity.fromString(p.getText());
     }
   }
 
   /**
-   * Loads cards from the given input stream, resolving unit and projectile references
-   * from the provided maps.
+   * Loads cards from the given input stream, resolving unit and projectile references from the
+   * provided maps.
    *
-   * @param inputStream   JSON array of CardConfigDTO in slim format
-   * @param unitMap       pre-loaded unit name -> TroopStats map
+   * @param inputStream JSON array of CardConfigDTO in slim format
+   * @param unitMap pre-loaded unit name -> TroopStats map
    * @param projectileMap pre-loaded projectile name -> ProjectileStats map
    * @return list of fully resolved Card objects
    */
-  public static List<Card> loadCards(InputStream inputStream,
+  public static List<Card> loadCards(
+      InputStream inputStream,
       Map<String, TroopStats> unitMap,
       Map<String, ProjectileStats> projectileMap) {
     try {
       List<CardConfigDTO> configs = mapper.readValue(inputStream, new TypeReference<>() {});
-      return configs.stream()
-          .map(dto -> convert(dto, unitMap, projectileMap))
-          .toList();
+      return configs.stream().map(dto -> convert(dto, unitMap, projectileMap)).toList();
     } catch (IOException e) {
       throw new RuntimeException("Failed to load cards from JSON", e);
     }
   }
 
-  private static Card convert(CardConfigDTO dto,
+  private static Card convert(
+      CardConfigDTO dto,
       Map<String, TroopStats> unitMap,
       Map<String, ProjectileStats> projectileMap) {
-    Card.CardBuilder builder = Card.builder()
-        .id(dto.getId())
-        .name(dto.getName())
-        .description(dto.getDescription())
-        .type(dto.getType())
-        .cost(dto.getCost())
-        .rarity(dto.getRarity() != null ? dto.getRarity() : Rarity.UNKNOWN);
+    Card.CardBuilder builder =
+        Card.builder()
+            .id(dto.getId())
+            .name(dto.getName())
+            .description(dto.getDescription())
+            .type(dto.getType())
+            .cost(dto.getCost())
+            .rarity(dto.getRarity() != null ? dto.getRarity() : Rarity.UNKNOWN);
 
     // Resolve unit reference
     TroopStats unitStats = null;
@@ -122,9 +122,10 @@ public class CardLoader {
 
     // Formation offsets (pre-computed tile-unit positions)
     if (dto.getFormationOffsets() != null && !dto.getFormationOffsets().isEmpty()) {
-      List<float[]> offsets = dto.getFormationOffsets().stream()
-          .map(pair -> new float[]{pair.get(0), pair.get(1)})
-          .toList();
+      List<float[]> offsets =
+          dto.getFormationOffsets().stream()
+              .map(pair -> new float[] {pair.get(0), pair.get(1)})
+              .toList();
       builder.formationOffsets(offsets);
     }
 

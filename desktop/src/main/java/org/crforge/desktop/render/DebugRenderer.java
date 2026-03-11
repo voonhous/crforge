@@ -26,14 +26,10 @@ public class DebugRenderer {
   private final DamageNumberRenderer damageNumberRenderer;
   private final AoeDamageRenderer aoeDamageRenderer;
 
-  @Getter
-  private boolean drawPaths = false;
-  @Getter
-  private boolean drawRanges = false;
-  @Getter
-  private boolean drawDamageNumbers = false;
-  @Getter
-  private boolean drawAoeDamage = true;
+  @Getter private boolean drawPaths = false;
+  @Getter private boolean drawRanges = false;
+  @Getter private boolean drawDamageNumbers = false;
+  @Getter private boolean drawAoeDamage = true;
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
@@ -63,9 +59,13 @@ public class DebugRenderer {
     drawAoeDamage = !drawAoeDamage;
   }
 
-  public void render(GameEngine engine, OrthographicCamera camera,
-      int hoverX, int hoverY,
-      int selectedHandIndex, Team selectedTeam) {
+  public void render(
+      GameEngine engine,
+      OrthographicCamera camera,
+      int hoverX,
+      int hoverY,
+      int selectedHandIndex,
+      Team selectedTeam) {
     GameState state = engine.getGameState();
     Arena arena = engine.getArena();
     Match match = engine.getMatch();
@@ -142,8 +142,16 @@ public class DebugRenderer {
     debugOverlayRenderer.renderSpawnerTimers(state);
 
     // 16. HUD (timer, cards, elixir)
-    hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
-        drawPaths, drawRanges, drawDamageNumbers, drawAoeDamage);
+    hudRenderer.render(
+        engine,
+        match,
+        camera,
+        selectedHandIndex,
+        selectedTeam,
+        drawPaths,
+        drawRanges,
+        drawDamageNumbers,
+        drawAoeDamage);
   }
 
   private Player getPlayer(Match match, Team selectedTeam) {

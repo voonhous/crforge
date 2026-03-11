@@ -1,17 +1,18 @@
 package org.crforge.core.card;
 
 /**
- * Stat scaling by card level and rarity, based on:
- * https://royaleapi.com/blog/secret-stats and LEVEL_SCALING.md
- * <p>
- * The multiplier is tracked as an integer in hundredths (e.g. 108 = 1.08) and advanced
- * with floor each level: {@code m = floor(m * growth)}. The final stat is then
- * {@code floor(baseStat * m / 100)}. This matches the game's own rounding behaviour
- * and produces the exact values in the LEVEL_SCALING.md tables.
+ * Stat scaling by card level and rarity, based on: https://royaleapi.com/blog/secret-stats and
+ * LEVEL_SCALING.md
+ *
+ * <p>The multiplier is tracked as an integer in hundredths (e.g. 108 = 1.08) and advanced with
+ * floor each level: {@code m = floor(m * growth)}. The final stat is then {@code floor(baseStat * m
+ * / 100)}. This matches the game's own rounding behaviour and produces the exact values in the
+ * LEVEL_SCALING.md tables.
+ *
  * <ul>
- *   <li>Cards: ×1.10 per level, starting from the rarity's minimum level</li>
- *   <li>Tower HP: ×1.07 (King) or ×1.08 (Princess) for levels 1–9, then ×1.10 for 10+</li>
- *   <li>Tower damage: ×1.08 for levels 1–9, then ×1.10 for 10+</li>
+ *   <li>Cards: ×1.10 per level, starting from the rarity's minimum level
+ *   <li>Tower HP: ×1.07 (King) or ×1.08 (Princess) for levels 1–9, then ×1.10 for 10+
+ *   <li>Tower damage: ×1.08 for levels 1–9, then ×1.10 for 10+
  * </ul>
  */
 public final class LevelScaling {
@@ -39,13 +40,12 @@ public final class LevelScaling {
   private LevelScaling() {}
 
   /**
-   * Scales a base stat by rarity and card level.
-   * Growth rate is 1.10 per level, applied iteratively with floor.
-   * Levels below the rarity's minimum are clamped to it.
+   * Scales a base stat by rarity and card level. Growth rate is 1.10 per level, applied iteratively
+   * with floor. Levels below the rarity's minimum are clamped to it.
    *
    * @param baseStat base value at the rarity's minimum level
-   * @param rarity   card rarity
-   * @param level    target card level
+   * @param rarity card rarity
+   * @param level target card level
    * @return scaled stat value
    */
   public static int scaleCard(int baseStat, Rarity rarity, int level) {
@@ -85,8 +85,8 @@ public final class LevelScaling {
   }
 
   /**
-   * Advances a multiplier (starting at 100 = 1.00) by {@code steps} levels, then applies
-   * it to {@code base}: {@code floor(base * m / 100)}.
+   * Advances a multiplier (starting at 100 = 1.00) by {@code steps} levels, then applies it to
+   * {@code base}: {@code floor(base * m / 100)}.
    */
   private static int applyMultiplier(int base, int steps, double growth) {
     int m = 100;

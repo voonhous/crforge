@@ -29,14 +29,10 @@ public interface Entity {
 
   int getLevel();
 
-  /**
-   * The radius used for collision detection and range calculations.
-   */
+  /** The radius used for collision detection and range calculations. */
   float getCollisionRadius();
 
-  /**
-   * The radius used for visual rendering.
-   */
+  /** The radius used for visual rendering. */
   float getVisualRadius();
 
   EntityType getEntityType();

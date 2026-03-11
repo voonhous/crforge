@@ -4,9 +4,7 @@ import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.MovementType;
 
-/**
- * Basic pathfinder that handles lane-based movement and river crossing via bridges.
- */
+/** Basic pathfinder that handles lane-based movement and river crossing via bridges. */
 public class BasePathfinder implements Pathfinder {
 
   // Bridge center X coordinates (derived from Arena constants)
@@ -18,7 +16,7 @@ public class BasePathfinder implements Pathfinder {
   // We use a buffer to ensure units don't "clip" the corners of the water.
   private static final float RIVER_Y_MIN = Arena.RIVER_Y - 1.0f; // 15.0
   private static final float RIVER_Y_MAX = Arena.RIVER_Y + 1.0f; // 17.0
-  private static final float RIVER_CENTER_Y = Arena.RIVER_Y;    // 16.0
+  private static final float RIVER_CENTER_Y = Arena.RIVER_Y; // 16.0
 
   // Epsilon to ensure units cross the boundary instead of stopping exactly on it
   private static final float BOUNDARY_EPSILON = 0.1f;
@@ -62,7 +60,8 @@ public class BasePathfinder implements Pathfinder {
 
       // If we haven't reached the bridge approach Y yet, move towards that point
       // (The approach point is essentially the entrance to the bridge)
-      if ((needsToCrossNorth && curY < approachY - 0.2f) || (needsToCrossSouth && curY > approachY + 0.2f)) {
+      if ((needsToCrossNorth && curY < approachY - 0.2f)
+          || (needsToCrossSouth && curY > approachY + 0.2f)) {
         // Optimization: If unit is already aligned with bridge (within safe width),
         // don't force it to center X.
         float distFromCenter = Math.abs(curX - bridgeX);
@@ -93,9 +92,8 @@ public class BasePathfinder implements Pathfinder {
       // BOUNDARY_EPSILON to ensure we aim PAST the boundary.
       // If we aim exactly for RIVER_Y_MAX (17.0) and curY is 17.0, we stop moving Y.
       // By aiming for 17.1, we force the unit to cross into the North zone (Y > 17.0).
-      float exitY = (targetY > curY)
-          ? RIVER_Y_MAX + BOUNDARY_EPSILON
-          : RIVER_Y_MIN - BOUNDARY_EPSILON;
+      float exitY =
+          (targetY > curY) ? RIVER_Y_MAX + BOUNDARY_EPSILON : RIVER_Y_MIN - BOUNDARY_EPSILON;
 
       // Find which bridge we are currently on (same logic as pre-crossing selection)
       float distToLeft = Math.abs(curX - LEFT_BRIDGE_CENTER_X);

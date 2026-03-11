@@ -3,8 +3,8 @@ package org.crforge.desktop.render;
 import static org.crforge.desktop.render.RenderConstants.*;
 
 /**
- * Static utility for card hand layout calculations. Centralizes the position math
- * shared between the renderer (drawing cards) and the screen (hit detection).
+ * Static utility for card hand layout calculations. Centralizes the position math shared between
+ * the renderer (drawing cards) and the screen (hit detection).
  */
 public final class CardLayout {
 
@@ -37,11 +37,11 @@ public final class CardLayout {
   }
 
   /**
-   * Hit-test: returns the card index (0-3) if the world coordinates fall inside a card,
-   * or -1 if nothing was hit.
+   * Hit-test: returns the card index (0-3) if the world coordinates fall inside a card, or -1 if
+   * nothing was hit.
    */
-  public static int hitTest(float worldX, float worldY, boolean isTop,
-                            float screenWidth, float screenHeight) {
+  public static int hitTest(
+      float worldX, float worldY, boolean isTop, float screenWidth, float screenHeight) {
     float cy = cardY(isTop, screenHeight);
     if (worldY < cy || worldY > cy + CARD_HEIGHT) {
       return -1;

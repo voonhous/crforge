@@ -10,9 +10,9 @@ import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
-import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,24 +75,26 @@ class SlidingPhysicsTest {
 
   // Helpers
   private Troop createTroop(String name, float x, float y) {
-    Troop troop = Troop.builder()
-        .name(name)
-        .team(Team.BLUE)
-        .position(new Position(x, y))
-        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .deployTime(0f)
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name(name)
+            .team(Team.BLUE)
+            .position(new Position(x, y))
+            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .deployTime(0f)
+            .build();
     troop.onSpawn();
     return troop;
   }
 
   private Building createBuilding(String name, float x, float y, float radius) {
-    Building building = Building.builder()
-        .name(name)
-        .team(Team.RED)
-        .position(new Position(x, y))
-        .movement(new Movement(0, 0, radius, radius * 1.5f, MovementType.BUILDING))
-        .build();
+    Building building =
+        Building.builder()
+            .name(name)
+            .team(Team.RED)
+            .position(new Position(x, y))
+            .movement(new Movement(0, 0, radius, radius * 1.5f, MovementType.BUILDING))
+            .build();
     building.onSpawn();
     return building;
   }

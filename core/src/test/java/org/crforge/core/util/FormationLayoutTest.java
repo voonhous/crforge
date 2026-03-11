@@ -121,10 +121,9 @@ class FormationLayoutTest {
 
     // After dividing by TILE_SCALE (355), spawnRadius = 1.0
     // Same as calling calculateOffset with spawnRadius=1.0
-    Vector2 deployOffset = FormationLayout.calculateDeployOffset(
-        0, 2, summonRadius, collisionRadius);
-    Vector2 directOffset = FormationLayout.calculateOffset(
-        0, 2, 1.0f, collisionRadius);
+    Vector2 deployOffset =
+        FormationLayout.calculateDeployOffset(0, 2, summonRadius, collisionRadius);
+    Vector2 directOffset = FormationLayout.calculateOffset(0, 2, 1.0f, collisionRadius);
 
     assertThat(deployOffset.getX()).isEqualTo(directOffset.getX());
     assertThat(deployOffset.getY()).isEqualTo(directOffset.getY());

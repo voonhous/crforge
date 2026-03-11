@@ -34,14 +34,15 @@ class ZapStunTest {
   @Test
   void stunShouldPreventMovement() {
     // 1. Spawn a unit that moves fast
-    Troop runner = Troop.builder()
-        .name("Runner")
-        .team(Team.BLUE)
-        .position(new Position(10f, 10f))
-        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder().build())
-        .deployTime(0)
-        .build();
+    Troop runner =
+        Troop.builder()
+            .name("Runner")
+            .team(Team.BLUE)
+            .position(new Position(10f, 10f))
+            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(Combat.builder().build())
+            .deployTime(0)
+            .build();
 
     runner.onSpawn();
     engine.spawn(runner);
@@ -56,11 +57,11 @@ class ZapStunTest {
     // Manually apply spell damage/effect logic
     combatSystem.applySpellDamage(
         Team.RED, // Enemy team casts it
-        10f, 10f, // Center
+        10f,
+        10f, // Center
         0, // No damage for this test to focus on stun
         2.5f, // Radius
-        List.of(EffectStats.builder().type(StatusEffectType.STUN).duration(1.0f).build())
-    );
+        List.of(EffectStats.builder().type(StatusEffectType.STUN).duration(1.0f).build()));
 
     // 4. Run loop while stunned
     Position stunnedPos = runner.getPosition().copy();
@@ -73,7 +74,8 @@ class ZapStunTest {
     Position postTickPos = runner.getPosition().copy();
 
     // If bug exists, y will be greater (moved). If fixed, y should be same.
-    assertThat(postTickPos.getY()).as("Unit should not move while stunned")
+    assertThat(postTickPos.getY())
+        .as("Unit should not move while stunned")
         .isEqualTo(stunnedPos.getY());
   }
 }

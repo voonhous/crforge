@@ -20,8 +20,8 @@ import org.crforge.data.loader.dto.ProjectileConfigDTO;
  */
 public class ProjectileLoader {
 
-  private static final ObjectMapper mapper = new ObjectMapper()
-      .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
+  private static final ObjectMapper mapper =
+      new ObjectMapper().configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
   private static final float SPEED_BASE = 60.0f;
 
   /**
@@ -33,9 +33,8 @@ public class ProjectileLoader {
    */
   public static Map<String, ProjectileStats> loadProjectiles(InputStream inputStream) {
     try {
-      Map<String, ProjectileConfigDTO> dtos = mapper.readValue(inputStream,
-          new TypeReference<>() {
-          });
+      Map<String, ProjectileConfigDTO> dtos =
+          mapper.readValue(inputStream, new TypeReference<>() {});
 
       // Pass 1: Convert all projectiles without spawnProjectile resolution
       Map<String, ProjectileStats> result = new LinkedHashMap<>();
@@ -61,45 +60,47 @@ public class ProjectileLoader {
   /**
    * Converts a single ProjectileConfigDTO to ProjectileStats.
    *
-   * @param dto           the DTO to convert
+   * @param dto the DTO to convert
    * @param projectileMap map for resolving spawnProjectile references (null on first pass)
    * @return the converted ProjectileStats
    */
-  static ProjectileStats convertProjectile(ProjectileConfigDTO dto,
-      Map<String, ProjectileStats> projectileMap) {
+  static ProjectileStats convertProjectile(
+      ProjectileConfigDTO dto, Map<String, ProjectileStats> projectileMap) {
     float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
 
     // Merge targetBuff into hitEffects as a post-damage effect
     List<EffectStats> hitEffects = new ArrayList<>();
     StatusEffectType buffType = StatusEffectType.fromBuffName(dto.getTargetBuff());
     if (buffType != null) {
-      hitEffects.add(EffectStats.builder()
-          .type(buffType)
-          .duration(dto.getBuffDuration())
-          .buffName(dto.getTargetBuff())
-          .applyAfterDamage(true)
-          .build());
+      hitEffects.add(
+          EffectStats.builder()
+              .type(buffType)
+              .duration(dto.getBuffDuration())
+              .buffName(dto.getTargetBuff())
+              .applyAfterDamage(true)
+              .build());
     }
 
-    ProjectileStats.ProjectileStatsBuilder builder = ProjectileStats.builder()
-        .name(dto.getName())
-        .damage(dto.getDamage())
-        .speed(effectiveSpeed)
-        .radius(dto.getRadius())
-        .homing(dto.getHoming() != null ? dto.getHoming() : true)
-        .hitEffects(hitEffects)
-        .aoeToAir(dto.isAoeToAir())
-        .aoeToGround(dto.isAoeToGround())
-        .chainedHitRadius(dto.getChainedHitRadius())
-        .chainedHitCount(dto.getChainedHitCount())
-        .projectileRange(dto.getProjectileRange())
-        // Own spawnCount/spawnRadius (e.g. FirecrackerExplosion has these directly)
-        .spawnCount(dto.getSpawnCount())
-        .spawnRadius(dto.getSpawnRadius())
-        .pushback(dto.getPushback() / 1000f)
-        .pushbackAll(dto.isPushbackAll())
-        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-        .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
+    ProjectileStats.ProjectileStatsBuilder builder =
+        ProjectileStats.builder()
+            .name(dto.getName())
+            .damage(dto.getDamage())
+            .speed(effectiveSpeed)
+            .radius(dto.getRadius())
+            .homing(dto.getHoming() != null ? dto.getHoming() : true)
+            .hitEffects(hitEffects)
+            .aoeToAir(dto.isAoeToAir())
+            .aoeToGround(dto.isAoeToGround())
+            .chainedHitRadius(dto.getChainedHitRadius())
+            .chainedHitCount(dto.getChainedHitCount())
+            .projectileRange(dto.getProjectileRange())
+            // Own spawnCount/spawnRadius (e.g. FirecrackerExplosion has these directly)
+            .spawnCount(dto.getSpawnCount())
+            .spawnRadius(dto.getSpawnRadius())
+            .pushback(dto.getPushback() / 1000f)
+            .pushbackAll(dto.isPushbackAll())
+            .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
+            .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
 
     // Resolve spawnProjectile string reference
     if (dto.getSpawnProjectile() != null && projectileMap != null) {

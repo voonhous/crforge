@@ -6,6 +6,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
 import org.crforge.core.card.Card;
@@ -16,11 +17,7 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
 
-import java.util.List;
-
-/**
- * Renders the arena: tiles, grid lines, hover highlights, and ghost card previews.
- */
+/** Renders the arena: tiles, grid lines, hover highlights, and ghost card previews. */
 public class ArenaRenderer {
 
   private final RenderContext ctx;
@@ -38,12 +35,8 @@ public class ArenaRenderer {
         TileType type = arena.getTile(x, y).type();
         Color color = getTileColor(type);
         ctx.getShapeRenderer().setColor(color);
-        ctx.getShapeRenderer().rect(
-            x * TILE_PIXELS,
-            y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-            TILE_PIXELS,
-            TILE_PIXELS
-        );
+        ctx.getShapeRenderer()
+            .rect(x * TILE_PIXELS, y * TILE_PIXELS + BOTTOM_UI_HEIGHT, TILE_PIXELS, TILE_PIXELS);
       }
     }
 
@@ -61,17 +54,11 @@ public class ArenaRenderer {
     float startY = BOTTOM_UI_HEIGHT;
 
     for (int x = 0; x <= Arena.WIDTH; x++) {
-      ctx.getShapeRenderer().line(
-          x * TILE_PIXELS, startY,
-          x * TILE_PIXELS, startY + height
-      );
+      ctx.getShapeRenderer().line(x * TILE_PIXELS, startY, x * TILE_PIXELS, startY + height);
     }
 
     for (int y = 0; y <= Arena.HEIGHT; y++) {
-      ctx.getShapeRenderer().line(
-          0, startY + y * TILE_PIXELS,
-          width, startY + y * TILE_PIXELS
-      );
+      ctx.getShapeRenderer().line(0, startY + y * TILE_PIXELS, width, startY + y * TILE_PIXELS);
     }
 
     ctx.getShapeRenderer().end();
@@ -82,8 +69,8 @@ public class ArenaRenderer {
    *
    * @param selectedHandIndex the currently selected hand slot (-1 if none)
    */
-  public void renderHover(int x, int y, Card selectedCard, Player player,
-                           Match match, int selectedHandIndex) {
+  public void renderHover(
+      int x, int y, Card selectedCard, Player player, Match match, int selectedHandIndex) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Filled);
 
@@ -96,23 +83,15 @@ public class ArenaRenderer {
 
     if (!isValid) {
       ctx.getShapeRenderer().setColor(COLOR_HOVER_INVALID);
-      ctx.getShapeRenderer().rect(
-          x * TILE_PIXELS,
-          y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-          TILE_PIXELS,
-          TILE_PIXELS
-      );
+      ctx.getShapeRenderer()
+          .rect(x * TILE_PIXELS, y * TILE_PIXELS + BOTTOM_UI_HEIGHT, TILE_PIXELS, TILE_PIXELS);
     } else if (selectedCard != null) {
       renderGhostCard(x, y, selectedCard, player.getTeam());
 
       // Subtle white overlay to indicate the tile is being targeted
       ctx.getShapeRenderer().setColor(0.5f, 0.5f, 0.5f, 0.2f);
-      ctx.getShapeRenderer().rect(
-          x * TILE_PIXELS,
-          y * TILE_PIXELS + BOTTOM_UI_HEIGHT,
-          TILE_PIXELS,
-          TILE_PIXELS
-      );
+      ctx.getShapeRenderer()
+          .rect(x * TILE_PIXELS, y * TILE_PIXELS + BOTTOM_UI_HEIGHT, TILE_PIXELS, TILE_PIXELS);
     }
 
     ctx.getShapeRenderer().end();

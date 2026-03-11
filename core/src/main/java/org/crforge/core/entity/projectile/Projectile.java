@@ -11,9 +11,7 @@ import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.player.Team;
 
-/**
- * Projectile for ranged attacks. Travels from source to target and deals damage on hit.
- */
+/** Projectile for ranged attacks. Travels from source to target and deals damage on hit. */
 @Getter
 public class Projectile {
 
@@ -41,22 +39,16 @@ public class Projectile {
   private final boolean positionTargeted;
 
   // Advanced projectile features
-  @Setter
-  private float chainedHitRadius;
-  @Setter
-  private int chainedHitCount;
-  @Setter
-  private ProjectileStats spawnProjectile;
+  @Setter private float chainedHitRadius;
+  @Setter private int chainedHitCount;
+  @Setter private ProjectileStats spawnProjectile;
 
   // Knockback on hit
-  @Setter
-  private float pushback;
-  @Setter
-  private boolean pushbackAll;
+  @Setter private float pushback;
+  @Setter private boolean pushbackAll;
 
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
-  @Setter
-  private AreaEffectStats spawnAreaEffect;
+  @Setter private AreaEffectStats spawnAreaEffect;
 
   // Origin position (for spawn projectile direction calculation)
   private final float originX;
@@ -66,17 +58,20 @@ public class Projectile {
   private final float projectileSpeed;
 
   // Chain lightning origin entity (the entity this chain "jumps from")
-  @Setter
-  private Entity chainOrigin;
+  @Setter private Entity chainOrigin;
 
   private boolean active;
   private boolean hit;
 
-  /**
-   * Entity-targeted projectile (ranged unit attacks) with crown tower damage modifier.
-   */
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
-      List<EffectStats> effects, int crownTowerDamagePercent) {
+  /** Entity-targeted projectile (ranged unit attacks) with crown tower damage modifier. */
+  public Projectile(
+      Entity source,
+      Entity target,
+      int damage,
+      float aoeRadius,
+      float speed,
+      List<EffectStats> effects,
+      int crownTowerDamagePercent) {
     this.id = nextId++;
     this.source = source;
     this.target = target;
@@ -97,19 +92,28 @@ public class Projectile {
     this.hit = false;
   }
 
-  /**
-   * Entity-targeted projectile without crown tower damage modifier (convenience).
-   */
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius, float speed,
+  /** Entity-targeted projectile without crown tower damage modifier (convenience). */
+  public Projectile(
+      Entity source,
+      Entity target,
+      int damage,
+      float aoeRadius,
+      float speed,
       List<EffectStats> effects) {
     this(source, target, damage, aoeRadius, speed, effects, 0);
   }
 
-  /**
-   * Position-targeted projectile with crown tower damage modifier (spell projectiles).
-   */
-  public Projectile(Team team, float startX, float startY, float destX, float destY,
-      int damage, float aoeRadius, float speed, List<EffectStats> effects,
+  /** Position-targeted projectile with crown tower damage modifier (spell projectiles). */
+  public Projectile(
+      Team team,
+      float startX,
+      float startY,
+      float destX,
+      float destY,
+      int damage,
+      float aoeRadius,
+      float speed,
+      List<EffectStats> effects,
       int crownTowerDamagePercent) {
     this.id = nextId++;
     this.source = null;
@@ -131,11 +135,17 @@ public class Projectile {
     this.hit = false;
   }
 
-  /**
-   * Position-targeted projectile without crown tower damage modifier (convenience).
-   */
-  public Projectile(Team team, float startX, float startY, float destX, float destY,
-      int damage, float aoeRadius, float speed, List<EffectStats> effects) {
+  /** Position-targeted projectile without crown tower damage modifier (convenience). */
+  public Projectile(
+      Team team,
+      float startX,
+      float startY,
+      float destX,
+      float destY,
+      int damage,
+      float aoeRadius,
+      float speed,
+      List<EffectStats> effects) {
     this(team, startX, startY, destX, destY, damage, aoeRadius, speed, effects, 0);
   }
 
@@ -151,9 +161,7 @@ public class Projectile {
     nextId = 1;
   }
 
-  /**
-   * Update projectile position. Returns true if projectile reached target.
-   */
+  /** Update projectile position. Returns true if projectile reached target. */
   public boolean update(float deltaTime) {
     if (!active) {
       return false;

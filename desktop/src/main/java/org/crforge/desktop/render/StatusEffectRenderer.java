@@ -11,27 +11,27 @@ import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.Entity;
 
 /**
- * Static utility for mapping status effects to colors.
- * Priority order determines which effect color is displayed when multiple effects are active.
+ * Static utility for mapping status effects to colors. Priority order determines which effect color
+ * is displayed when multiple effects are active.
  */
 public final class StatusEffectRenderer {
 
   private StatusEffectRenderer() {}
 
   /** Priority-ordered list of effect types (highest priority first). */
-  private static final List<StatusEffectType> PRIORITY_ORDER = List.of(
-      StatusEffectType.FREEZE,
-      StatusEffectType.STUN,
-      StatusEffectType.KNOCKBACK,
-      StatusEffectType.SLOW,
-      StatusEffectType.POISON,
-      StatusEffectType.BURN,
-      StatusEffectType.EARTHQUAKE,
-      StatusEffectType.TORNADO,
-      StatusEffectType.VULNERABILITY,
-      StatusEffectType.CURSE,
-      StatusEffectType.RAGE
-  );
+  private static final List<StatusEffectType> PRIORITY_ORDER =
+      List.of(
+          StatusEffectType.FREEZE,
+          StatusEffectType.STUN,
+          StatusEffectType.KNOCKBACK,
+          StatusEffectType.SLOW,
+          StatusEffectType.POISON,
+          StatusEffectType.BURN,
+          StatusEffectType.EARTHQUAKE,
+          StatusEffectType.TORNADO,
+          StatusEffectType.VULNERABILITY,
+          StatusEffectType.CURSE,
+          StatusEffectType.RAGE);
 
   private static final Map<StatusEffectType, Color> EFFECT_COLORS;
 
@@ -50,16 +50,14 @@ public final class StatusEffectRenderer {
     EFFECT_COLORS.put(StatusEffectType.RAGE, COLOR_EFFECT_RAGE);
   }
 
-  /**
-   * Returns the color for a specific status effect type, or null if unmapped.
-   */
+  /** Returns the color for a specific status effect type, or null if unmapped. */
   public static Color getEffectColor(StatusEffectType type) {
     return EFFECT_COLORS.get(type);
   }
 
   /**
-   * Returns the color for the highest-priority active status effect on the entity,
-   * or null if no effects are active.
+   * Returns the color for the highest-priority active status effect on the entity, or null if no
+   * effects are active.
    */
   public static Color getStatusEffectColor(Entity entity) {
     if (entity.getAppliedEffects().isEmpty()) {

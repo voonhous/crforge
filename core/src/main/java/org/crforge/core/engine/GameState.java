@@ -15,9 +15,7 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 
-/**
- * Container for all game entities and state. Manages entity lifecycle (spawn, death, removal).
- */
+/** Container for all game entities and state. Manages entity lifecycle (spawn, death, removal). */
 @Getter
 public class GameState {
 
@@ -67,9 +65,7 @@ public class GameState {
     projectiles.remove(projectile);
   }
 
-  /**
-   * Process pending spawns and removals. Called at start of each tick.
-   */
+  /** Process pending spawns and removals. Called at start of each tick. */
   public void recordAoeDamage(float centerX, float centerY, float radius, Team sourceTeam) {
     aoeDamageEvents.add(new AoeDamageEvent(centerX, centerY, radius, sourceTeam));
   }
@@ -165,8 +161,8 @@ public class GameState {
   }
 
   /**
-   * Rebuilds the cached alive entities list. Call once at the start of each tick,
-   * after processPending(), so all systems share a single snapshot.
+   * Rebuilds the cached alive entities list. Call once at the start of each tick, after
+   * processPending(), so all systems share a single snapshot.
    */
   public void refreshCaches() {
     List<Entity> alive = new ArrayList<>(entities.size());
@@ -213,9 +209,9 @@ public class GameState {
   /**
    * Checks if a princess tower is alive for the given team and lane.
    *
-   * @param team       the team whose princess tower to check
-   * @param leftLane   true for left lane, false for right lane
-   * @param centerX    arena center X for lane determination
+   * @param team the team whose princess tower to check
+   * @param leftLane true for left lane, false for right lane
+   * @param centerX arena center X for lane determination
    * @return true if a matching princess tower is alive
    */
   public boolean isPrincessTowerAlive(Team team, boolean leftLane, float centerX) {

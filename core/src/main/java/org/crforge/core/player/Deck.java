@@ -6,9 +6,7 @@ import java.util.List;
 import lombok.Getter;
 import org.crforge.core.card.Card;
 
-/**
- * Represents the player's 8-card deck.
- */
+/** Represents the player's 8-card deck. */
 @Getter
 public class Deck {
 

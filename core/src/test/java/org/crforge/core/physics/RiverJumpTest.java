@@ -14,9 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for the river jump mechanic. Jump-enabled troops (Hog Rider, Royal Hogs, etc.)
- * can leap over the river instead of routing through bridges. While jumping, they become
- * untargetable with AIR movement type and a speed boost.
+ * Tests for the river jump mechanic. Jump-enabled troops (Hog Rider, Royal Hogs, etc.) can leap
+ * over the river instead of routing through bridges. While jumping, they become untargetable with
+ * AIR movement type and a speed boost.
  */
 class RiverJumpTest {
 
@@ -146,25 +146,27 @@ class RiverJumpTest {
     Movement movement = new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
     movement.setJumpEnabled(true);
 
-    Troop troop = Troop.builder()
-        .name(name)
-        .team(Team.BLUE)
-        .position(new Position(x, y))
-        .movement(movement)
-        .deployTime(0f)
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name(name)
+            .team(Team.BLUE)
+            .position(new Position(x, y))
+            .movement(movement)
+            .deployTime(0f)
+            .build();
     troop.onSpawn();
     return troop;
   }
 
   private Troop createNormalTroop(String name, float x, float y) {
-    Troop troop = Troop.builder()
-        .name(name)
-        .team(Team.BLUE)
-        .position(new Position(x, y))
-        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .deployTime(0f)
-        .build();
+    Troop troop =
+        Troop.builder()
+            .name(name)
+            .team(Team.BLUE)
+            .position(new Position(x, y))
+            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .deployTime(0f)
+            .build();
     troop.onSpawn();
     return troop;
   }

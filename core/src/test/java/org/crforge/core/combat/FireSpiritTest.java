@@ -19,8 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Fire Spirit: 1-elixir kamikaze unit that fires a homing projectile,
- * dealing AOE damage (81) to all enemies within radius 2.3. No status effects.
+ * Tests for Fire Spirit: 1-elixir kamikaze unit that fires a homing projectile, dealing AOE damage
+ * (81) to all enemies within radius 2.3. No status effects.
  */
 class FireSpiritTest {
 
@@ -112,23 +112,25 @@ class FireSpiritTest {
   }
 
   private Troop createFireSpirit(Team team, float x, float y) {
-    ProjectileStats projStats = ProjectileStats.builder()
-        .name("FireSpiritsProjectile")
-        .damage(FIRE_SPIRIT_DAMAGE)
-        .speed(PROJECTILE_SPEED)
-        .radius(AOE_RADIUS)
-        .build();
+    ProjectileStats projStats =
+        ProjectileStats.builder()
+            .name("FireSpiritsProjectile")
+            .damage(FIRE_SPIRIT_DAMAGE)
+            .speed(PROJECTILE_SPEED)
+            .radius(AOE_RADIUS)
+            .build();
 
-    Combat combat = Combat.builder()
-        .damage(FIRE_SPIRIT_DAMAGE)
-        .range(2.5f)
-        .sightRange(5.5f)
-        .attackCooldown(0.3f)
-        .loadTime(0.1f)
-        .kamikaze(true)
-        .targetType(TargetType.ALL)
-        .projectileStats(projStats)
-        .build();
+    Combat combat =
+        Combat.builder()
+            .damage(FIRE_SPIRIT_DAMAGE)
+            .range(2.5f)
+            .sightRange(5.5f)
+            .attackCooldown(0.3f)
+            .loadTime(0.1f)
+            .kamikaze(true)
+            .targetType(TargetType.ALL)
+            .projectileStats(projStats)
+            .build();
 
     return Troop.builder()
         .name("FireSpirit")

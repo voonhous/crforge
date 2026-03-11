@@ -13,9 +13,9 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.player.Team;
 
 /**
- * Renders fading circles for instantaneous AOE damage bursts (melee splash,
- * projectile impact AOE, death explosions, instant spells). Events are recorded
- * by CombatSystem.applySpellDamage() and consumed here each frame.
+ * Renders fading circles for instantaneous AOE damage bursts (melee splash, projectile impact AOE,
+ * death explosions, instant spells). Events are recorded by CombatSystem.applySpellDamage() and
+ * consumed here each frame.
  */
 public class AoeDamageRenderer {
 
@@ -31,8 +31,8 @@ public class AoeDamageRenderer {
   }
 
   /**
-   * Consume AOE damage events from the game state and age existing indicators.
-   * Must be called every frame (even when rendering is toggled off) to keep indicators current.
+   * Consume AOE damage events from the game state and age existing indicators. Must be called every
+   * frame (even when rendering is toggled off) to keep indicators current.
    */
   public void update(GameState state) {
     float deltaTime = Gdx.graphics.getDeltaTime();

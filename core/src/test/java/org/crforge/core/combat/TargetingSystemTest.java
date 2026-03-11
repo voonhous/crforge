@@ -3,7 +3,6 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import org.crforge.data.card.CardRegistry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;
@@ -15,6 +14,7 @@ import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -69,8 +69,7 @@ class TargetingSystemTest {
   @Test
   void troop_shouldNotTargetOutOfRange() {
     Troop attacker = createDeployedTroop("Attacker", Team.BLUE, 10, 10);
-    Troop farEnemy =
-        createDeployedTroop("Far Enemy", Team.RED, 20, 10);
+    Troop farEnemy = createDeployedTroop("Far Enemy", Team.RED, 20, 10);
 
     List<Entity> entities = List.of(attacker, farEnemy);
     targetingSystem.updateTargets(entities);
@@ -183,26 +182,30 @@ class TargetingSystemTest {
     assertThat(dragonStats.getMovementType()).isEqualTo(MovementType.AIR);
 
     // Verify system interaction
-    Troop knight = Troop.builder()
-        .name("Knight")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .deployTime(0)
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .sightRange(5.5f)
-            .targetType(knightStats.getTargetType()) // Use actual stat
-            .build())
-        .build();
+    Troop knight =
+        Troop.builder()
+            .name("Knight")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .deployTime(0)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(5.5f)
+                    .targetType(knightStats.getTargetType()) // Use actual stat
+                    .build())
+            .build();
     knight.onSpawn();
 
-    Troop dragon = Troop.builder()
-        .name("Baby Dragon")
-        .team(Team.RED)
-        .position(new Position(12, 10))
-        .deployTime(0)
-        .movement(new Movement(0, 0, 0.5f, 0.5f, dragonStats.getMovementType())) // Use actual stat
-        .build();
+    Troop dragon =
+        Troop.builder()
+            .name("Baby Dragon")
+            .team(Team.RED)
+            .position(new Position(12, 10))
+            .deployTime(0)
+            .movement(
+                new Movement(0, 0, 0.5f, 0.5f, dragonStats.getMovementType())) // Use actual stat
+            .build();
     dragon.onSpawn();
 
     List<Entity> entities = List.of(knight, dragon);
@@ -214,18 +217,20 @@ class TargetingSystemTest {
   @Test
   void targetOnlyBuildings_shouldIgnoreTroops() {
     // Giant-like unit: targets only buildings
-    Troop giant = Troop.builder()
-        .name("Giant")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .deployTime(0)
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .sightRange(5.5f)
-            .targetType(TargetType.GROUND)
-            .targetOnlyBuildings(true)
-            .build())
-        .build();
+    Troop giant =
+        Troop.builder()
+            .name("Giant")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .deployTime(0)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(5.5f)
+                    .targetType(TargetType.GROUND)
+                    .targetOnlyBuildings(true)
+                    .build())
+            .build();
     giant.onSpawn();
 
     Troop enemyKnight = createDeployedTroop("Knight", Team.RED, 12, 10);
@@ -239,18 +244,20 @@ class TargetingSystemTest {
 
   @Test
   void targetOnlyBuildings_shouldTargetTower() {
-    Troop giant = Troop.builder()
-        .name("Giant")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .deployTime(0)
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .sightRange(9.0f)
-            .targetType(TargetType.GROUND)
-            .targetOnlyBuildings(true)
-            .build())
-        .build();
+    Troop giant =
+        Troop.builder()
+            .name("Giant")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .deployTime(0)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(9.0f)
+                    .targetType(TargetType.GROUND)
+                    .targetOnlyBuildings(true)
+                    .build())
+            .build();
     giant.onSpawn();
 
     Tower tower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
@@ -265,18 +272,20 @@ class TargetingSystemTest {
 
   @Test
   void targetOnlyBuildings_shouldPreferCloserBuilding() {
-    Troop giant = Troop.builder()
-        .name("Giant")
-        .team(Team.BLUE)
-        .position(new Position(5, 10))
-        .deployTime(0)
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .sightRange(15.0f)
-            .targetType(TargetType.GROUND)
-            .targetOnlyBuildings(true)
-            .build())
-        .build();
+    Troop giant =
+        Troop.builder()
+            .name("Giant")
+            .team(Team.BLUE)
+            .position(new Position(5, 10))
+            .deployTime(0)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(15.0f)
+                    .targetType(TargetType.GROUND)
+                    .targetOnlyBuildings(true)
+                    .build())
+            .build();
     giant.onSpawn();
 
     // A troop that is closer should be ignored

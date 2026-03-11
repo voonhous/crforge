@@ -29,50 +29,55 @@ class AreaEffectSystemTest {
   @Test
   void oneShot_shouldDamageEnemiesInRadius() {
     // One-shot area effect (like Zap)
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Zap")
-        .radius(2.5f)
-        .lifeDuration(0.001f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .damage(75)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Zap")
+            .radius(2.5f)
+            .lifeDuration(0.001f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .damage(75)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Zap")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(75)
-        .remainingLifetime(0.001f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Zap")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(75)
+            .remainingLifetime(0.001f)
+            .build();
 
     // Enemy in range
-    Troop nearEnemy = Troop.builder()
-        .name("NearEnemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop nearEnemy =
+        Troop.builder()
+            .name("NearEnemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     // Enemy out of range
-    Troop farEnemy = Troop.builder()
-        .name("FarEnemy")
-        .team(Team.RED)
-        .position(new Position(20, 20))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop farEnemy =
+        Troop.builder()
+            .name("FarEnemy")
+            .team(Team.RED)
+            .position(new Position(20, 20))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     // Friendly unit (should not be hit)
-    Troop friendly = Troop.builder()
-        .name("Friendly")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop friendly =
+        Troop.builder()
+            .name("Friendly")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(nearEnemy);
@@ -95,33 +100,36 @@ class AreaEffectSystemTest {
   @Test
   void oneShot_shouldApplyBuffToEnemies() {
     // Zap-like effect with stun
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Zap")
-        .radius(2.5f)
-        .lifeDuration(0.001f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .damage(75)
-        .buff("ZapFreeze")
-        .buffDuration(0.5f)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Zap")
+            .radius(2.5f)
+            .lifeDuration(0.001f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .damage(75)
+            .buff("ZapFreeze")
+            .buffDuration(0.5f)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Zap")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(75)
-        .remainingLifetime(0.001f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Zap")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(75)
+            .remainingLifetime(0.001f)
+            .build();
 
-    Troop enemy = Troop.builder()
-        .name("Enemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Enemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
@@ -140,32 +148,35 @@ class AreaEffectSystemTest {
   @Test
   void ticking_shouldDamageRepeatedly() {
     // Poison-like effect: hitSpeed=1.0, lifeDuration=3.0 -> 3 ticks
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Poison")
-        .radius(3.5f)
-        .lifeDuration(3.0f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .hitSpeed(1.0f)
-        .damage(50)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Poison")
+            .radius(3.5f)
+            .lifeDuration(3.0f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .hitSpeed(1.0f)
+            .damage(50)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Poison")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(50)
-        .remainingLifetime(3.0f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Poison")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(50)
+            .remainingLifetime(3.0f)
+            .build();
 
-    Troop enemy = Troop.builder()
-        .name("Enemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Enemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
@@ -188,41 +199,45 @@ class AreaEffectSystemTest {
   @Test
   void hitsGround_shouldFilterAirUnits() {
     // Earthquake: hitsGround=true, hitsAir=false
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Earthquake")
-        .radius(3.5f)
-        .lifeDuration(0.001f)
-        .hitsGround(true)
-        .hitsAir(false)
-        .damage(100)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Earthquake")
+            .radius(3.5f)
+            .lifeDuration(0.001f)
+            .hitsGround(true)
+            .hitsAir(false)
+            .damage(100)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Earthquake")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(100)
-        .remainingLifetime(0.001f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Earthquake")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(100)
+            .remainingLifetime(0.001f)
+            .build();
 
-    Troop groundEnemy = Troop.builder()
-        .name("GroundEnemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .deployTime(0f)
-        .build();
+    Troop groundEnemy =
+        Troop.builder()
+            .name("GroundEnemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .deployTime(0f)
+            .build();
 
-    Troop airEnemy = Troop.builder()
-        .name("AirEnemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.AIR))
-        .deployTime(0f)
-        .build();
+    Troop airEnemy =
+        Troop.builder()
+            .name("AirEnemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.AIR))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(groundEnemy);
@@ -239,32 +254,35 @@ class AreaEffectSystemTest {
 
   @Test
   void effect_shouldExpireAfterLifetime() {
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Poison")
-        .radius(3.5f)
-        .lifeDuration(1.0f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .hitSpeed(0.5f)
-        .damage(50)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Poison")
+            .radius(3.5f)
+            .lifeDuration(1.0f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .hitSpeed(0.5f)
+            .damage(50)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Poison")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(50)
-        .remainingLifetime(1.0f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Poison")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(50)
+            .remainingLifetime(1.0f)
+            .build();
 
-    Troop enemy = Troop.builder()
-        .name("Enemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Enemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
@@ -294,33 +312,36 @@ class AreaEffectSystemTest {
     // Reproduces the real GameEngine tick order: entity.update() runs BEFORE
     // areaEffectSystem.update(). One-shot effects with very short lifeDuration
     // (like Zap at 0.001s) must not die before being applied.
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Zap")
-        .radius(2.5f)
-        .lifeDuration(0.001f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .damage(75)
-        .buff("ZapFreeze")
-        .buffDuration(0.5f)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Zap")
+            .radius(2.5f)
+            .lifeDuration(0.001f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .damage(75)
+            .buff("ZapFreeze")
+            .buffDuration(0.5f)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Zap")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(75)
-        .remainingLifetime(0.001f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Zap")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(75)
+            .remainingLifetime(0.001f)
+            .build();
 
-    Troop enemy = Troop.builder()
-        .name("Enemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Enemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
@@ -329,8 +350,8 @@ class AreaEffectSystemTest {
 
     // Simulate real tick order: entity.update() BEFORE areaEffectSystem.update()
     float dt = 1.0f / 30;
-    effect.update(dt);  // lifetime goes negative, but one-shot must stay alive
-    system.update(dt);  // should still process and apply damage + buff
+    effect.update(dt); // lifetime goes negative, but one-shot must stay alive
+    system.update(dt); // should still process and apply damage + buff
 
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(425); // 500 - 75
     assertThat(enemy.getAppliedEffects()).hasSize(1);
@@ -345,34 +366,37 @@ class AreaEffectSystemTest {
   @Test
   void freeze_shouldApplyFreezeBuffToEnemies() {
     // Freeze spell: damage + FREEZE buff
-    AreaEffectStats stats = AreaEffectStats.builder()
-        .name("Freeze")
-        .radius(3.0f)
-        .lifeDuration(0.001f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .damage(58)
-        .buff("Freeze")
-        .buffDuration(4.0f)
-        .crownTowerDamagePercent(-70)
-        .build();
+    AreaEffectStats stats =
+        AreaEffectStats.builder()
+            .name("Freeze")
+            .radius(3.0f)
+            .lifeDuration(0.001f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .damage(58)
+            .buff("Freeze")
+            .buffDuration(4.0f)
+            .crownTowerDamagePercent(-70)
+            .build();
 
-    AreaEffect effect = AreaEffect.builder()
-        .name("Freeze")
-        .team(Team.BLUE)
-        .position(new Position(10, 10))
-        .stats(stats)
-        .scaledDamage(58)
-        .remainingLifetime(0.001f)
-        .build();
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name("Freeze")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .stats(stats)
+            .scaledDamage(58)
+            .remainingLifetime(0.001f)
+            .build();
 
-    Troop enemy = Troop.builder()
-        .name("Enemy")
-        .team(Team.RED)
-        .position(new Position(11, 10))
-        .health(new Health(500))
-        .deployTime(0f)
-        .build();
+    Troop enemy =
+        Troop.builder()
+            .name("Enemy")
+            .team(Team.RED)
+            .position(new Position(11, 10))
+            .health(new Health(500))
+            .deployTime(0f)
+            .build();
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
@@ -385,7 +409,7 @@ class AreaEffectSystemTest {
     assertThat(enemy.getAppliedEffects()).hasSize(1);
     assertThat(enemy.getAppliedEffects().get(0).getType())
         .isEqualTo(org.crforge.core.effect.StatusEffectType.FREEZE);
-    assertThat(enemy.getAppliedEffects().get(0).getRemainingDuration()).isCloseTo(4.0f,
-        org.assertj.core.api.Assertions.within(0.01f));
+    assertThat(enemy.getAppliedEffects().get(0).getRemainingDuration())
+        .isCloseTo(4.0f, org.assertj.core.api.Assertions.within(0.01f));
   }
 }

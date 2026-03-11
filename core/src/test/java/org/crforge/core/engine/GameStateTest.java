@@ -2,9 +2,9 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.component.Health;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.card.LevelScaling;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -66,8 +66,8 @@ class GameStateTest {
 
   @Test
   void getAliveEntities_shouldFilterDeadEntities() {
-    Troop aliveTroop = Troop.builder().name("Knight").team(Team.BLUE).health(new Health(100))
-        .build();
+    Troop aliveTroop =
+        Troop.builder().name("Knight").team(Team.BLUE).health(new Health(100)).build();
     Troop deadTroop = Troop.builder().name("Knight").team(Team.RED).health(new Health(100)).build();
 
     gameState.spawnEntity(aliveTroop);
@@ -134,7 +134,8 @@ class GameStateTest {
   void princessTowerDeath_shouldActivateKingTower() {
     // Setup: King Tower (inactive) + Princess Tower (active)
     Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
-    Tower princessTower = Tower.createPrincessTower(Team.BLUE, 5, 6, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower princessTower =
+        Tower.createPrincessTower(Team.BLUE, 5, 6, LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(kingTower);
     gameState.spawnEntity(princessTower);
@@ -149,7 +150,8 @@ class GameStateTest {
     gameState.processDeaths();
 
     // Verify King Tower activated
-    assertThat(kingTower.isActive()).as("King Tower should activate when Princess Tower falls")
+    assertThat(kingTower.isActive())
+        .as("King Tower should activate when Princess Tower falls")
         .isTrue();
   }
 

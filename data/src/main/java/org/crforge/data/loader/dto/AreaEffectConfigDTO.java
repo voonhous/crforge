@@ -4,11 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 /**
- * DTO for the {@code areaEffect} and {@code deployEffect} blocks in the card JSON.
- * Describes an area-of-effect that persists for a duration, optionally ticking damage/buffs.
+ * DTO for the {@code areaEffect} and {@code deployEffect} blocks in the card JSON. Describes an
+ * area-of-effect that persists for a duration, optionally ticking damage/buffs.
  *
- * <p>Examples: Zap (one-shot damage + stun), Poison (ticking damage over 8s),
- * Freeze (damage + freeze buff for 4s), ElectroWizard deploy (stun on entry).
+ * <p>Examples: Zap (one-shot damage + stun), Poison (ticking damage over 8s), Freeze (damage +
+ * freeze buff for 4s), ElectroWizard deploy (stun on entry).
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

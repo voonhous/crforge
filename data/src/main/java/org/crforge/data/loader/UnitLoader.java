@@ -34,32 +34,31 @@ import org.crforge.data.loader.dto.LiveSpawnConfigDTO;
 import org.crforge.data.loader.dto.UnitConfigDTO;
 
 /**
- * Loads unit definitions from units.json and converts them to TroopStats.
- * Resolves projectile and death spawn references from external maps.
+ * Loads unit definitions from units.json and converts them to TroopStats. Resolves projectile and
+ * death spawn references from external maps.
  */
 public class UnitLoader {
 
-  private static final ObjectMapper mapper = new ObjectMapper()
-      .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
+  private static final ObjectMapper mapper =
+      new ObjectMapper().configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
   private static final float SPEED_BASE = 60.0f;
 
   /**
-   * Loads all unit definitions from the given input stream.
-   * Two-pass loading:
+   * Loads all unit definitions from the given input stream. Two-pass loading:
+   *
    * <ol>
-   *   <li>Convert all units without death spawn resolution</li>
-   *   <li>Resolve death spawn character references from the pass-1 map</li>
+   *   <li>Convert all units without death spawn resolution
+   *   <li>Resolve death spawn character references from the pass-1 map
    * </ol>
    *
-   * @param inputStream   JSON input in Map(String, UnitConfigDTO) format
+   * @param inputStream JSON input in Map(String, UnitConfigDTO) format
    * @param projectileMap resolved projectile map for projectile reference resolution
    * @return map of unit name to TroopStats
    */
-  public static Map<String, TroopStats> loadUnits(InputStream inputStream,
-      Map<String, ProjectileStats> projectileMap) {
+  public static Map<String, TroopStats> loadUnits(
+      InputStream inputStream, Map<String, ProjectileStats> projectileMap) {
     try {
-      Map<String, UnitConfigDTO> dtos = mapper.readValue(inputStream,
-          new TypeReference<>() {});
+      Map<String, UnitConfigDTO> dtos = mapper.readValue(inputStream, new TypeReference<>() {});
 
       // Pass 1: Convert all units without death spawn resolution
       Map<String, TroopStats> result = new LinkedHashMap<>();
@@ -84,23 +83,24 @@ public class UnitLoader {
   /**
    * Converts a single UnitConfigDTO to TroopStats.
    *
-   * @param dto           the DTO to convert
+   * @param dto the DTO to convert
    * @param projectileMap map for resolving projectile string references
-   * @param unitMap       map for resolving death spawn character references (null on first pass)
+   * @param unitMap map for resolving death spawn character references (null on first pass)
    * @return the converted TroopStats
    */
-  static TroopStats convertUnit(UnitConfigDTO dto,
+  static TroopStats convertUnit(
+      UnitConfigDTO dto,
       Map<String, ProjectileStats> projectileMap,
       Map<String, TroopStats> unitMap) {
     // Validate required fields
-    Objects.requireNonNull(dto.getMovementType(),
-        "MovementType is required for unit: " + dto.getName());
+    Objects.requireNonNull(
+        dto.getMovementType(), "MovementType is required for unit: " + dto.getName());
 
     // Validation: Require TargetType if the unit has ANY attack capability
     boolean hasAttackCapability = dto.getDamage() > 0 || dto.getProjectile() != null;
     if (hasAttackCapability) {
-      Objects.requireNonNull(dto.getTargetType(),
-          "TargetType is required for attacking unit: " + dto.getName());
+      Objects.requireNonNull(
+          dto.getTargetType(), "TargetType is required for attacking unit: " + dto.getName());
     }
 
     // Conversion: Base speed 60 = 1.0 tiles/sec
@@ -110,37 +110,38 @@ public class UnitLoader {
     float colRad = dto.getCollisionRadius() != null ? dto.getCollisionRadius() : 0.5f;
     float visRad = dto.getVisualRadius() != null ? dto.getVisualRadius() : colRad;
 
-    TroopStats.TroopStatsBuilder builder = TroopStats.builder()
-        .name(dto.getName())
-        .health(dto.getHealth())
-        .damage(dto.getDamage())
-        .speed(effectiveSpeed)
-        .mass(dto.getMass())
-        .collisionRadius(colRad)
-        .visualRadius(visRad)
-        .range(dto.getRange())
-        .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
-        .attackCooldown(dto.getAttackCooldown())
-        .loadTime(dto.getLoadTime() != null ? dto.getLoadTime() : 0f)
-        .aoeRadius(dto.getAreaDamageRadius())
-        .movementType(dto.getMovementType())
-        .targetType(dto.getTargetType())
-        .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
-        // Shield
-        .shieldHitpoints(dto.getShieldHitpoints())
-        // Combat modifiers
-        .multipleTargets(dto.getMultipleTargets())
-        .multipleProjectiles(dto.getMultipleProjectiles())
-        .selfAsAoeCenter(dto.isSelfAsAoeCenter())
-        // Targeting and combat modifiers
-        .targetOnlyBuildings(dto.isTargetOnlyBuildings())
-        .minimumRange(dto.getMinimumRange())
-        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-        .ignorePushback(dto.isIgnorePushback())
-        .kamikaze(dto.isKamikaze())
-        .jumpEnabled(dto.isJumpEnabled())
-        // Building lifetime
-        .lifeTime(dto.getLifeTime());
+    TroopStats.TroopStatsBuilder builder =
+        TroopStats.builder()
+            .name(dto.getName())
+            .health(dto.getHealth())
+            .damage(dto.getDamage())
+            .speed(effectiveSpeed)
+            .mass(dto.getMass())
+            .collisionRadius(colRad)
+            .visualRadius(visRad)
+            .range(dto.getRange())
+            .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
+            .attackCooldown(dto.getAttackCooldown())
+            .loadTime(dto.getLoadTime() != null ? dto.getLoadTime() : 0f)
+            .aoeRadius(dto.getAreaDamageRadius())
+            .movementType(dto.getMovementType())
+            .targetType(dto.getTargetType())
+            .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
+            // Shield
+            .shieldHitpoints(dto.getShieldHitpoints())
+            // Combat modifiers
+            .multipleTargets(dto.getMultipleTargets())
+            .multipleProjectiles(dto.getMultipleProjectiles())
+            .selfAsAoeCenter(dto.isSelfAsAoeCenter())
+            // Targeting and combat modifiers
+            .targetOnlyBuildings(dto.isTargetOnlyBuildings())
+            .minimumRange(dto.getMinimumRange())
+            .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
+            .ignorePushback(dto.isIgnorePushback())
+            .kamikaze(dto.isKamikaze())
+            .jumpEnabled(dto.isJumpEnabled())
+            // Building lifetime
+            .lifeTime(dto.getLifeTime());
 
     // Resolve projectile reference
     if (dto.getProjectile() != null && projectileMap != null) {
@@ -167,11 +168,12 @@ public class UnitLoader {
     if (buffOnDmg != null) {
       StatusEffectType buffType = StatusEffectType.fromBuffName(buffOnDmg.getBuff());
       if (buffType != null) {
-        builder.buffOnDamage(EffectStats.builder()
-            .type(buffType)
-            .duration(buffOnDmg.getDuration())
-            .buffName(buffOnDmg.getBuff())
-            .build());
+        builder.buffOnDamage(
+            EffectStats.builder()
+                .type(buffType)
+                .duration(buffOnDmg.getDuration())
+                .buffName(buffOnDmg.getBuff())
+                .build());
       }
     }
 
@@ -190,14 +192,14 @@ public class UnitLoader {
     // Live spawn configuration
     LiveSpawnConfigDTO liveSpawn = dto.getLiveSpawn();
     if (liveSpawn != null) {
-      builder.liveSpawn(new LiveSpawnConfig(
-          liveSpawn.getSpawnCharacter(),
-          liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1,
-          liveSpawn.getSpawnPauseTime(),
-          liveSpawn.getSpawnInterval(),
-          liveSpawn.getSpawnStartTime(),
-          liveSpawn.getSpawnRadius()
-      ));
+      builder.liveSpawn(
+          new LiveSpawnConfig(
+              liveSpawn.getSpawnCharacter(),
+              liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1,
+              liveSpawn.getSpawnPauseTime(),
+              liveSpawn.getSpawnInterval(),
+              liveSpawn.getSpawnStartTime(),
+              liveSpawn.getSpawnRadius()));
     }
 
     // Abilities (Charge, Variable Damage, etc.)
@@ -222,40 +224,44 @@ public class UnitLoader {
     }
 
     return switch (type) {
-      case CHARGE -> new ChargeAbility(
-          dto.getDamage(),
-          dto.getSpeedMultiplier() > 0 ? dto.getSpeedMultiplier() : 2.0f);
+      case CHARGE ->
+          new ChargeAbility(
+              dto.getDamage(), dto.getSpeedMultiplier() > 0 ? dto.getSpeedMultiplier() : 2.0f);
       case VARIABLE_DAMAGE -> {
-        List<VariableDamageStage> stages = dto.getStages() != null
-            ? dto.getStages().stream()
-                .map(s -> new VariableDamageStage(s.getDamage(), s.getTimeMs() / 1000f))
-                .toList()
-            : List.of();
+        List<VariableDamageStage> stages =
+            dto.getStages() != null
+                ? dto.getStages().stream()
+                    .map(s -> new VariableDamageStage(s.getDamage(), s.getTimeMs() / 1000f))
+                    .toList()
+                : List.of();
         yield new VariableDamageAbility(stages);
       }
-      case DASH -> new DashAbility(
-          dto.getDamage(),
-          dto.getMinRange(),
-          dto.getMaxRange(),
-          dto.getRadius(),
-          dto.getCooldown(),
-          dto.getImmuneTimeMs() / 1000f,
-          dto.getLandingTime(),
-          dto.getConstantTime(),
-          dto.getPushback());
-      case HOOK -> new HookAbility(
-          dto.getRange(),
-          dto.getMinimumRange(),
-          dto.getLoadTime(),
-          dto.getDragBackSpeed(),
-          dto.getDragSelfSpeed());
-      case REFLECT -> new ReflectAbility(
-          dto.getDamage(),
-          dto.getRadius(),
-          StatusEffectType.fromBuffName(dto.getBuff()),
-          dto.getBuffDuration(),
-          dto.getCrownTowerDamagePercent(),
-          dto.getBuff());
+      case DASH ->
+          new DashAbility(
+              dto.getDamage(),
+              dto.getMinRange(),
+              dto.getMaxRange(),
+              dto.getRadius(),
+              dto.getCooldown(),
+              dto.getImmuneTimeMs() / 1000f,
+              dto.getLandingTime(),
+              dto.getConstantTime(),
+              dto.getPushback());
+      case HOOK ->
+          new HookAbility(
+              dto.getRange(),
+              dto.getMinimumRange(),
+              dto.getLoadTime(),
+              dto.getDragBackSpeed(),
+              dto.getDragSelfSpeed());
+      case REFLECT ->
+          new ReflectAbility(
+              dto.getDamage(),
+              dto.getRadius(),
+              StatusEffectType.fromBuffName(dto.getBuff()),
+              dto.getBuffDuration(),
+              dto.getCrownTowerDamagePercent(),
+              dto.getBuff());
     };
   }
 }

@@ -37,19 +37,16 @@ class TowerDestructionIntegrationTest {
     float targetX = redPrincess.getPosition().getX();
     float targetY = redPrincess.getPosition().getY();
 
-    Troop knight = Troop.builder()
-        .name("Knight")
-        .team(Team.BLUE)
-        .position(new Position(targetX, targetY - 2.0f))
-        .health(new Health(1000))
-        .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder()
-            .damage(10)
-            .range(1.0f)
-            .attackCooldown(0.1f)
-            .loadTime(0f)
-            .build())
-        .build();
+    Troop knight =
+        Troop.builder()
+            .name("Knight")
+            .team(Team.BLUE)
+            .position(new Position(targetX, targetY - 2.0f))
+            .health(new Health(1000))
+            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder().damage(10).range(1.0f).attackCooldown(0.1f).loadTime(0f).build())
+            .build();
     knight.onSpawn();
 
     engine.spawn(knight);

@@ -48,16 +48,18 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseTroopCard() {
-    TroopStats knight = TroopStats.builder()
-        .name("Knight")
-        .health(1452)
-        .damage(167)
-        .speed(1.0f)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats knight =
+        TroopStats.builder()
+            .name("Knight")
+            .health(1452)
+            .damage(167)
+            .speed(1.0f)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "knight",
@@ -87,15 +89,17 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseMultiUnitCard() {
-    TroopStats archer = TroopStats.builder()
-        .name("Archer")
-        .health(119)
-        .damage(44)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.ALL)
-        .build();
+    TroopStats archer =
+        TroopStats.builder()
+            .name("Archer")
+            .health(119)
+            .damage(44)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.ALL)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "archer",
@@ -118,13 +122,15 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseCountFiveWithSummonRadius() {
-    TroopStats barb = TroopStats.builder()
-        .name("Barbarian")
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats barb =
+        TroopStats.builder()
+            .name("Barbarian")
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "barbarians",
@@ -147,16 +153,18 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseBuildingCard() {
-    TroopStats cannon = TroopStats.builder()
-        .name("Cannon")
-        .health(322)
-        .damage(83)
-        .lifeTime(30.0f)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats cannon =
+        TroopStats.builder()
+            .name("Cannon")
+            .health(322)
+            .damage(83)
+            .lifeTime(30.0f)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "cannon",
@@ -179,23 +187,26 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseSpawnerBuilding() {
-    TroopStats skeleton = TroopStats.builder()
-        .name("Skeleton")
-        .health(67)
-        .damage(32)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats skeleton =
+        TroopStats.builder()
+            .name("Skeleton")
+            .health(67)
+            .damage(32)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    TroopStats tombstone = TroopStats.builder()
-        .name("Tombstone")
-        .health(207)
-        .lifeTime(30.0f)
-        .movementType(MovementType.GROUND)
-        .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
-        .build();
+    TroopStats tombstone =
+        TroopStats.builder()
+            .name("Tombstone")
+            .health(207)
+            .lifeTime(30.0f)
+            .movementType(MovementType.GROUND)
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "tombstone",
@@ -207,8 +218,7 @@ class CardLoaderTest {
         ]
         """;
 
-    List<Card> cards = CardLoader.loadCards(toStream(json),
-        unitMap(tombstone, skeleton), Map.of());
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(tombstone, skeleton), Map.of());
 
     Card card = cards.get(0);
     assertThat(card.getUnitStats().getLiveSpawn()).isNotNull();
@@ -224,14 +234,16 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseSpellWithProjectile() {
-    ProjectileStats fireball = ProjectileStats.builder()
-        .name("FireballSpell")
-        .damage(325)
-        .speed(6.67f)
-        .radius(2.5f)
-        .build();
+    ProjectileStats fireball =
+        ProjectileStats.builder()
+            .name("FireballSpell")
+            .damage(325)
+            .speed(6.67f)
+            .radius(2.5f)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "fireball",
@@ -255,7 +267,8 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseSpellWithAreaEffect() {
-    String json = """
+    String json =
+        """
         [
           {
             "id": "zap",
@@ -291,15 +304,17 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseDeployEffect() {
-    TroopStats ewiz = TroopStats.builder()
-        .name("ElectroWizard")
-        .health(304)
-        .damage(79)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.ALL)
-        .build();
+    TroopStats ewiz =
+        TroopStats.builder()
+            .name("ElectroWizard")
+            .health(304)
+            .damage(79)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.ALL)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "electrowizard",
@@ -333,13 +348,11 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseSummonCharacter() {
-    TroopStats rageBottle = TroopStats.builder()
-        .name("RageBottle")
-        .health(1)
-        .movementType(MovementType.GROUND)
-        .build();
+    TroopStats rageBottle =
+        TroopStats.builder().name("RageBottle").health(1).movementType(MovementType.GROUND).build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "rage",
@@ -361,15 +374,17 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseFormationOffsets() {
-    TroopStats archer = TroopStats.builder()
-        .name("Archer")
-        .health(119)
-        .damage(44)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.ALL)
-        .build();
+    TroopStats archer =
+        TroopStats.builder()
+            .name("Archer")
+            .health(119)
+            .damage(44)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.ALL)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "archer",
@@ -396,23 +411,26 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseSecondaryUnit() {
-    TroopStats goblin = TroopStats.builder()
-        .name("Goblin_Stab")
-        .health(80)
-        .damage(50)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats goblin =
+        TroopStats.builder()
+            .name("Goblin_Stab")
+            .health(80)
+            .damage(50)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    TroopStats spearGoblin = TroopStats.builder()
-        .name("SpearGoblin")
-        .health(52)
-        .damage(24)
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.ALL)
-        .build();
+    TroopStats spearGoblin =
+        TroopStats.builder()
+            .name("SpearGoblin")
+            .health(52)
+            .damage(24)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.ALL)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "goblingang",
@@ -445,13 +463,15 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldDefaultToNullFormationAndZeroSecondary() {
-    TroopStats knight = TroopStats.builder()
-        .name("Knight")
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats knight =
+        TroopStats.builder()
+            .name("Knight")
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "knight",
@@ -474,7 +494,8 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldParseRarity() {
-    String json = """
+    String json =
+        """
         [
           { "id": "a", "name": "A", "type": "TROOP", "cost": 1, "rarity": "Common" },
           { "id": "b", "name": "B", "type": "TROOP", "cost": 1, "rarity": "Rare" },
@@ -493,13 +514,15 @@ class CardLoaderTest {
 
   @Test
   void loadCards_shouldDefaultCountToOne() {
-    TroopStats knight = TroopStats.builder()
-        .name("Knight")
-        .movementType(MovementType.GROUND)
-        .targetType(TargetType.GROUND)
-        .build();
+    TroopStats knight =
+        TroopStats.builder()
+            .name("Knight")
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
 
-    String json = """
+    String json =
+        """
         [
           {
             "id": "knight",
@@ -553,8 +576,8 @@ class CardLoaderTest {
       assertThat(archer).isNotNull();
       assertThat(archer.getUnitCount()).isEqualTo(2);
 
-      Card barbarians = cards.stream().filter(c -> "barbarians".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card barbarians =
+          cards.stream().filter(c -> "barbarians".equals(c.getId())).findFirst().orElse(null);
       assertThat(barbarians).isNotNull();
       assertThat(barbarians.getUnitCount()).isEqualTo(5);
       assertThat(barbarians.getSummonRadius()).isGreaterThan(0);
@@ -567,16 +590,16 @@ class CardLoaderTest {
       assertThat(cannon.getUnitStats().getProjectile()).isNotNull();
 
       // Spawner building
-      Card tombstone = cards.stream().filter(c -> "tombstone".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card tombstone =
+          cards.stream().filter(c -> "tombstone".equals(c.getId())).findFirst().orElse(null);
       assertThat(tombstone).isNotNull();
       assertThat(tombstone.getUnitStats().getLiveSpawn()).isNotNull();
       assertThat(tombstone.getSpawnTemplate()).isNotNull();
       assertThat(tombstone.getSpawnTemplate().getName()).isEqualTo("Skeleton");
 
       // Spell
-      Card fireball = cards.stream().filter(c -> "fireball".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card fireball =
+          cards.stream().filter(c -> "fireball".equals(c.getId())).findFirst().orElse(null);
       assertThat(fireball).isNotNull();
       assertThat(fireball.getType()).isEqualTo(CardType.SPELL);
       assertThat(fireball.getProjectile()).isNotNull();
@@ -597,8 +620,7 @@ class CardLoaderTest {
       assertThat(witch.getSpawnTemplate().getName()).isEqualTo("Skeleton");
 
       // Troop with ability (Prince -> CHARGE)
-      Card prince = cards.stream().filter(c -> "prince".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card prince = cards.stream().filter(c -> "prince".equals(c.getId())).findFirst().orElse(null);
       assertThat(prince).isNotNull();
       assertThat(prince.getUnitStats().getAbility()).isNotNull();
       assertThat(prince.getUnitStats().getAbility().type()).isEqualTo(AbilityType.CHARGE);
@@ -610,53 +632,56 @@ class CardLoaderTest {
       assertThat(giant.getUnitStats().isIgnorePushback()).isTrue();
 
       // Dark Prince shield
-      Card darkPrince = cards.stream().filter(c -> "darkprince".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card darkPrince =
+          cards.stream().filter(c -> "darkprince".equals(c.getId())).findFirst().orElse(null);
       assertThat(darkPrince).isNotNull();
       assertThat(darkPrince.getUnitStats().getShieldHitpoints()).isGreaterThan(0);
 
       // ElectroDragon chain lightning
-      Card eDragon = cards.stream().filter(c -> "electrodragon".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card eDragon =
+          cards.stream().filter(c -> "electrodragon".equals(c.getId())).findFirst().orElse(null);
       assertThat(eDragon).isNotNull();
       assertThat(eDragon.getUnitStats().getProjectile()).isNotNull();
       assertThat(eDragon.getUnitStats().getProjectile().getChainedHitCount()).isGreaterThan(0);
 
       // Hunter scatter projectiles
-      Card hunter = cards.stream().filter(c -> "hunter".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card hunter = cards.stream().filter(c -> "hunter".equals(c.getId())).findFirst().orElse(null);
       assertThat(hunter).isNotNull();
       assertThat(hunter.getUnitStats().getProjectile()).isNotNull();
       assertThat(hunter.getUnitStats().getProjectile().getProjectileRange()).isGreaterThan(0);
 
       // InfernoDragon variable damage
-      Card infernoDragon = cards.stream().filter(c -> "infernodragon".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card infernoDragon =
+          cards.stream().filter(c -> "infernodragon".equals(c.getId())).findFirst().orElse(null);
       assertThat(infernoDragon).isNotNull();
       assertThat(infernoDragon.getUnitStats().getAbility()).isNotNull();
       assertThat(infernoDragon.getUnitStats().getAbility().type())
           .isEqualTo(AbilityType.VARIABLE_DAMAGE);
       assertThat(infernoDragon.getUnitStats().getAbility())
           .isInstanceOf(org.crforge.core.ability.VariableDamageAbility.class);
-      assertThat(((org.crforge.core.ability.VariableDamageAbility) infernoDragon.getUnitStats().getAbility()).stages()).hasSize(3);
+      assertThat(
+              ((org.crforge.core.ability.VariableDamageAbility)
+                      infernoDragon.getUnitStats().getAbility())
+                  .stages())
+          .hasSize(3);
 
       // Bandit dash
-      Card bandit = cards.stream().filter(c -> "assassin".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card bandit =
+          cards.stream().filter(c -> "assassin".equals(c.getId())).findFirst().orElse(null);
       assertThat(bandit).isNotNull();
       assertThat(bandit.getUnitStats().getAbility()).isNotNull();
       assertThat(bandit.getUnitStats().getAbility().type()).isEqualTo(AbilityType.DASH);
 
       // Fisherman hook
-      Card fisherman = cards.stream().filter(c -> "fisherman".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card fisherman =
+          cards.stream().filter(c -> "fisherman".equals(c.getId())).findFirst().orElse(null);
       assertThat(fisherman).isNotNull();
       assertThat(fisherman.getUnitStats().getAbility()).isNotNull();
       assertThat(fisherman.getUnitStats().getAbility().type()).isEqualTo(AbilityType.HOOK);
 
       // ElectroGiant reflect
-      Card eGiant = cards.stream().filter(c -> "electrogiant".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card eGiant =
+          cards.stream().filter(c -> "electrogiant".equals(c.getId())).findFirst().orElse(null);
       assertThat(eGiant).isNotNull();
       assertThat(eGiant.getUnitStats().getAbility()).isNotNull();
       assertThat(eGiant.getUnitStats().getAbility().type()).isEqualTo(AbilityType.REFLECT);
@@ -666,8 +691,8 @@ class CardLoaderTest {
       assertThat(barbarians.getFormationOffsets()).hasSize(5);
 
       // Dual-unit card: GoblinGang (3 primary + 3 secondary)
-      Card goblinGang = cards.stream().filter(c -> "goblingang".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card goblinGang =
+          cards.stream().filter(c -> "goblingang".equals(c.getId())).findFirst().orElse(null);
       assertThat(goblinGang).isNotNull();
       assertThat(goblinGang.getUnitCount()).isEqualTo(3);
       assertThat(goblinGang.getSecondaryUnitStats()).isNotNull();
@@ -677,8 +702,8 @@ class CardLoaderTest {
       assertThat(goblinGang.getFormationOffsets()).hasSize(6);
 
       // Dual-unit card: Rascals (1 primary + 2 secondary)
-      Card rascals = cards.stream().filter(c -> "rascals".equals(c.getId())).findFirst()
-          .orElse(null);
+      Card rascals =
+          cards.stream().filter(c -> "rascals".equals(c.getId())).findFirst().orElse(null);
       assertThat(rascals).isNotNull();
       assertThat(rascals.getUnitCount()).isEqualTo(1);
       assertThat(rascals.getSecondaryUnitStats()).isNotNull();

@@ -17,9 +17,7 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
 
-/**
- * Main game engine. Coordinates all systems and runs the simulation tick loop at 30 FPS.
- */
+/** Main game engine. Coordinates all systems and runs the simulation tick loop at 30 FPS. */
 @Getter
 public class GameEngine {
 
@@ -53,18 +51,14 @@ public class GameEngine {
     this.running = false;
   }
 
-  /**
-   * Sets the match configuration. Must be called before initMatch().
-   */
+  /** Sets the match configuration. Must be called before initMatch(). */
   public void setMatch(Match match) {
     this.match = match;
     this.physicsSystem = new PhysicsSystem(match.getArena());
     this.physicsSystem.setGameState(gameState);
   }
 
-  /**
-   * Queue a player action for processing on next tick.
-   */
+  /** Queue a player action for processing on next tick. */
   public void queueAction(Player player, PlayerActionDTO action) {
     if (match == null) {
       throw new IllegalStateException("Match not set");
@@ -74,9 +68,7 @@ public class GameEngine {
     }
   }
 
-  /**
-   * Initialize a new match. Requires setMatch() to be called first.
-   */
+  /** Initialize a new match. Requires setMatch() to be called first. */
   public void initMatch() {
     if (match == null) {
       throw new IllegalStateException("Match not set. Call setMatch() first.");
@@ -94,9 +86,7 @@ public class GameEngine {
     gameState.processPending();
   }
 
-  /**
-   * Execute a single game tick (1/30 of a second).
-   */
+  /** Execute a single game tick (1/30 of a second). */
   public void tick() {
     if (!running || gameState.isGameOver() || (match != null && match.isEnded())) {
       return;
@@ -151,26 +141,20 @@ public class GameEngine {
     gameState.incrementFrame();
   }
 
-  /**
-   * Run multiple ticks.
-   */
+  /** Run multiple ticks. */
   public void tick(int count) {
     for (int i = 0; i < count && running && !gameState.isGameOver(); i++) {
       tick();
     }
   }
 
-  /**
-   * Run the simulation for a specified number of seconds.
-   */
+  /** Run the simulation for a specified number of seconds. */
   public void runSeconds(float seconds) {
     int ticks = (int) (seconds * TICKS_PER_SECOND);
     tick(ticks);
   }
 
-  /**
-   * Run the simulation until game over or max ticks reached.
-   */
+  /** Run the simulation until game over or max ticks reached. */
   public void runUntilEnd(int maxTicks) {
     for (int i = 0; i < maxTicks && running && !gameState.isGameOver(); i++) {
       tick();
@@ -237,44 +221,32 @@ public class GameEngine {
     }
   }
 
-  /**
-   * Spawn an entity into the game.
-   */
+  /** Spawn an entity into the game. */
   public void spawn(Entity entity) {
     gameState.spawnEntity(entity);
   }
 
-  /**
-   * Get elapsed game time in seconds.
-   */
+  /** Get elapsed game time in seconds. */
   public float getGameTimeSeconds() {
     return gameState.getGameTimeSeconds();
   }
 
-  /**
-   * Check if the game is still running.
-   */
+  /** Check if the game is still running. */
   public boolean isRunning() {
     return running && !gameState.isGameOver() && (match == null || !match.isEnded());
   }
 
-  /**
-   * Returns the arena for this match.
-   */
+  /** Returns the arena for this match. */
   public Arena getArena() {
     return match != null ? match.getArena() : null;
   }
 
-  /**
-   * Returns true if the match is in overtime.
-   */
+  /** Returns true if the match is in overtime. */
   public boolean isOvertime() {
     return match != null && match.isOvertime();
   }
 
-  /**
-   * Stop the game.
-   */
+  /** Stop the game. */
   public void stop() {
     running = false;
   }

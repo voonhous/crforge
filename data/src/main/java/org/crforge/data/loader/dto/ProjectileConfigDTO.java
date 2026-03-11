@@ -14,14 +14,10 @@ public class ProjectileConfigDTO {
   private float radius;
   private Boolean homing;
 
-  /**
-   * Buff name applied to the target on hit (e.g. "IceWizardSlowDown").
-   */
+  /** Buff name applied to the target on hit (e.g. "IceWizardSlowDown"). */
   private String targetBuff;
 
-  /**
-   * Duration of the targetBuff in seconds.
-   */
+  /** Duration of the targetBuff in seconds. */
   private float buffDuration;
 
   // AOE targeting flags

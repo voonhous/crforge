@@ -17,21 +17,16 @@ import org.crforge.core.entity.base.MovementType;
 @SuperBuilder
 public class Troop extends AbstractEntity {
 
-  @Builder.Default
-  private final Combat combat = Combat.builder().build();
+  @Builder.Default private final Combat combat = Combat.builder().build();
 
-  @Builder.Default
-  private final float deployTime = DEFAULT_DEPLOY_TIME;
+  @Builder.Default private final float deployTime = DEFAULT_DEPLOY_TIME;
 
-  @Builder.Default
-  private float deployTimer = 1.0f;
+  @Builder.Default private float deployTimer = 1.0f;
 
-  @Builder.Default
-  private final AbilityComponent ability = null;
+  @Builder.Default private final AbilityComponent ability = null;
 
   // River jump state: true while the troop is leaping over the river
-  @Setter
-  private boolean jumping;
+  @Setter private boolean jumping;
 
   @Override
   public EntityType getEntityType() {
@@ -58,7 +53,8 @@ public class Troop extends AbstractEntity {
     }
     float distance = position.distanceTo(currentTarget.getPosition());
     // Collision Radius used for attack range calculation
-    float effectiveRange = combat.getRange() + getCollisionRadius() + currentTarget.getCollisionRadius();
+    float effectiveRange =
+        combat.getRange() + getCollisionRadius() + currentTarget.getCollisionRadius();
     return distance <= effectiveRange;
   }
 

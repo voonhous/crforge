@@ -34,28 +34,26 @@ class BuildingDeployTimeTest {
     // 1. Create a Card with specific deploy time (e.g. 5.0s for X-Bow)
     float customDeployTime = 5.0f;
 
-    Card buildingCard = Card.builder()
-        .id("test-building")
-        .name("Test Building")
-        .type(CardType.BUILDING)
-        .cost(3)
-        .unitStats(TroopStats.builder()
+    Card buildingCard =
+        Card.builder()
+            .id("test-building")
             .name("Test Building")
-            .health(100)
-            .deployTime(customDeployTime)
-            .build())
-        .build();
+            .type(CardType.BUILDING)
+            .cost(3)
+            .unitStats(
+                TroopStats.builder()
+                    .name("Test Building")
+                    .health(100)
+                    .deployTime(customDeployTime)
+                    .build())
+            .build();
 
     // 2. Setup Player with this card
     player = new Player(Team.BLUE, new Deck(Collections.nCopies(8, buildingCard)), false);
     player.getElixir().update(10f); // Max elixir
 
     // 3. Deploy
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(10f)
-        .build();
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(10f).build();
 
     deploymentSystem.queueAction(player, action);
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -81,26 +79,24 @@ class BuildingDeployTimeTest {
     // 1. Create a Card with 0 deploy time
     float customDeployTime = 0.0f;
 
-    Card buildingCard = Card.builder()
-        .id("instant-building")
-        .name("Instant Building")
-        .type(CardType.BUILDING)
-        .cost(3)
-        .unitStats(TroopStats.builder()
+    Card buildingCard =
+        Card.builder()
+            .id("instant-building")
             .name("Instant Building")
-            .health(100)
-            .deployTime(customDeployTime)
-            .build())
-        .build();
+            .type(CardType.BUILDING)
+            .cost(3)
+            .unitStats(
+                TroopStats.builder()
+                    .name("Instant Building")
+                    .health(100)
+                    .deployTime(customDeployTime)
+                    .build())
+            .build();
 
     player = new Player(Team.BLUE, new Deck(Collections.nCopies(8, buildingCard)), false);
     player.getElixir().update(10f);
 
-    PlayerActionDTO action = PlayerActionDTO.builder()
-        .handIndex(0)
-        .x(10f)
-        .y(10f)
-        .build();
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(10f).build();
 
     deploymentSystem.queueAction(player, action);
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);

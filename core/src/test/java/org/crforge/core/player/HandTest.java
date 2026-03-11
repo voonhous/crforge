@@ -34,11 +34,7 @@ class HandTest {
     // Create 8 distinct cards
     createdCards = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      createdCards.add(Card.builder()
-          .name("Card " + i)
-          .type(CardType.TROOP)
-          .cost(i + 1)
-          .build());
+      createdCards.add(Card.builder().name("Card " + i).type(CardType.TROOP).cost(i + 1).build());
     }
     deck = new Deck(createdCards);
     hand = new Hand(deck);
@@ -74,9 +70,11 @@ class HandTest {
 
     // Assertions after play
     assertThat(played).isEqualTo(cardAtSlot0);
-    assertThat(hand.getCard(0)).isEqualTo(initialNextCard)
+    assertThat(hand.getCard(0))
+        .isEqualTo(initialNextCard)
         .as("Slot 0 should be filled by the previous Next card");
-    assertThat(hand.getNextCard()).isNotEqualTo(initialNextCard)
+    assertThat(hand.getNextCard())
+        .isNotEqualTo(initialNextCard)
         .as("Next card should be refreshed");
   }
 
@@ -98,7 +96,8 @@ class HandTest {
     hand.playCard(0);
 
     // Now, 'firstPlayed' should have moved from back of queue to 'Next'
-    assertThat(hand.getNextCard()).isEqualTo(firstPlayed)
+    assertThat(hand.getNextCard())
+        .isEqualTo(firstPlayed)
         .as("The first played card should appear as Next Card after 4 plays");
   }
 

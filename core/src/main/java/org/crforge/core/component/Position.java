@@ -8,8 +8,7 @@ import org.crforge.core.util.Vector2;
 public class Position {
 
   private final Vector2 position;
-  @Setter
-  private float rotation;
+  @Setter private float rotation;
 
   public Position(float x, float y) {
     this.position = new Vector2(x, y);

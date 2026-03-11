@@ -124,9 +124,9 @@ class ProjectileTest {
     Troop source = createTroop(Team.BLUE, 0, 0);
     Troop target = createTroop(Team.RED, 10, 0);
 
-    List<EffectStats> effects = List.of(
-        EffectStats.builder().type(StatusEffectType.SLOW).duration(2f).intensity(0.5f).build()
-    );
+    List<EffectStats> effects =
+        List.of(
+            EffectStats.builder().type(StatusEffectType.SLOW).duration(2f).intensity(0.5f).build());
 
     Projectile projectile = new Projectile(source, target, 50, 0, 15f, effects);
 
@@ -153,8 +153,8 @@ class ProjectileTest {
 
   @Test
   void positionTargeted_shouldStartAtGivenPosition() {
-    Projectile projectile = new Projectile(Team.BLUE, 5f, 20f, 5f, 10f,
-        100, 2.5f, 8f, Collections.emptyList());
+    Projectile projectile =
+        new Projectile(Team.BLUE, 5f, 20f, 5f, 10f, 100, 2.5f, 8f, Collections.emptyList());
 
     assertThat(projectile.getPosition().getX()).isEqualTo(5f);
     assertThat(projectile.getPosition().getY()).isEqualTo(20f);
@@ -168,8 +168,8 @@ class ProjectileTest {
 
   @Test
   void positionTargeted_shouldMoveTowardDestination() {
-    Projectile projectile = new Projectile(Team.BLUE, 5f, 20f, 5f, 10f,
-        100, 2.5f, 10f, Collections.emptyList());
+    Projectile projectile =
+        new Projectile(Team.BLUE, 5f, 20f, 5f, 10f, 100, 2.5f, 10f, Collections.emptyList());
 
     float initialY = projectile.getPosition().getY();
     projectile.update(0.1f);
@@ -182,8 +182,8 @@ class ProjectileTest {
   @Test
   void positionTargeted_shouldHitWhenReachingDestination() {
     // Short distance with fast speed to ensure arrival
-    Projectile projectile = new Projectile(Team.RED, 5f, 11f, 5f, 10f,
-        200, 3f, 50f, Collections.emptyList());
+    Projectile projectile =
+        new Projectile(Team.RED, 5f, 11f, 5f, 10f, 200, 3f, 50f, Collections.emptyList());
 
     boolean hit = projectile.update(1.0f);
 
@@ -198,8 +198,8 @@ class ProjectileTest {
   @Test
   void positionTargeted_shouldNotDeactivateFromNullTarget() {
     // Position-targeted projectiles have null target — they should NOT deactivate
-    Projectile projectile = new Projectile(Team.BLUE, 5f, 20f, 5f, 10f,
-        100, 2.5f, 5f, Collections.emptyList());
+    Projectile projectile =
+        new Projectile(Team.BLUE, 5f, 20f, 5f, 10f, 100, 2.5f, 5f, Collections.emptyList());
 
     assertThat(projectile.getTarget()).isNull();
 

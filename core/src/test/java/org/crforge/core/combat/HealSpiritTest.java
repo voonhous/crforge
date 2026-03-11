@@ -23,9 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Heal Spirit: 1-elixir kamikaze unit that fires a homing projectile,
- * dealing AOE damage to enemies and healing friendly units near the impact point
- * via a spawned area effect with HealSpiritBuff.
+ * Tests for Heal Spirit: 1-elixir kamikaze unit that fires a homing projectile, dealing AOE damage
+ * to enemies and healing friendly units near the impact point via a spawned area effect with
+ * HealSpiritBuff.
  */
 class HealSpiritTest {
 
@@ -49,12 +49,14 @@ class HealSpiritTest {
 
     // Register HealSpiritBuff so AreaEffectSystem can resolve healing
     BuffRegistry.clear();
-    BuffRegistry.register("HealSpiritBuff", BuffDefinition.builder()
-        .name("HealSpiritBuff")
-        .healPerSecond(157)
-        .hitFrequency(0.25f)
-        .enableStacking(true)
-        .build());
+    BuffRegistry.register(
+        "HealSpiritBuff",
+        BuffDefinition.builder()
+            .name("HealSpiritBuff")
+            .healPerSecond(157)
+            .hitFrequency(0.25f)
+            .enableStacking(true)
+            .build());
   }
 
   @Test
@@ -184,40 +186,41 @@ class HealSpiritTest {
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
 
-    assertThat(friendly.getHealth().getCurrent())
-        .as("HP should not exceed max")
-        .isEqualTo(100);
+    assertThat(friendly.getHealth().getCurrent()).as("HP should not exceed max").isEqualTo(100);
   }
 
   private Troop createHealSpirit(Team team, float x, float y) {
-    AreaEffectStats healAreaEffect = AreaEffectStats.builder()
-        .name("HealSpirit")
-        .radius(HEAL_AREA_RADIUS)
-        .lifeDuration(1.0f)
-        .hitsGround(true)
-        .hitsAir(true)
-        .buff("HealSpiritBuff")
-        .buffDuration(1.0f)
-        .build();
+    AreaEffectStats healAreaEffect =
+        AreaEffectStats.builder()
+            .name("HealSpirit")
+            .radius(HEAL_AREA_RADIUS)
+            .lifeDuration(1.0f)
+            .hitsGround(true)
+            .hitsAir(true)
+            .buff("HealSpiritBuff")
+            .buffDuration(1.0f)
+            .build();
 
-    ProjectileStats projStats = ProjectileStats.builder()
-        .name("HealSpiritProjectile")
-        .damage(HEAL_SPIRIT_DAMAGE)
-        .speed(PROJECTILE_SPEED)
-        .radius(AOE_RADIUS)
-        .spawnAreaEffect(healAreaEffect)
-        .build();
+    ProjectileStats projStats =
+        ProjectileStats.builder()
+            .name("HealSpiritProjectile")
+            .damage(HEAL_SPIRIT_DAMAGE)
+            .speed(PROJECTILE_SPEED)
+            .radius(AOE_RADIUS)
+            .spawnAreaEffect(healAreaEffect)
+            .build();
 
-    Combat combat = Combat.builder()
-        .damage(HEAL_SPIRIT_DAMAGE)
-        .range(2.5f)
-        .sightRange(5.5f)
-        .attackCooldown(0.3f)
-        .loadTime(0.1f)
-        .kamikaze(true)
-        .targetType(TargetType.ALL)
-        .projectileStats(projStats)
-        .build();
+    Combat combat =
+        Combat.builder()
+            .damage(HEAL_SPIRIT_DAMAGE)
+            .range(2.5f)
+            .sightRange(5.5f)
+            .attackCooldown(0.3f)
+            .loadTime(0.1f)
+            .kamikaze(true)
+            .targetType(TargetType.ALL)
+            .projectileStats(projStats)
+            .build();
 
     return Troop.builder()
         .name("HealSpirit")

@@ -3,9 +3,7 @@ package org.crforge.data.loader.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
-/**
- * DTO for deserializing buff definitions from parsed_buffs.json.
- */
+/** DTO for deserializing buff definitions from parsed_buffs.json. */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BuffConfigDTO {

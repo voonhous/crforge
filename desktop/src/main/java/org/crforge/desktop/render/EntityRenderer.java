@@ -14,8 +14,8 @@ import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 
 /**
- * Renders entity bodies: filled circles, tower boundaries, outlines,
- * collision circles, status effect rings, and invulnerability visuals.
+ * Renders entity bodies: filled circles, tower boundaries, outlines, collision circles, status
+ * effect rings, and invulnerability visuals.
  */
 public class EntityRenderer {
 
@@ -38,8 +38,8 @@ public class EntityRenderer {
       // Tower boundary rectangle
       if (entity.getEntityType() == EntityType.TOWER) {
         ctx.getShapeRenderer().setColor(COLOR_TOWER_BOUNDARY);
-        ctx.getShapeRenderer().rect(
-            x - visualRadius, y - visualRadius, visualRadius * 2, visualRadius * 2);
+        ctx.getShapeRenderer()
+            .rect(x - visualRadius, y - visualRadius, visualRadius * 2, visualRadius * 2);
       }
 
       // Entity body
@@ -72,8 +72,8 @@ public class EntityRenderer {
 
       // Visual outline (darker version of entity color)
       Color baseColor = getEntityColor(entity);
-      ctx.getShapeRenderer().setColor(
-          baseColor.r * 0.5f, baseColor.g * 0.5f, baseColor.b * 0.5f, 1f);
+      ctx.getShapeRenderer()
+          .setColor(baseColor.r * 0.5f, baseColor.g * 0.5f, baseColor.b * 0.5f, 1f);
       ctx.getShapeRenderer().circle(x, y, visualRadius);
 
       // Collision circle (yellow overlay)
@@ -98,13 +98,9 @@ public class EntityRenderer {
     if (entity.getEntityType() == EntityType.TOWER) {
       Tower tower = (Tower) entity;
       if (tower.isCrownTower()) {
-        return entity.getTeam() == Team.BLUE
-            ? COLOR_BLUE_CROWN_TOWER
-            : COLOR_RED_CROWN_TOWER;
+        return entity.getTeam() == Team.BLUE ? COLOR_BLUE_CROWN_TOWER : COLOR_RED_CROWN_TOWER;
       }
-      return entity.getTeam() == Team.BLUE
-          ? COLOR_BLUE_PRINCESS_TOWER
-          : COLOR_RED_PRINCESS_TOWER;
+      return entity.getTeam() == Team.BLUE ? COLOR_BLUE_PRINCESS_TOWER : COLOR_RED_PRINCESS_TOWER;
     }
     return entity.getTeam() == Team.BLUE ? COLOR_BLUE_ENTITY : COLOR_RED_ENTITY;
   }

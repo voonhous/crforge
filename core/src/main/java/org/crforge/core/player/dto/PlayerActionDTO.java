@@ -6,8 +6,8 @@ import lombok.ToString;
 
 /**
  * Represents a command from a player (or agent) to play a card.
- * <p>
- * This is a Data Transfer Object (DTO) for the GameEngine.
+ *
+ * <p>This is a Data Transfer Object (DTO) for the GameEngine.
  */
 @Getter
 @Builder
@@ -21,21 +21,13 @@ public class PlayerActionDTO {
   // Arena Y coordinate (Logic coordinates)
   private final float y;
 
-  /**
-   * Basic validation of the action structure (not game rules).
-   */
+  /** Basic validation of the action structure (not game rules). */
   public boolean isValid() {
     return handIndex >= 0 && handIndex < 4;
   }
 
-  /**
-   * Helper to create an action.
-   */
+  /** Helper to create an action. */
   public static PlayerActionDTO play(int index, float x, float y) {
-    return PlayerActionDTO.builder()
-        .handIndex(index)
-        .x(x)
-        .y(y)
-        .build();
+    return PlayerActionDTO.builder().handIndex(index).x(x).y(y).build();
   }
 }

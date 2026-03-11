@@ -76,8 +76,8 @@ public class Health {
   }
 
   /**
-   * Instantly kills this entity by setting HP to 0.
-   * Bypasses shield absorption (shields are irrelevant for self-destruct).
+   * Instantly kills this entity by setting HP to 0. Bypasses shield absorption (shields are
+   * irrelevant for self-destruct).
    */
   public void kill() {
     current = 0;

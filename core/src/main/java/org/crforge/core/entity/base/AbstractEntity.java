@@ -23,39 +23,29 @@ public abstract class AbstractEntity implements Entity {
 
   private static long nextId = 1;
 
-  @EqualsAndHashCode.Include
-  @Builder.Default
-  protected final long id = nextId++;
+  @EqualsAndHashCode.Include @Builder.Default protected final long id = nextId++;
 
   protected final String name;
   protected final Team team;
   protected final Position position;
 
-  @Builder.Default
-  protected final Health health = new Health(100);
+  @Builder.Default protected final Health health = new Health(100);
 
   @Builder.Default
   protected final Movement movement = new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND);
 
-  @Builder.Default
-  protected final SpawnerComponent spawner = null;
+  @Builder.Default protected final SpawnerComponent spawner = null;
 
-  @Builder.Default
-  protected final List<AppliedEffect> appliedEffects = new ArrayList<>();
+  @Builder.Default protected final List<AppliedEffect> appliedEffects = new ArrayList<>();
 
   // Level used when this entity was created (1 = base stats, no scaling)
-  @Builder.Default
-  protected final int level = 1;
+  @Builder.Default protected final int level = 1;
 
-  @Builder.Default
-  protected boolean spawned = false;
+  @Builder.Default protected boolean spawned = false;
 
-  @Builder.Default
-  protected boolean dead = false;
+  @Builder.Default protected boolean dead = false;
 
-  @Setter
-  @Builder.Default
-  protected boolean invulnerable = false;
+  @Setter @Builder.Default protected boolean invulnerable = false;
 
   public static void resetIdCounter() {
     nextId = 1;

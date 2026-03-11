@@ -9,9 +9,7 @@ import java.util.Map;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.data.loader.dto.BuffConfigDTO;
 
-/**
- * Loads buff definitions from parsed_buffs.json and converts them to BuffDefinition objects.
- */
+/** Loads buff definitions from parsed_buffs.json and converts them to BuffDefinition objects. */
 public class BuffLoader {
 
   private static final ObjectMapper mapper = new ObjectMapper();
@@ -23,8 +21,7 @@ public class BuffLoader {
    */
   public static Map<String, BuffDefinition> loadBuffs(InputStream inputStream) {
     try {
-      Map<String, BuffConfigDTO> dtos = mapper.readValue(inputStream,
-          new TypeReference<>() {});
+      Map<String, BuffConfigDTO> dtos = mapper.readValue(inputStream, new TypeReference<>() {});
 
       Map<String, BuffDefinition> result = new LinkedHashMap<>();
       for (Map.Entry<String, BuffConfigDTO> entry : dtos.entrySet()) {
