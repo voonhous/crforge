@@ -28,6 +28,7 @@ public class GameState {
   private final List<Projectile> projectiles;
   private final List<Entity> pendingSpawns;
   private final List<Entity> pendingRemovals;
+  private final List<AoeDamageEvent> aoeDamageEvents;
 
   private final Map<Team, List<Tower>> towers;
   private List<Entity> cachedAliveEntities;
@@ -40,6 +41,7 @@ public class GameState {
     this.projectiles = new ArrayList<>();
     this.pendingSpawns = new ArrayList<>();
     this.pendingRemovals = new ArrayList<>();
+    this.aoeDamageEvents = new ArrayList<>();
     this.towers = new EnumMap<>(Team.class);
     this.towers.put(Team.BLUE, new ArrayList<>());
     this.towers.put(Team.RED, new ArrayList<>());
@@ -68,7 +70,14 @@ public class GameState {
   /**
    * Process pending spawns and removals. Called at start of each tick.
    */
+  public void recordAoeDamage(float centerX, float centerY, float radius, Team sourceTeam) {
+    aoeDamageEvents.add(new AoeDamageEvent(centerX, centerY, radius, sourceTeam));
+  }
+
   public void processPending() {
+    // Clear AOE damage events from previous tick
+    aoeDamageEvents.clear();
+
     // Process spawns
     for (Entity entity : pendingSpawns) {
       entities.add(entity);
@@ -244,6 +253,7 @@ public class GameState {
     pendingRemovals.clear();
     towers.get(Team.BLUE).clear();
     towers.get(Team.RED).clear();
+    aoeDamageEvents.clear();
     cachedAliveEntities = Collections.emptyList();
     frameCount = 0;
     gameOver = false;

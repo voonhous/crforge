@@ -24,6 +24,7 @@ public class DebugRenderer {
   private final DebugOverlayRenderer debugOverlayRenderer;
   private final HudRenderer hudRenderer;
   private final DamageNumberRenderer damageNumberRenderer;
+  private final AoeDamageRenderer aoeDamageRenderer;
 
   @Getter
   private boolean drawPaths = false;
@@ -31,6 +32,8 @@ public class DebugRenderer {
   private boolean drawRanges = false;
   @Getter
   private boolean drawDamageNumbers = false;
+  @Getter
+  private boolean drawAoeDamage = true;
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
@@ -41,6 +44,7 @@ public class DebugRenderer {
     this.debugOverlayRenderer = new DebugOverlayRenderer(ctx);
     this.hudRenderer = new HudRenderer(ctx);
     this.damageNumberRenderer = new DamageNumberRenderer(ctx);
+    this.aoeDamageRenderer = new AoeDamageRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -53,6 +57,10 @@ public class DebugRenderer {
 
   public void toggleDrawDamageNumbers() {
     drawDamageNumbers = !drawDamageNumbers;
+  }
+
+  public void toggleDrawAoeDamage() {
+    drawAoeDamage = !drawAoeDamage;
   }
 
   public void render(GameEngine engine, OrthographicCamera camera,
@@ -118,6 +126,12 @@ public class DebugRenderer {
       damageNumberRenderer.render();
     }
 
+    // 12.6. AOE damage indicators (always update to consume events; only render when toggled on)
+    aoeDamageRenderer.update(state);
+    if (drawAoeDamage) {
+      aoeDamageRenderer.render();
+    }
+
     // 13. Area effect zones
     debugOverlayRenderer.renderAreaEffects(state);
 
@@ -129,7 +143,7 @@ public class DebugRenderer {
 
     // 16. HUD (timer, cards, elixir)
     hudRenderer.render(engine, match, camera, selectedHandIndex, selectedTeam,
-        drawPaths, drawRanges, drawDamageNumbers);
+        drawPaths, drawRanges, drawDamageNumbers, drawAoeDamage);
   }
 
   private Player getPlayer(Match match, Team selectedTeam) {

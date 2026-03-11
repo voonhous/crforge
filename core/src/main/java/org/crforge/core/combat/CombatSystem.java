@@ -577,6 +577,10 @@ public class CombatSystem {
    */
   public void applySpellDamage(Team sourceTeam, float centerX, float centerY,
       int damage, float radius, List<EffectStats> effects) {
+    if (radius > 0) {
+      gameState.recordAoeDamage(centerX, centerY, radius, sourceTeam);
+    }
+
     Team enemyTeam = sourceTeam.opposite();
 
     for (Entity entity : gameState.getAliveEntities()) {

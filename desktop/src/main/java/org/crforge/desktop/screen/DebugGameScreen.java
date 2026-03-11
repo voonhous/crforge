@@ -33,6 +33,7 @@ import org.crforge.desktop.render.RenderConstants;
  * <li>P: Toggle path visualization</li>
  * <li>O: Toggle attack range circles</li>
  * <li>D: Toggle floating damage numbers</li>
+ * <li>A: Toggle AOE damage indicators</li>
  * <li>1-4: Play card from blue player's hand at random position</li>
  * <li>5-8: Play card from red player's hand at random position</li>
  * <li>+/-: Speed up/slow down simulation</li>
@@ -97,7 +98,7 @@ public class DebugGameScreen implements Screen {
         CardRegistry.get("electrowizard"), // Deploy stun effect
         CardRegistry.get("witch"),         // Live spawner (skeletons)
         CardRegistry.get("zap"),           // Area effect spell (stun)
-        CardRegistry.get("poison")         // Area effect spell (ticking)
+        CardRegistry.get("wizard")         // Area effect spell (ticking)
     );
 
     // Red: dash, reflect, shield, spawner building, live spawn, area effect, charge
@@ -147,6 +148,10 @@ public class DebugGameScreen implements Screen {
           case Input.Keys.D -> {
             renderer.toggleDrawDamageNumbers();
             log.info("Damage numbers: {}", renderer.isDrawDamageNumbers() ? "ON" : "OFF");
+          }
+          case Input.Keys.A -> {
+            renderer.toggleDrawAoeDamage();
+            log.info("AOE damage indicators: {}", renderer.isDrawAoeDamage() ? "ON" : "OFF");
           }
           case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
           case Input.Keys.MINUS -> adjustSpeed(0.5f);
@@ -342,6 +347,7 @@ public class DebugGameScreen implements Screen {
           P     - Toggle path visualization
           O     - Toggle attack range circles
           D     - Toggle floating damage numbers
+          A     - Toggle AOE damage indicators
           +/-   - Speed up/slow down
           1-4   - Play blue card
           5-8   - Play red card
