@@ -22,7 +22,7 @@ the live game name.
 | 8  | Witch             | witch            | `DONE`    |                             |
 | 9  | Barbarians        | barbarians       | `DONE`    | count=5                     |
 | 10 | Golem             | golem            |           |                             |
-| 11 | Skeletons         | skeletons        |           | count=3                     |
+| 11 | Skeletons         | skeletons        | `DONE`    | count=3                     |
 | 12 | Valkyrie          | valkyrie         |           |                             |
 | 13 | Skeleton Army     | skeletonarmy     |           | count=15                    |
 | 14 | Bomber            | bomber           |           |                             |
@@ -31,13 +31,13 @@ the live game name.
 | 17 | Prince            | prince           | `DONE`    |                             |
 | 18 | Wizard            | wizard           |           |                             |
 | 19 | Mini P.E.K.K.A    | minipekka        | `DONE`    |                             |
-| 20 | Spear Goblins     | speargoblins     |           | count=3                     |
+| 20 | Spear Goblins     | speargoblins     | `DONE`    | count=3                     |
 | 21 | Giant Skeleton    | giantskeleton    | `DONE`    |                             |
 | 22 | Hog Rider         | hogrider         |           | jump over river             |
 | 23 | Minion Horde      | minionhorde      |           | count=6                     |
 | 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect               |
 | 25 | Royal Giant       | royalgiant       | `DONE`    |                             |
-| 26 | Guards            | skeletonwarriors |           | count=3                     |
+| 26 | Guards            | skeletonwarriors | `DONE`    | count=3                     |
 | 27 | Princess          | princess         |           |                             |
 | 28 | Dark Prince       | darkprince       | `DONE`    |                             |
 | 29 | Lava Hound        | lavahound        | `PARTIAL` | needs pup death spawn logic |
@@ -52,8 +52,8 @@ the live game name.
 | 38 | Ice Golem         | icegolemite      |           |                             |
 | 39 | Mega Minion       | megaminion       | `DONE`    |                             |
 | 40 | Dart Goblin       | blowdartgoblin   | `DONE`    |                             |
-| 41 | Goblin Gang       | goblingang       |           | count=3                     |
-| 42 | Electro Wizard    | electrowizard    | `DONE`    | deploy effect               |
+| 41 | Goblin Gang       | goblingang       | `DONE`    | count=3                     |
+| 42 | Electro Wizard    | electrowizard    |           | deploy effect               |
 | 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                     |
 | 44 | Hunter            | hunter           |           | shotgun burst               |
 | 45 | Executioner       | axeman           |           |                             |
@@ -65,7 +65,7 @@ the live game name.
 | 51 | Ram Rider         | ramrider         |           |                             |
 | 52 | Zappies           | minisparkys      | `DONE`    | count=3                     |
 | 53 | Rascals           | rascals          |           |                             |
-| 54 | Mega Knight       | megaknight       |           | needs spawn jump AOE        |
+| 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE        |
 | 55 | Skeleton Barrel   | skeletonballoon  |           |                             |
 | 56 | Cannon Cart       | dartbarrell      |           |                             |
 | 57 | Wall Breakers     | wallbreakers     |           | count=2                     |
