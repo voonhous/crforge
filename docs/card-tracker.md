@@ -24,17 +24,17 @@ the live game name.
 | 10 | Golem             | golem            | `DONE`    |                             |
 | 11 | Skeletons         | skeletons        | `DONE`    | count=3                     |
 | 12 | Valkyrie          | valkyrie         | `DONE`    |                             |
-| 13 | Skeleton Army     | skeletonarmy     | `DONE`     | count=15                    |
-| 14 | Bomber            | bomber           |           |                             |
+| 13 | Skeleton Army     | skeletonarmy     | `DONE`    | count=15                    |
+| 14 | Bomber            | bomber           | `DONE`    |                             |
 | 15 | Musketeer         | musketeer        | `DONE`    |                             |
-| 16 | Baby Dragon       | babydragon       |           |                             |
+| 16 | Baby Dragon       | babydragon       | `DONE`    |                             |
 | 17 | Prince            | prince           | `DONE`    |                             |
-| 18 | Wizard            | wizard           |           |                             |
+| 18 | Wizard            | wizard           | `DONE`    |                             |
 | 19 | Mini P.E.K.K.A    | minipekka        | `DONE`    |                             |
 | 20 | Spear Goblins     | speargoblins     | `DONE`    | count=3                     |
 | 21 | Giant Skeleton    | giantskeleton    | `DONE`    |                             |
 | 22 | Hog Rider         | hogrider         |           | jump over river             |
-| 23 | Minion Horde      | minionhorde      |           | count=6                     |
+| 23 | Minion Horde      | minionhorde      | `DONE`    | count=6                     |
 | 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect               |
 | 25 | Royal Giant       | royalgiant       | `DONE`    |                             |
 | 26 | Guards            | skeletonwarriors | `DONE`    | count=3                     |
@@ -57,7 +57,7 @@ the live game name.
 | 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                     |
 | 44 | Hunter            | hunter           |           | shotgun burst               |
 | 45 | Executioner       | axeman           |           |                             |
-| 46 | Bandit            | assassin         |           | dash ability                |
+| 46 | Bandit            | assassin         | `DONE`    | dash ability                |
 | 47 | Royal Recruits    | royalrecruits    |           | count=6                     |
 | 48 | Night Witch       | darkwitch        | `DONE`    |                             |
 | 49 | Bats              | bats             |           | count=5                     |
@@ -77,8 +77,8 @@ the live game name.
 | 63 | Firecracker       | firecracker      |           |                             |
 | 64 | Elixir Golem      | elixirgolem      |           |                             |
 | 65 | Battle Healer     | battlehealer     |           |                             |
-| 66 | Skeleton Dragons  | skeletondragons  |           | count=2                     |
-| 67 | Mother Witch      | witchmother      |           |                             |
+| 66 | Skeleton Dragons  | skeletondragons  | `DONE`    | count=2                     |
+| 67 | Mother Witch      | witchmother      | `DONE`    |                             |
 | 68 | Electro Spirit    | electrospirit    |           |                             |
 | 69 | Electro Giant     | electrogiant     | `DONE`    | reflect damage              |
 | 70 | Phoenix           | phoenix          |           |                             |
