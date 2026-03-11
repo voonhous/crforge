@@ -10,92 +10,92 @@ the live game name.
 
 ## Troops
 
-| #  | CR Name           | Internal ID      | Status    | Notes                              |
-|----|-------------------|------------------|-----------|------------------------------------|
-| 1  | Knight            | knight           | `DONE`    |                                    |
-| 2  | Archers           | archer           | `DONE`    | count=2                            |
-| 3  | Goblins           | goblins          | `DONE`    | count=4                            |
-| 4  | Giant             | giant            | `DONE`    |                                    |
-| 5  | P.E.K.K.A         | pekka            | `DONE`    |                                    |
-| 6  | Minions           | minions          | `DONE`    | count=3                            |
-| 7  | Balloon           | balloon          | `DONE`    |                                    |
-| 8  | Witch             | witch            | `DONE`    |                                    |
-| 9  | Barbarians        | barbarians       | `DONE`    | count=5                            |
-| 10 | Golem             | golem            | `DONE`    |                                    |
-| 11 | Skeletons         | skeletons        | `DONE`    | count=3                            |
-| 12 | Valkyrie          | valkyrie         | `DONE`    |                                    |
-| 13 | Skeleton Army     | skeletonarmy     | `DONE`    | count=15                           |
-| 14 | Bomber            | bomber           | `DONE`    |                                    |
-| 15 | Musketeer         | musketeer        | `DONE`    |                                    |
-| 16 | Baby Dragon       | babydragon       | `DONE`    |                                    |
-| 17 | Prince            | prince           | `DONE`    |                                    |
-| 18 | Wizard            | wizard           | `DONE`    |                                    |
-| 19 | Mini P.E.K.K.A    | minipekka        | `DONE`    |                                    |
-| 20 | Spear Goblins     | speargoblins     | `DONE`    | count=3                            |
-| 21 | Giant Skeleton    | giantskeleton    | `DONE`    |                                    |
-| 22 | Hog Rider         | hogrider         | `DONE`    | jump over river                    |
-| 23 | Minion Horde      | minionhorde      | `DONE`    | count=6                            |
-| 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect                      |
-| 25 | Royal Giant       | royalgiant       | `DONE`    |                                    |
-| 26 | Guards            | skeletonwarriors | `DONE`    | count=3                            |
-| 27 | Princess          | princess         |           |                                    |
-| 28 | Dark Prince       | darkprince       | `DONE`    |                                    |
-| 29 | Lava Hound        | lavahound        | `PARTIAL` | needs pup death spawn logic        |
-| 30 | Ice Spirit        | icespirits       |           |                                    |
-| 31 | Fire Spirit       | firespirits      |           |                                    |
-| 32 | Miner             | miner            |           |                                    |
-| 33 | Sparky            | zapmachine       | `DONE`    | noPreload                          |
-| 34 | Bowler            | bowler           |           |                                    |
-| 35 | Lumberjack        | ragebarbarian    |           |                                    |
+| #  | CR Name           | Internal ID      | Status    | Notes                           |
+|----|-------------------|------------------|-----------|---------------------------------|
+| 1  | Knight            | knight           | `DONE`    |                                 |
+| 2  | Archers           | archer           | `DONE`    | count=2                         |
+| 3  | Goblins           | goblins          | `DONE`    | count=4                         |
+| 4  | Giant             | giant            | `DONE`    |                                 |
+| 5  | P.E.K.K.A         | pekka            | `DONE`    |                                 |
+| 6  | Minions           | minions          | `DONE`    | count=3                         |
+| 7  | Balloon           | balloon          | `DONE`    |                                 |
+| 8  | Witch             | witch            | `DONE`    |                                 |
+| 9  | Barbarians        | barbarians       | `DONE`    | count=5                         |
+| 10 | Golem             | golem            | `DONE`    |                                 |
+| 11 | Skeletons         | skeletons        | `DONE`    | count=3                         |
+| 12 | Valkyrie          | valkyrie         | `DONE`    |                                 |
+| 13 | Skeleton Army     | skeletonarmy     | `DONE`    | count=15                        |
+| 14 | Bomber            | bomber           | `DONE`    |                                 |
+| 15 | Musketeer         | musketeer        | `DONE`    |                                 |
+| 16 | Baby Dragon       | babydragon       | `DONE`    |                                 |
+| 17 | Prince            | prince           | `DONE`    |                                 |
+| 18 | Wizard            | wizard           | `DONE`    |                                 |
+| 19 | Mini P.E.K.K.A    | minipekka        | `DONE`    |                                 |
+| 20 | Spear Goblins     | speargoblins     | `DONE`    | count=3                         |
+| 21 | Giant Skeleton    | giantskeleton    | `DONE`    |                                 |
+| 22 | Hog Rider         | hogrider         | `DONE`    | jump over river                 |
+| 23 | Minion Horde      | minionhorde      | `DONE`    | count=6                         |
+| 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect                   |
+| 25 | Royal Giant       | royalgiant       | `DONE`    |                                 |
+| 26 | Guards            | skeletonwarriors | `DONE`    | count=3                         |
+| 27 | Princess          | princess         |           |                                 |
+| 28 | Dark Prince       | darkprince       | `DONE`    |                                 |
+| 29 | Lava Hound        | lavahound        | `PARTIAL` | needs pup death spawn logic     |
+| 30 | Ice Spirit        | icespirits       | `DONE`    |                                 |
+| 31 | Fire Spirit       | firespirits      | `DONE`    |                                 |
+| 32 | Miner             | miner            |           |                                 |
+| 33 | Sparky            | zapmachine       | `DONE`    | noPreload                       |
+| 34 | Bowler            | bowler           |           |                                 |
+| 35 | Lumberjack        | ragebarbarian    |           |                                 |
 | 36 | Battle Ram        | battleram        | `DONE`    | charge + kamikaze + death spawn |
-| 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                    |
-| 38 | Ice Golem         | icegolemite      |           |                                    |
-| 39 | Mega Minion       | megaminion       | `DONE`    |                                    |
-| 40 | Dart Goblin       | blowdartgoblin   | `DONE`    |                                    |
-| 41 | Goblin Gang       | goblingang       | `DONE`    | count=3                            |
-| 42 | Electro Wizard    | electrowizard    | `DONE`    | deploy effect                      |
-| 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                            |
-| 44 | Hunter            | hunter           |           | shotgun burst                      |
-| 45 | Executioner       | axeman           |           |                                    |
-| 46 | Bandit            | assassin         | `DONE`    | dash ability                       |
-| 47 | Royal Recruits    | royalrecruits    |           | count=6                            |
-| 48 | Night Witch       | darkwitch        | `DONE`    |                                    |
-| 49 | Bats              | bats             |           | count=5                            |
-| 50 | Royal Ghost       | ghost            |           |                                    |
-| 51 | Ram Rider         | ramrider         |           |                                    |
-| 52 | Zappies           | minisparkys      | `DONE`    | count=3                            |
-| 53 | Rascals           | rascals          |           |                                    |
-| 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE               |
-| 55 | Skeleton Barrel   | skeletonballoon  |           |                                    |
-| 56 | Cannon Cart       | dartbarrell      |           |                                    |
-| 57 | Wall Breakers     | wallbreakers     |           | count=2                            |
-| 58 | Royal Hogs        | royalhogs        |           | count=4, jump over river           |
-| 59 | Goblin Giant      | goblingiant      |           |                                    |
-| 60 | Fisherman         | fisherman        | `DONE`    | hook ability                       |
-| 61 | Magic Archer      | elitearcher      |           |                                    |
-| 62 | Electro Dragon    | electrodragon    | `DONE`    | chain lightning                    |
-| 63 | Firecracker       | firecracker      |           |                                    |
-| 64 | Elixir Golem      | elixirgolem      |           |                                    |
-| 65 | Battle Healer     | battlehealer     |           |                                    |
-| 66 | Skeleton Dragons  | skeletondragons  | `DONE`    | count=2                            |
-| 67 | Mother Witch      | witchmother      | `DONE`    |                                    |
-| 68 | Electro Spirit    | electrospirit    |           |                                    |
-| 69 | Electro Giant     | electrogiant     | `DONE`    | reflect damage                     |
-| 70 | Phoenix           | phoenix          |           |                                    |
-| 71 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling              |
-| 72 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling              |
-| 73 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling              |
-| 74 | Mighty Miner      | mightyminer      | `PARTIAL` | needs ability cycling              |
-| 75 | Monk              | monk             | `PARTIAL` | needs ability cycling              |
-| 76 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling              |
-| 77 | Suspicious Bush   | --               | `MISSING` | newer card                         |
-| 78 | Berserker         | --               | `MISSING` | newer card                         |
-| 79 | Goblin Demolisher | --               | `MISSING` | newer card                         |
-| 80 | Goblin Brawler    | --               | `MISSING` | newer card                         |
-| 81 | Rune Giant        | --               | `MISSING` | newer card                         |
-| 82 | Goblin Machine    | --               | `MISSING` | newer card                         |
-| 83 | Goblinstein       | --               | `MISSING` | newer card                         |
-| 84 | Boss Bandit       | --               | `MISSING` | newer card                         |
+| 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                 |
+| 38 | Ice Golem         | icegolemite      |           |                                 |
+| 39 | Mega Minion       | megaminion       | `DONE`    |                                 |
+| 40 | Dart Goblin       | blowdartgoblin   | `DONE`    |                                 |
+| 41 | Goblin Gang       | goblingang       | `DONE`    | count=3                         |
+| 42 | Electro Wizard    | electrowizard    | `DONE`    | deploy effect                   |
+| 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                         |
+| 44 | Hunter            | hunter           |           | shotgun burst                   |
+| 45 | Executioner       | axeman           |           |                                 |
+| 46 | Bandit            | assassin         | `DONE`    | dash ability                    |
+| 47 | Royal Recruits    | royalrecruits    |           | count=6                         |
+| 48 | Night Witch       | darkwitch        | `DONE`    |                                 |
+| 49 | Bats              | bats             |           | count=5                         |
+| 50 | Royal Ghost       | ghost            |           |                                 |
+| 51 | Ram Rider         | ramrider         |           |                                 |
+| 52 | Zappies           | minisparkys      | `DONE`    | count=3                         |
+| 53 | Rascals           | rascals          |           |                                 |
+| 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE            |
+| 55 | Skeleton Barrel   | skeletonballoon  |           |                                 |
+| 56 | Cannon Cart       | dartbarrell      |           |                                 |
+| 57 | Wall Breakers     | wallbreakers     |           | count=2                         |
+| 58 | Royal Hogs        | royalhogs        |           | count=4, jump over river        |
+| 59 | Goblin Giant      | goblingiant      |           |                                 |
+| 60 | Fisherman         | fisherman        | `DONE`    | hook ability                    |
+| 61 | Magic Archer      | elitearcher      |           |                                 |
+| 62 | Electro Dragon    | electrodragon    | `DONE`    | chain lightning                 |
+| 63 | Firecracker       | firecracker      |           |                                 |
+| 64 | Elixir Golem      | elixirgolem      |           |                                 |
+| 65 | Battle Healer     | battlehealer     |           |                                 |
+| 66 | Skeleton Dragons  | skeletondragons  | `DONE`    | count=2                         |
+| 67 | Mother Witch      | witchmother      | `DONE`    |                                 |
+| 68 | Electro Spirit    | electrospirit    | `DONE`    |                                 |
+| 69 | Electro Giant     | electrogiant     | `DONE`    | reflect damage                  |
+| 70 | Phoenix           | phoenix          |           |                                 |
+| 71 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling           |
+| 72 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling           |
+| 73 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling           |
+| 74 | Mighty Miner      | mightyminer      | `PARTIAL` | needs ability cycling           |
+| 75 | Monk              | monk             | `PARTIAL` | needs ability cycling           |
+| 76 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling           |
+| 77 | Suspicious Bush   | --               | `MISSING` | newer card                      |
+| 78 | Berserker         | --               | `MISSING` | newer card                      |
+| 79 | Goblin Demolisher | --               | `MISSING` | newer card                      |
+| 80 | Goblin Brawler    | --               | `MISSING` | newer card                      |
+| 81 | Rune Giant        | --               | `MISSING` | newer card                      |
+| 82 | Goblin Machine    | --               | `MISSING` | newer card                      |
+| 83 | Goblinstein       | --               | `MISSING` | newer card                      |
+| 84 | Boss Bandit       | --               | `MISSING` | newer card                      |
 
 ## Spells
 
@@ -117,7 +117,7 @@ the live game name.
 | 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic      |
 | 15 | Earthquake       | earthquake    |           | area effect, ticking      |
 | 16 | Barbarian Barrel | barblog       |           | projectile spell          |
-| 17 | Heal Spirit      | heal          |           | summons HealSpirit        |
+| 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit        |
 | 18 | Snowball         | snowball      |           | projectile spell          |
 | 19 | Royal Delivery   | royaldelivery |           | area effect + troop spawn |
 | 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics     |

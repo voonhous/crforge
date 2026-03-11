@@ -7,6 +7,8 @@ import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.combat.DamageUtil;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -61,7 +63,14 @@ public class AreaEffectSystem {
   }
 
   private void applyToTargets(AreaEffect effect) {
+    // Check if this area effect heals friendlies instead of damaging enemies
     AreaEffectStats stats = effect.getStats();
+    BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
+    if (buffDef != null && buffDef.getHealPerSecond() > 0) {
+      applyHealToFriendlies(effect, buffDef);
+      return;
+    }
+
     Team enemyTeam = effect.getTeam().opposite();
     float centerX = effect.getPosition().getX();
     float centerY = effect.getPosition().getY();
@@ -99,6 +108,39 @@ public class AreaEffectSystem {
 
           target.getHealth().takeDamage(effectiveDamage);
         }
+      }
+    }
+  }
+
+  /**
+   * Heals friendly units within the area effect radius. Used when the buff defines
+   * healPerSecond (e.g. HealSpiritBuff). Heal amount is healPerSecond * buffDuration
+   * for one-shot effects, or healPerSecond * hitSpeed for ticking effects.
+   */
+  private void applyHealToFriendlies(AreaEffect effect, BuffDefinition buffDef) {
+    AreaEffectStats stats = effect.getStats();
+    float duration = stats.getBuffDuration() > 0 ? stats.getBuffDuration() : 1.0f;
+    int healAmount = Math.round(buffDef.getHealPerSecond() * duration);
+
+    Team friendlyTeam = effect.getTeam();
+    float centerX = effect.getPosition().getX();
+    float centerY = effect.getPosition().getY();
+
+    for (Entity target : gameState.getAliveEntities()) {
+      if (target.getTeam() != friendlyTeam) {
+        continue;
+      }
+      if (!target.isTargetable()) {
+        continue;
+      }
+      if (!canHit(stats, target)) {
+        continue;
+      }
+
+      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
+      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
+      if (distanceSq <= effectiveRadius * effectiveRadius) {
+        target.getHealth().heal(healAmount);
       }
     }
   }

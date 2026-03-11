@@ -5,15 +5,18 @@ import java.util.Collections;
 import java.util.List;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
@@ -368,6 +371,11 @@ public class CombatSystem {
     if (projectile.getSpawnProjectile() != null) {
       processSpawnProjectile(projectile);
     }
+
+    // Spawn area effect on impact (Heal Spirit heal zone, etc.)
+    if (projectile.getSpawnAreaEffect() != null) {
+      spawnAreaEffectOnImpact(projectile);
+    }
   }
 
   /**
@@ -460,6 +468,35 @@ public class CombatSystem {
   }
 
   /**
+   * Spawns an AreaEffect entity at the projectile's impact point.
+   * Used by projectiles that carry a spawnAreaEffect (e.g. Heal Spirit heal zone).
+   */
+  private void spawnAreaEffectOnImpact(Projectile projectile) {
+    AreaEffectStats stats = projectile.getSpawnAreaEffect();
+
+    float centerX, centerY;
+    if (projectile.isPositionTargeted()) {
+      centerX = projectile.getTargetX();
+      centerY = projectile.getTargetY();
+    } else if (projectile.getTarget() != null) {
+      centerX = projectile.getTarget().getPosition().getX();
+      centerY = projectile.getTarget().getPosition().getY();
+    } else {
+      return;
+    }
+
+    AreaEffect effect = AreaEffect.builder()
+        .name(stats.getName() != null ? stats.getName() : "SpawnedAreaEffect")
+        .team(projectile.getTeam())
+        .position(new Position(centerX, centerY))
+        .stats(stats)
+        .remainingLifetime(stats.getLifeDuration())
+        .build();
+
+    gameState.spawnEntity(effect);
+  }
+
+  /**
    * Creates a projectile for a ranged attack, resolving stats from the combat component's
    * ProjectileStats with fallback to combat-level values.
    */
@@ -501,6 +538,7 @@ public class CombatSystem {
       projectile.setSpawnProjectile(stats.getSpawnProjectile());
       projectile.setPushback(stats.getPushback());
       projectile.setPushbackAll(stats.isPushbackAll());
+      projectile.setSpawnAreaEffect(stats.getSpawnAreaEffect());
     }
 
     return projectile;

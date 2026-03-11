@@ -15,6 +15,7 @@ public class BuffConfigDTO {
   private int hitSpeedMultiplier;
   private int spawnSpeedMultiplier;
   private int damagePerSecond;
+  private int healPerSecond;
   private int crownTowerDamagePercent;
   private int buildingDamagePercent;
   private float hitFrequency;

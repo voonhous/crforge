@@ -36,6 +36,10 @@ public class BuffDefinition {
   @Builder.Default
   private final int damagePerSecond = 0;
 
+  /** Heal per second for heal-over-time effects (e.g. HealSpiritBuff 157). */
+  @Builder.Default
+  private final int healPerSecond = 0;
+
   /** Crown tower damage percent (e.g. -75 for Poison means 25% damage to crown towers). */
   @Builder.Default
   private final int crownTowerDamagePercent = 0;

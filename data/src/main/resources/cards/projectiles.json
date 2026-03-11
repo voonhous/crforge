@@ -273,7 +273,16 @@
     "radius": 1.5,
     "deflectBehaviours": [
       "NoDeflect"
-    ]
+    ],
+    "spawnAreaEffect": {
+      "name": "HealSpirit",
+      "radius": 2.5,
+      "lifeDuration": 1.0,
+      "hitsGround": true,
+      "hitsAir": true,
+      "buff": "HealSpiritBuff",
+      "buffDuration": 1.0
+    }
   },
   "HunterProjectile": {
     "name": "HunterProjectile",

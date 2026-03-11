@@ -43,6 +43,7 @@ public class BuffLoader {
         .hitSpeedMultiplier(dto.getHitSpeedMultiplier())
         .spawnSpeedMultiplier(dto.getSpawnSpeedMultiplier())
         .damagePerSecond(dto.getDamagePerSecond())
+        .healPerSecond(dto.getHealPerSecond())
         .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
         .buildingDamagePercent(dto.getBuildingDamagePercent())
         .hitFrequency(dto.getHitFrequency())

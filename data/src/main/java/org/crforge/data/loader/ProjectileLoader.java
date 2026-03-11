@@ -97,7 +97,8 @@ public class ProjectileLoader {
         .spawnCount(dto.getSpawnCount())
         .spawnRadius(dto.getSpawnRadius())
         .pushback(dto.getPushback() / 1000f)
-        .pushbackAll(dto.isPushbackAll());
+        .pushbackAll(dto.isPushbackAll())
+        .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
 
     // Resolve spawnProjectile string reference
     if (dto.getSpawnProjectile() != null && projectileMap != null) {

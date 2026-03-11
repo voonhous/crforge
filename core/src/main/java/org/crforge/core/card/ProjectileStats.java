@@ -54,6 +54,9 @@ public class ProjectileStats {
   @Builder.Default
   private final boolean pushbackAll = false;
 
+  // Spawn area effect on impact (Heal Spirit heal zone, etc.)
+  private final AreaEffectStats spawnAreaEffect;
+
   /**
    * Returns a copy of this ProjectileStats with a different damage value.
    * All other fields are preserved.
@@ -76,6 +79,7 @@ public class ProjectileStats {
         .spawnRadius(spawnRadius)
         .pushback(pushback)
         .pushbackAll(pushbackAll)
+        .spawnAreaEffect(spawnAreaEffect)
         .build();
   }
 }

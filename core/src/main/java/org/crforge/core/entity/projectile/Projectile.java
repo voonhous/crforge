@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Position;
@@ -52,6 +53,10 @@ public class Projectile {
   private float pushback;
   @Setter
   private boolean pushbackAll;
+
+  // Spawn area effect on impact (Heal Spirit heal zone, etc.)
+  @Setter
+  private AreaEffectStats spawnAreaEffect;
 
   // Origin position (for spawn projectile direction calculation)
   private final float originX;

@@ -27,6 +27,12 @@
     "enableStacking": true,
     "hitTickFromSource": true
   },
+  "HealSpiritBuff": {
+    "name": "HealSpiritBuff",
+    "healPerSecond": 157,
+    "hitFrequency": 0.25,
+    "enableStacking": true
+  },
   "Freeze": {
     "name": "Freeze",
     "speedMultiplier": -100,

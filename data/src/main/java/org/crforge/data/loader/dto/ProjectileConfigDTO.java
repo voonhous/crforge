@@ -48,6 +48,9 @@ public class ProjectileConfigDTO {
   private int pushback;
   private boolean pushbackAll;
 
+  // Spawn area effect on impact (Heal Spirit heal zone, etc.)
+  private AreaEffectConfigDTO spawnAreaEffect;
+
   // Deflect behaviours (stored for future use)
   private List<String> deflectBehaviours;
 }
