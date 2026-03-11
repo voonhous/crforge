@@ -21,9 +21,9 @@ the live game name.
 | 7  | Balloon           | balloon          | `DONE`    |                             |
 | 8  | Witch             | witch            | `DONE`    |                             |
 | 9  | Barbarians        | barbarians       | `DONE`    | count=5                     |
-| 10 | Golem             | golem            |           |                             |
+| 10 | Golem             | golem            | `DONE`    |                             |
 | 11 | Skeletons         | skeletons        | `DONE`    | count=3                     |
-| 12 | Valkyrie          | valkyrie         |           |                             |
+| 12 | Valkyrie          | valkyrie         | `DONE`    |                             |
 | 13 | Skeleton Army     | skeletonarmy     |           | count=15                    |
 | 14 | Bomber            | bomber           |           |                             |
 | 15 | Musketeer         | musketeer        | `DONE`    |                             |
