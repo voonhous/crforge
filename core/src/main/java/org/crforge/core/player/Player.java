@@ -1,5 +1,6 @@
 package org.crforge.core.player;
 
+import java.util.Random;
 import lombok.Getter;
 import org.crforge.core.card.Card;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -22,13 +23,17 @@ public class Player {
   }
 
   public Player(Team team, Deck deck, boolean isBot, LevelConfig levelConfig) {
+    this(team, deck, isBot, levelConfig, new Random());
+  }
+
+  public Player(Team team, Deck deck, boolean isBot, LevelConfig levelConfig, Random random) {
     this.team = team;
     this.deck = deck;
     this.isBot = isBot;
     this.levelConfig = levelConfig;
 
-    // Initialize systems
-    this.hand = new Hand(deck);
+    // Initialize systems with seeded RNG for deterministic deck shuffling
+    this.hand = new Hand(deck, random);
     // Start with 5 elixir (Standard Clash Royale start) or configurable
     this.elixir = new Elixir(5.0f);
   }
