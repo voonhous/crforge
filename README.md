@@ -43,13 +43,15 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 | Key | Action |
 |-----|--------|
 | `Space` | Pause / Resume |
-| `P` | Show pathing |
-| `O` | Toggle attack range circles |
 | `R` | Reset match |
+| `P` | Toggle path visualization |
+| `O` | Toggle attack range circles |
+| `D` | Toggle floating damage numbers |
+| `A` | Toggle AOE damage indicators |
 | `+` / `-` | Speed up / slow down (0.25x - 8x) |
 | `1-4` | Select blue player's card from hand |
 | `5-8` | Select red player's card from hand |
-| `Left click` | Deploy selected card at position |
+| `Left click` | Select card from hand UI, or deploy selected card on arena |
 | `Right click` | Deselect card |
 
 ## Card Data
