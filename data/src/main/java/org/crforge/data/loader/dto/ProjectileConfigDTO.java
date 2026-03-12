@@ -35,6 +35,9 @@ public class ProjectileConfigDTO {
   // Piercing: projectile travels through enemies, hitting all in path (Bowler)
   private boolean piercing;
 
+  // Returning: piercing projectile reverses at max range and travels back (Executioner)
+  private boolean returning;
+
   // Spawn sub-projectile on impact (Firecracker explosion) - string reference
   private String spawnProjectile;
   private int spawnCount;

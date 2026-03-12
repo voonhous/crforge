@@ -236,7 +236,8 @@ public class DeploymentSystem {
       }
     }
 
-    // Unit-level death mechanics (e.g. Golem death damage + death spawn, RageBarbarianBottle death area effect)
+    // Unit-level death mechanics (e.g. Golem death damage + death spawn, RageBarbarianBottle death
+    // area effect)
     boolean hasUnitDeathMechanics =
         unitStats.getDeathDamage() > 0
             || !unitStats.getDeathSpawns().isEmpty()

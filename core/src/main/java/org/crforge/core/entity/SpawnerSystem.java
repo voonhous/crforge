@@ -196,8 +196,7 @@ public class SpawnerSystem {
       if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
         float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
         int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
-        scaledDamage =
-            LevelScaling.scaleCard(baseDamage, spawner.getRarity(), spawner.getLevel());
+        scaledDamage = LevelScaling.scaleCard(baseDamage, spawner.getRarity(), spawner.getLevel());
       }
       if (resolvedCtdp == 0 && buffDef.getCrownTowerDamagePercent() != 0) {
         resolvedCtdp = buffDef.getCrownTowerDamagePercent();

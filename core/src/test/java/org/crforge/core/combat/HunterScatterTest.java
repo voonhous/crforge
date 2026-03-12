@@ -2,7 +2,6 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Collections;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -157,8 +156,8 @@ class HunterScatterTest {
   }
 
   /**
-   * Creates a Hunter troop with scatter projectile stats matching the JSON data:
-   * 10 pellets, 33 damage each, scatter="Line", projectileRange=6.5, speed=9.167, aoeRadius=0.07
+   * Creates a Hunter troop with scatter projectile stats matching the JSON data: 10 pellets, 33
+   * damage each, scatter="Line", projectileRange=6.5, speed=9.167, aoeRadius=0.07
    */
   private Troop createHunter(Team team, float x, float y) {
     ProjectileStats hunterProjectile =

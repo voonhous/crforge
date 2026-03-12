@@ -673,8 +673,7 @@ public class CombatSystem {
       if (stats.isPiercing() && stats.getProjectileRange() > 0) {
         float dx = target.getPosition().getX() - attacker.getPosition().getX();
         float dy = target.getPosition().getY() - attacker.getPosition().getY();
-        float dist =
-            (float) Math.sqrt(dx * dx + dy * dy);
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
         float dirX = dist > 0.001f ? dx / dist : 0f;
         float dirY = dist > 0.001f ? dy / dist : 1f;
         projectile.configurePiercing(

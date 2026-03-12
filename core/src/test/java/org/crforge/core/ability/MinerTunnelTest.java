@@ -384,9 +384,10 @@ class MinerTunnelTest {
    * Reproduction test for bug: Miner deployed next to enemy Crown Tower targets a Princess Tower
    * instead. Uses full GameEngine tick loop to exercise the real system interaction order.
    *
-   * Root cause: during tunnel travel, the TargetingSystem acquires a Princess Tower as the Miner's
-   * target (since deployTimer=0 while tunneling, isDeploying() returns false). On emergence, the
-   * stale target persists through the deploy animation and is kept via retention range.
+   * <p>Root cause: during tunnel travel, the TargetingSystem acquires a Princess Tower as the
+   * Miner's target (since deployTimer=0 while tunneling, isDeploying() returns false). On
+   * emergence, the stale target persists through the deploy animation and is kept via retention
+   * range.
    */
   @Test
   void miner_targetsCrownTower_whenDeployedNextToIt() {
@@ -412,8 +413,7 @@ class MinerTunnelTest {
 
     // Deploy Miner at (9.0, 26.5) -- near Red Crown Tower at (9.0, 29.0)
     // Tile (9, 26) is RED_ZONE, valid for Miner's canDeployOnEnemySide
-    engine.queueAction(
-        blue, PlayerActionDTO.builder().handIndex(0).x(9.0f).y(26.5f).build());
+    engine.queueAction(blue, PlayerActionDTO.builder().handIndex(0).x(9.0f).y(26.5f).build());
 
     // Run enough ticks for tunnel travel + deploy animation + first attack:
     // ~30 ticks sync delay + ~75 ticks tunnel + 30 ticks deploy + 20 ticks first attack = ~155

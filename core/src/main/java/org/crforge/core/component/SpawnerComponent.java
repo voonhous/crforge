@@ -92,7 +92,10 @@ public class SpawnerComponent {
 
   /** Returns true if this spawner has any death mechanics (damage or spawns). */
   public boolean hasDeathMechanics() {
-    return deathDamage > 0 || deathSpawnCount > 0 || !deathSpawns.isEmpty() || deathAreaEffect != null;
+    return deathDamage > 0
+        || deathSpawnCount > 0
+        || !deathSpawns.isEmpty()
+        || deathAreaEffect != null;
   }
 
   /**

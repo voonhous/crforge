@@ -328,7 +328,8 @@ public class Projectile {
       active = false;
     }
 
-    // Piercing projectiles never "hit" in the traditional sense -- CombatSystem handles per-tick hits
+    // Piercing projectiles never "hit" in the traditional sense -- CombatSystem handles per-tick
+    // hits
     return false;
   }
 

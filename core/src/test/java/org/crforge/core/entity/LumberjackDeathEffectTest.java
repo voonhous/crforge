@@ -77,10 +77,7 @@ class LumberjackDeathEffectTest {
   void deathAreaEffect_shouldSpawnAreaEffectOnDeath() {
     // RageBarbarianBottle: health=0 bomb entity with deathAreaEffect
     SpawnerComponent bottleSpawner =
-        SpawnerComponent.builder()
-            .deathAreaEffect(rageAreaEffect)
-            .selfDestruct(true)
-            .build();
+        SpawnerComponent.builder().deathAreaEffect(rageAreaEffect).selfDestruct(true).build();
 
     Troop bottle =
         Troop.builder()
@@ -182,7 +179,8 @@ class LumberjackDeathEffectTest {
 
   @Test
   void lumberjack_fullDeathChain() {
-    // Full chain: Lumberjack -> RageBarbarianBottle (deathSpawn) -> Rage AreaEffect (deathAreaEffect)
+    // Full chain: Lumberjack -> RageBarbarianBottle (deathSpawn) -> Rage AreaEffect
+    // (deathAreaEffect)
     // -> friendly troops get RAGE buff
 
     // RageBarbarianBottle stats: health=0, deployTime=0.5, deathAreaEffect=BarbarianRage
