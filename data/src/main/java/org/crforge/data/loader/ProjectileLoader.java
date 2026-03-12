@@ -99,6 +99,7 @@ public class ProjectileLoader {
             .spawnCount(dto.getSpawnCount())
             .spawnRadius(dto.getSpawnRadius())
             .returning(dto.isPingpong() || dto.isReturning())
+            .pingpongMovingShooter(dto.getPingpongMovingShooter())
             .pushback(dto.getPushback() / 1000f)
             .pushbackAll(dto.isPushbackAll())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())

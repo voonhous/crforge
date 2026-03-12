@@ -116,8 +116,17 @@ public class PhysicsSystem {
       return;
     }
 
+    // Freeze movement while waiting for returning projectile (e.g. Executioner stands still)
+    // pingpongMovingShooter units are exempt -- they keep walking while the projectile is out
+    if (troop.getCombat() != null
+        && troop.getCombat().isReturningProjectileInFlight()
+        && (troop.getCombat().getProjectileStats() == null
+            || troop.getCombat().getProjectileStats().getPingpongMovingShooter() <= 0)) {
+      return;
+    }
+
     // Don't move if already in range to attack current target,
-    // unless a returning projectile is in flight (Executioner keeps walking while axe is out)
+    // unless a returning projectile is in flight (pingpong shooter keeps walking while axe is out)
     if (troop.isInAttackRange()) {
       if (troop.getCombat() == null || !troop.getCombat().isReturningProjectileInFlight()) {
         return;

@@ -38,6 +38,9 @@ public class ProjectileConfigDTO {
   // Pingpong: projectile reverses at max range and returns to the thrower (Executioner axe)
   private boolean pingpong;
 
+  // Pingpong moving shooter: thrower keeps moving while returning projectile is in flight
+  private float pingpongMovingShooter;
+
   // Spawn sub-projectile on impact (Firecracker explosion) - string reference
   private String spawnProjectile;
   private int spawnCount;

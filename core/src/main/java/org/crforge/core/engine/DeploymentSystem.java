@@ -655,8 +655,7 @@ public class DeploymentSystem {
         .minimumRange(stats.getMinimumRange())
         .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .selfAsAoeCenter(stats.isSelfAsAoeCenter())
-        .kamikaze(stats.isKamikaze())
-        .pingpongMovingShooter(stats.isPingpongMovingShooter());
+        .kamikaze(stats.isKamikaze());
   }
 
   // Simple container for the queue

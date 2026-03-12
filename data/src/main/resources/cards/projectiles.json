@@ -443,7 +443,9 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "targetBuff": "BolaSnare",
-    "buffDuration": 2.0
+    "buffDuration": 2.0,
+    "pingpong": true,
+    "pingpongMovingShooter": 0.2
   },
   "RascalGirlProjectile": {
     "name": "RascalGirlProjectile",

@@ -85,8 +85,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "AxeManProjectile",
-    "pingpongMovingShooter": true
+    "projectile": "AxeManProjectile"
   },
   "BabyDragon": {
     "name": "BabyDragon",
@@ -221,7 +220,8 @@
     "loadTime": 0.7,
     "deployTime": 1.0,
     "targetType": "ALL",
-    "movementType": "AIR"
+    "movementType": "AIR",
+    "attackDashTime": 0.15
   },
   "BattleHealer": {
     "name": "BattleHealer",

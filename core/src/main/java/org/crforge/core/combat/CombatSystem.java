@@ -168,7 +168,7 @@ public class CombatSystem {
       gameState.spawnProjectile(projectile);
 
       // Lock combat while returning projectile (boomerang) is in flight
-      if (projectile.isReturningEnabled() && combat.isPingpongMovingShooter()) {
+      if (projectile.isReturningEnabled()) {
         combat.setCombatDisabled(ModifierSource.RETURNING_PROJECTILE, true);
       }
     } else {

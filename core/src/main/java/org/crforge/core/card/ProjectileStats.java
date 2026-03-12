@@ -37,6 +37,9 @@ public class ProjectileStats {
   // Returning: piercing projectile reverses at max range and travels back (e.g. Executioner axe)
   @Builder.Default private final boolean returning = false;
 
+  // Pingpong moving shooter: thrower keeps moving while returning projectile is in flight
+  @Builder.Default private final float pingpongMovingShooter = 0f;
+
   // Spawn sub-projectile on impact
   private final ProjectileStats spawnProjectile;
   @Builder.Default private final int spawnCount = 0;
@@ -71,6 +74,7 @@ public class ProjectileStats {
         .projectileRange(projectileRange)
         .scatter(scatter)
         .returning(returning)
+        .pingpongMovingShooter(pingpongMovingShooter)
         .spawnProjectile(spawnProjectile)
         .spawnCount(spawnCount)
         .spawnRadius(spawnRadius)
