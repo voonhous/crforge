@@ -142,6 +142,7 @@ public class UnitLoader {
             .kamikaze(dto.isKamikaze())
             .jumpEnabled(dto.isJumpEnabled())
             .spawnPathfindSpeed(dto.getSpawnPathfindSpeed() / SPEED_BASE)
+            .attackDashTime(dto.getAttackDashTime())
             // Building lifetime
             .lifeTime(dto.getLifeTime());
 

@@ -293,6 +293,7 @@ public class SpawnerSystem {
             .aoeRadius(stats.getAoeRadius())
             .targetType(stats.getTargetType())
             .selfAsAoeCenter(stats.isSelfAsAoeCenter())
+            .attackDashTime(stats.getAttackDashTime())
             .build();
 
     // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),

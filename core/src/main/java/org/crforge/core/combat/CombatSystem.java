@@ -115,6 +115,22 @@ public class CombatSystem {
     // Start Attack if ready
     if (!combat.isAttacking()) {
       combat.startAttackSequence();
+      // Attack dash: lunge toward target when attack starts (e.g. Bat)
+      if (entity instanceof Troop troop
+          && combat.getAttackDashTime() > 0
+          && troop.getMovement() != null) {
+        float dx = target.getPosition().getX() - entity.getPosition().getX();
+        float dy = target.getPosition().getY() - entity.getPosition().getY();
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.001f) {
+          float dirX = dx / dist;
+          float dirY = dy / dist;
+          troop
+              .getMovement()
+              .startAttackDash(
+                  dirX, dirY, troop.getMovement().getSpeed(), combat.getAttackDashTime());
+        }
+      }
     }
 
     // Check Windup

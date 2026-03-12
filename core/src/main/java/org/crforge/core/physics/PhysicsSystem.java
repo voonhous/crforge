@@ -99,6 +99,12 @@ public class PhysicsSystem {
       return;
     }
 
+    // Attack dash: lunge toward target during attack windup
+    if (troop.getMovement().isAttackDashing()) {
+      troop.getMovement().tickAttackDash(troop.getPosition(), deltaTime);
+      return;
+    }
+
     if (!troop.getMovement().canMove() || troop.isDeploying()) {
       return;
     }

@@ -39,6 +39,9 @@ public class Combat {
   // Buff applied to target when dealing damage (e.g. EWiz stun on hit)
   private final EffectStats buffOnDamage;
 
+  // Attack dash: short lunge toward target when attack starts (e.g. Bat)
+  @Builder.Default private final float attackDashTime = 0f;
+
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default private final boolean kamikaze = false;
 

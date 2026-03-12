@@ -84,6 +84,9 @@ public class TroopStats {
   // Underground tunnel travel speed in tiles/sec (converted from spawnPathfindSpeed / 60)
   @Builder.Default private final float spawnPathfindSpeed = 0f;
 
+  // Attack dash: short lunge toward target when attack starts (e.g. Bat)
+  @Builder.Default private final float attackDashTime = 0f;
+
   public boolean isRanged() {
     return range >= 2.0f;
   }

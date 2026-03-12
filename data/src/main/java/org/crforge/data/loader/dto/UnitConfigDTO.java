@@ -68,4 +68,7 @@ public class UnitConfigDTO {
 
   // Tunnel spawn pathfinding speed (e.g. Miner underground travel speed)
   private float spawnPathfindSpeed;
+
+  // Attack dash: short lunge toward target when attack starts (e.g. Bat)
+  private float attackDashTime;
 }
