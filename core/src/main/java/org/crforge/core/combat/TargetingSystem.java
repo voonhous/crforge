@@ -57,7 +57,6 @@ public class TargetingSystem {
 
   private Entity findBestTarget(Entity attacker, Combat combat, Collection<Entity> entities) {
     Team enemyTeam = attacker.getTeam().opposite();
-    float sightRangeSq = combat.getSightRange() * combat.getSightRange();
 
     Entity best = null;
     float bestDistSq = Float.MAX_VALUE;
@@ -70,7 +69,10 @@ public class TargetingSystem {
         continue;
       }
       float distSq = getDistanceSq(attacker, e);
-      if (distSq <= sightRangeSq && distSq < bestDistSq) {
+      // Use edge-to-edge distance for sight range, matching how CombatSystem checks attack range
+      float effectiveSightRange =
+          combat.getSightRange() + attacker.getCollisionRadius() + e.getCollisionRadius();
+      if (distSq <= effectiveSightRange * effectiveSightRange && distSq < bestDistSq) {
         bestDistSq = distSq;
         best = e;
       }
@@ -84,7 +86,10 @@ public class TargetingSystem {
     }
 
     // Check if target is still in range (with leeway), using squared distance to avoid sqrt
-    float retentionRange = combat.getSightRange() * TARGET_RETENTION_RANGE_MULTIPLIER;
+    float retentionRange =
+        combat.getSightRange() * TARGET_RETENTION_RANGE_MULTIPLIER
+            + attacker.getCollisionRadius()
+            + target.getCollisionRadius();
     float distanceSq = getDistanceSq(attacker, target);
     if (distanceSq > retentionRange * retentionRange) {
       return false;

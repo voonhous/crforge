@@ -271,6 +271,23 @@ class TargetingSystemTest {
   }
 
   @Test
+  void troop_shouldAcquireTargetWithinEdgeToEdgeSightRange() {
+    // Attacker at (10,10) with collisionRadius=0.5, sightRange=5.5
+    Troop attacker = createDeployedTroop("Attacker", Team.BLUE, 10, 10);
+    // Target at (16,10) with collisionRadius=0.5 -> center distance = 6.0
+    // Center-to-center: 6.0 > sightRange 5.5 -- would MISS with old logic
+    // Edge-to-edge: 6.0 - 0.5 - 0.5 = 5.0 <= sightRange 5.5 -- should HIT
+    Troop enemy = createDeployedTroop("Enemy", Team.RED, 16, 10);
+
+    List<Entity> entities = List.of(attacker, enemy);
+    targetingSystem.updateTargets(entities);
+
+    assertThat(attacker.getCombat().getCurrentTarget())
+        .as("Target should be acquired when within edge-to-edge sight range")
+        .isEqualTo(enemy);
+  }
+
+  @Test
   void targetOnlyBuildings_shouldPreferCloserBuilding() {
     Troop giant =
         Troop.builder()
