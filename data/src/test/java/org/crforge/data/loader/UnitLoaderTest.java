@@ -275,6 +275,166 @@ class UnitLoaderTest {
   }
 
   @Test
+  void loadUnits_shouldResolveChainedDeathSpawns() {
+    // Depth-2 chain: A -> B -> C. A appears before B in JSON order,
+    // so a single resolution pass would give A a reference to B that still has empty deathSpawns.
+    String json =
+        """
+        {
+          "UnitC": {
+            "name": "UnitC",
+            "health": 50,
+            "damage": 10,
+            "speed": 60.0,
+            "mass": 1.0,
+            "range": 1.0,
+            "attackCooldown": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND"
+          },
+          "UnitA": {
+            "name": "UnitA",
+            "health": 500,
+            "damage": 50,
+            "speed": 60.0,
+            "mass": 6.0,
+            "range": 1.0,
+            "attackCooldown": 1.5,
+            "targetType": "ALL",
+            "movementType": "AIR",
+            "deathSpawn": [
+              { "spawnCharacter": "UnitB", "spawnNumber": 1, "spawnRadius": 0.5 }
+            ]
+          },
+          "UnitB": {
+            "name": "UnitB",
+            "health": 100,
+            "damage": 20,
+            "speed": 60.0,
+            "mass": 2.0,
+            "range": 1.0,
+            "attackCooldown": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND",
+            "deathSpawn": [
+              { "spawnCharacter": "UnitC", "spawnNumber": 3, "spawnRadius": 0.3 }
+            ]
+          }
+        }
+        """;
+
+    Map<String, TroopStats> map = UnitLoader.loadUnits(toStream(json), Map.of());
+
+    // UnitB -> UnitC (depth-1, always works)
+    TroopStats unitB = map.get("UnitB");
+    assertThat(unitB.getDeathSpawns()).hasSize(1);
+    assertThat(unitB.getDeathSpawns().get(0).stats().getName()).isEqualTo("UnitC");
+
+    // UnitA -> UnitB (depth-2 chain): UnitA's death spawn reference to UnitB
+    // must have UnitB's own deathSpawns populated (not the pass-1 empty version)
+    TroopStats unitA = map.get("UnitA");
+    assertThat(unitA.getDeathSpawns()).hasSize(1);
+    TroopStats unitBFromA = unitA.getDeathSpawns().get(0).stats();
+    assertThat(unitBFromA.getName()).isEqualTo("UnitB");
+    assertThat(unitBFromA.getDeathSpawns())
+        .as("UnitA's reference to UnitB must have UnitB's deathSpawns resolved")
+        .hasSize(1);
+    assertThat(unitBFromA.getDeathSpawns().get(0).stats().getName()).isEqualTo("UnitC");
+    assertThat(unitBFromA.getDeathSpawns().get(0).count()).isEqualTo(3);
+  }
+
+  @Test
+  void loadUnits_shouldResolveDepth3ChainedDeathSpawns() {
+    // Depth-3 chain: A -> B -> C -> D. This would fail with the old hardcoded
+    // two-pass approach since it only handled up to depth-2.
+    String json =
+        """
+        {
+          "UnitA": {
+            "name": "UnitA",
+            "health": 1000,
+            "damage": 100,
+            "speed": 60.0,
+            "mass": 10.0,
+            "range": 1.0,
+            "attackCooldown": 1.5,
+            "targetType": "ALL",
+            "movementType": "AIR",
+            "deathSpawn": [
+              { "spawnCharacter": "UnitB", "spawnNumber": 1, "spawnRadius": 0.5 }
+            ]
+          },
+          "UnitB": {
+            "name": "UnitB",
+            "health": 500,
+            "damage": 50,
+            "speed": 60.0,
+            "mass": 5.0,
+            "range": 1.0,
+            "attackCooldown": 1.0,
+            "targetType": "ALL",
+            "movementType": "AIR",
+            "deathSpawn": [
+              { "spawnCharacter": "UnitC", "spawnNumber": 2, "spawnRadius": 0.4 }
+            ]
+          },
+          "UnitC": {
+            "name": "UnitC",
+            "health": 200,
+            "damage": 20,
+            "speed": 60.0,
+            "mass": 3.0,
+            "range": 1.0,
+            "attackCooldown": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND",
+            "deathSpawn": [
+              { "spawnCharacter": "UnitD", "spawnNumber": 4, "spawnRadius": 0.3 }
+            ]
+          },
+          "UnitD": {
+            "name": "UnitD",
+            "health": 50,
+            "damage": 10,
+            "speed": 60.0,
+            "mass": 1.0,
+            "range": 1.0,
+            "attackCooldown": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND"
+          }
+        }
+        """;
+
+    Map<String, TroopStats> map = UnitLoader.loadUnits(toStream(json), Map.of());
+
+    // Depth 1: UnitC -> UnitD
+    TroopStats unitC = map.get("UnitC");
+    assertThat(unitC.getDeathSpawns()).hasSize(1);
+    assertThat(unitC.getDeathSpawns().get(0).stats().getName()).isEqualTo("UnitD");
+    assertThat(unitC.getDeathSpawns().get(0).count()).isEqualTo(4);
+
+    // Depth 2: UnitB -> UnitC (with UnitC's deathSpawns resolved)
+    TroopStats unitB = map.get("UnitB");
+    assertThat(unitB.getDeathSpawns()).hasSize(1);
+    TroopStats unitCFromB = unitB.getDeathSpawns().get(0).stats();
+    assertThat(unitCFromB.getName()).isEqualTo("UnitC");
+    assertThat(unitCFromB.getDeathSpawns()).hasSize(1);
+    assertThat(unitCFromB.getDeathSpawns().get(0).stats().getName()).isEqualTo("UnitD");
+
+    // Depth 3: UnitA -> UnitB -> UnitC -> UnitD (full chain resolved)
+    TroopStats unitA = map.get("UnitA");
+    assertThat(unitA.getDeathSpawns()).hasSize(1);
+    TroopStats unitBFromA = unitA.getDeathSpawns().get(0).stats();
+    assertThat(unitBFromA.getName()).isEqualTo("UnitB");
+    assertThat(unitBFromA.getDeathSpawns()).hasSize(1);
+    TroopStats unitCFromA = unitBFromA.getDeathSpawns().get(0).stats();
+    assertThat(unitCFromA.getName()).isEqualTo("UnitC");
+    assertThat(unitCFromA.getDeathSpawns()).hasSize(1);
+    assertThat(unitCFromA.getDeathSpawns().get(0).stats().getName()).isEqualTo("UnitD");
+  }
+
+  @Test
   void loadUnits_shouldLoadAllFromResource() {
     // Load projectiles first, then units
     Map<String, ProjectileStats> projMap;
@@ -302,6 +462,17 @@ class UnitLoaderTest {
       TroopStats valkyrie = map.get("Valkyrie");
       assertThat(valkyrie).isNotNull();
       assertThat(valkyrie.getAoeRadius()).isGreaterThan(0f);
+
+      // Verify chained death spawn: SkeletonBalloon -> SkeletonContainer -> Skeleton
+      TroopStats skelBalloon = map.get("SkeletonBalloon");
+      assertThat(skelBalloon).isNotNull();
+      assertThat(skelBalloon.getDeathSpawns()).hasSize(1);
+      TroopStats skelContainer = skelBalloon.getDeathSpawns().get(0).stats();
+      assertThat(skelContainer.getName()).isEqualTo("SkeletonContainer");
+      assertThat(skelContainer.getDeathSpawns())
+          .as("SkeletonContainer (from SkeletonBalloon) must spawn Skeletons")
+          .isNotEmpty();
+      assertThat(skelContainer.getDeathSpawns().get(0).stats().getName()).isEqualTo("Skeleton");
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

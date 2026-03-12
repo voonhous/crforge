@@ -8,10 +8,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilityType;
 import org.crforge.core.ability.ChargeAbility;
@@ -46,12 +48,10 @@ public class UnitLoader {
   private static final float SPEED_BASE = 60.0f;
 
   /**
-   * Loads all unit definitions from the given input stream. Two-pass loading:
-   *
-   * <ol>
-   *   <li>Convert all units without death spawn resolution
-   *   <li>Resolve death spawn character references from the pass-1 map
-   * </ol>
+   * Loads all unit definitions from the given input stream. Uses recursive resolution with
+   * memoization to handle death spawn chains of arbitrary depth (e.g., SkeletonBalloon ->
+   * SkeletonContainer -> Skeleton). Dependencies are resolved before the unit itself, so
+   * convertUnit always sees a fully-resolved result map.
    *
    * @param inputStream JSON input in Map(String, UnitConfigDTO) format
    * @param projectileMap resolved projectile map for projectile reference resolution
@@ -62,20 +62,11 @@ public class UnitLoader {
     try {
       Map<String, UnitConfigDTO> dtos = mapper.readValue(inputStream, new TypeReference<>() {});
 
-      // Pass 1: Convert all units without death spawn resolution
       Map<String, TroopStats> result = new LinkedHashMap<>();
-      for (Map.Entry<String, UnitConfigDTO> entry : dtos.entrySet()) {
-        result.put(entry.getKey(), convertUnit(entry.getValue(), projectileMap, null));
+      Set<String> resolving = new HashSet<>();
+      for (String name : dtos.keySet()) {
+        resolveUnit(name, dtos, projectileMap, result, resolving);
       }
-
-      // Pass 2: Resolve death spawn references from the unit map
-      for (Map.Entry<String, UnitConfigDTO> entry : dtos.entrySet()) {
-        UnitConfigDTO dto = entry.getValue();
-        if (dto.getDeathSpawn() != null && !dto.getDeathSpawn().isEmpty()) {
-          result.put(entry.getKey(), convertUnit(dto, projectileMap, result));
-        }
-      }
-
       return result;
     } catch (IOException e) {
       throw new RuntimeException("Failed to load units from JSON", e);
@@ -83,11 +74,44 @@ public class UnitLoader {
   }
 
   /**
+   * Recursively resolves a unit and all its death spawn dependencies. Uses memoization (the result
+   * map) to avoid redundant work and a resolving set to detect circular chains.
+   */
+  private static TroopStats resolveUnit(
+      String name,
+      Map<String, UnitConfigDTO> dtos,
+      Map<String, ProjectileStats> projectileMap,
+      Map<String, TroopStats> result,
+      Set<String> resolving) {
+    if (result.containsKey(name)) {
+      return result.get(name); // Already resolved (memoized)
+    }
+    UnitConfigDTO dto = dtos.get(name);
+    if (dto == null) {
+      return null; // Unknown reference, skip
+    }
+    if (!resolving.add(name)) {
+      throw new IllegalStateException("Circular death spawn chain detected: " + name);
+    }
+    // Recursively resolve death spawn dependencies first
+    if (dto.getDeathSpawn() != null) {
+      for (DeathSpawnConfigDTO ds : dto.getDeathSpawn()) {
+        resolveUnit(ds.getSpawnCharacter(), dtos, projectileMap, result, resolving);
+      }
+    }
+    // All dependencies now in result map; convert this unit
+    TroopStats stats = convertUnit(dto, projectileMap, result);
+    result.put(name, stats);
+    resolving.remove(name);
+    return stats;
+  }
+
+  /**
    * Converts a single UnitConfigDTO to TroopStats.
    *
    * @param dto the DTO to convert
    * @param projectileMap map for resolving projectile string references
-   * @param unitMap map for resolving death spawn character references (null on first pass)
+   * @param unitMap map for resolving death spawn character references (contains resolved deps)
    * @return the converted TroopStats
    */
   static TroopStats convertUnit(
