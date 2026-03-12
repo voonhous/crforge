@@ -38,6 +38,11 @@ public class Projectile {
   private final float targetY;
   private final boolean positionTargeted;
 
+  // Non-homing: fixed landing position captured at fire time
+  private float fixedTargetX;
+  private float fixedTargetY;
+  private boolean homing = true;
+
   // Advanced projectile features
   @Setter private float chainedHitRadius;
   @Setter private int chainedHitCount;
@@ -157,6 +162,19 @@ public class Projectile {
     this(source, target, damage, 0, DEFAULT_SPEED, Collections.emptyList());
   }
 
+  /**
+   * Sets whether this projectile homes toward its target's current position. When set to false,
+   * captures the target's current position as a fixed landing point. Non-homing projectiles fly to
+   * where the target was when fired and deal AOE damage at that point.
+   */
+  public void setHoming(boolean homing) {
+    this.homing = homing;
+    if (!homing && target != null) {
+      this.fixedTargetX = target.getPosition().getX();
+      this.fixedTargetY = target.getPosition().getY();
+    }
+  }
+
   public static void resetIdCounter() {
     nextId = 1;
   }
@@ -170,7 +188,12 @@ public class Projectile {
   }
 
   private boolean updateEntityTargeted(float deltaTime) {
-    // If target is dead, projectile disappears (for homing projectiles)
+    // Non-homing projectiles fly to the fixed position captured at fire time
+    if (!homing) {
+      return updateFixedTarget(deltaTime);
+    }
+
+    // If target is dead, homing projectile disappears
     if (target == null || !target.isAlive()) {
       active = false;
       return false;
@@ -196,6 +219,29 @@ public class Projectile {
     position.add(dx * ratio, dy * ratio);
 
     // Update rotation to face target
+    position.setRotation((float) Math.atan2(dy, dx));
+
+    return false;
+  }
+
+  /** Non-homing entity-targeted: fly to the fixed position captured at fire time. */
+  private boolean updateFixedTarget(float deltaTime) {
+    float dx = fixedTargetX - position.getX();
+    float dy = fixedTargetY - position.getY();
+    float distance = position.distanceTo(fixedTargetX, fixedTargetY);
+
+    float moveDistance = speed * deltaTime;
+
+    if (distance <= moveDistance) {
+      position.set(fixedTargetX, fixedTargetY);
+      hit = true;
+      active = false;
+      return true;
+    }
+
+    float ratio = moveDistance / distance;
+    position.add(dx * ratio, dy * ratio);
+
     position.setRotation((float) Math.atan2(dy, dx));
 
     return false;

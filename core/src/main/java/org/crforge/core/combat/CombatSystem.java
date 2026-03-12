@@ -335,13 +335,25 @@ public class CombatSystem {
           projectile.getEffects(),
           ctdp);
     } else if (projectile.hasAoe()) {
-      dealAoeDamage(
-          projectile.getSource(),
-          projectile.getTarget(),
-          baseDamage,
-          projectile.getAoeRadius(),
-          projectile.getEffects(),
-          ctdp);
+      if (!projectile.isHoming()) {
+        // Non-homing: AOE centered at the fixed landing position (where target was when fired)
+        applySpellDamage(
+            projectile.getTeam(),
+            projectile.getFixedTargetX(),
+            projectile.getFixedTargetY(),
+            baseDamage,
+            projectile.getAoeRadius(),
+            projectile.getEffects(),
+            ctdp);
+      } else {
+        dealAoeDamage(
+            projectile.getSource(),
+            projectile.getTarget(),
+            baseDamage,
+            projectile.getAoeRadius(),
+            projectile.getEffects(),
+            ctdp);
+      }
     } else {
       Entity target = projectile.getTarget();
       int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, target, ctdp);
@@ -574,6 +586,11 @@ public class CombatSystem {
       projectile.setPushback(stats.getPushback());
       projectile.setPushbackAll(stats.isPushbackAll());
       projectile.setSpawnAreaEffect(stats.getSpawnAreaEffect());
+
+      // Non-homing projectiles fly to the target's position at fire time
+      if (!stats.isHoming()) {
+        projectile.setHoming(false);
+      }
     }
 
     return projectile;

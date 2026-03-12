@@ -36,7 +36,7 @@ the live game name.
 | 24 | Ice Wizard        | icewizard        | `DONE`    | deploy effect                   |
 | 25 | Royal Giant       | royalgiant       | `DONE`    |                                 |
 | 26 | Guards            | skeletonwarriors | `DONE`    | count=3                         |
-| 27 | Princess          | princess         | `MISSING` |                                 |
+| 27 | Princess          | princess         | `DONE`    | non-homing AOE projectile       |
 | 28 | Dark Prince       | darkprince       | `DONE`    |                                 |
 | 29 | Lava Hound        | lavahound        | `DONE`    |                                 |
 | 30 | Ice Spirit        | icespirits       | `DONE`    |                                 |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 59      | Fully functional in simulation                 |
+| `DONE`     | 60      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 54      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 53      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 

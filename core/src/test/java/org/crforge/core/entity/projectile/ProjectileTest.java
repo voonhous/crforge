@@ -210,6 +210,81 @@ class ProjectileTest {
     assertThat(projectile.isActive()).isTrue();
   }
 
+  @Test
+  void nonHomingProjectile_shouldFlyToOriginalTargetPosition() {
+    Troop source = createTroop(Team.BLUE, 0, 0);
+    Troop target = createTroop(Team.RED, 10, 0);
+
+    Projectile projectile = new Projectile(source, target, 50, 2.0f, 15f, null);
+    projectile.setHoming(false);
+
+    // Move the target to a completely different position after firing
+    target.getPosition().set(10, 10);
+
+    // Update the projectile
+    projectile.update(0.1f);
+
+    // Non-homing projectile should move toward the ORIGINAL position (10, 0),
+    // not the target's current position (10, 10)
+    assertThat(projectile.getPosition().getX()).isGreaterThan(0);
+    assertThat(projectile.getPosition().getY()).isEqualTo(0f);
+  }
+
+  @Test
+  void nonHomingProjectile_shouldContinueFlyingWhenTargetDies() {
+    Troop source = createTroop(Team.BLUE, 0, 0);
+    Troop target = createTroop(Team.RED, 10, 0);
+
+    Projectile projectile = new Projectile(source, target, 50, 2.0f, 15f, null);
+    projectile.setHoming(false);
+
+    // Kill the target while projectile is in flight
+    target.getHealth().takeDamage(1000);
+    assertThat(target.isAlive()).isFalse();
+
+    // Non-homing projectile should keep flying to the fixed position
+    boolean hit = projectile.update(0.1f);
+    assertThat(projectile.isActive()).isTrue();
+    assertThat(projectile.getPosition().getX()).isGreaterThan(0);
+  }
+
+  @Test
+  void nonHomingProjectile_shouldHitAtFixedPosition() {
+    Troop source = createTroop(Team.BLUE, 0, 0);
+    Troop target = createTroop(Team.RED, 1, 0); // Very close
+
+    Projectile projectile = new Projectile(source, target, 50, 2.0f, 100f, null);
+    projectile.setHoming(false);
+
+    // Move target far away
+    target.getPosition().set(50, 50);
+
+    // Projectile should reach the original position (1, 0) and hit
+    boolean hit = projectile.update(1.0f);
+    assertThat(hit).isTrue();
+    assertThat(projectile.isHit()).isTrue();
+    assertThat(projectile.getPosition().getX()).isEqualTo(1f);
+    assertThat(projectile.getPosition().getY()).isEqualTo(0f);
+  }
+
+  @Test
+  void homingProjectile_shouldTrackMovingTarget() {
+    Troop source = createTroop(Team.BLUE, 0, 0);
+    Troop target = createTroop(Team.RED, 10, 0);
+
+    // Default is homing=true
+    Projectile projectile = new Projectile(source, target, 50, 0, 15f, null);
+
+    // Move target upward
+    target.getPosition().set(10, 10);
+
+    projectile.update(0.1f);
+
+    // Homing projectile should be moving toward the NEW position (10, 10),
+    // so Y should be positive
+    assertThat(projectile.getPosition().getY()).isGreaterThan(0);
+  }
+
   private Troop createTroop(Team team, float x, float y) {
     return Troop.builder()
         .name("Test")
