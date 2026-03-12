@@ -37,7 +37,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "radius": 1.0,
-    "projectileRange": 7.5
+    "projectileRange": 7.5,
+    "pingpong": true
   },
   "BabyDragonProjectile": {
     "name": "BabyDragonProjectile",
