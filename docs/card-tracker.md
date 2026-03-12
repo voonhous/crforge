@@ -41,7 +41,7 @@ the live game name.
 | 29 | Lava Hound        | lavahound        | `DONE`    |                                 |
 | 30 | Ice Spirit        | icespirits       | `DONE`    |                                 |
 | 31 | Fire Spirit       | firespirits      | `DONE`    |                                 |
-| 32 | Miner             | miner            | `MISSING` |                                 |
+| 32 | Miner             | miner            | `DONE`    | tunnel + deploy on enemy side   |
 | 33 | Sparky            | zapmachine       | `DONE`    | noPreload                       |
 | 34 | Bowler            | bowler           | `MISSING` |                                 |
 | 35 | Lumberjack        | ragebarbarian    | `MISSING` |                                 |
@@ -175,11 +175,11 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 57      | Fully functional in simulation                 |
+| `DONE`     | 59      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 51      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 54      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
-| **Total**  | **122** | Playable cards (excluding sub-entities)        |
+| **Total**  | **127** | Playable cards (excluding sub-entities)        |
 
 ### Partial cards breakdown
 
