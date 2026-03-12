@@ -664,13 +664,10 @@ public class CombatSystem {
       projectile.setPushbackAll(stats.isPushbackAll());
       projectile.setSpawnAreaEffect(stats.getSpawnAreaEffect());
 
-      // Non-homing projectiles fly to the target's position at fire time
-      if (!stats.isHoming()) {
-        projectile.setHoming(false);
-      }
-
-      // Piercing projectiles travel in a straight line through enemies
-      if (stats.isPiercing() && stats.getProjectileRange() > 0) {
+      // Non-homing projectiles with meaningful projectileRange travel in a line,
+      // hitting all entities along their path (e.g. Bowler boulder, Magic Archer arrow).
+      // Threshold >= 1.0 excludes sentinel values like 0.001 (WallbreakerProjectile).
+      if (!stats.isHoming() && stats.getProjectileRange() >= 1.0f) {
         float dx = target.getPosition().getX() - attacker.getPosition().getX();
         float dy = target.getPosition().getY() - attacker.getPosition().getY();
         float dist = (float) Math.sqrt(dx * dx + dy * dy);
@@ -678,6 +675,9 @@ public class CombatSystem {
         float dirY = dist > 0.001f ? dy / dist : 1f;
         projectile.configurePiercing(
             dirX, dirY, stats.getProjectileRange(), stats.isAoeToGround(), stats.isAoeToAir());
+      } else if (!stats.isHoming()) {
+        // Non-homing projectiles fly to the target's position at fire time
+        projectile.setHoming(false);
       }
     }
 

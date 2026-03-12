@@ -98,7 +98,6 @@ public class ProjectileLoader {
             // Own spawnCount/spawnRadius (e.g. FirecrackerExplosion has these directly)
             .spawnCount(dto.getSpawnCount())
             .spawnRadius(dto.getSpawnRadius())
-            .piercing(dto.isPiercing())
             .returning(dto.isReturning())
             .pushback(dto.getPushback() / 1000f)
             .pushbackAll(dto.isPushbackAll())

@@ -32,9 +32,6 @@ public class ProjectileConfigDTO {
   private String scatter;
   private float projectileRange;
 
-  // Piercing: projectile travels through enemies, hitting all in path (Bowler)
-  private boolean piercing;
-
   // Returning: piercing projectile reverses at max range and travels back (Executioner)
   private boolean returning;
 

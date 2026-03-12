@@ -34,9 +34,6 @@ public class ProjectileStats {
   // Scatter pattern type (e.g. "Line" for Hunter shotgun fan)
   private final String scatter;
 
-  // Piercing: projectile travels through enemies, hitting all in its path (e.g. Bowler boulder)
-  @Builder.Default private final boolean piercing = false;
-
   // Returning: piercing projectile reverses at max range and travels back (e.g. Executioner axe)
   @Builder.Default private final boolean returning = false;
 
@@ -73,7 +70,6 @@ public class ProjectileStats {
         .aoeToGround(aoeToGround)
         .projectileRange(projectileRange)
         .scatter(scatter)
-        .piercing(piercing)
         .spawnProjectile(spawnProjectile)
         .spawnCount(spawnCount)
         .spawnRadius(spawnRadius)
