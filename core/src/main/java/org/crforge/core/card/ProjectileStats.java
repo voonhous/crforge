@@ -70,6 +70,7 @@ public class ProjectileStats {
         .aoeToGround(aoeToGround)
         .projectileRange(projectileRange)
         .scatter(scatter)
+        .returning(returning)
         .spawnProjectile(spawnProjectile)
         .spawnCount(spawnCount)
         .spawnRadius(spawnRadius)

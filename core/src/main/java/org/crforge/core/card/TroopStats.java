@@ -81,6 +81,9 @@ public class TroopStats {
   // River jump: unit can leap over the river instead of routing through bridges
   @Builder.Default private final boolean jumpEnabled = false;
 
+  // Pingpong moving shooter: thrower keeps moving while returning projectile is in flight
+  @Builder.Default private final boolean pingpongMovingShooter = false;
+
   // Underground tunnel travel speed in tiles/sec (converted from spawnPathfindSpeed / 60)
   @Builder.Default private final float spawnPathfindSpeed = 0f;
 

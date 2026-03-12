@@ -116,9 +116,12 @@ public class PhysicsSystem {
       return;
     }
 
-    // Don't move if already in range to attack current target
+    // Don't move if already in range to attack current target,
+    // unless a returning projectile is in flight (Executioner keeps walking while axe is out)
     if (troop.isInAttackRange()) {
-      return;
+      if (troop.getCombat() == null || !troop.getCombat().isReturningProjectileInFlight()) {
+        return;
+      }
     }
 
     Entity target = troop.getCombat() != null ? troop.getCombat().getCurrentTarget() : null;

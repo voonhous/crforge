@@ -54,7 +54,7 @@ the live game name.
 | 42 | Electro Wizard    | electrowizard    | `DONE`    | deploy effect                   |
 | 43 | Elite Barbarians  | angrybarbarians  | `DONE`    | count=2                         |
 | 44 | Hunter            | hunter           | `DONE`    | shotgun burst (10 scatter proj) |
-| 45 | Executioner       | axeman           | `MISSING` |                                 |
+| 45 | Executioner       | axeman           | `DONE`    | returning projectile            |
 | 46 | Bandit            | assassin         | `DONE`    | dash ability                    |
 | 47 | Royal Recruits    | royalrecruits    | `DONE`    | count=6                         |
 | 48 | Night Witch       | darkwitch        | `DONE`    |                                 |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 65      | Fully functional in simulation                 |
+| `DONE`     | 66      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 48      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 47      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 

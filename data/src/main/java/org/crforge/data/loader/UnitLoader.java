@@ -141,6 +141,7 @@ public class UnitLoader {
             .ignorePushback(dto.isIgnorePushback())
             .kamikaze(dto.isKamikaze())
             .jumpEnabled(dto.isJumpEnabled())
+            .pingpongMovingShooter(dto.isPingpongMovingShooter())
             .spawnPathfindSpeed(dto.getSpawnPathfindSpeed() / SPEED_BASE)
             // Building lifetime
             .lifeTime(dto.getLifeTime());

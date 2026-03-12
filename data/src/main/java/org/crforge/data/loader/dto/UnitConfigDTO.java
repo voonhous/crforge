@@ -66,6 +66,9 @@ public class UnitConfigDTO {
   // Abilities (Charge, Variable Damage, etc.)
   private List<AbilityConfigDTO> abilities;
 
+  // Pingpong moving shooter: thrower keeps moving while returning projectile is in flight
+  private boolean pingpongMovingShooter;
+
   // Tunnel spawn pathfinding speed (e.g. Miner underground travel speed)
   private float spawnPathfindSpeed;
 }

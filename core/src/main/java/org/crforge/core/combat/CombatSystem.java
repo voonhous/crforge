@@ -9,6 +9,7 @@ import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.AppliedEffect;
@@ -165,6 +166,11 @@ public class CombatSystem {
     } else if (combat.isRanged()) {
       Projectile projectile = createAttackProjectile(attacker, target, baseDamage, combat);
       gameState.spawnProjectile(projectile);
+
+      // Lock combat while returning projectile (boomerang) is in flight
+      if (projectile.isReturningEnabled() && combat.isPingpongMovingShooter()) {
+        combat.setCombatDisabled(ModifierSource.RETURNING_PROJECTILE, true);
+      }
     } else {
       // Melee attack, deal damage immediately
       int effectiveDamage =
@@ -395,7 +401,20 @@ public class CombatSystem {
       }
     }
 
-    projectiles.removeIf(p -> !p.isActive());
+    // Re-enable combat on source entities whose returning projectiles have deactivated
+    projectiles.removeIf(
+        p -> {
+          if (!p.isActive()) {
+            if (p.isReturningEnabled() && p.getSourceEntity() != null) {
+              Entity source = p.getSourceEntity();
+              if (source.isAlive() && source.getCombat() != null) {
+                source.getCombat().setCombatDisabled(ModifierSource.RETURNING_PROJECTILE, false);
+              }
+            }
+            return true;
+          }
+          return false;
+        });
   }
 
   private void onProjectileHit(Projectile projectile) {
@@ -664,10 +683,21 @@ public class CombatSystem {
       projectile.setPushbackAll(stats.isPushbackAll());
       projectile.setSpawnAreaEffect(stats.getSpawnAreaEffect());
 
-      // Non-homing projectiles with meaningful projectileRange travel in a line,
-      // hitting all entities along their path (e.g. Bowler boulder, Magic Archer arrow).
-      // Threshold >= 1.0 excludes sentinel values like 0.001 (WallbreakerProjectile).
-      if (!stats.isHoming() && stats.getProjectileRange() >= 1.0f) {
+      // Returning projectiles (e.g. Executioner axe) are piercing: they travel out, reverse,
+      // and return to the source. Configure piercing + returning.
+      if (stats.isReturning() && stats.getProjectileRange() >= 1.0f) {
+        float dx = target.getPosition().getX() - attacker.getPosition().getX();
+        float dy = target.getPosition().getY() - attacker.getPosition().getY();
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        float dirX = dist > 0.001f ? dx / dist : 0f;
+        float dirY = dist > 0.001f ? dy / dist : 1f;
+        projectile.configurePiercing(
+            dirX, dirY, stats.getProjectileRange(), stats.isAoeToGround(), stats.isAoeToAir());
+        projectile.configureReturning(attacker);
+      } else if (!stats.isHoming() && stats.getProjectileRange() >= 1.0f) {
+        // Non-homing projectiles with meaningful projectileRange travel in a line,
+        // hitting all entities along their path (e.g. Bowler boulder, Magic Archer arrow).
+        // Threshold >= 1.0 excludes sentinel values like 0.001 (WallbreakerProjectile).
         float dx = target.getPosition().getX() - attacker.getPosition().getX();
         float dy = target.getPosition().getY() - attacker.getPosition().getY();
         float dist = (float) Math.sqrt(dx * dx + dy * dy);

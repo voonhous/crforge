@@ -77,6 +77,11 @@ public class Projectile {
   @Setter private boolean aoeToGround;
   @Setter private boolean aoeToAir;
 
+  // Returning projectile fields: projectile reverses at max range and homes back to source
+  @Getter private boolean returningEnabled;
+  @Getter private Entity sourceEntity;
+  @Getter private boolean returnPhase;
+
   private boolean active;
   private boolean hit;
 
@@ -303,6 +308,17 @@ public class Projectile {
     this.aoeToAir = aoeToAir;
   }
 
+  /**
+   * Configures this projectile to return to the source entity after reaching max piercing range.
+   * The projectile will reverse direction and home back to the source, clearing hitEntities so
+   * enemies can be hit again on the return trip.
+   */
+  public void configureReturning(Entity source) {
+    this.returningEnabled = true;
+    this.sourceEntity = source;
+    this.returnPhase = false;
+  }
+
   /** Returns true if the given entity has already been hit by this piercing projectile. */
   public boolean hasHitEntity(long entityId) {
     return hitEntities != null && hitEntities.contains(entityId);
@@ -318,14 +334,50 @@ public class Projectile {
   /**
    * Updates a piercing projectile: moves along its fixed direction and deactivates when the total
    * distance traveled exceeds piercingRange. Hit detection is handled externally by CombatSystem.
+   *
+   * <p>If returning is enabled, the projectile enters a return phase at max range: it clears
+   * hitEntities (so enemies can be hit again), reverses direction, and homes back toward the source
+   * entity's current position. Deactivates when it reaches the source or the source dies.
    */
   private boolean updatePiercing(float deltaTime) {
     float moveDistance = speed * deltaTime;
-    position.add(piercingDirX * moveDistance, piercingDirY * moveDistance);
-    distanceTraveled += moveDistance;
 
-    if (distanceTraveled >= piercingRange) {
-      active = false;
+    if (returnPhase) {
+      // Return phase: home toward source entity's current position
+      if (sourceEntity == null || !sourceEntity.isAlive()) {
+        active = false;
+        return false;
+      }
+
+      float dx = sourceEntity.getPosition().getX() - position.getX();
+      float dy = sourceEntity.getPosition().getY() - position.getY();
+      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= moveDistance || dist <= sourceEntity.getCollisionRadius()) {
+        active = false;
+        return false;
+      }
+
+      // Update piercing direction to track source (needed for processPiercingHits direction)
+      piercingDirX = dx / dist;
+      piercingDirY = dy / dist;
+      position.add(piercingDirX * moveDistance, piercingDirY * moveDistance);
+    } else {
+      // Outbound phase: travel in fixed direction
+      position.add(piercingDirX * moveDistance, piercingDirY * moveDistance);
+      distanceTraveled += moveDistance;
+
+      if (distanceTraveled >= piercingRange) {
+        if (returningEnabled && sourceEntity != null && sourceEntity.isAlive()) {
+          // Enter return phase: clear hit set so enemies can be hit again on the way back
+          returnPhase = true;
+          if (hitEntities != null) {
+            hitEntities.clear();
+          }
+        } else {
+          active = false;
+        }
+      }
     }
 
     // Piercing projectiles never "hit" in the traditional sense -- CombatSystem handles per-tick

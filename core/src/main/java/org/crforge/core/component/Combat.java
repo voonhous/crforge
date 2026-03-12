@@ -42,6 +42,9 @@ public class Combat {
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default private final boolean kamikaze = false;
 
+  // Pingpong moving shooter: thrower keeps moving while returning projectile is in flight
+  @Builder.Default private final boolean pingpongMovingShooter = false;
+
   // Targeting and combat modifiers
   @Builder.Default private final boolean targetOnlyBuildings = false;
   @Builder.Default private final float minimumRange = 0f;
@@ -139,6 +142,11 @@ public class Combat {
   public void clearModifiers(ModifierSource source) {
     combatDisableSources.remove(source);
     attackSpeedMultipliers.remove(source);
+  }
+
+  /** Returns true if a returning projectile (boomerang) is currently in flight. */
+  public boolean isReturningProjectileInFlight() {
+    return combatDisableSources.contains(ModifierSource.RETURNING_PROJECTILE);
   }
 
   public boolean canAttack() {

@@ -85,7 +85,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "AxeManProjectile"
+    "projectile": "AxeManProjectile",
+    "pingpongMovingShooter": true
   },
   "BabyDragon": {
     "name": "BabyDragon",

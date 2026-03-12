@@ -11,5 +11,6 @@ public enum ModifierSource {
   ABILITY_DASH, // Dash sequence
   ABILITY_CHARGE, // Charge speed boost
   ABILITY_JUMP, // River jump speed boost
-  ABILITY_TUNNEL // Underground tunnel travel (Miner)
+  ABILITY_TUNNEL, // Underground tunnel travel (Miner)
+  RETURNING_PROJECTILE // Combat locked while boomerang projectile is in flight (Executioner)
 }

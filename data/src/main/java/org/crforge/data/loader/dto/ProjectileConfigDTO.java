@@ -35,6 +35,9 @@ public class ProjectileConfigDTO {
   // Returning: piercing projectile reverses at max range and travels back (Executioner)
   private boolean returning;
 
+  // Pingpong: projectile reverses at max range and returns to the thrower (Executioner axe)
+  private boolean pingpong;
+
   // Spawn sub-projectile on impact (Firecracker explosion) - string reference
   private String spawnProjectile;
   private int spawnCount;

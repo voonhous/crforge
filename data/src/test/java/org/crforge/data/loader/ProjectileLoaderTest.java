@@ -171,6 +171,34 @@ class ProjectileLoaderTest {
   }
 
   @Test
+  void loadProjectiles_shouldParsePingpongAsReturning() {
+    String json =
+        """
+        {
+          "AxeManProjectile": {
+            "name": "AxeManProjectile",
+            "damage": 66,
+            "speed": 550,
+            "homing": false,
+            "aoeToAir": true,
+            "aoeToGround": true,
+            "radius": 1.0,
+            "projectileRange": 7.5,
+            "pingpong": true
+          }
+        }
+        """;
+
+    Map<String, ProjectileStats> map = ProjectileLoader.loadProjectiles(toStream(json));
+
+    ProjectileStats proj = map.get("AxeManProjectile");
+    assertThat(proj).isNotNull();
+    assertThat(proj.isReturning()).isTrue();
+    assertThat(proj.isHoming()).isFalse();
+    assertThat(proj.getProjectileRange()).isCloseTo(7.5f, within(0.01f));
+  }
+
+  @Test
   void loadProjectiles_shouldLoadAllFromResource() {
     try (InputStream is = getClass().getResourceAsStream("/cards/projectiles.json")) {
       Map<String, ProjectileStats> map = ProjectileLoader.loadProjectiles(is);
@@ -180,6 +208,13 @@ class ProjectileLoaderTest {
       // Spot check
       assertThat(map.get("ArcherArrow")).isNotNull();
       assertThat(map.get("ArcherArrow").isHoming()).isTrue();
+
+      // AxeManProjectile should have returning=true (from pingpong field)
+      ProjectileStats axeMan = map.get("AxeManProjectile");
+      assertThat(axeMan).isNotNull();
+      assertThat(axeMan.isReturning())
+          .as("AxeManProjectile should be a returning projectile")
+          .isTrue();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
