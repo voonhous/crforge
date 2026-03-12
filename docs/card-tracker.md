@@ -47,7 +47,7 @@ the live game name.
 | 35 | Lumberjack        | ragebarbarian    | `DONE`    | death drops Rage spell          |
 | 36 | Battle Ram        | battleram        | `DONE`    | charge + kamikaze + death spawn |
 | 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                 |
-| 38 | Ice Golem         | icegolemite      | `MISSING` |                                 |
+| 38 | Ice Golem         | icegolemite      | `DONE`    | death slow via deathAreaEffect  |
 | 39 | Mega Minion       | megaminion       | `DONE`    |                                 |
 | 40 | Dart Goblin       | blowdartgoblin   | `DONE`    |                                 |
 | 41 | Goblin Gang       | goblingang       | `DONE`    | count=3                         |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 60      | Fully functional in simulation                 |
+| `DONE`     | 63      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 53      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 50      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 
