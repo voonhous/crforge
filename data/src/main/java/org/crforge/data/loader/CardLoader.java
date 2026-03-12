@@ -146,6 +146,9 @@ public class CardLoader {
       }
     }
 
+    // Can deploy on enemy side (e.g. Miner, GoblinDrill)
+    builder.canDeployOnEnemySide(dto.isCanDeployOnEnemySide());
+
     // Resolve spawn template from unitStats.liveSpawn if present
     if (unitStats != null && unitStats.getLiveSpawn() != null) {
       LiveSpawnConfig liveSpawn = unitStats.getLiveSpawn();

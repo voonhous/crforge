@@ -44,6 +44,14 @@ public class AbilityComponent {
 
   // REFLECT: no runtime state needed (passive)
 
+  // TUNNEL state (Miner underground travel)
+  private TunnelState tunnelState = TunnelState.INACTIVE;
+  private float tunnelTargetX = 0f;
+  private float tunnelTargetY = 0f;
+  private float tunnelWaypointX = 0f;
+  private float tunnelWaypointY = 0f;
+  private boolean tunnelUsingWaypoint = false;
+
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
@@ -103,5 +111,15 @@ public class AbilityComponent {
     WINDING_UP,
     PULLING,
     DRAGGING_SELF
+  }
+
+  public enum TunnelState {
+    INACTIVE,
+    TUNNELING,
+    EMERGED
+  }
+
+  public boolean isTunneling() {
+    return tunnelState == TunnelState.TUNNELING;
   }
 }

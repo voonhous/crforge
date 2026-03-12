@@ -6,6 +6,8 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.arena.Tile;
+import org.crforge.core.arena.TileType;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.player.Player;
@@ -136,6 +138,12 @@ public abstract class Match {
         radius = card.getUnitStats().getCollisionRadius();
       }
       return arena.isValidBuildingPlacement(action.getX(), action.getY(), radius, player.getTeam());
+    }
+
+    // Cards that can deploy on enemy side (e.g. Miner, GoblinDrill) skip zone restriction
+    if (card.isCanDeployOnEnemySide()) {
+      Tile tile = arena.getTileAt(action.getX(), action.getY());
+      return tile != null && tile.type() != TileType.BANNED && tile.type() != TileType.TOWER;
     }
 
     // Troops check center point (legacy/standard behavior for now)

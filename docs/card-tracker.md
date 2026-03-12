@@ -166,7 +166,7 @@ Crown Towers. This system is not yet implemented in crforge.
 | 1 | Cannoneer      | `MISSING` | Ranged tower troop         |
 | 2 | Dagger Duchess | `MISSING` | Ranged tower troop         |
 | 3 | Royal Chef     | `MISSING` | Support tower troop        |
-| 4 | Tower Princess | `MISSING` | Default ranged tower troop |
+| 4 | Tower Princess | `DONE`    | Default ranged tower troop |
 | 5 | Apprentice     | `MISSING` | Area damage tower troop    |
 
 ---
@@ -183,9 +183,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 ### Partial cards breakdown
 
-| Category        | Cards                                                                         | What's needed                                         |
-|-----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
-| Champions       | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate)              |
-| Meta spells     | Mirror                                                                        | Replay last card at +1 level                          |
-| Complex spells  | Clone, Tornado, Graveyard                                                     | Clone duplication, pull physics, random spawn pattern |
-| Newer stubs     | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                                    |
+| Category       | Cards                                                                         | What's needed                                         |
+|----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
+| Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate)              |
+| Meta spells    | Mirror                                                                        | Replay last card at +1 level                          |
+| Complex spells | Clone, Tornado, Graveyard                                                     | Clone duplication, pull physics, random spawn pattern |
+| Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                                    |

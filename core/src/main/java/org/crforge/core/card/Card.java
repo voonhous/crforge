@@ -70,6 +70,11 @@ public class Card {
   /** How many secondary units to deploy (default 0). */
   @Builder.Default private final int secondaryUnitCount = 0;
 
+  /**
+   * Whether this card can be deployed on the enemy's side of the arena (e.g. Miner, GoblinDrill).
+   */
+  @Builder.Default private final boolean canDeployOnEnemySide = false;
+
   public int getTotalDeployCount() {
     return unitCount + secondaryUnitCount;
   }

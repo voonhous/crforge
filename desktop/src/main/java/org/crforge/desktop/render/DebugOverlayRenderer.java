@@ -475,6 +475,11 @@ public class DebugOverlayRenderer {
           }
         }
         case REFLECT -> renderReflectAura(x, y, ability);
+        case TUNNEL -> {
+          if (ability.isTunneling()) {
+            renderTunnelLine(x, y, ability);
+          }
+        }
         default -> {}
       }
     }
@@ -591,6 +596,24 @@ public class DebugOverlayRenderer {
     if (reflectRadius > 0) {
       ctx.getShapeRenderer().setColor(COLOR_REFLECT_AURA);
       ctx.getShapeRenderer().circle(x, y, reflectRadius, CIRCLE_SEGMENTS);
+    }
+  }
+
+  private void renderTunnelLine(float x, float y, AbilityComponent ability) {
+    // Draw a dashed-style line from current position to tunnel target
+    float targetX = ability.getTunnelTargetX() * TILE_PIXELS;
+    float targetY = ability.getTunnelTargetY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+
+    // Line to waypoint first (if using), then to final target
+    if (ability.isTunnelUsingWaypoint()) {
+      float waypointX = ability.getTunnelWaypointX() * TILE_PIXELS;
+      float waypointY = ability.getTunnelWaypointY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      ctx.getShapeRenderer().setColor(0.8f, 0.6f, 0.2f, 0.7f);
+      ctx.getShapeRenderer().line(x, y, waypointX, waypointY);
+      ctx.getShapeRenderer().line(waypointX, waypointY, targetX, targetY);
+    } else {
+      ctx.getShapeRenderer().setColor(0.8f, 0.6f, 0.2f, 0.7f);
+      ctx.getShapeRenderer().line(x, y, targetX, targetY);
     }
   }
 

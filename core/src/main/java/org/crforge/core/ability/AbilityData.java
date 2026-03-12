@@ -6,6 +6,11 @@ package org.crforge.core.ability;
  * copied to AbilityComponent at deployment.
  */
 public sealed interface AbilityData
-    permits ChargeAbility, VariableDamageAbility, DashAbility, HookAbility, ReflectAbility {
+    permits ChargeAbility,
+        VariableDamageAbility,
+        DashAbility,
+        HookAbility,
+        ReflectAbility,
+        TunnelAbility {
   AbilityType type();
 }

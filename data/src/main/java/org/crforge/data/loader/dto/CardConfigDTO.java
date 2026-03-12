@@ -49,4 +49,7 @@ public class CardConfigDTO {
 
   // How many secondary units to spawn (default 0)
   private int secondaryCount;
+
+  // Whether this card can be deployed on the enemy's side of the arena (e.g. Miner, GoblinDrill)
+  private boolean canDeployOnEnemySide;
 }

@@ -64,4 +64,7 @@ public class UnitConfigDTO {
 
   // Abilities (Charge, Variable Damage, etc.)
   private List<AbilityConfigDTO> abilities;
+
+  // Tunnel spawn pathfinding speed (e.g. Miner underground travel speed)
+  private float spawnPathfindSpeed;
 }

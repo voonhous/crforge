@@ -471,7 +471,8 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "unit": "Miner"
+    "unit": "Miner",
+    "canDeployOnEnemySide": true
   },
   {
     "id": "zapmachine",
@@ -1423,7 +1424,8 @@
     "type": "BUILDING",
     "rarity": "Epic",
     "cost": 4,
-    "unit": "GoblinDrill"
+    "unit": "GoblinDrill",
+    "canDeployOnEnemySide": true
   },
   {
     "id": "darkelixir_bottle",
@@ -1431,7 +1433,8 @@
     "type": "BUILDING",
     "rarity": "Champion",
     "cost": 3,
-    "unit": "DarkElixir_Bottle"
+    "unit": "DarkElixir_Bottle",
+    "canDeployOnEnemySide": true
   },
   {
     "id": "elixirbarrel",

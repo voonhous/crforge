@@ -21,12 +21,15 @@ public class Troop extends AbstractEntity {
 
   @Builder.Default private final float deployTime = DEFAULT_DEPLOY_TIME;
 
-  @Builder.Default private float deployTimer = 1.0f;
+  @Setter @Builder.Default private float deployTimer = 1.0f;
 
   @Builder.Default private final AbilityComponent ability = null;
 
   // River jump state: true while the troop is leaping over the river
   @Setter private boolean jumping;
+
+  // Tunnel state: true while the troop is traveling underground (Miner)
+  @Setter private boolean tunneling;
 
   @Override
   public EntityType getEntityType() {
@@ -106,6 +109,6 @@ public class Troop extends AbstractEntity {
 
   @Override
   public boolean isTargetable() {
-    return super.isTargetable() && !isDeploying() && !jumping;
+    return super.isTargetable() && !isDeploying() && !jumping && !tunneling;
   }
 }

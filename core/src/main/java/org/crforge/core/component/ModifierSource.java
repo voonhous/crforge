@@ -10,5 +10,6 @@ public enum ModifierSource {
   ABILITY_HOOK, // Hook wind-up/pull/drag
   ABILITY_DASH, // Dash sequence
   ABILITY_CHARGE, // Charge speed boost
-  ABILITY_JUMP // River jump speed boost
+  ABILITY_JUMP, // River jump speed boost
+  ABILITY_TUNNEL // Underground tunnel travel (Miner)
 }

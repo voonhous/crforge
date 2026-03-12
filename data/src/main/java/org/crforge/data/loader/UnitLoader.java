@@ -18,6 +18,7 @@ import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.HookAbility;
 import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.ability.VariableDamageStage;
 import org.crforge.core.card.DeathSpawnEntry;
@@ -140,6 +141,7 @@ public class UnitLoader {
             .ignorePushback(dto.isIgnorePushback())
             .kamikaze(dto.isKamikaze())
             .jumpEnabled(dto.isJumpEnabled())
+            .spawnPathfindSpeed(dto.getSpawnPathfindSpeed() / SPEED_BASE)
             // Building lifetime
             .lifeTime(dto.getLifeTime());
 
@@ -212,6 +214,12 @@ public class UnitLoader {
       }
     }
 
+    // Auto-create TunnelAbility when spawnPathfindSpeed is set and no other ability exists
+    if (dto.getSpawnPathfindSpeed() > 0
+        && (dto.getAbilities() == null || dto.getAbilities().isEmpty())) {
+      builder.ability(new TunnelAbility(dto.getSpawnPathfindSpeed() / SPEED_BASE));
+    }
+
     return builder.build();
   }
 
@@ -262,6 +270,9 @@ public class UnitLoader {
               dto.getBuffDuration(),
               dto.getCrownTowerDamagePercent(),
               dto.getBuff());
+      case TUNNEL ->
+          // Tunnel ability is auto-created from spawnPathfindSpeed, not from abilities array
+          null;
     };
   }
 }

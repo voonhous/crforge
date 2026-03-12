@@ -111,6 +111,11 @@ public class PhysicsSystem {
       return;
     }
 
+    // Tunnel movement is handled by AbilitySystem -- skip normal pathfinding
+    if (troop.isTunneling()) {
+      return;
+    }
+
     // Don't move if already in range to attack current target
     if (troop.isInAttackRange()) {
       return;

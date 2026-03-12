@@ -5,5 +5,6 @@ public enum AbilityType {
   VARIABLE_DAMAGE,
   DASH,
   HOOK,
-  REFLECT
+  REFLECT,
+  TUNNEL
 }

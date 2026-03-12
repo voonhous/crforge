@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.TunnelAbility;
+import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -20,6 +22,7 @@ import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
@@ -271,6 +274,12 @@ public class DeploymentSystem {
             totalUnits,
             summonRadius,
             formationOffsets);
+
+    // Tunnel ability: override spawn position to king tower and set up underground travel
+    if (troop.getAbility() != null && troop.getAbility().getData() instanceof TunnelAbility) {
+      initializeTunnel(troop, x, y);
+    }
+
     state.spawnEntity(troop);
   }
 
@@ -368,6 +377,52 @@ public class DeploymentSystem {
         .ability(abilityComponent)
         .level(level)
         .build();
+  }
+
+  /**
+   * Sets up the tunnel travel for a Miner-type troop. Overrides spawn position to the team's king
+   * tower and computes a river dogleg waypoint if the target crosses the river.
+   */
+  private void initializeTunnel(Troop troop, float targetX, float targetY) {
+    AbilityComponent ability = troop.getAbility();
+    Team team = troop.getTeam();
+
+    // Start at own king tower
+    float startX = Arena.WIDTH / 2f; // 9.0
+    float startY = team == Team.BLUE ? 3.0f : Arena.HEIGHT - 3.0f;
+    troop.getPosition().set(startX, startY);
+
+    // Store tunnel target
+    ability.setTunnelTargetX(targetX);
+    ability.setTunnelTargetY(targetY);
+
+    // Compute river dogleg waypoint if target crosses the river
+    boolean crossesRiver =
+        (team == Team.BLUE && targetY > Arena.RIVER_Y - 1)
+            || (team == Team.RED && targetY < Arena.RIVER_Y + 1);
+
+    if (crossesRiver) {
+      // Pick the bridge lane closer to the target's X position
+      float waypointX = targetX < Arena.WIDTH / 2f ? 4.1f : 13.9f;
+      float waypointY = team == Team.BLUE ? 15.0f : 17.0f;
+      ability.setTunnelWaypointX(waypointX);
+      ability.setTunnelWaypointY(waypointY);
+      ability.setTunnelUsingWaypoint(true);
+    }
+
+    // Activate tunnel state
+    ability.setTunnelState(AbilityComponent.TunnelState.TUNNELING);
+    troop.setTunneling(true);
+    troop.setInvulnerable(true);
+
+    // Disable combat while tunneling
+    if (troop.getCombat() != null) {
+      troop.getCombat().setCombatDisabled(ModifierSource.ABILITY_TUNNEL, true);
+    }
+    troop.getMovement().setMovementDisabled(ModifierSource.ABILITY_TUNNEL, true);
+
+    // Skip initial deploy animation -- tunnel handles the spawn delay instead
+    troop.setDeployTimer(0);
   }
 
   private void spawnBuilding(Team team, Card card, float x, float y, int level) {
