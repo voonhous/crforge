@@ -132,7 +132,7 @@ public class PhysicsSystem {
     }
 
     // Don't move if already in range to attack current target,
-    // unless a returning projectile is in flight (pingpong shooter keeps walking while axe is out)
+    // unless a returning projectile is in flight (pingpong shooter keeps walking while bola is out)
     if (troop.isInAttackRange()) {
       if (troop.getCombat() == null || !troop.getCombat().isReturningProjectileInFlight()) {
         return;
