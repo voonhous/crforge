@@ -157,7 +157,12 @@ public class CombatSystem {
       baseDamage = AbilitySystem.getChargeDamage(troop.getAbility(), baseDamage);
     }
 
-    if (combat.isRanged()) {
+    if (combat.isRanged()
+        && combat.getMultipleProjectiles() > 1
+        && combat.getProjectileStats() != null
+        && combat.getProjectileStats().getScatter() != null) {
+      fireScatterProjectiles(attacker, target, baseDamage, combat);
+    } else if (combat.isRanged()) {
       Projectile projectile = createAttackProjectile(attacker, target, baseDamage, combat);
       gameState.spawnProjectile(projectile);
     } else {
@@ -204,6 +209,73 @@ public class CombatSystem {
     // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
     if (combat.isKamikaze()) {
       attacker.getHealth().kill();
+    }
+  }
+
+  /**
+   * Fires scatter projectiles in a fan pattern (Hunter shotgun). Each pellet is a piercing
+   * projectile that travels in a fixed direction for the projectile's range.
+   *
+   * @param attacker the attacking entity
+   * @param target the primary target (used to calculate base angle)
+   * @param damage per-pellet damage
+   * @param combat the attacker's combat component
+   */
+  private void fireScatterProjectiles(Entity attacker, Entity target, int damage, Combat combat) {
+    ProjectileStats stats = combat.getProjectileStats();
+    int count = combat.getMultipleProjectiles();
+
+    float attackerX = attacker.getPosition().getX();
+    float attackerY = attacker.getPosition().getY();
+    float targetX = target.getPosition().getX();
+    float targetY = target.getPosition().getY();
+
+    // Base angle toward the target
+    float baseAngle = (float) Math.atan2(targetY - attackerY, targetX - attackerX);
+
+    // Spread angle between pellets (10 degrees, matching JS reference)
+    float spreadDegrees = 10f;
+    float spreadRadians = (float) Math.toRadians(spreadDegrees);
+
+    // Start position: 0.65 tiles ahead of attacker in the base direction
+    float startOffsetDist = 0.65f;
+    float startX = attackerX + startOffsetDist * (float) Math.cos(baseAngle);
+    float startY = attackerY + startOffsetDist * (float) Math.sin(baseAngle);
+
+    float range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : 6.5f;
+
+    List<EffectStats> effects = new ArrayList<>(stats.getHitEffects());
+
+    for (int i = 0; i < count; i++) {
+      // Offset angle: centered around base angle
+      float offsetAngle = (i - count / 2.0f) * spreadRadians;
+      float pelletAngle = baseAngle + offsetAngle;
+
+      // Direction for this pellet
+      float dirX = (float) Math.cos(pelletAngle);
+      float dirY = (float) Math.sin(pelletAngle);
+
+      // End position: range tiles from start in the pellet direction
+      float endX = startX + range * dirX;
+      float endY = startY + range * dirY;
+
+      Projectile pellet =
+          new Projectile(
+              attacker.getTeam(),
+              startX,
+              startY,
+              endX,
+              endY,
+              damage,
+              stats.getRadius(),
+              stats.getSpeed(),
+              effects,
+              combat.getCrownTowerDamagePercent());
+
+      // Configure as piercing so pellets travel through enemies
+      pellet.configurePiercing(dirX, dirY, range, stats.isAoeToGround(), stats.isAoeToAir());
+
+      gameState.spawnProjectile(pellet);
     }
   }
 
