@@ -135,6 +135,7 @@
     "radius": 1.8,
     "projectileRange": 7.5,
     "pushback": 1000,
+    "piercing": true,
     "deflectBehaviours": [
       "InvertDirection"
     ]

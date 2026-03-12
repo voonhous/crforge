@@ -32,6 +32,9 @@ public class ProjectileConfigDTO {
   private String scatter;
   private float projectileRange;
 
+  // Piercing: projectile travels through enemies, hitting all in path (Bowler)
+  private boolean piercing;
+
   // Spawn sub-projectile on impact (Firecracker explosion) - string reference
   private String spawnProjectile;
   private int spawnCount;

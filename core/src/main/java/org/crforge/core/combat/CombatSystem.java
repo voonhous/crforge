@@ -316,6 +316,11 @@ public class CombatSystem {
       if (hit) {
         onProjectileHit(projectile);
       }
+
+      // Piercing projectiles check for hits every tick while still active
+      if (projectile.isPiercing() && projectile.isActive()) {
+        processPiercingHits(projectile);
+      }
     }
 
     projectiles.removeIf(p -> !p.isActive());
@@ -591,6 +596,18 @@ public class CombatSystem {
       if (!stats.isHoming()) {
         projectile.setHoming(false);
       }
+
+      // Piercing projectiles travel in a straight line through enemies
+      if (stats.isPiercing() && stats.getProjectileRange() > 0) {
+        float dx = target.getPosition().getX() - attacker.getPosition().getX();
+        float dy = target.getPosition().getY() - attacker.getPosition().getY();
+        float dist =
+            (float) Math.sqrt(dx * dx + dy * dy);
+        float dirX = dist > 0.001f ? dx / dist : 0f;
+        float dirY = dist > 0.001f ? dy / dist : 1f;
+        projectile.configurePiercing(
+            dirX, dirY, stats.getProjectileRange(), stats.isAoeToGround(), stats.isAoeToAir());
+      }
     }
 
     return projectile;
@@ -791,6 +808,83 @@ public class CombatSystem {
 
       movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
     }
+  }
+
+  /**
+   * Processes per-tick hit detection for a piercing projectile. Checks all alive enemy entities
+   * within the projectile's AOE radius, applies damage and effects, and triggers directional
+   * knockback for each newly-hit entity.
+   */
+  private void processPiercingHits(Projectile projectile) {
+    Team enemyTeam = projectile.getTeam().opposite();
+    float projX = projectile.getPosition().getX();
+    float projY = projectile.getPosition().getY();
+    float aoeRadius = projectile.getAoeRadius();
+    int baseDamage = projectile.getDamage();
+    int ctdp = projectile.getCrownTowerDamagePercent();
+
+    for (Entity entity : gameState.getAliveEntities()) {
+      if (entity.getTeam() != enemyTeam || !entity.isTargetable()) {
+        continue;
+      }
+      if (projectile.hasHitEntity(entity.getId())) {
+        continue;
+      }
+      if (!canPiercingHit(projectile, entity)) {
+        continue;
+      }
+
+      float distSq = entity.getPosition().distanceToSquared(projX, projY);
+      float effectiveRadius = aoeRadius + entity.getCollisionRadius();
+      if (distSq > effectiveRadius * effectiveRadius) {
+        continue;
+      }
+
+      projectile.recordHitEntity(entity.getId());
+
+      int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, entity, ctdp);
+      applyEffects(entity, filterEffects(projectile.getEffects(), false));
+      dealDamage(entity, effectiveDamage);
+      applyEffects(entity, filterEffects(projectile.getEffects(), true));
+
+      // Apply directional knockback along the projectile's travel direction
+      if (projectile.getPushback() > 0) {
+        applyDirectionalKnockback(projectile, entity);
+      }
+    }
+  }
+
+  /**
+   * Returns true if the entity's movement type is compatible with the piercing projectile's
+   * aoeToGround/aoeToAir targeting flags.
+   */
+  private boolean canPiercingHit(Projectile projectile, Entity entity) {
+    MovementType mt = entity.getMovementType();
+    if (mt == MovementType.AIR) {
+      return projectile.isAoeToAir();
+    }
+    // GROUND and BUILDING are ground-level targets
+    return projectile.isAoeToGround();
+  }
+
+  /**
+   * Applies knockback to an entity in the piercing projectile's travel direction, rather than
+   * radially from the impact point. Buildings and ignorePushback entities are immune.
+   */
+  private void applyDirectionalKnockback(Projectile projectile, Entity entity) {
+    if (entity.getMovementType() == MovementType.BUILDING) {
+      return;
+    }
+    Movement movement = entity.getMovement();
+    if (movement == null || movement.isIgnorePushback()) {
+      return;
+    }
+    movement.startKnockback(
+        projectile.getPiercingDirX(),
+        projectile.getPiercingDirY(),
+        projectile.getPushback(),
+        KNOCKBACK_DURATION,
+        KNOCKBACK_MAX_TIME);
   }
 
   /** Check if an entity can attack a target (used for validation). */

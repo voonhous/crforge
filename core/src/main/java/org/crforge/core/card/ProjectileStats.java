@@ -31,6 +31,9 @@ public class ProjectileStats {
   // Non-homing scatter projectiles expire at this range
   @Builder.Default private final float projectileRange = 0f;
 
+  // Piercing: projectile travels through enemies, hitting all in its path (e.g. Bowler boulder)
+  @Builder.Default private final boolean piercing = false;
+
   // Spawn sub-projectile on impact
   private final ProjectileStats spawnProjectile;
   @Builder.Default private final int spawnCount = 0;
@@ -63,6 +66,7 @@ public class ProjectileStats {
         .aoeToAir(aoeToAir)
         .aoeToGround(aoeToGround)
         .projectileRange(projectileRange)
+        .piercing(piercing)
         .spawnProjectile(spawnProjectile)
         .spawnCount(spawnCount)
         .spawnRadius(spawnRadius)

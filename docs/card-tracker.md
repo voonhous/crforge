@@ -43,7 +43,7 @@ the live game name.
 | 31 | Fire Spirit       | firespirits      | `DONE`    |                                 |
 | 32 | Miner             | miner            | `DONE`    | tunnel + deploy on enemy side   |
 | 33 | Sparky            | zapmachine       | `DONE`    | noPreload                       |
-| 34 | Bowler            | bowler           | `MISSING` |                                 |
+| 34 | Bowler            | bowler           | `DONE`    | piercing projectile + knockback |
 | 35 | Lumberjack        | ragebarbarian    | `MISSING` |                                 |
 | 36 | Battle Ram        | battleram        | `DONE`    | charge + kamikaze + death spawn |
 | 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                 |

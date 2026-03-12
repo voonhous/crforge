@@ -1,7 +1,9 @@
 package org.crforge.core.entity.projectile;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
@@ -64,6 +66,16 @@ public class Projectile {
 
   // Chain lightning origin entity (the entity this chain "jumps from")
   @Setter private Entity chainOrigin;
+
+  // Piercing projectile fields: travels through enemies, hitting all in path
+  @Setter private boolean piercing;
+  @Getter private float piercingDirX;
+  @Getter private float piercingDirY;
+  private float piercingRange;
+  private float distanceTraveled;
+  private Set<Long> hitEntities;
+  @Setter private boolean aoeToGround;
+  @Setter private boolean aoeToAir;
 
   private boolean active;
   private boolean hit;
@@ -184,6 +196,9 @@ public class Projectile {
     if (!active) {
       return false;
     }
+    if (piercing) {
+      return updatePiercing(deltaTime);
+    }
     return positionTargeted ? updatePositionTargeted(deltaTime) : updateEntityTargeted(deltaTime);
   }
 
@@ -269,6 +284,51 @@ public class Projectile {
     // Update rotation to face target
     position.setRotation((float) Math.atan2(dy, dx));
 
+    return false;
+  }
+
+  /**
+   * Configures this projectile for piercing travel. The projectile moves in a fixed direction,
+   * passing through enemies and hitting all in its path until it reaches the specified range.
+   */
+  public void configurePiercing(
+      float dirX, float dirY, float range, boolean aoeToGround, boolean aoeToAir) {
+    this.piercing = true;
+    this.piercingDirX = dirX;
+    this.piercingDirY = dirY;
+    this.piercingRange = range;
+    this.distanceTraveled = 0f;
+    this.hitEntities = new HashSet<>();
+    this.aoeToGround = aoeToGround;
+    this.aoeToAir = aoeToAir;
+  }
+
+  /** Returns true if the given entity has already been hit by this piercing projectile. */
+  public boolean hasHitEntity(long entityId) {
+    return hitEntities != null && hitEntities.contains(entityId);
+  }
+
+  /** Records that the given entity has been hit by this piercing projectile. */
+  public void recordHitEntity(long entityId) {
+    if (hitEntities != null) {
+      hitEntities.add(entityId);
+    }
+  }
+
+  /**
+   * Updates a piercing projectile: moves along its fixed direction and deactivates when the total
+   * distance traveled exceeds piercingRange. Hit detection is handled externally by CombatSystem.
+   */
+  private boolean updatePiercing(float deltaTime) {
+    float moveDistance = speed * deltaTime;
+    position.add(piercingDirX * moveDistance, piercingDirY * moveDistance);
+    distanceTraveled += moveDistance;
+
+    if (distanceTraveled >= piercingRange) {
+      active = false;
+    }
+
+    // Piercing projectiles never "hit" in the traditional sense -- CombatSystem handles per-tick hits
     return false;
   }
 
