@@ -65,7 +65,7 @@ the live game name.
 | 53 | Rascals           | rascals          | `DONE`    |                                 |
 | 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE            |
 | 55 | Skeleton Barrel   | skeletonballoon  | `DONE`    | kamikaze + death chain          |
-| 56 | Cannon Cart       | dartbarrell      | `MISSING` |                                 |
+| 56 | Flying Machine    | dartbarrell      | `DONE`    |                                 |
 | 57 | Wall Breakers     | wallbreakers     | `MISSING` | count=2                         |
 | 58 | Royal Hogs        | royalhogs        | `MISSING` | count=4, jump over river        |
 | 59 | Goblin Giant      | goblingiant      | `MISSING` |                                 |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 69      | Fully functional in simulation                 |
+| `DONE`     | 70      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 44      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 43      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 
