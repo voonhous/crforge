@@ -578,6 +578,7 @@ public class AbilitySystem {
     troop.getMovement().clearModifiers(ModifierSource.ABILITY_TUNNEL);
     Combat combat = troop.getCombat();
     if (combat != null) {
+      combat.setCurrentTarget(null);
       combat.clearModifiers(ModifierSource.ABILITY_TUNNEL);
     }
 

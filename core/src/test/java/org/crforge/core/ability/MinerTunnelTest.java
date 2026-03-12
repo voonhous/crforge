@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.within;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -17,12 +18,14 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.DeploymentSystem;
+import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.physics.PhysicsSystem;
@@ -30,6 +33,7 @@ import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -374,5 +378,79 @@ class MinerTunnelTest {
     // Position should be unchanged by physics (only AbilitySystem moves it)
     assertThat(miner.getPosition().getX()).isEqualTo(xBefore);
     assertThat(miner.getPosition().getY()).isEqualTo(yBefore);
+  }
+
+  /**
+   * Reproduction test for bug: Miner deployed next to enemy Crown Tower targets a Princess Tower
+   * instead. Uses full GameEngine tick loop to exercise the real system interaction order.
+   *
+   * Root cause: during tunnel travel, the TargetingSystem acquires a Princess Tower as the Miner's
+   * target (since deployTimer=0 while tunneling, isDeploying() returns false). On emergence, the
+   * stale target persists through the deploy animation and is kept via retention range.
+   */
+  @Test
+  void miner_targetsCrownTower_whenDeployedNextToIt() {
+    // Use fresh ID counters for full engine test
+    AbstractEntity.resetIdCounter();
+    Projectile.resetIdCounter();
+
+    Card minerCard = Objects.requireNonNull(CardRegistry.get("miner"), "miner not found");
+    // Fill the deck with Miner cards so it's always in hand
+    List<Card> deckCards = new ArrayList<>(Collections.nCopies(8, minerCard));
+
+    Player blue = new Player(Team.BLUE, new Deck(deckCards), false);
+    Player red = new Player(Team.RED, new Deck(new ArrayList<>(deckCards)), false);
+
+    // Use level 1 towers to keep tower damage low (Miner has 473 HP at level 1)
+    Standard1v1Match fullMatch = new Standard1v1Match(1);
+    fullMatch.addPlayer(blue);
+    fullMatch.addPlayer(red);
+
+    GameEngine engine = new GameEngine();
+    engine.setMatch(fullMatch);
+    engine.initMatch();
+
+    // Deploy Miner at (9.0, 26.5) -- near Red Crown Tower at (9.0, 29.0)
+    // Tile (9, 26) is RED_ZONE, valid for Miner's canDeployOnEnemySide
+    engine.queueAction(
+        blue, PlayerActionDTO.builder().handIndex(0).x(9.0f).y(26.5f).build());
+
+    // Run enough ticks for tunnel travel + deploy animation + first attack:
+    // ~30 ticks sync delay + ~75 ticks tunnel + 30 ticks deploy + 20 ticks first attack = ~155
+    engine.tick(180);
+
+    // Find the deployed Miner
+    Troop miner =
+        engine.getGameState().getAliveEntities().stream()
+            .filter(e -> e instanceof Troop t && t.getTeam() == Team.BLUE)
+            .map(e -> (Troop) e)
+            .findFirst()
+            .orElse(null);
+    assertThat(miner).as("Miner should be alive").isNotNull();
+
+    // Miner should have finished tunnel and deploy animation
+    assertThat(miner.isTunneling()).isFalse();
+    assertThat(miner.isDeploying()).isFalse();
+
+    // The Miner's target should be the Crown Tower (distance ~2.5, well within sightRange 5.5),
+    // NOT a Princess Tower (distance ~6, outside sightRange)
+    Entity target = miner.getCombat().getCurrentTarget();
+    assertThat(target).as("Miner should have a target").isNotNull();
+    assertThat(target).isInstanceOf(Tower.class);
+
+    Tower targetTower = (Tower) target;
+    assertThat(targetTower.isCrownTower())
+        .as(
+            "Miner should target Crown Tower (dist ~2.5) not %s at (%.1f, %.1f)",
+            targetTower.isPrincessTower() ? "Princess Tower" : targetTower.getName(),
+            targetTower.getPosition().getX(),
+            targetTower.getPosition().getY())
+        .isTrue();
+
+    // Crown Tower should have taken damage (proving the Miner attacked it)
+    Tower crownTower = engine.getGameState().getCrownTower(Team.RED);
+    assertThat(crownTower.getHealth().getCurrent())
+        .as("Crown Tower should have taken damage from the Miner")
+        .isLessThan(crownTower.getHealth().getMax());
   }
 }

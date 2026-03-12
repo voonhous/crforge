@@ -33,8 +33,8 @@ public class TargetingSystem {
         continue;
       }
 
-      // Special Case: Troops cannot target while deploying
-      if (entity instanceof Troop troop && troop.isDeploying()) {
+      // Troops cannot target while deploying or tunneling underground
+      if (entity instanceof Troop troop && (troop.isDeploying() || troop.isTunneling())) {
         continue;
       }
 
