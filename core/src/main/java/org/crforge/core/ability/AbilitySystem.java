@@ -49,6 +49,7 @@ public class AbilitySystem {
           // Reflect is passive -- handled in CombatSystem.dealDamage()
         }
         case TUNNEL -> updateTunnel(troop, ability, deltaTime);
+        case STEALTH -> updateStealth(troop, ability, deltaTime);
       }
     }
   }
@@ -585,6 +586,37 @@ public class AbilitySystem {
     // Reset deploy timer so the Miner goes through a normal deploy animation at the target.
     // This gives a counterplay window: targetable but cannot attack.
     troop.setDeployTimer(troop.getDeployTime());
+  }
+
+  // -- STEALTH --
+
+  /**
+   * Updates stealth state for Royal Ghost. While not attacking, the fade timer ticks up; once it
+   * exceeds the fade time, the unit becomes invisible. While attacking and invisible, a grace
+   * period allows the ghost to stay invisible briefly before revealing.
+   */
+  private void updateStealth(Troop troop, AbilityComponent ability, float deltaTime) {
+    StealthAbility data = (StealthAbility) ability.getData();
+    Combat combat = troop.getCombat();
+    boolean attacking = combat != null && combat.isAttacking();
+
+    if (!attacking) {
+      // Not attacking: tick fade timer toward invisibility
+      ability.setStealthFadeTimer(ability.getStealthFadeTimer() + deltaTime);
+      if (ability.getStealthFadeTimer() >= data.fadeTime()) {
+        ability.setInvisible(true);
+        // Reset reveal timer so next attack gets the full grace period
+        ability.setStealthRevealTimer(0f);
+      }
+    } else {
+      // Attacking: tick reveal timer; once grace period expires, become visible
+      ability.setStealthRevealTimer(ability.getStealthRevealTimer() + deltaTime);
+      if (ability.getStealthRevealTimer() >= data.attackGracePeriod()) {
+        ability.setInvisible(false);
+        // Reset fade timer so invisibility must be re-earned
+        ability.setStealthFadeTimer(0f);
+      }
+    }
   }
 
   // -- REFLECT utility --

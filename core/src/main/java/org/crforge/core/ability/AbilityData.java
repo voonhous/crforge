@@ -11,6 +11,7 @@ public sealed interface AbilityData
         DashAbility,
         HookAbility,
         ReflectAbility,
-        TunnelAbility {
+        TunnelAbility,
+        StealthAbility {
   AbilityType type();
 }

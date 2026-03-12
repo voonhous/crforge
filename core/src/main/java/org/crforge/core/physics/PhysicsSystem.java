@@ -290,6 +290,11 @@ public class PhysicsSystem {
       return false;
     }
 
+    // Invisible entities pass through everything
+    if (isInvisible(a) || isInvisible(b)) {
+      return false;
+    }
+
     MovementType typeA = a.getMovementType();
     MovementType typeB = b.getMovementType();
 
@@ -308,6 +313,10 @@ public class PhysicsSystem {
 
   private boolean isKnockedBack(Entity entity) {
     return entity.getMovement() != null && entity.getMovement().isKnockedBack();
+  }
+
+  private boolean isInvisible(Entity entity) {
+    return entity instanceof Troop troop && troop.isInvisible();
   }
 
   /** Collision result containing push direction and overlap amount. */

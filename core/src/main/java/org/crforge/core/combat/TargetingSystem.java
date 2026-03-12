@@ -65,6 +65,10 @@ public class TargetingSystem {
       if (e.getTeam() != enemyTeam || !e.isTargetable()) {
         continue;
       }
+      // Invisible troops cannot be targeted by units (but can still be hit by AOE spells)
+      if (e instanceof Troop t && t.isInvisible()) {
+        continue;
+      }
       if (!canTarget(combat, e)) {
         continue;
       }
@@ -82,6 +86,10 @@ public class TargetingSystem {
 
   private boolean isValidTarget(Entity attacker, Combat combat, Entity target) {
     if (target == null || !target.isTargetable()) {
+      return false;
+    }
+    // Drop target that went invisible (forces retarget, which will also skip invisible)
+    if (target instanceof Troop t && t.isInvisible()) {
       return false;
     }
 

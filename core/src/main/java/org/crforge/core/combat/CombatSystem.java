@@ -315,6 +315,9 @@ public class CombatSystem {
       if (e == primaryTarget || e.getTeam() != enemyTeam || !e.isTargetable()) {
         continue;
       }
+      if (e instanceof Troop t && t.isInvisible()) {
+        continue;
+      }
       if (!isInAttackRange(attacker, e, combat)) {
         continue;
       }
@@ -535,6 +538,9 @@ public class CombatSystem {
     List<Entity> candidates = new ArrayList<>();
     for (Entity e : gameState.getAliveEntities()) {
       if (e == primaryTarget || e.getTeam() == team || !e.isTargetable()) {
+        continue;
+      }
+      if (e instanceof Troop t && t.isInvisible()) {
         continue;
       }
       float distSq = e.getPosition().distanceToSquared(primaryTarget.getPosition());
@@ -942,6 +948,9 @@ public class CombatSystem {
 
     for (Entity entity : gameState.getAliveEntities()) {
       if (entity.getTeam() != enemyTeam || !entity.isTargetable()) {
+        continue;
+      }
+      if (entity instanceof Troop t && t.isInvisible()) {
         continue;
       }
       if (projectile.hasHitEntity(entity.getId())) {

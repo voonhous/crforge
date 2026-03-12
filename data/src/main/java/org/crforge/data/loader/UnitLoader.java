@@ -18,6 +18,7 @@ import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.HookAbility;
 import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.ability.StealthAbility;
 import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.ability.VariableDamageStage;
@@ -226,6 +227,14 @@ public class UnitLoader {
       builder.ability(new TunnelAbility(dto.getSpawnPathfindSpeed() / SPEED_BASE));
     }
 
+    // Stealth ability (Royal Ghost): invisible after not attacking for a period
+    if (dto.getStealth() != null && dto.getStealth().getNotAttackingTimeMs() > 0) {
+      builder.ability(
+          new StealthAbility(
+              dto.getStealth().getNotAttackingTimeMs() / 1000f,
+              dto.getStealth().getHideTimeMs() / 1000f));
+    }
+
     return builder.build();
   }
 
@@ -278,6 +287,9 @@ public class UnitLoader {
               dto.getBuff());
       case TUNNEL ->
           // Tunnel ability is auto-created from spawnPathfindSpeed, not from abilities array
+          null;
+      case STEALTH ->
+          // Stealth ability is auto-created from stealth field, not from abilities array
           null;
     };
   }

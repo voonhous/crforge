@@ -11,6 +11,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Tower;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**
@@ -44,7 +45,10 @@ public class EntityRenderer {
 
       // Entity body
       Color baseColor = getEntityColor(entity);
-      if (entity.isInvulnerable()) {
+      if (entity instanceof Troop troop && troop.isInvisible()) {
+        // Invisible (stealth) entities render as very faint
+        ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.15f);
+      } else if (entity.isInvulnerable()) {
         // Invulnerable entities render with reduced alpha
         ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.5f);
       } else {

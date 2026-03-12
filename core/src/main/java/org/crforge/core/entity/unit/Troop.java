@@ -31,6 +31,11 @@ public class Troop extends AbstractEntity {
   // Tunnel state: true while the troop is traveling underground (Miner)
   @Setter private boolean tunneling;
 
+  /** Returns true if this troop is currently invisible (stealth ability active). */
+  public boolean isInvisible() {
+    return ability != null && ability.isInvisible();
+  }
+
   @Override
   public EntityType getEntityType() {
     return EntityType.TROOP;

@@ -91,7 +91,7 @@ public class DebugGameScreen implements Screen {
     Standard1v1Match match = new Standard1v1Match();
 
     // Decks showcasing special abilities and effects:
-    // Blue: charge, hook, variable damage, deploy effect, spawner, area effect spells, shield
+    // Blue: charge, hook, variable damage, deploy effect, spawner, area effect spell, kamikaze air
     List<Card> blueCards =
         List.of(
             CardRegistry.get("darkprince"), // Charge + Shield
@@ -101,7 +101,7 @@ public class DebugGameScreen implements Screen {
             CardRegistry.get("electrowizard"), // Deploy stun effect
             CardRegistry.get("witch"), // Live spawner (skeletons)
             CardRegistry.get("zap"), // Area effect spell (stun)
-            CardRegistry.get("axeman") // Area effect spell (ticking)
+            CardRegistry.get("skeletonballoon") // Kamikaze air, death chain -> bomb -> skeletons
             );
 
     // Red: dash, reflect, shield, spawner building, live spawn, area effect, charge

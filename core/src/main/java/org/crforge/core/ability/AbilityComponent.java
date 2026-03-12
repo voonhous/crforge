@@ -52,11 +52,23 @@ public class AbilityComponent {
   private float tunnelWaypointY = 0f;
   private boolean tunnelUsingWaypoint = false;
 
+  // STEALTH state (Royal Ghost)
+  private float stealthFadeTimer = 0f;
+  private float stealthRevealTimer = 0f;
+  private boolean invisible = false;
+
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
     if (data instanceof DashAbility dash) {
       this.dashCooldownTimer = dash.dashCooldown();
+    }
+    // Ghost spawns invisible: pre-fill fade timer so it stays invisible,
+    // and set reveal timer to 0 so the first attack gets the full grace period.
+    if (data instanceof StealthAbility stealth) {
+      this.invisible = true;
+      this.stealthFadeTimer = stealth.fadeTime();
+      this.stealthRevealTimer = 0f;
     }
   }
 

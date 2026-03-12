@@ -6,5 +6,6 @@ public enum AbilityType {
   DASH,
   HOOK,
   REFLECT,
-  TUNNEL
+  TUNNEL,
+  STEALTH
 }
