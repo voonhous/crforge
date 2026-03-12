@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
 import java.util.Collections;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.Rarity;
@@ -12,10 +13,13 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -128,7 +132,12 @@ public class SpawnerSystem {
         }
       }
 
-      // 3. Fallback: legacy death spawn via deathSpawnCount + spawnStats
+      // 3. Spawn death area effect (e.g. RageBarbarianBottle drops Rage zone)
+      if (spawner.getDeathAreaEffect() != null) {
+        spawnDeathAreaEffect(entity, spawner);
+      }
+
+      // 4. Fallback: legacy death spawn via deathSpawnCount + spawnStats
       if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
         for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
           Vector2 offset =
@@ -148,7 +157,7 @@ public class SpawnerSystem {
       }
     }
 
-    // 4. Handle Effects (e.g. Mother Witch CURSE -> Cursed Hog)
+    // 5. Handle Effects (e.g. Mother Witch CURSE -> Cursed Hog)
     for (AppliedEffect effect : entity.getAppliedEffects()) {
       if (effect.getType() == StatusEffectType.CURSE && effect.getSpawnSpecies() != null) {
         // Spawn the unit for the OPPONENT of the dying unit
@@ -165,6 +174,52 @@ public class SpawnerSystem {
     // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
     // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
     doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1);
+  }
+
+  /**
+   * Spawns an AreaEffect entity at the dying entity's position. Used for death area effects like
+   * the RageBarbarianBottle dropping a Rage zone. Follows the same pattern as
+   * DeploymentSystem.deployAreaEffect().
+   */
+  private void spawnDeathAreaEffect(Entity entity, SpawnerComponent spawner) {
+    AreaEffectStats stats = spawner.getDeathAreaEffect();
+    int scaledDamage =
+        stats.getDamage() > 0
+            ? LevelScaling.scaleCard(stats.getDamage(), spawner.getRarity(), spawner.getLevel())
+            : 0;
+    int resolvedCtdp = stats.getCrownTowerDamagePercent();
+    int buildingDmgPct = 0;
+
+    // Resolve values from BuffDefinition if the area effect has a buff
+    BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
+    if (buffDef != null) {
+      if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
+        float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
+        int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
+        scaledDamage =
+            LevelScaling.scaleCard(baseDamage, spawner.getRarity(), spawner.getLevel());
+      }
+      if (resolvedCtdp == 0 && buffDef.getCrownTowerDamagePercent() != 0) {
+        resolvedCtdp = buffDef.getCrownTowerDamagePercent();
+      }
+      if (buffDef.getBuildingDamagePercent() != 0) {
+        buildingDmgPct = buffDef.getBuildingDamagePercent();
+      }
+    }
+
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name(stats.getName())
+            .team(entity.getTeam())
+            .position(new Position(entity.getPosition().getX(), entity.getPosition().getY()))
+            .stats(stats)
+            .scaledDamage(scaledDamage)
+            .resolvedCrownTowerDamagePercent(resolvedCtdp)
+            .buildingDamagePercent(buildingDmgPct)
+            .remainingLifetime(stats.getLifeDuration())
+            .build();
+
+    gameState.spawnEntity(effect);
   }
 
   private static final float KNOCKBACK_DURATION = 0.5f;
@@ -246,7 +301,10 @@ public class SpawnerSystem {
     float deployTime = isBomb ? stats.getDeployTime() : 0f;
 
     // Build SpawnerComponent for units with death mechanics or bomb behavior
-    boolean hasDeathMechanics = stats.getDeathDamage() > 0 || !stats.getDeathSpawns().isEmpty();
+    boolean hasDeathMechanics =
+        stats.getDeathDamage() > 0
+            || !stats.getDeathSpawns().isEmpty()
+            || stats.getDeathAreaEffect() != null;
     SpawnerComponent spawner = null;
     if (hasDeathMechanics || isBomb) {
       int scaledDeathDamage =
@@ -260,6 +318,7 @@ public class SpawnerSystem {
               .deathDamageRadius(stats.getDeathDamageRadius())
               .deathPushback(stats.getDeathPushback())
               .deathSpawns(stats.getDeathSpawns())
+              .deathAreaEffect(stats.getDeathAreaEffect())
               .rarity(rarity)
               .level(level)
               .selfDestruct(isBomb)

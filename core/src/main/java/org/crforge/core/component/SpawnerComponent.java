@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
@@ -60,6 +61,9 @@ public class SpawnerComponent {
   @Builder.Default private float deathPushback = 0f;
   @Builder.Default private List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
+  // Death area effect (e.g. RageBarbarianBottle drops a Rage zone on death)
+  private AreaEffectStats deathAreaEffect;
+
   // Runtime state
   @Builder.Default private float currentTimer = 0f;
   @Builder.Default private int unitsSpawnedInCurrentWave = 0;
@@ -88,7 +92,7 @@ public class SpawnerComponent {
 
   /** Returns true if this spawner has any death mechanics (damage or spawns). */
   public boolean hasDeathMechanics() {
-    return deathDamage > 0 || deathSpawnCount > 0 || !deathSpawns.isEmpty();
+    return deathDamage > 0 || deathSpawnCount > 0 || !deathSpawns.isEmpty() || deathAreaEffect != null;
   }
 
   /**

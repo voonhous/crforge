@@ -179,6 +179,11 @@ public class UnitLoader {
       }
     }
 
+    // Death area effect (e.g. RageBarbarianBottle drops Rage zone on death)
+    if (dto.getDeathAreaEffect() != null) {
+      builder.deathAreaEffect(CardLoader.convertAreaEffect(dto.getDeathAreaEffect()));
+    }
+
     // Death spawns: resolve character references from the unit map
     if (dto.getDeathSpawn() != null && unitMap != null) {
       List<DeathSpawnEntry> deathSpawns = new ArrayList<>();

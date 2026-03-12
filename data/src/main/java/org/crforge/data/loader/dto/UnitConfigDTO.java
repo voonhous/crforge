@@ -61,6 +61,7 @@ public class UnitConfigDTO {
   private float lifeTime;
   private LiveSpawnConfigDTO liveSpawn;
   private List<DeathSpawnConfigDTO> deathSpawn;
+  private AreaEffectConfigDTO deathAreaEffect;
 
   // Abilities (Charge, Variable Damage, etc.)
   private List<AbilityConfigDTO> abilities;

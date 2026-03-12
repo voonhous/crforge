@@ -70,6 +70,12 @@ public class AreaEffectSystem {
       return;
     }
 
+    // Check if this is a friendly buff effect (e.g. Rage) -- no damage, positive speed buff
+    if (buffDef != null && isFriendlyBuff(buffDef) && effect.getEffectiveDamage() == 0) {
+      applyBuffToFriendlies(effect);
+      return;
+    }
+
     Team enemyTeam = effect.getTeam().opposite();
     float centerX = effect.getPosition().getX();
     float centerY = effect.getPosition().getY();
@@ -140,6 +146,43 @@ public class AreaEffectSystem {
       float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
       if (distanceSq <= effectiveRadius * effectiveRadius) {
         target.getHealth().heal(healAmount);
+      }
+    }
+  }
+
+  /**
+   * Returns true if the buff is a positive friendly buff (like Rage) rather than a debuff. Detected
+   * by having positive speed multipliers and no damage component.
+   */
+  private boolean isFriendlyBuff(BuffDefinition buffDef) {
+    return buffDef.getSpeedMultiplier() > 0 && buffDef.getDamagePerSecond() == 0;
+  }
+
+  /**
+   * Applies a buff to friendly units within the area effect radius. Used for positive buffs like
+   * Rage that should affect same-team entities.
+   */
+  private void applyBuffToFriendlies(AreaEffect effect) {
+    AreaEffectStats stats = effect.getStats();
+    Team friendlyTeam = effect.getTeam();
+    float centerX = effect.getPosition().getX();
+    float centerY = effect.getPosition().getY();
+
+    for (Entity target : gameState.getAliveEntities()) {
+      if (target.getTeam() != friendlyTeam) {
+        continue;
+      }
+      if (!target.isTargetable()) {
+        continue;
+      }
+      if (!canHit(stats, target)) {
+        continue;
+      }
+
+      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
+      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
+      if (distanceSq <= effectiveRadius * effectiveRadius) {
+        applyBuff(effect, target);
       }
     }
   }

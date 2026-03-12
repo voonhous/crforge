@@ -52,6 +52,9 @@ public class TroopStats {
   @Builder.Default private final float deathPushback = 0f;
   @Builder.Default private final List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
+  // Death area effect (e.g. Lumberjack's RageBarbarianBottle drops a Rage zone on death)
+  private final AreaEffectStats deathAreaEffect;
+
   // Shield
   @Builder.Default private final int shieldHitpoints = 0;
 

@@ -44,7 +44,7 @@ the live game name.
 | 32 | Miner             | miner            | `DONE`    | tunnel + deploy on enemy side   |
 | 33 | Sparky            | zapmachine       | `DONE`    | noPreload                       |
 | 34 | Bowler            | bowler           | `DONE`    | piercing projectile + knockback |
-| 35 | Lumberjack        | ragebarbarian    | `MISSING` |                                 |
+| 35 | Lumberjack        | ragebarbarian    | `DONE`    | death drops Rage spell          |
 | 36 | Battle Ram        | battleram        | `DONE`    | charge + kamikaze + death spawn |
 | 37 | Inferno Dragon    | infernodragon    | `DONE`    | variable damage                 |
 | 38 | Ice Golem         | icegolemite      | `MISSING` |                                 |

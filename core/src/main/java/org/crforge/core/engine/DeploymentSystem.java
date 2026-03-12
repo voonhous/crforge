@@ -236,9 +236,11 @@ public class DeploymentSystem {
       }
     }
 
-    // Unit-level death mechanics (e.g. Golem death damage + death spawn)
+    // Unit-level death mechanics (e.g. Golem death damage + death spawn, RageBarbarianBottle death area effect)
     boolean hasUnitDeathMechanics =
-        unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
+        unitStats.getDeathDamage() > 0
+            || !unitStats.getDeathSpawns().isEmpty()
+            || unitStats.getDeathAreaEffect() != null;
     if (hasUnitDeathMechanics) {
       int scaledDeathDmg =
           LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
@@ -250,6 +252,7 @@ public class DeploymentSystem {
                 .deathDamage(scaledDeathDmg)
                 .deathDamageRadius(unitStats.getDeathDamageRadius())
                 .deathSpawns(unitStats.getDeathSpawns())
+                .deathAreaEffect(unitStats.getDeathAreaEffect())
                 .rarity(card.getRarity())
                 .level(level)
                 .build();
@@ -258,6 +261,7 @@ public class DeploymentSystem {
         spawner.setDeathDamage(scaledDeathDmg);
         spawner.setDeathDamageRadius(unitStats.getDeathDamageRadius());
         spawner.setDeathSpawns(unitStats.getDeathSpawns());
+        spawner.setDeathAreaEffect(unitStats.getDeathAreaEffect());
       }
     }
 
@@ -445,7 +449,9 @@ public class DeploymentSystem {
     SpawnerComponent spawner = null;
     boolean hasLiveSpawn = unitStats.getLiveSpawn() != null;
     boolean hasUnitLevelDeath =
-        unitStats.getDeathDamage() > 0 || !unitStats.getDeathSpawns().isEmpty();
+        unitStats.getDeathDamage() > 0
+            || !unitStats.getDeathSpawns().isEmpty()
+            || unitStats.getDeathAreaEffect() != null;
 
     if (hasLiveSpawn || hasUnitLevelDeath) {
       LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
@@ -458,6 +464,7 @@ public class DeploymentSystem {
               .deathDamage(scaledDeathDmg)
               .deathDamageRadius(unitStats.getDeathDamageRadius())
               .deathSpawns(unitStats.getDeathSpawns())
+              .deathAreaEffect(unitStats.getDeathAreaEffect())
               .rarity(card.getRarity())
               .level(level);
 
