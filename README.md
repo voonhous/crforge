@@ -39,12 +39,12 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 ## Modules
 
-| Module       | Description                                                        |
-|--------------|--------------------------------------------------------------------|
-| `core`       | Headless simulation engine -- entities, systems, match logic       |
-| `data`       | Card/unit/projectile config loading from JSON into typed objects   |
-| `desktop`    | LibGDX debug visualizer for watching and interacting with matches  |
-| `gym-bridge` | ZMQ server + Python Gymnasium environment for RL training          |
+| Module       | Description                                                       |
+|--------------|-------------------------------------------------------------------|
+| `core`       | Headless simulation engine -- entities, systems, match logic      |
+| `data`       | Card/unit/projectile config loading from JSON into typed objects  |
+| `desktop`    | LibGDX debug visualizer for watching and interacting with matches |
+| `gym-bridge` | ZMQ server + Python Gymnasium environment for RL training         |
 
 `core` has no GUI dependencies. `data` depends on `core`. `desktop` and `gym-bridge` depend on
 both.
@@ -81,12 +81,12 @@ lifecycle, and data loading pipeline.
 
 Card statistics are loaded from JSON files in `data/src/main/resources/cards/`:
 
-| File               | Format          | Contents                              |
-|--------------------|-----------------|---------------------------------------|
-| `buffs.json`       | map (name->def) | Buff/debuff definitions               |
-| `projectiles.json` | map (name->def) | Projectile definitions                |
-| `units.json`       | map (name->def) | Unit stats (refs projectiles)         |
-| `cards.json`       | array           | Card definitions (refs units/projs)   |
+| File               | Format          | Contents                            |
+|--------------------|-----------------|-------------------------------------|
+| `buffs.json`       | map (name->def) | Buff/debuff definitions             |
+| `projectiles.json` | map (name->def) | Projectile definitions              |
+| `units.json`       | map (name->def) | Unit stats (refs projectiles)       |
+| `cards.json`       | array           | Card definitions (refs units/projs) |
 
 Stats are community-decoded from publicly available game data. Loading order:
 buffs -> projectiles -> units -> cards (each stage resolves string references from prior stages).
@@ -106,6 +106,19 @@ buffs -> projectiles -> units -> cards (each stage resolves string references fr
 | `5-8`         | Select red player's card from hand                         |
 | `Left click`  | Select card from hand UI, or deploy selected card on arena |
 | `Right click` | Deselect card                                              |
+
+## Tools
+
+| Tool                                                | Description                                                            |
+|-----------------------------------------------------|------------------------------------------------------------------------|
+| [Formation Visualizer](tools/formation_visualizer/) | Tkinter app for viewing and editing multi-unit spawn formation offsets |
+
+## Docs
+
+| Document                                           | Description                                                     |
+|----------------------------------------------------|-----------------------------------------------------------------|
+| [Level Scaling](docs/level_scaling.md)             | Rarity multiplier tables and tower stat scaling formulas        |
+| [Reverse Engineering](docs/reverse_engineering.md) | Guide for measuring missing unit stats from in-game observation |
 
 ## Code Style
 
