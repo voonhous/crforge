@@ -140,6 +140,73 @@ class RiverJumpTest {
     assertThat(troop.getMovementType()).isEqualTo(MovementType.GROUND);
   }
 
+  // -- Pathfinding tests: jump-enabled troops should path straight, not route to bridges --
+
+  @Test
+  void jumpEnabled_pathsStraightTowardTarget_noBridgeDetour() {
+    // Place a jump-enabled troop south of river at center X (not on any bridge)
+    // with a target north of the river at the same X.
+    // The troop should move straight north (no X drift toward bridges).
+    Troop troop = createJumpTroop("HogRider", NON_BRIDGE_X, 14.0f);
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    troop.getCombat().setCurrentTarget(target);
+
+    float startX = troop.getPosition().getX();
+
+    // Run several ticks
+    for (int i = 0; i < 30; i++) {
+      physicsSystem.update(List.of(troop, target), 1f / 30f);
+    }
+
+    // X should not drift toward a bridge -- stays at the same X (within a small tolerance)
+    assertThat(troop.getPosition().getX()).isCloseTo(startX, within(0.1f));
+    // Y should have moved north (increased)
+    assertThat(troop.getPosition().getY()).isGreaterThan(14.0f);
+  }
+
+  @Test
+  void jumpEnabled_entersJumpingStateViaStraightPath() {
+    // Place a jump-enabled troop just south of river zone with a target north of river.
+    // After enough ticks, it should enter the river zone at non-bridge X and start jumping.
+    Troop troop = createJumpTroop("HogRider", NON_BRIDGE_X, 14.5f);
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    troop.getCombat().setCurrentTarget(target);
+
+    boolean jumped = false;
+    for (int i = 0; i < 90; i++) {
+      physicsSystem.update(List.of(troop, target), 1f / 30f);
+      if (troop.isJumping()) {
+        jumped = true;
+        break;
+      }
+    }
+
+    assertThat(jumped)
+        .as("Jump-enabled troop should enter jumping state via straight path")
+        .isTrue();
+  }
+
+  @Test
+  void normalTroop_routesToBridge_notStraightAcross() {
+    // Same setup as above but with a normal (non-jump) troop.
+    // It should drift in X toward the nearest bridge instead of going straight.
+    Troop troop = createNormalTroop("Knight", NON_BRIDGE_X, 14.0f);
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    troop.getCombat().setCurrentTarget(target);
+
+    float startX = troop.getPosition().getX();
+
+    for (int i = 0; i < 30; i++) {
+      physicsSystem.update(List.of(troop, target), 1f / 30f);
+    }
+
+    // Normal troop should have drifted in X toward the nearest bridge
+    float endX = troop.getPosition().getX();
+    assertThat(Math.abs(endX - startX))
+        .as("Normal troop should drift toward bridge")
+        .isGreaterThan(0.1f);
+  }
+
   // -- Helpers --
 
   private Troop createJumpTroop(String name, float x, float y) {

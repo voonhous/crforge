@@ -67,7 +67,7 @@ the live game name.
 | 55 | Skeleton Barrel   | skeletonballoon  | `DONE`    | kamikaze + death chain                      |
 | 56 | Flying Machine    | dartbarrell      | `DONE`    |                                             |
 | 57 | Wall Breakers     | wallbreakers     | `DONE`    | count=2, kamikaze + melee AOE               |
-| 58 | Royal Hogs        | royalhogs        | `MISSING` | count=4, jump over river                    |
+| 58 | Royal Hogs        | royalhogs        | `DONE`    | count=4, jump over river                    |
 | 59 | Goblin Giant      | goblingiant      | `DONE`    | spawnAttach (2 spear goblins)               |
 | 60 | Fisherman         | fisherman        | `DONE`    | hook ability                                |
 | 61 | Magic Archer      | elitearcher      | `DONE`    | piercing arrow (0.25 radius, 11-tile range) |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 75      | Fully functional in simulation                 |
+| `DONE`     | 76      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 38      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 37      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 

@@ -156,9 +156,14 @@ public class PhysicsSystem {
     Position pos = troop.getPosition();
     Position targetPos = target.getPosition();
 
+    // Jump-enabled troops path straight to target (like AIR) so they reach the river
+    // at any point and trigger the jump, rather than routing to bridges.
+    MovementType pathfindType =
+        troop.getMovement().isJumpEnabled() ? MovementType.AIR : troop.getMovementType();
+
     float angle =
         pathfinder.getNextMovementAngle(
-            pos, troop.getMovementType(), targetPos.getX(), targetPos.getY(), arena);
+            pos, pathfindType, targetPos.getX(), targetPos.getY(), arena);
 
     applyVelocity(troop, angle, deltaTime);
   }
@@ -211,8 +216,12 @@ public class PhysicsSystem {
       }
     }
 
-    float angle =
-        pathfinder.getNextMovementAngle(pos, troop.getMovementType(), targetX, targetY, arena);
+    // Jump-enabled troops path straight to target (like AIR) so they reach the river
+    // at any point and trigger the jump, rather than routing to bridges.
+    MovementType pathfindType =
+        troop.getMovement().isJumpEnabled() ? MovementType.AIR : troop.getMovementType();
+
+    float angle = pathfinder.getNextMovementAngle(pos, pathfindType, targetX, targetY, arena);
 
     applyVelocity(troop, angle, deltaTime);
   }
