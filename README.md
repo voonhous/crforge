@@ -3,18 +3,20 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 A headless Clash Royale battle simulator built in Java, designed for reinforcement learning and AI
-research. Includes a LibGDX debug visualizer and a planned Python Gymnasium integration via TCP
-bridge.
+research. Deterministic tick-based engine with 121 data-driven cards, a LibGDX debug visualizer,
+and a Python Gymnasium integration via ZMQ bridge.
 
 ## Features
 
-- **121 cards** -- troops, spells, and buildings with data-driven stats
-- **Tick-based deterministic simulation** -- 30 FPS fixed timestep, reproducible for RL training
-- **Component-Entity-System architecture** -- clean separation of data and logic
-- **Debug visualizer** -- real-time LibGDX rendering with pause, speed control, and card deployment
-- **Modular design** -- headless core with no GUI dependencies, visualization and bridge as separate
-  modules
-- **Level scaling** -- rarity-based stat growth matching the original game's formulas
+- **121 cards**: troops, spells, and buildings loaded from community-decoded game data
+- **Deterministic simulation**: 30 FPS fixed timestep, reproducible for RL training
+- **Component-Entity-System architecture**: entities hold data, systems hold logic
+- **Full combat mechanics**: melee, ranged, AOE, chain lightning, scatter projectiles,
+  charge, dash, hook, reflect, shields, death spawn, variable damage (inferno), burst attacks
+- **Status effects**: stun, slow, rage, freeze with multiplier-based stacking
+- **Level scaling**: rarity-based iterative growth matching the original game's formulas
+- **Python bridge**: ZMQ + JSON Gymnasium environment for RL training
+- **Debug visualizer**: real-time LibGDX rendering with pause, speed control, and card deployment
 
 ## Quick Start
 
@@ -30,16 +32,64 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 # Run debug visualizer
 ./gradlew :desktop:run
+
+# Run gym bridge server (default port 9876)
+./gradlew :gym-bridge:run
 ```
 
 ## Modules
 
-| Module       | Description                                                                        |
-|--------------|------------------------------------------------------------------------------------|
-| `core`       | Headless simulation engine -- entities, systems, match logic (no GUI dependencies) |
-| `data`       | Card/unit/projectile config loading from JSON into typed Java objects              |
-| `desktop`    | LibGDX debug visualizer for watching and interacting with matches                  |
-| `gym-bridge` | TCP server for Python Gymnasium integration (planned)                              |
+| Module       | Description                                                        |
+|--------------|--------------------------------------------------------------------|
+| `core`       | Headless simulation engine -- entities, systems, match logic       |
+| `data`       | Card/unit/projectile config loading from JSON into typed objects   |
+| `desktop`    | LibGDX debug visualizer for watching and interacting with matches  |
+| `gym-bridge` | ZMQ server + Python Gymnasium environment for RL training          |
+
+`core` has no GUI dependencies. `data` depends on `core`. `desktop` and `gym-bridge` depend on
+both.
+
+## Architecture
+
+The simulation uses a Component-Entity-System (CES) design. Entities (Troop, Building, Tower,
+Projectile, AreaEffect) are containers for components (Health, Position, Combat, Movement).
+Logic lives in systems that operate on entities each tick.
+
+**Tick loop** (30 FPS, each frame):
+
+```
+ 1. processPending       Flush spawn/removal queues
+ 2. match.update         Elixir regen, overtime transitions
+ 3. DeploymentSystem     Process queued card deploys
+ 4. SpawnerSystem        Tick live-spawners (Witch, Tombstone, etc.)
+ 5. StatusEffectSystem   Decrement durations, recalculate multipliers
+ 6. Entity.update        Per-entity timers (deploy, cooldowns, lifetime)
+ 7. AreaEffectSystem     Tick damage/buff zones (Poison, Freeze, Rage)
+ 8. TargetingSystem      Assign/update combat targets
+ 9. AbilitySystem        Charge, dash, variable damage ramp
+10. CombatSystem         Execute attacks, spawn projectiles
+    ProjectileSystem     Move projectiles, hit detection, chain/pierce
+11. PhysicsSystem        Movement, collision avoidance, knockback
+12. processDeaths        Death spawn, death projectile handlers
+13. checkTimeLimit       Overtime, win conditions, sudden death
+```
+
+See [docs/architecture.md](docs/architecture.md) for the full system dependency graph, entity
+lifecycle, and data loading pipeline.
+
+## Card Data
+
+Card statistics are loaded from JSON files in `data/src/main/resources/cards/`:
+
+| File               | Format          | Contents                              |
+|--------------------|-----------------|---------------------------------------|
+| `buffs.json`       | map (name->def) | Buff/debuff definitions               |
+| `projectiles.json` | map (name->def) | Projectile definitions                |
+| `units.json`       | map (name->def) | Unit stats (refs projectiles)         |
+| `cards.json`       | array           | Card definitions (refs units/projs)   |
+
+Stats are community-decoded from publicly available game data. Loading order:
+buffs -> projectiles -> units -> cards (each stage resolves string references from prior stages).
 
 ## Visualizer Controls
 
@@ -60,19 +110,11 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ## Code Style
 
 This project uses [Google Java Format](https://github.com/google/google-java-format) enforced
-via [Spotless](https://github.com/diffplug/spotless).
-
-Formatting is checked automatically on build. To fix violations:
+via [Spotless](https://github.com/diffplug/spotless). Formatting is checked on build:
 
 ```bash
 ./gradlew spotlessApply
 ```
-
-## Card Data
-
-Card statistics are loaded from JSON files in `data/src/main/resources/cards/`. The stats are
-community-decoded from publicly available game data and stored across four files: `cards.json`,
-`units.json`, `projectiles.json`, and `buffs.json`.
 
 ## macOS Note
 

@@ -128,5 +128,5 @@ cards.json       -> CardLoader    -> List<Card> -> CardRegistry
 ```
 
 Loading order matters: each loader resolves string references against
-previously-loaded maps. Schema changes start in `clash_card_parser.py`
-(private repo), then propagate to DTOs and loaders here.
+previously-loaded maps. Schema changes propagate from the card data
+generator to the DTOs and loaders here.
