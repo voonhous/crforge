@@ -134,7 +134,7 @@ the live game name.
 | 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner                  |
 | 7  | Tesla              | tesla             | `MISSING` |                          |
 | 8  | Elixir Collector   | elixircollector   | `MISSING` |                          |
-| 9  | X-Bow              | xbow              | `MISSING` |                          |
+| 9  | X-Bow              | xbow              | `DONE`    | siege building           |
 | 10 | Tombstone          | tombstone         | `DONE`    | spawner                  |
 | 11 | Furnace            | firespirithut     | `MISSING` | spawner                  |
 | 12 | Goblin Cage        | goblincage        | `MISSING` | death spawn              |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 83      | Fully functional in simulation                 |
+| `DONE`     | 84      | Fully functional in simulation                 |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 30      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 29      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 6       | Internal buildings, not playable cards         |
 | **Total**  | **126** | Playable cards (excluding sub-entities)        |
 
