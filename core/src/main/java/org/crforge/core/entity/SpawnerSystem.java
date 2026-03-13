@@ -57,7 +57,7 @@ public class SpawnerSystem {
    * PhoenixFireball spawns PhoenixEgg).
    */
   public void spawnUnit(float x, float y, Team team, TroopStats stats, Rarity rarity, int level) {
-    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level);
+    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level, 0f);
   }
 
   public void update(float deltaTime) {
@@ -99,7 +99,8 @@ public class SpawnerSystem {
             entity.getTeam(),
             spawner.getSpawnStats(),
             spawner.getRarity(),
-            spawner.getLevel());
+            spawner.getLevel(),
+            0f);
 
         // Track spawn count and enforce spawn limit (e.g. PhoenixEgg spawns once then dies)
         spawner.setTotalSpawned(spawner.getTotalSpawned() + 1);
@@ -155,7 +156,8 @@ public class SpawnerSystem {
               entity.getTeam(),
               entry.stats(),
               spawner.getRarity(),
-              spawner.getLevel());
+              spawner.getLevel(),
+              entry.deployTime());
         }
       }
 
@@ -193,7 +195,8 @@ public class SpawnerSystem {
               entity.getTeam(),
               spawner.getSpawnStats(),
               spawner.getRarity(),
-              spawner.getLevel());
+              spawner.getLevel(),
+              0f);
         }
       }
     }
@@ -214,7 +217,7 @@ public class SpawnerSystem {
     }
     // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
     // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
-    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1);
+    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1, 0f);
   }
 
   /**
@@ -348,7 +351,13 @@ public class SpawnerSystem {
   }
 
   private void doSpawn(
-      Position origin, Vector2 offset, Team team, TroopStats stats, Rarity rarity, int level) {
+      Position origin,
+      Vector2 offset,
+      Team team,
+      TroopStats stats,
+      Rarity rarity,
+      int level,
+      float deathSpawnDeployTime) {
     float x = origin.getX() + offset.getX();
     float y = origin.getY() + offset.getY();
 
@@ -386,8 +395,9 @@ public class SpawnerSystem {
     }
 
     // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),
+    // deathSpawnDeployTime for death-spawned units (e.g. Goblin Cage's GoblinBrawler),
     // otherwise spawned units deploy instantly
-    float deployTime = isBomb ? stats.getDeployTime() : 0f;
+    float deployTime = isBomb ? stats.getDeployTime() : deathSpawnDeployTime;
 
     // Build SpawnerComponent for units with death mechanics, bomb behavior, or liveSpawn
     boolean hasDeathMechanics =

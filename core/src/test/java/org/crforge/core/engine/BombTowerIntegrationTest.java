@@ -250,7 +250,7 @@ class BombTowerIntegrationTest {
     TroopStats bombStats = bombTowerBombStats();
     SpawnerComponent spawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f, 0f)))
             .build();
 
     return BuildingTemplate.defense("BombTower", team)

@@ -277,7 +277,8 @@
       {
         "spawnCharacter": "Barbarian",
         "spawnNumber": 2,
-        "spawnRadius": 0.6
+        "spawnRadius": 0.6,
+        "deployTime": 1.0
       }
     ],
     "ignoreBuff": "VoodooCurse",
@@ -933,7 +934,8 @@
     "deathSpawn": [
       {
         "spawnCharacter": "GoblinBrawler",
-        "spawnNumber": 1
+        "spawnNumber": 1,
+        "deployTime": 0.5
       }
     ],
     "lifeTime": 20.0
@@ -957,7 +959,8 @@
       {
         "spawnCharacter": "Goblin",
         "spawnNumber": 2,
-        "spawnRadius": 0.5
+        "spawnRadius": 0.5,
+        "deployTime": 0.5
       }
     ],
     "lifeTime": 10.0,
@@ -1981,7 +1984,8 @@
       {
         "spawnCharacter": "Skeleton",
         "spawnNumber": 7,
-        "spawnRadius": 1.48
+        "spawnRadius": 1.48,
+        "deployTime": 0.5
       }
     ],
     "ignoreBuff": "Event_Berserk_OnStartBuff"
@@ -2069,7 +2073,8 @@
     "deathSpawn": [
       {
         "spawnCharacter": "SpearGoblin",
-        "spawnNumber": 1
+        "spawnNumber": 1,
+        "deployTime": 0.7
       }
     ],
     "ignoreBuff": "VoodooCurse"

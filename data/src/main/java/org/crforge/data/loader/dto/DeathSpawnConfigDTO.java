@@ -14,4 +14,5 @@ public class DeathSpawnConfigDTO {
   private String spawnCharacter;
   private int spawnNumber;
   private float spawnRadius;
+  private float deployTime;
 }

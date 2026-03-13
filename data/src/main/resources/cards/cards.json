@@ -1035,6 +1035,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 2,
+    "radius": 3.0,
     "summonCharacter": "RageBottle"
   },
   {
@@ -1084,6 +1085,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 6,
+    "radius": 3.5,
     "areaEffect": {
       "name": "Lightning",
       "radius": 3.5,
@@ -1099,6 +1101,7 @@
     "type": "SPELL",
     "rarity": "Common",
     "cost": 2,
+    "radius": 2.5,
     "areaEffect": {
       "name": "Zap",
       "radius": 2.5,
@@ -1117,6 +1120,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 4,
+    "radius": 3.5,
     "areaEffect": {
       "name": "Poison",
       "radius": 3.5,
@@ -1133,7 +1137,8 @@
     "name": "Graveyard",
     "type": "SPELL",
     "rarity": "Legendary",
-    "cost": 5
+    "cost": 5,
+    "radius": 4.0
   },
   {
     "id": "log",
@@ -1149,6 +1154,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 3,
+    "radius": 5.5,
     "areaEffect": {
       "name": "Tornado",
       "radius": 5.5,
@@ -1166,6 +1172,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 3,
+    "radius": 3.0,
     "areaEffect": {
       "name": "Clone",
       "radius": 3.0,
@@ -1180,6 +1187,7 @@
     "type": "SPELL",
     "rarity": "Rare",
     "cost": 3,
+    "radius": 3.5,
     "areaEffect": {
       "name": "Earthquake",
       "radius": 3.5,
@@ -1221,6 +1229,7 @@
     "type": "SPELL",
     "rarity": "Common",
     "cost": 3,
+    "radius": 3.0,
     "areaEffect": {
       "name": "RoyalDeliveryArea",
       "radius": 3.0,
@@ -1241,6 +1250,7 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 3,
+    "radius": 2.5,
     "areaEffect": {
       "name": "DarkMagicAOE",
       "radius": 0.0,
@@ -1254,7 +1264,8 @@
     "name": "GoblinCurse",
     "type": "SPELL",
     "rarity": "Epic",
-    "cost": 2
+    "cost": 2,
+    "radius": 3.0
   },
   {
     "id": "mergemaiden",
@@ -1268,7 +1279,8 @@
     "name": "Vines",
     "type": "SPELL",
     "rarity": "Epic",
-    "cost": 3
+    "cost": 3,
+    "radius": 2.5
   },
   {
     "id": "cannon",

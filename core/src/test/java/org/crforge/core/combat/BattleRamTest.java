@@ -178,7 +178,7 @@ class BattleRamTest {
 
   private Troop createBattleRam(Team team, float x, float y) {
     // Death spawn config: 2 Barbarians
-    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(BARBARIAN_STATS, 2, 0.6f));
+    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(BARBARIAN_STATS, 2, 0.6f, 0f));
 
     SpawnerComponent spawner =
         SpawnerComponent.builder().deathSpawns(deathSpawns).rarity(Rarity.RARE).level(1).build();

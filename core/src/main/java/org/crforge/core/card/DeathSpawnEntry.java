@@ -7,5 +7,7 @@ package org.crforge.core.card;
  * @param stats the TroopStats template for the spawned unit
  * @param count number of units to spawn
  * @param radius spread radius around the death position
+ * @param deployTime deploy delay in seconds before the spawned unit becomes active (e.g. 1.0s for
+ *     BattleRam's Barbarians)
  */
-public record DeathSpawnEntry(TroopStats stats, int count, float radius) {}
+public record DeathSpawnEntry(TroopStats stats, int count, float radius, float deployTime) {}

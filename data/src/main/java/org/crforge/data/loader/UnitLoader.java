@@ -244,7 +244,9 @@ public class UnitLoader {
       for (DeathSpawnConfigDTO ds : dto.getDeathSpawn()) {
         TroopStats resolved = unitMap.get(ds.getSpawnCharacter());
         if (resolved != null) {
-          deathSpawns.add(new DeathSpawnEntry(resolved, ds.getSpawnNumber(), ds.getSpawnRadius()));
+          deathSpawns.add(
+              new DeathSpawnEntry(
+                  resolved, ds.getSpawnNumber(), ds.getSpawnRadius(), ds.getDeployTime()));
         }
       }
       builder.deathSpawns(deathSpawns);

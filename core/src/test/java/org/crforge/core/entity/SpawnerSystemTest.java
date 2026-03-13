@@ -177,7 +177,7 @@ class SpawnerSystemTest {
             .targetType(TargetType.ALL)
             .build();
 
-    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f));
+    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
@@ -232,7 +232,7 @@ class SpawnerSystemTest {
 
     SpawnerComponent deathOnlySpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f)))
             .build();
 
     // hasLiveSpawn should be false since spawnPauseTime and spawnInterval are both 0
@@ -416,7 +416,7 @@ class SpawnerSystemTest {
     // Parent entity (Balloon) that death-spawns the bomb
     SpawnerComponent balloonSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f, 0f)))
             .build();
 
     Troop balloon =
@@ -528,7 +528,7 @@ class SpawnerSystemTest {
     // Parent Golem that death-spawns Golemites
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f)))
             .build();
 
     Troop golem =
@@ -729,5 +729,69 @@ class SpawnerSystemTest {
     assertThat(immune.getHealth().getCurrent()).isEqualTo(241); // 500 - 259
     // Should NOT be knocked back (ignorePushback)
     assertThat(immune.getMovement().isKnockedBack()).isFalse();
+  }
+
+  @Test
+  void deathSpawn_withDeployTime_shouldSpawnInDeployingState() {
+    // GoblinCage-like building: death-spawns a GoblinBrawler with 0.5s deploy delay
+    GameState freshState = new GameState();
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+    freshState.setDeathHandler(freshSystem::onDeath);
+
+    TroopStats brawlerStats =
+        TroopStats.builder()
+            .name("GoblinBrawler")
+            .health(500)
+            .damage(120)
+            .speed(1.0f)
+            .mass(1.0f)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.ALL)
+            .build();
+
+    // Death spawn entry with 0.5s deploy time
+    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(brawlerStats, 1, 0f, 0.5f));
+
+    SpawnerComponent cageSpawner = SpawnerComponent.builder().deathSpawns(deathSpawns).build();
+
+    Building cage =
+        Building.builder()
+            .name("GoblinCage")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .lifetime(30f)
+            .spawner(cageSpawner)
+            .build();
+
+    freshState.spawnEntity(cage);
+    freshState.processPending();
+
+    // Kill the cage -> triggers death spawn
+    cage.getHealth().takeDamage(1);
+    freshState.processDeaths();
+
+    assertThat(freshState.getPendingSpawns()).hasSize(1);
+    Entity spawned = freshState.getPendingSpawns().get(0);
+    assertThat(spawned.getName()).isEqualTo("GoblinBrawler");
+    assertThat(spawned).isInstanceOf(Troop.class);
+
+    freshState.processPending();
+    Troop brawler = (Troop) spawned;
+
+    // Brawler should be in deploying state (0.5s deploy delay from death spawn)
+    assertThat(brawler.isDeploying()).isTrue();
+    assertThat(brawler.isTargetable()).isFalse();
+
+    // Advance partially -- still deploying
+    brawler.update(0.4f);
+    assertThat(brawler.isDeploying()).isTrue();
+    assertThat(brawler.isTargetable()).isFalse();
+
+    // Advance past deploy time
+    brawler.update(0.2f);
+    assertThat(brawler.isDeploying()).isFalse();
+    assertThat(brawler.isTargetable()).isTrue();
   }
 }
