@@ -13,6 +13,7 @@ import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -189,7 +190,9 @@ class AttachedUnitSystemTest {
   @Test
   void deployRamRider_spawnsBothParentAndRider() {
     // Integration test: deploy a Ram Rider card through DeploymentSystem
-    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     DeploymentSystem deploymentSystem =
         new DeploymentSystem(gameState, new AoeDamageService(gameState));
 
@@ -273,7 +276,9 @@ class AttachedUnitSystemTest {
   @Test
   void deployGoblinGiant_spawnsTwoAttachedSpearGoblins() {
     // GoblinGiant uses spawnAttach with 2 SpearGoblinGiant units
-    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService2 = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem2 = new ProjectileSystem(gameState, aoeDamageService2);
+    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService2, projectileSystem2);
     DeploymentSystem deploymentSystem =
         new DeploymentSystem(gameState, new AoeDamageService(gameState));
 

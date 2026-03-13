@@ -7,6 +7,7 @@ import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
@@ -108,7 +109,9 @@ class SpawnerSystemTest {
 
   @Test
   void onDeath_shouldApplyDeathDamageAOE() {
-    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, new AoeDamageService(gameState));
 
     // Create a unit with death damage (like Ice Golem)
@@ -196,7 +199,9 @@ class SpawnerSystemTest {
     gameState.spawnEntity(golem);
     gameState.processPending();
 
-    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, new AoeDamageService(gameState));
 
     systemWithCombat.onDeath(golem);
@@ -393,7 +398,9 @@ class SpawnerSystemTest {
   void deathSpawn_bombEntity_shouldExplodeAfterDeployTime() {
     // BalloonBomb-like entity: health=0, deployTime=3.0, deathDamage=100, radius=2.0
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
     SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
     freshState.setDeathHandler(freshSystem::onDeath);
 
@@ -499,7 +506,9 @@ class SpawnerSystemTest {
   void deathSpawn_normalUnitWithDeathMechanics_shouldGetSpawnerComponent() {
     // Golemite-like unit: has health AND deathDamage
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
     SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
     freshState.setDeathHandler(freshSystem::onDeath);
 
@@ -623,7 +632,9 @@ class SpawnerSystemTest {
   void onDeath_shouldApplyDeathPushback() {
     // Golem-like unit with death damage + pushback
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
     SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
 
     SpawnerComponent golemSpawner =
@@ -671,7 +682,9 @@ class SpawnerSystemTest {
   void onDeath_deathPushbackShouldRespectIgnorePushback() {
     // Same setup but enemy has ignorePushback=true
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
     SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
 
     SpawnerComponent golemSpawner =

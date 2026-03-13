@@ -5,6 +5,7 @@ import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.entity.AttachedUnitSystem;
@@ -47,12 +48,13 @@ public class GameEngine {
     this.targetingSystem = new TargetingSystem();
 
     AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    this.combatSystem = new CombatSystem(gameState, aoeDamageService);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    this.combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     this.deploymentSystem = new DeploymentSystem(gameState, aoeDamageService);
     this.spawnerSystem = new SpawnerSystem(gameState, aoeDamageService);
 
     // One-directional callback wiring (no circular dependencies)
-    this.combatSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     this.gameState.setDeathHandler(spawnerSystem::onDeath);
 
     this.statusEffectSystem = new StatusEffectSystem();

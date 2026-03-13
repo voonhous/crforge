@@ -9,6 +9,7 @@ import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -46,9 +47,11 @@ class PhoenixIntegrationTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
-    combatSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     gameState.setDeathHandler(spawnerSystem::onDeath);
 
     // Build the chain bottom-up: PhoenixNoRespawn -> PhoenixEgg -> PhoenixFireball -> Phoenix

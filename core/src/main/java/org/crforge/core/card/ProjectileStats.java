@@ -63,9 +63,8 @@ public class ProjectileStats {
   private final TroopStats spawnCharacter; // Resolved reference
   @Builder.Default private final int spawnCharacterCount = 1;
 
-  // Volley: spawn multiple identical projectiles with staggered frame delays (e.g. Arrows = 3
-  // volleys)
-  @Builder.Default private final int volleyCount = 0;
+  // Volley: fire multiple copies with staggered delay (e.g. Arrows fires 3 volleys)
+  @Builder.Default private final int volleyCount = 1;
   @Builder.Default private final int volleyFrameDelay = 0;
 
   /**

@@ -36,7 +36,9 @@ class FireSpiritTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
   }
 
   @Test

@@ -32,7 +32,8 @@ class CombatSystemTest {
     Projectile.resetIdCounter();
     gameState = new GameState();
     aoeDamageService = new AoeDamageService(gameState);
-    combatSystem = new CombatSystem(gameState, aoeDamageService);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
   }
 
   @Test

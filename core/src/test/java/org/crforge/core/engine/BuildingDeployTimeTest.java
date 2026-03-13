@@ -8,6 +8,7 @@ import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.player.Deck;
@@ -26,7 +27,9 @@ class BuildingDeployTimeTest {
   @BeforeEach
   void setUp() {
     gameState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
   }
 

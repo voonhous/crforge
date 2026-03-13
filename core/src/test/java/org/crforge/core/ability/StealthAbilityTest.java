@@ -6,6 +6,7 @@ import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -43,7 +44,8 @@ class StealthAbilityTest {
     gameState = new GameState();
     abilitySystem = new AbilitySystem(gameState);
     aoeDamageService = new AoeDamageService(gameState);
-    combatSystem = new CombatSystem(gameState, aoeDamageService);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     targetingSystem = new TargetingSystem();
     physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
   }

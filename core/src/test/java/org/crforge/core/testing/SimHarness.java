@@ -7,6 +7,7 @@ import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.engine.GameState;
@@ -49,6 +50,7 @@ public class SimHarness {
   private final StatusEffectSystem statusEffectSystem;
   private final TargetingSystem targetingSystem;
   private final AbilitySystem abilitySystem;
+  private final ProjectileSystem projectileSystem;
   private final CombatSystem combatSystem;
   private final PhysicsSystem physicsSystem;
   private final SpawnerSystem spawnerSystem;
@@ -68,9 +70,14 @@ public class SimHarness {
     this.targetingSystem =
         enabledSystems.contains(SimSystems.TARGETING) ? new TargetingSystem() : null;
 
+    this.projectileSystem =
+        enabledSystems.contains(SimSystems.COMBAT)
+            ? new ProjectileSystem(gameState, aoeDamageService)
+            : null;
+
     this.combatSystem =
         enabledSystems.contains(SimSystems.COMBAT)
-            ? new CombatSystem(gameState, aoeDamageService)
+            ? new CombatSystem(gameState, aoeDamageService, projectileSystem)
             : null;
 
     this.abilitySystem =
@@ -89,8 +96,8 @@ public class SimHarness {
         enabledSystems.contains(SimSystems.AREA_EFFECT) ? new AreaEffectSystem(gameState) : null;
 
     // Wire callbacks if both systems exist
-    if (combatSystem != null && spawnerSystem != null) {
-      combatSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    if (projectileSystem != null && spawnerSystem != null) {
+      projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     }
     if (spawnerSystem != null) {
       gameState.setDeathHandler(spawnerSystem::onDeath);
@@ -220,6 +227,10 @@ public class SimHarness {
 
   public AoeDamageService aoeDamageService() {
     return aoeDamageService;
+  }
+
+  public ProjectileSystem projectileSystem() {
+    return projectileSystem;
   }
 
   public CombatSystem combatSystem() {

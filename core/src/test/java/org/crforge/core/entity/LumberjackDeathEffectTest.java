@@ -8,6 +8,7 @@ import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -46,7 +47,9 @@ class LumberjackDeathEffectTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
     gameState.setDeathHandler(spawnerSystem::onDeath);
     areaEffectSystem = new AreaEffectSystem(gameState);
