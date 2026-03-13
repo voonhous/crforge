@@ -52,6 +52,9 @@ public class TroopStats {
   @Builder.Default private final float deathPushback = 0f;
   @Builder.Default private final List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
+  // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
+  @Builder.Default private final int manaOnDeathForOpponent = 0;
+
   // Death area effect (e.g. Lumberjack's RageBarbarianBottle drops a Rage zone on death)
   private final AreaEffectStats deathAreaEffect;
 

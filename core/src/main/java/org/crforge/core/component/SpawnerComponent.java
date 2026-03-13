@@ -64,6 +64,9 @@ public class SpawnerComponent {
   // Death area effect (e.g. RageBarbarianBottle drops a Rage zone on death)
   private AreaEffectStats deathAreaEffect;
 
+  // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
+  @Builder.Default private int manaOnDeathForOpponent = 0;
+
   // Runtime state
   @Builder.Default private float currentTimer = 0f;
   @Builder.Default private int unitsSpawnedInCurrentWave = 0;
@@ -95,7 +98,8 @@ public class SpawnerComponent {
     return deathDamage > 0
         || deathSpawnCount > 0
         || !deathSpawns.isEmpty()
-        || deathAreaEffect != null;
+        || deathAreaEffect != null
+        || manaOnDeathForOpponent > 0;
   }
 
   /**

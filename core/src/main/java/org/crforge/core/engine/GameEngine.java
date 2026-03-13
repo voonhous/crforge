@@ -59,6 +59,7 @@ public class GameEngine {
     this.match = match;
     this.physicsSystem = new PhysicsSystem(match.getArena());
     this.physicsSystem.setGameState(gameState);
+    this.spawnerSystem.setMatch(match);
   }
 
   /** Queue a player action for processing on next tick. */

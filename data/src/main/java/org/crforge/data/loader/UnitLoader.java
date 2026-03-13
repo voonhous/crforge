@@ -172,7 +172,9 @@ public class UnitLoader {
             .attackDashTime(dto.getAttackDashTime())
             .attackPushBack(dto.getAttackPushBack() / 1000f)
             // Building lifetime
-            .lifeTime(dto.getLifeTime());
+            .lifeTime(dto.getLifeTime())
+            // Elixir granted to opponent on death (e.g. Elixir Golem)
+            .manaOnDeathForOpponent(dto.getManaOnDeathForOpponent());
 
     // Resolve projectile reference
     if (dto.getProjectile() != null && projectileMap != null) {

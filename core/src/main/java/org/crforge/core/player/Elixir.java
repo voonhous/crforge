@@ -42,6 +42,11 @@ public class Elixir {
     }
   }
 
+  /** Grants elixir (e.g. from Elixir Golem death). Caps at MAX_ELIXIR. */
+  public void add(float amount) {
+    current = Math.min(current + amount, MAX_ELIXIR);
+  }
+
   /** Checks if the player has enough elixir. */
   public boolean has(int cost) {
     return current >= cost;

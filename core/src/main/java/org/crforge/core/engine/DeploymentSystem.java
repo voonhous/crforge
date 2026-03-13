@@ -245,7 +245,8 @@ public class DeploymentSystem {
     boolean hasUnitDeathMechanics =
         unitStats.getDeathDamage() > 0
             || !unitStats.getDeathSpawns().isEmpty()
-            || unitStats.getDeathAreaEffect() != null;
+            || unitStats.getDeathAreaEffect() != null
+            || unitStats.getManaOnDeathForOpponent() > 0;
     if (hasUnitDeathMechanics) {
       int scaledDeathDmg =
           LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
@@ -258,6 +259,7 @@ public class DeploymentSystem {
                 .deathDamageRadius(unitStats.getDeathDamageRadius())
                 .deathSpawns(unitStats.getDeathSpawns())
                 .deathAreaEffect(unitStats.getDeathAreaEffect())
+                .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
                 .rarity(card.getRarity())
                 .level(level)
                 .build();
@@ -267,6 +269,7 @@ public class DeploymentSystem {
         spawner.setDeathDamageRadius(unitStats.getDeathDamageRadius());
         spawner.setDeathSpawns(unitStats.getDeathSpawns());
         spawner.setDeathAreaEffect(unitStats.getDeathAreaEffect());
+        spawner.setManaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent());
       }
     }
 
@@ -530,7 +533,8 @@ public class DeploymentSystem {
     boolean hasUnitLevelDeath =
         unitStats.getDeathDamage() > 0
             || !unitStats.getDeathSpawns().isEmpty()
-            || unitStats.getDeathAreaEffect() != null;
+            || unitStats.getDeathAreaEffect() != null
+            || unitStats.getManaOnDeathForOpponent() > 0;
 
     if (hasLiveSpawn || hasUnitLevelDeath) {
       LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
@@ -544,6 +548,7 @@ public class DeploymentSystem {
               .deathDamageRadius(unitStats.getDeathDamageRadius())
               .deathSpawns(unitStats.getDeathSpawns())
               .deathAreaEffect(unitStats.getDeathAreaEffect())
+              .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
               .rarity(card.getRarity())
               .level(level);
 

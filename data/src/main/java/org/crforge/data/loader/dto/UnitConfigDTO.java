@@ -57,6 +57,9 @@ public class UnitConfigDTO {
   // Death mechanics
   private DeathDamageConfigDTO deathDamage;
 
+  // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
+  private int manaOnDeathForOpponent;
+
   // Building fields
   private float lifeTime;
   private LiveSpawnConfigDTO liveSpawn;

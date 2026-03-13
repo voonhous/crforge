@@ -22,6 +22,8 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.match.Match;
+import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
 import org.crforge.core.util.Vector2;
@@ -30,6 +32,7 @@ public class SpawnerSystem {
 
   private final GameState gameState;
   private final CombatSystem combatSystem;
+  private Match match;
 
   public SpawnerSystem(GameState gameState, CombatSystem combatSystem) {
     this.gameState = gameState;
@@ -39,6 +42,11 @@ public class SpawnerSystem {
   /** Legacy constructor for tests that don't need death damage. */
   public SpawnerSystem(GameState gameState) {
     this(gameState, null);
+  }
+
+  /** Sets the match reference, needed for elixir grant on death (e.g. Elixir Golem). */
+  public void setMatch(Match match) {
+    this.match = match;
   }
 
   public void update(float deltaTime) {
@@ -137,7 +145,16 @@ public class SpawnerSystem {
         spawnDeathAreaEffect(entity, spawner);
       }
 
-      // 4. Fallback: legacy death spawn via deathSpawnCount + spawnStats
+      // 4. Grant elixir to opponent on death (e.g. Elixir Golem)
+      if (spawner.getManaOnDeathForOpponent() > 0 && match != null) {
+        float elixirAmount = spawner.getManaOnDeathForOpponent() / 1000f;
+        Team opponentTeam = entity.getTeam().opposite();
+        for (Player player : match.getPlayers(opponentTeam)) {
+          player.getElixir().add(elixirAmount);
+        }
+      }
+
+      // 5. Fallback: legacy death spawn via deathSpawnCount + spawnStats
       if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
         for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
           Vector2 offset =
@@ -306,7 +323,8 @@ public class SpawnerSystem {
     boolean hasDeathMechanics =
         stats.getDeathDamage() > 0
             || !stats.getDeathSpawns().isEmpty()
-            || stats.getDeathAreaEffect() != null;
+            || stats.getDeathAreaEffect() != null
+            || stats.getManaOnDeathForOpponent() > 0;
     SpawnerComponent spawner = null;
     if (hasDeathMechanics || isBomb) {
       int scaledDeathDamage =
@@ -321,6 +339,7 @@ public class SpawnerSystem {
               .deathPushback(stats.getDeathPushback())
               .deathSpawns(stats.getDeathSpawns())
               .deathAreaEffect(stats.getDeathAreaEffect())
+              .manaOnDeathForOpponent(stats.getManaOnDeathForOpponent())
               .rarity(rarity)
               .level(level)
               .selfDestruct(isBomb)
