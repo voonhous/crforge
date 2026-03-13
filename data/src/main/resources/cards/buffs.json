@@ -1,4 +1,10 @@
 {
+  "BattleHealerAll": {
+    "name": "BattleHealerAll",
+    "healPerSecond": 40,
+    "hitFrequency": 0.25,
+    "enableStacking": true
+  },
   "BattleHealerSpawnBuff": {
     "name": "BattleHealerSpawnBuff",
     "healPerSecond": 79,

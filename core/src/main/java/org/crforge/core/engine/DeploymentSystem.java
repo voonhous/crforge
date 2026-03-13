@@ -742,7 +742,8 @@ public class DeploymentSystem {
         .selfAsAoeCenter(stats.isSelfAsAoeCenter())
         .kamikaze(stats.isKamikaze())
         .attackDashTime(stats.getAttackDashTime())
-        .attackPushBack(stats.getAttackPushBack());
+        .attackPushBack(stats.getAttackPushBack())
+        .areaEffectOnHit(stats.getAreaEffectOnHit());
   }
 
   // Simple container for the queue

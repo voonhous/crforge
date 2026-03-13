@@ -109,6 +109,13 @@ public class CardLoader {
       builder.deployEffect(convertAreaEffect(dto.getDeployEffect()));
     }
 
+    // Promote unit-level spawnAreaEffect to card deployEffect if no explicit deployEffect set
+    if (dto.getDeployEffect() == null
+        && unitStats != null
+        && unitStats.getSpawnAreaEffect() != null) {
+      builder.deployEffect(unitStats.getSpawnAreaEffect());
+    }
+
     // Resolve summonCharacter for spells (e.g. Rage -> RageBottle)
     if (dto.getSummonCharacter() != null) {
       TroopStats summonTemplate = unitMap.get(dto.getSummonCharacter());

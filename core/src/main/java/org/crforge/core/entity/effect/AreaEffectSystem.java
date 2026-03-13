@@ -141,6 +141,10 @@ public class AreaEffectSystem {
       if (!canHit(stats, target)) {
         continue;
       }
+      // Heal only targets troops, not buildings/towers
+      if (target.getMovementType() == MovementType.BUILDING) {
+        continue;
+      }
 
       float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
       float effectiveRadius = stats.getRadius() + target.getCollisionRadius();

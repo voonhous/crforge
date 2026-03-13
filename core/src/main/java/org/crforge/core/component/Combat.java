@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.entity.base.Entity;
@@ -38,6 +39,9 @@ public class Combat {
 
   // Buff applied to target when dealing damage (e.g. EWiz stun on hit)
   private final EffectStats buffOnDamage;
+
+  // Area effect spawned on each attack hit (e.g. BattleHealer heal on hit)
+  private final AreaEffectStats areaEffectOnHit;
 
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   @Builder.Default private final float attackDashTime = 0f;

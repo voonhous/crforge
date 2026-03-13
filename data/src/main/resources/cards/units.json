@@ -237,6 +237,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "jumpEnabled": true,
     "spawnAreaEffect": {
       "name": "BattleHealerSpawnHeal",
       "radius": 2.5,
@@ -244,6 +245,15 @@
       "hitsGround": true,
       "hitsAir": true,
       "buff": "BattleHealerSpawnBuff",
+      "buffDuration": 1.0
+    },
+    "areaEffectOnHit": {
+      "name": "BattleHealerHeal",
+      "radius": 4.0,
+      "lifeDuration": 0.05,
+      "hitsGround": true,
+      "hitsAir": true,
+      "buff": "BattleHealerAll",
       "buffDuration": 1.0
     }
   },

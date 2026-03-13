@@ -74,7 +74,7 @@ the live game name.
 | 62 | Electro Dragon    | electrodragon    | `DONE`    | chain lightning                             |
 | 63 | Firecracker       | firecracker      | `DONE`    | attack recoil + shrapnel fan scatter        |
 | 64 | Elixir Golem      | elixirgolem      | `DONE`    | 3-form split chain, manaOnDeathForOpponent  |
-| 65 | Battle Healer     | battlehealer     | `MISSING` |                                             |
+| 65 | Battle Healer     | battlehealer     | `DONE`    | heal on hit, heal on deploy, hovering       |
 | 66 | Skeleton Dragons  | skeletondragons  | `DONE`    | count=2                                     |
 | 67 | Mother Witch      | witchmother      | `DONE`    |                                             |
 | 68 | Electro Spirit    | electrospirit    | `DONE`    |                                             |
@@ -175,8 +175,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 77      | Fully functional in simulation                 |
-| `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
+| `DONE`     | 78      | Fully functional in simulation                 |
+| `PARTIAL`  | 13      | In cards.json but missing complex mechanics    |
 | `MISSING`  | 36      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |

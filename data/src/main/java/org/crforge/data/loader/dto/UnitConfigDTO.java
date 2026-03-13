@@ -65,6 +65,8 @@ public class UnitConfigDTO {
   private LiveSpawnConfigDTO liveSpawn;
   private List<DeathSpawnConfigDTO> deathSpawn;
   private AreaEffectConfigDTO deathAreaEffect;
+  private AreaEffectConfigDTO spawnAreaEffect;
+  private AreaEffectConfigDTO areaEffectOnHit;
 
   // Abilities (Charge, Variable Damage, etc.)
   private List<AbilityConfigDTO> abilities;

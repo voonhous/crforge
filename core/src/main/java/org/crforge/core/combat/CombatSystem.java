@@ -228,6 +228,11 @@ public class CombatSystem {
 
     combat.finishAttack();
 
+    // Area effect on hit: spawn a healing/buff zone centered on the attacker (e.g. BattleHealer)
+    if (combat.getAreaEffectOnHit() != null) {
+      spawnAreaEffectOnAttack(attacker, combat.getAreaEffectOnHit());
+    }
+
     // Attack recoil: push the attacker backward when they fire (e.g. Firecracker)
     if (combat.getAttackPushBack() > 0f && attacker.getMovement() != null) {
       float dx = target.getPosition().getX() - attacker.getPosition().getX();
@@ -725,6 +730,22 @@ public class CombatSystem {
             .remainingLifetime(stats.getLifeDuration())
             .build();
 
+    gameState.spawnEntity(effect);
+  }
+
+  /**
+   * Spawns an AreaEffect entity centered on the attacker when they land an attack. Used by units
+   * that trigger area effects on hit (e.g. BattleHealer heal zone).
+   */
+  private void spawnAreaEffectOnAttack(Entity attacker, AreaEffectStats stats) {
+    AreaEffect effect =
+        AreaEffect.builder()
+            .name(stats.getName() != null ? stats.getName() : "AttackAreaEffect")
+            .team(attacker.getTeam())
+            .position(new Position(attacker.getPosition().getX(), attacker.getPosition().getY()))
+            .stats(stats)
+            .remainingLifetime(stats.getLifeDuration())
+            .build();
     gameState.spawnEntity(effect);
   }
 

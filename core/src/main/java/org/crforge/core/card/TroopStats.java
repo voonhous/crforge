@@ -58,6 +58,12 @@ public class TroopStats {
   // Death area effect (e.g. Lumberjack's RageBarbarianBottle drops a Rage zone on death)
   private final AreaEffectStats deathAreaEffect;
 
+  // Spawn area effect (e.g. BattleHealer heals nearby friendlies on deploy)
+  private final AreaEffectStats spawnAreaEffect;
+
+  // Area effect triggered on each attack hit (e.g. BattleHealer heal on hit)
+  private final AreaEffectStats areaEffectOnHit;
+
   // Shield
   @Builder.Default private final int shieldHitpoints = 0;
 

@@ -215,6 +215,16 @@ public class UnitLoader {
       builder.deathAreaEffect(CardLoader.convertAreaEffect(dto.getDeathAreaEffect()));
     }
 
+    // Spawn area effect (e.g. BattleHealer heals nearby friendlies on deploy)
+    if (dto.getSpawnAreaEffect() != null) {
+      builder.spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
+    }
+
+    // Area effect triggered on each attack hit (e.g. BattleHealer heal on hit)
+    if (dto.getAreaEffectOnHit() != null) {
+      builder.areaEffectOnHit(CardLoader.convertAreaEffect(dto.getAreaEffectOnHit()));
+    }
+
     // Death spawns: resolve character references from the unit map
     if (dto.getDeathSpawn() != null && unitMap != null) {
       List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
