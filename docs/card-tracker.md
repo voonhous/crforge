@@ -79,7 +79,7 @@ the live game name.
 | 67 | Mother Witch      | witchmother      | `DONE`    |                                             |
 | 68 | Electro Spirit    | electrospirit    | `DONE`    |                                             |
 | 69 | Electro Giant     | electrogiant     | `DONE`    | reflect damage                              |
-| 70 | Phoenix           | phoenix          | `MISSING` |                                             |
+| 70 | Phoenix           | phoenix          | `DONE`    | death -> egg -> respawn chain               |
 | 71 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling                       |
 | 72 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling                       |
 | 73 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling                       |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 78      | Fully functional in simulation                 |
+| `DONE`     | 79      | Fully functional in simulation                 |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 36      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 35      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 

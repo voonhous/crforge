@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.player.Team;
@@ -56,6 +58,12 @@ public class Projectile {
 
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
   @Setter private AreaEffectStats spawnAreaEffect;
+
+  // Spawn character on impact (e.g. PhoenixFireball spawns PhoenixEgg)
+  @Setter private TroopStats spawnCharacterStats;
+  @Setter private int spawnCharacterCount;
+  @Setter private Rarity spawnCharacterRarity;
+  @Setter private int spawnCharacterLevel;
 
   // Origin position (for spawn projectile direction calculation)
   private final float originX;

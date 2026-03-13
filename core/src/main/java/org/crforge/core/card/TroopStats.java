@@ -55,6 +55,12 @@ public class TroopStats {
   // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
   @Builder.Default private final int manaOnDeathForOpponent = 0;
 
+  // Death spawn projectile: fires a projectile at death position (e.g. Phoenix -> PhoenixFireball)
+  private final ProjectileStats deathSpawnProjectile;
+
+  // Resolved liveSpawn.spawnCharacter template (e.g. PhoenixEgg -> PhoenixNoRespawn TroopStats)
+  private final TroopStats spawnTemplate;
+
   // Death area effect (e.g. Lumberjack's RageBarbarianBottle drops a Rage zone on death)
   private final AreaEffectStats deathAreaEffect;
 

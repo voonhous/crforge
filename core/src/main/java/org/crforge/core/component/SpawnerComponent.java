@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 
@@ -64,8 +65,20 @@ public class SpawnerComponent {
   // Death area effect (e.g. RageBarbarianBottle drops a Rage zone on death)
   private AreaEffectStats deathAreaEffect;
 
+  // Death spawn projectile: fires a projectile at death position (e.g. Phoenix -> PhoenixFireball)
+  private ProjectileStats deathSpawnProjectile;
+
   // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
   @Builder.Default private int manaOnDeathForOpponent = 0;
+
+  // Spawn limit: stop spawning after this many total units (0 = unlimited)
+  @Builder.Default private int spawnLimit = 0;
+
+  // Destroy parent entity when spawn limit is reached (e.g. PhoenixEgg self-destructs)
+  @Builder.Default private boolean destroyAtLimit = false;
+
+  // Runtime counter: total units spawned across all waves
+  @Builder.Default private int totalSpawned = 0;
 
   // Runtime state
   @Builder.Default private float currentTimer = 0f;
@@ -99,7 +112,8 @@ public class SpawnerComponent {
         || deathSpawnCount > 0
         || !deathSpawns.isEmpty()
         || deathAreaEffect != null
-        || manaOnDeathForOpponent > 0;
+        || manaOnDeathForOpponent > 0
+        || deathSpawnProjectile != null;
   }
 
   /**

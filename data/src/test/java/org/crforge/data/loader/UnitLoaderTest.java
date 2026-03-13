@@ -435,6 +435,112 @@ class UnitLoaderTest {
   }
 
   @Test
+  void loadUnits_shouldResolvePhoenixDeathSpawnProjectileChain() {
+    // Phoenix -> deathSpawnProjectile "PhoenixFireball" -> spawn PhoenixEgg -> liveSpawn
+    // PhoenixNoRespawn
+
+    // Build the projectile map with PhoenixFireball containing spawn.spawnCharacter = PhoenixEgg
+    ProjectileStats phoenixFireball =
+        ProjectileStats.builder()
+            .name("PhoenixFireball")
+            .damage(64)
+            .speed(10.0f)
+            .radius(2.5f)
+            .homing(false)
+            .pushback(2.0f)
+            .spawnCharacterName("PhoenixEgg")
+            .spawnCharacterCount(1)
+            .build();
+    Map<String, ProjectileStats> projectileMap = Map.of("PhoenixFireball", phoenixFireball);
+
+    String json =
+        """
+        {
+          "Phoenix": {
+            "name": "Phoenix",
+            "health": 411,
+            "damage": 85,
+            "speed": 60.0,
+            "mass": 2.0,
+            "range": 1.6,
+            "attackCooldown": 1.0,
+            "loadTime": 0.4,
+            "targetType": "ALL",
+            "movementType": "AIR",
+            "deathSpawnProjectile": "PhoenixFireball"
+          },
+          "PhoenixEgg": {
+            "name": "PhoenixEgg",
+            "health": 94,
+            "damage": 0,
+            "speed": 1.0,
+            "mass": 3.0,
+            "range": 5.5,
+            "attackCooldown": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND",
+            "liveSpawn": {
+              "spawnCharacter": "PhoenixNoRespawn",
+              "spawnNumber": 1,
+              "spawnPauseTime": 4.3,
+              "spawnStartTime": 4.3,
+              "spawnLimit": 1,
+              "destroyAtLimit": true
+            }
+          },
+          "PhoenixNoRespawn": {
+            "name": "PhoenixNoRespawn",
+            "health": 411,
+            "damage": 85,
+            "speed": 60.0,
+            "mass": 2.0,
+            "range": 1.6,
+            "attackCooldown": 1.0,
+            "loadTime": 0.5,
+            "deployTime": 0.733,
+            "targetType": "ALL",
+            "movementType": "AIR"
+          }
+        }
+        """;
+
+    Map<String, TroopStats> map = UnitLoader.loadUnits(toStream(json), projectileMap);
+
+    // Phoenix should have deathSpawnProjectile resolved
+    TroopStats phoenix = map.get("Phoenix");
+    assertThat(phoenix).isNotNull();
+    assertThat(phoenix.getDeathSpawnProjectile()).isNotNull();
+    assertThat(phoenix.getDeathSpawnProjectile().getName()).isEqualTo("PhoenixFireball");
+    assertThat(phoenix.getDeathSpawnProjectile().getDamage()).isEqualTo(64);
+
+    // PhoenixFireball's spawnCharacter should be resolved to PhoenixEgg TroopStats
+    assertThat(phoenix.getDeathSpawnProjectile().getSpawnCharacter()).isNotNull();
+    assertThat(phoenix.getDeathSpawnProjectile().getSpawnCharacter().getName())
+        .isEqualTo("PhoenixEgg");
+    assertThat(phoenix.getDeathSpawnProjectile().getSpawnCharacter().getHealth()).isEqualTo(94);
+
+    // PhoenixEgg should have liveSpawn with spawnLimit and destroyAtLimit
+    TroopStats egg = map.get("PhoenixEgg");
+    assertThat(egg).isNotNull();
+    assertThat(egg.getLiveSpawn()).isNotNull();
+    assertThat(egg.getLiveSpawn().spawnCharacter()).isEqualTo("PhoenixNoRespawn");
+    assertThat(egg.getLiveSpawn().spawnLimit()).isEqualTo(1);
+    assertThat(egg.getLiveSpawn().destroyAtLimit()).isTrue();
+
+    // PhoenixEgg should have spawnTemplate resolved to PhoenixNoRespawn
+    assertThat(egg.getSpawnTemplate()).isNotNull();
+    assertThat(egg.getSpawnTemplate().getName()).isEqualTo("PhoenixNoRespawn");
+    assertThat(egg.getSpawnTemplate().getHealth()).isEqualTo(411);
+
+    // PhoenixNoRespawn should have no death mechanics
+    TroopStats noRespawn = map.get("PhoenixNoRespawn");
+    assertThat(noRespawn).isNotNull();
+    assertThat(noRespawn.getDeathSpawnProjectile()).isNull();
+    assertThat(noRespawn.getLiveSpawn()).isNull();
+    assertThat(noRespawn.getDeathSpawns()).isEmpty();
+  }
+
+  @Test
   void loadUnits_shouldLoadAllFromResource() {
     // Load projectiles first, then units
     Map<String, ProjectileStats> projMap;
@@ -492,6 +598,23 @@ class UnitLoaderTest {
       assertThat(goblinGiant).isNotNull();
       assertThat(goblinGiant.getLiveSpawn()).isNotNull();
       assertThat(goblinGiant.getLiveSpawn().spawnAttach()).isTrue();
+
+      // Verify Phoenix chain resolution from real data
+      TroopStats phoenix = map.get("Phoenix");
+      assertThat(phoenix).isNotNull();
+      assertThat(phoenix.getDeathSpawnProjectile()).isNotNull();
+      assertThat(phoenix.getDeathSpawnProjectile().getName()).isEqualTo("PhoenixFireball");
+      assertThat(phoenix.getDeathSpawnProjectile().getSpawnCharacter()).isNotNull();
+      assertThat(phoenix.getDeathSpawnProjectile().getSpawnCharacter().getName())
+          .isEqualTo("PhoenixEgg");
+
+      TroopStats phoenixEgg = map.get("PhoenixEgg");
+      assertThat(phoenixEgg).isNotNull();
+      assertThat(phoenixEgg.getLiveSpawn()).isNotNull();
+      assertThat(phoenixEgg.getLiveSpawn().spawnLimit()).isEqualTo(1);
+      assertThat(phoenixEgg.getLiveSpawn().destroyAtLimit()).isTrue();
+      assertThat(phoenixEgg.getSpawnTemplate()).isNotNull();
+      assertThat(phoenixEgg.getSpawnTemplate().getName()).isEqualTo("PhoenixNoRespawn");
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

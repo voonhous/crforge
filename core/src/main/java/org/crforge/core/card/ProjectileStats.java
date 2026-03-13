@@ -58,14 +58,31 @@ public class ProjectileStats {
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
   private final AreaEffectStats spawnAreaEffect;
 
+  // Spawn character on impact (e.g. PhoenixFireball spawns PhoenixEgg)
+  private final String spawnCharacterName; // Unresolved name from JSON
+  private final TroopStats spawnCharacter; // Resolved reference
+  @Builder.Default private final int spawnCharacterCount = 1;
+
   /**
    * Returns a copy of this ProjectileStats with a different damage value. All other fields are
    * preserved.
    */
   public ProjectileStats withDamage(int newDamage) {
+    return copyBuilder().damage(newDamage).build();
+  }
+
+  /**
+   * Returns a copy of this ProjectileStats with a resolved spawn character. All other fields are
+   * preserved.
+   */
+  public ProjectileStats withSpawnCharacter(TroopStats resolvedSpawnCharacter) {
+    return copyBuilder().spawnCharacter(resolvedSpawnCharacter).build();
+  }
+
+  private ProjectileStats.ProjectileStatsBuilder copyBuilder() {
     return ProjectileStats.builder()
         .name(name)
-        .damage(newDamage)
+        .damage(damage)
         .speed(speed)
         .radius(radius)
         .homing(homing)
@@ -86,6 +103,8 @@ public class ProjectileStats {
         .checkCollisions(checkCollisions)
         .crownTowerDamagePercent(crownTowerDamagePercent)
         .spawnAreaEffect(spawnAreaEffect)
-        .build();
+        .spawnCharacterName(spawnCharacterName)
+        .spawnCharacter(spawnCharacter)
+        .spawnCharacterCount(spawnCharacterCount);
   }
 }

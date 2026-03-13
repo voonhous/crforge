@@ -4,6 +4,8 @@ import java.util.Collections;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.LevelScaling;
+import org.crforge.core.card.LiveSpawnConfig;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
@@ -20,6 +22,7 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
+import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.match.Match;
@@ -47,6 +50,14 @@ public class SpawnerSystem {
   /** Sets the match reference, needed for elixir grant on death (e.g. Elixir Golem). */
   public void setMatch(Match match) {
     this.match = match;
+  }
+
+  /**
+   * Spawns a unit at a specific position. Used by CombatSystem for projectile spawn-on-impact (e.g.
+   * PhoenixFireball spawns PhoenixEgg).
+   */
+  public void spawnUnit(float x, float y, Team team, TroopStats stats, Rarity rarity, int level) {
+    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level);
   }
 
   public void update(float deltaTime) {
@@ -89,6 +100,14 @@ public class SpawnerSystem {
             spawner.getSpawnStats(),
             spawner.getRarity(),
             spawner.getLevel());
+
+        // Track spawn count and enforce spawn limit (e.g. PhoenixEgg spawns once then dies)
+        spawner.setTotalSpawned(spawner.getTotalSpawned() + 1);
+        if (spawner.getSpawnLimit() > 0 && spawner.getTotalSpawned() >= spawner.getSpawnLimit()) {
+          if (spawner.isDestroyAtLimit()) {
+            entity.getHealth().takeDamage(entity.getHealth().getCurrent());
+          }
+        }
       }
     }
   }
@@ -154,7 +173,12 @@ public class SpawnerSystem {
         }
       }
 
-      // 5. Fallback: legacy death spawn via deathSpawnCount + spawnStats
+      // 5. Fire death spawn projectile (e.g. Phoenix -> PhoenixFireball)
+      if (spawner.getDeathSpawnProjectile() != null) {
+        fireDeathProjectile(entity, spawner);
+      }
+
+      // 6. Fallback: legacy death spawn via deathSpawnCount + spawnStats
       if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
         for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
           Vector2 offset =
@@ -282,6 +306,47 @@ public class SpawnerSystem {
     }
   }
 
+  /**
+   * Fires a death spawn projectile at the dying entity's position (e.g. Phoenix ->
+   * PhoenixFireball). The projectile deals AOE damage and may spawn a character on impact.
+   */
+  private void fireDeathProjectile(Entity entity, SpawnerComponent spawner) {
+    ProjectileStats projStats = spawner.getDeathSpawnProjectile();
+    float x = entity.getPosition().getX();
+    float y = entity.getPosition().getY();
+
+    // Damage is already level-scaled when stored in SpawnerComponent (by doSpawn/DeploymentSystem)
+    int damage = projStats.getDamage();
+
+    // Position-targeted projectile at death position (arrives instantly since start == dest)
+    Projectile projectile =
+        new Projectile(
+            entity.getTeam(),
+            x,
+            y,
+            x,
+            y,
+            damage,
+            projStats.getRadius(),
+            projStats.getSpeed(),
+            projStats.getHitEffects(),
+            projStats.getCrownTowerDamagePercent());
+    projectile.setPushback(projStats.getPushback());
+    projectile.setPushbackAll(projStats.isPushbackAll());
+    projectile.setAoeToGround(projStats.isAoeToGround());
+    projectile.setAoeToAir(projStats.isAoeToAir());
+
+    // Wire spawn character info so CombatSystem can spawn it on impact
+    if (projStats.getSpawnCharacter() != null) {
+      projectile.setSpawnCharacterStats(projStats.getSpawnCharacter());
+      projectile.setSpawnCharacterCount(projStats.getSpawnCharacterCount());
+      projectile.setSpawnCharacterRarity(spawner.getRarity());
+      projectile.setSpawnCharacterLevel(spawner.getLevel());
+    }
+
+    gameState.spawnProjectile(projectile);
+  }
+
   private void doSpawn(
       Position origin, Vector2 offset, Team team, TroopStats stats, Rarity rarity, int level) {
     float x = origin.getX() + offset.getX();
@@ -298,41 +363,65 @@ public class SpawnerSystem {
             ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level)
             : 0;
 
-    float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
-    Combat combat =
-        Combat.builder()
-            .damage(scaledDamage)
-            .range(stats.getRange())
-            .sightRange(stats.getSightRange())
-            .attackCooldown(stats.getAttackCooldown())
-            .loadTime(stats.getLoadTime())
-            .accumulatedLoadTime(initialLoad)
-            .aoeRadius(stats.getAoeRadius())
-            .targetType(stats.getTargetType())
-            .selfAsAoeCenter(stats.isSelfAsAoeCenter())
-            .attackDashTime(stats.getAttackDashTime())
-            .targetOnlyTroops(stats.isTargetOnlyTroops())
-            .ignoreTargetsWithBuff(stats.getIgnoreTargetsWithBuff())
-            .build();
+    // Skip Combat component for units that cannot deal damage (e.g. PhoenixEgg).
+    // Without it they won't acquire targets, attack, or play attack animations.
+    Combat combat = null;
+    if (scaledDamage > 0 || stats.getProjectile() != null) {
+      float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
+      combat =
+          Combat.builder()
+              .damage(scaledDamage)
+              .range(stats.getRange())
+              .sightRange(stats.getSightRange())
+              .attackCooldown(stats.getAttackCooldown())
+              .loadTime(stats.getLoadTime())
+              .accumulatedLoadTime(initialLoad)
+              .aoeRadius(stats.getAoeRadius())
+              .targetType(stats.getTargetType())
+              .selfAsAoeCenter(stats.isSelfAsAoeCenter())
+              .attackDashTime(stats.getAttackDashTime())
+              .targetOnlyTroops(stats.isTargetOnlyTroops())
+              .ignoreTargetsWithBuff(stats.getIgnoreTargetsWithBuff())
+              .build();
+    }
 
     // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),
     // otherwise spawned units deploy instantly
     float deployTime = isBomb ? stats.getDeployTime() : 0f;
 
-    // Build SpawnerComponent for units with death mechanics or bomb behavior
+    // Build SpawnerComponent for units with death mechanics, bomb behavior, or liveSpawn
     boolean hasDeathMechanics =
         stats.getDeathDamage() > 0
             || !stats.getDeathSpawns().isEmpty()
             || stats.getDeathAreaEffect() != null
-            || stats.getManaOnDeathForOpponent() > 0;
+            || stats.getManaOnDeathForOpponent() > 0
+            || stats.getDeathSpawnProjectile() != null;
+    boolean hasLiveSpawn = stats.getLiveSpawn() != null && stats.getSpawnTemplate() != null;
     SpawnerComponent spawner = null;
-    if (hasDeathMechanics || isBomb) {
+    if (hasDeathMechanics || isBomb || hasLiveSpawn) {
       int scaledDeathDamage =
           stats.getDeathDamage() > 0
               ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level)
               : 0;
 
-      spawner =
+      // Scale death spawn projectile damage
+      ProjectileStats deathProjStats = null;
+      if (stats.getDeathSpawnProjectile() != null) {
+        deathProjStats =
+            stats
+                .getDeathSpawnProjectile()
+                .withDamage(
+                    LevelScaling.scaleCard(
+                        stats.getDeathSpawnProjectile().getDamage(), rarity, level));
+        // Preserve the resolved spawn character reference
+        if (stats.getDeathSpawnProjectile().getSpawnCharacter() != null) {
+          deathProjStats =
+              deathProjStats.withSpawnCharacter(
+                  stats.getDeathSpawnProjectile().getSpawnCharacter());
+        }
+      }
+
+      SpawnerComponent.SpawnerComponentBuilder spawnerBuilder =
           SpawnerComponent.builder()
               .deathDamage(scaledDeathDamage)
               .deathDamageRadius(stats.getDeathDamageRadius())
@@ -340,10 +429,27 @@ public class SpawnerSystem {
               .deathSpawns(stats.getDeathSpawns())
               .deathAreaEffect(stats.getDeathAreaEffect())
               .manaOnDeathForOpponent(stats.getManaOnDeathForOpponent())
+              .deathSpawnProjectile(deathProjStats)
               .rarity(rarity)
               .level(level)
-              .selfDestruct(isBomb)
-              .build();
+              .selfDestruct(isBomb);
+
+      // Wire liveSpawn config (e.g. PhoenixEgg spawns PhoenixNoRespawn after 4.3s)
+      if (hasLiveSpawn) {
+        LiveSpawnConfig ls = stats.getLiveSpawn();
+        spawnerBuilder
+            .spawnInterval(ls.spawnInterval())
+            .spawnPauseTime(ls.spawnPauseTime())
+            .unitsPerWave(ls.spawnNumber())
+            .spawnStartTime(ls.spawnStartTime())
+            .currentTimer(ls.spawnStartTime())
+            .spawnStats(stats.getSpawnTemplate())
+            .formationRadius(ls.spawnRadius())
+            .spawnLimit(ls.spawnLimit())
+            .destroyAtLimit(ls.destroyAtLimit());
+      }
+
+      spawner = spawnerBuilder.build();
     }
 
     Troop unit =

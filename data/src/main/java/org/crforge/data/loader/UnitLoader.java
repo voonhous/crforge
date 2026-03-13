@@ -99,6 +99,18 @@ public class UnitLoader {
         resolveUnit(ds.getSpawnCharacter(), dtos, projectileMap, result, resolving);
       }
     }
+    // Recursively resolve liveSpawn dependencies (e.g. PhoenixEgg -> PhoenixNoRespawn)
+    if (dto.getLiveSpawn() != null && dto.getLiveSpawn().getSpawnCharacter() != null) {
+      resolveUnit(dto.getLiveSpawn().getSpawnCharacter(), dtos, projectileMap, result, resolving);
+    }
+    // Recursively resolve deathSpawnProjectile's spawn character (e.g. Phoenix -> PhoenixFireball
+    // -> PhoenixEgg)
+    if (dto.getDeathSpawnProjectile() != null && projectileMap != null) {
+      ProjectileStats deathProj = projectileMap.get(dto.getDeathSpawnProjectile());
+      if (deathProj != null && deathProj.getSpawnCharacterName() != null) {
+        resolveUnit(deathProj.getSpawnCharacterName(), dtos, projectileMap, result, resolving);
+      }
+    }
     // All dependencies now in result map; convert this unit
     TroopStats stats = convertUnit(dto, projectileMap, result);
     result.put(name, stats);
@@ -237,10 +249,26 @@ public class UnitLoader {
       builder.deathSpawns(deathSpawns);
     }
 
+    // Resolve deathSpawnProjectile (e.g. Phoenix -> PhoenixFireball)
+    if (dto.getDeathSpawnProjectile() != null && projectileMap != null) {
+      ProjectileStats deathProj = projectileMap.get(dto.getDeathSpawnProjectile());
+      if (deathProj != null) {
+        // Also resolve the projectile's spawn character if present
+        if (deathProj.getSpawnCharacterName() != null && unitMap != null) {
+          TroopStats spawnChar = unitMap.get(deathProj.getSpawnCharacterName());
+          if (spawnChar != null) {
+            deathProj = deathProj.withSpawnCharacter(spawnChar);
+          }
+        }
+        builder.deathSpawnProjectile(deathProj);
+      }
+    }
+
     // Live spawn configuration
     LiveSpawnConfigDTO liveSpawn = dto.getLiveSpawn();
+    LiveSpawnConfig liveSpawnConfig = null;
     if (liveSpawn != null) {
-      builder.liveSpawn(
+      liveSpawnConfig =
           new LiveSpawnConfig(
               liveSpawn.getSpawnCharacter(),
               liveSpawn.getSpawnNumber() > 0 ? liveSpawn.getSpawnNumber() : 1,
@@ -248,7 +276,18 @@ public class UnitLoader {
               liveSpawn.getSpawnInterval(),
               liveSpawn.getSpawnStartTime(),
               liveSpawn.getSpawnRadius(),
-              liveSpawn.isSpawnAttach()));
+              liveSpawn.isSpawnAttach(),
+              liveSpawn.getSpawnLimit(),
+              liveSpawn.isDestroyAtLimit());
+      builder.liveSpawn(liveSpawnConfig);
+    }
+
+    // Resolve liveSpawn spawnTemplate (e.g. PhoenixEgg -> PhoenixNoRespawn)
+    if (liveSpawnConfig != null && liveSpawnConfig.spawnCharacter() != null && unitMap != null) {
+      TroopStats spawnTemplate = unitMap.get(liveSpawnConfig.spawnCharacter());
+      if (spawnTemplate != null) {
+        builder.spawnTemplate(spawnTemplate);
+      }
     }
 
     // Abilities (Charge, Variable Damage, etc.)

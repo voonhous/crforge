@@ -246,10 +246,28 @@ public class DeploymentSystem {
         unitStats.getDeathDamage() > 0
             || !unitStats.getDeathSpawns().isEmpty()
             || unitStats.getDeathAreaEffect() != null
-            || unitStats.getManaOnDeathForOpponent() > 0;
+            || unitStats.getManaOnDeathForOpponent() > 0
+            || unitStats.getDeathSpawnProjectile() != null;
     if (hasUnitDeathMechanics) {
       int scaledDeathDmg =
           LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
+
+      // Scale death spawn projectile damage
+      ProjectileStats deathProjStats = null;
+      if (unitStats.getDeathSpawnProjectile() != null) {
+        deathProjStats =
+            unitStats
+                .getDeathSpawnProjectile()
+                .withDamage(
+                    LevelScaling.scaleCard(
+                        unitStats.getDeathSpawnProjectile().getDamage(), card.getRarity(), level));
+        // Preserve the resolved spawn character reference
+        if (unitStats.getDeathSpawnProjectile().getSpawnCharacter() != null) {
+          deathProjStats =
+              deathProjStats.withSpawnCharacter(
+                  unitStats.getDeathSpawnProjectile().getSpawnCharacter());
+        }
+      }
 
       if (spawner == null) {
         // Create a death-only SpawnerComponent
@@ -260,6 +278,7 @@ public class DeploymentSystem {
                 .deathSpawns(unitStats.getDeathSpawns())
                 .deathAreaEffect(unitStats.getDeathAreaEffect())
                 .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
+                .deathSpawnProjectile(deathProjStats)
                 .rarity(card.getRarity())
                 .level(level)
                 .build();
@@ -270,6 +289,7 @@ public class DeploymentSystem {
         spawner.setDeathSpawns(unitStats.getDeathSpawns());
         spawner.setDeathAreaEffect(unitStats.getDeathAreaEffect());
         spawner.setManaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent());
+        spawner.setDeathSpawnProjectile(deathProjStats);
       }
     }
 
@@ -534,13 +554,30 @@ public class DeploymentSystem {
         unitStats.getDeathDamage() > 0
             || !unitStats.getDeathSpawns().isEmpty()
             || unitStats.getDeathAreaEffect() != null
-            || unitStats.getManaOnDeathForOpponent() > 0;
+            || unitStats.getManaOnDeathForOpponent() > 0
+            || unitStats.getDeathSpawnProjectile() != null;
 
     if (hasLiveSpawn || hasUnitLevelDeath) {
       LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
       TroopStats spawnStats = card.getSpawnTemplate();
       int scaledDeathDmg =
           LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
+
+      // Scale death spawn projectile damage for buildings
+      ProjectileStats deathProjStats = null;
+      if (unitStats.getDeathSpawnProjectile() != null) {
+        deathProjStats =
+            unitStats
+                .getDeathSpawnProjectile()
+                .withDamage(
+                    LevelScaling.scaleCard(
+                        unitStats.getDeathSpawnProjectile().getDamage(), card.getRarity(), level));
+        if (unitStats.getDeathSpawnProjectile().getSpawnCharacter() != null) {
+          deathProjStats =
+              deathProjStats.withSpawnCharacter(
+                  unitStats.getDeathSpawnProjectile().getSpawnCharacter());
+        }
+      }
 
       SpawnerComponent.SpawnerComponentBuilder spawnerBuilder =
           SpawnerComponent.builder()
@@ -549,6 +586,7 @@ public class DeploymentSystem {
               .deathSpawns(unitStats.getDeathSpawns())
               .deathAreaEffect(unitStats.getDeathAreaEffect())
               .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
+              .deathSpawnProjectile(deathProjStats)
               .rarity(card.getRarity())
               .level(level);
 
@@ -561,7 +599,9 @@ public class DeploymentSystem {
             .spawnStartTime(ls.spawnStartTime())
             .currentTimer(initialTimer)
             .spawnStats(spawnStats)
-            .formationRadius(ls.spawnRadius());
+            .formationRadius(ls.spawnRadius())
+            .spawnLimit(ls.spawnLimit())
+            .destroyAtLimit(ls.destroyAtLimit());
 
         // Derive deathSpawnCount from first death spawn entry
         if (unitStats.getDeathSpawns() != null && !unitStats.getDeathSpawns().isEmpty()) {

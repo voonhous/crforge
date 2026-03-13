@@ -48,6 +48,7 @@ public class GameEngine {
     this.deploymentSystem = new DeploymentSystem(gameState, combatSystem);
     this.statusEffectSystem = new StatusEffectSystem();
     this.spawnerSystem = new SpawnerSystem(gameState, combatSystem);
+    this.combatSystem.setSpawnerSystem(this.spawnerSystem);
     this.areaEffectSystem = new AreaEffectSystem(gameState);
     this.abilitySystem = new AbilitySystem(gameState);
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);

@@ -106,6 +106,13 @@ public class ProjectileLoader {
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
             .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
 
+    // Read spawn character from the spawn block (e.g. PhoenixFireball spawns PhoenixEgg)
+    if (dto.getSpawn() != null && dto.getSpawn().getSpawnCharacter() != null) {
+      builder.spawnCharacterName(dto.getSpawn().getSpawnCharacter());
+      builder.spawnCharacterCount(
+          dto.getSpawn().getSpawnNumber() > 0 ? dto.getSpawn().getSpawnNumber() : 1);
+    }
+
     // Resolve spawnProjectile string reference
     if (dto.getSpawnProjectile() != null && projectileMap != null) {
       ProjectileStats spawnProj = projectileMap.get(dto.getSpawnProjectile());

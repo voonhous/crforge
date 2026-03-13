@@ -8,6 +8,8 @@ import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
@@ -15,6 +17,7 @@ import org.crforge.core.component.Position;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
+import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
@@ -33,9 +36,15 @@ public class CombatSystem {
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
   private final GameState gameState;
+  private SpawnerSystem spawnerSystem;
 
   public CombatSystem(GameState gameState) {
     this.gameState = gameState;
+  }
+
+  /** Sets the SpawnerSystem reference for spawn-on-impact projectiles (e.g. PhoenixFireball). */
+  public void setSpawnerSystem(SpawnerSystem spawnerSystem) {
+    this.spawnerSystem = spawnerSystem;
   }
 
   /** Process combat for all entities. Called each tick. */
@@ -542,6 +551,11 @@ public class CombatSystem {
     if (projectile.getSpawnAreaEffect() != null) {
       spawnAreaEffectOnImpact(projectile);
     }
+
+    // Spawn character on impact (e.g. PhoenixFireball spawns PhoenixEgg)
+    if (projectile.getSpawnCharacterStats() != null && spawnerSystem != null) {
+      spawnCharacterOnImpact(projectile);
+    }
   }
 
   /**
@@ -731,6 +745,37 @@ public class CombatSystem {
             .build();
 
     gameState.spawnEntity(effect);
+  }
+
+  /**
+   * Spawns a character at the projectile's impact point. Used by projectiles that carry a
+   * spawnCharacter (e.g. PhoenixFireball spawns PhoenixEgg at death position).
+   */
+  private void spawnCharacterOnImpact(Projectile projectile) {
+    TroopStats stats = projectile.getSpawnCharacterStats();
+    int count = Math.max(1, projectile.getSpawnCharacterCount());
+    Rarity rarity =
+        projectile.getSpawnCharacterRarity() != null
+            ? projectile.getSpawnCharacterRarity()
+            : Rarity.COMMON;
+    int level = projectile.getSpawnCharacterLevel() > 0 ? projectile.getSpawnCharacterLevel() : 1;
+
+    // Determine impact position
+    float centerX, centerY;
+    if (projectile.isPositionTargeted()) {
+      centerX = projectile.getTargetX();
+      centerY = projectile.getTargetY();
+    } else if (projectile.getTarget() != null) {
+      centerX = projectile.getTarget().getPosition().getX();
+      centerY = projectile.getTarget().getPosition().getY();
+    } else {
+      centerX = projectile.getPosition().getX();
+      centerY = projectile.getPosition().getY();
+    }
+
+    for (int i = 0; i < count; i++) {
+      spawnerSystem.spawnUnit(centerX, centerY, projectile.getTeam(), stats, rarity, level);
+    }
   }
 
   /**

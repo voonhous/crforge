@@ -88,4 +88,7 @@ public class UnitConfigDTO {
 
   // Ram Rider bola: ignore targets that already have this buff applied
   private String ignoreTargetsWithBuff;
+
+  // Death spawn projectile: projectile fired at death position (e.g. Phoenix -> PhoenixFireball)
+  private String deathSpawnProjectile;
 }

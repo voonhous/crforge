@@ -18,4 +18,11 @@ public class LiveSpawnConfigDTO {
   private float spawnStartTime;
   private float spawnRadius;
   private boolean spawnAttach;
+
+  // Spawn limit: stop spawning after this many units (0 = unlimited)
+  private int spawnLimit;
+
+  // Destroy parent entity when spawn limit is reached (e.g. PhoenixEgg self-destructs after
+  // hatching)
+  private boolean destroyAtLimit;
 }
