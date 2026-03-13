@@ -20,6 +20,7 @@ import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
@@ -214,9 +215,12 @@ public class DeploymentSystem {
     }
 
     // Check for spawner capability (Witch/Mother Witch logic) -- only first primary unit
+    // spawnAttach units (Ram Rider, Goblin Giant) are handled separately after spawn
     SpawnerComponent spawner = null;
+    boolean isSpawnAttach =
+        idx == 0 && unitStats.getLiveSpawn() != null && unitStats.getLiveSpawn().spawnAttach();
 
-    if (idx == 0 && unitStats.getLiveSpawn() != null) {
+    if (idx == 0 && unitStats.getLiveSpawn() != null && !isSpawnAttach) {
       LiveSpawnConfig ls = unitStats.getLiveSpawn();
       TroopStats spawnStats = card.getSpawnTemplate();
       if (spawnStats != null) {
@@ -286,6 +290,80 @@ public class DeploymentSystem {
     }
 
     state.spawnEntity(troop);
+
+    // Spawn attached units (Ram Rider on Ram, Spear Goblins on Goblin Giant)
+    if (isSpawnAttach) {
+      spawnAttachedUnits(troop, card, level);
+    }
+  }
+
+  /**
+   * Spawns units that are permanently attached to a parent entity (e.g. Ram Rider on Ram, Spear
+   * Goblins on Goblin Giant). Attached units ride on the parent, are non-targetable, invulnerable,
+   * and die when the parent dies.
+   */
+  private void spawnAttachedUnits(Troop parent, Card card, int level) {
+    LiveSpawnConfig ls = card.getUnitStats().getLiveSpawn();
+    TroopStats spawnStats = card.getSpawnTemplate();
+    if (ls == null || spawnStats == null) {
+      return;
+    }
+
+    int count = ls.spawnNumber();
+    float formationRadius = ls.spawnRadius();
+
+    for (int i = 0; i < count; i++) {
+      // Calculate formation offset for this attached unit
+      Vector2 offset =
+          FormationLayout.calculateOffset(
+              i, count, formationRadius, spawnStats.getCollisionRadius());
+      float offsetX = offset.getX();
+      float offsetY = offset.getY();
+
+      int scaledHp = LevelScaling.scaleCard(spawnStats.getHealth(), card.getRarity(), level);
+      int scaledDamage = LevelScaling.scaleCard(spawnStats.getDamage(), card.getRarity(), level);
+
+      float initialLoad = spawnStats.isNoPreload() ? 0f : spawnStats.getLoadTime();
+      Combat combat =
+          buildCombatComponent(spawnStats, scaledDamage, initialLoad)
+              .aoeRadius(spawnStats.getAoeRadius())
+              .multipleTargets(spawnStats.getMultipleTargets())
+              .multipleProjectiles(spawnStats.getMultipleProjectiles())
+              .buffOnDamage(spawnStats.getBuffOnDamage())
+              .build();
+
+      int scaledShield =
+          spawnStats.getShieldHitpoints() > 0
+              ? LevelScaling.scaleCard(spawnStats.getShieldHitpoints(), card.getRarity(), level)
+              : 0;
+
+      AttachedComponent attachedComponent = new AttachedComponent(parent, offsetX, offsetY);
+
+      Troop child =
+          Troop.builder()
+              .name(spawnStats.getName())
+              .team(parent.getTeam())
+              .position(
+                  new Position(
+                      parent.getPosition().getX() + offsetX, parent.getPosition().getY() + offsetY))
+              .health(new Health(scaledHp, scaledShield))
+              .movement(
+                  new Movement(
+                      spawnStats.getSpeed(),
+                      spawnStats.getMass(),
+                      spawnStats.getCollisionRadius(),
+                      spawnStats.getVisualRadius(),
+                      spawnStats.getMovementType()))
+              .combat(combat)
+              .deployTime(0f)
+              .deployTimer(0f)
+              .attached(attachedComponent)
+              .invulnerable(true)
+              .level(level)
+              .build();
+
+      state.spawnEntity(child);
+    }
   }
 
   /**
@@ -652,6 +730,8 @@ public class DeploymentSystem {
         .hitEffects(stats.getHitEffects())
         .projectileStats(stats.getProjectile())
         .targetOnlyBuildings(stats.isTargetOnlyBuildings())
+        .targetOnlyTroops(stats.isTargetOnlyTroops())
+        .ignoreTargetsWithBuff(stats.getIgnoreTargetsWithBuff())
         .minimumRange(stats.getMinimumRange())
         .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .selfAsAoeCenter(stats.isSelfAsAoeCenter())

@@ -161,6 +161,8 @@ public class UnitLoader {
             .selfAsAoeCenter(dto.isSelfAsAoeCenter())
             // Targeting and combat modifiers
             .targetOnlyBuildings(dto.isTargetOnlyBuildings())
+            .targetOnlyTroops(dto.isTargetOnlyTroops())
+            .ignoreTargetsWithBuff(dto.getIgnoreTargetsWithBuff())
             .minimumRange(dto.getMinimumRange())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
             .ignorePushback(dto.isIgnorePushback())
@@ -232,7 +234,8 @@ public class UnitLoader {
               liveSpawn.getSpawnPauseTime(),
               liveSpawn.getSpawnInterval(),
               liveSpawn.getSpawnStartTime(),
-              liveSpawn.getSpawnRadius()));
+              liveSpawn.getSpawnRadius(),
+              liveSpawn.isSpawnAttach()));
     }
 
     // Abilities (Charge, Variable Damage, etc.)

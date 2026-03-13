@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -25,6 +26,9 @@ public class Troop extends AbstractEntity {
 
   @Builder.Default private final AbilityComponent ability = null;
 
+  // Attached to parent entity (e.g. Ram Rider on Ram, Spear Goblins on Goblin Giant)
+  @Builder.Default private final AttachedComponent attached = null;
+
   // River jump state: true while the troop is leaping over the river
   @Setter private boolean jumping;
 
@@ -34,6 +38,11 @@ public class Troop extends AbstractEntity {
   /** Returns true if this troop is currently invisible (stealth ability active). */
   public boolean isInvisible() {
     return ability != null && ability.isInvisible();
+  }
+
+  /** Returns true if this troop is attached to a parent entity. */
+  public boolean isAttached() {
+    return attached != null;
   }
 
   @Override
@@ -114,6 +123,6 @@ public class Troop extends AbstractEntity {
 
   @Override
   public boolean isTargetable() {
-    return super.isTargetable() && !isDeploying() && !jumping && !tunneling;
+    return super.isTargetable() && !isDeploying() && !jumping && !tunneling && !isAttached();
   }
 }

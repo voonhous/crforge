@@ -121,7 +121,7 @@ class DeploymentSystemTest {
         TroopStats.builder()
             .name("TombstoneBuilding")
             .health(500)
-            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f, false))
             .build();
 
     Card tombstone =
@@ -166,7 +166,7 @@ class DeploymentSystemTest {
         TroopStats.builder()
             .name("TombstoneBuilding")
             .health(500)
-            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f))
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f, false))
             .build();
 
     Card tombstone =

@@ -473,6 +473,25 @@ class UnitLoaderTest {
           .as("SkeletonContainer (from SkeletonBalloon) must spawn Skeletons")
           .isNotEmpty();
       assertThat(skelContainer.getDeathSpawns().get(0).stats().getName()).isEqualTo("Skeleton");
+
+      // Verify Ram's liveSpawn has spawnAttach=true
+      TroopStats ram = map.get("Ram");
+      assertThat(ram).isNotNull();
+      assertThat(ram.getLiveSpawn()).isNotNull();
+      assertThat(ram.getLiveSpawn().spawnAttach()).isTrue();
+      assertThat(ram.getLiveSpawn().spawnCharacter()).isEqualTo("RamRider");
+
+      // Verify RamRider has targetOnlyTroops and ignoreTargetsWithBuff
+      TroopStats ramRider = map.get("RamRider");
+      assertThat(ramRider).isNotNull();
+      assertThat(ramRider.isTargetOnlyTroops()).isTrue();
+      assertThat(ramRider.getIgnoreTargetsWithBuff()).isEqualTo("BolaSnare");
+
+      // Verify GoblinGiant's liveSpawn has spawnAttach=true
+      TroopStats goblinGiant = map.get("GoblinGiant");
+      assertThat(goblinGiant).isNotNull();
+      assertThat(goblinGiant.getLiveSpawn()).isNotNull();
+      assertThat(goblinGiant.getLiveSpawn().spawnAttach()).isTrue();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

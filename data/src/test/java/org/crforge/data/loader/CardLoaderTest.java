@@ -202,7 +202,7 @@ class CardLoaderTest {
             .health(207)
             .lifeTime(30.0f)
             .movementType(MovementType.GROUND)
-            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f))
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f, false))
             .build();
 
     String json =

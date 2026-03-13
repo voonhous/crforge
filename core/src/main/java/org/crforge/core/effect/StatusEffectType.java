@@ -54,7 +54,8 @@ public enum StatusEffectType {
           Map.entry("Rage", RAGE),
           Map.entry("VoodooCurse", CURSE),
           Map.entry("Earthquake", EARTHQUAKE),
-          Map.entry("Tornado", TORNADO));
+          Map.entry("Tornado", TORNADO),
+          Map.entry("BolaSnare", SLOW));
 
   /**
    * Resolves a buff name from the parsed card data to a StatusEffectType.

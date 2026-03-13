@@ -294,6 +294,8 @@ public class SpawnerSystem {
             .targetType(stats.getTargetType())
             .selfAsAoeCenter(stats.isSelfAsAoeCenter())
             .attackDashTime(stats.getAttackDashTime())
+            .targetOnlyTroops(stats.isTargetOnlyTroops())
+            .ignoreTargetsWithBuff(stats.getIgnoreTargetsWithBuff())
             .build();
 
     // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),

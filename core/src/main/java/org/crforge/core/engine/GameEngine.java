@@ -6,6 +6,7 @@ import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
+import org.crforge.core.entity.AttachedUnitSystem;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffectSystem;
@@ -32,6 +33,7 @@ public class GameEngine {
   private final SpawnerSystem spawnerSystem;
   private final AreaEffectSystem areaEffectSystem;
   private final AbilitySystem abilitySystem;
+  private final AttachedUnitSystem attachedUnitSystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -48,6 +50,7 @@ public class GameEngine {
     this.spawnerSystem = new SpawnerSystem(gameState, combatSystem);
     this.areaEffectSystem = new AreaEffectSystem(gameState);
     this.abilitySystem = new AbilitySystem(gameState);
+    this.attachedUnitSystem = new AttachedUnitSystem(gameState);
     this.running = false;
   }
 
@@ -108,6 +111,9 @@ public class GameEngine {
 
     // 5. Update status effects (Update durations and calculate multipliers)
     statusEffectSystem.update(gameState, DELTA_TIME);
+
+    // 5.5 Sync attached units (position, death, effect propagation from parent)
+    attachedUnitSystem.update(DELTA_TIME);
 
     // 6. Update all entities (timers, cooldowns, etc.)
     for (Entity entity : gameState.getAliveEntities()) {

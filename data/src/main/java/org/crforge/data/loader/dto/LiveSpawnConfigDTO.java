@@ -17,4 +17,5 @@ public class LiveSpawnConfigDTO {
   private float spawnInterval;
   private float spawnStartTime;
   private float spawnRadius;
+  private boolean spawnAttach;
 }

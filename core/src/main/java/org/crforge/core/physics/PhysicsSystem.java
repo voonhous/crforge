@@ -93,6 +93,11 @@ public class PhysicsSystem {
   }
 
   private void applyMovement(Troop troop, Collection<Entity> allEntities, float deltaTime) {
+    // Attached units have their position set by AttachedUnitSystem
+    if (troop.isAttached()) {
+      return;
+    }
+
     // Knockback overrides all normal movement
     if (troop.getMovement().isKnockedBack()) {
       troop.getMovement().tickKnockback(troop.getPosition(), deltaTime);
@@ -280,6 +285,11 @@ public class PhysicsSystem {
   }
 
   private boolean shouldCollide(Entity a, Entity b) {
+    // Attached units do not collide
+    if (isAttached(a) || isAttached(b)) {
+      return false;
+    }
+
     // Dashing entities skip collision (like reference JS "noCol" flag)
     if (isDashing(a) || isDashing(b)) {
       return false;
@@ -317,6 +327,10 @@ public class PhysicsSystem {
 
   private boolean isInvisible(Entity entity) {
     return entity instanceof Troop troop && troop.isInvisible();
+  }
+
+  private boolean isAttached(Entity entity) {
+    return entity instanceof Troop troop && troop.isAttached();
   }
 
   /** Collision result containing push direction and overlap amount. */

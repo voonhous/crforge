@@ -47,8 +47,12 @@ public class Combat {
 
   // Targeting and combat modifiers
   @Builder.Default private final boolean targetOnlyBuildings = false;
+  @Builder.Default private final boolean targetOnlyTroops = false;
   @Builder.Default private final float minimumRange = 0f;
   @Builder.Default private final int crownTowerDamagePercent = 0;
+
+  // Ignore targets that already have this buff applied (e.g. Ram Rider skips bola'd targets)
+  private final String ignoreTargetsWithBuff;
 
   // Ability-driven damage override (e.g. variable damage / inferno)
   // When > 0, used instead of base damage

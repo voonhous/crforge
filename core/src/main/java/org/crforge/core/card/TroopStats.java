@@ -71,9 +71,13 @@ public class TroopStats {
 
   // Targeting and combat modifiers
   @Builder.Default private final boolean targetOnlyBuildings = false;
+  @Builder.Default private final boolean targetOnlyTroops = false;
   @Builder.Default private final float minimumRange = 0f;
   @Builder.Default private final int crownTowerDamagePercent = 0;
   @Builder.Default private final boolean ignorePushback = false;
+
+  // Ignore targets that already have this buff applied (e.g. Ram Rider skips bola'd targets)
+  private final String ignoreTargetsWithBuff;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default private final boolean kamikaze = false;

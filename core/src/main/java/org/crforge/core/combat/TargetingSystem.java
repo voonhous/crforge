@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import java.util.Collection;
 import org.crforge.core.component.Combat;
+import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
@@ -110,6 +111,21 @@ public class TargetingSystem {
     // targetOnlyBuildings: unit ignores all non-building/tower entities (e.g. Giant, Hog Rider)
     if (attackerCombat.isTargetOnlyBuildings() && !(target instanceof Building)) {
       return false;
+    }
+
+    // targetOnlyTroops: unit ignores buildings (e.g. Ram Rider's bola targets troops only)
+    if (attackerCombat.isTargetOnlyTroops() && target instanceof Building) {
+      return false;
+    }
+
+    // ignoreTargetsWithBuff: skip targets that already have this buff applied
+    // (e.g. Ram Rider skips targets already snared by BolaSnare)
+    if (attackerCombat.getIgnoreTargetsWithBuff() != null) {
+      for (AppliedEffect effect : target.getAppliedEffects()) {
+        if (attackerCombat.getIgnoreTargetsWithBuff().equals(effect.getBuffName())) {
+          return false;
+        }
+      }
     }
 
     TargetType attackerTargetType = attackerCombat.getTargetType();

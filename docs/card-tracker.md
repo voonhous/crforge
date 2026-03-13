@@ -60,7 +60,7 @@ the live game name.
 | 48 | Night Witch       | darkwitch        | `DONE`    |                                 |
 | 49 | Bats              | bats             | `DONE`    | count=5                         |
 | 50 | Royal Ghost       | ghost            | `DONE`    | stealth ability                 |
-| 51 | Ram Rider         | ramrider         | `MISSING` |                                 |
+| 51 | Ram Rider         | ramrider         | `DONE`    | spawnAttach (rider on mount)    |
 | 52 | Zappies           | minisparkys      | `DONE`    | count=3                         |
 | 53 | Rascals           | rascals          | `DONE`    |                                 |
 | 54 | Mega Knight       | megaknight       | `DONE`    | needs spawn jump AOE            |
@@ -68,7 +68,7 @@ the live game name.
 | 56 | Flying Machine    | dartbarrell      | `DONE`    |                                 |
 | 57 | Wall Breakers     | wallbreakers     | `DONE`    | count=2, kamikaze + melee AOE   |
 | 58 | Royal Hogs        | royalhogs        | `MISSING` | count=4, jump over river        |
-| 59 | Goblin Giant      | goblingiant      | `MISSING` |                                 |
+| 59 | Goblin Giant      | goblingiant      | `DONE`    | spawnAttach (2 spear goblins)   |
 | 60 | Fisherman         | fisherman        | `DONE`    | hook ability                    |
 | 61 | Magic Archer      | elitearcher      | `MISSING` |                                 |
 | 62 | Electro Dragon    | electrodragon    | `DONE`    | chain lightning                 |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 71      | Fully functional in simulation                 |
+| `DONE`     | 73      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 42      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 40      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 

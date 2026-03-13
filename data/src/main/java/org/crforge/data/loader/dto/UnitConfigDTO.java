@@ -74,4 +74,10 @@ public class UnitConfigDTO {
 
   // Stealth: unit becomes invisible after not attacking for a period (e.g. Royal Ghost)
   private StealthConfigDTO stealth;
+
+  // Ram Rider targeting: only targets troops (not buildings)
+  private boolean targetOnlyTroops;
+
+  // Ram Rider bola: ignore targets that already have this buff applied
+  private String ignoreTargetsWithBuff;
 }

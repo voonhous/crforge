@@ -6,6 +6,7 @@ import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.unit.Troop;
 
 /**
  * Handles the calculation of final attributes based on active status effects. Only touches the
@@ -20,6 +21,11 @@ public class StatusEffectSystem {
   }
 
   private void processEntityEffects(Entity entity, float deltaTime) {
+    // Skip attached units -- their modifiers are propagated from the parent by AttachedUnitSystem
+    if (entity instanceof Troop troop && troop.isAttached()) {
+      return;
+    }
+
     List<AppliedEffect> effects = entity.getAppliedEffects();
     if (effects.isEmpty()) {
       resetMultipliers(entity);

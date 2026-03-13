@@ -984,7 +984,8 @@
     "liveSpawn": {
       "spawnCharacter": "SpearGoblinGiant",
       "spawnNumber": 2,
-      "spawnRadius": 0.9
+      "spawnRadius": 0.9,
+      "spawnAttach": true
     }
   },
   "GoblinHut": {
@@ -1793,7 +1794,8 @@
     "jumpEnabled": true,
     "liveSpawn": {
       "spawnCharacter": "RamRider",
-      "spawnNumber": 1
+      "spawnNumber": 1,
+      "spawnAttach": true
     },
     "abilities": [
       {
