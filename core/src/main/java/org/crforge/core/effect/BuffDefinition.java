@@ -4,7 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 /**
- * Immutable data class representing a buff definition loaded from parsed_buffs.json. Contains raw
+ * Immutable data class representing a buff definition loaded from buffs.json. Contains raw
  * multiplier values and helper methods to convert them to float multipliers.
  *
  * <p>Multiplier interpretation:

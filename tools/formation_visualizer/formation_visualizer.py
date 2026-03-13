@@ -85,9 +85,9 @@ class FormationVisualizer(tk.Tk):
 
     def load_data(self):
         offsets_path = os.path.join(self.data_dir, "formation_offsets.json")
-        cards_path = os.path.join(self.data_dir, "parsed_cards.json")
+        cards_path = os.path.join(self.data_dir, "cards.json")
 
-        units_path = os.path.join(self.data_dir, "parsed_units.json")
+        units_path = os.path.join(self.data_dir, "units.json")
 
         with open(offsets_path) as f:
             self.offsets = json.load(f)
@@ -1192,7 +1192,7 @@ class FormationVisualizer(tk.Tk):
 def main():
     parser = argparse.ArgumentParser(description="Visual editor for formation_offsets.json spawn positions.")
     parser.add_argument("data_dir",
-                        help="Directory containing formation_offsets.json, parsed_cards.json, and parsed_units.json")
+                        help="Directory containing formation_offsets.json, cards.json, and units.json")
     args = parser.parse_args()
     app = FormationVisualizer(args.data_dir)
     app.mainloop()

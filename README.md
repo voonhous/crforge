@@ -115,10 +115,10 @@ buffs -> projectiles -> units -> cards (each stage resolves string references fr
 
 ## Docs
 
-| Document                                           | Description                                                     |
-|----------------------------------------------------|-----------------------------------------------------------------|
-| [Level Scaling](docs/level_scaling.md)             | Rarity multiplier tables and tower stat scaling formulas        |
-| [Reverse Engineering](docs/reverse_engineering.md) | Guide for measuring missing unit stats from in-game observation |
+| Document                                                   | Description                                              |
+|------------------------------------------------------------|----------------------------------------------------------|
+| [Level Scaling](docs/level_scaling.md)                     | Rarity multiplier tables and tower stat scaling formulas |
+| [Measuring Missing Fields](docs/reverse_engineering.md)    | Guide for measuring unit stats from in-game observation  |
 
 ## Code Style
 

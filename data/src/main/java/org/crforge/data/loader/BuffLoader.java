@@ -9,7 +9,7 @@ import java.util.Map;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.data.loader.dto.BuffConfigDTO;
 
-/** Loads buff definitions from parsed_buffs.json and converts them to BuffDefinition objects. */
+/** Loads buff definitions from buffs.json and converts them to BuffDefinition objects. */
 public class BuffLoader {
 
   private static final ObjectMapper mapper = new ObjectMapper();

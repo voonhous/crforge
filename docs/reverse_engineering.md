@@ -1,10 +1,6 @@
-# Reverse Engineering Missing Unit Fields
+# Measuring Missing Unit Fields
 
-Some units (e.g. SuspiciousBush, BushGoblin) are absent from `characters.decoded.csv`. Their stats in `missing_units.json` are partially estimated. The fields below can be verified by observing the live game.
-
-## Check raw decoded data first
-
-Before resorting to in-game observation, check whether the character exists in the full decoded CSV before the summarisation step. The `decoder/decoder_csv.py` pipeline may be filtering out newer characters. If the entry exists in the raw output, extract the fields directly -- no guesswork needed.
+Some newer units may not yet have complete stats in our data files. The fields below can be measured by observing the live game.
 
 ## Field-specific methods
 

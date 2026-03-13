@@ -8,7 +8,7 @@ Visual tool for viewing and editing `formation_offsets.json` spawn positions.
 python tools/formation_visualizer/formation_visualizer.py <data_dir>
 ```
 
-`data_dir` is the path to a directory containing `formation_offsets.json`, `parsed_cards.json`, and `parsed_units.json`.
+`data_dir` is the path to a directory containing `formation_offsets.json`, `cards.json`, and `units.json`.
 
 ## UI overview
 

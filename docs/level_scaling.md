@@ -2,7 +2,7 @@
 
 ## Card Stats
 
-The base stats in the decoded CSVs (`characters.decoded.csv`, `buildings.decoded.csv`, etc.) are **level 1 values**.
+The base stats in our JSON data files are **level 1 values**.
 
 All card rarities share the same multiplier sequence (`floor(prev × 1.10)`), but each rarity's level 1 starts at a
 different point.
@@ -28,7 +28,7 @@ different point.
 
 Formula: `stat_at_level = floor(base_stat × multiplier)`
 
-Source: `rarities.decoded.csv` from community-decoded game data
+Source: community-decoded game data
 
 ## Princess Tower
 

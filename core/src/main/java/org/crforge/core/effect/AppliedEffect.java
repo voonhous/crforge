@@ -9,7 +9,7 @@ public class AppliedEffect {
   private final float intensity; // e.g., 0.5 for a 50% slow
   private final TroopStats spawnSpecies; // For Curse effects
   private final String
-      buffName; // Original buff name from parsed_buffs.json (e.g. "Poison", "IceWizardCold")
+      buffName; // Original buff name from buffs.json (e.g. "Poison", "IceWizardCold")
   private float remainingDuration;
 
   /** Constructor with buff name for data-driven multiplier resolution. */

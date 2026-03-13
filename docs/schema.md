@@ -1,10 +1,10 @@
-# Parser Output Schema
+# Card Data Schema
 
-The parser produces 4 JSON files per season. Cards reference units by name, units reference projectiles by name, and projectiles/units reference buffs by name.
+The card data consists of 4 JSON files. Cards reference units by name, units reference projectiles by name, and projectiles/units reference buffs by name.
 
 ```
-parsed_cards.json  ->  parsed_units.json  ->  parsed_projectiles.json
-                                           ->  parsed_buffs.json
+cards.json  ->  units.json  ->  projectiles.json
+                             ->  buffs.json
 ```
 
 ## Damage resolution convention
@@ -18,9 +18,9 @@ For spell cards, the projectile's `damage` is the spell's damage (always > 0).
 
 ---
 
-## parsed_cards.json
+## cards.json
 
-Array of card objects. Each card has a `type` field that determines which optional fields are present.
+Array of card objects in `data/src/main/resources/cards/cards.json`. Each card has a `type` field that determines which optional fields are present.
 
 ### Common fields (all card types)
 
@@ -36,7 +36,7 @@ Array of card objects. Each card has a `type` field that determines which option
 
 | Field          | Type   | Required | Description                                          |
 |----------------|--------|----------|------------------------------------------------------|
-| `unit`         | string | yes      | Unit name -> lookup in `parsed_units.json`            |
+| `unit`         | string | yes      | Unit name -> lookup in `units.json`            |
 | `count`        | int    | no       | Number of units deployed (omitted when 1)             |
 | `summonRadius` | float  | no       | Spread radius for multi-unit deploy                   |
 | `deployEffect` | object | no       | Area effect triggered on deploy (inline, see Area Effect) |
@@ -45,21 +45,21 @@ Array of card objects. Each card has a `type` field that determines which option
 
 | Field  | Type   | Required | Description                                    |
 |--------|--------|----------|------------------------------------------------|
-| `unit` | string | yes      | Building unit name -> lookup in `parsed_units.json` |
+| `unit` | string | yes      | Building unit name -> lookup in `units.json` |
 
 ### SPELL cards
 
 | Field             | Type   | Required | Description                                            |
 |-------------------|--------|----------|--------------------------------------------------------|
-| `projectile`      | string | no       | Projectile name -> lookup in `parsed_projectiles.json` |
+| `projectile`      | string | no       | Projectile name -> lookup in `projectiles.json` |
 | `areaEffect`      | object | no       | Area effect (inline, see Area Effect)                  |
-| `summonCharacter` | string | no       | Character spawned by the spell -> lookup in `parsed_units.json` |
+| `summonCharacter` | string | no       | Character spawned by the spell -> lookup in `units.json` |
 
 A spell card has at most one of `projectile`, `areaEffect`, or `summonCharacter`.
 
 ---
 
-## parsed_units.json
+## units.json
 
 Dict keyed by unit name. Contains all unique unit stat blocks: troop units, building units, and transitively spawned units (death spawns, live spawns).
 
@@ -85,7 +85,7 @@ Dict keyed by unit name. Contains all unique unit stat blocks: troop units, buil
 
 | Field                    | Type         | Description                                                     |
 |--------------------------|--------------|-----------------------------------------------------------------|
-| `projectile`             | string       | Projectile name -> lookup in `parsed_projectiles.json`          |
+| `projectile`             | string       | Projectile name -> lookup in `projectiles.json`          |
 | `visualRadius`           | float        | Visual radius for buildings (from building_visual_radius.json)  |
 | `targetOnlyBuildings`    | bool         | Only targets buildings (e.g. Giant, Golem)                      |
 | `targetOnlyTroops`       | bool         | Only targets troops (e.g. RamRider)                             |
@@ -102,7 +102,7 @@ Dict keyed by unit name. Contains all unique unit stat blocks: troop units, buil
 | `lifeTime`               | float        | Unit lifespan in seconds (buildings, temporary summons)         |
 | `burst`                  | int          | Number of projectiles in a burst (e.g. Hunter)                 |
 | `burstDelay`             | float        | Delay between burst projectiles in seconds                     |
-| `deathSpawnProjectile`   | string       | Projectile name fired on death -> lookup in `parsed_projectiles.json` |
+| `deathSpawnProjectile`   | string       | Projectile name fired on death -> lookup in `projectiles.json` |
 
 ### Nested objects on units
 
@@ -117,7 +117,7 @@ Dict keyed by unit name. Contains all unique unit stat blocks: troop units, buil
 
 | Field            | Type   | Required | Description                                |
 |------------------|--------|----------|--------------------------------------------|
-| `spawnCharacter` | string | yes      | Unit name -> lookup in `parsed_units.json` |
+| `spawnCharacter` | string | yes      | Unit name -> lookup in `units.json` |
 | `spawnNumber`    | int    | yes      | Number of units spawned                    |
 | `spawnRadius`    | float  | no       | Spread radius for spawned units            |
 
@@ -125,7 +125,7 @@ Dict keyed by unit name. Contains all unique unit stat blocks: troop units, buil
 
 | Field             | Type   | Required | Description                                |
 |-------------------|--------|----------|--------------------------------------------|
-| `spawnCharacter`  | string | yes      | Unit name -> lookup in `parsed_units.json` |
+| `spawnCharacter`  | string | yes      | Unit name -> lookup in `units.json` |
 | `spawnNumber`     | int    | yes      | Number of units per spawn wave             |
 | `spawnPauseTime`  | float  | no       | Seconds between spawn waves                |
 | `spawnInterval`   | float  | no       | Seconds between individual spawns in a wave|
@@ -140,14 +140,14 @@ Dict keyed by unit name. Contains all unique unit stat blocks: troop units, buil
 
 | Field      | Type   | Description           |
 |------------|--------|-----------------------|
-| `buff`     | string | Buff name -> lookup in `parsed_buffs.json` |
+| `buff`     | string | Buff name -> lookup in `buffs.json` |
 | `duration` | float  | Buff duration (seconds) |
 
 **`startingBuff`** -- buff active at spawn
 
 | Field      | Type   | Description           |
 |------------|--------|-----------------------|
-| `buff`     | string | Buff name -> lookup in `parsed_buffs.json` |
+| `buff`     | string | Buff name -> lookup in `buffs.json` |
 | `duration` | float  | Buff duration (seconds) |
 
 **`stealth`** -- invisibility mechanic (e.g. Ghost, Tesla)
@@ -156,7 +156,7 @@ Dict keyed by unit name. Contains all unique unit stat blocks: troop units, buil
 |---------------------|--------|----------|------------------------------------------|
 | `hideTimeMs`        | int    | no       | Hide/reveal animation duration (ms)      |
 | `notAttackingTimeMs`| int    | no       | Idle time before stealth activates (ms)  |
-| `buff`              | string | no       | Buff name -> lookup in `parsed_buffs.json` |
+| `buff`              | string | no       | Buff name -> lookup in `buffs.json` |
 
 **`deathAreaEffect`** -- area effect triggered on death (e.g. IceGolemite freeze)
 
@@ -224,7 +224,7 @@ See Area Effect schema below.
 
 ---
 
-## parsed_projectiles.json
+## projectiles.json
 
 Dict keyed by projectile name. Contains all unique projectile stat blocks.
 
@@ -244,13 +244,13 @@ Dict keyed by projectile name. Contains all unique projectile stat blocks.
 | Field               | Type         | Description                                             |
 |---------------------|--------------|---------------------------------------------------------|
 | `radius`            | float        | Splash radius in tiles                                  |
-| `targetBuff`        | string       | Buff applied to target on hit -> lookup in `parsed_buffs.json` |
+| `targetBuff`        | string       | Buff applied to target on hit -> lookup in `buffs.json` |
 | `buffDuration`      | float        | Duration of targetBuff (seconds)                        |
 | `chainedHitRadius`  | float        | Chain lightning range (tiles)                           |
 | `chainedHitCount`   | int          | Number of chain bounces                                 |
 | `scatter`           | string       | Scatter pattern (e.g. `"Line"`)                         |
 | `projectileRange`   | float        | Maximum travel distance before expiring (tiles)         |
-| `spawnProjectile`   | string       | Sub-projectile name -> lookup in `parsed_projectiles.json` |
+| `spawnProjectile`   | string       | Sub-projectile name -> lookup in `projectiles.json` |
 | `spawnCount`        | int          | Number of sub-projectiles spawned                       |
 | `spawnRadius`       | float        | Spread radius for sub-projectiles                       |
 | `deflectBehaviours` | list[string] | Deflection flags (e.g. `"InvertDirection"`, `"UseSpellsTowerDamageMul"`) |
@@ -260,13 +260,13 @@ Dict keyed by projectile name. Contains all unique projectile stat blocks.
 
 | Field            | Type   | Required | Description                                |
 |------------------|--------|----------|--------------------------------------------|
-| `spawnCharacter` | string | yes      | Unit name -> lookup in `parsed_units.json` |
+| `spawnCharacter` | string | yes      | Unit name -> lookup in `units.json` |
 | `spawnNumber`    | int    | no       | Number of units spawned                    |
 | `deployTime`     | float  | no       | Deploy delay (seconds)                     |
 
 ---
 
-## parsed_buffs.json
+## buffs.json
 
 Dict keyed by buff name. Contains gameplay stat modifiers referenced by units and projectiles.
 
@@ -334,7 +334,7 @@ Area effects appear inline on cards (`deployEffect`, `areaEffect`) and units (`d
 |--------------------------|--------|------------------------------------------------|
 | `damage`                 | int    | Direct damage on application                   |
 | `hitSpeed`               | float  | Tick rate for repeated damage (seconds)         |
-| `buff`                   | string | Buff applied -> lookup in `parsed_buffs.json`  |
+| `buff`                   | string | Buff applied -> lookup in `buffs.json`  |
 | `buffDuration`           | float  | Duration of the applied buff (seconds)         |
 | `crownTowerDamagePercent`| int    | Crown tower damage modifier (percentage)       |
 | `spawn`                  | object | Character spawn config (see below)             |
@@ -344,7 +344,7 @@ Area effects appear inline on cards (`deployEffect`, `areaEffect`) and units (`d
 
 | Field               | Type   | Required | Description                                |
 |---------------------|--------|----------|--------------------------------------------|
-| `spawnCharacter`    | string | yes      | Unit name -> lookup in `parsed_units.json` |
+| `spawnCharacter`    | string | yes      | Unit name -> lookup in `units.json` |
 | `spawnInterval`     | float  | no       | Seconds between spawns                     |
 | `spawnInitialDelay` | float  | no       | Delay before first spawn                   |
 | `spawnMaxCount`     | int    | no       | Maximum total spawns                       |
@@ -355,7 +355,7 @@ Area effects appear inline on cards (`deployEffect`, `areaEffect`) and units (`d
 
 | Field            | Type   | Required | Description                                |
 |------------------|--------|----------|--------------------------------------------|
-| `spawnCharacter` | string | yes      | Unit name -> lookup in `parsed_units.json` |
+| `spawnCharacter` | string | yes      | Unit name -> lookup in `units.json` |
 | `spawnNumber`    | int    | no       | Number of units spawned                    |
 | `deployTime`     | float  | no       | Deploy delay (seconds)                     |
 
@@ -366,11 +366,11 @@ Area effects appear inline on cards (`deployEffect`, `areaEffect`) and units (`d
 ### Troop card (Archer)
 
 ```
-parsed_cards.json:   {"unit": "Archer", "count": 2, ...}
+cards.json:   {"unit": "Archer", "count": 2, ...}
                           |
-parsed_units.json:   {"name": "Archer", "damage": 44, "projectile": "ArcherArrow", ...}
+units.json:   {"name": "Archer", "damage": 44, "projectile": "ArcherArrow", ...}
                                                             |
-parsed_projectiles.json: {"name": "ArcherArrow", "damage": 44, "homing": true, ...}
+projectiles.json: {"name": "ArcherArrow", "damage": 44, "homing": true, ...}
 ```
 
 The simulator deploys 2 Archer units. Each fires ArcherArrow projectiles. Since ArcherArrow.damage > 0, it was used to override Archer.damage at parse time (both are 44 here).
@@ -378,29 +378,29 @@ The simulator deploys 2 Archer units. Each fires ArcherArrow projectiles. Since 
 ### Building card (GoblinHut)
 
 ```
-parsed_cards.json:   {"unit": "GoblinHut", ...}
+cards.json:   {"unit": "GoblinHut", ...}
                           |
-parsed_units.json:   {"name": "GoblinHut", "liveSpawn": {"spawnCharacter": "SpearGoblin", ...}, ...}
+units.json:   {"name": "GoblinHut", "liveSpawn": {"spawnCharacter": "SpearGoblin", ...}, ...}
                                                               |
-parsed_units.json:   {"name": "SpearGoblin", "projectile": "SpearGoblinProjectile", ...}
+units.json:   {"name": "SpearGoblin", "projectile": "SpearGoblinProjectile", ...}
                                                                   |
-parsed_projectiles.json: {"name": "SpearGoblinProjectile", ...}
+projectiles.json: {"name": "SpearGoblinProjectile", ...}
 ```
 
 ### Spell card (Fireball)
 
 ```
-parsed_cards.json:       {"projectile": "FireballSpell", ...}
+cards.json:       {"projectile": "FireballSpell", ...}
                               |
-parsed_projectiles.json: {"name": "FireballSpell", "damage": 269, "radius": 2.5, ...}
+projectiles.json: {"name": "FireballSpell", "damage": 269, "radius": 2.5, ...}
 ```
 
 ### Death spawn chain (Golem)
 
 ```
-parsed_units.json:   {"name": "Golem", "deathSpawn": [{"spawnCharacter": "Golemite", "spawnNumber": 2}], ...}
+units.json:   {"name": "Golem", "deathSpawn": [{"spawnCharacter": "Golemite", "spawnNumber": 2}], ...}
                                                             |
-parsed_units.json:   {"name": "Golemite", "deathDamage": {"damage": 39, "radius": 2.0}, ...}
+units.json:   {"name": "Golemite", "deathDamage": {"damage": 39, "radius": 2.0}, ...}
 ```
 
-Golemite exists in `parsed_units.json` even though no card directly references it -- it was resolved transitively from Golem's `deathSpawn`.
+Golemite exists in `units.json` even though no card directly references it -- it was resolved transitively from Golem's `deathSpawn`.

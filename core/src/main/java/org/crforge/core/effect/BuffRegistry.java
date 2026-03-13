@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Static registry for buff definitions loaded from parsed_buffs.json. Follows the same pattern as
+ * Static registry for buff definitions loaded from buffs.json. Follows the same pattern as
  * CardRegistry.
  */
 public class BuffRegistry {
