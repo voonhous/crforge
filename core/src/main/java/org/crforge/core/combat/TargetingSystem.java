@@ -78,6 +78,14 @@ public class TargetingSystem {
         continue;
       }
       float distSq = getDistanceSq(attacker, e);
+      // Skip candidates within the minimum range blind spot (e.g. Mortar)
+      if (combat.getMinimumRange() > 0) {
+        float effectiveMinRange =
+            combat.getMinimumRange() + attacker.getCollisionRadius() + e.getCollisionRadius();
+        if (distSq < effectiveMinRange * effectiveMinRange) {
+          continue;
+        }
+      }
       // Use edge-to-edge distance for sight range, matching how CombatSystem checks attack range
       float effectiveSightRange =
           combat.getSightRange() + attacker.getCollisionRadius() + e.getCollisionRadius();
@@ -106,6 +114,15 @@ public class TargetingSystem {
     float distanceSq = getDistanceSq(attacker, target);
     if (distanceSq > retentionRange * retentionRange) {
       return false;
+    }
+
+    // Drop target that entered the minimum range blind spot (e.g. Mortar)
+    if (combat.getMinimumRange() > 0) {
+      float effectiveMinRange =
+          combat.getMinimumRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
+      if (distanceSq < effectiveMinRange * effectiveMinRange) {
+        return false;
+      }
     }
 
     return canTarget(combat, target);

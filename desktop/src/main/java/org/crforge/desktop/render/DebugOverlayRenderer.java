@@ -10,6 +10,7 @@ import static org.crforge.desktop.render.RenderConstants.COLOR_CHARGE_READY;
 import static org.crforge.desktop.render.RenderConstants.COLOR_DASH_LINE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_DEPLOY_TIMER;
 import static org.crforge.desktop.render.RenderConstants.COLOR_HOOK_LINE;
+import static org.crforge.desktop.render.RenderConstants.COLOR_MINIMUM_RANGE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_PATH;
 import static org.crforge.desktop.render.RenderConstants.COLOR_RED_ENTITY;
 import static org.crforge.desktop.render.RenderConstants.COLOR_RED_GHOST;
@@ -120,6 +121,14 @@ public class DebugOverlayRenderer {
       float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
       float attackRadius = (combat.getRange() + entity.getCollisionRadius()) * TILE_PIXELS;
       ctx.getShapeRenderer().circle(x, y, attackRadius, CIRCLE_SEGMENTS);
+
+      // Draw minimum range (blind spot) circle if present
+      if (combat.getMinimumRange() > 0) {
+        ctx.getShapeRenderer().setColor(COLOR_MINIMUM_RANGE);
+        float minRadius = (combat.getMinimumRange() + entity.getCollisionRadius()) * TILE_PIXELS;
+        ctx.getShapeRenderer().circle(x, y, minRadius, CIRCLE_SEGMENTS);
+        ctx.getShapeRenderer().setColor(COLOR_ATTACK_RANGE);
+      }
     }
 
     ctx.getShapeRenderer().end();

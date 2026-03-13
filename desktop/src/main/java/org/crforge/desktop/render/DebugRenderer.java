@@ -89,10 +89,17 @@ public class DebugRenderer {
     entityRenderer.render(state);
 
     // 5. Hover highlight + spell overlay (rendered above entities so spell radius is visible)
+    Player hoverPlayer = null;
+    Card hoverCard = null;
     if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
-      Player player = getPlayer(match, selectedTeam);
-      Card selectedCard = getSelectedCard(player, selectedHandIndex);
-      arenaRenderer.renderHover(hoverX, hoverY, selectedCard, player, match, selectedHandIndex);
+      hoverPlayer = getPlayer(match, selectedTeam);
+      hoverCard = getSelectedCard(hoverPlayer, selectedHandIndex);
+      arenaRenderer.renderHover(hoverX, hoverY, hoverCard, hoverPlayer, match, selectedHandIndex);
+    }
+
+    // 5.5. Hover range circles (attack range + minimum range preview during placement)
+    if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
+      arenaRenderer.renderHoverRanges(hoverX, hoverY, hoverCard);
     }
 
     // 6. Deploy timers (radial countdown overlay on deploying entities)

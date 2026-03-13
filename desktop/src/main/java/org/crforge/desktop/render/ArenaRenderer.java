@@ -163,6 +163,43 @@ public class ArenaRenderer {
     }
   }
 
+  /**
+   * Render attack range and minimum range circles at the hover position for the selected card. This
+   * helps with strategic placement -- especially for buildings like Mortar that have a blind spot.
+   * Spells are skipped since they already show their AOE radius via the ghost card preview.
+   */
+  public void renderHoverRanges(int x, int y, Card selectedCard) {
+    if (selectedCard == null || selectedCard.getType() == CardType.SPELL) {
+      return;
+    }
+
+    TroopStats unitStats = selectedCard.getUnitStats();
+    if (unitStats == null || unitStats.getRange() <= 0) {
+      return;
+    }
+
+    float centerX = (x + 0.5f) * TILE_PIXELS;
+    float centerY = (y + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+    float collisionRadius = unitStats.getCollisionRadius();
+
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    ctx.getShapeRenderer().begin(ShapeType.Line);
+
+    // Outer attack range circle
+    float attackRange = (unitStats.getRange() + collisionRadius) * TILE_PIXELS;
+    ctx.getShapeRenderer().setColor(COLOR_HOVER_ATTACK_RANGE);
+    ctx.getShapeRenderer().circle(centerX, centerY, attackRange, CIRCLE_SEGMENTS);
+
+    // Inner minimum range circle (blind spot)
+    if (unitStats.getMinimumRange() > 0) {
+      float minRange = (unitStats.getMinimumRange() + collisionRadius) * TILE_PIXELS;
+      ctx.getShapeRenderer().setColor(COLOR_MINIMUM_RANGE);
+      ctx.getShapeRenderer().circle(centerX, centerY, minRange, CIRCLE_SEGMENTS);
+    }
+
+    ctx.getShapeRenderer().end();
+  }
+
   private Color getTileColor(TileType type) {
     return switch (type) {
       case BLUE_ZONE -> COLOR_BLUE_ZONE;

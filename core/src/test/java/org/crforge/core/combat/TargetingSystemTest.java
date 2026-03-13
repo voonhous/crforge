@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -316,5 +318,85 @@ class TargetingSystemTest {
 
     // Giant skips the Knight, targets the Tower even though it's further
     assertThat(giant.getCombat().getCurrentTarget()).isEqualTo(farTower);
+  }
+
+  // -- Minimum range (blind spot) tests for Mortar-like buildings --
+
+  /**
+   * Creates a Mortar-like building with a minimum range blind spot. Uses minimumRange=3.5,
+   * sightRange=11.5, range=11.5, targets GROUND only. Deploy is instant (deployTime=0,
+   * deployTimer=0) so the building can target immediately in tests.
+   */
+  private Building createMortarLikeBuilding(Team team, float x, float y) {
+    Building mortar =
+        Building.builder()
+            .name("Mortar")
+            .team(team)
+            .position(new Position(x, y))
+            .health(new Health(1000))
+            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(11.5f)
+                    .range(11.5f)
+                    .minimumRange(3.5f)
+                    .targetType(TargetType.GROUND)
+                    .build())
+            .deployTime(0f)
+            .deployTimer(0f)
+            .build();
+    mortar.onSpawn();
+    return mortar;
+  }
+
+  @Test
+  void minimumRange_shouldNotAcquireTargetInBlindSpot() {
+    // Mortar at (9,16), enemy at (9,18) -> 2 tiles apart, inside 3.5-tile blind spot
+    Building mortar = createMortarLikeBuilding(Team.BLUE, 9, 16);
+    Troop enemy = createDeployedTroop("Knight", Team.RED, 9, 18);
+
+    List<Entity> entities = List.of(mortar, enemy);
+    targetingSystem.updateTargets(entities);
+
+    assertThat(mortar.getCombat().getCurrentTarget())
+        .as("Mortar should not acquire target inside minimum range blind spot")
+        .isNull();
+  }
+
+  @Test
+  void minimumRange_shouldAcquireTargetOutsideBlindSpot() {
+    // Mortar at (9,16), close enemy at (9,18) inside blind spot, far enemy at (9,24) outside
+    Building mortar = createMortarLikeBuilding(Team.BLUE, 9, 16);
+    Troop closeEnemy = createDeployedTroop("Close Knight", Team.RED, 9, 18);
+    Troop farEnemy = createDeployedTroop("Far Knight", Team.RED, 9, 24);
+
+    List<Entity> entities = List.of(mortar, closeEnemy, farEnemy);
+    targetingSystem.updateTargets(entities);
+
+    assertThat(mortar.getCombat().getCurrentTarget())
+        .as("Mortar should skip blind-spot enemy and target the far one")
+        .isEqualTo(farEnemy);
+  }
+
+  @Test
+  void minimumRange_shouldDropTargetThatEntersBlindSpot() {
+    // Mortar at (9,16), enemy starts at (9,24) -- outside blind spot
+    Building mortar = createMortarLikeBuilding(Team.BLUE, 9, 16);
+    Troop enemy = createDeployedTroop("Knight", Team.RED, 9, 24);
+
+    List<Entity> entities = List.of(mortar, enemy);
+    targetingSystem.updateTargets(entities);
+
+    assertThat(mortar.getCombat().getCurrentTarget())
+        .as("Mortar should initially acquire far target")
+        .isEqualTo(enemy);
+
+    // Enemy moves inside the blind spot
+    enemy.getPosition().set(9, 18);
+    targetingSystem.updateTargets(entities);
+
+    assertThat(mortar.getCombat().getCurrentTarget())
+        .as("Mortar should drop target that entered blind spot")
+        .isNull();
   }
 }

@@ -125,23 +125,23 @@ the live game name.
 
 ## Buildings
 
-| #  | CR Name            | Internal ID       | Status    | Notes           |
-|----|--------------------|-------------------|-----------|-----------------|
-| 1  | Cannon             | cannon            | `DONE`    |                 |
-| 2  | Goblin Hut         | goblinhut         | `MISSING` | spawner         |
-| 3  | Mortar             | mortar            | `MISSING` |                 |
-| 4  | Inferno Tower      | infernotower      | `DONE`    | variable damage |
-| 5  | Bomb Tower         | bombtower         | `MISSING` |                 |
-| 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner         |
-| 7  | Tesla              | tesla             | `MISSING` |                 |
-| 8  | Elixir Collector   | elixircollector   | `MISSING` |                 |
-| 9  | X-Bow              | xbow              | `MISSING` |                 |
-| 10 | Tombstone          | tombstone         | `DONE`    | spawner         |
-| 11 | Furnace            | firespirithut     | `MISSING` | spawner         |
-| 12 | Goblin Cage        | goblincage        | `MISSING` | death spawn     |
-| 13 | Goblin Drill       | goblindrill       | `MISSING` |                 |
-| 14 | Goblin Party Hut   | goblinpartyhut    | `MISSING` | newer building  |
-| 15 | Barbarian Launcher | barbarianlauncher | `MISSING` | newer building  |
+| #  | CR Name            | Internal ID       | Status    | Notes                    |
+|----|--------------------|-------------------|-----------|--------------------------|
+| 1  | Cannon             | cannon            | `DONE`    |                          |
+| 2  | Goblin Hut         | goblinhut         | `MISSING` | spawner                  |
+| 3  | Mortar             | mortar            | `DONE`    | minimum range blind spot |
+| 4  | Inferno Tower      | infernotower      | `DONE`    | variable damage          |
+| 5  | Bomb Tower         | bombtower         | `MISSING` |                          |
+| 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner                  |
+| 7  | Tesla              | tesla             | `MISSING` |                          |
+| 8  | Elixir Collector   | elixircollector   | `MISSING` |                          |
+| 9  | X-Bow              | xbow              | `MISSING` |                          |
+| 10 | Tombstone          | tombstone         | `DONE`    | spawner                  |
+| 11 | Furnace            | firespirithut     | `MISSING` | spawner                  |
+| 12 | Goblin Cage        | goblincage        | `MISSING` | death spawn              |
+| 13 | Goblin Drill       | goblindrill       | `MISSING` |                          |
+| 14 | Goblin Party Hut   | goblinpartyhut    | `MISSING` | newer building           |
+| 15 | Barbarian Launcher | barbarianlauncher | `MISSING` | newer building           |
 
 ## Sub-Entity Buildings (not playable cards)
 
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 81      | Fully functional in simulation                 |
+| `DONE`     | 82      | Fully functional in simulation                 |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 33      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 32      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 
