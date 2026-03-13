@@ -54,6 +54,9 @@ public class UnitConfigDTO {
   // River jump: unit can leap over the river instead of routing through bridges
   private boolean jumpEnabled;
 
+  // Hovering: unit ignores river tile restrictions for pathfinding but stays GROUND and targetable
+  private boolean hovering;
+
   // Death mechanics
   private DeathDamageConfigDTO deathDamage;
 

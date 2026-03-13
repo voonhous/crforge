@@ -237,7 +237,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "jumpEnabled": true,
+    "hovering": true,
     "spawnAreaEffect": {
       "name": "BattleHealerSpawnHeal",
       "radius": 2.5,
@@ -816,6 +816,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "hovering": true,
     "areaDamageRadius": 1.0,
     "stealth": {
       "hideTimeMs": 400,

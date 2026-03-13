@@ -180,6 +180,7 @@ public class UnitLoader {
             .ignorePushback(dto.isIgnorePushback())
             .kamikaze(dto.isKamikaze())
             .jumpEnabled(dto.isJumpEnabled())
+            .hovering(dto.isHovering())
             .spawnPathfindSpeed(dto.getSpawnPathfindSpeed() / SPEED_BASE)
             .attackDashTime(dto.getAttackDashTime())
             .attackPushBack(dto.getAttackPushBack() / 1000f)

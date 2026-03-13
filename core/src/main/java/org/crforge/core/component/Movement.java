@@ -23,6 +23,8 @@ public class Movement {
 
   @Setter private boolean jumpEnabled;
 
+  @Setter private boolean hovering;
+
   // Knockback displacement state
   private float knockbackDirX;
   private float knockbackDirY;

@@ -156,10 +156,12 @@ public class PhysicsSystem {
     Position pos = troop.getPosition();
     Position targetPos = target.getPosition();
 
-    // Jump-enabled troops path straight to target (like AIR) so they reach the river
-    // at any point and trigger the jump, rather than routing to bridges.
+    // Jump-enabled and hovering troops path straight to target (like AIR) so they reach
+    // the river at any point instead of routing to bridges.
     MovementType pathfindType =
-        troop.getMovement().isJumpEnabled() ? MovementType.AIR : troop.getMovementType();
+        (troop.getMovement().isJumpEnabled() || troop.getMovement().isHovering())
+            ? MovementType.AIR
+            : troop.getMovementType();
 
     float angle =
         pathfinder.getNextMovementAngle(
@@ -216,10 +218,12 @@ public class PhysicsSystem {
       }
     }
 
-    // Jump-enabled troops path straight to target (like AIR) so they reach the river
-    // at any point and trigger the jump, rather than routing to bridges.
+    // Jump-enabled and hovering troops path straight to target (like AIR) so they reach
+    // the river at any point instead of routing to bridges.
     MovementType pathfindType =
-        troop.getMovement().isJumpEnabled() ? MovementType.AIR : troop.getMovementType();
+        (troop.getMovement().isJumpEnabled() || troop.getMovement().isHovering())
+            ? MovementType.AIR
+            : troop.getMovementType();
 
     float angle = pathfinder.getNextMovementAngle(pos, pathfindType, targetX, targetY, arena);
 

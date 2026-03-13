@@ -100,6 +100,9 @@ public class TroopStats {
   // River jump: unit can leap over the river instead of routing through bridges
   @Builder.Default private final boolean jumpEnabled = false;
 
+  // Hovering: unit ignores river tile restrictions for pathfinding but stays GROUND and targetable
+  @Builder.Default private final boolean hovering = false;
+
   // Underground tunnel travel speed in tiles/sec (converted from spawnPathfindSpeed / 60)
   @Builder.Default private final float spawnPathfindSpeed = 0f;
 
