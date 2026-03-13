@@ -88,6 +88,9 @@ public class Projectile {
   // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
   @Setter private boolean checkCollisions;
 
+  // Volley delay: projectile stays inactive for this many frames before starting to move
+  @Setter private int delayFrames;
+
   // Returning projectile fields: projectile reverses at max range and homes back to source
   @Getter private boolean returningEnabled;
   @Getter private Entity sourceEntity;
@@ -210,6 +213,11 @@ public class Projectile {
   /** Update projectile position. Returns true if projectile reached target. */
   public boolean update(float deltaTime) {
     if (!active) {
+      return false;
+    }
+    // Volley delay: count down frames before the projectile starts moving
+    if (delayFrames > 0) {
+      delayFrames--;
       return false;
     }
     if (piercing) {

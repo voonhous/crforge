@@ -101,7 +101,7 @@ public class DebugGameScreen implements Screen {
             CardRegistry.get("electrowizard"), // Deploy stun effect
             CardRegistry.get("witch"), // Live spawner (skeletons)
             CardRegistry.get("zap"), // Area effect spell (stun)
-            CardRegistry.get("phoenix") // Kamikaze air, death chain -> bomb -> skeletons
+            CardRegistry.get("arrows") // Test 3x volley shots of arrow
             );
 
     // Red: dash, reflect, shield, spawner building, live spawn, area effect, charge

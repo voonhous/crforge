@@ -100,7 +100,7 @@ the live game name.
 | #  | CR Name          | Internal ID   | Status    | Notes                     |
 |----|------------------|---------------|-----------|---------------------------|
 | 1  | Fireball         | fireball      | `DONE`    | projectile spell          |
-| 2  | Arrows           | arrows        | `MISSING` | projectile spell          |
+| 2  | Arrows           | arrows        | `DONE`    | 3-volley projectile spell |
 | 3  | Rage             | rage          | `MISSING` | summons RageBottle        |
 | 4  | Rocket           | rocket        | `DONE`    | projectile spell          |
 | 5  | Goblin Barrel    | goblinbarrel  | `MISSING` | projectile spell          |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 80      | Fully functional in simulation                 |
+| `DONE`     | 81      | Fully functional in simulation                 |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 34      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 33      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 

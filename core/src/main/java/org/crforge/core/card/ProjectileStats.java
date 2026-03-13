@@ -63,6 +63,11 @@ public class ProjectileStats {
   private final TroopStats spawnCharacter; // Resolved reference
   @Builder.Default private final int spawnCharacterCount = 1;
 
+  // Volley: spawn multiple identical projectiles with staggered frame delays (e.g. Arrows = 3
+  // volleys)
+  @Builder.Default private final int volleyCount = 0;
+  @Builder.Default private final int volleyFrameDelay = 0;
+
   /**
    * Returns a copy of this ProjectileStats with a different damage value. All other fields are
    * preserved.
@@ -105,6 +110,8 @@ public class ProjectileStats {
         .spawnAreaEffect(spawnAreaEffect)
         .spawnCharacterName(spawnCharacterName)
         .spawnCharacter(spawnCharacter)
-        .spawnCharacterCount(spawnCharacterCount);
+        .spawnCharacterCount(spawnCharacterCount)
+        .volleyCount(volleyCount)
+        .volleyFrameDelay(volleyFrameDelay);
   }
 }

@@ -672,23 +672,29 @@ public class DeploymentSystem {
     List<EffectStats> effects = proj.getHitEffects();
 
     if (speed > 0) {
-      // Traveling spell
+      // Traveling spell -- may be a multi-volley spell (e.g. Arrows fires 3 staggered projectiles)
       float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
-      Projectile p =
-          new Projectile(
-              team,
-              x,
-              startY,
-              x,
-              y,
-              damage,
-              radius,
-              speed,
-              effects,
-              proj.getCrownTowerDamagePercent());
-      p.setPushback(proj.getPushback());
-      p.setPushbackAll(proj.isPushbackAll());
-      state.spawnProjectile(p);
+      int volleys = proj.getVolleyCount() > 1 ? proj.getVolleyCount() : 1;
+      for (int i = 0; i < volleys; i++) {
+        Projectile p =
+            new Projectile(
+                team,
+                x,
+                startY,
+                x,
+                y,
+                damage,
+                radius,
+                speed,
+                effects,
+                proj.getCrownTowerDamagePercent());
+        p.setPushback(proj.getPushback());
+        p.setPushbackAll(proj.isPushbackAll());
+        if (i > 0) {
+          p.setDelayFrames(i * proj.getVolleyFrameDelay());
+        }
+        state.spawnProjectile(p);
+      }
     } else {
       // Instant spell
       aoeDamageService.applySpellDamage(
