@@ -736,7 +736,8 @@ public class DeploymentSystem {
         .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .selfAsAoeCenter(stats.isSelfAsAoeCenter())
         .kamikaze(stats.isKamikaze())
-        .attackDashTime(stats.getAttackDashTime());
+        .attackDashTime(stats.getAttackDashTime())
+        .attackPushBack(stats.getAttackPushBack());
   }
 
   // Simple container for the queue

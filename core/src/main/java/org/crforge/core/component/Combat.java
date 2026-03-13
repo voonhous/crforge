@@ -42,6 +42,9 @@ public class Combat {
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   @Builder.Default private final float attackDashTime = 0f;
 
+  // Attack pushback: self-knockback when firing (e.g. Firecracker recoils backward)
+  @Builder.Default private final float attackPushBack = 0f;
+
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default private final boolean kamikaze = false;
 

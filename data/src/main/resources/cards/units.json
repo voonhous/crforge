@@ -734,7 +734,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "FirecrackerProjectile"
+    "projectile": "FirecrackerProjectile",
+    "attackPushBack": 1000
   },
   "FirespiritHut": {
     "name": "FirespiritHut",
@@ -2239,6 +2240,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "projectile": "ZapMachineProjectile",
-    "ignorePushback": true
+    "ignorePushback": true,
+    "attackPushBack": 750
   }
 }

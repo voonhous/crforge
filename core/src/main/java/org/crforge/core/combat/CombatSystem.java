@@ -228,6 +228,25 @@ public class CombatSystem {
 
     combat.finishAttack();
 
+    // Attack recoil: push the attacker backward when they fire (e.g. Firecracker)
+    if (combat.getAttackPushBack() > 0f && attacker.getMovement() != null) {
+      float dx = target.getPosition().getX() - attacker.getPosition().getX();
+      float dy = target.getPosition().getY() - attacker.getPosition().getY();
+      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0.001f) {
+        float recoilDirX = -dx / dist;
+        float recoilDirY = -dy / dist;
+        attacker
+            .getMovement()
+            .startKnockback(
+                recoilDirX,
+                recoilDirY,
+                combat.getAttackPushBack(),
+                KNOCKBACK_DURATION,
+                KNOCKBACK_MAX_TIME);
+      }
+    }
+
     // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
     if (combat.isKamikaze()) {
       attacker.getHealth().kill();
@@ -580,7 +599,7 @@ public class CombatSystem {
     }
   }
 
-  /** Spawn sub-projectiles on impact (Log rolling projectile, Firecracker explosion). */
+  /** Spawn sub-projectiles on impact (Log rolling projectile, Firecracker explosion fan). */
   private void processSpawnProjectile(Projectile projectile) {
     ProjectileStats spawnStats = projectile.getSpawnProjectile();
     if (spawnStats == null) {
@@ -599,29 +618,83 @@ public class CombatSystem {
       hitY = projectile.getPosition().getY();
     }
 
-    // Calculate travel direction for non-homing spawned projectiles
+    // Calculate travel direction from origin to impact
     float dx = hitX - projectile.getOriginX();
     float dy = hitY - projectile.getOriginY();
     float dist = Vector2.distance(projectile.getOriginX(), projectile.getOriginY(), hitX, hitY);
     float dirX = dist > 0 ? dx / dist : 0;
     float dirY = dist > 0 ? dy / dist : 1;
 
-    float range = spawnStats.getProjectileRange() > 0 ? spawnStats.getProjectileRange() : 10f;
-    float targetX = hitX + dirX * range;
-    float targetY = hitY + dirY * range;
+    if (spawnStats.getSpawnCount() > 1) {
+      // Fan scatter: spawn multiple piercing sub-projectiles in a cone (e.g. Firecracker shrapnel)
+      spawnFanProjectiles(projectile.getTeam(), spawnStats, hitX, hitY, dirX, dirY);
+    } else {
+      // Single sub-projectile (e.g. Log rolling projectile)
+      float range = spawnStats.getProjectileRange() > 0 ? spawnStats.getProjectileRange() : 10f;
+      float targetX = hitX + dirX * range;
+      float targetY = hitY + dirY * range;
 
-    Projectile spawned =
-        new Projectile(
-            projectile.getTeam(),
-            hitX,
-            hitY,
-            targetX,
-            targetY,
-            spawnStats.getDamage(),
-            spawnStats.getRadius(),
-            spawnStats.getSpeed(),
-            spawnStats.getHitEffects());
-    gameState.spawnProjectile(spawned);
+      Projectile spawned =
+          new Projectile(
+              projectile.getTeam(),
+              hitX,
+              hitY,
+              targetX,
+              targetY,
+              spawnStats.getDamage(),
+              spawnStats.getRadius(),
+              spawnStats.getSpeed(),
+              spawnStats.getHitEffects());
+      gameState.spawnProjectile(spawned);
+    }
+  }
+
+  /**
+   * Spawns multiple piercing sub-projectiles in a fan pattern from the impact point (e.g.
+   * Firecracker shrapnel). Each shrapnel piece travels in a fixed direction, piercing through all
+   * enemies in its path.
+   */
+  private void spawnFanProjectiles(
+      Team team,
+      ProjectileStats stats,
+      float originX,
+      float originY,
+      float baseDirX,
+      float baseDirY) {
+    int count = stats.getSpawnCount();
+    float range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : 5f;
+    float baseAngle = (float) Math.atan2(baseDirY, baseDirX);
+
+    // 15 degrees between each shrapnel piece (5 pieces = 60-degree cone)
+    float spreadRadians = (float) Math.toRadians(15.0);
+
+    for (int i = 0; i < count; i++) {
+      float offsetAngle = (i - count / 2.0f) * spreadRadians;
+      float angle = baseAngle + offsetAngle;
+
+      float dirX = (float) Math.cos(angle);
+      float dirY = (float) Math.sin(angle);
+
+      float endX = originX + range * dirX;
+      float endY = originY + range * dirY;
+
+      Projectile shrapnel =
+          new Projectile(
+              team,
+              originX,
+              originY,
+              endX,
+              endY,
+              stats.getDamage(),
+              stats.getRadius(),
+              stats.getSpeed(),
+              stats.getHitEffects());
+
+      // Configure as piercing so shrapnel travels through enemies
+      shrapnel.configurePiercing(dirX, dirY, range, stats.isAoeToGround(), stats.isAoeToAir());
+
+      gameState.spawnProjectile(shrapnel);
+    }
   }
 
   /**

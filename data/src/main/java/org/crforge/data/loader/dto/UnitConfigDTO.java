@@ -72,6 +72,9 @@ public class UnitConfigDTO {
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   private float attackDashTime;
 
+  // Attack pushback: self-knockback when firing (e.g. Firecracker recoils backward)
+  private int attackPushBack;
+
   // Stealth: unit becomes invisible after not attacking for a period (e.g. Royal Ghost)
   private StealthConfigDTO stealth;
 

@@ -72,7 +72,7 @@ the live game name.
 | 60 | Fisherman         | fisherman        | `DONE`    | hook ability                                |
 | 61 | Magic Archer      | elitearcher      | `DONE`    | piercing arrow (0.25 radius, 11-tile range) |
 | 62 | Electro Dragon    | electrodragon    | `DONE`    | chain lightning                             |
-| 63 | Firecracker       | firecracker      | `MISSING` |                                             |
+| 63 | Firecracker       | firecracker      | `DONE`    | attack recoil + shrapnel fan scatter        |
 | 64 | Elixir Golem      | elixirgolem      | `MISSING` |                                             |
 | 65 | Battle Healer     | battlehealer     | `MISSING` |                                             |
 | 66 | Skeleton Dragons  | skeletondragons  | `DONE`    | count=2                                     |
@@ -175,9 +175,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                    |
 |------------|---------|------------------------------------------------|
-| `DONE`     | 74      | Fully functional in simulation                 |
+| `DONE`     | 75      | Fully functional in simulation                 |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 39      | Not in cards.json (newer cards + tower troops) |
+| `MISSING`  | 38      | Not in cards.json (newer cards + tower troops) |
 | Sub-entity | 5       | Internal buildings, not playable cards         |
 | **Total**  | **127** | Playable cards (excluding sub-entities)        |
 
