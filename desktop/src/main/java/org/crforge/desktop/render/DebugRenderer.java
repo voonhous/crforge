@@ -81,19 +81,19 @@ public class DebugRenderer {
     // 2. Grid lines
     arenaRenderer.renderGrid(arena);
 
-    // 3. Hover highlight
+    // 3. Pending deployment ghosts (sync delay silhouettes, rendered under entities)
+    debugOverlayRenderer.renderPendingDeployments(
+        engine.getDeploymentSystem().getPendingDeployments());
+
+    // 4. Entities
+    entityRenderer.render(state);
+
+    // 5. Hover highlight + spell overlay (rendered above entities so spell radius is visible)
     if (hoverX >= 0 && hoverX < Arena.WIDTH && hoverY >= 0 && hoverY < Arena.HEIGHT) {
       Player player = getPlayer(match, selectedTeam);
       Card selectedCard = getSelectedCard(player, selectedHandIndex);
       arenaRenderer.renderHover(hoverX, hoverY, selectedCard, player, match, selectedHandIndex);
     }
-
-    // 4. Pending deployment ghosts (sync delay silhouettes, rendered under entities)
-    debugOverlayRenderer.renderPendingDeployments(
-        engine.getDeploymentSystem().getPendingDeployments());
-
-    // 5. Entities
-    entityRenderer.render(state);
 
     // 6. Deploy timers (radial countdown overlay on deploying entities)
     debugOverlayRenderer.renderDeployTimers(state);
