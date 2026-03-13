@@ -38,6 +38,10 @@ public class TargetingSystem {
       if (entity instanceof Troop troop && (troop.isDeploying() || troop.isTunneling())) {
         continue;
       }
+      // Buildings cannot target while deploying
+      if (entity instanceof Building building && building.isDeploying()) {
+        continue;
+      }
 
       updateEntityTarget(entity, combat, entities);
     }

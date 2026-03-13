@@ -613,6 +613,10 @@ public class DeploymentSystem {
       spawner = spawnerBuilder.build();
     }
 
+    // Create ability component if unit has one (e.g. Inferno Tower with VARIABLE_DAMAGE)
+    AbilityComponent abilityComponent =
+        unitStats.getAbility() != null ? new AbilityComponent(unitStats.getAbility()) : null;
+
     // Always use Building class, attach components optionally
     Building building =
         Building.builder()
@@ -628,6 +632,7 @@ public class DeploymentSystem {
                     unitStats.getVisualRadius(),
                     MovementType.BUILDING))
             .combat(combat)
+            .ability(abilityComponent)
             .lifetime(unitStats.getLifeTime())
             .remainingLifetime(unitStats.getLifeTime())
             .spawner(spawner)

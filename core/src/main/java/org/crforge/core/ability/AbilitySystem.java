@@ -28,28 +28,40 @@ public class AbilitySystem {
   public void update(float deltaTime) {
     List<Entity> aliveEntities = gameState.getAliveEntities();
     for (Entity entity : aliveEntities) {
-      if (!(entity instanceof Troop troop)) {
-        continue;
-      }
-      AbilityComponent ability = troop.getAbility();
-      if (ability == null) {
-        continue;
-      }
-      // Tunnel ability runs even while deploying; other abilities wait for deploy to finish
-      if (troop.isDeploying() && ability.getData().type() != AbilityType.TUNNEL) {
-        continue;
-      }
-
-      switch (ability.getData().type()) {
-        case CHARGE -> updateCharge(troop, ability, deltaTime);
-        case VARIABLE_DAMAGE -> updateVariableDamage(troop, ability, deltaTime);
-        case DASH -> updateDash(troop, ability, deltaTime);
-        case HOOK -> updateHook(troop, ability, deltaTime);
-        case REFLECT -> {
-          // Reflect is passive -- handled in CombatSystem.dealDamage()
+      if (entity instanceof Troop troop) {
+        AbilityComponent ability = troop.getAbility();
+        if (ability == null) {
+          continue;
         }
-        case TUNNEL -> updateTunnel(troop, ability, deltaTime);
-        case STEALTH -> updateStealth(troop, ability, deltaTime);
+        // Tunnel ability runs even while deploying; other abilities wait for deploy to finish
+        if (troop.isDeploying() && ability.getData().type() != AbilityType.TUNNEL) {
+          continue;
+        }
+
+        switch (ability.getData().type()) {
+          case CHARGE -> updateCharge(troop, ability, deltaTime);
+          case VARIABLE_DAMAGE -> updateVariableDamage(ability, troop.getCombat(), deltaTime);
+          case DASH -> updateDash(troop, ability, deltaTime);
+          case HOOK -> updateHook(troop, ability, deltaTime);
+          case REFLECT -> {
+            // Reflect is passive -- handled in CombatSystem.dealDamage()
+          }
+          case TUNNEL -> updateTunnel(troop, ability, deltaTime);
+          case STEALTH -> updateStealth(troop, ability, deltaTime);
+        }
+      } else if (entity instanceof Building building) {
+        AbilityComponent ability = building.getAbility();
+        if (ability == null) {
+          continue;
+        }
+        // Buildings cannot attack while deploying, so skip ability updates too
+        if (building.isDeploying()) {
+          continue;
+        }
+        // Buildings only support VARIABLE_DAMAGE ability (Inferno Tower)
+        if (ability.getData().type() == AbilityType.VARIABLE_DAMAGE) {
+          updateVariableDamage(ability, building.getCombat(), deltaTime);
+        }
       }
     }
   }
@@ -113,20 +125,25 @@ public class AbilitySystem {
    * a core counter-play mechanic (see src_og.js line 2279).
    */
   public static void resetVariableDamage(Troop troop) {
-    AbilityComponent ability = troop.getAbility();
+    resetVariableDamage(troop.getAbility(), troop.getCombat());
+  }
+
+  /**
+   * Resets variable damage (inferno) back to stage 0 using raw components. Works for both Troops
+   * and Buildings (e.g. Inferno Tower).
+   */
+  public static void resetVariableDamage(AbilityComponent ability, Combat combat) {
     if (ability != null && ability.getData() instanceof VariableDamageAbility) {
       ability.setCurrentStage(0);
       ability.setStageTimer(0f);
       ability.setLastTargetId(-1);
-      Combat combat = troop.getCombat();
       if (combat != null) {
         combat.setDamageOverride(ability.getCurrentStageDamage());
       }
     }
   }
 
-  private void updateVariableDamage(Troop troop, AbilityComponent ability, float deltaTime) {
-    Combat combat = troop.getCombat();
+  private void updateVariableDamage(AbilityComponent ability, Combat combat, float deltaTime) {
     if (combat == null) {
       return;
     }

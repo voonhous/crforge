@@ -1,5 +1,6 @@
 package org.crforge.core.testing;
 
+import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -22,6 +23,7 @@ public class BuildingTemplate {
   private float collisionRadius = 0.5f;
   private float visualRadius = 0.5f;
   private Combat combat = null;
+  private AbilityComponent ability = null;
   private SpawnerComponent spawner = null;
 
   private BuildingTemplate(String name, Team team) {
@@ -69,6 +71,11 @@ public class BuildingTemplate {
     return this;
   }
 
+  public BuildingTemplate ability(AbilityComponent ability) {
+    this.ability = ability;
+    return this;
+  }
+
   public BuildingTemplate spawner(SpawnerComponent spawner) {
     this.spawner = spawner;
     return this;
@@ -88,6 +95,7 @@ public class BuildingTemplate {
         .remainingLifetime(lifetime)
         .deployTime(deployTime)
         .combat(combat)
+        .ability(ability)
         .spawner(spawner)
         .build();
   }

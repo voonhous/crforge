@@ -14,6 +14,7 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -225,6 +226,8 @@ public class AreaEffectSystem {
       if (target instanceof Troop troop) {
         AbilitySystem.consumeCharge(troop);
         AbilitySystem.resetVariableDamage(troop);
+      } else if (target instanceof Building building && building.getAbility() != null) {
+        AbilitySystem.resetVariableDamage(building.getAbility(), building.getCombat());
       }
     }
   }

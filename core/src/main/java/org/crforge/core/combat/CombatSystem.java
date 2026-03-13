@@ -19,6 +19,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -34,12 +35,12 @@ public class CombatSystem {
 
   private final GameState gameState;
   private final AoeDamageService aoeDamageService;
+
   /**
-   * -- SETTER --
-   * Sets the UnitSpawner callback for spawn-on-impact projectiles (e.g. PhoenixFireball).
+   * -- SETTER -- Sets the UnitSpawner callback for spawn-on-impact projectiles (e.g.
+   * PhoenixFireball).
    */
-  @Setter
-  private UnitSpawner unitSpawner;
+  @Setter private UnitSpawner unitSpawner;
 
   public CombatSystem(GameState gameState, AoeDamageService aoeDamageService) {
     this.gameState = gameState;
@@ -75,8 +76,11 @@ public class CombatSystem {
       return;
     }
 
-    // Troops cannot attack while deploying
+    // Troops and buildings cannot attack while deploying
     if (entity instanceof Troop troop && troop.isDeploying()) {
+      return;
+    }
+    if (entity instanceof Building building && building.isDeploying()) {
       return;
     }
 

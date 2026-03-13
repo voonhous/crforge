@@ -5,6 +5,7 @@ import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
@@ -14,6 +15,7 @@ import org.crforge.core.entity.base.EntityType;
 public class Building extends AbstractEntity {
 
   private final Combat combat;
+  @Builder.Default private final AbilityComponent ability = null;
   @Builder.Default private final float lifetime = 0f;
 
   // Note: We use @Builder.Default for logic fields we want to initialize

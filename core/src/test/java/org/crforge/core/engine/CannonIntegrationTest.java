@@ -44,6 +44,7 @@ class CannonIntegrationTest {
                     .attackCooldown(0.8f)
                     .build())
             .lifetime(30f)
+            .deployTime(0f) // Skip deploy so cannon targets immediately
             .build();
 
     cannon.onSpawn();
