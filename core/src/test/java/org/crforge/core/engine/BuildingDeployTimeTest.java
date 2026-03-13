@@ -6,6 +6,7 @@ import java.util.Collections;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
@@ -25,8 +26,8 @@ class BuildingDeployTimeTest {
   @BeforeEach
   void setUp() {
     gameState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(gameState);
-    deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
   }
 
   @Test

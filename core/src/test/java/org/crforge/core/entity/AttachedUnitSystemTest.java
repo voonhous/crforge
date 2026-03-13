@@ -11,6 +11,7 @@ import org.crforge.core.card.CardType;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
@@ -188,8 +189,9 @@ class AttachedUnitSystemTest {
   @Test
   void deployRamRider_spawnsBothParentAndRider() {
     // Integration test: deploy a Ram Rider card through DeploymentSystem
-    CombatSystem combatSystem = new CombatSystem(gameState);
-    DeploymentSystem deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    DeploymentSystem deploymentSystem =
+        new DeploymentSystem(gameState, new AoeDamageService(gameState));
 
     TroopStats riderStats =
         TroopStats.builder()
@@ -271,8 +273,9 @@ class AttachedUnitSystemTest {
   @Test
   void deployGoblinGiant_spawnsTwoAttachedSpearGoblins() {
     // GoblinGiant uses spawnAttach with 2 SpearGoblinGiant units
-    CombatSystem combatSystem = new CombatSystem(gameState);
-    DeploymentSystem deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    DeploymentSystem deploymentSystem =
+        new DeploymentSystem(gameState, new AoeDamageService(gameState));
 
     TroopStats spearGoblinStats =
         TroopStats.builder()

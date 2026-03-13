@@ -7,6 +7,7 @@ import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -45,9 +46,10 @@ class PhoenixIntegrationTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
-    spawnerSystem = new SpawnerSystem(gameState, combatSystem);
-    combatSystem.setSpawnerSystem(spawnerSystem);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    combatSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    gameState.setDeathHandler(spawnerSystem::onDeath);
 
     // Build the chain bottom-up: PhoenixNoRespawn -> PhoenixEgg -> PhoenixFireball -> Phoenix
     phoenixNoRespawnStats =
@@ -121,7 +123,7 @@ class PhoenixIntegrationTest {
 
     // Kill the Phoenix
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     // The death should have spawned a PhoenixFireball projectile
     List<Projectile> projectiles = gameState.getProjectiles();
@@ -155,7 +157,7 @@ class PhoenixIntegrationTest {
 
     // Kill the Phoenix
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     // Process the projectile hitting (position-targeted at same position, so it arrives next tick)
     combatSystem.update(GameEngine.DELTA_TIME);
@@ -173,7 +175,7 @@ class PhoenixIntegrationTest {
 
     // Kill the Phoenix
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     // Process the projectile (it arrives instantly since start == dest)
     combatSystem.update(GameEngine.DELTA_TIME);
@@ -198,7 +200,7 @@ class PhoenixIntegrationTest {
 
     // Kill Phoenix -> projectile -> egg
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     combatSystem.update(GameEngine.DELTA_TIME);
     gameState.processPending();
 
@@ -238,7 +240,7 @@ class PhoenixIntegrationTest {
 
     // Kill Phoenix -> projectile -> egg
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     combatSystem.update(GameEngine.DELTA_TIME);
     gameState.processPending();
 
@@ -271,7 +273,7 @@ class PhoenixIntegrationTest {
 
     // Full chain: Phoenix dies -> egg -> hatch
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     combatSystem.update(GameEngine.DELTA_TIME);
     gameState.processPending();
 
@@ -283,7 +285,7 @@ class PhoenixIntegrationTest {
     egg.update(0f);
     spawnerSystem.update(4.4f);
     gameState.processPending();
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     Troop noRespawn =
@@ -294,7 +296,7 @@ class PhoenixIntegrationTest {
 
     // Kill PhoenixNoRespawn
     noRespawn.getHealth().takeDamage(noRespawn.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // It should stay dead -- no new eggs, no new projectiles, no new spawns
@@ -312,7 +314,7 @@ class PhoenixIntegrationTest {
 
     // Phoenix dies -> egg spawns
     phoenix.getHealth().takeDamage(phoenix.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     combatSystem.update(GameEngine.DELTA_TIME);
     gameState.processPending();
 
@@ -329,7 +331,7 @@ class PhoenixIntegrationTest {
 
     // Kill the egg before it hatches
     egg.getHealth().takeDamage(egg.getHealth().getCurrent());
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // Wait past 4.3s total -- no PhoenixNoRespawn should appear

@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.List;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
@@ -44,6 +45,7 @@ public class SimHarness {
   private final EnumSet<SimSystems> enabledSystems;
 
   // Systems (null if not enabled)
+  private final AoeDamageService aoeDamageService;
   private final StatusEffectSystem statusEffectSystem;
   private final TargetingSystem targetingSystem;
   private final AbilitySystem abilitySystem;
@@ -56,6 +58,9 @@ public class SimHarness {
     this.gameState = builder.gameState;
     this.enabledSystems = builder.enabledSystems;
 
+    // AoeDamageService is always created (lightweight, no side effects)
+    this.aoeDamageService = new AoeDamageService(gameState);
+
     // Initialize enabled systems
     this.statusEffectSystem =
         enabledSystems.contains(SimSystems.STATUS_EFFECTS) ? new StatusEffectSystem() : null;
@@ -64,7 +69,9 @@ public class SimHarness {
         enabledSystems.contains(SimSystems.TARGETING) ? new TargetingSystem() : null;
 
     this.combatSystem =
-        enabledSystems.contains(SimSystems.COMBAT) ? new CombatSystem(gameState) : null;
+        enabledSystems.contains(SimSystems.COMBAT)
+            ? new CombatSystem(gameState, aoeDamageService)
+            : null;
 
     this.abilitySystem =
         enabledSystems.contains(SimSystems.ABILITY) ? new AbilitySystem(gameState) : null;
@@ -75,11 +82,19 @@ public class SimHarness {
 
     this.spawnerSystem =
         enabledSystems.contains(SimSystems.SPAWNER)
-            ? new SpawnerSystem(gameState, combatSystem)
+            ? new SpawnerSystem(gameState, aoeDamageService)
             : null;
 
     this.areaEffectSystem =
         enabledSystems.contains(SimSystems.AREA_EFFECT) ? new AreaEffectSystem(gameState) : null;
+
+    // Wire callbacks if both systems exist
+    if (combatSystem != null && spawnerSystem != null) {
+      combatSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    }
+    if (spawnerSystem != null) {
+      gameState.setDeathHandler(spawnerSystem::onDeath);
+    }
 
     // Spawn entities and process pending
     for (Entity entity : builder.entities) {
@@ -152,7 +167,7 @@ public class SimHarness {
     }
 
     // 9. Deaths
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     gameState.incrementFrame();
   }
@@ -201,6 +216,10 @@ public class SimHarness {
 
   public GameState gameState() {
     return gameState;
+  }
+
+  public AoeDamageService aoeDamageService() {
+    return aoeDamageService;
   }
 
   public CombatSystem combatSystem() {

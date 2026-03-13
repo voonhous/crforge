@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import lombok.Getter;
-import org.crforge.core.entity.SpawnerSystem;
+import lombok.Setter;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
@@ -30,6 +30,7 @@ public class GameState {
 
   private final Map<Team, List<Tower>> towers;
   private List<Entity> cachedAliveEntities;
+  @Setter private DeathHandler deathHandler;
   private int frameCount;
   private boolean gameOver;
   private Team winner;
@@ -102,18 +103,17 @@ public class GameState {
   }
 
   /**
-   * Check for dead entities and trigger death logic.
-   *
-   * @param spawnerSystem System to handle death spawns
+   * Check for dead entities and trigger death logic. Uses the registered {@link DeathHandler} for
+   * death spawns, death damage, etc.
    */
-  public void processDeaths(SpawnerSystem spawnerSystem) {
+  public void processDeaths() {
     for (Entity entity : entities) {
       if (!entity.isAlive() && entity instanceof AbstractEntity ae && !ae.isDead()) {
         entity.onDeath();
 
         // Trigger death spawns (e.g. Golem -> Golemites, Tombstone -> Skeletons)
-        if (spawnerSystem != null) {
-          spawnerSystem.onDeath(entity);
+        if (deathHandler != null) {
+          deathHandler.onDeath(entity);
         }
 
         // Check for activation of King Tower if Princess Tower dies
@@ -130,11 +130,6 @@ public class GameState {
 
     // Refresh cache since entities may have died
     refreshCaches();
-  }
-
-  // Overload for legacy/testing compatibility
-  public void processDeaths() {
-    processDeaths(null);
   }
 
   private void checkWinCondition(Entity deadEntity) {

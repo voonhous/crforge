@@ -57,7 +57,7 @@ class BattleHealerTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
     areaEffectSystem = new AreaEffectSystem(gameState);
 
     BuffRegistry.clear();

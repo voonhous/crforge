@@ -19,7 +19,7 @@ import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
-import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -60,7 +60,7 @@ public class DeploymentSystem {
   private static final float SPELL_TRAVEL_DISTANCE = 10f;
 
   private final GameState state;
-  private final CombatSystem combatSystem;
+  private final AoeDamageService aoeDamageService;
 
   // Internal queue to hold requests associated with the player who made them
   private final Queue<DeploymentRequest> requestQueue = new ConcurrentLinkedQueue<>();
@@ -686,7 +686,7 @@ public class DeploymentSystem {
       state.spawnProjectile(p);
     } else {
       // Instant spell
-      combatSystem.applySpellDamage(
+      aoeDamageService.applySpellDamage(
           team, x, y, damage, radius, effects, proj.getCrownTowerDamagePercent());
     }
   }

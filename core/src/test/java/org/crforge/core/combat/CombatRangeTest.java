@@ -23,7 +23,7 @@ class CombatRangeTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
   }
 
   @Test

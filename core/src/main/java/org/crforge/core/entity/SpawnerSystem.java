@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
 import java.util.Collections;
+import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.LevelScaling;
@@ -8,7 +9,7 @@ import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
-import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -34,22 +35,21 @@ import org.crforge.core.util.Vector2;
 public class SpawnerSystem {
 
   private final GameState gameState;
-  private final CombatSystem combatSystem;
-  private Match match;
+  private final AoeDamageService aoeDamageService;
 
-  public SpawnerSystem(GameState gameState, CombatSystem combatSystem) {
+  /**
+   * -- SETTER -- Sets the match reference, needed for elixir grant on death (e.g. Elixir Golem).
+   */
+  @Setter private Match match;
+
+  public SpawnerSystem(GameState gameState, AoeDamageService aoeDamageService) {
     this.gameState = gameState;
-    this.combatSystem = combatSystem;
+    this.aoeDamageService = aoeDamageService;
   }
 
   /** Legacy constructor for tests that don't need death damage. */
   public SpawnerSystem(GameState gameState) {
     this(gameState, null);
-  }
-
-  /** Sets the match reference, needed for elixir grant on death (e.g. Elixir Golem). */
-  public void setMatch(Match match) {
-    this.match = match;
   }
 
   /**
@@ -128,8 +128,8 @@ public class SpawnerSystem {
 
     if (spawner != null) {
       // 1. Apply death damage AOE (e.g. Golem, Ice Golem explode on death)
-      if (spawner.getDeathDamage() > 0 && combatSystem != null) {
-        combatSystem.applySpellDamage(
+      if (spawner.getDeathDamage() > 0 && aoeDamageService != null) {
+        aoeDamageService.applySpellDamage(
             entity.getTeam(),
             entity.getPosition().getX(),
             entity.getPosition().getY(),

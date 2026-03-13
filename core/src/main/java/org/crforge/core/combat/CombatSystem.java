@@ -1,8 +1,8 @@
 package org.crforge.core.combat;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import lombok.Setter;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.card.AreaEffectStats;
@@ -14,10 +14,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
-import org.crforge.core.effect.AppliedEffect;
-import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
@@ -36,15 +33,17 @@ public class CombatSystem {
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
   private final GameState gameState;
-  private SpawnerSystem spawnerSystem;
+  private final AoeDamageService aoeDamageService;
+  /**
+   * -- SETTER --
+   * Sets the UnitSpawner callback for spawn-on-impact projectiles (e.g. PhoenixFireball).
+   */
+  @Setter
+  private UnitSpawner unitSpawner;
 
-  public CombatSystem(GameState gameState) {
+  public CombatSystem(GameState gameState, AoeDamageService aoeDamageService) {
     this.gameState = gameState;
-  }
-
-  /** Sets the SpawnerSystem reference for spawn-on-impact projectiles (e.g. PhoenixFireball). */
-  public void setSpawnerSystem(SpawnerSystem spawnerSystem) {
-    this.spawnerSystem = spawnerSystem;
+    this.aoeDamageService = aoeDamageService;
   }
 
   /** Process combat for all entities. Called each tick. */
@@ -209,8 +208,8 @@ public class CombatSystem {
       } else {
         // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g.
         // Curse)
-        applyEffects(target, combat.getHitEffects());
-        dealDamage(target, effectiveDamage);
+        aoeDamageService.applyEffects(target, combat.getHitEffects());
+        aoeDamageService.dealDamage(target, effectiveDamage);
       }
 
       // Apply buff-on-damage for melee attacks
@@ -382,8 +381,8 @@ public class CombatSystem {
         int effectiveDamage =
             DamageUtil.adjustForCrownTower(
                 baseDamage, extraTarget, combat.getCrownTowerDamagePercent());
-        applyEffects(extraTarget, combat.getHitEffects());
-        dealDamage(extraTarget, effectiveDamage);
+        aoeDamageService.applyEffects(extraTarget, combat.getHitEffects());
+        aoeDamageService.dealDamage(extraTarget, effectiveDamage);
         applyBuffOnDamage(combat, extraTarget);
       }
     }
@@ -398,8 +397,8 @@ public class CombatSystem {
         int effectiveDamage =
             DamageUtil.adjustForCrownTower(
                 baseDamage, primaryTarget, combat.getCrownTowerDamagePercent());
-        applyEffects(primaryTarget, combat.getHitEffects());
-        dealDamage(primaryTarget, effectiveDamage);
+        aoeDamageService.applyEffects(primaryTarget, combat.getHitEffects());
+        aoeDamageService.dealDamage(primaryTarget, effectiveDamage);
         applyBuffOnDamage(combat, primaryTarget);
       }
     }
@@ -411,7 +410,7 @@ public class CombatSystem {
       return;
     }
     // Route through applyEffects so stun/freeze charge reset logic is triggered
-    applyEffects(target, List.of(buff));
+    aoeDamageService.applyEffects(target, List.of(buff));
   }
 
   private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
@@ -419,7 +418,7 @@ public class CombatSystem {
     int effectiveDamage =
         DamageUtil.adjustForCrownTower(
             reflectDamage, attacker, reflect.reflectCrownTowerDamagePercent());
-    dealDamage(attacker, effectiveDamage);
+    aoeDamageService.dealDamage(attacker, effectiveDamage);
 
     // Apply reflect buff (e.g. ZapFreeze stun) to attacker
     if (reflect.reflectBuff() != null && reflect.reflectBuffDuration() > 0) {
@@ -429,7 +428,7 @@ public class CombatSystem {
               .duration(reflect.reflectBuffDuration())
               .buffName(reflect.reflectBuffName())
               .build();
-      applyEffects(attacker, List.of(reflectEffect));
+      aoeDamageService.applyEffects(attacker, List.of(reflectEffect));
     }
   }
 
@@ -475,7 +474,7 @@ public class CombatSystem {
     int ctdp = projectile.getCrownTowerDamagePercent();
 
     if (projectile.isPositionTargeted()) {
-      applySpellDamage(
+      aoeDamageService.applySpellDamage(
           projectile.getTeam(),
           projectile.getTargetX(),
           projectile.getTargetY(),
@@ -486,7 +485,7 @@ public class CombatSystem {
     } else if (projectile.hasAoe()) {
       if (!projectile.isHoming()) {
         // Non-homing: AOE centered at the fixed landing position (where target was when fired)
-        applySpellDamage(
+        aoeDamageService.applySpellDamage(
             projectile.getTeam(),
             projectile.getFixedTargetX(),
             projectile.getFixedTargetY(),
@@ -507,10 +506,12 @@ public class CombatSystem {
       Entity target = projectile.getTarget();
       int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, target, ctdp);
       // Apply pre-damage effects (e.g. Curse -- dying from damage should still trigger)
-      applyEffects(target, filterEffects(projectile.getEffects(), false));
-      dealDamage(target, effectiveDamage);
+      aoeDamageService.applyEffects(
+          target, aoeDamageService.filterEffects(projectile.getEffects(), false));
+      aoeDamageService.dealDamage(target, effectiveDamage);
       // Apply post-damage effects (e.g. Ice Wizard SLOW, EWiz STUN)
-      applyEffects(target, filterEffects(projectile.getEffects(), true));
+      aoeDamageService.applyEffects(
+          target, aoeDamageService.filterEffects(projectile.getEffects(), true));
     }
 
     // Apply knockback to entities hit by the projectile
@@ -553,7 +554,7 @@ public class CombatSystem {
     }
 
     // Spawn character on impact (e.g. PhoenixFireball spawns PhoenixEgg)
-    if (projectile.getSpawnCharacterStats() != null && spawnerSystem != null) {
+    if (projectile.getSpawnCharacterStats() != null && unitSpawner != null) {
       spawnCharacterOnImpact(projectile);
     }
   }
@@ -774,7 +775,7 @@ public class CombatSystem {
     }
 
     for (int i = 0; i < count; i++) {
-      spawnerSystem.spawnUnit(centerX, centerY, projectile.getTeam(), stats, rarity, level);
+      unitSpawner.spawnUnit(centerX, centerY, projectile.getTeam(), stats, rarity, level);
     }
   }
 
@@ -876,63 +877,6 @@ public class CombatSystem {
     return projectile;
   }
 
-  /**
-   * Filters effects by their applyAfterDamage flag. Returns only effects matching the given phase.
-   */
-  private List<EffectStats> filterEffects(List<EffectStats> effects, boolean afterDamage) {
-    if (effects == null || effects.isEmpty()) {
-      return Collections.emptyList();
-    }
-    List<EffectStats> filtered = new ArrayList<>();
-    for (EffectStats e : effects) {
-      if (e.isApplyAfterDamage() == afterDamage) {
-        filtered.add(e);
-      }
-    }
-    return filtered;
-  }
-
-  private void dealDamage(Entity target, int damage) {
-    if (target == null || !target.isAlive()) {
-      return;
-    }
-    target.getHealth().takeDamage(damage);
-  }
-
-  private void applyEffects(Entity target, List<EffectStats> effects) {
-    if (target == null || !target.isAlive() || effects == null || effects.isEmpty()) {
-      return;
-    }
-
-    for (EffectStats stats : effects) {
-      // Buildings (MovementType.BUILDING) cannot be Cursed
-      if (stats.getType() == StatusEffectType.CURSE
-          && target.getMovementType() == MovementType.BUILDING) {
-        continue;
-      }
-
-      // Pass buffName and spawnSpecies (if any) to the AppliedEffect
-      AppliedEffect effect =
-          new AppliedEffect(
-              stats.getType(), stats.getDuration(), stats.getBuffName(), stats.getSpawnSpecies());
-      target.addEffect(effect);
-
-      // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)
-      if (stats.getType() == StatusEffectType.STUN || stats.getType() == StatusEffectType.FREEZE) {
-        Combat combat = target.getCombat();
-        if (combat != null) {
-          combat.resetAttackState();
-        }
-        // Reset charge ability state (Prince, Dark Prince, Battle Ram)
-        // Reset variable damage state (Inferno Dragon, Inferno Tower)
-        if (target instanceof Troop troop) {
-          AbilitySystem.consumeCharge(troop);
-          AbilitySystem.resetVariableDamage(troop);
-        }
-      }
-    }
-  }
-
   private void dealAoeDamage(
       Entity source, Entity primaryTarget, int damage, float radius, List<EffectStats> effects) {
     dealAoeDamage(source, primaryTarget, damage, radius, effects, 0);
@@ -948,7 +892,7 @@ public class CombatSystem {
     if (primaryTarget == null) {
       return;
     }
-    applySpellDamage(
+    aoeDamageService.applySpellDamage(
         source.getTeam(),
         primaryTarget.getPosition().getX(),
         primaryTarget.getPosition().getY(),
@@ -956,62 +900,6 @@ public class CombatSystem {
         radius,
         effects,
         crownTowerDamagePercent);
-  }
-
-  /**
-   * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
-   * for entity size in the radius check. No crown tower damage reduction.
-   */
-  public void applySpellDamage(
-      Team sourceTeam,
-      float centerX,
-      float centerY,
-      int damage,
-      float radius,
-      List<EffectStats> effects) {
-    applySpellDamage(sourceTeam, centerX, centerY, damage, radius, effects, 0);
-  }
-
-  /**
-   * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
-   * for entity size in the radius check. Applies crown tower damage reduction to Towers.
-   */
-  public void applySpellDamage(
-      Team sourceTeam,
-      float centerX,
-      float centerY,
-      int damage,
-      float radius,
-      List<EffectStats> effects,
-      int crownTowerDamagePercent) {
-    if (radius > 0) {
-      gameState.recordAoeDamage(centerX, centerY, radius, sourceTeam);
-    }
-
-    Team enemyTeam = sourceTeam.opposite();
-
-    for (Entity entity : gameState.getAliveEntities()) {
-      if (entity.getTeam() != enemyTeam) {
-        continue;
-      }
-      if (!entity.isTargetable()) {
-        continue;
-      }
-
-      float distanceSq = entity.getPosition().distanceToSquared(centerX, centerY);
-
-      // Use Collision Radius for spell AOE check (squared distance avoids sqrt)
-      float effectiveRadius = radius + entity.getCollisionRadius();
-      if (distanceSq <= effectiveRadius * effectiveRadius) {
-        int effectiveDamage =
-            DamageUtil.adjustForCrownTower(damage, entity, crownTowerDamagePercent);
-        // Apply pre-damage effects (e.g. Curse)
-        applyEffects(entity, filterEffects(effects, false));
-        dealDamage(entity, effectiveDamage);
-        // Apply post-damage effects (e.g. slow, stun)
-        applyEffects(entity, filterEffects(effects, true));
-      }
-    }
   }
 
   /**
@@ -1109,9 +997,11 @@ public class CombatSystem {
       projectile.recordHitEntity(entity.getId());
 
       int effectiveDamage = DamageUtil.adjustForCrownTower(baseDamage, entity, ctdp);
-      applyEffects(entity, filterEffects(projectile.getEffects(), false));
-      dealDamage(entity, effectiveDamage);
-      applyEffects(entity, filterEffects(projectile.getEffects(), true));
+      aoeDamageService.applyEffects(
+          entity, aoeDamageService.filterEffects(projectile.getEffects(), false));
+      aoeDamageService.dealDamage(entity, effectiveDamage);
+      aoeDamageService.applyEffects(
+          entity, aoeDamageService.filterEffects(projectile.getEffects(), true));
 
       // Apply directional knockback along the projectile's travel direction
       if (projectile.getPushback() > 0) {

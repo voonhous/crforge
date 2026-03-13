@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.card.EffectStats;
-import org.crforge.core.combat.CombatSystem;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 class ZapStunTest {
 
   private GameEngine engine;
-  private CombatSystem combatSystem;
+  private AoeDamageService aoeDamageService;
 
   @BeforeEach
   void setUp() {
@@ -28,7 +28,7 @@ class ZapStunTest {
     engine = new GameEngine();
     engine.setMatch(new Standard1v1Match());
     engine.initMatch();
-    combatSystem = engine.getCombatSystem();
+    aoeDamageService = new AoeDamageService(engine.getGameState());
   }
 
   @Test
@@ -55,7 +55,7 @@ class ZapStunTest {
 
     // 3. Apply Zap (Stun)
     // Manually apply spell damage/effect logic
-    combatSystem.applySpellDamage(
+    aoeDamageService.applySpellDamage(
         Team.RED, // Enemy team casts it
         10f,
         10f, // Center

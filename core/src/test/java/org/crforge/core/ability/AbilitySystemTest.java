@@ -6,6 +6,7 @@ import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
@@ -46,7 +47,7 @@ class AbilitySystemTest {
     Projectile.resetIdCounter();
     gameState = new GameState();
     abilitySystem = new AbilitySystem(gameState);
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
     targetingSystem = new TargetingSystem();
     physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
     statusEffectSystem = new StatusEffectSystem();

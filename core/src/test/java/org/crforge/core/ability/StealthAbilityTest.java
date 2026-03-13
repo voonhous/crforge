@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
@@ -25,6 +26,7 @@ class StealthAbilityTest {
   private GameState gameState;
   private AbilitySystem abilitySystem;
   private CombatSystem combatSystem;
+  private AoeDamageService aoeDamageService;
   private TargetingSystem targetingSystem;
   private PhysicsSystem physicsSystem;
 
@@ -40,7 +42,8 @@ class StealthAbilityTest {
     Projectile.resetIdCounter();
     gameState = new GameState();
     abilitySystem = new AbilitySystem(gameState);
-    combatSystem = new CombatSystem(gameState);
+    aoeDamageService = new AoeDamageService(gameState);
+    combatSystem = new CombatSystem(gameState, aoeDamageService);
     targetingSystem = new TargetingSystem();
     physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
   }
@@ -163,7 +166,7 @@ class StealthAbilityTest {
     int hpBefore = ghost.getHealth().getCurrent();
 
     // Cast a Fireball (position-based AOE) at the ghost's location
-    combatSystem.applySpellDamage(Team.RED, 5, 5, 200, 2.5f, List.of());
+    aoeDamageService.applySpellDamage(Team.RED, 5, 5, 200, 2.5f, List.of());
 
     assertThat(ghost.getHealth().getCurrent())
         .as("Invisible ghost should still be hit by AOE spell damage")

@@ -33,7 +33,7 @@ class LoadTimeMechanicTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
   }
 
   @Test
@@ -126,7 +126,7 @@ class LoadTimeMechanicTest {
 
     @BeforeEach
     void setUpDeployment() {
-      deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+      deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
     }
 
     private void deployTroops(TroopStats stats) {

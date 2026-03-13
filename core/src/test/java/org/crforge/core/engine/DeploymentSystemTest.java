@@ -14,6 +14,7 @@ import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
@@ -38,8 +39,8 @@ class DeploymentSystemTest {
   @BeforeEach
   void setUp() {
     gameState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(gameState);
-    deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
 
     // Create a deck of 8 dummy cards
     List<Card> cards = new ArrayList<>();

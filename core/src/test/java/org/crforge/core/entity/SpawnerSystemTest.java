@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
@@ -107,8 +108,8 @@ class SpawnerSystemTest {
 
   @Test
   void onDeath_shouldApplyDeathDamageAOE() {
-    CombatSystem combatSystem = new CombatSystem(gameState);
-    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, new AoeDamageService(gameState));
 
     // Create a unit with death damage (like Ice Golem)
     SpawnerComponent deathDmgSpawner =
@@ -195,8 +196,8 @@ class SpawnerSystemTest {
     gameState.spawnEntity(golem);
     gameState.processPending();
 
-    CombatSystem combatSystem = new CombatSystem(gameState);
-    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, new AoeDamageService(gameState));
 
     systemWithCombat.onDeath(golem);
 
@@ -392,8 +393,9 @@ class SpawnerSystemTest {
   void deathSpawn_bombEntity_shouldExplodeAfterDeployTime() {
     // BalloonBomb-like entity: health=0, deployTime=3.0, deathDamage=100, radius=2.0
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
+    freshState.setDeathHandler(freshSystem::onDeath);
 
     TroopStats bombStats =
         TroopStats.builder()
@@ -450,9 +452,9 @@ class SpawnerSystemTest {
     farEnemy.update(1.0f);
 
     // Kill the balloon -> should death-spawn a BalloonBomb
-    freshState.processDeaths(freshSystem);
+    freshState.processDeaths();
     balloon.getHealth().takeDamage(1);
-    freshState.processDeaths(freshSystem);
+    freshState.processDeaths();
     assertThat(freshState.getPendingSpawns()).hasSize(1);
 
     Entity bomb = freshState.getPendingSpawns().get(0);
@@ -487,7 +489,7 @@ class SpawnerSystemTest {
     assertThat(bomb.getHealth().isAlive()).isFalse();
 
     // processDeaths fires onDeath -> death damage AOE
-    freshState.processDeaths(freshSystem);
+    freshState.processDeaths();
 
     assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(400); // 500 - 100
     assertThat(farEnemy.getHealth().getCurrent()).isEqualTo(500); // No damage
@@ -497,8 +499,9 @@ class SpawnerSystemTest {
   void deathSpawn_normalUnitWithDeathMechanics_shouldGetSpawnerComponent() {
     // Golemite-like unit: has health AND deathDamage
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
+    freshState.setDeathHandler(freshSystem::onDeath);
 
     TroopStats golemiteStats =
         TroopStats.builder()
@@ -546,7 +549,7 @@ class SpawnerSystemTest {
 
     // Kill Golem -> spawns 2 Golemites
     golem.getHealth().takeDamage(1);
-    freshState.processDeaths(freshSystem);
+    freshState.processDeaths();
     assertThat(freshState.getPendingSpawns()).hasSize(2);
 
     // Golemites should have SpawnerComponent with death damage (NOT selfDestruct since health > 0)
@@ -559,7 +562,7 @@ class SpawnerSystemTest {
 
     // Kill a Golemite -> should fire its death damage
     golemite.getHealth().takeDamage(golemite.getHealth().getCurrent());
-    freshState.processDeaths(freshSystem);
+    freshState.processDeaths();
 
     assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(450); // 500 - 50
   }
@@ -620,8 +623,8 @@ class SpawnerSystemTest {
   void onDeath_shouldApplyDeathPushback() {
     // Golem-like unit with death damage + pushback
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
@@ -668,8 +671,8 @@ class SpawnerSystemTest {
   void onDeath_deathPushbackShouldRespectIgnorePushback() {
     // Same setup but enemy has ignorePushback=true
     GameState freshState = new GameState();
-    CombatSystem combatSystem = new CombatSystem(freshState);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, combatSystem);
+    CombatSystem combatSystem = new CombatSystem(freshState, new AoeDamageService(freshState));
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()

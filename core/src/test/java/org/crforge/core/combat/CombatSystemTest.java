@@ -24,13 +24,15 @@ class CombatSystemTest {
 
   private GameState gameState;
   private CombatSystem combatSystem;
+  private AoeDamageService aoeDamageService;
 
   @BeforeEach
   void setUp() {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
+    aoeDamageService = new AoeDamageService(gameState);
+    combatSystem = new CombatSystem(gameState, aoeDamageService);
   }
 
   @Test
@@ -124,7 +126,7 @@ class CombatSystemTest {
     enemy1.update(2.0f);
     enemy2.update(2.0f);
 
-    combatSystem.applySpellDamage(Team.BLUE, 10f, 10f, 50, 3.0f, Collections.emptyList());
+    aoeDamageService.applySpellDamage(Team.BLUE, 10f, 10f, 50, 3.0f, Collections.emptyList());
 
     assertThat(enemy1.getHealth().getCurrent()).isEqualTo(50);
     assertThat(enemy2.getHealth().getCurrent()).isEqualTo(50);
@@ -786,7 +788,7 @@ class CombatSystemTest {
     int spellDamage = 300;
     int ctdp = -75;
 
-    combatSystem.applySpellDamage(
+    aoeDamageService.applySpellDamage(
         Team.BLUE, 10f, 10f, spellDamage, 3.0f, Collections.emptyList(), ctdp);
 
     // Tower: 300 * (100 + (-75)) / 100 = 75

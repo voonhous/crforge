@@ -54,8 +54,9 @@ class BattleRamTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
-    spawnerSystem = new SpawnerSystem(gameState, combatSystem);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    gameState.setDeathHandler(spawnerSystem::onDeath);
   }
 
   @Test
@@ -89,7 +90,7 @@ class BattleRamTest {
         .isEqualTo(2000 - 224);
 
     // Process deaths to trigger death spawn
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // 2 Barbarians should have spawned
@@ -134,7 +135,7 @@ class BattleRamTest {
         .isEqualTo(2000 - 112);
 
     // Process deaths to trigger death spawn
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // 2 Barbarians should have spawned
@@ -160,7 +161,7 @@ class BattleRamTest {
     assertThat(battleRam.getHealth().isDead()).isTrue();
 
     // Process deaths to trigger death spawn
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // 2 Barbarians should still spawn from death spawn

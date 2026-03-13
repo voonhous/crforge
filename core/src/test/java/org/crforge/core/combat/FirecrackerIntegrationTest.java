@@ -32,7 +32,7 @@ class FirecrackerIntegrationTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
   }
 
   @Test

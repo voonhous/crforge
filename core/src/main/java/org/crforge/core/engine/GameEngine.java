@@ -3,6 +3,7 @@ package org.crforge.core.engine;
 import lombok.Getter;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
@@ -44,11 +45,17 @@ public class GameEngine {
   public GameEngine() {
     this.gameState = new GameState();
     this.targetingSystem = new TargetingSystem();
-    this.combatSystem = new CombatSystem(gameState);
-    this.deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    this.combatSystem = new CombatSystem(gameState, aoeDamageService);
+    this.deploymentSystem = new DeploymentSystem(gameState, aoeDamageService);
+    this.spawnerSystem = new SpawnerSystem(gameState, aoeDamageService);
+
+    // One-directional callback wiring (no circular dependencies)
+    this.combatSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    this.gameState.setDeathHandler(spawnerSystem::onDeath);
+
     this.statusEffectSystem = new StatusEffectSystem();
-    this.spawnerSystem = new SpawnerSystem(gameState, combatSystem);
-    this.combatSystem.setSpawnerSystem(this.spawnerSystem);
     this.areaEffectSystem = new AreaEffectSystem(gameState);
     this.abilitySystem = new AbilitySystem(gameState);
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);
@@ -139,8 +146,8 @@ public class GameEngine {
       physicsSystem.update(gameState.getAliveEntities(), DELTA_TIME);
     }
 
-    // 12. Process deaths (Pass spawnerSystem to handle death spawns)
-    gameState.processDeaths(spawnerSystem);
+    // 12. Process deaths (death handler registered via gameState.setDeathHandler)
+    gameState.processDeaths();
 
     // 13. Check time limit
     checkTimeLimit();

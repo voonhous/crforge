@@ -95,8 +95,9 @@ class ElixirGolemTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
-    spawnerSystem = new SpawnerSystem(gameState, combatSystem);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    gameState.setDeathHandler(spawnerSystem::onDeath);
 
     // Create a minimal match with players for elixir grant testing
     Standard1v1Match match = new Standard1v1Match();
@@ -128,7 +129,7 @@ class ElixirGolemTest {
 
     // Kill ElixirGolem1
     golem.getHealth().takeDamage(10000);
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // Should have 2 ElixirGolem2s
@@ -142,7 +143,7 @@ class ElixirGolemTest {
     gameState.getAliveEntities().stream()
         .filter(e -> e instanceof Troop t && "ElixirGolem2".equals(t.getName()))
         .forEach(e -> e.getHealth().takeDamage(10000));
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // Should have 4 ElixirGolem4s
@@ -170,7 +171,7 @@ class ElixirGolemTest {
 
     // Kill ElixirGolem1 (grants 1000 milli-elixir = 1.0 elixir to opponent)
     golem.getHealth().takeDamage(10000);
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     assertThat(redPlayer.getElixir().getCurrent())
         .as("Red should receive 1.0 elixir from ElixirGolem1 death")
@@ -190,7 +191,7 @@ class ElixirGolemTest {
 
     // Kill ElixirGolem1 -> +1.0 elixir
     golem.getHealth().takeDamage(10000);
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     assertThat(redPlayer.getElixir().getCurrent())
@@ -201,7 +202,7 @@ class ElixirGolemTest {
     gameState.getAliveEntities().stream()
         .filter(e -> e instanceof Troop t && "ElixirGolem2".equals(t.getName()))
         .forEach(e -> e.getHealth().takeDamage(10000));
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     assertThat(redPlayer.getElixir().getCurrent())
@@ -212,7 +213,7 @@ class ElixirGolemTest {
     gameState.getAliveEntities().stream()
         .filter(e -> e instanceof Troop t && "ElixirGolem4".equals(t.getName()))
         .forEach(e -> e.getHealth().takeDamage(10000));
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     assertThat(redPlayer.getElixir().getCurrent())
         .as("Full chain should grant 4.0 total elixir to opponent")
@@ -232,7 +233,7 @@ class ElixirGolemTest {
 
     // Kill ElixirGolem1 -> would add 1.0, but should cap at 10
     golem.getHealth().takeDamage(10000);
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     assertThat(redPlayer.getElixir().getCurrent())
         .as("Elixir should cap at 10.0")
@@ -263,7 +264,7 @@ class ElixirGolemTest {
     gameState.processPending();
 
     golem.getHealth().takeDamage(10000);
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     assertThat(bluePlayer.getElixir().getCurrent())
         .as("Blue (owner) should not receive elixir from own ElixirGolem death")

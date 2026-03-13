@@ -11,6 +11,7 @@ import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
@@ -57,10 +58,10 @@ class MinerTunnelTest {
     Projectile.resetIdCounter();
     gameState = new GameState();
     abilitySystem = new AbilitySystem(gameState);
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
     targetingSystem = new TargetingSystem();
     physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
-    deploymentSystem = new DeploymentSystem(gameState, combatSystem);
+    deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
     match = new Standard1v1Match();
   }
 

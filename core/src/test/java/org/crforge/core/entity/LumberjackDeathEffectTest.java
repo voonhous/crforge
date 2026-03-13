@@ -6,6 +6,7 @@ import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -45,8 +46,9 @@ class LumberjackDeathEffectTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
-    spawnerSystem = new SpawnerSystem(gameState, combatSystem);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
+    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    gameState.setDeathHandler(spawnerSystem::onDeath);
     areaEffectSystem = new AreaEffectSystem(gameState);
 
     // Register the Rage buff (matches buffs.json)
@@ -239,7 +241,7 @@ class LumberjackDeathEffectTest {
 
     // Step 1: Kill Lumberjack -> should death-spawn RageBarbarianBottle
     lumberjack.getHealth().takeDamage(1);
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
 
     assertThat(gameState.getPendingSpawns()).hasSize(1);
     Entity bottle = gameState.getPendingSpawns().get(0);
@@ -267,7 +269,7 @@ class LumberjackDeathEffectTest {
     assertThat(bottle.getHealth().isAlive()).isFalse();
 
     // processDeaths fires onDeath -> death area effect creates Rage AreaEffect
-    gameState.processDeaths(spawnerSystem);
+    gameState.processDeaths();
     gameState.processPending();
 
     // Step 4: Verify Rage AreaEffect was created

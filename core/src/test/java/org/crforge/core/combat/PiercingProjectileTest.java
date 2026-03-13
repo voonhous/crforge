@@ -30,7 +30,7 @@ class PiercingProjectileTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    combatSystem = new CombatSystem(gameState);
+    combatSystem = new CombatSystem(gameState, new AoeDamageService(gameState));
     Arena arena = new Arena("TestArena");
     physicsSystem = new PhysicsSystem(arena);
     physicsSystem.setGameState(gameState);
