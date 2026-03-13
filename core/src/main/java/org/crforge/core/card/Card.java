@@ -75,6 +75,18 @@ public class Card {
    */
   @Builder.Default private final boolean canDeployOnEnemySide = false;
 
+  /** Spell placement/targeting radius in tile units (distinct from projectile AOE hit radius). */
+  @Builder.Default private final float spellRadius = 0f;
+
+  /** Number of projectiles per wave (cosmetic for simulation; stored for future visual use). */
+  @Builder.Default private final int multipleProjectiles = 0;
+
+  /** Number of projectile waves (e.g. Arrows fires 3 waves). */
+  @Builder.Default private final int projectileWaves = 0;
+
+  /** Interval between projectile waves in seconds (e.g. 0.2s for Arrows). */
+  @Builder.Default private final float projectileWaveInterval = 0f;
+
   public int getTotalDeployCount() {
     return unitCount + secondaryUnitCount;
   }

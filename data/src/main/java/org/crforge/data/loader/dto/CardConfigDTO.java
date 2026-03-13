@@ -52,4 +52,16 @@ public class CardConfigDTO {
 
   // Whether this card can be deployed on the enemy's side of the arena (e.g. Miner, GoblinDrill)
   private boolean canDeployOnEnemySide;
+
+  // Spell placement/targeting radius in tile units
+  private float radius;
+
+  // Number of projectiles per wave (cosmetic for simulation)
+  private int multipleProjectiles;
+
+  // Number of projectile waves (e.g. Arrows fires 3 waves)
+  private int projectileWaves;
+
+  // Interval between projectile waves in seconds
+  private float projectileWaveInterval;
 }

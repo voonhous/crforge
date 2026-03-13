@@ -64,9 +64,4 @@ public class ProjectileConfigDTO {
 
   // Deflect behaviours (stored for future use)
   private List<String> deflectBehaviours;
-
-  // Volley: spawn multiple identical projectiles with staggered frame delays (e.g. Arrows = 3
-  // volleys)
-  private int volleyCount;
-  private int volleyFrameDelay;
 }

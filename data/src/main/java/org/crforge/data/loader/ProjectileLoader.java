@@ -104,9 +104,7 @@ public class ProjectileLoader {
             .pushbackAll(dto.isPushbackAll())
             .checkCollisions(dto.isCheckCollisions())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-            .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()))
-            .volleyCount(dto.getVolleyCount())
-            .volleyFrameDelay(dto.getVolleyFrameDelay());
+            .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
 
     // Read spawn character from the spawn block (e.g. PhoenixFireball spawns PhoenixEgg)
     if (dto.getSpawn() != null && dto.getSpawn().getSpawnCharacter() != null) {

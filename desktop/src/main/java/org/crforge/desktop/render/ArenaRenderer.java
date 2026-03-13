@@ -105,11 +105,13 @@ public class ArenaRenderer {
     float centerY = (hoverY + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
     if (card.getType() == CardType.SPELL) {
-      // Area-effect spells (Poison, Freeze, Zap) use areaEffect radius;
-      // projectile-based spells (Fireball, Arrows) use projectile radius
+      // Area-effect spells use areaEffect radius; spell-level radius (e.g. Arrows 3.5 tiles)
+      // takes priority over projectile AOE radius; projectile radius is the final fallback
       float radius;
       if (card.getAreaEffect() != null) {
         radius = card.getAreaEffect().getRadius() * TILE_PIXELS;
+      } else if (card.getSpellRadius() > 0) {
+        radius = card.getSpellRadius() * TILE_PIXELS;
       } else if (card.getProjectile() != null) {
         radius = card.getProjectile().getRadius() * TILE_PIXELS;
       } else {

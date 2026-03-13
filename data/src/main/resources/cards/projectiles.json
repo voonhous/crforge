@@ -27,9 +27,7 @@
       "CheckOnlyTargetPosition",
       "UseSpellsTowerDamageMul"
     ],
-    "crownTowerDamagePercent": -75,
-    "volleyCount": 3,
-    "volleyFrameDelay": 6
+    "crownTowerDamagePercent": -75
   },
   "AxeManProjectile": {
     "name": "AxeManProjectile",

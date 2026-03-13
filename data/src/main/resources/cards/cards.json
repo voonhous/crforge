@@ -1023,7 +1023,11 @@
     "type": "SPELL",
     "rarity": "Common",
     "cost": 3,
-    "projectile": "ArrowsSpell"
+    "projectile": "ArrowsSpell",
+    "radius": 3.5,
+    "multipleProjectiles": 10,
+    "projectileWaves": 3,
+    "projectileWaveInterval": 0.2
   },
   {
     "id": "rage",

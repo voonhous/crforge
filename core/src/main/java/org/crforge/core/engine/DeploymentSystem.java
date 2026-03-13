@@ -672,10 +672,12 @@ public class DeploymentSystem {
     List<EffectStats> effects = proj.getHitEffects();
 
     if (speed > 0) {
-      // Traveling spell -- may be a multi-volley spell (e.g. Arrows fires 3 staggered projectiles)
+      // Traveling spell -- may be a multi-wave spell (e.g. Arrows fires 3 staggered projectiles)
       float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
-      int volleys = proj.getVolleyCount() > 1 ? proj.getVolleyCount() : 1;
-      for (int i = 0; i < volleys; i++) {
+      int waves = card.getProjectileWaves() > 1 ? card.getProjectileWaves() : 1;
+      int waveDelayFrames =
+          Math.round(card.getProjectileWaveInterval() * GameEngine.TICKS_PER_SECOND);
+      for (int i = 0; i < waves; i++) {
         Projectile p =
             new Projectile(
                 team,
@@ -691,7 +693,7 @@ public class DeploymentSystem {
         p.setPushback(proj.getPushback());
         p.setPushbackAll(proj.isPushbackAll());
         if (i > 0) {
-          p.setDelayFrames(i * proj.getVolleyFrameDelay());
+          p.setDelayFrames(i * waveDelayFrames);
         }
         state.spawnProjectile(p);
       }

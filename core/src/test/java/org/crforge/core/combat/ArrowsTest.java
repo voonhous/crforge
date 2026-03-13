@@ -20,9 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for the Arrows spell volley mechanic. Arrows fires 3 independent position-targeted
- * projectiles at frames 0, 6, 12 (volleyFrameDelay=6). Each volley deals the full per-volley damage
- * (48). Crown towers take 25% damage (crownTowerDamagePercent=-75).
+ * Tests for the Arrows spell wave mechanic. Arrows fires 3 independent position-targeted
+ * projectiles at frames 0, 6, 12 (projectileWaveInterval=0.2s, 0.2*30=6 frames). Each wave deals
+ * the full per-wave damage (48). Crown towers take 25% damage (crownTowerDamagePercent=-75).
  */
 class ArrowsTest {
 
@@ -34,8 +34,8 @@ class ArrowsTest {
   private static final float AOE_RADIUS = 1.4f;
   private static final float SPEED = 1100f / 60f; // Raw CSV speed / SPEED_BASE
   private static final int CROWN_TOWER_DAMAGE_PCT = -75;
-  private static final int VOLLEY_COUNT = 3;
-  private static final int VOLLEY_FRAME_DELAY = 6;
+  private static final int PROJECTILE_WAVES = 3;
+  private static final int WAVE_DELAY_FRAMES = 6; // 0.2s * 30fps
   private static final float DELTA_TIME = GameEngine.DELTA_TIME;
 
   @BeforeEach
@@ -54,7 +54,7 @@ class ArrowsTest {
     spawnArrowsVolley(Team.BLUE, 9f, 20f);
 
     assertThat(gameState.getProjectiles())
-        .as("Arrows should spawn 3 projectiles (one per volley)")
+        .as("Arrows should spawn 3 projectiles (one per wave)")
         .hasSize(3);
   }
 
@@ -95,18 +95,18 @@ class ArrowsTest {
       }
     }
 
-    assertThat(hitCount).as("Target should be hit exactly 3 times (one per volley)").isEqualTo(3);
+    assertThat(hitCount).as("Target should be hit exactly 3 times (one per wave)").isEqualTo(3);
 
-    // The gap between hits should be approximately VOLLEY_FRAME_DELAY ticks
-    // (travel time is the same for all, but each subsequent volley has an extra delay)
+    // The gap between hits should be approximately WAVE_DELAY_FRAMES ticks
+    // (travel time is the same for all, but each subsequent wave has an extra delay)
     int gap1 = hitTicks[1] - hitTicks[0];
     int gap2 = hitTicks[2] - hitTicks[1];
     assertThat(gap1)
-        .as("Gap between volley 1 and 2 should be ~%d frames", VOLLEY_FRAME_DELAY)
-        .isEqualTo(VOLLEY_FRAME_DELAY);
+        .as("Gap between wave 1 and 2 should be ~%d frames", WAVE_DELAY_FRAMES)
+        .isEqualTo(WAVE_DELAY_FRAMES);
     assertThat(gap2)
-        .as("Gap between volley 2 and 3 should be ~%d frames", VOLLEY_FRAME_DELAY)
-        .isEqualTo(VOLLEY_FRAME_DELAY);
+        .as("Gap between wave 2 and 3 should be ~%d frames", WAVE_DELAY_FRAMES)
+        .isEqualTo(WAVE_DELAY_FRAMES);
   }
 
   @Test
@@ -127,11 +127,9 @@ class ArrowsTest {
       }
     }
 
-    int expectedTotal = DAMAGE_PER_VOLLEY * VOLLEY_COUNT; // 48 * 3 = 144
+    int expectedTotal = DAMAGE_PER_VOLLEY * PROJECTILE_WAVES; // 48 * 3 = 144
     assertThat(target.getHealth().getCurrent())
-        .as(
-            "Target should take %d total damage (3 volleys of %d)",
-            expectedTotal, DAMAGE_PER_VOLLEY)
+        .as("Target should take %d total damage (3 waves of %d)", expectedTotal, DAMAGE_PER_VOLLEY)
         .isEqualTo(1000 - expectedTotal);
   }
 
@@ -154,13 +152,13 @@ class ArrowsTest {
     }
 
     // Each volley deals 25% of 48 = 12 damage to crown towers
-    int expectedPerVolley =
+    int expectedPerWave =
         DAMAGE_PER_VOLLEY * (100 + CROWN_TOWER_DAMAGE_PCT) / 100; // 48 * 25/100 = 12
-    int expectedTotal = expectedPerVolley * VOLLEY_COUNT; // 12 * 3 = 36
+    int expectedTotal = expectedPerWave * PROJECTILE_WAVES; // 12 * 3 = 36
     assertThat(tower.getHealth().getCurrent())
         .as(
-            "Crown tower should take %d total damage (%d per volley at 25%%)",
-            expectedTotal, expectedPerVolley)
+            "Crown tower should take %d total damage (%d per wave at 25%%)",
+            expectedTotal, expectedPerWave)
         .isEqualTo(initialHp - expectedTotal);
   }
 
@@ -193,10 +191,10 @@ class ArrowsTest {
       }
     }
 
-    assertThat(firstHitDealt).as("First volley should have hit").isTrue();
-    // Only first volley should have dealt damage
+    assertThat(firstHitDealt).as("First wave should have hit").isTrue();
+    // Only first wave should have dealt damage
     assertThat(target.getHealth().getCurrent())
-        .as("Target should only take first volley damage (%d) after moving out", DAMAGE_PER_VOLLEY)
+        .as("Target should only take first wave damage (%d) after moving out", DAMAGE_PER_VOLLEY)
         .isEqualTo(1000 - DAMAGE_PER_VOLLEY);
   }
 
@@ -235,10 +233,10 @@ class ArrowsTest {
 
   // -- Helper methods --
 
-  /** Spawns 3 volley projectiles mimicking the DeploymentSystem castSpell() logic for Arrows. */
+  /** Spawns 3 wave projectiles mimicking the DeploymentSystem castSpell() logic for Arrows. */
   private void spawnArrowsVolley(Team team, float targetX, float targetY) {
     float startY = (team == Team.BLUE) ? targetY - 10f : targetY + 10f;
-    for (int i = 0; i < VOLLEY_COUNT; i++) {
+    for (int i = 0; i < PROJECTILE_WAVES; i++) {
       Projectile p =
           new Projectile(
               team,
@@ -252,7 +250,7 @@ class ArrowsTest {
               Collections.emptyList(),
               CROWN_TOWER_DAMAGE_PCT);
       if (i > 0) {
-        p.setDelayFrames(i * VOLLEY_FRAME_DELAY);
+        p.setDelayFrames(i * WAVE_DELAY_FRAMES);
       }
       gameState.spawnProjectile(p);
     }
