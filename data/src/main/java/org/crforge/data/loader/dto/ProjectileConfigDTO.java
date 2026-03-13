@@ -59,6 +59,9 @@ public class ProjectileConfigDTO {
   // Crown tower damage reduction (e.g. -70 = 30% damage to towers)
   private int crownTowerDamagePercent;
 
+  // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
+  private boolean checkCollisions;
+
   // Deflect behaviours (stored for future use)
   private List<String> deflectBehaviours;
 }

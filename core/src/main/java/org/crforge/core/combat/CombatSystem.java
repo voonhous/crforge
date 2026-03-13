@@ -315,6 +315,7 @@ public class CombatSystem {
 
       // Configure as piercing so pellets travel through enemies
       pellet.configurePiercing(dirX, dirY, range, stats.isAoeToGround(), stats.isAoeToAir());
+      pellet.setCheckCollisions(stats.isCheckCollisions());
 
       gameState.spawnProjectile(pellet);
     }
@@ -1049,6 +1050,12 @@ public class CombatSystem {
       // Apply directional knockback along the projectile's travel direction
       if (projectile.getPushback() > 0) {
         applyDirectionalKnockback(projectile, entity);
+      }
+
+      // checkCollisions: projectile stops on first hit (e.g. Hunter pellets)
+      if (projectile.isCheckCollisions()) {
+        projectile.deactivate();
+        break;
       }
     }
   }

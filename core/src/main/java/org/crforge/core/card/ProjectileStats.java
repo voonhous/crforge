@@ -49,6 +49,9 @@ public class ProjectileStats {
   @Builder.Default private final float pushback = 0f;
   @Builder.Default private final boolean pushbackAll = false;
 
+  // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
+  @Builder.Default private final boolean checkCollisions = false;
+
   // Crown tower damage reduction (e.g. -70 = 30% damage to towers)
   @Builder.Default private final int crownTowerDamagePercent = 0;
 
@@ -80,6 +83,7 @@ public class ProjectileStats {
         .spawnRadius(spawnRadius)
         .pushback(pushback)
         .pushbackAll(pushbackAll)
+        .checkCollisions(checkCollisions)
         .crownTowerDamagePercent(crownTowerDamagePercent)
         .spawnAreaEffect(spawnAreaEffect)
         .build();

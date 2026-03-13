@@ -77,6 +77,9 @@ public class Projectile {
   @Setter private boolean aoeToGround;
   @Setter private boolean aoeToAir;
 
+  // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
+  @Setter private boolean checkCollisions;
+
   // Returning projectile fields: projectile reverses at max range and homes back to source
   @Getter private boolean returningEnabled;
   @Getter private Entity sourceEntity;
@@ -383,6 +386,11 @@ public class Projectile {
     // Piercing projectiles never "hit" in the traditional sense -- CombatSystem handles per-tick
     // hits
     return false;
+  }
+
+  /** Deactivates this projectile so it will be removed on the next cleanup pass. */
+  public void deactivate() {
+    this.active = false;
   }
 
   public boolean hasAoe() {

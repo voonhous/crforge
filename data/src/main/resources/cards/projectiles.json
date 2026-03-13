@@ -295,7 +295,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "scatter": "Line",
-    "projectileRange": 6.5
+    "projectileRange": 6.5,
+    "checkCollisions": true
   },
   "IceSpiritsProjectile": {
     "name": "IceSpiritsProjectile",

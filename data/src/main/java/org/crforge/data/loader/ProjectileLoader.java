@@ -102,6 +102,7 @@ public class ProjectileLoader {
             .pingpongMovingShooter(dto.getPingpongMovingShooter())
             .pushback(dto.getPushback() / 1000f)
             .pushbackAll(dto.isPushbackAll())
+            .checkCollisions(dto.isCheckCollisions())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
             .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
 

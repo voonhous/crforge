@@ -124,8 +124,8 @@ class HunterScatterTest {
   }
 
   @Test
-  void scatter_pelletsArePiercing() {
-    // Two enemies in the same line -- pellets should hit both
+  void scatter_pelletsShouldStopOnFirstHit() {
+    // Two enemies in the same line -- pellets should stop on the first enemy they hit
     Troop hunter = createHunter(Team.BLUE, 9f, 10f);
     Troop enemy1 = createTarget(Team.RED, 9f, 12f);
     Troop enemy2 = createTarget(Team.RED, 9f, 14f);
@@ -150,9 +150,10 @@ class HunterScatterTest {
       combatSystem.update(deltaTime);
     }
 
-    // Both enemies should take damage (piercing pellets pass through first enemy)
+    // Front enemy should take damage
     assertThat(enemy1.getHealth().getCurrent()).isLessThan(enemy1InitialHp);
-    assertThat(enemy2.getHealth().getCurrent()).isLessThan(enemy2InitialHp);
+    // Back enemy should take zero damage (pellets stopped on first hit)
+    assertThat(enemy2.getHealth().getCurrent()).isEqualTo(enemy2InitialHp);
   }
 
   /**
@@ -171,6 +172,7 @@ class HunterScatterTest {
             .projectileRange(6.5f)
             .aoeToGround(true)
             .aoeToAir(true)
+            .checkCollisions(true)
             .build();
 
     return Troop.builder()
