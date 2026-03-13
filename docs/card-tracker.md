@@ -89,11 +89,10 @@ the live game name.
 | 77 | Suspicious Bush   | --               | `MISSING` | newer card                                  |
 | 78 | Berserker         | --               | `MISSING` | newer card                                  |
 | 79 | Goblin Demolisher | --               | `MISSING` | newer card                                  |
-| 80 | Goblin Brawler    | --               | `MISSING` | newer card                                  |
-| 81 | Rune Giant        | --               | `MISSING` | newer card                                  |
-| 82 | Goblin Machine    | --               | `MISSING` | newer card                                  |
-| 83 | Goblinstein       | --               | `MISSING` | newer card                                  |
-| 84 | Boss Bandit       | --               | `MISSING` | newer card                                  |
+| 80 | Rune Giant        | --               | `MISSING` | newer card                                  |
+| 81 | Goblin Machine    | --               | `MISSING` | newer card                                  |
+| 82 | Goblinstein       | --               | `MISSING` | newer card                                  |
+| 83 | Boss Bandit       | --               | `MISSING` | newer card                                  |
 
 ## Spells
 
@@ -155,6 +154,7 @@ auxiliary mechanics. They are not selectable cards in a player's deck.
 | 3 | Rage Barbarian Bottle | ragebarbarianbottle | Rage drop on Lumberjack death   |
 | 4 | Skeleton Container    | skeletoncontainer   | Skeleton spawn container        |
 | 5 | Bomb Tower Bomb       | bombtowerbomb       | Death damage for Bomb Tower     |
+| 6 | Goblin Brawler        | goblinbrawler       | Death spawn for Goblin Cage     |
 
 ## Tower Troops (new mechanic -- all Missing)
 
@@ -177,9 +177,9 @@ Crown Towers. This system is not yet implemented in crforge.
 |------------|---------|------------------------------------------------|
 | `DONE`     | 82      | Fully functional in simulation                 |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics    |
-| `MISSING`  | 32      | Not in cards.json (newer cards + tower troops) |
-| Sub-entity | 5       | Internal buildings, not playable cards         |
-| **Total**  | **127** | Playable cards (excluding sub-entities)        |
+| `MISSING`  | 31      | Not in cards.json (newer cards + tower troops) |
+| Sub-entity | 6       | Internal buildings, not playable cards         |
+| **Total**  | **126** | Playable cards (excluding sub-entities)        |
 
 ### Partial cards breakdown
 
