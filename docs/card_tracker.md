@@ -124,25 +124,25 @@ the live game name.
 
 ## Buildings
 
-| #  | CR Name            | Internal ID       | Status    | Notes                         |
-|----|--------------------|-------------------|-----------|-------------------------------|
-| 1  | Cannon             | cannon            | `DONE`    |                               |
-| 2  | Goblin Hut         | goblinhut         | `MISSING` | spawner                       |
-| 3  | Mortar             | mortar            | `DONE`    | minimum range blind spot      |
-| 4  | Inferno Tower      | infernotower      | `DONE`    | variable damage               |
-| 5  | Bomb Tower         | bombtower         | `DONE`    | death bomb AOE                |
-| 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner                       |
-| 7  | Tesla              | tesla             | `MISSING` |                               |
-| 8  | Elixir Collector   | elixircollector   | `MISSING` |                               |
-| 9  | X-Bow              | xbow              | `DONE`    | siege building                |
-| 10 | Tombstone          | tombstone         | `DONE`    | spawner                       |
-| 11 | Furnace            | firespirithut     | `MISSING` | spawner                       |
-| 12 | Goblin Cage        | goblincage        | `MISSING` | death spawn (0.5s deploy)     |
-| 13 | Goblin Drill       | goblindrill       | `MISSING` | tunnel + death spawn (0.5s)   |
-| 14 | Dark Elixir Bottle | darkelixir_bottle | `MISSING` | bomb, drops DarkElixir AOE    |
-| 15 | Elixir Barrel      | elixirbarrel      | `MISSING` | 4 elixir to opponent on death |
-| 16 | Goblin Party Hut   | goblinpartyhut    | `MISSING` | newer building                |
-| 17 | Barbarian Launcher | barbarianlauncher | `MISSING` | newer building                |
+| #  | CR Name            | Internal ID       | Status    | Notes                                |
+|----|--------------------|-------------------|-----------|--------------------------------------|
+| 1  | Cannon             | cannon            | `DONE`    |                                      |
+| 2  | Goblin Hut         | goblinhut         | `MISSING` | spawner                              |
+| 3  | Mortar             | mortar            | `DONE`    | minimum range blind spot             |
+| 4  | Inferno Tower      | infernotower      | `DONE`    | variable damage                      |
+| 5  | Bomb Tower         | bombtower         | `DONE`    | death bomb AOE                       |
+| 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner                              |
+| 7  | Tesla              | tesla             | `DONE`    | hiding states                        |
+| 8  | Elixir Collector   | elixircollector   | `MISSING` |                                      |
+| 9  | X-Bow              | xbow              | `DONE`    | siege building                       |
+| 10 | Tombstone          | tombstone         | `DONE`    | spawner                              |
+| 11 | Furnace            | firespirithut     | `MISSING` | spawner                              |
+| 12 | Goblin Cage        | goblincage        | `DONE`    | death spawn (0.5s deploy)            |
+| 13 | Goblin Drill       | goblindrill       | `MISSING` | tunnel + death spawn (0.5s)          |
+| 14 | Dark Elixir Bottle | darkelixir_bottle | `MISSING` | special gamemode only, deprioritised |
+| 15 | Elixir Barrel      | elixirbarrel      | `MISSING` | special gamemode only, deprioritised |
+| 16 | Goblin Party Hut   | goblinpartyhut    | `MISSING` | special gamemode only, deprioritised |
+| 17 | Barbarian Launcher | barbarianlauncher | `MISSING` | special gamemode only, deprioritised |
 
 ## Sub-Entities (not playable cards)
 
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 90      | Fully functional in simulation              |
+| `DONE`     | 92      | Fully functional in simulation              |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics |
-| `MISSING`  | 25      | Not yet implemented or newer cards          |
+| `MISSING`  | 23      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
