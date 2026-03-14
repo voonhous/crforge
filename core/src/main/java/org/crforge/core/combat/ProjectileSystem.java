@@ -521,6 +521,11 @@ public class ProjectileSystem {
    * Spawns characters at the projectile's impact point with formation spread. Used by projectiles
    * that carry a spawnCharacter (e.g. PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns 3
    * Goblins in a triangle).
+   *
+   * <p>Uses sphere-slide placement: units spawn in a tight formation around the impact point, then
+   * any unit overlapping a building is pushed radially outward from the building center to just
+   * outside its perimeter. This naturally produces 120-degree spread for center hits, asymmetric
+   * clustering for offset hits, and unchanged tight formation in open space.
    */
   private void spawnCharacterOnImpact(Projectile projectile) {
     TroopStats stats = projectile.getSpawnCharacterStats();
@@ -545,59 +550,46 @@ public class ProjectileSystem {
       centerY = projectile.getPosition().getY();
     }
 
-    // For multi-unit spawns, check if impact overlaps a building and spread units around
-    // its perimeter. Otherwise use a tight formation radius.
-    float spawnCenterX = centerX;
-    float spawnCenterY = centerY;
-    float formationRadius;
-
-    if (count > 1) {
-      Entity building = findBuildingAtPoint(centerX, centerY);
-      if (building != null) {
-        spawnCenterX = building.getPosition().getX();
-        spawnCenterY = building.getPosition().getY();
-        formationRadius = building.getCollisionRadius() + stats.getCollisionRadius();
-      } else {
-        formationRadius = SPAWN_ON_IMPACT_FORMATION_RADIUS;
-      }
-    } else {
-      formationRadius = projectile.getAoeRadius();
-    }
+    // Always use tight formation around the impact point
+    float formationRadius =
+        (count > 1) ? SPAWN_ON_IMPACT_FORMATION_RADIUS : projectile.getAoeRadius();
 
     for (int i = 0; i < count; i++) {
       Vector2 offset =
           FormationLayout.calculateOffset(i, count, formationRadius, stats.getCollisionRadius());
-      unitSpawner.spawnUnit(
-          spawnCenterX + offset.getX(),
-          spawnCenterY + offset.getY(),
-          projectile.getTeam(),
-          stats,
-          rarity,
-          level,
-          deployTime);
-    }
-  }
+      float spawnX = centerX + offset.getX();
+      float spawnY = centerY + offset.getY();
 
-  /**
-   * Finds a building whose collision circle contains the given point. Returns the closest building
-   * if multiple overlap, or null if none.
-   */
-  private Entity findBuildingAtPoint(float x, float y) {
-    Entity closest = null;
-    float closestDist = Float.MAX_VALUE;
-    for (Entity entity : gameState.getAliveEntities()) {
-      if (entity.getMovementType() != MovementType.BUILDING) {
-        continue;
+      // Sphere-slide: if spawn position overlaps a building, push radially outward
+      // to just outside the building perimeter (like sliding off a sphere)
+      for (Entity entity : gameState.getAliveEntities()) {
+        if (entity.getMovementType() != MovementType.BUILDING) {
+          continue;
+        }
+        float dx = spawnX - entity.getPosition().getX();
+        float dy = spawnY - entity.getPosition().getY();
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        float minDist = entity.getCollisionRadius() + stats.getCollisionRadius();
+        if (dist < minDist) {
+          // Push outward from building center
+          if (dist > 0.001f) {
+            spawnX = entity.getPosition().getX() + (dx / dist) * minDist;
+            spawnY = entity.getPosition().getY() + (dy / dist) * minDist;
+          } else {
+            // Exactly on center -- use the formation offset direction
+            float offLen =
+                (float) Math.sqrt(offset.getX() * offset.getX() + offset.getY() * offset.getY());
+            if (offLen > 0.001f) {
+              spawnX = entity.getPosition().getX() + (offset.getX() / offLen) * minDist;
+              spawnY = entity.getPosition().getY() + (offset.getY() / offLen) * minDist;
+            }
+          }
+          break; // only slide off one building
+        }
       }
-      float dx = entity.getPosition().getX() - x;
-      float dy = entity.getPosition().getY() - y;
-      float dist = (float) Math.sqrt(dx * dx + dy * dy);
-      if (dist <= entity.getCollisionRadius() && dist < closestDist) {
-        closest = entity;
-        closestDist = dist;
-      }
+
+      unitSpawner.spawnUnit(spawnX, spawnY, projectile.getTeam(), stats, rarity, level, deployTime);
     }
-    return closest;
   }
 
   /**

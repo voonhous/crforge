@@ -277,6 +277,42 @@ class GoblinBarrelTest {
   }
 
   @Test
+  void goblinBarrel_goblinsClusterOnOffsetSide() {
+    // Deploy barrel 1 tile to the right of the red right princess tower (14.5, 25.5)
+    float towerX = 14.5f;
+    float towerY = 25.5f;
+    float barrelX = towerX + 1.0f; // offset to the right
+    PlayerActionDTO action = PlayerActionDTO.play(0, barrelX, towerY);
+    engine.queueAction(bluePlayer, action);
+
+    // Run enough for impact but goblins still deploying so they haven't moved
+    engine.runSeconds(3f);
+
+    List<Troop> goblins =
+        engine.getGameState().getEntitiesOfType(Troop.class).stream()
+            .filter(t -> t.getName().equals("Goblin") && t.getTeam() == Team.BLUE)
+            .toList();
+
+    assertThat(goblins).hasSize(3);
+
+    // All goblins should still be deploying (haven't moved from spawn positions)
+    assertThat(goblins.stream().allMatch(Troop::isDeploying))
+        .as("Goblins should still be deploying so positions reflect spawn locations")
+        .isTrue();
+
+    // With sphere-slide, goblins that overlap the tower get pushed outward from the tower
+    // center. Since the barrel hit to the right, all goblins should end up on the right
+    // side of the tower (X > tower center X).
+    for (Troop goblin : goblins) {
+      assertThat(goblin.getPosition().getX())
+          .as(
+              "Goblin at (%.2f, %.2f) should be to the right of tower center (%.2f)",
+              goblin.getPosition().getX(), goblin.getPosition().getY(), towerX)
+          .isGreaterThan(towerX);
+    }
+  }
+
+  @Test
   void goblinBarrel_levelScalingApplied() {
     // Create a level 11 player to check scaling
     Card goblinBarrel = CardRegistry.get("goblinbarrel");
