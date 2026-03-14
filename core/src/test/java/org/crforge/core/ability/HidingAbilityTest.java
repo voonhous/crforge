@@ -38,6 +38,9 @@ class HidingAbilityTest {
   // Total ticks to go from HIDDEN -> UP: 1 tick for transition + COUNTDOWN_TICKS for reveal timer
   private static final int HIDDEN_TO_UP_TICKS = 1 + COUNTDOWN_TICKS;
 
+  // Total ticks to go from UP -> HIDDEN with no target: upTime accumulation + hideTime countdown
+  private static final int UP_TO_HIDDEN_TICKS = ACCUMULATE_TICKS + COUNTDOWN_TICKS;
+
   private static BuildingTemplate teslaTemplate(Team team) {
     return BuildingTemplate.defense("Tesla", team)
         .hp(800)
@@ -58,10 +61,10 @@ class HidingAbilityTest {
     return teslaTemplate(team).lifetime(0f);
   }
 
-  // -- Test 1: Tesla deploys hidden --
+  // -- Test 1: Tesla deploys visible, then hides with no enemies --
 
   @Test
-  void tesla_shouldStartHiddenAfterDeploy() {
+  void tesla_shouldStartVisibleThenHideWithNoEnemies() {
     SimHarness sim =
         SimHarness.create()
             .withSystems(SimSystems.TARGETING, SimSystems.ABILITY)
@@ -71,9 +74,20 @@ class HidingAbilityTest {
 
     Building tesla = sim.building("Tesla");
 
+    // Tesla should start in UP state (visible) after deploy
+    assertThat(tesla.getAbility().getHidingState()).isEqualTo(AbilityComponent.HidingState.UP);
+    assertThat(tesla.isHidden()).isFalse();
+    assertThat(tesla.isTargetable()).isTrue();
+
+    // After upTime (no enemies), should transition to HIDING
+    sim.tick(ACCUMULATE_TICKS);
+    assertThat(tesla.getAbility().getHidingState()).isEqualTo(AbilityComponent.HidingState.HIDING);
+
+    // After hideTime countdown, should be fully HIDDEN
+    sim.tick(COUNTDOWN_TICKS);
+    assertThat(tesla.getAbility().getHidingState()).isEqualTo(AbilityComponent.HidingState.HIDDEN);
     assertThat(tesla.isHidden()).isTrue();
     assertThat(tesla.isTargetable()).isFalse();
-    assertThat(tesla.getAbility().getHidingState()).isEqualTo(AbilityComponent.HidingState.HIDDEN);
   }
 
   // -- Test 2: Tesla reveals when enemy enters sight range --
@@ -84,13 +98,22 @@ class HidingAbilityTest {
         SimHarness.create()
             .withSystems(SimSystems.TARGETING, SimSystems.ABILITY)
             .spawn(teslaTemplate(Team.BLUE).at(9, 10))
-            .spawn(TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000))
             .deployed()
             .build();
 
     Building tesla = sim.building("Tesla");
 
-    // Enemy is within sight range (distance = 4, sightRange = 5.5)
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
+    assertThat(tesla.isHidden()).isTrue();
+
+    // Spawn enemy within sight range (distance = 4, sightRange = 5.5)
+    sim.gameState()
+        .spawnEntity(
+            TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000).deployTime(0f).build());
+    sim.gameState().processPending();
+    sim.troop("Enemy").update(2.0f);
+
     // After first tick: TargetingSystem assigns target, AbilitySystem sees target -> REVEALING
     sim.tick();
 
@@ -134,11 +157,22 @@ class HidingAbilityTest {
         SimHarness.create()
             .withAllSystems()
             .spawn(teslaTemplate(Team.BLUE).at(9, 10))
-            .spawn(TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000))
             .deployed()
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
+    assertThat(tesla.isHidden()).isTrue();
+
+    // Spawn enemy within sight range
+    sim.gameState()
+        .spawnEntity(
+            TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000).deployTime(0f).build());
+    sim.gameState().processPending();
+    sim.troop("Enemy").update(2.0f);
+
     int initialEnemyHp = sim.troop("Enemy").getHealth().getCurrent();
 
     // First tick: HIDDEN -> REVEALING
@@ -236,6 +270,9 @@ class HidingAbilityTest {
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
     int initialHp = tesla.getHealth().getCurrent();
     assertThat(tesla.isHidden()).isTrue();
 
@@ -287,6 +324,9 @@ class HidingAbilityTest {
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
     assertThat(tesla.isHidden()).isTrue();
 
     // Spawn a Freeze area effect centered on the Tesla
@@ -334,6 +374,9 @@ class HidingAbilityTest {
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
     int initialHp = tesla.getHealth().getCurrent();
     assertThat(tesla.isHidden()).isTrue();
 
@@ -384,6 +427,9 @@ class HidingAbilityTest {
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
     assertThat(tesla.isHidden()).isTrue();
 
     // Apply Freeze to force reveal
@@ -432,6 +478,9 @@ class HidingAbilityTest {
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
     assertThat(tesla.isHidden()).isTrue();
     int initialHp = tesla.getHealth().getCurrent();
 
@@ -453,24 +502,34 @@ class HidingAbilityTest {
         SimHarness.create()
             .withSystems(SimSystems.TARGETING, SimSystems.ABILITY)
             .spawn(teslaTemplate(Team.BLUE).at(9, 14))
-            .spawn(
-                TroopTemplate.melee("Ram", Team.RED)
-                    .at(9, 18)
-                    .hp(1000)
-                    .damage(100)
-                    .sightRange(15.0f)
-                    .targetOnlyBuildings(true)
-                    .speed(0f))
             .deployed()
             .build();
 
-    // Also add a far tower that the Ram can initially target
+    Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
+    assertThat(tesla.isHidden()).isTrue();
+
+    // Now spawn the Ram and far tower after Tesla is hidden
+    sim.gameState()
+        .spawnEntity(
+            TroopTemplate.melee("Ram", Team.RED)
+                .at(9, 18)
+                .hp(1000)
+                .damage(100)
+                .sightRange(15.0f)
+                .targetOnlyBuildings(true)
+                .speed(0f)
+                .deployTime(0f)
+                .build());
+    sim.gameState().processPending();
+    sim.troop("Ram").update(2.0f);
+
     Tower farTower = Tower.createPrincessTower(Team.BLUE, 9, 3, 1);
     farTower.onSpawn();
     sim.gameState().spawnEntity(farTower);
     sim.gameState().processPending();
-
-    Building tesla = sim.building("Tesla");
 
     // Tesla is hidden, so the Ram should target the far tower
     sim.tick();
@@ -505,6 +564,9 @@ class HidingAbilityTest {
             .build();
 
     Building tesla = sim.building("Tesla");
+
+    // Let Tesla hide first (no enemies present)
+    sim.tick(UP_TO_HIDDEN_TICKS);
     assertThat(tesla.isHidden()).isTrue();
 
     // Get Tesla to UP state by spawning an enemy

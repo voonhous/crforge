@@ -75,10 +75,6 @@ public class AbilityComponent {
       this.stealthFadeTimer = stealth.fadeTime();
       this.stealthRevealTimer = 0f;
     }
-    // Tesla deploys hidden
-    if (data instanceof HidingAbility) {
-      this.hidingState = HidingState.HIDDEN;
-    }
   }
 
   /** Resets all ability state (called on target loss, stun, etc.) */
