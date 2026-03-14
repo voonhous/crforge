@@ -96,31 +96,31 @@ the live game name.
 
 ## Spells
 
-| #  | CR Name          | Internal ID   | Status    | Notes                          |
-|----|------------------|---------------|-----------|--------------------------------|
-| 1  | Fireball         | fireball      | `DONE`    | projectile spell               |
-| 2  | Arrows           | arrows        | `DONE`    | 3-volley projectile spell      |
-| 3  | Rage             | rage          | `DONE`    | summons RageBarbarianBottle    |
-| 4  | Rocket           | rocket        | `DONE`    | projectile spell               |
-| 5  | Goblin Barrel    | goblinbarrel  | `DONE`    | projectile spawn-on-impact     |
-| 6  | Freeze           | freeze        | `DONE`    | area effect                    |
-| 7  | Mirror           | mirror        | `PARTIAL` | needs meta replay logic        |
-| 8  | Lightning        | lightning     | `DONE`    | area effect, hitBiggestTargets |
-| 9  | Zap              | zap           | `DONE`    | area effect                    |
-| 10 | Poison           | poison        | `DONE`    | area effect, ticking           |
-| 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic       |
-| 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling |
-| 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff   |
-| 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic           |
-| 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking           |
+| #  | CR Name          | Internal ID   | Status    | Notes                                            |
+|----|------------------|---------------|-----------|--------------------------------------------------|
+| 1  | Fireball         | fireball      | `DONE`    | projectile spell                                 |
+| 2  | Arrows           | arrows        | `DONE`    | 3-volley projectile spell                        |
+| 3  | Rage             | rage          | `DONE`    | summons RageBarbarianBottle                      |
+| 4  | Rocket           | rocket        | `DONE`    | projectile spell                                 |
+| 5  | Goblin Barrel    | goblinbarrel  | `DONE`    | projectile spawn-on-impact                       |
+| 6  | Freeze           | freeze        | `DONE`    | area effect                                      |
+| 7  | Mirror           | mirror        | `DONE`    | replays last card at +1 level/cost               |
+| 8  | Lightning        | lightning     | `DONE`    | area effect, hitBiggestTargets                   |
+| 9  | Zap              | zap           | `DONE`    | area effect                                      |
+| 10 | Poison           | poison        | `DONE`    | area effect, ticking                             |
+| 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic                         |
+| 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling                   |
+| 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff                     |
+| 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic                             |
+| 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking                             |
 | 16 | Barbarian Barrel | barblog       | `DONE`    | spellAsDeploy, 2-stage rolling + Barbarian spawn |
-| 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit             |
-| 18 | Snowball         | snowball      | `DONE`    | projectile spell               |
-| 19 | Royal Delivery   | royaldelivery | `MISSING` | area effect + troop spawn      |
-| 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics          |
-| 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics          |
-| 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics          |
-| 23 | Vines            | vines         | `PARTIAL` | stub, needs mechanics          |
+| 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit                               |
+| 18 | Snowball         | snowball      | `DONE`    | projectile spell                                 |
+| 19 | Royal Delivery   | royaldelivery | `MISSING` | area effect + troop spawn                        |
+| 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics                            |
+| 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics                            |
+| 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics                            |
+| 23 | Vines            | vines         | `PARTIAL` | stub, needs mechanics                            |
 
 ## Buildings
 
@@ -178,8 +178,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 93      | Fully functional in simulation              |
-| `PARTIAL`  | 13      | In cards.json but missing complex mechanics |
+| `DONE`     | 94      | Fully functional in simulation              |
+| `PARTIAL`  | 12      | In cards.json but missing complex mechanics |
 | `MISSING`  | 22      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
@@ -191,7 +191,6 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 | Category       | Cards                                                                         | What's needed                            |
 |----------------|-------------------------------------------------------------------------------|------------------------------------------|
 | Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
-| Meta spells    | Mirror                                                                        | Replay last card at +1 level             |
 | Complex spells | Clone, Graveyard                                                              | Clone duplication, random spawn pattern  |
 | Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                       |
 

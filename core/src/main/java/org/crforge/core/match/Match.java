@@ -126,6 +126,15 @@ public abstract class Match {
       return false;
     }
 
+    // Resolve Mirror to the card it will copy for validation purposes
+    if (card.isMirror()) {
+      Card lastPlayed = player.getLastPlayedCard();
+      if (lastPlayed == null || lastPlayed.isMirror()) {
+        return false;
+      }
+      card = lastPlayed; // Validate placement against the mirrored card's rules
+    }
+
     // Spells: spellAsDeploy spells (e.g. The Log) can only be deployed on the player's own side,
     // while other spells can be placed anywhere in the arena
     if (card.getType() == CardType.SPELL) {

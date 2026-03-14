@@ -90,6 +90,13 @@ public class Card {
   /** Spell deploys at placement location instead of traveling from behind (e.g. Log). */
   @Builder.Default private final boolean spellAsDeploy = false;
 
+  /** Whether this card is the Mirror spell (replays last card at +1 level/cost). */
+  @Builder.Default private final boolean mirror = false;
+
+  public boolean isMirror() {
+    return mirror;
+  }
+
   public int getTotalDeployCount() {
     return unitCount + secondaryUnitCount;
   }

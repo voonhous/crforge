@@ -33,6 +33,20 @@ public class Hand {
     // Initialize cycle with shuffled deck
     List<Card> deckCards = new ArrayList<>(deck.getCards());
     Collections.shuffle(deckCards, random);
+
+    // Mirror cannot appear in starting hand (first 5 cards: 4 hand + 1 next).
+    // Swap any Mirror in the first 5 positions with the first non-mirror card after position 4.
+    for (int i = 0; i < Math.min(HAND_SIZE + 1, deckCards.size()); i++) {
+      if (deckCards.get(i).isMirror()) {
+        for (int j = HAND_SIZE + 1; j < deckCards.size(); j++) {
+          if (!deckCards.get(j).isMirror()) {
+            Collections.swap(deckCards, i, j);
+            break;
+          }
+        }
+      }
+    }
+
     this.cycle = new LinkedList<>(deckCards);
 
     // Deal initial hand

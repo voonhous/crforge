@@ -166,7 +166,14 @@ public class DeploymentSystem {
     Card card = player.tryPlayCard(action);
 
     if (card != null) {
-      int cardLevel = player.getLevelConfig().getLevelFor(card);
+      // Mirror sets pendingMirrorLevel to override the card's normal level
+      int cardLevel;
+      if (player.getPendingMirrorLevel() > 0) {
+        cardLevel = player.getPendingMirrorLevel();
+        player.clearPendingMirrorLevel();
+      } else {
+        cardLevel = player.getLevelConfig().getLevelFor(card);
+      }
       // 2. Queue for spawn after sync delay
       pendingDeployments.add(
           new PendingDeployment(

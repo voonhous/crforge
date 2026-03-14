@@ -1152,7 +1152,8 @@
     "name": "Mirror",
     "type": "SPELL",
     "rarity": "Epic",
-    "cost": 1
+    "cost": 1,
+    "mirror": true
   },
   {
     "id": "lightning",

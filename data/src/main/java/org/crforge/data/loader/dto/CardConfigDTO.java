@@ -67,4 +67,7 @@ public class CardConfigDTO {
 
   // Spell deploys at placement location instead of traveling from behind (e.g. Log)
   private boolean spellAsDeploy;
+
+  // Whether this card is the Mirror spell (replays last card at +1 level/cost)
+  private boolean mirror;
 }

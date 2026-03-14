@@ -178,6 +178,9 @@ public class CardLoader {
     // Spell deploys at placement location (e.g. Log)
     builder.spellAsDeploy(dto.isSpellAsDeploy());
 
+    // Mirror spell flag
+    builder.mirror(dto.isMirror());
+
     // Spell wave configuration (e.g. Arrows)
     builder.spellRadius(dto.getRadius());
     builder.multipleProjectiles(dto.getMultipleProjectiles());
