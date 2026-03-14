@@ -171,6 +171,112 @@ class GoblinBarrelTest {
   }
 
   @Test
+  void goblinBarrel_goblinsSpawnWithTightFormation() {
+    // Deploy barrel in open space far from any buildings
+    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 16f);
+    engine.queueAction(bluePlayer, action);
+
+    // Run just enough for impact (~2.5s) but goblins still deploying (1.1s deploy time),
+    // so they haven't moved from their spawn positions yet
+    engine.runSeconds(3f);
+
+    List<Troop> goblins =
+        engine.getGameState().getEntitiesOfType(Troop.class).stream()
+            .filter(t -> t.getName().equals("Goblin") && t.getTeam() == Team.BLUE)
+            .toList();
+
+    assertThat(goblins).hasSize(3);
+
+    // All goblins should be deploying (haven't moved yet)
+    assertThat(goblins.stream().allMatch(Troop::isDeploying))
+        .as("Goblins should still be deploying so positions reflect spawn locations")
+        .isTrue();
+
+    // All goblins should spawn within ~0.6 tiles of the impact center (tight formation),
+    // not the old 1.5 tile aoeRadius spread
+    float targetX = 9f;
+    float targetY = 16f;
+    for (Troop goblin : goblins) {
+      float dx = goblin.getPosition().getX() - targetX;
+      float dy = goblin.getPosition().getY() - targetY;
+      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+      assertThat(dist)
+          .as(
+              "Goblin at (%.2f, %.2f) should be within tight formation radius of impact point",
+              goblin.getPosition().getX(), goblin.getPosition().getY())
+          .isLessThan(1.0f);
+    }
+  }
+
+  @Test
+  void goblinBarrel_goblinsSpread120DegreesAroundTower() {
+    // Deploy barrel directly on red right princess tower (14.5, 25.5)
+    float towerX = 14.5f;
+    float towerY = 25.5f;
+    PlayerActionDTO action = PlayerActionDTO.play(0, towerX, towerY);
+    engine.queueAction(bluePlayer, action);
+
+    // Run enough for impact but goblins still deploying so they haven't moved
+    engine.runSeconds(3f);
+
+    List<Troop> goblins =
+        engine.getGameState().getEntitiesOfType(Troop.class).stream()
+            .filter(t -> t.getName().equals("Goblin") && t.getTeam() == Team.BLUE)
+            .toList();
+
+    assertThat(goblins).hasSize(3);
+
+    // All goblins should still be deploying (haven't moved from spawn positions)
+    assertThat(goblins.stream().allMatch(Troop::isDeploying))
+        .as("Goblins should still be deploying so positions reflect spawn locations")
+        .isTrue();
+
+    // All 3 goblins should be at roughly the same distance from the tower center
+    float[] distances = new float[3];
+    float[] angles = new float[3];
+    for (int i = 0; i < 3; i++) {
+      float dx = goblins.get(i).getPosition().getX() - towerX;
+      float dy = goblins.get(i).getPosition().getY() - towerY;
+      distances[i] = (float) Math.sqrt(dx * dx + dy * dy);
+      angles[i] = (float) Math.toDegrees(Math.atan2(dy, dx));
+    }
+
+    // Formation radius should be tower collision (1.0) + goblin collision (0.5) = 1.5
+    float expectedRadius = 1.5f;
+    for (int i = 0; i < 3; i++) {
+      assertThat(distances[i])
+          .as("Goblin %d distance from tower center", i)
+          .isCloseTo(expectedRadius, org.assertj.core.data.Offset.offset(0.1f));
+    }
+
+    // Sort angles to check angular separation
+    java.util.Arrays.sort(angles);
+    float[] gaps = new float[3];
+    for (int i = 0; i < 3; i++) {
+      float gap = angles[(i + 1) % 3] - angles[i];
+      if (gap < 0) gap += 360f;
+      gaps[i] = gap;
+    }
+    java.util.Arrays.sort(gaps);
+
+    // Each angular gap should be ~120 degrees (within 5 degree tolerance)
+    for (float gap : gaps) {
+      assertThat(gap)
+          .as("Angular gap between goblins should be ~120 degrees")
+          .isCloseTo(120f, org.assertj.core.data.Offset.offset(5f));
+    }
+
+    // First goblin (index 0) should be near 90 degrees (+Y direction)
+    // FormationLayout with odd count starts at pi/2 (90 degrees)
+    float firstGoblinDx = goblins.get(0).getPosition().getX() - towerX;
+    float firstGoblinDy = goblins.get(0).getPosition().getY() - towerY;
+    float firstAngle = (float) Math.toDegrees(Math.atan2(firstGoblinDy, firstGoblinDx));
+    assertThat(firstAngle)
+        .as("First goblin should be near 90 degrees (+Y from tower center)")
+        .isCloseTo(90f, org.assertj.core.data.Offset.offset(5f));
+  }
+
+  @Test
   void goblinBarrel_levelScalingApplied() {
     // Create a level 11 player to check scaling
     Card goblinBarrel = CardRegistry.get("goblinbarrel");

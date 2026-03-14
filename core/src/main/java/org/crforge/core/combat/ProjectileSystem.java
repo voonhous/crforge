@@ -35,6 +35,10 @@ public class ProjectileSystem {
   // Speed calculation base: distance / 1.0s (reference JS uses 30 frames for speed calc)
   static final float KNOCKBACK_MAX_TIME = 1.0f;
 
+  // Tight formation radius for multi-unit spawn-on-impact (matches 3-Minion deploy pattern).
+  // Physics collision pushes units out of overlapping buildings, creating the correct spread.
+  private static final float SPAWN_ON_IMPACT_FORMATION_RADIUS = 0.577f;
+
   private final GameState gameState;
   private final AoeDamageService aoeDamageService;
 
@@ -541,19 +545,59 @@ public class ProjectileSystem {
       centerY = projectile.getPosition().getY();
     }
 
-    float formationRadius = projectile.getAoeRadius();
+    // For multi-unit spawns, check if impact overlaps a building and spread units around
+    // its perimeter. Otherwise use a tight formation radius.
+    float spawnCenterX = centerX;
+    float spawnCenterY = centerY;
+    float formationRadius;
+
+    if (count > 1) {
+      Entity building = findBuildingAtPoint(centerX, centerY);
+      if (building != null) {
+        spawnCenterX = building.getPosition().getX();
+        spawnCenterY = building.getPosition().getY();
+        formationRadius = building.getCollisionRadius() + stats.getCollisionRadius();
+      } else {
+        formationRadius = SPAWN_ON_IMPACT_FORMATION_RADIUS;
+      }
+    } else {
+      formationRadius = projectile.getAoeRadius();
+    }
+
     for (int i = 0; i < count; i++) {
       Vector2 offset =
           FormationLayout.calculateOffset(i, count, formationRadius, stats.getCollisionRadius());
       unitSpawner.spawnUnit(
-          centerX + offset.getX(),
-          centerY + offset.getY(),
+          spawnCenterX + offset.getX(),
+          spawnCenterY + offset.getY(),
           projectile.getTeam(),
           stats,
           rarity,
           level,
           deployTime);
     }
+  }
+
+  /**
+   * Finds a building whose collision circle contains the given point. Returns the closest building
+   * if multiple overlap, or null if none.
+   */
+  private Entity findBuildingAtPoint(float x, float y) {
+    Entity closest = null;
+    float closestDist = Float.MAX_VALUE;
+    for (Entity entity : gameState.getAliveEntities()) {
+      if (entity.getMovementType() != MovementType.BUILDING) {
+        continue;
+      }
+      float dx = entity.getPosition().getX() - x;
+      float dy = entity.getPosition().getY() - y;
+      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+      if (dist <= entity.getCollisionRadius() && dist < closestDist) {
+        closest = entity;
+        closestDist = dist;
+      }
+    }
+    return closest;
   }
 
   /**
