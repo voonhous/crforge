@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.arena.Arena;
@@ -21,8 +22,12 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.physics.PhysicsSystem;
+import org.crforge.core.player.Deck;
+import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
+import org.crforge.core.player.dto.PlayerActionDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -326,7 +331,51 @@ class LogSpellTest {
     assertThat(attacker.getCombat().getCurrentWindup()).isEqualTo(0);
   }
 
+  @Test
+  void spellAsDeploy_deployOnAlliedSide_shouldBeAccepted() {
+    Standard1v1Match match = new Standard1v1Match();
+    Player bluePlayer = createPlayerWithLogInHand();
+    match.addPlayer(bluePlayer);
+
+    // Blue zone placement (y=10 is well within blue's own side)
+    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
+    assertThat(match.validateAction(bluePlayer, action)).isTrue();
+  }
+
+  @Test
+  void spellAsDeploy_deployOnEnemySide_shouldBeRejected() {
+    Standard1v1Match match = new Standard1v1Match();
+    Player bluePlayer = createPlayerWithLogInHand();
+    match.addPlayer(bluePlayer);
+
+    // Red zone placement (y=25 is enemy territory for blue)
+    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    assertThat(match.validateAction(bluePlayer, action)).isFalse();
+  }
+
+  @Test
+  void spellAsDeploy_deployOnBridge_shouldBeRejected() {
+    Standard1v1Match match = new Standard1v1Match();
+    Player bluePlayer = createPlayerWithLogInHand();
+    match.addPlayer(bluePlayer);
+
+    // Bridge location
+    PlayerActionDTO action =
+        PlayerActionDTO.play(0, Arena.LEFT_BRIDGE_X + 1.0f, Arena.RIVER_Y - 0.5f);
+    assertThat(match.validateAction(bluePlayer, action)).isFalse();
+  }
+
   // -- Helper methods --
+
+  /** Creates a player with The Log as the first card in hand. */
+  private Player createPlayerWithLogInHand() {
+    List<Card> cards = new ArrayList<>();
+    cards.add(createLogCard());
+    for (int i = 1; i < 8; i++) {
+      cards.add(Card.builder().name("Filler" + i).type(CardType.TROOP).cost(3).build());
+    }
+    return new Player(Team.BLUE, new Deck(cards), false);
+  }
 
   /** Creates a Card matching The Log spell configuration. */
   private Card createLogCard() {

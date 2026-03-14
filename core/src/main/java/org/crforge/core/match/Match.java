@@ -126,8 +126,12 @@ public abstract class Match {
       return false;
     }
 
-    // Spells can be placed anywhere in the arena
+    // Spells: spellAsDeploy spells (e.g. The Log) can only be deployed on the player's own side,
+    // while other spells can be placed anywhere in the arena
     if (card.getType() == CardType.SPELL) {
+      if (card.isSpellAsDeploy()) {
+        return arena.isValidPlacement(action.getX(), action.getY(), player.getTeam());
+      }
       return true;
     }
 
