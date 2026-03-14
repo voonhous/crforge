@@ -57,6 +57,11 @@ public class AbilityComponent {
   private float stealthRevealTimer = 0f;
   private boolean invisible = false;
 
+  // HIDING state (Tesla)
+  private HidingState hidingState = HidingState.UP;
+  private float hidingTimer = 0f;
+  private float upTimer = 0f;
+
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
@@ -69,6 +74,10 @@ public class AbilityComponent {
       this.invisible = true;
       this.stealthFadeTimer = stealth.fadeTime();
       this.stealthRevealTimer = 0f;
+    }
+    // Tesla deploys hidden
+    if (data instanceof HidingAbility) {
+      this.hidingState = HidingState.HIDDEN;
     }
   }
 
@@ -133,5 +142,16 @@ public class AbilityComponent {
 
   public boolean isTunneling() {
     return tunnelState == TunnelState.TUNNELING;
+  }
+
+  public enum HidingState {
+    HIDDEN,
+    REVEALING,
+    UP,
+    HIDING
+  }
+
+  public boolean isHidingUnderground() {
+    return hidingState == HidingState.HIDDEN;
   }
 }

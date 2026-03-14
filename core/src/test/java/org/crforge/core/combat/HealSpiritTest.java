@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
@@ -19,6 +20,7 @@ import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +34,7 @@ class HealSpiritTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private AreaEffectSystem areaEffectSystem;
+  private Map<String, BuffDefinition> savedBuffs;
 
   private static final int HEAL_SPIRIT_DAMAGE = 43;
   private static final float PROJECTILE_SPEED = 400f / 60f; // ~6.67 t/s
@@ -50,6 +53,7 @@ class HealSpiritTest {
     areaEffectSystem = new AreaEffectSystem(gameState);
 
     // Register HealSpiritBuff so AreaEffectSystem can resolve healing
+    savedBuffs = BuffRegistry.snapshot();
     BuffRegistry.clear();
     BuffRegistry.register(
         "HealSpiritBuff",
@@ -59,6 +63,11 @@ class HealSpiritTest {
             .hitFrequency(0.25f)
             .enableStacking(true)
             .build());
+  }
+
+  @AfterEach
+  void tearDown() {
+    BuffRegistry.restore(savedBuffs);
   }
 
   @Test

@@ -32,4 +32,15 @@ public class BuffRegistry {
   public static void clear() {
     BUFFS.clear();
   }
+
+  /** Returns a snapshot of the current registry state for save/restore in tests. */
+  public static Map<String, BuffDefinition> snapshot() {
+    return new LinkedHashMap<>(BUFFS);
+  }
+
+  /** Restores registry state from a previous snapshot. */
+  public static void restore(Map<String, BuffDefinition> snapshot) {
+    BUFFS.clear();
+    BUFFS.putAll(snapshot);
+  }
 }

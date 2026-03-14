@@ -12,6 +12,7 @@ public sealed interface AbilityData
         HookAbility,
         ReflectAbility,
         TunnelAbility,
-        StealthAbility {
+        StealthAbility,
+        HidingAbility {
   AbilityType type();
 }

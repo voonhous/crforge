@@ -7,5 +7,6 @@ public enum AbilityType {
   HOOK,
   REFLECT,
   TUNNEL,
-  STEALTH
+  STEALTH,
+  HIDING
 }

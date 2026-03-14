@@ -6,7 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
 
@@ -38,6 +40,34 @@ public class Building extends AbstractEntity {
   // Used for testing
   public boolean isDeploying() {
     return deployTimer > 0;
+  }
+
+  /** Returns true if this building is hidden underground (Tesla hiding mechanic). */
+  public boolean isHidden() {
+    return ability != null
+        && ability.getData() instanceof HidingAbility
+        && ability.isHidingUnderground();
+  }
+
+  /**
+   * Forces this building to reveal from hiding immediately. Used by Freeze to bypass the normal
+   * hiding state machine.
+   */
+  public void forceReveal() {
+    if (ability == null || !(ability.getData() instanceof HidingAbility)) {
+      return;
+    }
+    ability.setHidingState(AbilityComponent.HidingState.UP);
+    ability.setHidingTimer(0f);
+    ability.setUpTimer(0f);
+    if (combat != null) {
+      combat.clearModifiers(ModifierSource.ABILITY_HIDING);
+    }
+  }
+
+  @Override
+  public boolean isTargetable() {
+    return super.isTargetable() && !isHidden();
   }
 
   public boolean hasLifetime() {

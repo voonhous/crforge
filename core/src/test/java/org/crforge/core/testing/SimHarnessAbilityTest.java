@@ -2,6 +2,7 @@ package org.crforge.core.testing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
@@ -14,6 +15,7 @@ import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,9 +25,12 @@ import org.junit.jupiter.api.Test;
  */
 class SimHarnessAbilityTest {
 
+  private Map<String, BuffDefinition> savedBuffs;
+
   @BeforeEach
   void setUp() {
     // Register a test Rage buff (140 -> 1.4x speed/hit speed)
+    savedBuffs = BuffRegistry.snapshot();
     BuffRegistry.clear();
     BuffRegistry.register(
         "TestRage",
@@ -34,6 +39,11 @@ class SimHarnessAbilityTest {
             .speedMultiplier(140)
             .hitSpeedMultiplier(140)
             .build());
+  }
+
+  @AfterEach
+  void tearDown() {
+    BuffRegistry.restore(savedBuffs);
   }
 
   private static AbilityData hookData() {

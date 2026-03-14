@@ -10,4 +10,6 @@ public class StealthConfigDTO {
   private int hideTimeMs;
   private int notAttackingTimeMs;
   private String buff;
+  private boolean hidesWhenNotAttacking;
+  private int upTimeMs;
 }

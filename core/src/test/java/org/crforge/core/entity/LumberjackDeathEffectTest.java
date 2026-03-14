@@ -3,6 +3,7 @@ package org.crforge.core.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
@@ -25,6 +26,7 @@ import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +41,7 @@ class LumberjackDeathEffectTest {
   private CombatSystem combatSystem;
   private SpawnerSystem spawnerSystem;
   private AreaEffectSystem areaEffectSystem;
+  private Map<String, BuffDefinition> savedBuffs;
 
   // Rage area effect stats matching units.json RageBarbarianBottle data
   private AreaEffectStats rageAreaEffect;
@@ -55,6 +58,7 @@ class LumberjackDeathEffectTest {
     areaEffectSystem = new AreaEffectSystem(gameState);
 
     // Register the Rage buff (matches buffs.json)
+    savedBuffs = BuffRegistry.snapshot();
     BuffRegistry.clear();
     BuffRegistry.register(
         "Rage",
@@ -76,6 +80,11 @@ class LumberjackDeathEffectTest {
             .buff("Rage")
             .buffDuration(1.0f)
             .build();
+  }
+
+  @AfterEach
+  void tearDown() {
+    BuffRegistry.restore(savedBuffs);
   }
 
   @Test

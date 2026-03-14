@@ -18,6 +18,7 @@ import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilityType;
 import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.DashAbility;
+import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.ability.HookAbility;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.StealthAbility;
@@ -309,12 +310,20 @@ public class UnitLoader {
       builder.ability(new TunnelAbility(dto.getSpawnPathfindSpeed() / SPEED_BASE));
     }
 
-    // Stealth ability (Royal Ghost): invisible after not attacking for a period
-    if (dto.getStealth() != null && dto.getStealth().getNotAttackingTimeMs() > 0) {
-      builder.ability(
-          new StealthAbility(
-              dto.getStealth().getNotAttackingTimeMs() / 1000f,
-              dto.getStealth().getHideTimeMs() / 1000f));
+    // Stealth / Hiding abilities from stealth config
+    if (dto.getStealth() != null) {
+      if (dto.getStealth().isHidesWhenNotAttacking()) {
+        // Tesla hiding: goes underground when no enemies nearby
+        builder.ability(
+            new HidingAbility(
+                dto.getStealth().getHideTimeMs() / 1000f, dto.getStealth().getUpTimeMs() / 1000f));
+      } else if (dto.getStealth().getNotAttackingTimeMs() > 0) {
+        // Royal Ghost stealth: invisible after not attacking for a period
+        builder.ability(
+            new StealthAbility(
+                dto.getStealth().getNotAttackingTimeMs() / 1000f,
+                dto.getStealth().getHideTimeMs() / 1000f));
+      }
     }
 
     return builder.build();
@@ -372,6 +381,9 @@ public class UnitLoader {
           null;
       case STEALTH ->
           // Stealth ability is auto-created from stealth field, not from abilities array
+          null;
+      case HIDING ->
+          // Hiding ability is auto-created from stealth field, not from abilities array
           null;
     };
   }

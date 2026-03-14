@@ -89,13 +89,24 @@ public class AreaEffectSystem {
     int damage = effect.getEffectiveDamage();
     int ctdp = effect.getEffectiveCrownTowerDamagePercent();
 
+    // Determine if this effect can bypass hidden buildings (Earthquake, Freeze)
+    StatusEffectType buffType =
+        stats.getBuff() != null ? StatusEffectType.fromBuffName(stats.getBuff()) : null;
+    boolean bypassesHidden =
+        buffType == StatusEffectType.EARTHQUAKE || buffType == StatusEffectType.FREEZE;
+
     List<Entity> aliveEntities = gameState.getAliveEntities();
     for (Entity target : aliveEntities) {
       if (target.getTeam() != enemyTeam) {
         continue;
       }
+      // Hidden buildings are skipped by most effects, but Earthquake and Freeze bypass
       if (!target.isTargetable()) {
-        continue;
+        if (bypassesHidden && target instanceof Building building && building.isHidden()) {
+          // Allow this effect to hit the hidden building
+        } else {
+          continue;
+        }
       }
       if (!canHit(stats, target)) {
         continue;
@@ -297,6 +308,11 @@ public class AreaEffectSystem {
       } else if (target instanceof Building building && building.getAbility() != null) {
         AbilitySystem.resetVariableDamage(building.getAbility(), building.getCombat());
       }
+    }
+
+    // Freeze forces hidden buildings (Tesla) to reveal
+    if (effectType == StatusEffectType.FREEZE && target instanceof Building building) {
+      AbilitySystem.forceRevealHiding(building);
     }
   }
 }

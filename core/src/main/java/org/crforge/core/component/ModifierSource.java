@@ -12,5 +12,6 @@ public enum ModifierSource {
   ABILITY_CHARGE, // Charge speed boost
   ABILITY_JUMP, // River jump speed boost
   ABILITY_TUNNEL, // Underground tunnel travel (Miner)
+  ABILITY_HIDING, // Underground hiding (Tesla)
   RETURNING_PROJECTILE // Combat locked while boomerang projectile is in flight (Executioner)
 }

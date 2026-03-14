@@ -2095,7 +2095,9 @@
     "movementType": "GROUND",
     "visualRadius": 1.0,
     "stealth": {
-      "hideTimeMs": 800
+      "hidesWhenNotAttacking": true,
+      "hideTimeMs": 800,
+      "upTimeMs": 800
     },
     "lifeTime": 30.0
   },

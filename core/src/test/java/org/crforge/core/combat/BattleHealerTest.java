@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -24,6 +25,7 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +42,7 @@ class BattleHealerTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private AreaEffectSystem areaEffectSystem;
+  private Map<String, BuffDefinition> savedBuffs;
 
   // BattleHealer heal on hit: 40 HP via BattleHealerAll buff (healPerSecond=40, buffDuration=1.0)
   private static final int HEAL_ON_HIT_AMOUNT = 40;
@@ -62,6 +65,7 @@ class BattleHealerTest {
     combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     areaEffectSystem = new AreaEffectSystem(gameState);
 
+    savedBuffs = BuffRegistry.snapshot();
     BuffRegistry.clear();
     BuffRegistry.register(
         "BattleHealerAll",
@@ -79,6 +83,11 @@ class BattleHealerTest {
             .hitFrequency(0.25f)
             .enableStacking(true)
             .build());
+  }
+
+  @AfterEach
+  void tearDown() {
+    BuffRegistry.restore(savedBuffs);
   }
 
   @Test
