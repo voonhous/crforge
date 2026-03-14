@@ -1168,7 +1168,8 @@
       "hitsAir": true,
       "hitSpeed": 0.05,
       "buff": "Tornado",
-      "buffDuration": 0.5
+      "buffDuration": 0.5,
+      "controlsBuff": true
     }
   },
   {

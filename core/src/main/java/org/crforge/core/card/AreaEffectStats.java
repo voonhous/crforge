@@ -36,4 +36,7 @@ public class AreaEffectStats {
 
   /** If true, each tick targets the single highest-HP enemy not yet hit (e.g. Lightning). */
   @Builder.Default private final boolean hitBiggestTargets = false;
+
+  /** If true, buffs applied by this area effect are cleaned up when the effect expires. */
+  @Builder.Default private final boolean controlsBuff = false;
 }

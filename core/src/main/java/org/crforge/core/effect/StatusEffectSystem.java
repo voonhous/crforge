@@ -32,9 +32,13 @@ public class StatusEffectSystem {
       return;
     }
 
-    // Update durations and remove expired
+    // Update durations and remove expired (skip countdown for controlledByParent buffs)
     effects.removeIf(
         effect -> {
+          BuffDefinition buffDef = effect.getBuffDefinition();
+          if (buffDef != null && buffDef.isControlledByParent()) {
+            return false; // Duration managed by parent AreaEffect, not self-expired
+          }
           effect.update(deltaTime);
           return effect.isExpired();
         });

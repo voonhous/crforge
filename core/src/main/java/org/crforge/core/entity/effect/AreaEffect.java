@@ -54,6 +54,9 @@ public class AreaEffect extends AbstractEntity {
    */
   @Builder.Default private final Set<Long> hitEntityIds = new HashSet<>();
 
+  /** Dedup flag: true once controlsBuff cleanup has been performed on expiry. */
+  @Builder.Default @Setter private boolean buffsCleaned = false;
+
   @Override
   public EntityType getEntityType() {
     return EntityType.SPELL;

@@ -110,7 +110,7 @@ the live game name.
 | 10 | Poison           | poison        | `DONE`    | area effect, ticking           |
 | 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic       |
 | 12 | The Log          | log           | `MISSING` | projectile spell               |
-| 13 | Tornado          | tornado       | `PARTIAL` | needs pull mechanic            |
+| 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff   |
 | 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic           |
 | 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking           |
 | 16 | Barbarian Barrel | barblog       | `MISSING` | projectile spell               |
@@ -178,8 +178,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 88      | Fully functional in simulation              |
-| `PARTIAL`  | 14      | In cards.json but missing complex mechanics |
+| `DONE`     | 89      | Fully functional in simulation              |
+| `PARTIAL`  | 13      | In cards.json but missing complex mechanics |
 | `MISSING`  | 26      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
@@ -192,5 +192,5 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 |----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
 | Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate)              |
 | Meta spells    | Mirror                                                                        | Replay last card at +1 level                          |
-| Complex spells | Clone, Tornado, Graveyard                                                     | Clone duplication, pull physics, random spawn pattern |
+| Complex spells | Clone, Graveyard                                                              | Clone duplication, random spawn pattern               |
 | Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                                    |

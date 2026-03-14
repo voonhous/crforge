@@ -48,9 +48,17 @@ public class BuffDefinition {
   /** Whether multiple instances from different sources can stack. */
   @Builder.Default private final boolean enableStacking = false;
 
+  /** Pull strength for Tornado. Formula: attractPercentage / (30 * mass) = tiles/sec. */
+  @Builder.Default private final int attractPercentage = 0;
+
+  /** Push speed factor (100 = normal). Used by Tornado. */
+  @Builder.Default private final int pushSpeedFactor = 0;
+
+  /** If true, this buff's duration is managed by the parent AreaEffect, not self-expired. */
+  @Builder.Default private final boolean controlledByParent = false;
+
   // Future fields (not yet integrated into systems)
   @Builder.Default private final boolean invisible = false;
-  @Builder.Default private final int attractPercentage = 0;
   @Builder.Default private final int damageReduction = 0;
   @Builder.Default private final boolean noEffectToCrownTowers = false;
   @Builder.Default private final int deathSpawnCount = 0;

@@ -53,6 +53,8 @@ public class BuffLoader {
         .deathSpawnIsEnemy(dto.isDeathSpawnIsEnemy())
         .deathSpawn(dto.getDeathSpawn())
         .hitTickFromSource(dto.isHitTickFromSource())
+        .pushSpeedFactor(dto.getPushSpeedFactor())
+        .controlledByParent(dto.isControlledByParent())
         .build();
   }
 }

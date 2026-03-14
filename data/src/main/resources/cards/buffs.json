@@ -80,8 +80,10 @@
     "damagePerSecond": 60,
     "crownTowerDamagePercent": -70,
     "attractPercentage": 360,
+    "pushSpeedFactor": 100,
     "hitFrequency": 0.55,
-    "enableStacking": true
+    "enableStacking": true,
+    "controlledByParent": true
   },
   "VoodooCurse": {
     "name": "VoodooCurse",

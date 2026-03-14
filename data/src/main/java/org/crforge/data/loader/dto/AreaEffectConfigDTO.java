@@ -37,4 +37,7 @@ public class AreaEffectConfigDTO {
 
   /** If true, each tick targets the single highest-HP enemy not yet hit (e.g. Lightning). */
   private boolean hitBiggestTargets;
+
+  /** If true, buffs applied by this area effect are cleaned up when the effect expires. */
+  private boolean controlsBuff;
 }

@@ -28,4 +28,6 @@ public class BuffConfigDTO {
   private boolean deathSpawnIsEnemy;
   private String deathSpawn;
   private boolean hitTickFromSource;
+  private int pushSpeedFactor;
+  private boolean controlledByParent;
 }
