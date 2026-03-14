@@ -6,10 +6,12 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -28,7 +30,8 @@ public class EntityRenderer {
 
   /** Render all alive entities as filled shapes with outlines and effect rings. */
   public void render(GameState state) {
-    // Pass 1: Filled shapes
+    // Pass 1: Filled shapes (enable blending so alpha-based visuals are consistent)
+    Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Filled);
 
     for (Entity entity : state.getAliveEntities()) {
@@ -45,9 +48,21 @@ public class EntityRenderer {
 
       // Entity body
       Color baseColor = getEntityColor(entity);
+      // Pre-compute hiding state for buildings with hiding ability
+      AbilityComponent.HidingState hidingState = null;
+      if (entity instanceof Building building && building.getAbility() != null) {
+        hidingState = building.getAbility().getHidingState();
+      }
+
       if (entity instanceof Troop troop && troop.isInvisible()) {
         // Invisible (stealth) entities render as very faint
         ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.15f);
+      } else if (hidingState == AbilityComponent.HidingState.HIDDEN) {
+        // Hidden buildings (Tesla underground) render as faint earthy silhouette
+        ctx.getShapeRenderer().setColor(COLOR_HIDDEN_BUILDING);
+      } else if (hidingState == AbilityComponent.HidingState.REVEALING) {
+        // Revealing buildings render semi-transparent
+        ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.5f);
       } else if (entity.isInvulnerable()) {
         // Invulnerable entities render with reduced alpha
         ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.5f);

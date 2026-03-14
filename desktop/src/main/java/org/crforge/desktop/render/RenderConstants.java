@@ -128,6 +128,9 @@ public final class RenderConstants {
   /** Semi-transparent light blue for deploy timer radial overlay. */
   public static final Color COLOR_DEPLOY_TIMER = new Color(0.4f, 0.75f, 1f, 0.6f);
 
+  /** Earthy brown at low alpha for hidden (underground) buildings like Tesla. */
+  public static final Color COLOR_HIDDEN_BUILDING = new Color(0.4f, 0.3f, 0.2f, 0.25f);
+
   // Ability indicator colors
   public static final Color COLOR_CHARGE_BAR = new Color(1f, 0.6f, 0.1f, 0.9f);
   public static final Color COLOR_CHARGE_READY = new Color(1f, 1f, 1f, 0.9f);

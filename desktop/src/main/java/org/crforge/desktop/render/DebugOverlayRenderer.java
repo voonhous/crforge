@@ -27,6 +27,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import java.util.List;
 import java.util.Optional;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.card.AreaEffectStats;
@@ -154,6 +155,13 @@ public class DebugOverlayRenderer {
           entity.getLevel() > 1
               ? "Lvl " + entity.getLevel() + " " + entity.getName()
               : entity.getName();
+
+      // Append hiding state for buildings with hiding ability (e.g. "Tesla [HIDDEN]")
+      if (entity instanceof Building b
+          && b.getAbility() != null
+          && b.getAbility().getData() instanceof HidingAbility) {
+        label += " [" + b.getAbility().getHidingState() + "]";
+      }
 
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
       float textWidth = ctx.getGlyphLayout().width;
