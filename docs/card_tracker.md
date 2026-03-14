@@ -188,9 +188,14 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 
 ### Partial cards breakdown
 
-| Category       | Cards                                                                         | What's needed                                         |
-|----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
-| Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate)              |
-| Meta spells    | Mirror                                                                        | Replay last card at +1 level                          |
-| Complex spells | Clone, Graveyard                                                              | Clone duplication, random spawn pattern               |
-| Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                                    |
+| Category       | Cards                                                                         | What's needed                            |
+|----------------|-------------------------------------------------------------------------------|------------------------------------------|
+| Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
+| Meta spells    | Mirror                                                                        | Replay last card at +1 level             |
+| Complex spells | Clone, Graveyard                                                              | Clone duplication, random spawn pattern  |
+| Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                       |
+
+### Not yet planned
+
+Champion abilities, evolutions, and hero mechanics are not implemented. These meta-systems will be
+explored after the core card mechanics are fully nailed down.
