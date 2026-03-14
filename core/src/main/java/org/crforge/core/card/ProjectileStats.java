@@ -49,6 +49,12 @@ public class ProjectileStats {
   @Builder.Default private final float pushback = 0f;
   @Builder.Default private final boolean pushbackAll = false;
 
+  // Piercing hit detection radius (distinct from AOE splash radius, e.g. Log rolling projectile)
+  @Builder.Default private final float projectileRadius = 0f;
+
+  // Min travel distance before hits register (e.g. Log must roll past deploy point)
+  @Builder.Default private final float minDistance = 0f;
+
   // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
   @Builder.Default private final boolean checkCollisions = false;
 
@@ -101,6 +107,8 @@ public class ProjectileStats {
         .spawnProjectile(spawnProjectile)
         .spawnCount(spawnCount)
         .spawnRadius(spawnRadius)
+        .projectileRadius(projectileRadius)
+        .minDistance(minDistance)
         .pushback(pushback)
         .pushbackAll(pushbackAll)
         .checkCollisions(checkCollisions)

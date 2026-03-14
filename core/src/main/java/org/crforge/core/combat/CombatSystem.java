@@ -68,8 +68,12 @@ public class CombatSystem {
       return;
     }
 
-    // Entities cannot attack while being knocked back
+    // Entities cannot attack while being knocked back; reset any in-progress attack
     if (entity.getMovement() != null && entity.getMovement().isKnockedBack()) {
+      if (combat.isAttacking()) {
+        combat.setAttacking(false);
+        combat.setCurrentWindup(0);
+      }
       return;
     }
 

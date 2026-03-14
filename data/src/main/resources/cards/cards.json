@@ -442,6 +442,14 @@
     "unit": "DarkPrince"
   },
   {
+    "id": "threemusketeers",
+    "name": "ThreeMusketeers",
+    "type": "TROOP",
+    "rarity": "Rare",
+    "cost": 9,
+    "unit": "ThreeMusketeer_Rework"
+  },
+  {
     "id": "lavahound",
     "name": "LavaHound",
     "type": "TROOP",
@@ -781,6 +789,14 @@
     ]
   },
   {
+    "id": "movingcannon",
+    "name": "MovingCannon",
+    "type": "TROOP",
+    "rarity": "Epic",
+    "cost": 5,
+    "unit": "MovingCannon"
+  },
+  {
     "id": "megaknight",
     "name": "MegaKnight",
     "type": "TROOP",
@@ -1010,6 +1026,65 @@
     "unit": "LittlePrince"
   },
   {
+    "id": "goblindemolisher",
+    "name": "GoblinDemolisher",
+    "type": "TROOP",
+    "rarity": "Rare",
+    "cost": 4,
+    "unit": "GoblinDemolisher"
+  },
+  {
+    "id": "goblinmachine",
+    "name": "GoblinMachine",
+    "type": "TROOP",
+    "rarity": "Legendary",
+    "cost": 5,
+    "unit": "GoblinMachine"
+  },
+  {
+    "id": "suspiciousbush",
+    "name": "SuspiciousBush",
+    "type": "TROOP",
+    "rarity": "Rare",
+    "cost": 2,
+    "unit": "SuspiciousBush"
+  },
+  {
+    "id": "goblinstein",
+    "name": "Goblinstein",
+    "type": "TROOP",
+    "rarity": "Champion",
+    "cost": 5,
+    "unit": "goblinstein",
+    "secondaryUnit": "goblinstein_doctor",
+    "secondaryCount": 1,
+    "summonRadius": 3500.0
+  },
+  {
+    "id": "giantbuffer",
+    "name": "GiantBuffer",
+    "type": "TROOP",
+    "rarity": "Epic",
+    "cost": 4,
+    "unit": "GiantBuffer"
+  },
+  {
+    "id": "berserker",
+    "name": "Berserker",
+    "type": "TROOP",
+    "rarity": "Common",
+    "cost": 2,
+    "unit": "Berserker"
+  },
+  {
+    "id": "bossbandit",
+    "name": "BossBandit",
+    "type": "TROOP",
+    "rarity": "Champion",
+    "cost": 6,
+    "unit": "BossBandit"
+  },
+  {
     "id": "fireball",
     "name": "Fireball",
     "type": "SPELL",
@@ -1143,7 +1218,14 @@
     "type": "SPELL",
     "rarity": "Legendary",
     "cost": 5,
-    "radius": 4.0
+    "radius": 4.0,
+    "areaEffect": {
+      "name": "Graveyard_rework",
+      "radius": 4.0,
+      "lifeDuration": 9.0,
+      "hitsGround": false,
+      "hitsAir": false
+    }
   },
   {
     "id": "log",
@@ -1151,7 +1233,8 @@
     "type": "SPELL",
     "rarity": "Legendary",
     "cost": 2,
-    "projectile": "LogProjectile"
+    "projectile": "LogProjectile",
+    "spellAsDeploy": true
   },
   {
     "id": "tornado",
@@ -1166,11 +1249,12 @@
       "lifeDuration": 1.05,
       "hitsGround": true,
       "hitsAir": true,
+      "controlsBuff": true,
       "hitSpeed": 0.05,
       "buff": "Tornado",
-      "buffDuration": 0.5,
-      "controlsBuff": true
-    }
+      "buffDuration": 0.5
+    },
+    "spellAsDeploy": true
   },
   {
     "id": "clone",
@@ -1211,7 +1295,8 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 2,
-    "projectile": "BarbLogProjectile"
+    "projectile": "BarbLogProjectile",
+    "spellAsDeploy": true
   },
   {
     "id": "heal",
@@ -1219,7 +1304,8 @@
     "type": "SPELL",
     "rarity": "Rare",
     "cost": 1,
-    "summonCharacter": "HealSpirit"
+    "summonCharacter": "HealSpirit",
+    "spellAsDeploy": true
   },
   {
     "id": "snowball",
@@ -1247,8 +1333,10 @@
         "spawnCharacter": "DeliveryRecruit",
         "spawnNumber": 1,
         "deployTime": 0.25
-      }
-    }
+      },
+      "damage": 171
+    },
+    "spellAsDeploy": true
   },
   {
     "id": "darkmagic",
@@ -1271,7 +1359,16 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 2,
-    "radius": 3.0
+    "radius": 3.0,
+    "areaEffect": {
+      "name": "GoblinCurse",
+      "radius": 3.0,
+      "lifeDuration": 6.0,
+      "hitsGround": false,
+      "hitsAir": false,
+      "damage": 100,
+      "hitSpeed": -0.001
+    }
   },
   {
     "id": "mergemaiden",
@@ -1286,7 +1383,14 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 3,
-    "radius": 2.5
+    "radius": 2.5,
+    "areaEffect": {
+      "name": "Vines_AeO",
+      "radius": 2.5,
+      "lifeDuration": 2.0,
+      "hitsGround": false,
+      "hitsAir": false
+    }
   },
   {
     "id": "cannon",
@@ -1393,22 +1497,6 @@
     "unit": "FirespiritHut"
   },
   {
-    "id": "ragebarbarianbottle",
-    "name": "RageBarbarianBottle",
-    "type": "BUILDING",
-    "rarity": "",
-    "cost": 0,
-    "unit": "RageBarbarianBottle"
-  },
-  {
-    "id": "skeletoncontainer",
-    "name": "SkeletonContainer",
-    "type": "BUILDING",
-    "rarity": "",
-    "cost": 0,
-    "unit": "SkeletonContainer"
-  },
-  {
     "id": "goblincage",
     "name": "GoblinCage",
     "type": "BUILDING",
@@ -1465,5 +1553,21 @@
     "rarity": "Legendary",
     "cost": 6,
     "unit": "ElixirBarrel"
+  },
+  {
+    "id": "goblinhut_rework",
+    "name": "GoblinHut_Rework",
+    "type": "BUILDING",
+    "rarity": "Rare",
+    "cost": 4,
+    "unit": "GoblinHut_Rework"
+  },
+  {
+    "id": "skeletoncontainernew",
+    "name": "SkeletonContainerNew",
+    "type": "BUILDING",
+    "rarity": "",
+    "cost": 0,
+    "unit": "SkeletonContainerNew"
   }
 ]

@@ -679,7 +679,23 @@ public class DeploymentSystem {
 
     if (speed > 0) {
       // Traveling spell -- may be a multi-wave spell (e.g. Arrows fires 3 staggered projectiles)
-      float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+      float startX, startY, destX, destY;
+
+      if (card.isSpellAsDeploy()) {
+        // spellAsDeploy: projectile starts at deploy point, travels forward
+        startX = x;
+        startY = y;
+        destX = x;
+        float forward = proj.getMinDistance() > 0 ? proj.getMinDistance() / 1000f : 3.0f;
+        destY = (team == Team.BLUE) ? y + forward : y - forward;
+      } else {
+        // Standard: projectile flies in from behind
+        startX = x;
+        startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+        destX = x;
+        destY = y;
+      }
+
       int waves = card.getProjectileWaves() > 1 ? card.getProjectileWaves() : 1;
       int waveDelayFrames =
           Math.round(card.getProjectileWaveInterval() * GameEngine.TICKS_PER_SECOND);
@@ -687,10 +703,10 @@ public class DeploymentSystem {
         Projectile p =
             new Projectile(
                 team,
-                x,
+                startX,
                 startY,
-                x,
-                y,
+                destX,
+                destY,
                 damage,
                 radius,
                 speed,
@@ -709,6 +725,13 @@ public class DeploymentSystem {
           p.setSpawnCharacterRarity(card.getRarity());
           p.setSpawnCharacterLevel(level);
           p.setSpawnDeployTime(proj.getSpawnDeployTime());
+        }
+
+        // Wire spawnProjectile for sub-projectile spawning on impact (e.g. Log rolling)
+        if (proj.getSpawnProjectile() != null) {
+          p.setSpawnProjectile(proj.getSpawnProjectile());
+          p.setSpellRarity(card.getRarity());
+          p.setSpellLevel(level);
         }
 
         state.spawnProjectile(p);

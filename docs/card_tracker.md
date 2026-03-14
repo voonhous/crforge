@@ -109,7 +109,7 @@ the live game name.
 | 9  | Zap              | zap           | `DONE`    | area effect                    |
 | 10 | Poison           | poison        | `DONE`    | area effect, ticking           |
 | 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic       |
-| 12 | The Log          | log           | `MISSING` | projectile spell               |
+| 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling |
 | 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff   |
 | 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic           |
 | 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking           |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 89      | Fully functional in simulation              |
+| `DONE`     | 90      | Fully functional in simulation              |
 | `PARTIAL`  | 13      | In cards.json but missing complex mechanics |
-| `MISSING`  | 26      | Not yet implemented or newer cards          |
+| `MISSING`  | 25      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

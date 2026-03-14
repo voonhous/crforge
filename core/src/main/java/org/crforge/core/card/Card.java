@@ -87,6 +87,9 @@ public class Card {
   /** Interval between projectile waves in seconds (e.g. 0.2s for Arrows). */
   @Builder.Default private final float projectileWaveInterval = 0f;
 
+  /** Spell deploys at placement location instead of traveling from behind (e.g. Log). */
+  @Builder.Default private final boolean spellAsDeploy = false;
+
   public int getTotalDeployCount() {
     return unitCount + secondaryUnitCount;
   }

@@ -89,6 +89,13 @@ public class Projectile {
   // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
   @Setter private boolean checkCollisions;
 
+  // Min travel distance before piercing hits register (e.g. Log must roll past deploy point)
+  @Setter private float minDistance;
+
+  // Spell level/rarity for sub-projectile damage scaling
+  @Setter private Rarity spellRarity;
+  @Setter private int spellLevel;
+
   // Volley delay: projectile stays inactive for this many frames before starting to move
   @Setter private int delayFrames;
 

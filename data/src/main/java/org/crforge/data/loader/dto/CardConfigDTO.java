@@ -64,4 +64,7 @@ public class CardConfigDTO {
 
   // Interval between projectile waves in seconds
   private float projectileWaveInterval;
+
+  // Spell deploys at placement location instead of traveling from behind (e.g. Log)
+  private boolean spellAsDeploy;
 }

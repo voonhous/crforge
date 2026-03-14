@@ -64,4 +64,18 @@ public class ProjectileConfigDTO {
 
   // Deflect behaviours (stored for future use)
   private List<String> deflectBehaviours;
+
+  // Piercing hit detection radius (distinct from AOE splash radius)
+  private float projectileRadius;
+
+  // Rectangular collision depth (Log/BarbLog only, stored for future use)
+  private float projectileRadiusY;
+
+  // Min travel distance before hits register (e.g. Log must roll past deploy point)
+  private float minDistance;
+
+  // Data-only fields (already handled by existing logic or visual-only)
+  private boolean onlyEnemies;
+  private int spawnChain;
+  private int gravity;
 }

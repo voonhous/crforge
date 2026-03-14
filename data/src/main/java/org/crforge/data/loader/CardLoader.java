@@ -164,6 +164,9 @@ public class CardLoader {
     // Can deploy on enemy side (e.g. Miner, GoblinDrill)
     builder.canDeployOnEnemySide(dto.isCanDeployOnEnemySide());
 
+    // Spell deploys at placement location (e.g. Log)
+    builder.spellAsDeploy(dto.isSpellAsDeploy());
+
     // Spell wave configuration (e.g. Arrows)
     builder.spellRadius(dto.getRadius());
     builder.multipleProjectiles(dto.getMultipleProjectiles());

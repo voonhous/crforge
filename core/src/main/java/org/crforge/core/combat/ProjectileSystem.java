@@ -7,6 +7,7 @@ import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
@@ -100,6 +101,14 @@ public class ProjectileSystem {
 
     float speed = (stats != null) ? stats.getSpeed() : 0;
     float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
+    // For piercing projectiles, use projectileRadius for hit detection if available
+    // (e.g. Bowler projectileRadius=1.0 vs AOE radius=1.8)
+    if (stats != null
+        && stats.getProjectileRadius() > 0
+        && !stats.isHoming()
+        && stats.getProjectileRange() >= 1.0f) {
+      aoeRadius = stats.getProjectileRadius();
+    }
     List<EffectStats> effects =
         new ArrayList<>((stats != null) ? stats.getHitEffects() : combat.getHitEffects());
 
@@ -424,6 +433,20 @@ public class ProjectileSystem {
       float targetX = hitX + dirX * range;
       float targetY = hitY + dirY * range;
 
+      // Scale sub-projectile damage by spell level/rarity if available
+      int subDamage = spawnStats.getDamage();
+      if (projectile.getSpellRarity() != null && projectile.getSpellLevel() > 0) {
+        subDamage =
+            LevelScaling.scaleCard(
+                subDamage, projectile.getSpellRarity(), projectile.getSpellLevel());
+      }
+
+      // Use projectileRadius for hit detection if available, otherwise fall back to AOE radius
+      float hitRadius =
+          spawnStats.getProjectileRadius() > 0
+              ? spawnStats.getProjectileRadius()
+              : spawnStats.getRadius();
+
       Projectile spawned =
           new Projectile(
               projectile.getTeam(),
@@ -431,10 +454,22 @@ public class ProjectileSystem {
               hitY,
               targetX,
               targetY,
-              spawnStats.getDamage(),
-              spawnStats.getRadius(),
+              subDamage,
+              hitRadius,
               spawnStats.getSpeed(),
-              spawnStats.getHitEffects());
+              spawnStats.getHitEffects(),
+              spawnStats.getCrownTowerDamagePercent());
+
+      // Configure as piercing if it has meaningful projectile range
+      if (spawnStats.getProjectileRange() > 0) {
+        spawned.configurePiercing(
+            dirX, dirY, range, spawnStats.isAoeToGround(), spawnStats.isAoeToAir());
+      }
+
+      spawned.setPushback(spawnStats.getPushback());
+      spawned.setPushbackAll(spawnStats.isPushbackAll());
+      spawned.setMinDistance(spawnStats.getMinDistance());
+
       gameState.spawnProjectile(spawned);
     }
   }
@@ -657,6 +692,12 @@ public class ProjectileSystem {
    * knockback for each newly-hit entity.
    */
   private void processPiercingHits(Projectile projectile) {
+    // Don't register hits until projectile has traveled its minimum distance
+    if (projectile.getMinDistance() > 0
+        && projectile.getDistanceTraveled() < projectile.getMinDistance()) {
+      return;
+    }
+
     Team enemyTeam = projectile.getTeam().opposite();
     float projX = projectile.getPosition().getX();
     float projY = projectile.getPosition().getY();
