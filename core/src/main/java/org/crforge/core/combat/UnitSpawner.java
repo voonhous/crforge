@@ -6,9 +6,11 @@ import org.crforge.core.player.Team;
 
 /**
  * Functional interface for spawning units. Used by CombatSystem for projectile spawn-on-impact
- * (e.g. PhoenixFireball -> PhoenixEgg) without depending on SpawnerSystem directly.
+ * (e.g. PhoenixFireball -> PhoenixEgg, GoblinBarrel -> Goblins) without depending on SpawnerSystem
+ * directly.
  */
 @FunctionalInterface
 public interface UnitSpawner {
-  void spawnUnit(float x, float y, Team team, TroopStats stats, Rarity rarity, int level);
+  void spawnUnit(
+      float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime);
 }

@@ -695,6 +695,16 @@ public class DeploymentSystem {
         if (i > 0) {
           p.setDelayFrames(i * waveDelayFrames);
         }
+
+        // Wire spawn character info for projectile spawn-on-impact (e.g. GoblinBarrel)
+        if (proj.getSpawnCharacter() != null) {
+          p.setSpawnCharacterStats(proj.getSpawnCharacter());
+          p.setSpawnCharacterCount(proj.getSpawnCharacterCount());
+          p.setSpawnCharacterRarity(card.getRarity());
+          p.setSpawnCharacterLevel(level);
+          p.setSpawnDeployTime(proj.getSpawnDeployTime());
+        }
+
         state.spawnProjectile(p);
       }
     } else {

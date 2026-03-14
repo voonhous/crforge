@@ -64,6 +64,7 @@ public class Projectile {
   @Setter private int spawnCharacterCount;
   @Setter private Rarity spawnCharacterRarity;
   @Setter private int spawnCharacterLevel;
+  @Setter private float spawnDeployTime;
 
   // Origin position (for spawn projectile direction calculation)
   private final float originX;

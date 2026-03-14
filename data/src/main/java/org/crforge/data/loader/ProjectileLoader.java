@@ -111,6 +111,7 @@ public class ProjectileLoader {
       builder.spawnCharacterName(dto.getSpawn().getSpawnCharacter());
       builder.spawnCharacterCount(
           dto.getSpawn().getSpawnNumber() > 0 ? dto.getSpawn().getSpawnNumber() : 1);
+      builder.spawnDeployTime(dto.getSpawn().getDeployTime());
     }
 
     // Resolve spawnProjectile string reference

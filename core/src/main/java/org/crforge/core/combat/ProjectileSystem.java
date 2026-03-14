@@ -21,6 +21,7 @@ import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.FormationLayout;
 import org.crforge.core.util.Vector2;
 
 /**
@@ -513,8 +514,9 @@ public class ProjectileSystem {
   }
 
   /**
-   * Spawns a character at the projectile's impact point. Used by projectiles that carry a
-   * spawnCharacter (e.g. PhoenixFireball spawns PhoenixEgg at death position).
+   * Spawns characters at the projectile's impact point with formation spread. Used by projectiles
+   * that carry a spawnCharacter (e.g. PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns 3
+   * Goblins in a triangle).
    */
   private void spawnCharacterOnImpact(Projectile projectile) {
     TroopStats stats = projectile.getSpawnCharacterStats();
@@ -524,6 +526,7 @@ public class ProjectileSystem {
             ? projectile.getSpawnCharacterRarity()
             : Rarity.COMMON;
     int level = projectile.getSpawnCharacterLevel() > 0 ? projectile.getSpawnCharacterLevel() : 1;
+    float deployTime = projectile.getSpawnDeployTime();
 
     // Determine impact position
     float centerX, centerY;
@@ -538,8 +541,18 @@ public class ProjectileSystem {
       centerY = projectile.getPosition().getY();
     }
 
+    float formationRadius = projectile.getAoeRadius();
     for (int i = 0; i < count; i++) {
-      unitSpawner.spawnUnit(centerX, centerY, projectile.getTeam(), stats, rarity, level);
+      Vector2 offset =
+          FormationLayout.calculateOffset(i, count, formationRadius, stats.getCollisionRadius());
+      unitSpawner.spawnUnit(
+          centerX + offset.getX(),
+          centerY + offset.getY(),
+          projectile.getTeam(),
+          stats,
+          rarity,
+          level,
+          deployTime);
     }
   }
 

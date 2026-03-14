@@ -102,7 +102,7 @@ the live game name.
 | 2  | Arrows           | arrows        | `DONE`    | 3-volley projectile spell |
 | 3  | Rage             | rage          | `MISSING` | summons RageBottle        |
 | 4  | Rocket           | rocket        | `DONE`    | projectile spell          |
-| 5  | Goblin Barrel    | goblinbarrel  | `MISSING` | projectile spell          |
+| 5  | Goblin Barrel    | goblinbarrel  | `DONE`    | projectile spawn-on-impact |
 | 6  | Freeze           | freeze        | `DONE`    | area effect               |
 | 7  | Mirror           | mirror        | `PARTIAL` | needs meta replay logic   |
 | 8  | Lightning        | lightning     | `MISSING` | area effect               |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 84      | Fully functional in simulation              |
+| `DONE`     | 85      | Fully functional in simulation              |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics |
-| `MISSING`  | 30      | Not yet implemented or newer cards          |
+| `MISSING`  | 29      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

@@ -97,6 +97,14 @@ public class CardLoader {
     if (dto.getProjectile() != null) {
       ProjectileStats proj = projectileMap.get(dto.getProjectile());
       if (proj != null) {
+        // Resolve spawnCharacter reference from unitMap (projectiles load before units,
+        // so spawnCharacter stays null until resolved here)
+        if (proj.getSpawnCharacterName() != null) {
+          TroopStats spawnChar = unitMap.get(proj.getSpawnCharacterName());
+          if (spawnChar != null) {
+            proj = proj.withSpawnCharacter(spawnChar);
+          }
+        }
         builder.projectile(proj);
       }
     }

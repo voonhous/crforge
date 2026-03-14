@@ -112,7 +112,7 @@ class PhoenixIntegrationTest {
 
   /** Helper to spawn a Phoenix troop with proper SpawnerComponent wiring. */
   private Troop spawnPhoenix(Team team, float x, float y) {
-    spawnerSystem.spawnUnit(x, y, team, phoenixStats, Rarity.LEGENDARY, 1);
+    spawnerSystem.spawnUnit(x, y, team, phoenixStats, Rarity.LEGENDARY, 1, 0f);
     gameState.processPending();
     return gameState.getEntitiesOfType(Troop.class).stream()
         .filter(t -> t.getName().equals("Phoenix"))

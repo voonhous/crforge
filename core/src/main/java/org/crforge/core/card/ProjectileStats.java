@@ -63,6 +63,9 @@ public class ProjectileStats {
   private final TroopStats spawnCharacter; // Resolved reference
   @Builder.Default private final int spawnCharacterCount = 1;
 
+  // Deploy time for spawned characters (e.g. Goblin Barrel goblins deploy over 1.1s)
+  @Builder.Default private final float spawnDeployTime = 0f;
+
   /**
    * Returns a copy of this ProjectileStats with a different damage value. All other fields are
    * preserved.
@@ -105,6 +108,7 @@ public class ProjectileStats {
         .spawnAreaEffect(spawnAreaEffect)
         .spawnCharacterName(spawnCharacterName)
         .spawnCharacter(spawnCharacter)
-        .spawnCharacterCount(spawnCharacterCount);
+        .spawnCharacterCount(spawnCharacterCount)
+        .spawnDeployTime(spawnDeployTime);
   }
 }

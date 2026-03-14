@@ -54,10 +54,11 @@ public class SpawnerSystem {
 
   /**
    * Spawns a unit at a specific position. Used by CombatSystem for projectile spawn-on-impact (e.g.
-   * PhoenixFireball spawns PhoenixEgg).
+   * PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns Goblins).
    */
-  public void spawnUnit(float x, float y, Team team, TroopStats stats, Rarity rarity, int level) {
-    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level, 0f);
+  public void spawnUnit(
+      float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime) {
+    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level, deployTime);
   }
 
   public void update(float deltaTime) {
