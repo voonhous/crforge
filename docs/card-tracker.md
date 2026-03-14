@@ -115,7 +115,7 @@ the live game name.
 | 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking           |
 | 16 | Barbarian Barrel | barblog       | `MISSING` | projectile spell               |
 | 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit             |
-| 18 | Snowball         | snowball      | `MISSING` | projectile spell               |
+| 18 | Snowball         | snowball      | `DONE`    | projectile spell               |
 | 19 | Royal Delivery   | royaldelivery | `MISSING` | area effect + troop spawn      |
 | 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics          |
 | 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics          |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 87      | Fully functional in simulation              |
+| `DONE`     | 88      | Fully functional in simulation              |
 | `PARTIAL`  | 14      | In cards.json but missing complex mechanics |
-| `MISSING`  | 27      | Not yet implemented or newer cards          |
+| `MISSING`  | 26      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
