@@ -720,6 +720,27 @@ class CardLoaderTest {
       assertThat(knight.getFormationOffsets()).isNull();
       assertThat(knight.getSecondaryUnitStats()).isNull();
       assertThat(knight.getSecondaryUnitCount()).isEqualTo(0);
+
+      // BarbLog: verify full spawn chain resolution
+      // BarbLogProjectile -> BarbLogProjectileRolling -> Barbarian
+      Card barbLog =
+          cards.stream().filter(c -> "barblog".equals(c.getId())).findFirst().orElse(null);
+      assertThat(barbLog).isNotNull();
+      assertThat(barbLog.getType()).isEqualTo(CardType.SPELL);
+      assertThat(barbLog.isSpellAsDeploy()).isTrue();
+      assertThat(barbLog.getProjectile()).isNotNull();
+      assertThat(barbLog.getProjectile().getName()).isEqualTo("BarbLogProjectile");
+
+      // Stage 2 sub-projectile should be resolved
+      ProjectileStats barbLogRolling = barbLog.getProjectile().getSpawnProjectile();
+      assertThat(barbLogRolling).isNotNull();
+      assertThat(barbLogRolling.getName()).isEqualTo("BarbLogProjectileRolling");
+      assertThat(barbLogRolling.getProjectileRange()).isGreaterThan(0);
+
+      // Barbarian spawn character on sub-projectile should be resolved
+      assertThat(barbLogRolling.getSpawnCharacterName()).isEqualTo("Barbarian");
+      assertThat(barbLogRolling.getSpawnCharacter()).isNotNull();
+      assertThat(barbLogRolling.getSpawnCharacter().getName()).isEqualTo("Barbarian");
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

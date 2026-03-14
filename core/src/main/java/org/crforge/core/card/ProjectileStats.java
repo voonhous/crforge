@@ -17,6 +17,7 @@ public class ProjectileStats {
   @Builder.Default private final int damage = 0;
   @Builder.Default private final float speed = 15.0f;
   @Builder.Default private final float radius = 0f; // AOE radius
+  @Builder.Default private final float radiusY = 0f; // Elliptical AOE depth (Log/BarbLog)
   @Builder.Default private final boolean homing = true;
   @Builder.Default private final List<EffectStats> hitEffects = new ArrayList<>();
 
@@ -88,12 +89,21 @@ public class ProjectileStats {
     return copyBuilder().spawnCharacter(resolvedSpawnCharacter).build();
   }
 
+  /**
+   * Returns a copy of this ProjectileStats with a different spawnProjectile. All other fields are
+   * preserved.
+   */
+  public ProjectileStats withSpawnProjectile(ProjectileStats newSpawnProjectile) {
+    return copyBuilder().spawnProjectile(newSpawnProjectile).build();
+  }
+
   private ProjectileStats.ProjectileStatsBuilder copyBuilder() {
     return ProjectileStats.builder()
         .name(name)
         .damage(damage)
         .speed(speed)
         .radius(radius)
+        .radiusY(radiusY)
         .homing(homing)
         .hitEffects(hitEffects)
         .chainedHitRadius(chainedHitRadius)

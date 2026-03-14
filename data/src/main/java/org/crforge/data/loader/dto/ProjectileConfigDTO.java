@@ -12,6 +12,7 @@ public class ProjectileConfigDTO {
   private int damage;
   private float speed;
   private float radius;
+  private float radiusY;
   private Boolean homing;
 
   /** Buff name applied to the target on hit (e.g. "IceWizardSlowDown"). */

@@ -105,6 +105,17 @@ public class CardLoader {
             proj = proj.withSpawnCharacter(spawnChar);
           }
         }
+        // Also resolve spawnCharacter on sub-projectile (e.g. BarbLogProjectileRolling ->
+        // Barbarian)
+        if (proj.getSpawnProjectile() != null
+            && proj.getSpawnProjectile().getSpawnCharacterName() != null) {
+          TroopStats subSpawnChar = unitMap.get(proj.getSpawnProjectile().getSpawnCharacterName());
+          if (subSpawnChar != null) {
+            proj =
+                proj.withSpawnProjectile(
+                    proj.getSpawnProjectile().withSpawnCharacter(subSpawnChar));
+          }
+        }
         builder.projectile(proj);
       }
     }

@@ -64,6 +64,7 @@ public class ProjectileSystem {
 
     for (int i = 0; i < count; i++) {
       Projectile projectile = projectiles.get(i);
+      boolean wasActive = projectile.isActive();
       boolean hit = projectile.update(deltaTime);
 
       if (hit) {
@@ -73,6 +74,15 @@ public class ProjectileSystem {
       // Piercing projectiles check for hits every tick while still active
       if (projectile.isPiercing() && projectile.isActive()) {
         processPiercingHits(projectile);
+      }
+
+      // Piercing projectile expired: spawn character at current position (e.g. BarbLog Barbarian)
+      if (wasActive
+          && !projectile.isActive()
+          && projectile.isPiercing()
+          && projectile.getSpawnCharacterStats() != null
+          && unitSpawner != null) {
+        spawnCharacterOnImpact(projectile);
       }
     }
 
@@ -470,6 +480,17 @@ public class ProjectileSystem {
       spawned.setPushbackAll(spawnStats.isPushbackAll());
       spawned.setMinDistance(spawnStats.getMinDistance());
 
+      // Wire spawn character for piercing expire (e.g. BarbLog spawns Barbarian at end of roll)
+      if (spawnStats.getSpawnCharacter() != null) {
+        spawned.setSpawnCharacterStats(spawnStats.getSpawnCharacter());
+        spawned.setSpawnCharacterCount(spawnStats.getSpawnCharacterCount());
+        spawned.setSpawnDeployTime(spawnStats.getSpawnDeployTime());
+        if (projectile.getSpellRarity() != null) {
+          spawned.setSpawnCharacterRarity(projectile.getSpellRarity());
+        }
+        spawned.setSpawnCharacterLevel(projectile.getSpellLevel());
+      }
+
       gameState.spawnProjectile(spawned);
     }
   }
@@ -574,7 +595,11 @@ public class ProjectileSystem {
 
     // Determine impact position
     float centerX, centerY;
-    if (projectile.isPositionTargeted()) {
+    if (projectile.isPiercing()) {
+      // Piercing expire: spawn at current position (e.g. BarbLog Barbarian)
+      centerX = projectile.getPosition().getX();
+      centerY = projectile.getPosition().getY();
+    } else if (projectile.isPositionTargeted()) {
       centerX = projectile.getTargetX();
       centerY = projectile.getTargetY();
     } else if (projectile.getTarget() != null) {

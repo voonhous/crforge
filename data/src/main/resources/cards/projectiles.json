@@ -69,6 +69,7 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 1.3,
+    "radiusY": 0.6,
     "minDistance": 3.0,
     "gravity": 30,
     "spawnProjectile": "BarbLogProjectileRolling",
@@ -360,6 +361,8 @@
       "lifeDuration": 1.0,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyOwnTroops": true,
+      "ignoreBuildings": true,
       "buff": "HealSpiritBuff",
       "buffDuration": 1.0
     }
@@ -432,6 +435,7 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 1.95,
+    "radiusY": 0.6,
     "minDistance": 3.0,
     "gravity": 30,
     "spawnProjectile": "LogProjectileRolling",

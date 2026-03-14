@@ -87,6 +87,7 @@ public class ProjectileLoader {
             .damage(dto.getDamage())
             .speed(effectiveSpeed)
             .radius(dto.getRadius())
+            .radiusY(dto.getRadiusY())
             .homing(dto.getHoming() != null ? dto.getHoming() : true)
             .hitEffects(hitEffects)
             .aoeToAir(dto.isAoeToAir())
