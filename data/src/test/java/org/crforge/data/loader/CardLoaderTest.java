@@ -349,7 +349,11 @@ class CardLoaderTest {
   @Test
   void loadCards_shouldParseSummonCharacter() {
     TroopStats rageBottle =
-        TroopStats.builder().name("RageBottle").health(1).movementType(MovementType.GROUND).build();
+        TroopStats.builder()
+            .name("RageBarbarianBottle")
+            .health(1)
+            .movementType(MovementType.GROUND)
+            .build();
 
     String json =
         """
@@ -360,7 +364,7 @@ class CardLoaderTest {
             "type": "SPELL",
             "rarity": "Epic",
             "cost": 2,
-            "summonCharacter": "RageBottle"
+            "summonCharacter": "RageBarbarianBottle"
           }
         ]
         """;
@@ -369,7 +373,7 @@ class CardLoaderTest {
 
     Card card = cards.get(0);
     assertThat(card.getSummonTemplate()).isNotNull();
-    assertThat(card.getSummonTemplate().getName()).isEqualTo("RageBottle");
+    assertThat(card.getSummonTemplate().getName()).isEqualTo("RageBarbarianBottle");
   }
 
   @Test

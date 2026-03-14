@@ -645,12 +645,18 @@ public class DeploymentSystem {
   }
 
   private void castSpell(Team team, Card card, float x, float y, int level) {
-    // Summon character spells (Rage -> RageBottle, Heal -> HealSpirit)
+    // Summon character spells (Rage -> RageBarbarianBottle, Heal -> HealSpirit)
     if (card.getSummonTemplate() != null) {
-      Troop summoned =
-          createTroop(
-              team, card.getSummonTemplate(), x, y, null, level, card.getRarity(), 0, 1, 0f, null);
-      state.spawnEntity(summoned);
+      TroopStats summonStats = card.getSummonTemplate();
+      if (summonStats.getHealth() <= 0) {
+        // Bomb entity (e.g. RageBarbarianBottle): 1 HP, selfDestruct, carries death mechanics
+        Troop summoned = spawnBombSummon(team, summonStats, x, y, level, card.getRarity());
+        state.spawnEntity(summoned);
+      } else {
+        Troop summoned =
+            createTroop(team, summonStats, x, y, null, level, card.getRarity(), 0, 1, 0f, null);
+        state.spawnEntity(summoned);
+      }
     }
 
     // Area effect spells (Zap, Freeze, Poison, Earthquake, etc.)
@@ -712,6 +718,67 @@ public class DeploymentSystem {
       aoeDamageService.applySpellDamage(
           team, x, y, damage, radius, effects, proj.getCrownTowerDamagePercent());
     }
+  }
+
+  /**
+   * Spawns a bomb summon entity (health=0 in data). Overrides HP to 1 and builds a SpawnerComponent
+   * with selfDestruct=true so the entity dies after its deploy phase, triggering death mechanics
+   * (death area effect, death spawns, death damage, etc.). Mirrors the bomb entity pattern in
+   * {@link org.crforge.core.entity.SpawnerSystem#doSpawn}.
+   */
+  private Troop spawnBombSummon(
+      Team team, TroopStats stats, float x, float y, int level, Rarity rarity) {
+    int scaledDeathDamage =
+        stats.getDeathDamage() > 0
+            ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level)
+            : 0;
+
+    // Scale death spawn projectile damage
+    ProjectileStats deathProjStats = null;
+    if (stats.getDeathSpawnProjectile() != null) {
+      deathProjStats =
+          stats
+              .getDeathSpawnProjectile()
+              .withDamage(
+                  LevelScaling.scaleCard(
+                      stats.getDeathSpawnProjectile().getDamage(), rarity, level));
+      if (stats.getDeathSpawnProjectile().getSpawnCharacter() != null) {
+        deathProjStats =
+            deathProjStats.withSpawnCharacter(stats.getDeathSpawnProjectile().getSpawnCharacter());
+      }
+    }
+
+    SpawnerComponent spawner =
+        SpawnerComponent.builder()
+            .deathDamage(scaledDeathDamage)
+            .deathDamageRadius(stats.getDeathDamageRadius())
+            .deathPushback(stats.getDeathPushback())
+            .deathSpawns(stats.getDeathSpawns())
+            .deathAreaEffect(stats.getDeathAreaEffect())
+            .manaOnDeathForOpponent(stats.getManaOnDeathForOpponent())
+            .deathSpawnProjectile(deathProjStats)
+            .rarity(rarity)
+            .level(level)
+            .selfDestruct(true)
+            .build();
+
+    return Troop.builder()
+        .name(stats.getName())
+        .team(team)
+        .position(new Position(x, y))
+        .health(new Health(1))
+        .movement(
+            new Movement(
+                stats.getSpeed(),
+                stats.getMass(),
+                stats.getCollisionRadius(),
+                stats.getVisualRadius(),
+                stats.getMovementType()))
+        .deployTime(stats.getDeployTime())
+        .deployTimer(stats.getDeployTime())
+        .spawner(spawner)
+        .level(level)
+        .build();
   }
 
   private void fireSpawnProjectile(Team team, Card card, float x, float y, int level) {

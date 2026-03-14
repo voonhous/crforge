@@ -1036,7 +1036,7 @@
     "rarity": "Epic",
     "cost": 2,
     "radius": 3.0,
-    "summonCharacter": "RageBottle"
+    "summonCharacter": "RageBarbarianBottle"
   },
   {
     "id": "rocket",
