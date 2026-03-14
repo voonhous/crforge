@@ -199,6 +199,7 @@ public class CardLoader {
         .buff(dto.getBuff())
         .buffDuration(dto.getBuffDuration())
         .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
+        .hitBiggestTargets(dto.isHitBiggestTargets())
         .build();
   }
 }

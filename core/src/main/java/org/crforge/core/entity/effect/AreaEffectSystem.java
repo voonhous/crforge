@@ -77,6 +77,12 @@ public class AreaEffectSystem {
       return;
     }
 
+    // Lightning-style: each tick hits the single highest-HP target not yet struck
+    if (stats.isHitBiggestTargets()) {
+      applyToBiggestTarget(effect);
+      return;
+    }
+
     Team enemyTeam = effect.getTeam().opposite();
     float centerX = effect.getPosition().getX();
     float centerY = effect.getPosition().getY();
@@ -115,6 +121,68 @@ public class AreaEffectSystem {
           target.getHealth().takeDamage(effectiveDamage);
         }
       }
+    }
+  }
+
+  /**
+   * Applies damage and buff to the single highest-HP enemy in range that has not been hit yet. Used
+   * by Lightning to strike up to 3 different targets across its ticking lifetime.
+   */
+  private void applyToBiggestTarget(AreaEffect effect) {
+    AreaEffectStats stats = effect.getStats();
+    Team enemyTeam = effect.getTeam().opposite();
+    float centerX = effect.getPosition().getX();
+    float centerY = effect.getPosition().getY();
+    int damage = effect.getEffectiveDamage();
+    int ctdp = effect.getEffectiveCrownTowerDamagePercent();
+
+    Entity bestTarget = null;
+    int bestEffectiveHp = -1;
+
+    for (Entity target : gameState.getAliveEntities()) {
+      if (target.getTeam() != enemyTeam) {
+        continue;
+      }
+      if (!target.isTargetable()) {
+        continue;
+      }
+      if (!canHit(stats, target)) {
+        continue;
+      }
+      if (effect.getHitEntityIds().contains(target.getId())) {
+        continue;
+      }
+
+      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
+      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
+      if (distanceSq > effectiveRadius * effectiveRadius) {
+        continue;
+      }
+
+      // Effective HP = current HP + shield (higher total gets struck first)
+      int effectiveHp = target.getHealth().getCurrent() + target.getHealth().getShield();
+      if (effectiveHp > bestEffectiveHp) {
+        bestEffectiveHp = effectiveHp;
+        bestTarget = target;
+      }
+    }
+
+    if (bestTarget == null) {
+      return;
+    }
+
+    effect.getHitEntityIds().add(bestTarget.getId());
+    applyBuff(effect, bestTarget);
+
+    if (damage > 0) {
+      int effectiveDamage = DamageUtil.adjustForCrownTower(damage, bestTarget, ctdp);
+
+      if (effect.getBuildingDamagePercent() > 0
+          && bestTarget.getEntityType() == EntityType.BUILDING) {
+        effectiveDamage = effectiveDamage * effect.getBuildingDamagePercent() / 100;
+      }
+
+      bestTarget.getHealth().takeDamage(effectiveDamage);
     }
   }
 

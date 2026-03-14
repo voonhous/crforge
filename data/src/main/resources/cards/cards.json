@@ -1092,7 +1092,12 @@
       "lifeDuration": 1.5,
       "hitsGround": true,
       "hitsAir": true,
-      "hitSpeed": 0.46
+      "hitBiggestTargets": true,
+      "hitSpeed": 0.46,
+      "damage": 413,
+      "buff": "ZapFreeze",
+      "buffDuration": 0.5,
+      "crownTowerDamagePercent": -73
     }
   },
   {

@@ -6,9 +6,11 @@ import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.junit.jupiter.api.BeforeEach;
@@ -411,5 +413,196 @@ class AreaEffectSystemTest {
         .isEqualTo(org.crforge.core.effect.StatusEffectType.FREEZE);
     assertThat(enemy.getAppliedEffects().get(0).getRemainingDuration())
         .isCloseTo(4.0f, org.assertj.core.api.Assertions.within(0.01f));
+  }
+
+  // --- hitBiggestTargets (Lightning) tests ---
+
+  private AreaEffectStats lightningStats() {
+    return AreaEffectStats.builder()
+        .name("Lightning")
+        .radius(3.5f)
+        .lifeDuration(1.5f)
+        .hitsGround(true)
+        .hitsAir(true)
+        .hitBiggestTargets(true)
+        .hitSpeed(0.46f)
+        .damage(413)
+        .buff("ZapFreeze")
+        .buffDuration(0.5f)
+        .crownTowerDamagePercent(-73)
+        .build();
+  }
+
+  private AreaEffect createLightningEffect() {
+    AreaEffectStats stats = lightningStats();
+    return AreaEffect.builder()
+        .name("Lightning")
+        .team(Team.BLUE)
+        .position(new Position(10, 10))
+        .stats(stats)
+        .scaledDamage(413)
+        .remainingLifetime(1.5f)
+        .build();
+  }
+
+  private Troop createEnemyTroop(String name, int hp, float x, float y) {
+    Troop troop =
+        Troop.builder()
+            .name(name)
+            .team(Team.RED)
+            .position(new Position(x, y))
+            .health(new Health(hp))
+            .deployTime(0f)
+            .build();
+    troop.update(1.0f); // make targetable
+    return troop;
+  }
+
+  @Test
+  void hitBiggestTargets_shouldHitHighestHpFirst() {
+    // 3 enemies with different HP. Lightning should strike highest HP first each tick.
+    AreaEffect effect = createLightningEffect();
+    Troop low = createEnemyTroop("Low", 200, 11, 10);
+    Troop mid = createEnemyTroop("Mid", 500, 10, 11);
+    Troop high = createEnemyTroop("High", 1000, 10, 10);
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(low);
+    gameState.spawnEntity(mid);
+    gameState.spawnEntity(high);
+    gameState.processPending();
+
+    // Tick 1: hits highest HP (1000)
+    system.update(0.46f);
+    assertThat(high.getHealth().getCurrent()).isEqualTo(1000 - 413);
+    assertThat(mid.getHealth().getCurrent()).isEqualTo(500);
+    assertThat(low.getHealth().getCurrent()).isEqualTo(200);
+
+    // Tick 2: hits next highest (500)
+    system.update(0.46f);
+    assertThat(mid.getHealth().getCurrent()).isEqualTo(500 - 413);
+    assertThat(low.getHealth().getCurrent()).isEqualTo(200);
+
+    // Tick 3: hits last (200)
+    system.update(0.46f);
+    assertThat(low.getHealth().getCurrent()).isLessThan(200);
+  }
+
+  @Test
+  void hitBiggestTargets_shouldNotRehitSameTarget() {
+    // Only 1 enemy in range -- should be hit once, then no more hits
+    AreaEffect effect = createLightningEffect();
+    Troop solo = createEnemyTroop("Solo", 1000, 10, 10);
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(solo);
+    gameState.processPending();
+
+    // Tick 1: hit
+    system.update(0.46f);
+    assertThat(solo.getHealth().getCurrent()).isEqualTo(1000 - 413);
+
+    // Tick 2: no new target, damage should not increase
+    system.update(0.46f);
+    assertThat(solo.getHealth().getCurrent()).isEqualTo(1000 - 413);
+
+    // Tick 3: still no rehit
+    system.update(0.46f);
+    assertThat(solo.getHealth().getCurrent()).isEqualTo(1000 - 413);
+  }
+
+  @Test
+  void hitBiggestTargets_fewerThanThreeTargets() {
+    // 2 enemies -- both hit once, third tick does nothing
+    AreaEffect effect = createLightningEffect();
+    Troop a = createEnemyTroop("A", 800, 10, 10);
+    Troop b = createEnemyTroop("B", 600, 11, 10);
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(a);
+    gameState.spawnEntity(b);
+    gameState.processPending();
+
+    system.update(0.46f);
+    assertThat(a.getHealth().getCurrent()).isEqualTo(800 - 413); // highest hit first
+
+    system.update(0.46f);
+    assertThat(b.getHealth().getCurrent()).isEqualTo(600 - 413);
+
+    // Tick 3: no targets left
+    int aHpBefore = a.getHealth().getCurrent();
+    int bHpBefore = b.getHealth().getCurrent();
+    system.update(0.46f);
+    assertThat(a.getHealth().getCurrent()).isEqualTo(aHpBefore);
+    assertThat(b.getHealth().getCurrent()).isEqualTo(bHpBefore);
+  }
+
+  @Test
+  void hitBiggestTargets_shouldApplyBuff() {
+    AreaEffect effect = createLightningEffect();
+    Troop enemy = createEnemyTroop("Target", 1000, 10, 10);
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(enemy);
+    gameState.processPending();
+
+    system.update(0.46f);
+
+    assertThat(enemy.getAppliedEffects()).hasSize(1);
+    assertThat(enemy.getAppliedEffects().get(0).getType()).isEqualTo(StatusEffectType.STUN);
+  }
+
+  @Test
+  void hitBiggestTargets_shouldConsiderShieldForSorting() {
+    // Enemy A: 200 HP + 500 shield = 700 effective. Enemy B: 600 HP, no shield.
+    // A should be struck first since effective HP is higher.
+    AreaEffect effect = createLightningEffect();
+
+    Troop shielded =
+        Troop.builder()
+            .name("Shielded")
+            .team(Team.RED)
+            .position(new Position(10, 10))
+            .health(new Health(200, 500))
+            .deployTime(0f)
+            .build();
+    shielded.update(1.0f);
+
+    Troop unshielded = createEnemyTroop("Unshielded", 600, 11, 10);
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(shielded);
+    gameState.spawnEntity(unshielded);
+    gameState.processPending();
+
+    system.update(0.46f);
+
+    // Shielded (700 effective HP) should be hit first -- shield absorbs the damage
+    assertThat(shielded.getHealth().getShield()).isLessThan(500);
+    assertThat(unshielded.getHealth().getCurrent()).isEqualTo(600);
+
+    // Tick 2: unshielded gets hit
+    system.update(0.46f);
+    assertThat(unshielded.getHealth().getCurrent()).isEqualTo(600 - 413);
+  }
+
+  @Test
+  void hitBiggestTargets_shouldApplyCrownTowerDamage() {
+    AreaEffect effect = createLightningEffect();
+
+    // Crown tower with high HP (should be the biggest target)
+    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    tower.update(1.0f);
+
+    gameState.spawnEntity(effect);
+    gameState.spawnEntity(tower);
+    gameState.processPending();
+
+    int towerHpBefore = tower.getHealth().getCurrent();
+    system.update(0.46f);
+
+    // Expected: 413 * (100 + (-73)) / 100 = 413 * 27 / 100 = 111
+    int expectedDamage = 413 * 27 / 100;
+    assertThat(tower.getHealth().getCurrent()).isEqualTo(towerHpBefore - expectedDamage);
   }
 }

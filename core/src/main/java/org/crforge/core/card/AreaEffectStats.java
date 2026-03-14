@@ -33,4 +33,7 @@ public class AreaEffectStats {
 
   /** Damage modifier for crown towers (e.g. -70 means 30% damage). Zero if none. */
   @Builder.Default private final int crownTowerDamagePercent = 0;
+
+  /** If true, each tick targets the single highest-HP enemy not yet hit (e.g. Lightning). */
+  @Builder.Default private final boolean hitBiggestTargets = false;
 }

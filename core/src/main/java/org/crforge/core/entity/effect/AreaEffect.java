@@ -1,5 +1,7 @@
 package org.crforge.core.entity.effect;
 
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -45,6 +47,12 @@ public class AreaEffect extends AbstractEntity {
 
   /** Whether the initial (first-frame) application has occurred. */
   @Builder.Default @Setter private boolean initialApplied = false;
+
+  /**
+   * Tracks entity IDs already hit by this effect. Used by hitBiggestTargets (Lightning) to ensure
+   * each tick strikes a different target.
+   */
+  @Builder.Default private final Set<Long> hitEntityIds = new HashSet<>();
 
   @Override
   public EntityType getEntityType() {

@@ -34,4 +34,7 @@ public class AreaEffectConfigDTO {
 
   /** Damage modifier for crown towers (e.g. -70 means 30% damage). Zero if none. */
   private int crownTowerDamagePercent;
+
+  /** If true, each tick targets the single highest-HP enemy not yet hit (e.g. Lightning). */
+  private boolean hitBiggestTargets;
 }
