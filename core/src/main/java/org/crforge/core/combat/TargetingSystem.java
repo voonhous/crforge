@@ -50,6 +50,15 @@ public class TargetingSystem {
   private void updateEntityTarget(Entity attacker, Combat combat, Collection<Entity> entities) {
     Entity currentTarget = combat.getCurrentTarget();
 
+    // Building-targeting troops always retarget to the closest building.
+    // This enables the "building pull" mechanic where defensive buildings
+    // divert troops away from towers (e.g. Tesla revealing, Cannon placed in path).
+    if (combat.isTargetOnlyBuildings()) {
+      Entity best = findBestTarget(attacker, combat, entities);
+      combat.setCurrentTarget(best);
+      return;
+    }
+
     // If target is still valid, keep it
     if (isValidTarget(attacker, combat, currentTarget)) {
       return;

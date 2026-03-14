@@ -11,6 +11,7 @@ import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
 import org.crforge.core.testing.BuildingTemplate;
 import org.crforge.core.testing.SimHarness;
@@ -443,7 +444,56 @@ class HidingAbilityTest {
     assertThat(tesla.isHidden()).isTrue();
   }
 
-  // -- Test 12: Load time accumulates after reveal --
+  // -- Test 12: Building-targeting troop retargets when Tesla reveals --
+
+  @Test
+  void targetOnlyBuildings_retargetsWhenTeslaReveals() {
+    // Building-targeting troop (like Ram) + far tower + closer hidden Tesla
+    SimHarness sim =
+        SimHarness.create()
+            .withSystems(SimSystems.TARGETING, SimSystems.ABILITY)
+            .spawn(teslaTemplate(Team.BLUE).at(9, 14))
+            .spawn(
+                TroopTemplate.melee("Ram", Team.RED)
+                    .at(9, 18)
+                    .hp(1000)
+                    .damage(100)
+                    .sightRange(15.0f)
+                    .targetOnlyBuildings(true)
+                    .speed(0f))
+            .deployed()
+            .build();
+
+    // Also add a far tower that the Ram can initially target
+    Tower farTower = Tower.createPrincessTower(Team.BLUE, 9, 3, 1);
+    farTower.onSpawn();
+    sim.gameState().spawnEntity(farTower);
+    sim.gameState().processPending();
+
+    Building tesla = sim.building("Tesla");
+
+    // Tesla is hidden, so the Ram should target the far tower
+    sim.tick();
+    assertThat(sim.troop("Ram").getCombat().getCurrentTarget())
+        .as("Ram should target the far tower while Tesla is hidden")
+        .isEqualTo(farTower);
+
+    // Tick through Tesla's reveal cycle (HIDDEN -> REVEALING -> UP)
+    // Tesla needs an enemy in sight range to reveal. The Ram is at (9,18),
+    // Tesla is at (9,14) with sightRange 5.5 -- distance = 4, within range.
+    sim.tick(HIDDEN_TO_UP_TICKS);
+
+    assertThat(tesla.getAbility().getHidingState()).isEqualTo(AbilityComponent.HidingState.UP);
+    assertThat(tesla.isTargetable()).isTrue();
+
+    // After Tesla is revealed and targetable, the Ram should retarget to Tesla (closer)
+    sim.tick();
+    assertThat(sim.troop("Ram").getCombat().getCurrentTarget())
+        .as("Ram should retarget to the now-visible Tesla (closer than tower)")
+        .isEqualTo(tesla);
+  }
+
+  // -- Test 13: Load time accumulates after reveal --
 
   @Test
   void tesla_shouldAccumulateLoadTimeAfterReveal() {

@@ -320,6 +320,97 @@ class TargetingSystemTest {
     assertThat(giant.getCombat().getCurrentTarget()).isEqualTo(farTower);
   }
 
+  // -- Building pull: targetOnlyBuildings retargets to closer building --
+
+  @Test
+  void targetOnlyBuildings_retargetsToCloserBuilding() {
+    // Giant-like troop with targetOnlyBuildings=true, large sight range
+    Troop giant =
+        Troop.builder()
+            .name("Giant")
+            .team(Team.BLUE)
+            .position(new Position(5, 10))
+            .deployTime(0)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(15.0f)
+                    .targetType(TargetType.GROUND)
+                    .targetOnlyBuildings(true)
+                    .build())
+            .build();
+    giant.onSpawn();
+
+    // Far tower is the only building initially
+    Tower farTower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    farTower.onSpawn();
+
+    List<Entity> entities = new java.util.ArrayList<>(List.of(giant, farTower));
+    targetingSystem.updateTargets(entities);
+    assertThat(giant.getCombat().getCurrentTarget())
+        .as("Should initially target the only building (far tower)")
+        .isEqualTo(farTower);
+
+    // A closer building appears (e.g. Tesla just revealed, Cannon placed)
+    Building cannon =
+        Building.builder()
+            .name("Cannon")
+            .team(Team.RED)
+            .position(new Position(8, 10))
+            .health(new Health(500))
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .deployTime(0f)
+            .deployTimer(0f)
+            .build();
+    cannon.onSpawn();
+    entities.add(cannon);
+
+    // After targeting update, troop should retarget to the closer building
+    targetingSystem.updateTargets(entities);
+    assertThat(giant.getCombat().getCurrentTarget())
+        .as("Should retarget to the closer building (cannon)")
+        .isEqualTo(cannon);
+  }
+
+  @Test
+  void targetOnlyBuildings_keepsAttackStateWhenTargetUnchanged() {
+    // Giant-like troop targeting a tower, with isAttacking=true
+    Troop giant =
+        Troop.builder()
+            .name("Giant")
+            .team(Team.BLUE)
+            .position(new Position(5, 10))
+            .deployTime(0)
+            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .combat(
+                Combat.builder()
+                    .sightRange(15.0f)
+                    .targetType(TargetType.GROUND)
+                    .targetOnlyBuildings(true)
+                    .build())
+            .build();
+    giant.onSpawn();
+
+    Tower tower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    tower.onSpawn();
+
+    List<Entity> entities = List.of(giant, tower);
+    targetingSystem.updateTargets(entities);
+    assertThat(giant.getCombat().getCurrentTarget()).isEqualTo(tower);
+
+    // Simulate that the giant is mid-attack
+    giant.getCombat().setAttacking(true);
+
+    // Run targeting again -- no closer building exists
+    targetingSystem.updateTargets(entities);
+
+    // isAttacking should still be true (setCurrentTarget identity guard prevents reset)
+    assertThat(giant.getCombat().isAttacking())
+        .as("Attack state should be preserved when target is unchanged")
+        .isTrue();
+    assertThat(giant.getCombat().getCurrentTarget()).isEqualTo(tower);
+  }
+
   // -- Minimum range (blind spot) tests for Mortar-like buildings --
 
   /**
