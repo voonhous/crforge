@@ -11,6 +11,7 @@ import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.match.Match;
 import org.crforge.core.player.Player;
@@ -105,20 +106,34 @@ public class ArenaRenderer {
     float centerY = (hoverY + 0.5f) * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
     if (card.getType() == CardType.SPELL) {
-      // Area-effect spells use areaEffect radius; spell-level radius (e.g. Arrows 3.5 tiles)
-      // takes priority over projectile AOE radius; projectile radius is the final fallback
-      float radius;
-      if (card.getAreaEffect() != null) {
-        radius = card.getAreaEffect().getRadius() * TILE_PIXELS;
-      } else if (card.getSpellRadius() > 0) {
-        radius = card.getSpellRadius() * TILE_PIXELS;
-      } else if (card.getProjectile() != null) {
-        radius = card.getProjectile().getRadius() * TILE_PIXELS;
+      if (card.isSpellAsDeploy()
+          && card.getProjectile() != null
+          && card.getProjectile().getSpawnProjectile() != null) {
+        // Rolling projectile spells (e.g. The Log): draw a rectangular path preview
+        ProjectileStats rolling = card.getProjectile().getSpawnProjectile();
+        float halfWidth = rolling.getProjectileRadius() * TILE_PIXELS;
+        float length = rolling.getProjectileRange() * TILE_PIXELS;
+        float rectX = centerX - halfWidth;
+        float rectY = (team == Team.BLUE) ? centerY : centerY - length;
+
+        ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
+        ctx.getShapeRenderer().rect(rectX, rectY, halfWidth * 2, length);
       } else {
-        radius = TILE_PIXELS; // fallback: 1 tile
+        // Area-effect spells use areaEffect radius; spell-level radius (e.g. Arrows 3.5 tiles)
+        // takes priority over projectile AOE radius; projectile radius is the final fallback
+        float radius;
+        if (card.getAreaEffect() != null) {
+          radius = card.getAreaEffect().getRadius() * TILE_PIXELS;
+        } else if (card.getSpellRadius() > 0) {
+          radius = card.getSpellRadius() * TILE_PIXELS;
+        } else if (card.getProjectile() != null) {
+          radius = card.getProjectile().getRadius() * TILE_PIXELS;
+        } else {
+          radius = TILE_PIXELS; // fallback: 1 tile
+        }
+        ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
+        ctx.getShapeRenderer().circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
       }
-      ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
-      ctx.getShapeRenderer().circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
     } else {
       TroopStats unitStats = card.getUnitStats();
       if (unitStats != null) {

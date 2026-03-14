@@ -59,6 +59,29 @@ public class ProjectileRenderer {
       float x = projectile.getPosition().getX() * TILE_PIXELS;
       float y = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
 
+      // Piercing projectiles render as oriented rectangles showing their hit area
+      if (projectile.isPiercing()) {
+        float halfWidth = projectile.getAoeRadius() * TILE_PIXELS;
+        float halfDepth = Math.max(halfWidth * 0.3f, PROJECTILE_RADIUS);
+        float angle =
+            (float)
+                Math.toDegrees(
+                    Math.atan2(projectile.getPiercingDirY(), projectile.getPiercingDirX()));
+
+        ctx.getShapeRenderer()
+            .rect(
+                x - halfDepth,
+                y - halfWidth, // bottom-left corner
+                halfDepth,
+                halfWidth, // origin (center of rotation)
+                halfDepth * 2,
+                halfWidth * 2, // size
+                1f,
+                1f,
+                angle); // rotation
+        continue;
+      }
+
       // Scale projectile dot for position-targeted AOE projectiles
       float radius = PROJECTILE_RADIUS;
       if (projectile.isPositionTargeted() && projectile.hasAoe()) {
