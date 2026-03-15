@@ -192,6 +192,10 @@ public class UnitLoader {
             .lifeTime(dto.getLifeTime())
             // Elixir granted to opponent on death (e.g. Elixir Golem)
             .manaOnDeathForOpponent(dto.getManaOnDeathForOpponent())
+            // Elixir collector fields (e.g. ElixirCollector)
+            .manaOnDeath(dto.getManaOnDeath())
+            .manaCollectAmount(dto.getManaCollectAmount())
+            .manaGenerateTime(dto.getManaGenerateTime())
             // Buff immunity
             .ignoreBuff(dto.getIgnoreBuff() != null ? dto.getIgnoreBuff() : List.of());
 

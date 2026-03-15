@@ -14,6 +14,7 @@ import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ElixirCollectorComponent;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -221,6 +222,16 @@ public class SpawnerSystem {
 
   // Called by GameState.processDeaths() or GameEngine
   public void onDeath(Entity entity) {
+    // Handle manaOnDeath for elixir collector buildings (grants elixir to owner on death)
+    if (entity instanceof Building building && building.getElixirCollector() != null) {
+      ElixirCollectorComponent collector = building.getElixirCollector();
+      if (collector.getManaOnDeath() > 0 && match != null) {
+        for (Player player : match.getPlayers(entity.getTeam())) {
+          player.getElixir().add(collector.getManaOnDeath());
+        }
+      }
+    }
+
     SpawnerComponent spawner = entity.getSpawner();
     // Propagate clone status: if dying entity is a clone, children are clones too
     boolean parentIsClone = entity instanceof Troop troop && troop.isClone();

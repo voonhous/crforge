@@ -36,6 +36,7 @@ public class GameEngine {
   private final AreaEffectSystem areaEffectSystem;
   private final AbilitySystem abilitySystem;
   private final AttachedUnitSystem attachedUnitSystem;
+  private final ElixirCollectionSystem elixirCollectionSystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -62,6 +63,7 @@ public class GameEngine {
     areaEffectSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     this.abilitySystem = new AbilitySystem(gameState);
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);
+    this.elixirCollectionSystem = new ElixirCollectionSystem(gameState);
     this.running = false;
   }
 
@@ -71,6 +73,7 @@ public class GameEngine {
     this.physicsSystem = new PhysicsSystem(match.getArena());
     this.physicsSystem.setGameState(gameState);
     this.spawnerSystem.setMatch(match);
+    this.elixirCollectionSystem.setMatch(match);
     match.setGameState(this.gameState);
   }
 
@@ -115,6 +118,9 @@ public class GameEngine {
     if (match != null) {
       match.update(DELTA_TIME);
     }
+
+    // 2.5 Update elixir collectors (periodic collection)
+    elixirCollectionSystem.update(DELTA_TIME);
 
     // 3. Process queued deployments (includes server sync delay)
     deploymentSystem.update(DELTA_TIME);

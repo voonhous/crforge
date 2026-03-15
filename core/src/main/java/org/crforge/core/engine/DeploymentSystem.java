@@ -23,6 +23,7 @@ import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ElixirCollectorComponent;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
@@ -647,6 +648,18 @@ public class DeploymentSystem {
     AbilityComponent abilityComponent =
         unitStats.getAbility() != null ? new AbilityComponent(unitStats.getAbility()) : null;
 
+    // Create ElixirCollectorComponent if this building generates elixir
+    ElixirCollectorComponent elixirCollector = null;
+    if (unitStats.getManaGenerateTime() > 0) {
+      elixirCollector =
+          ElixirCollectorComponent.builder()
+              .manaCollectAmount(unitStats.getManaCollectAmount())
+              .manaGenerateTime(unitStats.getManaGenerateTime())
+              .manaOnDeath(unitStats.getManaOnDeath())
+              .collectionTimer(unitStats.getManaGenerateTime())
+              .build();
+    }
+
     // Always use Building class, attach components optionally
     Building building =
         Building.builder()
@@ -663,6 +676,7 @@ public class DeploymentSystem {
                     MovementType.BUILDING))
             .combat(combat)
             .ability(abilityComponent)
+            .elixirCollector(elixirCollector)
             .lifetime(unitStats.getLifeTime())
             .remainingLifetime(unitStats.getLifeTime())
             .spawner(spawner)

@@ -66,6 +66,13 @@ public class UnitConfigDTO {
   // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
   private int manaOnDeathForOpponent;
 
+  // Elixir granted to owner on death (e.g. ElixirCollector returns 1 elixir)
+  private int manaOnDeath;
+  // Elixir collected per generation cycle (e.g. ElixirCollector: 1)
+  private int manaCollectAmount;
+  // Seconds between elixir generation cycles (e.g. ElixirCollector: 13.0)
+  private float manaGenerateTime;
+
   // Building fields
   private float lifeTime;
   private LiveSpawnConfigDTO liveSpawn;

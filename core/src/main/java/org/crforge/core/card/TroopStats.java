@@ -59,6 +59,13 @@ public class TroopStats {
   // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
   @Builder.Default private final int manaOnDeathForOpponent = 0;
 
+  // Elixir granted to owner on death (e.g. ElixirCollector returns 1 on death)
+  @Builder.Default private final int manaOnDeath = 0;
+  // Elixir collected per generation cycle (e.g. ElixirCollector: 1 per 13s)
+  @Builder.Default private final int manaCollectAmount = 0;
+  // Seconds between elixir generation cycles (0 = no collection)
+  @Builder.Default private final float manaGenerateTime = 0f;
+
   // Death spawn projectile: fires a projectile at death position (e.g. Phoenix -> PhoenixFireball)
   private final ProjectileStats deathSpawnProjectile;
 

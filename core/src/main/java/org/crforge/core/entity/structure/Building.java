@@ -8,6 +8,7 @@ import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ElixirCollectorComponent;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
@@ -19,6 +20,7 @@ public class Building extends AbstractEntity {
   private final Combat combat;
   @Builder.Default private final AbilityComponent ability = null;
   @Builder.Default private final float lifetime = 0f;
+  @Builder.Default private final ElixirCollectorComponent elixirCollector = null;
 
   // Note: We use @Builder.Default for logic fields we want to initialize
   // based on the lifetime passed to builder

@@ -1485,10 +1485,30 @@
     "radius": 2.5,
     "areaEffect": {
       "name": "DarkMagicAOE",
-      "radius": 0.0,
-      "lifeDuration": 0.0,
+      "radius": 2.5,
+      "lifeDuration": 4.0,
       "hitsGround": false,
-      "hitsAir": false
+      "hitsAir": false,
+      "onlyEnemies": true,
+      "damage": 100,
+      "firstHitDelay": 1.0,
+      "hitFrequency": 1.0,
+      "damageTiers": [
+        {
+          "damagePerSecond": 1330,
+          "crownTowerDamagePerHit": 19,
+          "maxTargets": 1
+        },
+        {
+          "damagePerSecond": 625,
+          "crownTowerDamagePerHit": 10,
+          "maxTargets": 4
+        },
+        {
+          "damagePerSecond": 297,
+          "crownTowerDamagePerHit": 7
+        }
+      ]
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
@@ -1508,8 +1528,7 @@
       "hitsGround": false,
       "hitsAir": false,
       "onlyEnemies": true,
-      "damage": 100,
-      "hitSpeed": -0.001
+      "damage": 100
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
@@ -1695,7 +1714,8 @@
     "rarity": "Epic",
     "cost": 4,
     "unit": "GoblinDrill",
-    "canDeployOnEnemySide": true
+    "canDeployOnEnemySide": true,
+    "summonCharacter": "GoblinDrillDig"
   },
   {
     "id": "darkelixir_bottle",
