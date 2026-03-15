@@ -184,6 +184,10 @@ public class CardLoader {
     // Mirror spell flag
     builder.mirror(dto.isMirror());
 
+    // Spell targeting flags
+    builder.onlyEnemies(dto.isOnlyEnemies());
+    builder.canPlaceOnBuildings(dto.isCanPlaceOnBuildings());
+
     // Spell wave configuration (e.g. Arrows)
     builder.spellRadius(dto.getRadius());
     builder.multipleProjectiles(dto.getMultipleProjectiles());

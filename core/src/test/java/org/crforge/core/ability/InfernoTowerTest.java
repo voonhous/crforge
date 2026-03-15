@@ -242,6 +242,7 @@ class InfernoTowerTest {
             .buff("Freeze")
             .buffDuration(4.0f)
             .damage(0)
+            .onlyEnemies(true)
             .build();
     AreaEffect freeze =
         AreaEffect.builder()

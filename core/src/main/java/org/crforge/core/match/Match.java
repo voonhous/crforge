@@ -10,6 +10,9 @@ import org.crforge.core.arena.Tile;
 import org.crforge.core.arena.TileType;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.engine.GameState;
+import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -38,6 +41,7 @@ public abstract class Match {
 
   protected boolean overtime;
   @Setter protected Team winner;
+  @Setter protected GameState gameState;
 
   protected Match(Arena arena) {
     this.arena = arena;
@@ -141,6 +145,11 @@ public abstract class Match {
       if (card.isSpellAsDeploy()) {
         return arena.isValidPlacement(action.getX(), action.getY(), player.getTeam());
       }
+      if (!card.isCanPlaceOnBuildings()
+          && gameState != null
+          && isBuildingAtLocation(action.getX(), action.getY())) {
+        return false;
+      }
       return true;
     }
 
@@ -161,6 +170,26 @@ public abstract class Match {
 
     // Troops check center point (legacy/standard behavior for now)
     return arena.isValidPlacement(action.getX(), action.getY(), player.getTeam());
+  }
+
+  /**
+   * Returns true if any building or tower entity's collision area covers the given coordinates.
+   * Used to enforce canPlaceOnBuildings=false spell placement restrictions.
+   */
+  private boolean isBuildingAtLocation(float x, float y) {
+    for (Entity entity : gameState.getAliveEntities()) {
+      EntityType type = entity.getEntityType();
+      if (type != EntityType.BUILDING && type != EntityType.TOWER) {
+        continue;
+      }
+      float dx = entity.getPosition().getX() - x;
+      float dy = entity.getPosition().getY() - y;
+      float r = entity.getCollisionRadius();
+      if (dx * dx + dy * dy < r * r) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // --- Abstract methods for subclasses to implement ---

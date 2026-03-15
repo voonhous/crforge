@@ -70,4 +70,10 @@ public class CardConfigDTO {
 
   // Whether this card is the Mirror spell (replays last card at +1 level/cost)
   private boolean mirror;
+
+  // Whether this spell only targets enemy entities (from parsed data)
+  private boolean onlyEnemies;
+
+  // Whether this spell can be placed at a location where a building entity exists
+  private boolean canPlaceOnBuildings;
 }

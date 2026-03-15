@@ -423,25 +423,31 @@ public class AreaEffectSystem {
       return;
     }
 
-    // Check if this area effect heals friendlies instead of damaging enemies
-    BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
-    if (buffDef != null && buffDef.getHealPerSecond() > 0) {
-      applyHealToFriendlies(effect, buffDef);
-      return;
+    // Use the onlyEnemies field from the data to determine targeting
+    if (stats.isOnlyEnemies()) {
+      // Enemy targeting
+      if (stats.isHitBiggestTargets()) {
+        applyToBiggestTarget(effect);
+      } else {
+        applyDamageToEnemies(effect);
+      }
+    } else {
+      // Friendly targeting (heals, buffs like Rage)
+      BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
+      if (buffDef != null && buffDef.getHealPerSecond() > 0) {
+        applyHealToFriendlies(effect, buffDef);
+      } else {
+        applyBuffToFriendlies(effect);
+      }
     }
+  }
 
-    // Check if this is a friendly buff effect (e.g. Rage) -- no damage, positive speed buff
-    if (buffDef != null && isFriendlyBuff(buffDef) && effect.getEffectiveDamage() == 0) {
-      applyBuffToFriendlies(effect);
-      return;
-    }
-
-    // Lightning-style: each tick hits the single highest-HP target not yet struck
-    if (stats.isHitBiggestTargets()) {
-      applyToBiggestTarget(effect);
-      return;
-    }
-
+  /**
+   * Applies damage and buffs to enemy entities within the area effect radius. Handles building
+   * damage bonuses, crown tower damage reduction, and hidden building bypass.
+   */
+  private void applyDamageToEnemies(AreaEffect effect) {
+    AreaEffectStats stats = effect.getStats();
     Team enemyTeam = effect.getTeam().opposite();
     float centerX = effect.getPosition().getX();
     float centerY = effect.getPosition().getY();
@@ -781,14 +787,6 @@ public class AreaEffectSystem {
         target.getHealth().heal(healAmount);
       }
     }
-  }
-
-  /**
-   * Returns true if the buff is a positive friendly buff (like Rage) rather than a debuff. Detected
-   * by having positive speed multipliers and no damage component.
-   */
-  private boolean isFriendlyBuff(BuffDefinition buffDef) {
-    return buffDef.getSpeedMultiplier() > 0 && buffDef.getDamagePerSecond() == 0;
   }
 
   /**

@@ -1092,7 +1092,10 @@
     "type": "SPELL",
     "rarity": "Rare",
     "cost": 4,
-    "projectile": "FireballSpell"
+    "projectile": "FireballSpell",
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "arrows",
@@ -1104,7 +1107,10 @@
     "radius": 3.5,
     "multipleProjectiles": 10,
     "projectileWaves": 3,
-    "projectileWaveInterval": 0.2
+    "projectileWaveInterval": 0.2,
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "rage",
@@ -1113,7 +1119,9 @@
     "rarity": "Epic",
     "cost": 2,
     "radius": 3.0,
-    "summonCharacter": "RageBottle"
+    "summonCharacter": "RageBottle",
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "rocket",
@@ -1121,7 +1129,10 @@
     "type": "SPELL",
     "rarity": "Rare",
     "cost": 6,
-    "projectile": "RocketSpell"
+    "projectile": "RocketSpell",
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "goblinbarrel",
@@ -1129,7 +1140,10 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 3,
-    "projectile": "GoblinBarrelSpell"
+    "projectile": "GoblinBarrelSpell",
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "freeze",
@@ -1149,7 +1163,10 @@
       "buff": "Freeze",
       "buffDuration": 4.0,
       "crownTowerDamagePercent": -70
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "mirror",
@@ -1157,7 +1174,9 @@
     "type": "SPELL",
     "rarity": "Epic",
     "cost": 1,
-    "mirror": true
+    "mirror": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "lightning",
@@ -1179,7 +1198,10 @@
       "buff": "ZapFreeze",
       "buffDuration": 0.5,
       "crownTowerDamagePercent": -73
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "zap",
@@ -1199,7 +1221,10 @@
       "buff": "ZapFreeze",
       "buffDuration": 0.5,
       "crownTowerDamagePercent": -70
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "poison",
@@ -1218,7 +1243,10 @@
       "hitSpeed": 0.25,
       "buff": "Poison",
       "buffDuration": 1.0
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "graveyard",
@@ -1303,7 +1331,9 @@
           }
         ]
       }
-    }
+    },
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "log",
@@ -1312,7 +1342,9 @@
     "rarity": "Legendary",
     "cost": 2,
     "projectile": "LogProjectile",
-    "spellAsDeploy": true
+    "spellAsDeploy": true,
+    "onlyEnemies": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "tornado",
@@ -1333,7 +1365,10 @@
       "buff": "Tornado",
       "buffDuration": 0.5
     },
-    "spellAsDeploy": true
+    "spellAsDeploy": true,
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "clone",
@@ -1351,7 +1386,9 @@
       "clone": true,
       "onlyOwnTroops": true,
       "ignoreBuildings": true
-    }
+    },
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "earthquake",
@@ -1372,7 +1409,10 @@
       "hitSpeed": 0.1,
       "buff": "Earthquake",
       "buffDuration": 1.0
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "barblog",
@@ -1381,7 +1421,9 @@
     "rarity": "Epic",
     "cost": 2,
     "projectile": "BarbLogProjectile",
-    "spellAsDeploy": true
+    "spellAsDeploy": true,
+    "onlyEnemies": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "heal",
@@ -1398,7 +1440,10 @@
     "type": "SPELL",
     "rarity": "Common",
     "cost": 2,
-    "projectile": "SnowballSpell"
+    "projectile": "SnowballSpell",
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "royaldelivery",
@@ -1427,7 +1472,9 @@
       },
       "damage": 171
     },
-    "spellAsDeploy": true
+    "spellAsDeploy": true,
+    "onlyEnemies": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "darkmagic",
@@ -1442,7 +1489,10 @@
       "lifeDuration": 0.0,
       "hitsGround": false,
       "hitsAir": false
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "goblincurse",
@@ -1460,7 +1510,10 @@
       "onlyEnemies": true,
       "damage": 100,
       "hitSpeed": -0.001
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "mergemaiden",
@@ -1494,7 +1547,10 @@
       ],
       "airToGround": true,
       "airToGroundDuration": 2.0
-    }
+    },
+    "onlyEnemies": true,
+    "canDeployOnEnemySide": true,
+    "canPlaceOnBuildings": true
   },
   {
     "id": "cannon",

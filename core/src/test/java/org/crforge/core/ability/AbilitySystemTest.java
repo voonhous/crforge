@@ -417,6 +417,7 @@ class AbilitySystemTest {
             .buff("ZapFreeze")
             .buffDuration(0.5f)
             .damage(75)
+            .onlyEnemies(true)
             .build();
     AreaEffect zap =
         AreaEffect.builder()
@@ -465,6 +466,7 @@ class AbilitySystemTest {
             .buff("ZapFreeze")
             .buffDuration(0.5f)
             .damage(75)
+            .onlyEnemies(true)
             .build();
     AreaEffect zap =
         AreaEffect.builder()
@@ -660,6 +662,7 @@ class AbilitySystemTest {
             .buff("Freeze")
             .buffDuration(4.0f)
             .damage(0)
+            .onlyEnemies(true)
             .build();
     AreaEffect freeze =
         AreaEffect.builder()

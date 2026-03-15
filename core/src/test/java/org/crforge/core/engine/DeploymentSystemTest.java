@@ -645,6 +645,7 @@ class DeploymentSystemTest {
             .radius(3.5f)
             .damage(50)
             .lifeDuration(0.5f)
+            .onlyEnemies(true)
             .build();
 
     Card ewiz =

@@ -93,6 +93,12 @@ public class Card {
   /** Whether this card is the Mirror spell (replays last card at +1 level/cost). */
   @Builder.Default private final boolean mirror = false;
 
+  /** Whether this spell only targets enemy entities (from parsed data). */
+  @Builder.Default private final boolean onlyEnemies = false;
+
+  /** Whether this spell can be placed at a location where a building entity exists. */
+  @Builder.Default private final boolean canPlaceOnBuildings = true;
+
   public boolean isMirror() {
     return mirror;
   }

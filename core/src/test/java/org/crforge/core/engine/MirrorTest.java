@@ -246,6 +246,7 @@ class MirrorTest {
                     .radius(2.5f)
                     .damage(75)
                     .lifeDuration(0.1f)
+                    .onlyEnemies(true)
                     .build())
             .build();
 

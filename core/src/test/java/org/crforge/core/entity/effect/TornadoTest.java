@@ -78,6 +78,7 @@ class TornadoTest {
         .buff("Tornado")
         .buffDuration(0.5f)
         .controlsBuff(true)
+        .onlyEnemies(true)
         .build();
   }
 
@@ -306,6 +307,7 @@ class TornadoTest {
             .buff("Tornado")
             .buffDuration(0.5f)
             .controlsBuff(true)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -348,6 +350,7 @@ class TornadoTest {
             .buffDuration(0.5f)
             .crownTowerDamagePercent(-70)
             .controlsBuff(true)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =

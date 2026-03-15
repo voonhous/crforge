@@ -39,6 +39,7 @@ class AreaEffectSystemTest {
             .hitsGround(true)
             .hitsAir(true)
             .damage(75)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -112,6 +113,7 @@ class AreaEffectSystemTest {
             .damage(75)
             .buff("ZapFreeze")
             .buffDuration(0.5f)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -159,6 +161,7 @@ class AreaEffectSystemTest {
             .hitsAir(true)
             .hitSpeed(1.0f)
             .damage(50)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -209,6 +212,7 @@ class AreaEffectSystemTest {
             .hitsGround(true)
             .hitsAir(false)
             .damage(100)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -265,6 +269,7 @@ class AreaEffectSystemTest {
             .hitsAir(true)
             .hitSpeed(0.5f)
             .damage(50)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -324,6 +329,7 @@ class AreaEffectSystemTest {
             .damage(75)
             .buff("ZapFreeze")
             .buffDuration(0.5f)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -379,6 +385,7 @@ class AreaEffectSystemTest {
             .buff("Freeze")
             .buffDuration(4.0f)
             .crownTowerDamagePercent(-70)
+            .onlyEnemies(true)
             .build();
 
     AreaEffect effect =
@@ -430,6 +437,7 @@ class AreaEffectSystemTest {
         .buff("ZapFreeze")
         .buffDuration(0.5f)
         .crownTowerDamagePercent(-73)
+        .onlyEnemies(true)
         .build();
   }
 

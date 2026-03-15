@@ -76,6 +76,7 @@ class EarthquakeSpellTest {
         .buff("Earthquake")
         .buffDuration(1.0f)
         .capBuffTimeToAreaEffectTime(true)
+        .onlyEnemies(true)
         .build();
   }
 

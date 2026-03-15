@@ -293,6 +293,7 @@ class HidingAbilityTest {
                     .buffDuration(1.0f)
                     .hitSpeed(0.0f) // One-shot
                     .hitsGround(true)
+                    .onlyEnemies(true)
                     .build())
             .remainingLifetime(0.5f)
             .build();
@@ -346,6 +347,7 @@ class HidingAbilityTest {
                     .buffDuration(4.0f)
                     .hitSpeed(0.0f) // One-shot
                     .hitsGround(true)
+                    .onlyEnemies(true)
                     .build())
             .remainingLifetime(0.5f)
             .build();
@@ -397,6 +399,7 @@ class HidingAbilityTest {
                     .buffDuration(0.5f)
                     .hitSpeed(0.0f)
                     .hitsGround(true)
+                    .onlyEnemies(true)
                     .build())
             .remainingLifetime(0.5f)
             .build();
@@ -449,6 +452,7 @@ class HidingAbilityTest {
                     .buffDuration(1.0f)
                     .hitSpeed(0.0f)
                     .hitsGround(true)
+                    .onlyEnemies(true)
                     .build())
             .remainingLifetime(0.5f)
             .build();
