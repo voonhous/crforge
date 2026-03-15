@@ -15,6 +15,10 @@
     "name": "BolaSnare",
     "speedMultiplier": -70
   },
+  "BushInvisibility": {
+    "name": "BushInvisibility",
+    "invisible": true
+  },
   "DarkElixirBuff": {
     "name": "DarkElixirBuff",
     "speedMultiplier": 200,
@@ -69,12 +73,6 @@
     "hitFrequency": 1.0,
     "enableStacking": true
   },
-  "Rage": {
-    "name": "Rage",
-    "speedMultiplier": 130,
-    "hitSpeedMultiplier": 130,
-    "spawnSpeedMultiplier": 130
-  },
   "Tornado": {
     "name": "Tornado",
     "damagePerSecond": 60,
@@ -93,6 +91,12 @@
   },
   "ZapFreeze": {
     "name": "ZapFreeze",
+    "speedMultiplier": -100,
+    "hitSpeedMultiplier": -100,
+    "spawnSpeedMultiplier": -100
+  },
+  "buff_goblinstein_doctor": {
+    "name": "buff_goblinstein_doctor",
     "speedMultiplier": -100,
     "hitSpeedMultiplier": -100,
     "spawnSpeedMultiplier": -100

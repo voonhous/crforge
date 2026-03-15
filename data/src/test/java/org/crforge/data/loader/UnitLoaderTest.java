@@ -574,7 +574,7 @@ class UnitLoaderTest {
       assertThat(skelBalloon).isNotNull();
       assertThat(skelBalloon.getDeathSpawns()).hasSize(1);
       TroopStats skelContainer = skelBalloon.getDeathSpawns().get(0).stats();
-      assertThat(skelContainer.getName()).isEqualTo("SkeletonContainer");
+      assertThat(skelContainer.getName()).isEqualTo("SkeletonContainerNew");
       assertThat(skelContainer.getDeathSpawns())
           .as("SkeletonContainer (from SkeletonBalloon) must spawn Skeletons")
           .isNotEmpty();

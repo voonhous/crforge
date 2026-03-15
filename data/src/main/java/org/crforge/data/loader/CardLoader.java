@@ -219,6 +219,11 @@ public class CardLoader {
         .hitBiggestTargets(dto.isHitBiggestTargets())
         .controlsBuff(dto.isControlsBuff())
         .capBuffTimeToAreaEffectTime(dto.isCapBuffTimeToAreaEffectTime())
+        .clone(dto.isClone())
+        .onlyOwnTroops(dto.isOnlyOwnTroops())
+        .ignoreBuildings(dto.isIgnoreBuildings())
+        .onlyEnemies(dto.isOnlyEnemies())
+        .affectsHidden(dto.isAffectsHidden())
         .build();
   }
 }

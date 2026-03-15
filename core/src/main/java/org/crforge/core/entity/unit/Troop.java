@@ -26,6 +26,9 @@ public class Troop extends AbstractEntity {
 
   @Builder.Default private final AbilityComponent ability = null;
 
+  // Marks this entity as a clone (1 HP, cannot be re-cloned)
+  @Builder.Default private final boolean clone = false;
+
   // Attached to parent entity (e.g. Ram Rider on Ram, Spear Goblins on Goblin Giant)
   @Builder.Default private final AttachedComponent attached = null;
 

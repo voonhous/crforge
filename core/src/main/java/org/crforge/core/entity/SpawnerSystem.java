@@ -58,7 +58,7 @@ public class SpawnerSystem {
    */
   public void spawnUnit(
       float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime) {
-    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level, deployTime);
+    doSpawn(new Position(x, y), new Vector2(0, 0), team, stats, rarity, level, deployTime, false);
   }
 
   public void update(float deltaTime) {
@@ -94,6 +94,9 @@ public class SpawnerSystem {
         float collisionRadius = spawner.getSpawnStats().getCollisionRadius();
         Vector2 offset =
             FormationLayout.calculateOffset(spawnIndex, total, formationRadius, collisionRadius);
+
+        // Propagate clone status: if parent is a clone, children are clones too
+        boolean parentIsClone = entity instanceof Troop troop && troop.isClone();
         doSpawn(
             entity.getPosition(),
             offset,
@@ -101,7 +104,8 @@ public class SpawnerSystem {
             spawner.getSpawnStats(),
             spawner.getRarity(),
             spawner.getLevel(),
-            0f);
+            0f,
+            parentIsClone);
 
         // Track spawn count and enforce spawn limit (e.g. PhoenixEgg spawns once then dies)
         spawner.setTotalSpawned(spawner.getTotalSpawned() + 1);
@@ -127,6 +131,8 @@ public class SpawnerSystem {
   // Called by GameState.processDeaths() or GameEngine
   public void onDeath(Entity entity) {
     SpawnerComponent spawner = entity.getSpawner();
+    // Propagate clone status: if dying entity is a clone, children are clones too
+    boolean parentIsClone = entity instanceof Troop troop && troop.isClone();
 
     if (spawner != null) {
       // 1. Apply death damage AOE (e.g. Golem, Ice Golem explode on death)
@@ -158,7 +164,8 @@ public class SpawnerSystem {
               entry.stats(),
               spawner.getRarity(),
               spawner.getLevel(),
-              entry.deployTime());
+              entry.deployTime(),
+              parentIsClone);
         }
       }
 
@@ -197,7 +204,8 @@ public class SpawnerSystem {
               spawner.getSpawnStats(),
               spawner.getRarity(),
               spawner.getLevel(),
-              0f);
+              0f,
+              parentIsClone);
         }
       }
     }
@@ -218,7 +226,7 @@ public class SpawnerSystem {
     }
     // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
     // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
-    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1, 0f);
+    doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1, 0f, false);
   }
 
   /**
@@ -358,7 +366,8 @@ public class SpawnerSystem {
       TroopStats stats,
       Rarity rarity,
       int level,
-      float deathSpawnDeployTime) {
+      float deathSpawnDeployTime,
+      boolean asClone) {
     float x = origin.getX() + offset.getX();
     float y = origin.getY() + offset.getY();
 
@@ -372,6 +381,12 @@ public class SpawnerSystem {
         stats.getShieldHitpoints() > 0
             ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level)
             : 0;
+
+    // Clone offspring: 1 HP, shield capped to 1
+    if (asClone) {
+      scaledHp = 1;
+      scaledShield = scaledShield > 0 ? 1 : 0;
+    }
 
     // Skip Combat component for units that cannot deal damage (e.g. PhoenixEgg).
     // Without it they won't acquire targets, attack, or play attack animations.
@@ -481,6 +496,7 @@ public class SpawnerSystem {
             .deployTimer(deployTime)
             .spawner(spawner)
             .level(level)
+            .clone(asClone)
             .build();
 
     gameState.spawnEntity(unit);

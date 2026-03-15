@@ -111,8 +111,8 @@ the live game name.
 | 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic                         |
 | 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling                   |
 | 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff                     |
-| 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic                             |
-| 15 | Earthquake       | earthquake    | `DONE`    | area effect, ticking, building 4.5x, slow 50% |
+| 14 | Clone            | clone         | `DONE`    | area effect, clone mechanic                      |
+| 15 | Earthquake       | earthquake    | `DONE`    | area effect, ticking, building 4.5x, slow 50%    |
 | 16 | Barbarian Barrel | barblog       | `DONE`    | spellAsDeploy, 2-stage rolling + Barbarian spawn |
 | 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit                               |
 | 18 | Snowball         | snowball      | `DONE`    | projectile spell                                 |
@@ -178,8 +178,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 95      | Fully functional in simulation              |
-| `PARTIAL`  | 12      | In cards.json but missing complex mechanics |
+| `DONE`     | 96      | Fully functional in simulation              |
+| `PARTIAL`  | 11      | In cards.json but missing complex mechanics |
 | `MISSING`  | 21      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
@@ -191,7 +191,7 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 | Category       | Cards                                                                         | What's needed                            |
 |----------------|-------------------------------------------------------------------------------|------------------------------------------|
 | Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
-| Complex spells | Clone, Graveyard                                                              | Clone duplication, random spawn pattern  |
+| Complex spells | Graveyard                                                                     | Random spawn pattern                     |
 | Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                       |
 
 ### Not yet planned

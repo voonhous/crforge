@@ -244,6 +244,8 @@
       "lifeDuration": 1.0,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyOwnTroops": true,
+      "ignoreBuildings": true,
       "buff": "BattleHealerSpawnBuff",
       "buffDuration": 1.0
     },
@@ -253,6 +255,8 @@
       "lifeDuration": 0.05,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyOwnTroops": true,
+      "ignoreBuildings": true,
       "buff": "BattleHealerAll",
       "buffDuration": 1.0
     }
@@ -290,6 +294,35 @@
         "speedMultiplier": 2.0
       }
     ]
+  },
+  "Berserker": {
+    "name": "Berserker",
+    "health": 350,
+    "damage": 0,
+    "speed": 90.0,
+    "mass": 2.0,
+    "collisionRadius": 0.45,
+    "sightRange": 5.5,
+    "range": 0.8,
+    "attackCooldown": 0.6,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "attackSequence": {
+      "hits": [
+        {
+          "damage": 40
+        },
+        {
+          "damage": 40
+        },
+        {
+          "damage": 40
+        }
+      ],
+      "mode": "None"
+    }
   },
   "BlowdartGoblin": {
     "name": "BlowdartGoblin",
@@ -366,6 +399,31 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "projectile": "BombSkeletonProjectile"
+  },
+  "BossBandit": {
+    "name": "BossBandit",
+    "health": 1025,
+    "damage": 96,
+    "speed": 90.0,
+    "mass": 4.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 0.8,
+    "attackCooldown": 1.1,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "abilities": [
+      {
+        "type": "DASH",
+        "damage": 192,
+        "minRange": 3.5,
+        "maxRange": 6.0,
+        "cooldown": 0.8,
+        "immuneTimeMs": 100
+      }
+    ]
   },
   "Bowler": {
     "name": "Bowler",
@@ -842,6 +900,23 @@
     "targetOnlyBuildings": true,
     "ignorePushback": true
   },
+  "GiantBuffer": {
+    "name": "GiantBuffer",
+    "health": 1040,
+    "damage": 47,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.5,
+    "range": 1.2,
+    "attackCooldown": 1.5,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true
+  },
   "GiantSkeleton": {
     "name": "GiantSkeleton",
     "health": 1413,
@@ -940,6 +1015,23 @@
     ],
     "lifeTime": 20.0
   },
+  "GoblinDemolisher": {
+    "name": "GoblinDemolisher",
+    "health": 508,
+    "damage": 73,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.0,
+    "attackCooldown": 1.1,
+    "loadTime": 0.6,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "GoblinDemolisherProjectile",
+    "deathSpawnProjectile": "GoblinDemolisherDeathProjectile"
+  },
   "GoblinDrill": {
     "name": "GoblinDrill",
     "health": 513,
@@ -976,6 +1068,7 @@
       "lifeDuration": 0.001,
       "hitsGround": true,
       "hitsAir": false,
+      "onlyEnemies": true,
       "damage": 33,
       "crownTowerDamagePercent": -70
     }
@@ -1031,6 +1124,44 @@
       "spawnPauseTime": 10.0,
       "spawnInterval": 0.5
     }
+  },
+  "GoblinHut_Rework": {
+    "name": "GoblinHut_Rework",
+    "health": 461,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 6.0,
+    "attackCooldown": 10.0,
+    "loadTime": 0.0,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SpearGoblin",
+        "spawnNumber": 1
+      }
+    ],
+    "lifeTime": 30.0
+  },
+  "GoblinMachine": {
+    "name": "GoblinMachine",
+    "health": 840,
+    "damage": 83,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.2,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignorePushback": true
   },
   "GoblinPartyHut": {
     "name": "GoblinPartyHut",
@@ -1232,6 +1363,8 @@
       "lifeDuration": 1.0,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyEnemies": true,
+      "affectsHidden": true,
       "buff": "IceWizardSlowDown",
       "buffDuration": 2.0
     }
@@ -1614,6 +1747,24 @@
     "minimumRange": 3.5,
     "lifeTime": 30.0
   },
+  "MovingCannon": {
+    "name": "MovingCannon",
+    "health": 707,
+    "damage": 83,
+    "speed": 60.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 5.5,
+    "attackCooldown": 0.9,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "MovingCannonProjectile",
+    "ignorePushback": true,
+    "ignoreBuff": "VoodooCurse,GoblinCurse"
+  },
   "Musketeer": {
     "name": "Musketeer",
     "health": 282,
@@ -1758,37 +1909,12 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deathSpawn": [
-      {
-        "spawnCharacter": "RageBarbarianBottle",
-        "spawnNumber": 1
-      }
-    ]
-  },
-  "RageBarbarianBottle": {
-    "name": "RageBarbarianBottle",
-    "health": 0,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 0.0,
-    "loadTime": 0.0,
-    "deployTime": 0.5,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "ignoreBuff": "Event_Berserk_OnStartBuff",
     "deathAreaEffect": {
-      "name": "BarbarianRage",
-      "radius": 3.0,
-      "lifeDuration": 5.5,
-      "hitsGround": true,
-      "hitsAir": true,
-      "hitSpeed": 0.3,
-      "buff": "Rage",
-      "buffDuration": 1.0
+      "name": "RageBarbarianDummyForSpawn",
+      "radius": 0.0,
+      "lifeDuration": 0.05,
+      "hitsGround": false,
+      "hitsAir": false
     }
   },
   "Ram": {
@@ -1955,14 +2081,14 @@
     "kamikaze": true,
     "deathSpawn": [
       {
-        "spawnCharacter": "SkeletonContainer",
+        "spawnCharacter": "SkeletonContainerNew",
         "spawnNumber": 1
       }
     ],
     "ignoreBuff": "VoodooCurse"
   },
-  "SkeletonContainer": {
-    "name": "SkeletonContainer",
+  "SkeletonContainerNew": {
+    "name": "SkeletonContainerNew",
     "health": 0,
     "damage": 0,
     "speed": 0.0,
@@ -2079,6 +2205,36 @@
     ],
     "ignoreBuff": "VoodooCurse"
   },
+  "SuspiciousBush": {
+    "name": "SuspiciousBush",
+    "health": 32,
+    "damage": 0,
+    "speed": 60.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.5,
+    "range": 0.5,
+    "attackCooldown": 0.3,
+    "loadTime": 0.3,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "kamikaze": true,
+    "ignoreBuff": "VoodooCurse,GoblinCurse",
+    "stealth": {
+      "buff": "BushInvisibility"
+    },
+    "deathAreaEffect": {
+      "name": "SuspiciousBush_DummyAEO",
+      "radius": 0.0,
+      "lifeDuration": 1.0,
+      "hitsGround": false,
+      "hitsAir": false,
+      "damage": 100,
+      "hitSpeed": -0.001
+    }
+  },
   "Tesla": {
     "name": "Tesla",
     "health": 450,
@@ -2100,6 +2256,33 @@
       "upTimeMs": 800
     },
     "lifeTime": 30.0
+  },
+  "ThreeMusketeer_Rework": {
+    "name": "ThreeMusketeer_Rework",
+    "health": 345,
+    "damage": 80,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 6.0,
+    "range": 6.0,
+    "attackCooldown": 1.3,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "ThreeMusketeer_Rework_Projectile",
+    "attackSequence": {
+      "hits": [
+        {
+          "projectile": "ThreeMusketeer_Rework_Projectile"
+        },
+        {
+          "doAttackAction": "ThreeMusketeer_Rework_Bayonet_Attack"
+        }
+      ],
+      "mode": "None"
+    }
   },
   "Tombstone": {
     "name": "Tombstone",
@@ -2260,5 +2443,38 @@
     "projectile": "ZapMachineProjectile",
     "ignorePushback": true,
     "attackPushBack": 750
+  },
+  "goblinstein": {
+    "name": "goblinstein",
+    "health": 932,
+    "damage": 50,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.5,
+    "range": 1.2,
+    "attackCooldown": 1.5,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true
+  },
+  "goblinstein_doctor": {
+    "name": "goblinstein_doctor",
+    "health": 282,
+    "damage": 36,
+    "speed": 60.0,
+    "mass": 4.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.8,
+    "loadTime": 1.3,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "prj_goblinstein_doctor"
   }
 }

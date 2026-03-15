@@ -42,4 +42,19 @@ public class AreaEffectStats {
 
   /** If true, buff duration is capped to the area effect's remaining lifetime. */
   @Builder.Default private final boolean capBuffTimeToAreaEffectTime = false;
+
+  /** If true, this effect clones friendly troops in the area (Clone spell). */
+  @Builder.Default private final boolean clone = false;
+
+  /** If true, only affects the caster's own troops (Clone). */
+  @Builder.Default private final boolean onlyOwnTroops = false;
+
+  /** If true, buildings are excluded from targeting (Clone). */
+  @Builder.Default private final boolean ignoreBuildings = false;
+
+  /** If true, only affects enemy entities (Tornado, Earthquake, etc.). */
+  @Builder.Default private final boolean onlyEnemies = false;
+
+  /** If true, can affect hidden buildings like Tesla (Earthquake, Freeze). */
+  @Builder.Default private final boolean affectsHidden = false;
 }

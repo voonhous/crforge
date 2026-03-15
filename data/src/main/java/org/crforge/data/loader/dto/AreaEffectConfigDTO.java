@@ -43,4 +43,19 @@ public class AreaEffectConfigDTO {
 
   /** If true, buff duration is capped to the area effect's remaining lifetime. */
   private boolean capBuffTimeToAreaEffectTime;
+
+  /** If true, this effect clones friendly troops in the area (Clone spell). */
+  private boolean clone;
+
+  /** If true, only affects the caster's own troops (Clone). */
+  private boolean onlyOwnTroops;
+
+  /** If true, buildings are excluded from targeting (Clone). */
+  private boolean ignoreBuildings;
+
+  /** If true, only affects enemy entities (Tornado, Earthquake, etc.). */
+  private boolean onlyEnemies;
+
+  /** If true, can affect hidden buildings like Tesla (Earthquake, Freeze). */
+  private boolean affectsHidden;
 }

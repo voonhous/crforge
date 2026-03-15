@@ -388,6 +388,7 @@
       "lifeDuration": 0.001,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyEnemies": true,
       "damage": 33,
       "buff": "IceWizardCold",
       "buffDuration": 1.0,
@@ -597,6 +598,7 @@
       "lifeDuration": 0.001,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyEnemies": true,
       "damage": 75,
       "buff": "ZapFreeze",
       "buffDuration": 0.5,
@@ -1111,7 +1113,7 @@
     "rarity": "Epic",
     "cost": 2,
     "radius": 3.0,
-    "summonCharacter": "RageBarbarianBottle"
+    "summonCharacter": "RageBottle"
   },
   {
     "id": "rocket",
@@ -1141,6 +1143,8 @@
       "lifeDuration": 4.0,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyEnemies": true,
+      "affectsHidden": true,
       "damage": 58,
       "buff": "Freeze",
       "buffDuration": 4.0,
@@ -1169,6 +1173,7 @@
       "hitsGround": true,
       "hitsAir": true,
       "hitBiggestTargets": true,
+      "onlyEnemies": true,
       "hitSpeed": 0.46,
       "damage": 413,
       "buff": "ZapFreeze",
@@ -1189,6 +1194,7 @@
       "lifeDuration": 0.001,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyEnemies": true,
       "damage": 75,
       "buff": "ZapFreeze",
       "buffDuration": 0.5,
@@ -1208,6 +1214,7 @@
       "lifeDuration": 8.0,
       "hitsGround": true,
       "hitsAir": true,
+      "onlyEnemies": true,
       "hitSpeed": 0.25,
       "buff": "Poison",
       "buffDuration": 1.0
@@ -1251,6 +1258,7 @@
       "hitsGround": true,
       "hitsAir": true,
       "controlsBuff": true,
+      "onlyEnemies": true,
       "hitSpeed": 0.05,
       "buff": "Tornado",
       "buffDuration": 0.5
@@ -1269,7 +1277,10 @@
       "radius": 3.0,
       "lifeDuration": 1.0,
       "hitsGround": true,
-      "hitsAir": true
+      "hitsAir": true,
+      "clone": true,
+      "onlyOwnTroops": true,
+      "ignoreBuildings": true
     }
   },
   {
@@ -1285,10 +1296,12 @@
       "lifeDuration": 3.0,
       "hitsGround": true,
       "hitsAir": false,
+      "onlyEnemies": true,
+      "affectsHidden": true,
+      "capBuffTimeToAreaEffectTime": true,
       "hitSpeed": 0.1,
       "buff": "Earthquake",
-      "buffDuration": 1.0,
-      "capBuffTimeToAreaEffectTime": true
+      "buffDuration": 1.0
     }
   },
   {
@@ -1330,13 +1343,17 @@
       "lifeDuration": 2.0,
       "hitsGround": true,
       "hitsAir": true,
+      "ignoreBuildings": true,
+      "onlyEnemies": true,
       "hitSpeed": 2.0,
       "projectileSpawn": {
         "spawnCharacter": "DeliveryRecruit",
         "spawnNumber": 1,
         "deployTime": 0.25
       },
-      "damage": 171
+      "damage": 171,
+      "spawnInitialDelay": 2.05,
+      "spawnTime": 0.25
     },
     "spellAsDeploy": true
   },
@@ -1368,6 +1385,7 @@
       "lifeDuration": 6.0,
       "hitsGround": false,
       "hitsAir": false,
+      "onlyEnemies": true,
       "damage": 100,
       "hitSpeed": -0.001
     }
