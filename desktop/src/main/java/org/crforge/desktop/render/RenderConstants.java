@@ -76,6 +76,7 @@ public final class RenderConstants {
   public static final Color COLOR_SPELL_RADIUS = new Color(1f, 1f, 1f, 0.3f);
   public static final Color COLOR_ATTACK_RANGE = new Color(1f, 1f, 1f, 0.12f);
   public static final Color COLOR_MINIMUM_RANGE = new Color(1f, 0.4f, 0.2f, 0.2f);
+  public static final Color COLOR_AGGRO_RANGE = new Color(0.2f, 0.9f, 0.4f, 0.25f);
   public static final Color COLOR_HOVER_ATTACK_RANGE = new Color(1f, 1f, 1f, 0.3f);
   public static final Color COLOR_PATH = new Color(0f, 1f, 1f, 0.7f);
 

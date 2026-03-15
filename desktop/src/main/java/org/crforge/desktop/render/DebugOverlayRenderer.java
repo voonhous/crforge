@@ -2,6 +2,7 @@ package org.crforge.desktop.render;
 
 import static org.crforge.desktop.render.RenderConstants.BOTTOM_UI_HEIGHT;
 import static org.crforge.desktop.render.RenderConstants.CIRCLE_SEGMENTS;
+import static org.crforge.desktop.render.RenderConstants.COLOR_AGGRO_RANGE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_AREA_EFFECT;
 import static org.crforge.desktop.render.RenderConstants.COLOR_ATTACK_RANGE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_BLUE_GHOST;
@@ -130,6 +131,19 @@ public class DebugOverlayRenderer {
         ctx.getShapeRenderer().circle(x, y, minRadius, CIRCLE_SEGMENTS);
         ctx.getShapeRenderer().setColor(COLOR_ATTACK_RANGE);
       }
+    }
+
+    // Draw aggro detection range for aggro-gated spawners (e.g. GoblinHut_Rework)
+    ctx.getShapeRenderer().setColor(COLOR_AGGRO_RANGE);
+    for (Entity entity : state.getAliveEntities()) {
+      SpawnerComponent spawner = entity.getSpawner();
+      if (spawner == null || !spawner.isSpawnOnAggro()) {
+        continue;
+      }
+      float x = entity.getPosition().getX() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float aggroRadius = spawner.getAggroDetectionRange() * TILE_PIXELS;
+      ctx.getShapeRenderer().circle(x, y, aggroRadius, CIRCLE_SEGMENTS);
     }
 
     ctx.getShapeRenderer().end();
