@@ -641,6 +641,15 @@ class UnitLoaderTest {
       assertThat(goblinGiant.getLiveSpawn()).isNotNull();
       assertThat(goblinGiant.getLiveSpawn().spawnAttach()).isTrue();
 
+      // Verify ignoreBuff loads as a list (SuspiciousBush ignores VoodooCurse and GoblinCurse)
+      TroopStats suspiciousBush = map.get("SuspiciousBush");
+      assertThat(suspiciousBush).isNotNull();
+      assertThat(suspiciousBush.getIgnoreBuff())
+          .containsExactlyInAnyOrder("VoodooCurse", "GoblinCurse");
+
+      // Verify ignoreBuff defaults to empty list when not present
+      assertThat(knight.getIgnoreBuff()).isEmpty();
+
       // Verify Phoenix chain resolution from real data
       TroopStats phoenix = map.get("Phoenix");
       assertThat(phoenix).isNotNull();

@@ -191,7 +191,9 @@ public class UnitLoader {
             // Building lifetime
             .lifeTime(dto.getLifeTime())
             // Elixir granted to opponent on death (e.g. Elixir Golem)
-            .manaOnDeathForOpponent(dto.getManaOnDeathForOpponent());
+            .manaOnDeathForOpponent(dto.getManaOnDeathForOpponent())
+            // Buff immunity
+            .ignoreBuff(dto.getIgnoreBuff() != null ? dto.getIgnoreBuff() : List.of());
 
     // Resolve projectile reference
     if (dto.getProjectile() != null && projectileMap != null) {

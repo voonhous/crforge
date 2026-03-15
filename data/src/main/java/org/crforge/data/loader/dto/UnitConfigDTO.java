@@ -100,4 +100,7 @@ public class UnitConfigDTO {
 
   // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
   private AttackSequenceConfigDTO attackSequence;
+
+  // Buff names this unit is immune to (e.g. Golem ignores VoodooCurse)
+  private List<String> ignoreBuff;
 }

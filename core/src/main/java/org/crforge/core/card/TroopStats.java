@@ -119,6 +119,9 @@ public class TroopStats {
   // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
   @Builder.Default private final List<AttackSequenceHit> attackSequence = List.of();
 
+  // Buff names this unit is immune to (e.g. Golem ignores VoodooCurse)
+  @Builder.Default private final List<String> ignoreBuff = List.of();
+
   public boolean isRanged() {
     return range >= 2.0f;
   }
