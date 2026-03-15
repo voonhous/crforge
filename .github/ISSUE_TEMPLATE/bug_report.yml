@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report a bug in crforge
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened?
+      placeholder: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to reproduce the issue.
+      placeholder: |
+        1. Deploy card X at position ...
+        2. Wait for ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: input
+    id: card
+    attributes:
+      label: Card/Unit/Mechanic involved
+      description: Which card, unit, or mechanic is affected?
+      placeholder: e.g. "Knight", "Rage spell", "targeting system"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which module is affected?
+      options:
+        - core
+        - data
+        - desktop
+        - gym-bridge
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any extra information -- logs, screenshots, stack traces.
+    validations:
+      required: false
