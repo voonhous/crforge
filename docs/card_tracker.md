@@ -131,7 +131,7 @@ the live game name.
 | 3  | Mortar             | mortar            | `DONE`    | minimum range blind spot             |
 | 4  | Inferno Tower      | infernotower      | `DONE`    | variable damage                      |
 | 5  | Bomb Tower         | bombtower         | `DONE`    | death bomb AOE                       |
-| 6  | Barbarian Hut      | barbarianhut      | `MISSING` | spawner                              |
+| 6  | Barbarian Hut      | barbarianhut      | `DONE`    | spawner                              |
 | 7  | Tesla              | tesla             | `DONE`    | hiding states                        |
 | 8  | Elixir Collector   | elixircollector   | `MISSING` |                                      |
 | 9  | X-Bow              | xbow              | `DONE`    | siege building                       |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 98      | Fully functional in simulation              |
+| `DONE`     | 99      | Fully functional in simulation              |
 | `PARTIAL`  | 11      | In cards.json but missing complex mechanics |
-| `MISSING`  | 19      | Not yet implemented or newer cards          |
+| `MISSING`  | 18      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
