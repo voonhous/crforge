@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -283,6 +284,26 @@ class GoblinHutTest {
         .isEqualTo(0);
   }
 
+  @Test
+  void spawnedGoblinAppearsTowardEnemy() {
+    deployGoblinHut(DEPLOY_X, DEPLOY_Y);
+    engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2);
+
+    // Place enemy to the right of the hut
+    spawnEnemyTroop(DEPLOY_X + 3f, DEPLOY_Y);
+    engine.tick(SPAWN_START_TICKS + 3);
+
+    Troop goblin = findFirstSpearGoblinDummy();
+    assertThat(goblin).as("Goblin should have spawned").isNotNull();
+    // Goblin should be offset to the right of the building center (toward the enemy)
+    assertThat(goblin.getPosition().getX())
+        .as("Goblin X should be right of building center")
+        .isGreaterThan(DEPLOY_X);
+    assertThat(goblin.getPosition().getY())
+        .as("Goblin Y should be roughly at building Y")
+        .isCloseTo(DEPLOY_Y, within(0.1f));
+  }
+
   // -- Helpers --
 
   private void deployGoblinHut(float x, float y) {
@@ -311,6 +332,13 @@ class GoblinHutTest {
             .build();
     engine.spawn(enemy);
     return enemy;
+  }
+
+  private Troop findFirstSpearGoblinDummy() {
+    return engine.getGameState().getEntitiesOfType(Troop.class).stream()
+        .filter(t -> "SpearGoblin_Dummy".equals(t.getName()) && t.getTeam() == Team.BLUE)
+        .findFirst()
+        .orElse(null);
   }
 
   private long countSpearGoblinDummies() {
