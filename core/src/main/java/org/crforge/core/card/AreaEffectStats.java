@@ -57,4 +57,13 @@ public class AreaEffectStats {
 
   /** If true, can affect hidden buildings like Tesla (Earthquake, Freeze). */
   @Builder.Default private final boolean affectsHidden = false;
+
+  /**
+   * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.
+   * RageBarbarian/Lumberjack, SuspiciousBush) carry a deathAreaEffect in units.json purely as an
+   * internal game engine trigger -- it has zero radius and/or cannot hit anything.
+   */
+  public boolean isDummy() {
+    return radius == 0f || (!hitsGround && !hitsAir);
+  }
 }

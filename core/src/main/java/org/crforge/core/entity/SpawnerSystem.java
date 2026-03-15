@@ -170,7 +170,8 @@ public class SpawnerSystem {
       }
 
       // 3. Spawn death area effect (e.g. RageBarbarianBottle drops Rage zone)
-      if (spawner.getDeathAreaEffect() != null) {
+      // Skip dummy AEOs that exist only as internal triggers with no gameplay effect
+      if (spawner.getDeathAreaEffect() != null && !spawner.getDeathAreaEffect().isDummy()) {
         spawnDeathAreaEffect(entity, spawner);
       }
 

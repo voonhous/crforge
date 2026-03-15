@@ -192,6 +192,121 @@ class LumberjackDeathEffectTest {
   }
 
   @Test
+  void dummyDeathAreaEffect_shouldBeSkipped() {
+    // A dummy deathAreaEffect (radius=0, hitsGround=false, hitsAir=false) should NOT spawn an
+    // AreaEffect entity. This matches units like RageBarbarian and SuspiciousBush that carry
+    // a deathAreaEffect in units.json purely as an internal game engine trigger.
+    AreaEffectStats dummyAoe =
+        AreaEffectStats.builder()
+            .name("DummyEffect")
+            .radius(0f)
+            .hitsGround(false)
+            .hitsAir(false)
+            .build();
+
+    assertThat(dummyAoe.isDummy()).isTrue();
+
+    SpawnerComponent spawner = SpawnerComponent.builder().deathAreaEffect(dummyAoe).build();
+
+    Troop unit =
+        Troop.builder()
+            .name("TestUnit")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .health(new Health(1))
+            .deployTime(0f)
+            .spawner(spawner)
+            .build();
+
+    gameState.spawnEntity(unit);
+    gameState.processPending();
+
+    // Kill the unit -> dummy AEO should NOT create an AreaEffect entity
+    unit.getHealth().takeDamage(1);
+    gameState.processDeaths();
+    gameState.processPending();
+
+    List<AreaEffect> effects = gameState.getEntitiesOfType(AreaEffect.class);
+    assertThat(effects).isEmpty();
+  }
+
+  @Test
+  void lumberjack_dummyAoeSkipped_butDeathSpawnStillWorks() {
+    // Lumberjack (RageBarbarian) has BOTH a dummy deathAreaEffect AND a deathSpawn
+    // (RageBarbarianBottle). The dummy AEO on the Lumberjack itself should be skipped,
+    // but the deathSpawn (bottle) should still fire, and the bottle's real deathAreaEffect
+    // (BarbarianRage) should still create a working Rage zone.
+    AreaEffectStats dummyAoe =
+        AreaEffectStats.builder()
+            .name("DummyRageEffect")
+            .radius(0f)
+            .hitsGround(false)
+            .hitsAir(false)
+            .build();
+
+    assertThat(dummyAoe.isDummy()).isTrue();
+    assertThat(rageAreaEffect.isDummy()).isFalse();
+
+    // RageBarbarianBottle: health=0 bomb with the REAL deathAreaEffect (BarbarianRage)
+    TroopStats bottleStats =
+        TroopStats.builder()
+            .name("RageBarbarianBottle")
+            .health(0)
+            .deployTime(0.5f)
+            .movementType(MovementType.GROUND)
+            .deathAreaEffect(rageAreaEffect)
+            .build();
+
+    // Lumberjack spawner: dummy deathAreaEffect + deathSpawn of the bottle
+    SpawnerComponent ljSpawner =
+        SpawnerComponent.builder()
+            .deathAreaEffect(dummyAoe)
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f)))
+            .build();
+
+    Troop lumberjack =
+        Troop.builder()
+            .name("RageBarbarian")
+            .team(Team.BLUE)
+            .position(new Position(10, 10))
+            .health(new Health(1))
+            .movement(new Movement(1.2f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .deployTime(0f)
+            .spawner(ljSpawner)
+            .build();
+
+    gameState.spawnEntity(lumberjack);
+    gameState.processPending();
+
+    // Step 1: Kill Lumberjack -> deathSpawn fires, dummy AEO is skipped
+    lumberjack.getHealth().takeDamage(1);
+    gameState.processDeaths();
+
+    // Bottle should be pending; NO AreaEffect from the dummy AEO
+    assertThat(gameState.getPendingSpawns()).hasSize(1);
+    Entity bottle = gameState.getPendingSpawns().get(0);
+    assertThat(bottle.getName()).isEqualTo("RageBarbarianBottle");
+    assertThat(gameState.getEntitiesOfType(AreaEffect.class)).isEmpty();
+
+    gameState.processPending();
+
+    // Step 2: Advance bottle past deploy, then self-destruct
+    Troop bottleTroop = (Troop) bottle;
+    bottleTroop.update(0.6f);
+    spawnerSystem.update(0.1f);
+    assertThat(bottle.getHealth().isAlive()).isFalse();
+
+    // processDeaths -> bottle's real deathAreaEffect creates BarbarianRage
+    gameState.processDeaths();
+    gameState.processPending();
+
+    List<AreaEffect> effects = gameState.getEntitiesOfType(AreaEffect.class);
+    assertThat(effects).hasSize(1);
+    assertThat(effects.get(0).getName()).isEqualTo("BarbarianRage");
+    assertThat(effects.get(0).getStats().getRadius()).isEqualTo(3.0f);
+  }
+
+  @Test
   void lumberjack_fullDeathChain() {
     // Full chain: Lumberjack -> RageBarbarianBottle (deathSpawn) -> Rage AreaEffect
     // (deathAreaEffect)
