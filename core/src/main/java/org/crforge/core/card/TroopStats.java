@@ -36,6 +36,10 @@ public class TroopStats {
   @Builder.Default private final MovementType movementType = MovementType.GROUND;
   @Builder.Default private final TargetType targetType = TargetType.ALL;
   @Builder.Default private final float deployTime = DEFAULT_DEPLOY_TIME;
+
+  // Spawn animation delay in seconds before the unit activates (additive with deployTime)
+  @Builder.Default private final float deployDelay = 0f;
+
   @Builder.Default private final List<EffectStats> hitEffects = new ArrayList<>();
 
   private final ProjectileStats projectile;

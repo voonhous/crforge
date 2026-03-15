@@ -12,7 +12,8 @@
     "loadTime": 0.9,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "Archer": {
     "name": "Archer",
@@ -28,7 +29,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "ArcherArrow"
+    "projectile": "ArcherArrow",
+    "deployDelay": 0.4
   },
   "ArcherQueen": {
     "name": "ArcherQueen",
@@ -44,7 +46,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "ArcherQueenArrow"
+    "projectile": "ArcherQueenArrow",
+    "allowAreaDmgWhenInvisible": true
   },
   "Assassin": {
     "name": "Assassin",
@@ -85,7 +88,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "AxeManProjectile"
+    "projectile": "AxeManProjectile",
+    "deployDelay": 0.4
   },
   "BabyDragon": {
     "name": "BabyDragon",
@@ -158,7 +162,8 @@
     "loadTime": 0.9,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "BarbarianHut": {
     "name": "BarbarianHut",
@@ -221,6 +226,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "deployDelay": 0.4,
     "attackDashTime": 0.15
   },
   "BattleHealer": {
@@ -277,6 +283,7 @@
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
     "kamikaze": true,
+    "ignoreResurrect": true,
     "deathSpawn": [
       {
         "spawnCharacter": "Barbarian",
@@ -338,7 +345,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "BlowdartGoblinProjectile"
+    "projectile": "BlowdartGoblinProjectile",
+    "deployDelay": 0.4
   },
   "BombTower": {
     "name": "BombTower",
@@ -455,7 +463,8 @@
     "loadTime": 1.1,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "Cannon": {
     "name": "Cannon",
@@ -571,7 +580,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "DartBarrellProjectile"
+    "projectile": "DartBarrellProjectile",
+    "deployDelay": 0.4
   },
   "DeliveryRecruit": {
     "name": "DeliveryRecruit",
@@ -587,6 +597,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "deployDelay": 0.4,
     "shieldHitpoints": 94
   },
   "ElectroDragon": {
@@ -647,7 +658,8 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "ElectroSpiritProjectile",
-    "kamikaze": true
+    "kamikaze": true,
+    "deployDelay": 0.4
   },
   "ElectroWizard": {
     "name": "ElectroWizard",
@@ -683,7 +695,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "EliteArcherArrow"
+    "projectile": "EliteArcherArrow",
+    "deployDelay": 0.4
   },
   "ElixirBarrel": {
     "name": "ElixirBarrel",
@@ -735,6 +748,7 @@
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "ignoreResurrect": true,
     "deathSpawn": [
       {
         "spawnCharacter": "ElixirGolem2",
@@ -760,6 +774,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
+    "ignoreResurrect": true,
     "deathSpawn": [
       {
         "spawnCharacter": "ElixirGolem4",
@@ -802,7 +817,8 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "FireSpiritsProjectile",
-    "kamikaze": true
+    "kamikaze": true,
+    "deployDelay": 0.4
   },
   "Firecracker": {
     "name": "Firecracker",
@@ -863,6 +879,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "deployDelay": 0.3,
     "abilities": [
       {
         "type": "HOOK",
@@ -891,6 +908,7 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "hovering": true,
+    "allowAreaDmgWhenInvisible": true,
     "areaDamageRadius": 1.0,
     "stealth": {
       "hideTimeMs": 400,
@@ -989,7 +1007,8 @@
     "loadTime": 0.7,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "GoblinBrawler": {
     "name": "GoblinBrawler",
@@ -1004,7 +1023,8 @@
     "loadTime": 0.9,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "GoblinCage": {
     "name": "GoblinCage",
@@ -1221,7 +1241,8 @@
     "loadTime": 0.5,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "GoldenKnight": {
     "name": "GoldenKnight",
@@ -1266,6 +1287,7 @@
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "ignoreResurrect": true,
     "deathDamage": {
       "damage": 88,
       "radius": 2.0,
@@ -1316,7 +1338,8 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "HealSpiritProjectile",
-    "kamikaze": true
+    "kamikaze": true,
+    "deployDelay": 0.4
   },
   "HogRider": {
     "name": "HogRider",
@@ -1333,7 +1356,8 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
-    "jumpEnabled": true
+    "jumpEnabled": true,
+    "deployDelay": 0.4
   },
   "Hunter": {
     "name": "Hunter",
@@ -1350,6 +1374,7 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "HunterProjectile",
+    "deployDelay": 0.3,
     "areaDamageRadius": 0.07,
     "multipleProjectiles": 10
   },
@@ -1399,7 +1424,8 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "IceSpiritsProjectile",
-    "kamikaze": true
+    "kamikaze": true,
+    "deployDelay": 0.4
   },
   "IceWizard": {
     "name": "IceWizard",
@@ -1519,6 +1545,7 @@
     "projectile": "LavaHoundProjectile",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "ignoreResurrect": true,
     "deathSpawn": [
       {
         "spawnCharacter": "LavaPups",
@@ -1707,7 +1734,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "MinionSpit"
+    "projectile": "MinionSpit",
+    "deployDelay": 0.4
   },
   "Monk": {
     "name": "Monk",
@@ -1778,6 +1806,8 @@
     "movementType": "GROUND",
     "projectile": "MovingCannonProjectile",
     "ignorePushback": true,
+    "ignoreResurrect": true,
+    "deployDelay": 0.4,
     "ignoreBuff": "VoodooCurse,GoblinCurse"
   },
   "Musketeer": {
@@ -1794,7 +1824,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "MusketeerProjectile"
+    "projectile": "MusketeerProjectile",
+    "deployDelay": 0.3
   },
   "Pekka": {
     "name": "Pekka",
@@ -1842,6 +1873,8 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "ignoreResurrect": true,
+    "deployDelay": 0.4,
     "ignoreBuff": "VoodooCurse",
     "liveSpawn": {
       "spawnCharacter": "PhoenixNoRespawn",
@@ -1907,6 +1940,7 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "PrincessProjectile",
+    "deployDelay": 0.4,
     "areaDamageRadius": 2.5,
     "multipleProjectiles": 5
   },
@@ -1924,6 +1958,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "deployDelay": 0.4,
     "deathSpawn": [
       {
         "spawnCharacter": "RageBarbarianBottle",
@@ -2012,6 +2047,7 @@
     "movementType": "GROUND",
     "projectile": "RamRiderBola",
     "targetOnlyTroops": true,
+    "ignoreResurrect": true,
     "ignoreTargetsWithBuff": "BolaSnare",
     "ignoreBuff": "VoodooCurse"
   },
@@ -2044,7 +2080,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "RascalGirlProjectile"
+    "projectile": "RascalGirlProjectile",
+    "deployDelay": 0.4
   },
   "Recruit": {
     "name": "Recruit",
@@ -2060,6 +2097,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "deployDelay": 0.4,
     "shieldHitpoints": 94
   },
   "RoyalGiant": {
@@ -2095,7 +2133,8 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
-    "jumpEnabled": true
+    "jumpEnabled": true,
+    "deployDelay": 0.4
   },
   "Skeleton": {
     "name": "Skeleton",
@@ -2110,7 +2149,8 @@
     "loadTime": 0.6,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   },
   "SkeletonBalloon": {
     "name": "SkeletonBalloon",
@@ -2128,6 +2168,7 @@
     "movementType": "AIR",
     "targetOnlyBuildings": true,
     "kamikaze": true,
+    "ignoreResurrect": true,
     "deathSpawn": [
       {
         "spawnCharacter": "SkeletonContainerNew",
@@ -2212,6 +2253,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "deployDelay": 0.4,
     "shieldHitpoints": 100
   },
   "SpearGoblin": {
@@ -2228,7 +2270,8 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "SpearGoblinProjectile"
+    "projectile": "SpearGoblinProjectile",
+    "deployDelay": 0.4
   },
   "SpearGoblinGiant": {
     "name": "SpearGoblinGiant",
@@ -2245,6 +2288,8 @@
     "targetType": "ALL",
     "movementType": "AIR",
     "projectile": "SpearGoblinGiantProjectile",
+    "ignoreResurrect": true,
+    "deployDelay": 0.4,
     "deathSpawn": [
       {
         "spawnCharacter": "SpearGoblin",
@@ -2270,6 +2315,8 @@
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
     "kamikaze": true,
+    "ignoreResurrect": true,
+    "allowAreaDmgWhenInvisible": true,
     "deathSpawn": [
       {
         "spawnCharacter": "BushGoblin",
@@ -2327,6 +2374,7 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "ThreeMusketeer_Rework_Projectile",
+    "deployDelay": 0.3,
     "attackSequence": {
       "hits": [
         {
@@ -2402,6 +2450,7 @@
     "projectile": "WallbreakerProjectile",
     "targetOnlyBuildings": true,
     "kamikaze": true,
+    "deployDelay": 0.4,
     "areaDamageRadius": 1.5
   },
   "Witch": {
@@ -2530,6 +2579,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "prj_goblinstein_doctor"
+    "projectile": "prj_goblinstein_doctor",
+    "deployDelay": 0.4
   }
 }

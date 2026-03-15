@@ -494,7 +494,7 @@ public class SpawnerSystem {
                     stats.getMovementType()))
             .combat(combat)
             .deployTime(deployTime)
-            .deployTimer(deployTime)
+            .deployTimer(deployTime + stats.getDeployDelay())
             .spawner(spawner)
             .level(level)
             .clone(asClone)

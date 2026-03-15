@@ -30,6 +30,9 @@ public class UnitConfigDTO {
   private TargetType targetType;
   private Float deployTime;
 
+  // Spawn animation delay in seconds before the unit activates (e.g. Archer=0.4)
+  private Float deployDelay;
+
   // Projectile reference (string name into projectiles.json)
   private String projectile;
 

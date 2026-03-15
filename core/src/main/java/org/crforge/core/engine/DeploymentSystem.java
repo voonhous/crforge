@@ -505,7 +505,7 @@ public class DeploymentSystem {
         .movement(movement)
         .combat(combat)
         .deployTime(stats.getDeployTime())
-        .deployTimer(stats.getDeployTime())
+        .deployTimer(stats.getDeployTime() + stats.getDeployDelay())
         .spawner(spawner)
         .ability(abilityComponent)
         .level(level)
@@ -663,7 +663,7 @@ public class DeploymentSystem {
             .remainingLifetime(unitStats.getLifeTime())
             .spawner(spawner)
             .deployTime(unitStats.getDeployTime())
-            .deployTimer(unitStats.getDeployTime())
+            .deployTimer(unitStats.getDeployTime() + unitStats.getDeployDelay())
             .level(level)
             .build();
 
@@ -824,7 +824,7 @@ public class DeploymentSystem {
                 stats.getVisualRadius(),
                 stats.getMovementType()))
         .deployTime(stats.getDeployTime())
-        .deployTimer(stats.getDeployTime())
+        .deployTimer(stats.getDeployTime() + stats.getDeployDelay())
         .spawner(spawner)
         .level(level)
         .build();

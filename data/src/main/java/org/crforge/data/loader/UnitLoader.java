@@ -168,6 +168,7 @@ public class UnitLoader {
             .movementType(dto.getMovementType())
             .targetType(dto.getTargetType())
             .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
+            .deployDelay(dto.getDeployDelay() != null ? dto.getDeployDelay() : 0f)
             // Shield
             .shieldHitpoints(dto.getShieldHitpoints())
             // Combat modifiers
