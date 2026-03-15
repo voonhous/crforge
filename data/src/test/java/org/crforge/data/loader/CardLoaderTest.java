@@ -542,6 +542,53 @@ class CardLoaderTest {
     assertThat(cards.get(0).getUnitCount()).isEqualTo(1);
   }
 
+  @Test
+  void loadCards_shouldParseEarthquakeSpell() {
+    String json =
+        """
+        [
+          {
+            "id": "earthquake",
+            "name": "Earthquake",
+            "type": "SPELL",
+            "rarity": "Rare",
+            "cost": 3,
+            "areaEffect": {
+              "name": "Earthquake",
+              "radius": 3.5,
+              "lifeDuration": 3.0,
+              "hitsGround": true,
+              "hitsAir": false,
+              "hitSpeed": 0.1,
+              "buff": "Earthquake",
+              "buffDuration": 1.0,
+              "capBuffTimeToAreaEffectTime": true
+            }
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), Map.of(), Map.of());
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getId()).isEqualTo("earthquake");
+    assertThat(card.getType()).isEqualTo(CardType.SPELL);
+    assertThat(card.getRarity()).isEqualTo(Rarity.RARE);
+    assertThat(card.getCost()).isEqualTo(3);
+
+    AreaEffectStats ae = card.getAreaEffect();
+    assertThat(ae).isNotNull();
+    assertThat(ae.getRadius()).isCloseTo(3.5f, within(0.01f));
+    assertThat(ae.getLifeDuration()).isCloseTo(3.0f, within(0.01f));
+    assertThat(ae.isHitsGround()).isTrue();
+    assertThat(ae.isHitsAir()).isFalse();
+    assertThat(ae.getHitSpeed()).isCloseTo(0.1f, within(0.01f));
+    assertThat(ae.getBuff()).isEqualTo("Earthquake");
+    assertThat(ae.getBuffDuration()).isCloseTo(1.0f, within(0.01f));
+    assertThat(ae.isCapBuffTimeToAreaEffectTime()).isTrue();
+  }
+
   // -- Integration test with real resource files --
 
   @Test

@@ -35,7 +35,7 @@ public class AreaEffect extends AbstractEntity {
   @Builder.Default private final int resolvedCrownTowerDamagePercent = 0;
 
   /**
-   * Building damage percent bonus from BuffDefinition (e.g. Earthquake 350 = 3.5x to buildings).
+   * Building damage percent bonus from BuffDefinition (e.g. Earthquake 350 = 4.5x to buildings).
    */
   @Builder.Default private final int buildingDamagePercent = 0;
 

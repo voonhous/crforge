@@ -13,6 +13,8 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.player.Team;
 
 @Getter
@@ -97,12 +99,18 @@ public abstract class AbstractEntity implements Entity {
 
   @Override
   public void addEffect(AppliedEffect effect) {
-    // Prevent stacking of effects of the same type.
-    // Instead, refresh the duration of the existing effect.
-    for (AppliedEffect existing : appliedEffects) {
-      if (existing.getType() == effect.getType()) {
-        existing.refresh(effect.getRemainingDuration());
-        return;
+    // Check if this buff allows stacking (e.g. Earthquake)
+    BuffDefinition buffDef = BuffRegistry.get(effect.getBuffName());
+    boolean stackable = buffDef != null && buffDef.isEnableStacking();
+
+    if (!stackable) {
+      // Prevent stacking of effects of the same type.
+      // Instead, refresh the duration of the existing effect.
+      for (AppliedEffect existing : appliedEffects) {
+        if (existing.getType() == effect.getType()) {
+          existing.refresh(effect.getRemainingDuration());
+          return;
+        }
       }
     }
     appliedEffects.add(effect);

@@ -39,7 +39,7 @@ public class BuffDefinition {
   /** Crown tower damage percent (e.g. -75 for Poison means 25% damage to crown towers). */
   @Builder.Default private final int crownTowerDamagePercent = 0;
 
-  /** Building damage percent bonus (e.g. 350 for Earthquake means 3.5x damage to buildings). */
+  /** Building damage percent bonus (e.g. 350 for Earthquake means 4.5x damage to buildings). */
   @Builder.Default private final int buildingDamagePercent = 0;
 
   /** Time between damage ticks in seconds. */

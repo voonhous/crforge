@@ -224,15 +224,20 @@ public class AreaEffectSystem {
         // Apply buff first (before damage, consistent with CombatSystem convention)
         applyBuff(effect, target);
 
-        // Apply damage with crown tower and building damage modifiers
+        // Apply damage with building bonus and crown tower modifiers
         if (damage > 0) {
-          int effectiveDamage = DamageUtil.adjustForCrownTower(damage, target, ctdp);
+          int effectiveDamage = damage;
 
-          // Apply building damage percent bonus (e.g. Earthquake deals 3.5x to buildings)
+          // Apply building damage percent bonus first (e.g. Earthquake deals 4.5x to buildings)
+          // Towers are buildings in Clash Royale, so BUILDING and TOWER both qualify
           if (effect.getBuildingDamagePercent() > 0
-              && target.getEntityType() == EntityType.BUILDING) {
-            effectiveDamage = effectiveDamage * effect.getBuildingDamagePercent() / 100;
+              && (target.getEntityType() == EntityType.BUILDING
+                  || target.getEntityType() == EntityType.TOWER)) {
+            effectiveDamage = effectiveDamage * (100 + effect.getBuildingDamagePercent()) / 100;
           }
+
+          // Then apply crown tower damage reduction
+          effectiveDamage = DamageUtil.adjustForCrownTower(effectiveDamage, target, ctdp);
 
           target.getHealth().takeDamage(effectiveDamage);
         }
@@ -291,12 +296,17 @@ public class AreaEffectSystem {
     applyBuff(effect, bestTarget);
 
     if (damage > 0) {
-      int effectiveDamage = DamageUtil.adjustForCrownTower(damage, bestTarget, ctdp);
+      int effectiveDamage = damage;
 
+      // Apply building damage percent bonus first
       if (effect.getBuildingDamagePercent() > 0
-          && bestTarget.getEntityType() == EntityType.BUILDING) {
-        effectiveDamage = effectiveDamage * effect.getBuildingDamagePercent() / 100;
+          && (bestTarget.getEntityType() == EntityType.BUILDING
+              || bestTarget.getEntityType() == EntityType.TOWER)) {
+        effectiveDamage = effectiveDamage * (100 + effect.getBuildingDamagePercent()) / 100;
       }
+
+      // Then apply crown tower damage reduction
+      effectiveDamage = DamageUtil.adjustForCrownTower(effectiveDamage, bestTarget, ctdp);
 
       bestTarget.getHealth().takeDamage(effectiveDamage);
     }
@@ -397,6 +407,9 @@ public class AreaEffectSystem {
 
     // Pass buff name for data-driven multiplier resolution in StatusEffectSystem
     float duration = stats.getBuffDuration() > 0 ? stats.getBuffDuration() : 1.0f;
+    if (stats.isCapBuffTimeToAreaEffectTime()) {
+      duration = Math.min(duration, effect.getRemainingLifetime());
+    }
     target.addEffect(new AppliedEffect(effectType, duration, stats.getBuff()));
 
     // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)

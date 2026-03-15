@@ -39,4 +39,7 @@ public class AreaEffectStats {
 
   /** If true, buffs applied by this area effect are cleaned up when the effect expires. */
   @Builder.Default private final boolean controlsBuff = false;
+
+  /** If true, buff duration is capped to the area effect's remaining lifetime. */
+  @Builder.Default private final boolean capBuffTimeToAreaEffectTime = false;
 }

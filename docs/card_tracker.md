@@ -112,7 +112,7 @@ the live game name.
 | 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling                   |
 | 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff                     |
 | 14 | Clone            | clone         | `PARTIAL` | needs clone mechanic                             |
-| 15 | Earthquake       | earthquake    | `MISSING` | area effect, ticking                             |
+| 15 | Earthquake       | earthquake    | `DONE`    | area effect, ticking, building 4.5x, slow 50% |
 | 16 | Barbarian Barrel | barblog       | `DONE`    | spellAsDeploy, 2-stage rolling + Barbarian spawn |
 | 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit                               |
 | 18 | Snowball         | snowball      | `DONE`    | projectile spell                                 |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 94      | Fully functional in simulation              |
+| `DONE`     | 95      | Fully functional in simulation              |
 | `PARTIAL`  | 12      | In cards.json but missing complex mechanics |
-| `MISSING`  | 22      | Not yet implemented or newer cards          |
+| `MISSING`  | 21      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

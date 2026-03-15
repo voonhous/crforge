@@ -40,4 +40,7 @@ public class AreaEffectConfigDTO {
 
   /** If true, buffs applied by this area effect are cleaned up when the effect expires. */
   private boolean controlsBuff;
+
+  /** If true, buff duration is capped to the area effect's remaining lifetime. */
+  private boolean capBuffTimeToAreaEffectTime;
 }
