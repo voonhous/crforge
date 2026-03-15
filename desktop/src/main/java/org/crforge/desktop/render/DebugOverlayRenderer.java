@@ -163,6 +163,11 @@ public class DebugOverlayRenderer {
         label += " [" + b.getAbility().getHidingState() + "]";
       }
 
+      // Append clone indicator for cloned troops
+      if (entity instanceof Troop troop && troop.isClone()) {
+        label += " [CLONE]";
+      }
+
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
       float textWidth = ctx.getGlyphLayout().width;
 

@@ -63,6 +63,9 @@ public class EntityRenderer {
       } else if (hidingState == AbilityComponent.HidingState.REVEALING) {
         // Revealing buildings render semi-transparent
         ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.5f);
+      } else if (entity instanceof Troop t && t.isClone()) {
+        // Clones render semi-transparent to convey fragility (1 HP)
+        ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.4f);
       } else if (entity.isInvulnerable()) {
         // Invulnerable entities render with reduced alpha
         ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.5f);
@@ -99,6 +102,13 @@ public class EntityRenderer {
       float collisionRadius = entity.getCollisionRadius() * TILE_PIXELS;
       ctx.getShapeRenderer().setColor(COLOR_COLLISION_CIRCLE);
       ctx.getShapeRenderer().circle(x, y, collisionRadius);
+
+      // Clone aura ring (outside visual radius, before status effects)
+      if (entity instanceof Troop troop && troop.isClone()) {
+        ctx.getShapeRenderer().setColor(COLOR_CLONE_AURA);
+        ctx.getShapeRenderer().circle(x, y, visualRadius + 3);
+        ctx.getShapeRenderer().circle(x, y, visualRadius + 5);
+      }
 
       // Status effect ring (outside visual radius)
       Color effectColor = StatusEffectRenderer.getStatusEffectColor(entity);
