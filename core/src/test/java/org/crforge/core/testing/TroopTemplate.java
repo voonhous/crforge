@@ -1,7 +1,9 @@
 package org.crforge.core.testing;
 
+import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
+import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -37,6 +39,7 @@ public class TroopTemplate {
   private float aoeRadius = 0f;
   private boolean targetOnlyBuildings = false;
   private AbilityData abilityData = null;
+  private List<AttackSequenceHit> attackSequence = List.of();
 
   private TroopTemplate(String name, Team team) {
     this.name = name;
@@ -153,6 +156,11 @@ public class TroopTemplate {
     return this;
   }
 
+  public TroopTemplate attackSequence(List<AttackSequenceHit> seq) {
+    this.attackSequence = seq;
+    return this;
+  }
+
   // -- Build --
 
   /** Creates the Troop entity from this template. */
@@ -176,6 +184,7 @@ public class TroopTemplate {
                 .aoeRadius(aoeRadius)
                 .targetType(targetType)
                 .targetOnlyBuildings(targetOnlyBuildings)
+                .attackSequence(attackSequence)
                 .build())
         .deployTime(deployTime)
         .deployTimer(deployTime)

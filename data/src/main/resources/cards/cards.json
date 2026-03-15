@@ -1346,14 +1346,16 @@
       "ignoreBuildings": true,
       "onlyEnemies": true,
       "hitSpeed": 2.0,
+      "spawn": {
+        "spawnInitialDelay": 2.05,
+        "spawnTime": 0.25
+      },
       "projectileSpawn": {
         "spawnCharacter": "DeliveryRecruit",
         "spawnNumber": 1,
         "deployTime": 0.25
       },
-      "damage": 171,
-      "spawnInitialDelay": 2.05,
-      "spawnTime": 0.25
+      "damage": 171
     },
     "spellAsDeploy": true
   },
@@ -1515,6 +1517,14 @@
     "rarity": "Rare",
     "cost": 4,
     "unit": "FirespiritHut"
+  },
+  {
+    "id": "ragebarbarianbottle",
+    "name": "RageBarbarianBottle",
+    "type": "BUILDING",
+    "rarity": "",
+    "cost": 0,
+    "unit": "RageBarbarianBottle"
   },
   {
     "id": "goblincage",

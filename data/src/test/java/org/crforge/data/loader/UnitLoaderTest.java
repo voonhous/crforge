@@ -541,6 +541,48 @@ class UnitLoaderTest {
   }
 
   @Test
+  void loadBerserker_hasAttackSequence() {
+    String json =
+        """
+        {
+          "Berserker": {
+            "name": "Berserker",
+            "health": 350,
+            "damage": 0,
+            "speed": 90.0,
+            "mass": 2.0,
+            "collisionRadius": 0.45,
+            "sightRange": 5.5,
+            "range": 0.8,
+            "attackCooldown": 0.6,
+            "loadTime": 0.4,
+            "deployTime": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND",
+            "attackSequence": {
+              "hits": [
+                { "damage": 40 },
+                { "damage": 40 },
+                { "damage": 40 }
+              ],
+              "mode": "None"
+            }
+          }
+        }
+        """;
+
+    Map<String, TroopStats> map = UnitLoader.loadUnits(toStream(json), Map.of());
+
+    TroopStats berserker = map.get("Berserker");
+    assertThat(berserker).isNotNull();
+    assertThat(berserker.getDamage()).isEqualTo(0);
+    assertThat(berserker.getAttackSequence()).hasSize(3);
+    assertThat(berserker.getAttackSequence().get(0).damage()).isEqualTo(40);
+    assertThat(berserker.getAttackSequence().get(1).damage()).isEqualTo(40);
+    assertThat(berserker.getAttackSequence().get(2).damage()).isEqualTo(40);
+  }
+
+  @Test
   void loadUnits_shouldLoadAllFromResource() {
     // Load projectiles first, then units
     Map<String, ProjectileStats> projMap;

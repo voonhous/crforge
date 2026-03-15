@@ -73,6 +73,12 @@
     "hitFrequency": 1.0,
     "enableStacking": true
   },
+  "Rage": {
+    "name": "Rage",
+    "speedMultiplier": 130,
+    "hitSpeedMultiplier": 130,
+    "spawnSpeedMultiplier": 130
+  },
   "Tornado": {
     "name": "Tornado",
     "damagePerSecond": 60,

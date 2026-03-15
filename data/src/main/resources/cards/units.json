@@ -442,6 +442,21 @@
     "projectile": "BowlerProjectile",
     "ignorePushback": true
   },
+  "BushGoblin": {
+    "name": "BushGoblin",
+    "health": 119,
+    "damage": 100,
+    "speed": 60.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.8,
+    "attackCooldown": 1.4,
+    "loadTime": 1.1,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
   "Cannon": {
     "name": "Cannon",
     "health": 322,
@@ -1909,12 +1924,46 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "RageBarbarianBottle",
+        "spawnNumber": 1
+      }
+    ],
     "deathAreaEffect": {
       "name": "RageBarbarianDummyForSpawn",
       "radius": 0.0,
       "lifeDuration": 0.05,
       "hitsGround": false,
       "hitsAir": false
+    }
+  },
+  "RageBarbarianBottle": {
+    "name": "RageBarbarianBottle",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.5,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "ignoreBuff": "Event_Berserk_OnStartBuff",
+    "deathAreaEffect": {
+      "name": "BarbarianRage",
+      "radius": 3.0,
+      "lifeDuration": 5.5,
+      "hitsGround": true,
+      "hitsAir": true,
+      "onlyOwnTroops": true,
+      "capBuffTimeToAreaEffectTime": true,
+      "hitSpeed": 0.3,
+      "buff": "Rage",
+      "buffDuration": 1.0
     }
   },
   "Ram": {
@@ -2221,6 +2270,12 @@
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
     "kamikaze": true,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "BushGoblin",
+        "spawnNumber": 2
+      }
+    ],
     "ignoreBuff": "VoodooCurse,GoblinCurse",
     "stealth": {
       "buff": "BushInvisibility"

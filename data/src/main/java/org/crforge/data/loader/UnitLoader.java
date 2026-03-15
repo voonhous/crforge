@@ -25,6 +25,7 @@ import org.crforge.core.ability.StealthAbility;
 import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.ability.VariableDamageStage;
+import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LiveSpawnConfig;
@@ -136,7 +137,8 @@ public class UnitLoader {
         dto.getMovementType(), "MovementType is required for unit: " + dto.getName());
 
     // Validation: Require TargetType if the unit has ANY attack capability
-    boolean hasAttackCapability = dto.getDamage() > 0 || dto.getProjectile() != null;
+    boolean hasAttackCapability =
+        dto.getDamage() > 0 || dto.getProjectile() != null || dto.getAttackSequence() != null;
     if (hasAttackCapability) {
       Objects.requireNonNull(
           dto.getTargetType(), "TargetType is required for attacking unit: " + dto.getName());
@@ -308,6 +310,15 @@ public class UnitLoader {
     if (dto.getSpawnPathfindSpeed() > 0
         && (dto.getAbilities() == null || dto.getAbilities().isEmpty())) {
       builder.ability(new TunnelAbility(dto.getSpawnPathfindSpeed() / SPEED_BASE));
+    }
+
+    // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
+    if (dto.getAttackSequence() != null && dto.getAttackSequence().getHits() != null) {
+      List<AttackSequenceHit> hits =
+          dto.getAttackSequence().getHits().stream()
+              .map(h -> new AttackSequenceHit(h.getDamage()))
+              .toList();
+      builder.attackSequence(hits);
     }
 
     // Stealth / Hiding abilities from stealth config

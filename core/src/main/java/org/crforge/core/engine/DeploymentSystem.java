@@ -11,6 +11,7 @@ import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.EffectStats;
@@ -354,12 +355,23 @@ public class DeploymentSystem {
       int scaledDamage = LevelScaling.scaleCard(spawnStats.getDamage(), card.getRarity(), level);
 
       float initialLoad = spawnStats.isNoPreload() ? 0f : spawnStats.getLoadTime();
+
+      // Scale attack sequence hits by level for attached units
+      List<AttackSequenceHit> scaledAttachSequence =
+          spawnStats.getAttackSequence().stream()
+              .map(
+                  hit ->
+                      new AttackSequenceHit(
+                          LevelScaling.scaleCard(hit.damage(), card.getRarity(), level)))
+              .toList();
+
       Combat combat =
           buildCombatComponent(spawnStats, scaledDamage, initialLoad)
               .aoeRadius(spawnStats.getAoeRadius())
               .multipleTargets(spawnStats.getMultipleTargets())
               .multipleProjectiles(spawnStats.getMultipleProjectiles())
               .buffOnDamage(spawnStats.getBuffOnDamage())
+              .attackSequence(scaledAttachSequence)
               .build();
 
       int scaledShield =
@@ -448,12 +460,19 @@ public class DeploymentSystem {
     int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
 
+    // Scale attack sequence hits by level
+    List<AttackSequenceHit> scaledSequence =
+        stats.getAttackSequence().stream()
+            .map(hit -> new AttackSequenceHit(LevelScaling.scaleCard(hit.damage(), rarity, level)))
+            .toList();
+
     Combat combat =
         buildCombatComponent(stats, scaledDamage, initialLoad)
             .aoeRadius(stats.getAoeRadius())
             .multipleTargets(stats.getMultipleTargets())
             .multipleProjectiles(stats.getMultipleProjectiles())
             .buffOnDamage(stats.getBuffOnDamage())
+            .attackSequence(scaledSequence)
             .build();
 
     // Scale shield by level

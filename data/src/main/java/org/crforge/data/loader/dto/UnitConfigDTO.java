@@ -94,4 +94,7 @@ public class UnitConfigDTO {
 
   // Death spawn projectile: projectile fired at death position (e.g. Phoenix -> PhoenixFireball)
   private String deathSpawnProjectile;
+
+  // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
+  private AttackSequenceConfigDTO attackSequence;
 }

@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.entity.base.Entity;
@@ -48,6 +49,10 @@ public class Combat {
 
   // Attack pushback: self-knockback when firing (e.g. Firecracker recoils backward)
   @Builder.Default private final float attackPushBack = 0f;
+
+  // Attack sequence: per-hit damage values for units with multi-hit combos (e.g. Berserker)
+  @Builder.Default private final List<AttackSequenceHit> attackSequence = List.of();
+  @Setter @Builder.Default private int attackSequenceIndex = 0;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default private final boolean kamikaze = false;
@@ -160,6 +165,14 @@ public class Combat {
     return combatDisableSources.contains(ModifierSource.RETURNING_PROJECTILE);
   }
 
+  /** Returns the effective damage for the current attack, using attack sequence if available. */
+  public int getEffectiveDamage() {
+    if (!attackSequence.isEmpty()) {
+      return attackSequence.get(attackSequenceIndex).damage();
+    }
+    return damage;
+  }
+
   public boolean canAttack() {
     return !isCombatDisabled() && currentCooldown <= 0;
   }
@@ -187,6 +200,10 @@ public class Combat {
     // Attack finished. Reset state.
     this.currentCooldown = 0; // Immediate chaining if windup accounts for full duration
     this.isAttacking = false;
+    // Advance attack sequence index for multi-hit combos (e.g. Berserker)
+    if (!attackSequence.isEmpty()) {
+      attackSequenceIndex = (attackSequenceIndex + 1) % attackSequence.size();
+    }
   }
 
   /**

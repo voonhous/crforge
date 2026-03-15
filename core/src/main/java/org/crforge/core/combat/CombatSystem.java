@@ -167,7 +167,7 @@ public class CombatSystem {
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
     int baseDamage =
-        combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getDamage();
+        combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getEffectiveDamage();
 
     // Charge ability: override damage for this attack if charged
     if (attacker instanceof Troop troop) {

@@ -87,7 +87,7 @@ the live game name.
 | 75 | Monk              | monk             | `PARTIAL` | needs ability cycling                         |
 | 76 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling                         |
 | 77 | Suspicious Bush   | --               | `MISSING` | newer card                                    |
-| 78 | Berserker         | --               | `MISSING` | newer card                                    |
+| 78 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
 | 79 | Goblin Demolisher | --               | `MISSING` | newer card                                    |
 | 80 | Rune Giant        | --               | `MISSING` | newer card                                    |
 | 81 | Goblin Machine    | --               | `MISSING` | newer card                                    |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 96      | Fully functional in simulation              |
+| `DONE`     | 97      | Fully functional in simulation              |
 | `PARTIAL`  | 11      | In cards.json but missing complex mechanics |
-| `MISSING`  | 21      | Not yet implemented or newer cards          |
+| `MISSING`  | 20      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

@@ -112,6 +112,9 @@ public class TroopStats {
   // Attack pushback: self-knockback when firing (e.g. Firecracker recoils backward)
   @Builder.Default private final float attackPushBack = 0f;
 
+  // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
+  @Builder.Default private final List<AttackSequenceHit> attackSequence = List.of();
+
   public boolean isRanged() {
     return range >= 2.0f;
   }
