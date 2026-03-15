@@ -15,6 +15,7 @@ import org.crforge.core.card.CardType;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
+import org.crforge.core.card.SpawnSequenceEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
@@ -768,6 +769,20 @@ class CardLoaderTest {
       assertThat(knight.getSecondaryUnitStats()).isNull();
       assertThat(knight.getSecondaryUnitCount()).isEqualTo(0);
 
+      // GoblinHut_Rework: aggro-gated spawner building
+      Card goblinHut =
+          cards.stream().filter(c -> "goblinhut_rework".equals(c.getId())).findFirst().orElse(null);
+      assertThat(goblinHut).isNotNull();
+      assertThat(goblinHut.getType()).isEqualTo(CardType.BUILDING);
+      assertThat(goblinHut.getCost()).isEqualTo(4);
+      assertThat(goblinHut.getRarity()).isEqualTo(Rarity.RARE);
+      assertThat(goblinHut.getUnitStats().getLiveSpawn()).isNotNull();
+      assertThat(goblinHut.getUnitStats().getLiveSpawn().spawnOnAggro()).isTrue();
+      assertThat(goblinHut.getUnitStats().getLiveSpawn().spawnCharacter())
+          .isEqualTo("SpearGoblin_Dummy");
+      assertThat(goblinHut.getSpawnTemplate()).isNotNull();
+      assertThat(goblinHut.getSpawnTemplate().getName()).isEqualTo("SpearGoblin_Dummy");
+
       // BarbLog: verify full spawn chain resolution
       // BarbLogProjectile -> BarbLogProjectileRolling -> Barbarian
       Card barbLog =
@@ -791,5 +806,69 @@ class CardLoaderTest {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Test
+  void graveyardSpawnSequenceLoaded() {
+    TroopStats skeleton =
+        TroopStats.builder()
+            .name("Skeleton")
+            .health(32)
+            .damage(32)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
+
+    String json =
+        """
+        [
+          {
+            "id": "graveyard",
+            "name": "Graveyard",
+            "type": "SPELL",
+            "rarity": "Legendary",
+            "cost": 5,
+            "areaEffect": {
+              "name": "Graveyard_rework",
+              "radius": 4.0,
+              "lifeDuration": 9.0,
+              "hitsGround": false,
+              "hitsAir": false,
+              "spawn": {
+                "spawnCharacter": "Skeleton",
+                "spawnSequence": [
+                  { "spawnDelay": 2.2, "relativeX": 0.0, "relativeY": -3.5 },
+                  { "spawnDelay": 2.7, "relativeX": -3.5, "relativeY": 0.0 },
+                  { "spawnDelay": 3.3, "relativeX": -2.5, "relativeY": -2.5 }
+                ]
+              }
+            }
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(skeleton), Map.of());
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getId()).isEqualTo("graveyard");
+    assertThat(card.getAreaEffect()).isNotNull();
+
+    AreaEffectStats ae = card.getAreaEffect();
+    assertThat(ae.getName()).isEqualTo("Graveyard_rework");
+    assertThat(ae.getSpawnCharacter()).isNotNull();
+    assertThat(ae.getSpawnCharacter().getName()).isEqualTo("Skeleton");
+
+    List<SpawnSequenceEntry> seq = ae.getSpawnSequence();
+    assertThat(seq).hasSize(3);
+    assertThat(seq.get(0).spawnDelay()).isEqualTo(2.2f);
+    assertThat(seq.get(0).relativeX()).isEqualTo(0.0f);
+    assertThat(seq.get(0).relativeY()).isEqualTo(-3.5f);
+    assertThat(seq.get(1).spawnDelay()).isEqualTo(2.7f);
+    assertThat(seq.get(1).relativeX()).isEqualTo(-3.5f);
+    assertThat(seq.get(2).spawnDelay()).isEqualTo(3.3f);
+
+    // isDummy should return false even though hitsGround/hitsAir are both false
+    assertThat(ae.isDummy()).as("Graveyard should not be a dummy area effect").isFalse();
   }
 }

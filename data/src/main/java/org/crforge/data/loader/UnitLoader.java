@@ -291,7 +291,8 @@ public class UnitLoader {
               liveSpawn.getSpawnRadius(),
               liveSpawn.isSpawnAttach(),
               liveSpawn.getSpawnLimit(),
-              liveSpawn.isDestroyAtLimit());
+              liveSpawn.isDestroyAtLimit(),
+              liveSpawn.isSpawnOnAggro());
       builder.liveSpawn(liveSpawnConfig);
     }
 

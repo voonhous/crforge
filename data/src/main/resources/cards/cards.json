@@ -1232,7 +1232,77 @@
       "radius": 4.0,
       "lifeDuration": 9.0,
       "hitsGround": false,
-      "hitsAir": false
+      "hitsAir": false,
+      "spawn": {
+        "spawnCharacter": "Skeleton",
+        "spawnSequence": [
+          {
+            "spawnDelay": 2.2,
+            "relativeX": 0.0,
+            "relativeY": -3.5
+          },
+          {
+            "spawnDelay": 2.7,
+            "relativeX": -3.5,
+            "relativeY": 0.0
+          },
+          {
+            "spawnDelay": 3.3,
+            "relativeX": -2.5,
+            "relativeY": -2.5
+          },
+          {
+            "spawnDelay": 3.8,
+            "relativeX": 0.0,
+            "relativeY": 3.5
+          },
+          {
+            "spawnDelay": 4.4,
+            "relativeX": 3.5,
+            "relativeY": 0.0
+          },
+          {
+            "spawnDelay": 4.9,
+            "relativeX": 2.5,
+            "relativeY": 2.5
+          },
+          {
+            "spawnDelay": 5.5,
+            "relativeX": -3.5,
+            "relativeY": 0.0
+          },
+          {
+            "spawnDelay": 6.0,
+            "relativeX": 0.0,
+            "relativeY": 3.5
+          },
+          {
+            "spawnDelay": 6.5,
+            "relativeX": -2.5,
+            "relativeY": 2.5
+          },
+          {
+            "spawnDelay": 7.1,
+            "relativeX": 3.5,
+            "relativeY": 0.0
+          },
+          {
+            "spawnDelay": 7.6,
+            "relativeX": 0.0,
+            "relativeY": -3.5
+          },
+          {
+            "spawnDelay": 8.2,
+            "relativeX": 2.5,
+            "relativeY": -2.5
+          },
+          {
+            "spawnDelay": 8.7,
+            "relativeX": -2.5,
+            "relativeY": -2.5
+          }
+        ]
+      }
     }
   },
   {
@@ -1411,7 +1481,19 @@
       "radius": 2.5,
       "lifeDuration": 2.0,
       "hitsGround": false,
-      "hitsAir": false
+      "hitsAir": false,
+      "buff": "Vines_Trap_Snare_Base",
+      "buffDuration": 2.0,
+      "targetCount": 3,
+      "targetSelectionMode": "HighestCurrentHpIncludeShields",
+      "initialDelay": 0.4,
+      "targetDelays": [
+        0.0,
+        0.05,
+        0.15
+      ],
+      "airToGround": true,
+      "airToGroundDuration": 2.0
     }
   },
   {
@@ -1421,14 +1503,6 @@
     "rarity": "Common",
     "cost": 3,
     "unit": "Cannon"
-  },
-  {
-    "id": "goblinhut",
-    "name": "GoblinHut",
-    "type": "BUILDING",
-    "rarity": "Rare",
-    "cost": 4,
-    "unit": "GoblinHut"
   },
   {
     "id": "mortar",

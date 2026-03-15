@@ -16,10 +16,12 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
+import org.crforge.core.card.SpawnSequenceEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.data.loader.dto.AreaEffectConfigDTO;
 import org.crforge.data.loader.dto.CardConfigDTO;
 import org.crforge.data.loader.dto.SpawnConfigDTO;
+import org.crforge.data.loader.dto.SpawnTimingConfigDTO;
 
 /**
  * Loads card definitions from cards.json (slim format) and resolves unit/projectile references from
@@ -230,7 +232,28 @@ public class CardLoader {
 
     // Resolve spawn timing and character (e.g. Royal Delivery -> DeliveryRecruit)
     if (dto.getSpawn() != null) {
-      builder.spawnInitialDelay(dto.getSpawn().getSpawnInitialDelay());
+      SpawnTimingConfigDTO spawn = dto.getSpawn();
+      builder.spawnInitialDelay(spawn.getSpawnInitialDelay());
+
+      // Resolve spawn character from the spawn timing block (e.g. Graveyard -> Skeleton)
+      if (spawn.getSpawnCharacter() != null && unitMap != null) {
+        TroopStats spawnChar = unitMap.get(spawn.getSpawnCharacter());
+        if (spawnChar != null) {
+          builder.spawnCharacter(spawnChar);
+        }
+      }
+
+      // Convert spawn sequence entries (e.g. Graveyard's 13-skeleton pattern)
+      if (spawn.getSpawnSequence() != null && !spawn.getSpawnSequence().isEmpty()) {
+        List<SpawnSequenceEntry> entries =
+            spawn.getSpawnSequence().stream()
+                .map(
+                    e ->
+                        new SpawnSequenceEntry(
+                            e.getSpawnDelay(), e.getRelativeX(), e.getRelativeY()))
+                .toList();
+        builder.spawnSequence(entries);
+      }
     }
     SpawnConfigDTO projSpawn = dto.getProjectileSpawn();
     if (projSpawn != null) {

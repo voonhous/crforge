@@ -24,6 +24,7 @@ import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
@@ -84,6 +85,11 @@ public class SpawnerSystem {
         continue;
       }
 
+      // Skip spawner tick if aggro-gated and no enemies are in detection range
+      if (spawner.isSpawnOnAggro() && !hasEnemyInRange(entity, spawner.getAggroDetectionRange())) {
+        continue;
+      }
+
       // Self-destruct: kill bomb entities once their deploy phase finishes
       if (spawner.isSelfDestruct()) {
         entity.getHealth().takeDamage(entity.getHealth().getCurrent());
@@ -141,6 +147,29 @@ public class SpawnerSystem {
         }
       }
     }
+  }
+
+  /**
+   * Returns true if any targetable enemy entity is within the given range of the source entity.
+   * Used for aggro-gated spawning (e.g. GoblinHut_Rework only spawns when enemies are nearby).
+   */
+  private boolean hasEnemyInRange(Entity source, float range) {
+    float rangeSq = range * range;
+    Team enemyTeam = source.getTeam().opposite();
+    for (Entity other : gameState.getAliveEntities()) {
+      if (other.getTeam() != enemyTeam || !other.isTargetable()) {
+        continue;
+      }
+      EntityType type = other.getEntityType();
+      if (type != EntityType.TROOP && type != EntityType.BUILDING && type != EntityType.TOWER) {
+        continue;
+      }
+      float distSq = source.getPosition().distanceToSquared(other.getPosition());
+      if (distSq <= rangeSq) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean isDeploying(Entity entity) {
@@ -526,7 +555,9 @@ public class SpawnerSystem {
             .spawnStats(stats.getSpawnTemplate())
             .formationRadius(ls.spawnRadius())
             .spawnLimit(ls.spawnLimit())
-            .destroyAtLimit(ls.destroyAtLimit());
+            .destroyAtLimit(ls.destroyAtLimit())
+            .spawnOnAggro(ls.spawnOnAggro())
+            .aggroDetectionRange(ls.spawnOnAggro() ? stats.getRange() : 0f);
       }
 
       spawner = spawnerBuilder.build();

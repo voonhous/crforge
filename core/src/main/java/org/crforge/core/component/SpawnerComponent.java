@@ -71,6 +71,12 @@ public class SpawnerComponent {
   // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
   @Builder.Default private int manaOnDeathForOpponent = 0;
 
+  // Aggro-gated spawning: timer only ticks when enemies are within detection range
+  @Builder.Default private boolean spawnOnAggro = false;
+
+  // Detection range for aggro-gated spawning (tiles). Derived from unit's range stat.
+  @Builder.Default private float aggroDetectionRange = 0f;
+
   // Spawn limit: stop spawning after this many total units (0 = unlimited)
   @Builder.Default private int spawnLimit = 0;
 

@@ -108,7 +108,7 @@ the live game name.
 | 8  | Lightning        | lightning     | `DONE`    | area effect, hitBiggestTargets                   |
 | 9  | Zap              | zap           | `DONE`    | area effect                                      |
 | 10 | Poison           | poison        | `DONE`    | area effect, ticking                             |
-| 11 | Graveyard        | graveyard     | `PARTIAL` | needs random spawn logic                         |
+| 11 | Graveyard        | graveyard     | `DONE`    | area effect with 13-skeleton spawn sequence      |
 | 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling                   |
 | 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff                     |
 | 14 | Clone            | clone         | `DONE`    | area effect, clone mechanic                      |
@@ -127,7 +127,7 @@ the live game name.
 | #  | CR Name            | Internal ID       | Status    | Notes                                |
 |----|--------------------|-------------------|-----------|--------------------------------------|
 | 1  | Cannon             | cannon            | `DONE`    |                                      |
-| 2  | Goblin Hut         | goblinhut         | `MISSING` | spawner                              |
+| 2  | Goblin Hut         | goblinhut_rework  | `DONE`    | aggro-gated spawner                  |
 | 3  | Mortar             | mortar            | `DONE`    | minimum range blind spot             |
 | 4  | Inferno Tower      | infernotower      | `DONE`    | variable damage                      |
 | 5  | Bomb Tower         | bombtower         | `DONE`    | death bomb AOE                       |
@@ -159,6 +159,7 @@ Cost-0 buildings are in cards.json; units-only entries exist solely in units.jso
 | 6 | Goblin Brawler        | goblinbrawler       | Death spawn for Goblin Cage (0.5s deploy)                         |
 | 7 | SpearGoblin (Giant)   | speargoblingiant    | Death spawn for Goblin Giant (0.7s deploy)                        |
 | 8 | BushGoblin            | bushgoblin          | Death spawn for Suspicious Bush (0.4s deploy, staggered flanking) |
+| 9 | SpearGoblin_Dummy     | speargoblin_dummy   | Aggro-gated live spawn for Goblin Hut (0.5s deploy)              |
 
 ## Tower Troops (new mechanic -- all Missing)
 
@@ -179,10 +180,10 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 100     | Fully functional in simulation              |
-| `PARTIAL`  | 11      | In cards.json but missing complex mechanics |
-| `MISSING`  | 17      | Not yet implemented or newer cards          |
-| Sub-entity | 8       | Internal entities, not playable cards       |
+| `DONE`     | 102     | Fully functional in simulation              |
+| `PARTIAL`  | 10      | In cards.json but missing complex mechanics |
+| `MISSING`  | 16      | Not yet implemented or newer cards          |
+| Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
 Data source: season 80 (202602) -- 121 entries in cards.json.
@@ -192,7 +193,6 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 | Category       | Cards                                                                         | What's needed                            |
 |----------------|-------------------------------------------------------------------------------|------------------------------------------|
 | Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
-| Complex spells | Graveyard                                                                     | Random spawn pattern                     |
 | Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                       |
 
 ### Not yet planned

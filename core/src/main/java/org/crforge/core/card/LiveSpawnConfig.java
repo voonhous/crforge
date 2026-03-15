@@ -21,9 +21,10 @@ public record LiveSpawnConfig(
     float spawnRadius,
     boolean spawnAttach,
     int spawnLimit,
-    boolean destroyAtLimit) {
+    boolean destroyAtLimit,
+    boolean spawnOnAggro) {
 
-  /** Backwards-compatible constructor without spawn limit fields. */
+  /** Backwards-compatible constructor without spawn limit and aggro fields. */
   public LiveSpawnConfig(
       String spawnCharacter,
       int spawnNumber,
@@ -41,6 +42,31 @@ public record LiveSpawnConfig(
         spawnRadius,
         spawnAttach,
         0,
+        false,
+        false);
+  }
+
+  /** Backwards-compatible constructor without aggro field. */
+  public LiveSpawnConfig(
+      String spawnCharacter,
+      int spawnNumber,
+      float spawnPauseTime,
+      float spawnInterval,
+      float spawnStartTime,
+      float spawnRadius,
+      boolean spawnAttach,
+      int spawnLimit,
+      boolean destroyAtLimit) {
+    this(
+        spawnCharacter,
+        spawnNumber,
+        spawnPauseTime,
+        spawnInterval,
+        spawnStartTime,
+        spawnRadius,
+        spawnAttach,
+        spawnLimit,
+        destroyAtLimit,
         false);
   }
 }

@@ -1,5 +1,6 @@
 package org.crforge.core.card;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.With;
@@ -72,11 +73,18 @@ public class AreaEffectStats {
   @Builder.Default private final int spawnCount = 1;
 
   /**
+   * Ordered spawn sequence entries with per-entry delays and relative positions. Used by Graveyard
+   * to spawn 13 Skeletons at predefined offsets with staggered timing.
+   */
+  @Builder.Default private final List<SpawnSequenceEntry> spawnSequence = List.of();
+
+  /**
    * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.
    * RageBarbarian/Lumberjack, SuspiciousBush) carry a deathAreaEffect in units.json purely as an
    * internal game engine trigger -- it has zero radius and/or cannot hit anything.
    */
   public boolean isDummy() {
-    return radius == 0f || (!hitsGround && !hitsAir);
+    return radius == 0f
+        || (!hitsGround && !hitsAir && spawnCharacter == null && spawnSequence.isEmpty());
   }
 }

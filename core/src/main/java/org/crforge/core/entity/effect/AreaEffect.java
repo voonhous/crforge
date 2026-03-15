@@ -64,6 +64,9 @@ public class AreaEffect extends AbstractEntity {
   /** Whether the delayed character spawn has been triggered. Prevents re-firing. */
   @Builder.Default @Setter private boolean spawnTriggered = false;
 
+  /** Index of the next spawn sequence entry to process (for multi-spawn effects like Graveyard). */
+  @Builder.Default @Setter private int nextSpawnIndex = 0;
+
   /** Rarity of the caster card, used to level-scale the spawned character. */
   @Builder.Default private final Rarity rarity = Rarity.COMMON;
 
@@ -99,9 +102,15 @@ public class AreaEffect extends AbstractEntity {
       if (isOneShot() && !initialApplied) {
         return;
       }
-      // Keep alive if a character spawn is pending (e.g. Royal Delivery spawns at 2.05s
-      // but lifeDuration is 2.0s)
-      if (stats.getSpawnCharacter() != null && !spawnTriggered) {
+      // Keep alive if a single character spawn is pending (e.g. Royal Delivery spawns at 2.05s
+      // but lifeDuration is 2.0s). Skip this guard when a spawn sequence is used instead.
+      if (stats.getSpawnCharacter() != null
+          && !spawnTriggered
+          && stats.getSpawnSequence().isEmpty()) {
+        return;
+      }
+      // Keep alive if spawn sequence has remaining entries (e.g. Graveyard)
+      if (!stats.getSpawnSequence().isEmpty() && nextSpawnIndex < stats.getSpawnSequence().size()) {
         return;
       }
       markDead();

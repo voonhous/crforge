@@ -25,4 +25,8 @@ public class LiveSpawnConfigDTO {
   // Destroy parent entity when spawn limit is reached (e.g. PhoenixEgg self-destructs after
   // hatching)
   private boolean destroyAtLimit;
+
+  // Aggro-gated spawning: timer only ticks when enemies are within detection range
+  // (e.g. GoblinHut_Rework)
+  private boolean spawnOnAggro;
 }

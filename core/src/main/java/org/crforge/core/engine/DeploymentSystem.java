@@ -242,6 +242,8 @@ public class DeploymentSystem {
                 .currentTimer(initialTimer)
                 .spawnStats(spawnStats)
                 .formationRadius(ls.spawnRadius())
+                .spawnOnAggro(ls.spawnOnAggro())
+                .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0f)
                 .rarity(card.getRarity())
                 .level(level)
                 .build();
@@ -628,7 +630,9 @@ public class DeploymentSystem {
             .spawnStats(spawnStats)
             .formationRadius(ls.spawnRadius())
             .spawnLimit(ls.spawnLimit())
-            .destroyAtLimit(ls.destroyAtLimit());
+            .destroyAtLimit(ls.destroyAtLimit())
+            .spawnOnAggro(ls.spawnOnAggro())
+            .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0f);
 
         // Derive deathSpawnCount from first death spawn entry
         if (unitStats.getDeathSpawns() != null && !unitStats.getDeathSpawns().isEmpty()) {
