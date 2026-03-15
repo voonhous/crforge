@@ -713,6 +713,8 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "manaOnDeathForOpponent": 4000,
+    "manaCollectAmount": 1,
+    "manaGenerateTime": 3.0,
     "lifeTime": 21.0
   },
   "ElixirCollector": {
@@ -730,6 +732,9 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "visualRadius": 1.5,
+    "manaOnDeath": 1,
+    "manaCollectAmount": 1,
+    "manaGenerateTime": 13.0,
     "lifeTime": 93.0
   },
   "ElixirGolem1": {

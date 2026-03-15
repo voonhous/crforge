@@ -1,6 +1,7 @@
 package org.crforge.data.loader.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
 import lombok.Data;
 
 /**
@@ -58,6 +59,24 @@ public class AreaEffectConfigDTO {
 
   /** If true, can affect hidden buildings like Tesla (Earthquake, Freeze). */
   private boolean affectsHidden;
+
+  /** Maximum number of targets to select (e.g. 3 for Vines). Zero for normal area targeting. */
+  private int targetCount;
+
+  /** Target selection strategy (e.g. "HighestCurrentHpIncludeShields"). Null for default. */
+  private String targetSelectionMode;
+
+  /** Delay in seconds before the first target is selected (e.g. 0.4s for Vines). */
+  private float initialDelay;
+
+  /** Per-target offset delays from initialDelay (e.g. [0.0, 0.05, 0.15] for Vines). */
+  private List<Float> targetDelays;
+
+  /** If true, air units hit by this effect are pulled to ground level. */
+  private boolean airToGround;
+
+  /** Duration in seconds that air-to-ground conversion lasts. */
+  private float airToGroundDuration;
 
   /** Spawn timing configuration (delay before character spawns). Null if no spawn. */
   private SpawnTimingConfigDTO spawn;

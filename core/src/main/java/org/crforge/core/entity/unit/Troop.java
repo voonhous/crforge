@@ -38,6 +38,9 @@ public class Troop extends AbstractEntity {
   // Tunnel state: true while the troop is traveling underground (Miner)
   @Setter private boolean tunneling;
 
+  // Air-to-ground timer: while > 0, air units are treated as ground for targeting (Vines)
+  @Setter @Builder.Default private float groundedTimer = 0f;
+
   /** Returns true if this troop is currently invisible (stealth ability active). */
   public boolean isInvisible() {
     return ability != null && ability.isInvisible();
@@ -56,7 +59,14 @@ public class Troop extends AbstractEntity {
   @Override
   public MovementType getMovementType() {
     // While jumping, behave as AIR for pathfinding, collision, and targeting
-    return jumping ? MovementType.AIR : super.getMovementType();
+    if (jumping) {
+      return MovementType.AIR;
+    }
+    // Vines air-to-ground: while grounded timer is active, air units behave as ground
+    if (groundedTimer > 0 && super.getMovementType() == MovementType.AIR) {
+      return MovementType.GROUND;
+    }
+    return super.getMovementType();
   }
 
   public boolean isDeploying() {
@@ -107,6 +117,11 @@ public class Troop extends AbstractEntity {
         combat.update(deltaTime, true);
       }
       return;
+    }
+
+    // Decrement grounded timer (Vines air-to-ground)
+    if (groundedTimer > 0) {
+      groundedTimer -= deltaTime;
     }
 
     // Update combat

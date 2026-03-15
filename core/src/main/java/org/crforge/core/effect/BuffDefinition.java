@@ -66,6 +66,9 @@ public class BuffDefinition {
   private final String deathSpawn;
   @Builder.Default private final boolean hitTickFromSource = false;
 
+  /** Absolute per-tick crown tower damage (e.g. Vines 15 base). Overrides DPS-based calculation. */
+  @Builder.Default private final int crownTowerDamagePerHit = 0;
+
   /**
    * Converts the raw speedMultiplier to a float multiplier for movement speed. Returns 1.0 if no
    * speed modification.

@@ -30,4 +30,5 @@ public class BuffConfigDTO {
   private boolean hitTickFromSource;
   private int pushSpeedFactor;
   private boolean controlledByParent;
+  private int crownTowerDamagePerHit;
 }

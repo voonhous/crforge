@@ -78,6 +78,24 @@ public class AreaEffectStats {
    */
   @Builder.Default private final List<SpawnSequenceEntry> spawnSequence = List.of();
 
+  /** Maximum number of targets to select (e.g. 3 for Vines). Zero for normal area targeting. */
+  @Builder.Default private final int targetCount = 0;
+
+  /** Target selection strategy (e.g. "HighestCurrentHpIncludeShields"). Null for default. */
+  private final String targetSelectionMode;
+
+  /** Delay in seconds before the first target is selected (e.g. 0.4s for Vines). */
+  @Builder.Default private final float initialDelay = 0f;
+
+  /** Per-target offset delays from initialDelay. */
+  @Builder.Default private final List<Float> targetDelays = List.of();
+
+  /** If true, air units hit by this effect are pulled to ground level. */
+  @Builder.Default private final boolean airToGround = false;
+
+  /** Duration in seconds that air-to-ground conversion lasts. */
+  @Builder.Default private final float airToGroundDuration = 0f;
+
   /**
    * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.
    * RageBarbarian/Lumberjack, SuspiciousBush) carry a deathAreaEffect in units.json purely as an
@@ -85,6 +103,10 @@ public class AreaEffectStats {
    */
   public boolean isDummy() {
     return radius == 0f
-        || (!hitsGround && !hitsAir && spawnCharacter == null && spawnSequence.isEmpty());
+        || (!hitsGround
+            && !hitsAir
+            && targetCount <= 0
+            && spawnCharacter == null
+            && spawnSequence.isEmpty());
   }
 }

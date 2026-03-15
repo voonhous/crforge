@@ -55,6 +55,7 @@ public class BuffLoader {
         .hitTickFromSource(dto.isHitTickFromSource())
         .pushSpeedFactor(dto.getPushSpeedFactor())
         .controlledByParent(dto.isControlledByParent())
+        .crownTowerDamagePerHit(dto.getCrownTowerDamagePerHit())
         .build();
   }
 }

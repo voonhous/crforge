@@ -228,7 +228,13 @@ public class CardLoader {
             .onlyOwnTroops(dto.isOnlyOwnTroops())
             .ignoreBuildings(dto.isIgnoreBuildings())
             .onlyEnemies(dto.isOnlyEnemies())
-            .affectsHidden(dto.isAffectsHidden());
+            .affectsHidden(dto.isAffectsHidden())
+            .targetCount(dto.getTargetCount())
+            .targetSelectionMode(dto.getTargetSelectionMode())
+            .initialDelay(dto.getInitialDelay())
+            .targetDelays(dto.getTargetDelays() != null ? dto.getTargetDelays() : List.of())
+            .airToGround(dto.isAirToGround())
+            .airToGroundDuration(dto.getAirToGroundDuration());
 
     // Resolve spawn timing and character (e.g. Royal Delivery -> DeliveryRecruit)
     if (dto.getSpawn() != null) {

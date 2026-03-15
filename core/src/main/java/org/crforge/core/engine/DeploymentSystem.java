@@ -883,6 +883,19 @@ public class DeploymentSystem {
       }
     }
 
+    // Resolve DOT scaling for targeted effects (Vines)
+    int scaledDotDamage = 0;
+    int scaledCrownTowerDotDamage = 0;
+    if (stats.getTargetCount() > 0 && buffDef != null) {
+      float hitFrequency = buffDef.getHitFrequency() > 0 ? buffDef.getHitFrequency() : 1.0f;
+      int baseDotDamage = Math.round(buffDef.getDamagePerSecond() * hitFrequency);
+      scaledDotDamage = LevelScaling.scaleCard(baseDotDamage, rarity, level);
+      if (buffDef.getCrownTowerDamagePerHit() > 0) {
+        scaledCrownTowerDotDamage =
+            LevelScaling.scaleCard(buffDef.getCrownTowerDamagePerHit(), rarity, level);
+      }
+    }
+
     AreaEffect effect =
         AreaEffect.builder()
             .name(stats.getName())
@@ -892,6 +905,8 @@ public class DeploymentSystem {
             .scaledDamage(scaledDamage)
             .resolvedCrownTowerDamagePercent(resolvedCtdp)
             .buildingDamagePercent(buildingDmgPct)
+            .scaledDotDamage(scaledDotDamage)
+            .scaledCrownTowerDotDamage(scaledCrownTowerDotDamage)
             .remainingLifetime(stats.getLifeDuration())
             .rarity(rarity)
             .level(level)

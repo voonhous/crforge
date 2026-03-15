@@ -67,6 +67,29 @@ public class AreaEffect extends AbstractEntity {
   /** Index of the next spawn sequence entry to process (for multi-spawn effects like Graveyard). */
   @Builder.Default @Setter private int nextSpawnIndex = 0;
 
+  // -- Targeted effect state (Vines) --
+
+  /** Elapsed time tracker for target selection phase. */
+  @Builder.Default @Setter private float targetSelectionAccumulator = 0f;
+
+  /** Which target delay index to process next. */
+  @Builder.Default @Setter private int nextTargetSelectionIndex = 0;
+
+  /** DOT damage tick timer accumulator. */
+  @Builder.Default @Setter private float dotTickAccumulator = 0f;
+
+  /** Whether DOT ticking is currently active. */
+  @Builder.Default @Setter private boolean dotActive = false;
+
+  /** Level-scaled damage per DOT tick. */
+  @Builder.Default private final int scaledDotDamage = 0;
+
+  /** Level-scaled crown tower damage per DOT tick. */
+  @Builder.Default private final int scaledCrownTowerDotDamage = 0;
+
+  /** Elapsed time since DOT started, used to determine when to stop ticking. */
+  @Builder.Default @Setter private float dotElapsedTime = 0f;
+
   /** Rarity of the caster card, used to level-scale the spawned character. */
   @Builder.Default private final Rarity rarity = Rarity.COMMON;
 
@@ -111,6 +134,11 @@ public class AreaEffect extends AbstractEntity {
       }
       // Keep alive if spawn sequence has remaining entries (e.g. Graveyard)
       if (!stats.getSpawnSequence().isEmpty() && nextSpawnIndex < stats.getSpawnSequence().size()) {
+        return;
+      }
+      // Keep alive if targeted effect has pending target selections or active DOT ticks
+      if (stats.getTargetCount() > 0
+          && (nextTargetSelectionIndex < stats.getTargetDelays().size() || dotActive)) {
         return;
       }
       markDead();

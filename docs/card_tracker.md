@@ -120,7 +120,7 @@ the live game name.
 | 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics                            |
 | 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics                            |
 | 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics                            |
-| 23 | Vines            | vines         | `PARTIAL` | stub, needs mechanics                            |
+| 23 | Vines            | vines         | `DONE`    | targeted freeze + DOT + air-to-ground            |
 
 ## Buildings
 
@@ -159,7 +159,7 @@ Cost-0 buildings are in cards.json; units-only entries exist solely in units.jso
 | 6 | Goblin Brawler        | goblinbrawler       | Death spawn for Goblin Cage (0.5s deploy)                         |
 | 7 | SpearGoblin (Giant)   | speargoblingiant    | Death spawn for Goblin Giant (0.7s deploy)                        |
 | 8 | BushGoblin            | bushgoblin          | Death spawn for Suspicious Bush (0.4s deploy, staggered flanking) |
-| 9 | SpearGoblin_Dummy     | speargoblin_dummy   | Aggro-gated live spawn for Goblin Hut (0.5s deploy)              |
+| 9 | SpearGoblin_Dummy     | speargoblin_dummy   | Aggro-gated live spawn for Goblin Hut (0.5s deploy)               |
 
 ## Tower Troops (new mechanic -- all Missing)
 
@@ -180,8 +180,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 102     | Fully functional in simulation              |
-| `PARTIAL`  | 10      | In cards.json but missing complex mechanics |
+| `DONE`     | 103     | Fully functional in simulation              |
+| `PARTIAL`  | 9       | In cards.json but missing complex mechanics |
 | `MISSING`  | 16      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
@@ -190,10 +190,10 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 
 ### Partial cards breakdown
 
-| Category       | Cards                                                                         | What's needed                            |
-|----------------|-------------------------------------------------------------------------------|------------------------------------------|
-| Champions      | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
-| Newer stubs    | Void, Goblin Curse, Spirit Empress, Vines                                     | Full mechanics TBD                       |
+| Category    | Cards                                                                         | What's needed                            |
+|-------------|-------------------------------------------------------------------------------|------------------------------------------|
+| Champions   | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
+| Newer stubs | Void, Goblin Curse, Spirit Empress                                            | Full mechanics TBD                       |
 
 ### Not yet planned
 

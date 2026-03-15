@@ -871,4 +871,64 @@ class CardLoaderTest {
     // isDummy should return false even though hitsGround/hitsAir are both false
     assertThat(ae.isDummy()).as("Graveyard should not be a dummy area effect").isFalse();
   }
+
+  @Test
+  void loadCards_shouldParseVinesTargetedAreaEffect() {
+    String json =
+        """
+        [
+          {
+            "id": "vines",
+            "name": "Vines",
+            "type": "SPELL",
+            "rarity": "Epic",
+            "cost": 3,
+            "areaEffect": {
+              "name": "Vines_AeO",
+              "radius": 2.5,
+              "lifeDuration": 2.0,
+              "hitsGround": false,
+              "hitsAir": false,
+              "buff": "Vines_Trap_Snare_Base",
+              "buffDuration": 2.0,
+              "targetCount": 3,
+              "targetSelectionMode": "HighestCurrentHpIncludeShields",
+              "initialDelay": 0.4,
+              "targetDelays": [0.0, 0.05, 0.15],
+              "airToGround": true,
+              "airToGroundDuration": 2.0
+            }
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), Map.of(), Map.of());
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getId()).isEqualTo("vines");
+    assertThat(card.getType()).isEqualTo(CardType.SPELL);
+    assertThat(card.getRarity()).isEqualTo(Rarity.EPIC);
+
+    AreaEffectStats ae = card.getAreaEffect();
+    assertThat(ae).isNotNull();
+    assertThat(ae.getName()).isEqualTo("Vines_AeO");
+    assertThat(ae.getRadius()).isCloseTo(2.5f, within(0.01f));
+    assertThat(ae.getLifeDuration()).isCloseTo(2.0f, within(0.01f));
+    assertThat(ae.isHitsGround()).isFalse();
+    assertThat(ae.isHitsAir()).isFalse();
+    assertThat(ae.getBuff()).isEqualTo("Vines_Trap_Snare_Base");
+    assertThat(ae.getBuffDuration()).isCloseTo(2.0f, within(0.01f));
+
+    // Targeted selection fields
+    assertThat(ae.getTargetCount()).isEqualTo(3);
+    assertThat(ae.getTargetSelectionMode()).isEqualTo("HighestCurrentHpIncludeShields");
+    assertThat(ae.getInitialDelay()).isCloseTo(0.4f, within(0.01f));
+    assertThat(ae.getTargetDelays()).containsExactly(0.0f, 0.05f, 0.15f);
+    assertThat(ae.isAirToGround()).isTrue();
+    assertThat(ae.getAirToGroundDuration()).isCloseTo(2.0f, within(0.01f));
+
+    // isDummy should return false because targetCount > 0
+    assertThat(ae.isDummy()).as("Vines should not be a dummy area effect").isFalse();
+  }
 }
