@@ -261,7 +261,7 @@ class LumberjackDeathEffectTest {
     SpawnerComponent ljSpawner =
         SpawnerComponent.builder()
             .deathAreaEffect(dummyAoe)
-            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f, 0f, null, null)))
             .build();
 
     Troop lumberjack =
@@ -331,13 +331,13 @@ class LumberjackDeathEffectTest {
             .speed(1.2f)
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
-            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f, 0f, null, null)))
             .build();
 
     // Create lumberjack with death spawn wired
     SpawnerComponent ljSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f, 0f, null, null)))
             .build();
 
     Troop lumberjack =

@@ -250,7 +250,13 @@ public class UnitLoader {
         if (resolved != null) {
           deathSpawns.add(
               new DeathSpawnEntry(
-                  resolved, ds.getSpawnNumber(), ds.getSpawnRadius(), ds.getDeployTime()));
+                  resolved,
+                  ds.getSpawnNumber(),
+                  ds.getSpawnRadius(),
+                  ds.getDeployTime(),
+                  ds.getSpawnDelay(),
+                  ds.getRelativeX(),
+                  ds.getRelativeY()));
         }
       }
       builder.deathSpawns(deathSpawns);
@@ -335,6 +341,10 @@ public class UnitLoader {
             new StealthAbility(
                 dto.getStealth().getNotAttackingTimeMs() / 1000f,
                 dto.getStealth().getHideTimeMs() / 1000f));
+      } else if (dto.getStealth().getBuff() != null) {
+        // Permanent stealth (SuspiciousBush): always invisible, never reveals on attack.
+        // fadeTime=0 means invisible immediately; attackGracePeriod=MAX_VALUE means never reveals.
+        builder.ability(new StealthAbility(0f, Float.MAX_VALUE));
       }
     }
 

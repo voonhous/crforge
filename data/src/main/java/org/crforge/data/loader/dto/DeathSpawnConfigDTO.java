@@ -15,4 +15,13 @@ public class DeathSpawnConfigDTO {
   private int spawnNumber;
   private float spawnRadius;
   private float deployTime;
+
+  /** Delay in seconds from parent death to this spawn event. */
+  private float spawnDelay;
+
+  /** Explicit x offset from death position (tiles). Overrides FormationLayout when set. */
+  private Float relativeX;
+
+  /** Explicit y offset from death position (tiles). Overrides FormationLayout when set. */
+  private Float relativeY;
 }

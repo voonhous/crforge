@@ -1,6 +1,9 @@
 package org.crforge.core.entity;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
@@ -36,6 +39,7 @@ public class SpawnerSystem {
 
   private final GameState gameState;
   private final AoeDamageService aoeDamageService;
+  private final List<PendingDeathSpawn> pendingDeathSpawns = new ArrayList<>();
 
   /**
    * -- SETTER -- Sets the match reference, needed for elixir grant on death (e.g. Elixir Golem).
@@ -116,6 +120,27 @@ public class SpawnerSystem {
         }
       }
     }
+
+    // Process pending delayed death spawns
+    if (!pendingDeathSpawns.isEmpty()) {
+      Iterator<PendingDeathSpawn> it = pendingDeathSpawns.iterator();
+      while (it.hasNext()) {
+        PendingDeathSpawn pending = it.next();
+        pending.timer -= deltaTime;
+        if (pending.timer <= 0) {
+          doSpawn(
+              new Position(pending.x, pending.y),
+              new Vector2(pending.offsetX, pending.offsetY),
+              pending.team,
+              pending.stats,
+              pending.rarity,
+              pending.level,
+              pending.deployTime,
+              pending.isClone);
+          it.remove();
+        }
+      }
+    }
   }
 
   private boolean isDeploying(Entity entity) {
@@ -154,18 +179,43 @@ public class SpawnerSystem {
       // 2. Handle resolved death spawns (e.g. Golem -> 2 Golemites)
       for (DeathSpawnEntry entry : spawner.getDeathSpawns()) {
         for (int i = 0; i < entry.count(); i++) {
-          Vector2 offset =
-              FormationLayout.calculateOffset(
-                  i, entry.count(), entry.radius(), entry.stats().getCollisionRadius());
-          doSpawn(
-              entity.getPosition(),
-              offset,
-              entity.getTeam(),
-              entry.stats(),
-              spawner.getRarity(),
-              spawner.getLevel(),
-              entry.deployTime(),
-              parentIsClone);
+          // Use explicit relative offsets when specified, otherwise FormationLayout
+          Vector2 offset;
+          if (entry.relativeX() != null) {
+            offset =
+                new Vector2(entry.relativeX(), entry.relativeY() != null ? entry.relativeY() : 0f);
+          } else {
+            offset =
+                FormationLayout.calculateOffset(
+                    i, entry.count(), entry.radius(), entry.stats().getCollisionRadius());
+          }
+
+          if (entry.spawnDelay() > 0) {
+            // Queue for delayed spawning
+            pendingDeathSpawns.add(
+                new PendingDeathSpawn(
+                    entity.getPosition().getX(),
+                    entity.getPosition().getY(),
+                    offset.getX(),
+                    offset.getY(),
+                    entity.getTeam(),
+                    entry.stats(),
+                    spawner.getRarity(),
+                    spawner.getLevel(),
+                    entry.deployTime(),
+                    parentIsClone,
+                    entry.spawnDelay()));
+          } else {
+            doSpawn(
+                entity.getPosition(),
+                offset,
+                entity.getTeam(),
+                entry.stats(),
+                spawner.getRarity(),
+                spawner.getLevel(),
+                entry.deployTime(),
+                parentIsClone);
+          }
         }
       }
 
@@ -413,8 +463,11 @@ public class SpawnerSystem {
 
     // Use deployTime from stats for bomb entities (e.g. 3.0s for BalloonBomb falling),
     // deathSpawnDeployTime for death-spawned units (e.g. Goblin Cage's GoblinBrawler),
-    // otherwise spawned units deploy instantly
-    float deployTime = isBomb ? stats.getDeployTime() : deathSpawnDeployTime;
+    // otherwise spawned units deploy instantly.
+    // Include deployDelay (spawn animation delay) in the total deploy duration so that
+    // Troop.onSpawn() does not zero the deploy timer.
+    float baseDeployTime = isBomb ? stats.getDeployTime() : deathSpawnDeployTime;
+    float deployTime = baseDeployTime + stats.getDeployDelay();
 
     // Build SpawnerComponent for units with death mechanics, bomb behavior, or liveSpawn
     boolean hasDeathMechanics =
@@ -494,12 +547,52 @@ public class SpawnerSystem {
                     stats.getMovementType()))
             .combat(combat)
             .deployTime(deployTime)
-            .deployTimer(deployTime + stats.getDeployDelay())
+            .deployTimer(deployTime)
             .spawner(spawner)
             .level(level)
             .clone(asClone)
             .build();
 
     gameState.spawnEntity(unit);
+  }
+
+  /** Pending delayed death spawn entry. Stores all data needed to call doSpawn() after a delay. */
+  private static class PendingDeathSpawn {
+    final float x;
+    final float y;
+    final float offsetX;
+    final float offsetY;
+    final Team team;
+    final TroopStats stats;
+    final Rarity rarity;
+    final int level;
+    final float deployTime;
+    final boolean isClone;
+    float timer;
+
+    PendingDeathSpawn(
+        float x,
+        float y,
+        float offsetX,
+        float offsetY,
+        Team team,
+        TroopStats stats,
+        Rarity rarity,
+        int level,
+        float deployTime,
+        boolean isClone,
+        float timer) {
+      this.x = x;
+      this.y = y;
+      this.offsetX = offsetX;
+      this.offsetY = offsetY;
+      this.team = team;
+      this.stats = stats;
+      this.rarity = rarity;
+      this.level = level;
+      this.deployTime = deployTime;
+      this.isClone = isClone;
+      this.timer = timer;
+    }
   }
 }

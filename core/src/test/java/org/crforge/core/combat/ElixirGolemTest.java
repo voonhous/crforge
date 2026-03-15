@@ -71,7 +71,8 @@ class ElixirGolemTest {
           .targetType(TargetType.GROUND)
           .targetOnlyBuildings(true)
           .manaOnDeathForOpponent(500)
-          .deathSpawns(List.of(new DeathSpawnEntry(ELIXIR_GOLEM4_STATS, 2, 0.6f, 0f)))
+          .deathSpawns(
+              List.of(new DeathSpawnEntry(ELIXIR_GOLEM4_STATS, 2, 0.6f, 0f, 0f, null, null)))
           .build();
 
   // ElixirGolem1: main form, death spawns 2 ElixirGolem2s
@@ -87,7 +88,8 @@ class ElixirGolemTest {
           .targetType(TargetType.GROUND)
           .targetOnlyBuildings(true)
           .manaOnDeathForOpponent(1000)
-          .deathSpawns(List.of(new DeathSpawnEntry(ELIXIR_GOLEM2_STATS, 2, 0.6f, 0f)))
+          .deathSpawns(
+              List.of(new DeathSpawnEntry(ELIXIR_GOLEM2_STATS, 2, 0.6f, 0f, 0f, null, null)))
           .build();
 
   @BeforeEach

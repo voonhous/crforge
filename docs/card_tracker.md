@@ -86,7 +86,7 @@ the live game name.
 | 74 | Mighty Miner      | mightyminer      | `PARTIAL` | needs ability cycling                         |
 | 75 | Monk              | monk             | `PARTIAL` | needs ability cycling                         |
 | 76 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling                         |
-| 77 | Suspicious Bush   | --               | `MISSING` | newer card                                    |
+| 77 | Suspicious Bush   | suspiciousbush   | `DONE`    | permanent stealth, kamikaze, death spawn      |
 | 78 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
 | 79 | Goblin Demolisher | --               | `MISSING` | newer card                                    |
 | 80 | Rune Giant        | --               | `MISSING` | newer card                                    |
@@ -149,15 +149,16 @@ the live game name.
 Internal-only entities used as death spawns or auxiliary mechanics.
 Cost-0 buildings are in cards.json; units-only entries exist solely in units.json.
 
-| # | Name                  | Internal ID         | Purpose                                    |
-|---|-----------------------|---------------------|--------------------------------------------|
-| 1 | Giant Skeleton Bomb   | giantskeletonbomb   | Death damage for Giant Skeleton            |
-| 2 | Balloon Bomb          | balloonbomb         | Death damage for Balloon                   |
-| 3 | Rage Barbarian Bottle | ragebarbarianbottle | Rage drop on Lumberjack death              |
-| 4 | Skeleton Container    | skeletoncontainer   | Skeleton spawn for Skeleton Barrel (0.5s)  |
-| 5 | Bomb Tower Bomb       | bombtowerbomb       | Death damage for Bomb Tower                |
-| 6 | Goblin Brawler        | goblinbrawler       | Death spawn for Goblin Cage (0.5s deploy)  |
-| 7 | SpearGoblin (Giant)   | speargoblingiant    | Death spawn for Goblin Giant (0.7s deploy) |
+| # | Name                  | Internal ID         | Purpose                                                           |
+|---|-----------------------|---------------------|-------------------------------------------------------------------|
+| 1 | Giant Skeleton Bomb   | giantskeletonbomb   | Death damage for Giant Skeleton                                   |
+| 2 | Balloon Bomb          | balloonbomb         | Death damage for Balloon                                          |
+| 3 | Rage Barbarian Bottle | ragebarbarianbottle | Rage drop on Lumberjack death                                     |
+| 4 | Skeleton Container    | skeletoncontainer   | Skeleton spawn for Skeleton Barrel (0.5s)                         |
+| 5 | Bomb Tower Bomb       | bombtowerbomb       | Death damage for Bomb Tower                                       |
+| 6 | Goblin Brawler        | goblinbrawler       | Death spawn for Goblin Cage (0.5s deploy)                         |
+| 7 | SpearGoblin (Giant)   | speargoblingiant    | Death spawn for Goblin Giant (0.7s deploy)                        |
+| 8 | BushGoblin            | bushgoblin          | Death spawn for Suspicious Bush (0.4s deploy, staggered flanking) |
 
 ## Tower Troops (new mechanic -- all Missing)
 
@@ -178,10 +179,10 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 99      | Fully functional in simulation              |
+| `DONE`     | 100     | Fully functional in simulation              |
 | `PARTIAL`  | 11      | In cards.json but missing complex mechanics |
-| `MISSING`  | 18      | Not yet implemented or newer cards          |
-| Sub-entity | 7       | Internal entities, not playable cards       |
+| `MISSING`  | 17      | Not yet implemented or newer cards          |
+| Sub-entity | 8       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
 Data source: season 80 (202602) -- 121 entries in cards.json.

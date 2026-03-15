@@ -2320,7 +2320,17 @@
     "deathSpawn": [
       {
         "spawnCharacter": "BushGoblin",
-        "spawnNumber": 2
+        "spawnNumber": 1,
+        "spawnDelay": 0.675,
+        "relativeX": -1.0,
+        "relativeY": 0.0
+      },
+      {
+        "spawnCharacter": "BushGoblin",
+        "spawnNumber": 1,
+        "spawnDelay": 0.625,
+        "relativeX": 1.0,
+        "relativeY": 0.0
       }
     ],
     "ignoreBuff": "VoodooCurse,GoblinCurse",

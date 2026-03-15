@@ -274,7 +274,7 @@ class CloneSpellTest {
             .visualRadius(0.4f)
             .build();
 
-    DeathSpawnEntry deathSpawn = new DeathSpawnEntry(golemiteStats, 2, 0.5f, 0f);
+    DeathSpawnEntry deathSpawn = new DeathSpawnEntry(golemiteStats, 2, 0.5f, 0f, 0f, null, null);
 
     SpawnerComponent spawner = SpawnerComponent.builder().deathSpawns(List.of(deathSpawn)).build();
 

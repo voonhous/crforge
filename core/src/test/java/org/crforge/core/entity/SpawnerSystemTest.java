@@ -177,7 +177,8 @@ class SpawnerSystemTest {
             .targetType(TargetType.ALL)
             .build();
 
-    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f));
+    List<DeathSpawnEntry> deathSpawns =
+        List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f, 0f, null, null));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
@@ -232,7 +233,7 @@ class SpawnerSystemTest {
 
     SpawnerComponent deathOnlySpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f, 0f, null, null)))
             .build();
 
     // hasLiveSpawn should be false since spawnPauseTime and spawnInterval are both 0
@@ -416,7 +417,7 @@ class SpawnerSystemTest {
     // Parent entity (Balloon) that death-spawns the bomb
     SpawnerComponent balloonSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f, 0f, 0f, null, null)))
             .build();
 
     Troop balloon =
@@ -528,7 +529,7 @@ class SpawnerSystemTest {
     // Parent Golem that death-spawns Golemites
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f)))
+            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f, 0f, null, null)))
             .build();
 
     Troop golem =
@@ -750,7 +751,8 @@ class SpawnerSystemTest {
             .build();
 
     // Death spawn entry with 0.5s deploy time
-    List<DeathSpawnEntry> deathSpawns = List.of(new DeathSpawnEntry(brawlerStats, 1, 0f, 0.5f));
+    List<DeathSpawnEntry> deathSpawns =
+        List.of(new DeathSpawnEntry(brawlerStats, 1, 0f, 0.5f, 0f, null, null));
 
     SpawnerComponent cageSpawner = SpawnerComponent.builder().deathSpawns(deathSpawns).build();
 
