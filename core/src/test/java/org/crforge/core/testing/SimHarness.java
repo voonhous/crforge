@@ -99,6 +99,9 @@ public class SimHarness {
     if (projectileSystem != null && spawnerSystem != null) {
       projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     }
+    if (areaEffectSystem != null && spawnerSystem != null) {
+      areaEffectSystem.setUnitSpawner(spawnerSystem::spawnUnit);
+    }
     if (spawnerSystem != null) {
       gameState.setDeathHandler(spawnerSystem::onDeath);
     }

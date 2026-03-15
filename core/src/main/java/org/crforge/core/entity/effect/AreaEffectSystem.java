@@ -3,9 +3,12 @@ package org.crforge.core.entity.effect;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.Rarity;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.DamageUtil;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -35,7 +38,16 @@ import org.crforge.core.player.Team;
 @RequiredArgsConstructor
 public class AreaEffectSystem {
 
+  /** Callback for spawning units (wired to SpawnerSystem::spawnUnit). */
+  @FunctionalInterface
+  public interface UnitSpawner {
+    void spawnUnit(
+        float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime);
+  }
+
   private final GameState gameState;
+
+  @Setter private UnitSpawner unitSpawner;
 
   /** Update all active area effects. Should be called once per tick. */
   public void update(float deltaTime) {
@@ -47,6 +59,7 @@ public class AreaEffectSystem {
       }
       applyPull(effect, deltaTime);
       processEffect(effect, deltaTime);
+      processSpawn(effect, deltaTime);
     }
   }
 
@@ -173,6 +186,36 @@ public class AreaEffectSystem {
     }
   }
 
+  /**
+   * Handles delayed character spawning for area effects (e.g. Royal Delivery spawns a
+   * DeliveryRecruit at 2.05s). Increments the spawn delay accumulator and fires the spawn once the
+   * threshold is reached.
+   */
+  private void processSpawn(AreaEffect effect, float deltaTime) {
+    AreaEffectStats stats = effect.getStats();
+    if (stats.getSpawnCharacter() == null || effect.isSpawnTriggered()) {
+      return;
+    }
+    if (unitSpawner == null) {
+      return;
+    }
+
+    effect.setSpawnDelayAccumulator(effect.getSpawnDelayAccumulator() + deltaTime);
+    if (effect.getSpawnDelayAccumulator() >= stats.getSpawnInitialDelay()) {
+      float x = effect.getPosition().getX();
+      float y = effect.getPosition().getY();
+      unitSpawner.spawnUnit(
+          x,
+          y,
+          effect.getTeam(),
+          stats.getSpawnCharacter(),
+          effect.getRarity(),
+          effect.getLevel(),
+          stats.getSpawnDeployTime());
+      effect.setSpawnTriggered(true);
+    }
+  }
+
   private void applyToTargets(AreaEffect effect) {
     AreaEffectStats stats = effect.getStats();
 
@@ -231,6 +274,11 @@ public class AreaEffectSystem {
         }
       }
       if (!canHit(stats, target)) {
+        continue;
+      }
+      // Skip deployed buildings when ignoreBuildings is set (Royal Delivery).
+      // Crown towers (EntityType.TOWER) are not affected by this flag.
+      if (stats.isIgnoreBuildings() && target.getEntityType() == EntityType.BUILDING) {
         continue;
       }
 

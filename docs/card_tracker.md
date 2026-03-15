@@ -116,7 +116,7 @@ the live game name.
 | 16 | Barbarian Barrel | barblog       | `DONE`    | spellAsDeploy, 2-stage rolling + Barbarian spawn |
 | 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit                               |
 | 18 | Snowball         | snowball      | `DONE`    | projectile spell                                 |
-| 19 | Royal Delivery   | royaldelivery | `MISSING` | area effect + troop spawn                        |
+| 19 | Royal Delivery   | royaldelivery | `DONE`    | area effect + delayed troop spawn                |
 | 20 | Void             | darkmagic     | `PARTIAL` | stub, needs mechanics                            |
 | 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics                            |
 | 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics                            |
@@ -178,9 +178,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 97      | Fully functional in simulation              |
+| `DONE`     | 98      | Fully functional in simulation              |
 | `PARTIAL`  | 11      | In cards.json but missing complex mechanics |
-| `MISSING`  | 20      | Not yet implemented or newer cards          |
+| `MISSING`  | 19      | Not yet implemented or newer cards          |
 | Sub-entity | 7       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

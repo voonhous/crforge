@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
@@ -57,6 +58,18 @@ public class AreaEffect extends AbstractEntity {
   /** Dedup flag: true once controlsBuff cleanup has been performed on expiry. */
   @Builder.Default @Setter private boolean buffsCleaned = false;
 
+  /** Accumulator for spawn delay timing. Incremented each tick until spawn fires. */
+  @Builder.Default @Setter private float spawnDelayAccumulator = 0f;
+
+  /** Whether the delayed character spawn has been triggered. Prevents re-firing. */
+  @Builder.Default @Setter private boolean spawnTriggered = false;
+
+  /** Rarity of the caster card, used to level-scale the spawned character. */
+  @Builder.Default private final Rarity rarity = Rarity.COMMON;
+
+  /** Level of the caster card, used to level-scale the spawned character. */
+  @Builder.Default private final int level = 1;
+
   @Override
   public EntityType getEntityType() {
     return EntityType.SPELL;
@@ -84,6 +97,11 @@ public class AreaEffect extends AbstractEntity {
       // Without this guard, effects with very short lifeDuration (e.g. Zap 0.001s)
       // die during the entity update step before AreaEffectSystem processes them.
       if (isOneShot() && !initialApplied) {
+        return;
+      }
+      // Keep alive if a character spawn is pending (e.g. Royal Delivery spawns at 2.05s
+      // but lifeDuration is 2.0s)
+      if (stats.getSpawnCharacter() != null && !spawnTriggered) {
         return;
       }
       markDead();

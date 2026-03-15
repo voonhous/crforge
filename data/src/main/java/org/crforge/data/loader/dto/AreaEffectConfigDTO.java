@@ -58,4 +58,10 @@ public class AreaEffectConfigDTO {
 
   /** If true, can affect hidden buildings like Tesla (Earthquake, Freeze). */
   private boolean affectsHidden;
+
+  /** Spawn timing configuration (delay before character spawns). Null if no spawn. */
+  private SpawnTimingConfigDTO spawn;
+
+  /** Character to spawn after the area effect (e.g. Royal Delivery -> DeliveryRecruit). */
+  private SpawnConfigDTO projectileSpawn;
 }

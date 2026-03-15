@@ -889,6 +889,8 @@ public class DeploymentSystem {
             .resolvedCrownTowerDamagePercent(resolvedCtdp)
             .buildingDamagePercent(buildingDmgPct)
             .remainingLifetime(stats.getLifeDuration())
+            .rarity(rarity)
+            .level(level)
             .build();
 
     state.spawnEntity(effect);

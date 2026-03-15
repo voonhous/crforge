@@ -228,17 +228,17 @@ public class UnitLoader {
 
     // Death area effect (e.g. RageBarbarianBottle drops Rage zone on death)
     if (dto.getDeathAreaEffect() != null) {
-      builder.deathAreaEffect(CardLoader.convertAreaEffect(dto.getDeathAreaEffect()));
+      builder.deathAreaEffect(CardLoader.convertAreaEffect(dto.getDeathAreaEffect(), unitMap));
     }
 
     // Spawn area effect (e.g. BattleHealer heals nearby friendlies on deploy)
     if (dto.getSpawnAreaEffect() != null) {
-      builder.spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
+      builder.spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect(), unitMap));
     }
 
     // Area effect triggered on each attack hit (e.g. BattleHealer heal on hit)
     if (dto.getAreaEffectOnHit() != null) {
-      builder.areaEffectOnHit(CardLoader.convertAreaEffect(dto.getAreaEffectOnHit()));
+      builder.areaEffectOnHit(CardLoader.convertAreaEffect(dto.getAreaEffectOnHit(), unitMap));
     }
 
     // Death spawns: resolve character references from the unit map

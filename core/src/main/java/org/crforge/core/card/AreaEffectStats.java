@@ -2,6 +2,7 @@ package org.crforge.core.card;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.With;
 
 /**
  * Runtime configuration for an area-of-effect, used by spells (e.g. Zap, Freeze, Poison) and deploy
@@ -57,6 +58,18 @@ public class AreaEffectStats {
 
   /** If true, can affect hidden buildings like Tesla (Earthquake, Freeze). */
   @Builder.Default private final boolean affectsHidden = false;
+
+  /** Delay in seconds before the spawned character appears (from area effect creation). */
+  @Builder.Default private final float spawnInitialDelay = 0f;
+
+  /** Deploy time for the spawned character (animation duration). */
+  @Builder.Default private final float spawnDeployTime = 0f;
+
+  /** Resolved TroopStats for the character to spawn. Null if no spawn. */
+  @With private final TroopStats spawnCharacter;
+
+  /** Number of characters to spawn. */
+  @Builder.Default private final int spawnCount = 1;
 
   /**
    * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.

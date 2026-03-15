@@ -19,6 +19,7 @@ import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.data.loader.dto.AreaEffectConfigDTO;
 import org.crforge.data.loader.dto.CardConfigDTO;
+import org.crforge.data.loader.dto.SpawnConfigDTO;
 
 /**
  * Loads card definitions from cards.json (slim format) and resolves unit/projectile references from
@@ -120,12 +121,12 @@ public class CardLoader {
       }
     }
 
-    // Area effects (inline, unchanged)
+    // Area effects (inline, with spawn character resolution)
     if (dto.getAreaEffect() != null) {
-      builder.areaEffect(convertAreaEffect(dto.getAreaEffect()));
+      builder.areaEffect(convertAreaEffect(dto.getAreaEffect(), unitMap));
     }
     if (dto.getDeployEffect() != null) {
-      builder.deployEffect(convertAreaEffect(dto.getDeployEffect()));
+      builder.deployEffect(convertAreaEffect(dto.getDeployEffect(), unitMap));
     }
 
     // Promote unit-level spawnAreaEffect to card deployEffect if no explicit deployEffect set
@@ -201,29 +202,48 @@ public class CardLoader {
     return builder.build();
   }
 
-  static AreaEffectStats convertAreaEffect(AreaEffectConfigDTO dto) {
+  static AreaEffectStats convertAreaEffect(
+      AreaEffectConfigDTO dto, Map<String, TroopStats> unitMap) {
     if (dto == null) {
       return null;
     }
-    return AreaEffectStats.builder()
-        .name(dto.getName())
-        .radius(dto.getRadius())
-        .lifeDuration(dto.getLifeDuration())
-        .hitsGround(dto.isHitsGround())
-        .hitsAir(dto.isHitsAir())
-        .damage(dto.getDamage())
-        .hitSpeed(dto.getHitSpeed())
-        .buff(dto.getBuff())
-        .buffDuration(dto.getBuffDuration())
-        .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-        .hitBiggestTargets(dto.isHitBiggestTargets())
-        .controlsBuff(dto.isControlsBuff())
-        .capBuffTimeToAreaEffectTime(dto.isCapBuffTimeToAreaEffectTime())
-        .clone(dto.isClone())
-        .onlyOwnTroops(dto.isOnlyOwnTroops())
-        .ignoreBuildings(dto.isIgnoreBuildings())
-        .onlyEnemies(dto.isOnlyEnemies())
-        .affectsHidden(dto.isAffectsHidden())
-        .build();
+    AreaEffectStats.AreaEffectStatsBuilder builder =
+        AreaEffectStats.builder()
+            .name(dto.getName())
+            .radius(dto.getRadius())
+            .lifeDuration(dto.getLifeDuration())
+            .hitsGround(dto.isHitsGround())
+            .hitsAir(dto.isHitsAir())
+            .damage(dto.getDamage())
+            .hitSpeed(dto.getHitSpeed())
+            .buff(dto.getBuff())
+            .buffDuration(dto.getBuffDuration())
+            .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
+            .hitBiggestTargets(dto.isHitBiggestTargets())
+            .controlsBuff(dto.isControlsBuff())
+            .capBuffTimeToAreaEffectTime(dto.isCapBuffTimeToAreaEffectTime())
+            .clone(dto.isClone())
+            .onlyOwnTroops(dto.isOnlyOwnTroops())
+            .ignoreBuildings(dto.isIgnoreBuildings())
+            .onlyEnemies(dto.isOnlyEnemies())
+            .affectsHidden(dto.isAffectsHidden());
+
+    // Resolve spawn timing and character (e.g. Royal Delivery -> DeliveryRecruit)
+    if (dto.getSpawn() != null) {
+      builder.spawnInitialDelay(dto.getSpawn().getSpawnInitialDelay());
+    }
+    SpawnConfigDTO projSpawn = dto.getProjectileSpawn();
+    if (projSpawn != null) {
+      builder.spawnDeployTime(projSpawn.getDeployTime());
+      builder.spawnCount(projSpawn.getSpawnNumber());
+      if (projSpawn.getSpawnCharacter() != null && unitMap != null) {
+        TroopStats spawnChar = unitMap.get(projSpawn.getSpawnCharacter());
+        if (spawnChar != null) {
+          builder.spawnCharacter(spawnChar);
+        }
+      }
+    }
+
+    return builder.build();
   }
 }

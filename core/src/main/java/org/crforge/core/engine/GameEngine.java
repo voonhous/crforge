@@ -59,6 +59,7 @@ public class GameEngine {
 
     this.statusEffectSystem = new StatusEffectSystem();
     this.areaEffectSystem = new AreaEffectSystem(gameState);
+    areaEffectSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     this.abilitySystem = new AbilitySystem(gameState);
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);
     this.running = false;

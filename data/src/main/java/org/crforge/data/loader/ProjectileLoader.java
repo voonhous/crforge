@@ -107,7 +107,7 @@ public class ProjectileLoader {
             .minDistance(dto.getMinDistance())
             .checkCollisions(dto.isCheckCollisions())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-            .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect()));
+            .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect(), null));
 
     // Read spawn character from the spawn block (e.g. PhoenixFireball spawns PhoenixEgg)
     if (dto.getSpawn() != null && dto.getSpawn().getSpawnCharacter() != null) {
