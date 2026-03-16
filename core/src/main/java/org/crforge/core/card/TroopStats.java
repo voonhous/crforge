@@ -121,6 +121,10 @@ public class TroopStats {
   // (e.g. GoblinDrillDig -> GoblinDrill TroopStats)
   private final TroopStats morphTarget;
 
+  // HP-threshold transformation: when HP drops to this %, replace with a different unit form
+  // (e.g. GoblinDemolisher -> kamikaze form at 50% HP)
+  private final TransformationConfig transformConfig;
+
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   @Builder.Default private final float attackDashTime = 0f;
 

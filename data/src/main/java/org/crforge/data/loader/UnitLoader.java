@@ -32,6 +32,7 @@ import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.data.loader.dto.AbilityConfigDTO;
@@ -39,6 +40,7 @@ import org.crforge.data.loader.dto.BuffOnDamageConfigDTO;
 import org.crforge.data.loader.dto.DeathDamageConfigDTO;
 import org.crforge.data.loader.dto.DeathSpawnConfigDTO;
 import org.crforge.data.loader.dto.LiveSpawnConfigDTO;
+import org.crforge.data.loader.dto.TransformationConfigDTO;
 import org.crforge.data.loader.dto.UnitConfigDTO;
 
 /**
@@ -110,6 +112,12 @@ public class UnitLoader {
     // Recursively resolve spawnPathfindMorph target (e.g. GoblinDrillDig -> GoblinDrill)
     if (dto.getSpawnPathfindMorph() != null) {
       resolveUnit(dto.getSpawnPathfindMorph(), dtos, projectileMap, result, resolving);
+    }
+    // Recursively resolve transformation target (e.g. GoblinDemolisher -> kamikaze form)
+    if (dto.getTransformation() != null
+        && dto.getTransformation().getTransformCharacter() != null) {
+      resolveUnit(
+          dto.getTransformation().getTransformCharacter(), dtos, projectileMap, result, resolving);
     }
     // Recursively resolve deathSpawnProjectile's spawn character (e.g. Phoenix -> PhoenixFireball
     // -> PhoenixEgg)
@@ -323,6 +331,16 @@ public class UnitLoader {
       AbilityData ability = convertAbility(abilityDto);
       if (ability != null) {
         builder.ability(ability);
+      }
+    }
+
+    // Resolve HP-threshold transformation (e.g. GoblinDemolisher -> kamikaze form)
+    TransformationConfigDTO transformDto = dto.getTransformation();
+    if (transformDto != null && transformDto.getTransformCharacter() != null && unitMap != null) {
+      TroopStats transformStats = unitMap.get(transformDto.getTransformCharacter());
+      if (transformStats != null) {
+        builder.transformConfig(
+            new TransformationConfig(transformStats, transformDto.getHealthPercent()));
       }
     }
 

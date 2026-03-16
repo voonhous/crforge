@@ -37,6 +37,7 @@ public class GameEngine {
   private final AbilitySystem abilitySystem;
   private final AttachedUnitSystem attachedUnitSystem;
   private final ElixirCollectionSystem elixirCollectionSystem;
+  private final TransformationSystem transformationSystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -65,6 +66,7 @@ public class GameEngine {
     abilitySystem.setTunnelMorphHandler(deploymentSystem::handleTunnelMorph);
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);
     this.elixirCollectionSystem = new ElixirCollectionSystem(gameState);
+    this.transformationSystem = new TransformationSystem(gameState);
     this.running = false;
   }
 
@@ -151,6 +153,9 @@ public class GameEngine {
 
     // 10. Process combat (attacks and projectiles)
     combatSystem.update(DELTA_TIME);
+
+    // 10.5 Check HP-threshold transformations (e.g. GoblinDemolisher -> kamikaze)
+    transformationSystem.update();
 
     // 11. Update physics (movement and collisions)
     if (physicsSystem != null) {

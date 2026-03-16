@@ -82,7 +82,7 @@ the live game name.
 | 70 | Phoenix           | phoenix          | `DONE`    | death -> egg -> respawn chain                 |
 | 71 | Suspicious Bush   | suspiciousbush   | `DONE`    | permanent stealth, kamikaze, death spawn      |
 | 72 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
-| 73 | Goblin Demolisher | goblindemolisher | `MISSING` | newer card                                    |
+| 73 | Goblin Demolisher | goblindemolisher | `DONE`    | HP-threshold transformation + kamikaze form   |
 | 74 | Rune Giant        | giantbuffer      | `DONE`    | BUFF_ALLY ability: buffs 2 closest friendlies |
 | 75 | Goblin Machine    | goblinmachine    | `MISSING` | newer card                                    |
 | 76 | Spirit Empress    | mergemaiden      | `DONE`    | variant selection (dual-form AIR/GROUND)      |
@@ -180,9 +180,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 111     | Fully functional in simulation              |
+| `DONE`     | 112     | Fully functional in simulation              |
 | `PARTIAL`  | 7       | In cards.json but missing complex mechanics |
-| `MISSING`  | 13      | Not yet implemented or newer cards          |
+| `MISSING`  | 12      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

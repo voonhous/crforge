@@ -531,6 +531,8 @@ class EntityFactory {
         .spawner(spawner)
         .ability(abilityComponent)
         .buildingCard(buildingCard)
+        .transformConfig(stats.getTransformConfig())
+        .lifeTimer(stats.getLifeTime())
         .level(level)
         .build();
   }

@@ -628,6 +628,8 @@ public class SpawnerSystem {
             .deployTime(deployTime)
             .deployTimer(deployTime)
             .spawner(spawner)
+            .transformConfig(stats.getTransformConfig())
+            .lifeTimer(stats.getLifeTime())
             .level(level)
             .clone(asClone)
             .build();

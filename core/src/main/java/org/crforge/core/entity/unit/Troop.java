@@ -9,6 +9,7 @@ import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.GiantBuffState;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -53,6 +54,16 @@ public class Troop extends AbstractEntity {
 
   // GiantBuffer buff state: active buff from a friendly GiantBuffer
   @Setter @Builder.Default private GiantBuffState giantBuff = null;
+
+  // HP-threshold transformation config (e.g. GoblinDemolisher -> kamikaze form at 50% HP)
+  @Builder.Default private final TransformationConfig transformConfig = null;
+
+  // Whether this troop has already transformed (prevents re-transformation)
+  @Setter @Builder.Default private boolean transformed = false;
+
+  // Lifetime countdown for troops with limited duration (e.g. kamikaze form's 20s lifeTime)
+  // 0 = no lifetime limit
+  @Setter @Builder.Default private float lifeTimer = 0f;
 
   /** Returns true if this troop is currently invisible (stealth ability active). */
   public boolean isInvisible() {
@@ -130,6 +141,15 @@ public class Troop extends AbstractEntity {
         combat.update(deltaTime, true);
       }
       return;
+    }
+
+    // Lifetime countdown: kill troop when timer expires (e.g. kamikaze form's 20s lifeTime)
+    if (lifeTimer > 0) {
+      lifeTimer -= deltaTime;
+      if (lifeTimer <= 0) {
+        health.kill();
+        return;
+      }
     }
 
     // Decrement grounded timer (Vines air-to-ground)
