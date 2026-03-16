@@ -96,6 +96,18 @@ public class AreaEffectStats {
   /** Duration in seconds that air-to-ground conversion lasts. */
   @Builder.Default private final float airToGroundDuration = 0f;
 
+  /** Delay in seconds before the first laser ball scan (DarkMagic). */
+  @Builder.Default private final float firstHitDelay = 0f;
+
+  /** Interval in seconds between laser ball scans (DarkMagic). Mapped from JSON hitFrequency. */
+  @Builder.Default private final float scanInterval = 0f;
+
+  /** Base damage tier definitions for the laser ball mechanic (DarkMagic). */
+  @Builder.Default private final List<DamageTier> damageTiers = List.of();
+
+  /** Laser ball tick interval in seconds (100ms). */
+  public static final float LASER_TICK_INTERVAL = 0.1f;
+
   /**
    * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.
    * RageBarbarian/Lumberjack, SuspiciousBush) carry a deathAreaEffect in units.json purely as an
@@ -106,7 +118,25 @@ public class AreaEffectStats {
         || (!hitsGround
             && !hitsAir
             && targetCount <= 0
+            && damageTiers.isEmpty()
             && spawnCharacter == null
             && spawnSequence.isEmpty());
+  }
+
+  /**
+   * Computes the total number of laser ball scans that will occur during the effect's lifetime.
+   * Returns 0 if this is not a laser ball effect.
+   */
+  public int computeTotalLaserScans() {
+    if (scanInterval <= 0 || firstHitDelay >= lifeDuration) {
+      return 0;
+    }
+    int count = 0;
+    float t = firstHitDelay;
+    while (t < lifeDuration) {
+      count++;
+      t += scanInterval;
+    }
+    return count;
   }
 }

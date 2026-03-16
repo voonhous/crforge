@@ -8,6 +8,7 @@ import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Rarity;
+import org.crforge.core.card.ScaledDamageTier;
 import org.crforge.core.card.SpawnSequenceEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.DamageUtil;
@@ -169,6 +170,12 @@ public class AreaEffectSystem {
   }
 
   private void processEffect(AreaEffect effect, float deltaTime) {
+    // Laser ball effect (DarkMagic): scan-based tiers with 100ms damage ticks
+    if (!effect.getStats().getDamageTiers().isEmpty()) {
+      processLaserBall(effect, deltaTime);
+      return;
+    }
+
     // Targeted effect (Vines): select specific targets with staggered delays, then DOT
     if (effect.getStats().getTargetCount() > 0) {
       processTargetedEffect(effect, deltaTime);
@@ -365,6 +372,162 @@ public class AreaEffectSystem {
         effect.setDotActive(false);
       }
     }
+  }
+
+  /**
+   * Processes the DarkMagic laser ball mechanic. After an initial delay, scans every scanInterval
+   * seconds to count targets and select a damage tier, then fires 100ms damage ticks at locked
+   * targets until the next scan or the total tick budget is exhausted.
+   *
+   * <p>The laser ball bypasses hitsGround/hitsAir (both are false in data) and directly damages all
+   * alive enemy entities within radius.
+   */
+  private void processLaserBall(AreaEffect effect, float deltaTime) {
+    AreaEffectStats stats = effect.getStats();
+    int totalTicks = effect.getTotalLaserTicks();
+
+    // All ticks consumed -- effect can die naturally via update()
+    if (totalTicks > 0 && effect.getLaserTickCount() >= totalTicks) {
+      return;
+    }
+
+    // Phase 1: Delay before first scan
+    if (!effect.isLaserActive()) {
+      float acc = effect.getLaserDelayAccumulator() + deltaTime;
+      if (acc < stats.getFirstHitDelay()) {
+        effect.setLaserDelayAccumulator(acc);
+        return;
+      }
+      // Activate and carry over excess time
+      effect.setLaserActive(true);
+      float excess = acc - stats.getFirstHitDelay();
+      effect.setLaserDelayAccumulator(0f);
+
+      // Perform the first scan immediately
+      performLaserScan(effect);
+
+      // Seed the tick accumulator with leftover time
+      effect.setLaserTickAccumulator(excess);
+    } else {
+      effect.setLaserTickAccumulator(effect.getLaserTickAccumulator() + deltaTime);
+    }
+
+    // Phase 2: Fire 100ms ticks
+    float tickInterval = AreaEffectStats.LASER_TICK_INTERVAL;
+    int ticksPerScan = Math.round(stats.getScanInterval() / tickInterval);
+
+    while (effect.getLaserTickAccumulator() >= tickInterval
+        && effect.getLaserTickCount() < totalTicks) {
+      effect.setLaserTickAccumulator(effect.getLaserTickAccumulator() - tickInterval);
+
+      // Check for scan boundary (rescan targets at the start of each scan period)
+      if (ticksPerScan > 0
+          && effect.getLaserTickCount() > 0
+          && effect.getLaserTickCount() % ticksPerScan == 0) {
+        performLaserScan(effect);
+      }
+
+      // Apply damage to all locked targets
+      applyLaserTick(effect);
+      effect.setLaserTickCount(effect.getLaserTickCount() + 1);
+    }
+  }
+
+  /**
+   * Scans for enemy targets within radius, selects a damage tier based on target count, and locks
+   * target IDs and per-tick damage values for subsequent ticks.
+   */
+  private void performLaserScan(AreaEffect effect) {
+    List<Entity> targets = findLaserTargets(effect);
+    int targetCount = targets.size();
+
+    effect.getLaserTargetIds().clear();
+    for (Entity target : targets) {
+      effect.getLaserTargetIds().add(target.getId());
+    }
+
+    // Select damage tier: tiers are ordered by ascending maxTargets.
+    // Use the first tier where targetCount <= maxTargets (and maxTargets > 0).
+    // Last tier with maxTargets=0 is the catch-all.
+    List<ScaledDamageTier> tiers = effect.getScaledDamageTiers();
+    ScaledDamageTier selectedTier = null;
+    if (!tiers.isEmpty()) {
+      for (ScaledDamageTier tier : tiers) {
+        if (tier.maxTargets() > 0 && targetCount <= tier.maxTargets()) {
+          selectedTier = tier;
+          break;
+        }
+        if (tier.maxTargets() == 0) {
+          selectedTier = tier;
+          break;
+        }
+      }
+      if (selectedTier == null) {
+        selectedTier = tiers.get(tiers.size() - 1);
+      }
+    }
+
+    if (selectedTier != null) {
+      effect.setLaserDamagePerTick(selectedTier.damagePerTick());
+      effect.setLaserCtDamagePerTick(selectedTier.ctDamagePerTick());
+    } else {
+      effect.setLaserDamagePerTick(0);
+      effect.setLaserCtDamagePerTick(0);
+    }
+  }
+
+  /** Applies one laser tick of damage to all locked targets. Skips dead entities. */
+  private void applyLaserTick(AreaEffect effect) {
+    int damage = effect.getLaserDamagePerTick();
+    int ctDamage = effect.getLaserCtDamagePerTick();
+    if (damage <= 0 && ctDamage <= 0) {
+      return;
+    }
+
+    for (long targetId : effect.getLaserTargetIds()) {
+      Entity target = gameState.getEntityById(targetId).orElse(null);
+      if (target == null || !target.isAlive()) {
+        continue;
+      }
+
+      int effectiveDamage = damage;
+      if (target instanceof Tower && ctDamage > 0) {
+        effectiveDamage = ctDamage;
+      }
+      if (effectiveDamage > 0) {
+        target.getHealth().takeDamage(effectiveDamage);
+      }
+    }
+  }
+
+  /**
+   * Finds all alive enemy entities within the laser ball radius. Bypasses hitsGround/hitsAir checks
+   * since the laser ball targets everything.
+   */
+  private List<Entity> findLaserTargets(AreaEffect effect) {
+    AreaEffectStats stats = effect.getStats();
+    Team enemyTeam = effect.getTeam().opposite();
+    float centerX = effect.getPosition().getX();
+    float centerY = effect.getPosition().getY();
+
+    List<Entity> targets = new ArrayList<>();
+    for (Entity target : gameState.getAliveEntities()) {
+      if (target.getTeam() != enemyTeam) {
+        continue;
+      }
+      if (!target.isTargetable()) {
+        continue;
+      }
+
+      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
+      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
+      if (distanceSq > effectiveRadius * effectiveRadius) {
+        continue;
+      }
+
+      targets.add(target);
+    }
+    return targets;
   }
 
   /**

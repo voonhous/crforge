@@ -1,6 +1,7 @@
 package org.crforge.core.entity.effect;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Rarity;
+import org.crforge.core.card.ScaledDamageTier;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.EntityType;
@@ -90,6 +92,35 @@ public class AreaEffect extends AbstractEntity {
   /** Elapsed time since DOT started, used to determine when to stop ticking. */
   @Builder.Default @Setter private float dotElapsedTime = 0f;
 
+  // -- Laser ball state (DarkMagic) --
+
+  /** Time accumulator for the initial delay before the first laser scan. */
+  @Builder.Default @Setter private float laserDelayAccumulator = 0f;
+
+  /** Time accumulator for the 100ms laser tick interval. */
+  @Builder.Default @Setter private float laserTickAccumulator = 0f;
+
+  /** Number of laser ticks fired so far. */
+  @Builder.Default @Setter private int laserTickCount = 0;
+
+  /** Whether the laser ball is actively ticking (past the initial delay). */
+  @Builder.Default @Setter private boolean laserActive = false;
+
+  /** Entity IDs currently locked as laser targets (refreshed each scan). */
+  @Builder.Default private final Set<Long> laserTargetIds = new HashSet<>();
+
+  /** Current per-tick damage for locked targets (set on each scan). */
+  @Builder.Default @Setter private int laserDamagePerTick = 0;
+
+  /** Current per-tick crown tower damage for locked targets (set on each scan). */
+  @Builder.Default @Setter private int laserCtDamagePerTick = 0;
+
+  /** Level-scaled damage tiers computed at deploy time. */
+  @Builder.Default private final List<ScaledDamageTier> scaledDamageTiers = List.of();
+
+  /** Total number of laser ticks across all scans. Effect stays alive until all are consumed. */
+  @Builder.Default private final int totalLaserTicks = 0;
+
   /** Rarity of the caster card, used to level-scale the spawned character. */
   @Builder.Default private final Rarity rarity = Rarity.COMMON;
 
@@ -122,7 +153,8 @@ public class AreaEffect extends AbstractEntity {
       // One-shot effects must survive until AreaEffectSystem applies them.
       // Without this guard, effects with very short lifeDuration (e.g. Zap 0.001s)
       // die during the entity update step before AreaEffectSystem processes them.
-      if (isOneShot() && !initialApplied) {
+      // Laser ball effects (damageTiers non-empty) are not one-shot despite hitSpeed=0.
+      if (isOneShot() && !initialApplied && stats.getDamageTiers().isEmpty()) {
         return;
       }
       // Keep alive if a single character spawn is pending (e.g. Royal Delivery spawns at 2.05s
@@ -139,6 +171,10 @@ public class AreaEffect extends AbstractEntity {
       // Keep alive if targeted effect has pending target selections or active DOT ticks
       if (stats.getTargetCount() > 0
           && (nextTargetSelectionIndex < stats.getTargetDelays().size() || dotActive)) {
+        return;
+      }
+      // Keep alive if laser ball has pending ticks
+      if (totalLaserTicks > 0 && laserTickCount < totalLaserTicks) {
         return;
       }
       markDead();

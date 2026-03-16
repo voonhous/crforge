@@ -12,6 +12,7 @@ import org.crforge.core.ability.AbilityType;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.DamageTier;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
@@ -930,5 +931,78 @@ class CardLoaderTest {
 
     // isDummy should return false because targetCount > 0
     assertThat(ae.isDummy()).as("Vines should not be a dummy area effect").isFalse();
+  }
+
+  @Test
+  void loadCards_shouldParseDarkMagicDamageTiers() {
+    String json =
+        """
+        [
+          {
+            "id": "darkmagic",
+            "name": "DarkMagic",
+            "type": "SPELL",
+            "rarity": "Epic",
+            "cost": 3,
+            "areaEffect": {
+              "name": "DarkMagicAOE",
+              "radius": 2.5,
+              "lifeDuration": 4.0,
+              "hitsGround": false,
+              "hitsAir": false,
+              "onlyEnemies": true,
+              "damage": 100,
+              "firstHitDelay": 1.0,
+              "hitFrequency": 1.0,
+              "damageTiers": [
+                { "damagePerSecond": 1330, "crownTowerDamagePerHit": 19, "maxTargets": 1 },
+                { "damagePerSecond": 625, "crownTowerDamagePerHit": 10, "maxTargets": 4 },
+                { "damagePerSecond": 297, "crownTowerDamagePerHit": 7 }
+              ]
+            }
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), Map.of(), Map.of());
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getId()).isEqualTo("darkmagic");
+    assertThat(card.getType()).isEqualTo(CardType.SPELL);
+    assertThat(card.getRarity()).isEqualTo(Rarity.EPIC);
+
+    AreaEffectStats ae = card.getAreaEffect();
+    assertThat(ae).isNotNull();
+    assertThat(ae.getName()).isEqualTo("DarkMagicAOE");
+    assertThat(ae.getFirstHitDelay()).isCloseTo(1.0f, within(0.01f));
+    assertThat(ae.getScanInterval()).isCloseTo(1.0f, within(0.01f));
+    assertThat(ae.getLifeDuration()).isCloseTo(4.0f, within(0.01f));
+    assertThat(ae.isHitsGround()).isFalse();
+    assertThat(ae.isHitsAir()).isFalse();
+    assertThat(ae.isOnlyEnemies()).isTrue();
+
+    // Verify 3 damage tiers
+    List<DamageTier> tiers = ae.getDamageTiers();
+    assertThat(tiers).hasSize(3);
+
+    assertThat(tiers.get(0).damagePerSecond()).isEqualTo(1330);
+    assertThat(tiers.get(0).crownTowerDamagePerHit()).isEqualTo(19);
+    assertThat(tiers.get(0).maxTargets()).isEqualTo(1);
+
+    assertThat(tiers.get(1).damagePerSecond()).isEqualTo(625);
+    assertThat(tiers.get(1).crownTowerDamagePerHit()).isEqualTo(10);
+    assertThat(tiers.get(1).maxTargets()).isEqualTo(4);
+
+    assertThat(tiers.get(2).damagePerSecond()).isEqualTo(297);
+    assertThat(tiers.get(2).crownTowerDamagePerHit()).isEqualTo(7);
+    assertThat(tiers.get(2).maxTargets()).isEqualTo(0); // catch-all
+
+    // computeTotalLaserScans: firstHitDelay=1.0, scanInterval=1.0, lifeDuration=4.0
+    // Scans at t=1.0, t=2.0, t=3.0 -> 3 scans
+    assertThat(ae.computeTotalLaserScans()).isEqualTo(3);
+
+    // isDummy should return false because damageTiers is non-empty
+    assertThat(ae.isDummy()).as("DarkMagic should not be a dummy area effect").isFalse();
   }
 }

@@ -12,6 +12,7 @@ import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
+import org.crforge.core.card.ScaledDamageTier;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.AttachedComponent;
@@ -215,6 +216,28 @@ class EntityFactory {
       }
     }
 
+    // Scale laser ball damage tiers (DarkMagic)
+    List<ScaledDamageTier> scaledTiers = List.of();
+    int totalLaserTicks = 0;
+    if (!stats.getDamageTiers().isEmpty()) {
+      float tickInterval = AreaEffectStats.LASER_TICK_INTERVAL;
+      scaledTiers =
+          stats.getDamageTiers().stream()
+              .map(
+                  tier -> {
+                    int basePerTick = Math.round(tier.damagePerSecond() * tickInterval);
+                    int scaledPerTick = LevelScaling.scaleCard(basePerTick, rarity, level);
+                    int scaledCt =
+                        tier.crownTowerDamagePerHit() > 0
+                            ? LevelScaling.scaleCard(tier.crownTowerDamagePerHit(), rarity, level)
+                            : 0;
+                    return new ScaledDamageTier(scaledPerTick, scaledCt, tier.maxTargets());
+                  })
+              .toList();
+      int ticksPerScan = Math.round(stats.getScanInterval() / tickInterval);
+      totalLaserTicks = stats.computeTotalLaserScans() * ticksPerScan;
+    }
+
     AreaEffect effect =
         AreaEffect.builder()
             .name(stats.getName())
@@ -226,6 +249,8 @@ class EntityFactory {
             .buildingDamagePercent(buildingDmgPct)
             .scaledDotDamage(scaledDotDamage)
             .scaledCrownTowerDotDamage(scaledCrownTowerDotDamage)
+            .scaledDamageTiers(scaledTiers)
+            .totalLaserTicks(totalLaserTicks)
             .remainingLifetime(stats.getLifeDuration())
             .rarity(rarity)
             .level(level)

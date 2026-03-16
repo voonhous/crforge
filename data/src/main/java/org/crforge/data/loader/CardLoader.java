@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DamageTier;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
@@ -238,7 +239,20 @@ public class CardLoader {
             .initialDelay(dto.getInitialDelay())
             .targetDelays(dto.getTargetDelays() != null ? dto.getTargetDelays() : List.of())
             .airToGround(dto.isAirToGround())
-            .airToGroundDuration(dto.getAirToGroundDuration());
+            .airToGroundDuration(dto.getAirToGroundDuration())
+            .firstHitDelay(dto.getFirstHitDelay())
+            .scanInterval(dto.getHitFrequency());
+
+    // Damage tiers for laser ball mechanic (DarkMagic)
+    if (dto.getDamageTiers() != null && !dto.getDamageTiers().isEmpty()) {
+      builder.damageTiers(
+          dto.getDamageTiers().stream()
+              .map(
+                  t ->
+                      new DamageTier(
+                          t.getDamagePerSecond(), t.getCrownTowerDamagePerHit(), t.getMaxTargets()))
+              .toList());
+    }
 
     // Resolve spawn timing and character (e.g. Royal Delivery -> DeliveryRecruit)
     if (dto.getSpawn() != null) {

@@ -78,6 +78,15 @@ public class AreaEffectConfigDTO {
   /** Duration in seconds that air-to-ground conversion lasts. */
   private float airToGroundDuration;
 
+  /** Delay in seconds before the first laser ball scan (DarkMagic). Zero if not applicable. */
+  private float firstHitDelay;
+
+  /** Interval in seconds between laser ball scans (DarkMagic). Zero if not applicable. */
+  private float hitFrequency;
+
+  /** Damage tier definitions for the laser ball mechanic (DarkMagic). Null if not applicable. */
+  private List<DamageTierConfigDTO> damageTiers;
+
   /** Spawn timing configuration (delay before character spawns). Null if no spawn. */
   private SpawnTimingConfigDTO spawn;
 
