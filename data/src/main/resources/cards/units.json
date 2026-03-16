@@ -456,6 +456,30 @@
     "projectile": "BowlerProjectile",
     "ignorePushback": true
   },
+  "BrokenCannon": {
+    "name": "BrokenCannon",
+    "health": 707,
+    "damage": 83,
+    "speed": 0.0,
+    "mass": 3.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 0.9,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "projectile": "MovingCannonProjectile",
+    "ignorePushback": true,
+    "ignoreResurrect": true,
+    "deployDelay": 0.4,
+    "ignoreBuff": [
+      "VoodooCurse",
+      "GoblinCurse"
+    ],
+    "lifeTime": 30.0
+  },
   "BushGoblin": {
     "name": "BushGoblin",
     "health": 119,
@@ -852,34 +876,6 @@
     "projectile": "FirecrackerProjectile",
     "attackPushBack": 1000
   },
-  "FirespiritHut": {
-    "name": "FirespiritHut",
-    "health": 331,
-    "damage": 0,
-    "speed": 0.0,
-    "mass": 0.0,
-    "collisionRadius": 1.0,
-    "sightRange": 0.0,
-    "range": 0.0,
-    "attackCooldown": 6.0,
-    "loadTime": 0.0,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
-    "visualRadius": 1.5,
-    "deathSpawn": [
-      {
-        "spawnCharacter": "FireSpirits",
-        "spawnNumber": 1
-      }
-    ],
-    "lifeTime": 28.0,
-    "liveSpawn": {
-      "spawnCharacter": "FireSpirits",
-      "spawnNumber": 1,
-      "spawnPauseTime": 5.0
-    }
-  },
   "Fisherman": {
     "name": "Fisherman",
     "health": 340,
@@ -907,6 +903,28 @@
         "buffDuration": 1.5
       }
     ]
+  },
+  "Furnace_rework": {
+    "name": "Furnace_rework",
+    "health": 284,
+    "damage": 70,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 6.0,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "projectile": "Furnace_Rework_Projectile",
+    "liveSpawn": {
+      "spawnCharacter": "FireSpirits",
+      "spawnNumber": 1,
+      "spawnPauseTime": 7.0,
+      "spawnStartTime": 1.95
+    }
   },
   "Ghost": {
     "name": "Ghost",
@@ -979,17 +997,50 @@
         "attackAmount": 3,
         "persistAfterDeath": 5.0,
         "damageMultipliers": [
-          { "name": "ElectroWizard", "multiplier": 500 },
-          { "name": "FirecrackerExplosion", "multiplier": 200 },
-          { "name": "FirecrackerExplosion_EV1", "multiplier": 200 },
-          { "name": "HunterProjectile", "multiplier": 100 },
-          { "name": "Hunter_EV1_shotgun_projectile", "multiplier": 100 },
-          { "name": "RamRiderBola", "multiplier": 0 },
-          { "name": "SpearGoblinGiantProjectile", "multiplier": 0 },
-          { "name": "GoblinMachineRocketProjectile", "multiplier": 0 },
-          { "name": "PhoenixFireball", "multiplier": 0 },
-          { "name": "GoblinDemolisherDeathProjectile", "multiplier": 0 },
-          { "name": "BarbLogHeroProjectileReRolling", "multiplier": 0 }
+          {
+            "name": "ElectroWizard",
+            "multiplier": 500
+          },
+          {
+            "name": "FirecrackerExplosion",
+            "multiplier": 200
+          },
+          {
+            "name": "FirecrackerExplosion_EV1",
+            "multiplier": 200
+          },
+          {
+            "name": "HunterProjectile",
+            "multiplier": 100
+          },
+          {
+            "name": "Hunter_EV1_shotgun_projectile",
+            "multiplier": 100
+          },
+          {
+            "name": "RamRiderBola",
+            "multiplier": 0
+          },
+          {
+            "name": "SpearGoblinGiantProjectile",
+            "multiplier": 0
+          },
+          {
+            "name": "GoblinMachineRocketProjectile",
+            "multiplier": 0
+          },
+          {
+            "name": "PhoenixFireball",
+            "multiplier": 0
+          },
+          {
+            "name": "GoblinDemolisherDeathProjectile",
+            "multiplier": 0
+          },
+          {
+            "name": "BarbLogHeroProjectileReRolling",
+            "multiplier": 0
+          }
         ]
       }
     ]
@@ -1096,6 +1147,22 @@
     ],
     "lifeTime": 20.0
   },
+  "GoblinCurseGoblin": {
+    "name": "GoblinCurseGoblin",
+    "health": 79,
+    "damage": 47,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "deployDelay": 0.4
+  },
   "GoblinDemolisher": {
     "name": "GoblinDemolisher",
     "health": 508,
@@ -1111,7 +1178,30 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "projectile": "GoblinDemolisherProjectile",
-    "deathSpawnProjectile": "GoblinDemolisherDeathProjectile"
+    "deathSpawnProjectile": "GoblinDemolisherDeathProjectile",
+    "transformation": {
+      "transformCharacter": "GoblinDemolisher_kamikaze_form",
+      "healthPercent": 50
+    }
+  },
+  "GoblinDemolisher_kamikaze_form": {
+    "name": "GoblinDemolisher_kamikaze_form",
+    "health": 508,
+    "damage": 0,
+    "speed": 120.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 0.5,
+    "attackCooldown": 1.2,
+    "loadTime": 1.0,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "kamikaze": true,
+    "deathSpawnProjectile": "GoblinDemolisherDeathProjectile",
+    "lifeTime": 20.0
   },
   "GoblinDrill": {
     "name": "GoblinDrill",
@@ -1239,7 +1329,19 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "ignorePushback": true
+    "ignorePushback": true,
+    "abilities": [
+      {
+        "type": "RANGED_ATTACK",
+        "projectile": "GoblinMachineRocketProjectile",
+        "range": 5.0,
+        "minimumRange": 2.5,
+        "loadTime": 1.5,
+        "attackDelay": 1.0,
+        "attackCooldown": 2.5,
+        "targetType": "ALL"
+      }
+    ]
   },
   "GoblinPartyHut": {
     "name": "GoblinPartyHut",
@@ -1680,6 +1782,37 @@
     "movementType": "AIR",
     "projectile": "MegaMinionSpit"
   },
+  "MergeMaiden_Mounted": {
+    "name": "MergeMaiden_Mounted",
+    "health": 466,
+    "damage": 121,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 5.0,
+    "attackCooldown": 1.4,
+    "loadTime": 0.9,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "projectile": "MergeMaidenProjectile_Mounted"
+  },
+  "MergeMaiden_Normal": {
+    "name": "MergeMaiden_Normal",
+    "health": 486,
+    "damage": 121,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.1,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
   "MightyMiner": {
     "name": "MightyMiner",
     "health": 879,
@@ -1858,7 +1991,11 @@
     "ignoreBuff": [
       "VoodooCurse",
       "GoblinCurse"
-    ]
+    ],
+    "transformation": {
+      "transformCharacter": "BrokenCannon",
+      "healthPercent": 50
+    }
   },
   "Musketeer": {
     "name": "Musketeer",
@@ -2525,6 +2662,27 @@
     "areaDamageRadius": 2.0,
     "selfAsAoeCenter": true
   },
+  "VoodooHog": {
+    "name": "VoodooHog",
+    "health": 246,
+    "damage": 21,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.6,
+    "sightRange": 9.5,
+    "range": 0.75,
+    "attackCooldown": 1.2,
+    "loadTime": 0.95,
+    "deployTime": 0.2,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "targetOnlyBuildings": true,
+    "jumpEnabled": true,
+    "deployDelay": 0.4,
+    "ignoreBuff": [
+      "VoodooCurse"
+    ]
+  },
   "Wallbreaker": {
     "name": "Wallbreaker",
     "health": 129,
@@ -2672,22 +2830,6 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "projectile": "prj_goblinstein_doctor",
-    "deployDelay": 0.4
-  },
-  "GoblinCurseGoblin": {
-    "name": "GoblinCurseGoblin",
-    "health": 79,
-    "damage": 47,
-    "speed": 120.0,
-    "mass": 2.0,
-    "collisionRadius": 0.5,
-    "sightRange": 5.5,
-    "range": 0.5,
-    "attackCooldown": 1.1,
-    "loadTime": 0.7,
-    "deployTime": 1.0,
-    "targetType": "GROUND",
-    "movementType": "GROUND",
     "deployDelay": 0.4
   }
 }

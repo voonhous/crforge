@@ -9,11 +9,13 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.CardVariant;
 import org.crforge.core.card.DamageTier;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
@@ -27,6 +29,7 @@ import org.crforge.data.loader.dto.AreaEffectConfigDTO;
 import org.crforge.data.loader.dto.CardConfigDTO;
 import org.crforge.data.loader.dto.SpawnConfigDTO;
 import org.crforge.data.loader.dto.SpawnTimingConfigDTO;
+import org.crforge.data.loader.dto.VariantConfigDTO;
 
 /**
  * Loads card definitions from cards.json (slim format) and resolves unit/projectile references from
@@ -214,6 +217,20 @@ public class CardLoader {
           builder.spawnTemplate(spawnTemplate);
         }
       }
+    }
+
+    // Resolve variant definitions (e.g. MergeMaiden mounted/normal forms)
+    if (dto.getVariants() != null && !dto.getVariants().isEmpty()) {
+      List<CardVariant> resolvedVariants = new ArrayList<>();
+      for (VariantConfigDTO v : dto.getVariants()) {
+        TroopStats variantStats = unitMap.get(v.getSummonCharacter());
+        if (variantStats != null) {
+          resolvedVariants.add(
+              new CardVariant(v.getName(), v.getManaTrigger(), v.getCost(), variantStats));
+        }
+      }
+      builder.variants(resolvedVariants);
+      builder.mirrorCopiesVariant(dto.isMirrorCopiesVariant());
     }
 
     return builder.build();

@@ -683,6 +683,25 @@ class UnitLoaderTest {
       assertThat(phoenixEgg.getLiveSpawn().destroyAtLimit()).isTrue();
       assertThat(phoenixEgg.getSpawnTemplate()).isNotNull();
       assertThat(phoenixEgg.getSpawnTemplate().getName()).isEqualTo("PhoenixNoRespawn");
+
+      // Verify MergeMaiden units load correctly
+      TroopStats mounted = map.get("MergeMaiden_Mounted");
+      assertThat(mounted).isNotNull();
+      assertThat(mounted.getHealth()).isEqualTo(466);
+      assertThat(mounted.getDamage()).isEqualTo(121);
+      assertThat(mounted.getMovementType()).isEqualTo(MovementType.AIR);
+      assertThat(mounted.getTargetType()).isEqualTo(TargetType.ALL);
+      assertThat(mounted.getRange()).isCloseTo(5.0f, within(0.01f));
+      assertThat(mounted.getProjectile()).isNotNull();
+      assertThat(mounted.getProjectile().getName()).isEqualTo("MergeMaidenProjectile_Mounted");
+
+      TroopStats normal = map.get("MergeMaiden_Normal");
+      assertThat(normal).isNotNull();
+      assertThat(normal.getHealth()).isEqualTo(486);
+      assertThat(normal.getDamage()).isEqualTo(121);
+      assertThat(normal.getMovementType()).isEqualTo(MovementType.GROUND);
+      assertThat(normal.getTargetType()).isEqualTo(TargetType.GROUND);
+      assertThat(normal.getRange()).isCloseTo(1.2f, within(0.01f));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

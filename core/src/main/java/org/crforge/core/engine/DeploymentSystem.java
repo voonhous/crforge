@@ -169,23 +169,35 @@ public class DeploymentSystem {
     Player player = request.player;
     PlayerActionDTO action = request.action;
 
+    // Capture pre-spend elixir for variant resolution (e.g. MergeMaiden form selection)
+    int preSpendElixir = player.getElixir().getFloor();
+
     // 1. Validate Resources & Cycle Card (elixir spent immediately)
     Card card = player.tryPlayCard(action);
 
     if (card != null) {
+      // Resolve variant based on pre-spend elixir
+      Card resolvedCard = card.resolveVariant(preSpendElixir);
+
+      // For mirrorCopiesVariant cards, store the resolved variant as lastPlayedCard
+      // so Mirror replays the specific variant without re-evaluating triggers
+      if (card.isMirrorCopiesVariant() && resolvedCard != card) {
+        player.setLastPlayedCard(resolvedCard);
+      }
+
       // Mirror sets pendingMirrorLevel to override the card's normal level
       int cardLevel;
       if (player.getPendingMirrorLevel() > 0) {
         cardLevel = player.getPendingMirrorLevel();
         player.clearPendingMirrorLevel();
       } else {
-        cardLevel = player.getLevelConfig().getLevelFor(card);
+        cardLevel = player.getLevelConfig().getLevelFor(resolvedCard);
       }
       // 2. Queue for spawn after sync delay
       pendingDeployments.add(
           new PendingDeployment(
               player.getTeam(),
-              card,
+              resolvedCard,
               action.getX(),
               action.getY(),
               cardLevel,

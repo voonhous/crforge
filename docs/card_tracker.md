@@ -85,7 +85,7 @@ the live game name.
 | 73 | Goblin Demolisher | goblindemolisher | `MISSING` | newer card                                    |
 | 74 | Rune Giant        | giantbuffer      | `DONE`    | BUFF_ALLY ability: buffs 2 closest friendlies |
 | 75 | Goblin Machine    | goblinmachine    | `MISSING` | newer card                                    |
-| 76 | Spirit Empress    | mergemaiden      | `PARTIAL` | stub, needs mechanics (troop, not spell)      |
+| 76 | Spirit Empress    | mergemaiden      | `DONE`    | variant selection (dual-form AIR/GROUND)      |
 | 77 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling                         |
 | 78 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling                         |
 | 79 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling                         |
@@ -97,30 +97,30 @@ the live game name.
 
 ## Spells
 
-| #  | CR Name          | Internal ID   | Status    | Notes                                            |
-|----|------------------|---------------|-----------|--------------------------------------------------|
-| 1  | Fireball         | fireball      | `DONE`    | projectile spell                                 |
-| 2  | Arrows           | arrows        | `DONE`    | 3-volley projectile spell                        |
-| 3  | Rage             | rage          | `DONE`    | summons RageBarbarianBottle                      |
-| 4  | Rocket           | rocket        | `DONE`    | projectile spell                                 |
-| 5  | Goblin Barrel    | goblinbarrel  | `DONE`    | projectile spawn-on-impact                       |
-| 6  | Freeze           | freeze        | `DONE`    | area effect                                      |
-| 7  | Mirror           | mirror        | `DONE`    | replays last card at +1 level/cost               |
-| 8  | Lightning        | lightning     | `DONE`    | area effect, hitBiggestTargets                   |
-| 9  | Zap              | zap           | `DONE`    | area effect                                      |
-| 10 | Poison           | poison        | `DONE`    | area effect, ticking                             |
-| 11 | Graveyard        | graveyard     | `DONE`    | area effect with 13-skeleton spawn sequence      |
-| 12 | The Log          | log           | `DONE`    | spellAsDeploy, 2-stage rolling                   |
-| 13 | Tornado          | tornado       | `DONE`    | pull + damage + controlsBuff                     |
-| 14 | Clone            | clone         | `DONE`    | area effect, clone mechanic                      |
-| 15 | Earthquake       | earthquake    | `DONE`    | area effect, ticking, building 4.5x, slow 50%    |
-| 16 | Barbarian Barrel | barblog       | `DONE`    | spellAsDeploy, 2-stage rolling + Barbarian spawn |
-| 17 | Heal Spirit      | heal          | `DONE`    | summons HealSpirit                               |
-| 18 | Snowball         | snowball      | `DONE`    | projectile spell                                 |
-| 19 | Royal Delivery   | royaldelivery | `DONE`    | area effect + delayed troop spawn                |
-| 20 | Void             | darkmagic     | `DONE`    | laser ball: tiered DPS, 100ms ticks, scan-based  |
-| 21 | Goblin Curse     | goblincurse   | `DONE`    | death-spawn curse + DoT, flattened ticking AEO   |
-| 22 | Vines            | vines         | `DONE`    | targeted freeze + DOT + air-to-ground            |
+| #  | CR Name          | Internal ID   | Status | Notes                                            |
+|----|------------------|---------------|--------|--------------------------------------------------|
+| 1  | Fireball         | fireball      | `DONE` | projectile spell                                 |
+| 2  | Arrows           | arrows        | `DONE` | 3-volley projectile spell                        |
+| 3  | Rage             | rage          | `DONE` | summons RageBarbarianBottle                      |
+| 4  | Rocket           | rocket        | `DONE` | projectile spell                                 |
+| 5  | Goblin Barrel    | goblinbarrel  | `DONE` | projectile spawn-on-impact                       |
+| 6  | Freeze           | freeze        | `DONE` | area effect                                      |
+| 7  | Mirror           | mirror        | `DONE` | replays last card at +1 level/cost               |
+| 8  | Lightning        | lightning     | `DONE` | area effect, hitBiggestTargets                   |
+| 9  | Zap              | zap           | `DONE` | area effect                                      |
+| 10 | Poison           | poison        | `DONE` | area effect, ticking                             |
+| 11 | Graveyard        | graveyard     | `DONE` | area effect with 13-skeleton spawn sequence      |
+| 12 | The Log          | log           | `DONE` | spellAsDeploy, 2-stage rolling                   |
+| 13 | Tornado          | tornado       | `DONE` | pull + damage + controlsBuff                     |
+| 14 | Clone            | clone         | `DONE` | area effect, clone mechanic                      |
+| 15 | Earthquake       | earthquake    | `DONE` | area effect, ticking, building 4.5x, slow 50%    |
+| 16 | Barbarian Barrel | barblog       | `DONE` | spellAsDeploy, 2-stage rolling + Barbarian spawn |
+| 17 | Heal Spirit      | heal          | `DONE` | summons HealSpirit                               |
+| 18 | Snowball         | snowball      | `DONE` | projectile spell                                 |
+| 19 | Royal Delivery   | royaldelivery | `DONE` | area effect + delayed troop spawn                |
+| 20 | Void             | darkmagic     | `DONE` | laser ball: tiered DPS, 100ms ticks, scan-based  |
+| 21 | Goblin Curse     | goblincurse   | `DONE` | death-spawn curse + DoT, flattened ticking AEO   |
+| 22 | Vines            | vines         | `DONE` | targeted freeze + DOT + air-to-ground            |
 
 ## Buildings
 
@@ -180,8 +180,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 109     | Fully functional in simulation              |
-| `PARTIAL`  | 8       | In cards.json but missing complex mechanics |
+| `DONE`     | 110     | Fully functional in simulation              |
+| `PARTIAL`  | 7       | In cards.json but missing complex mechanics |
 | `MISSING`  | 14      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
@@ -193,7 +193,6 @@ Data source: season 80 (202602)
 | Category    | Cards                                                                         | What's needed                            |
 |-------------|-------------------------------------------------------------------------------|------------------------------------------|
 | Champions   | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
-| Newer stubs | Spirit Empress                                                                | Full mechanics TBD                       |
 
 ### Not yet planned
 

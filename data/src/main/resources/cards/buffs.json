@@ -43,6 +43,23 @@
     "hitSpeedMultiplier": -100,
     "spawnSpeedMultiplier": -100
   },
+  "GoblinCurse": {
+    "name": "GoblinCurse",
+    "deathSpawnCount": 1,
+    "deathSpawnIsEnemy": true,
+    "ignoreBuildings": true,
+    "deathSpawnDeployDelay": true,
+    "otherBuffDeathSpawnAllowed": true,
+    "deathSpawnSameLocation": true,
+    "deathSpawn": "GoblinCurseGoblin"
+  },
+  "GoblinCurseDamage": {
+    "name": "GoblinCurseDamage",
+    "damagePerSecond": 14,
+    "crownTowerDamagePerHit": 4,
+    "hitFrequency": 1.0,
+    "enableStacking": true
+  },
   "HealSpiritBuff": {
     "name": "HealSpiritBuff",
     "healPerSecond": 157,
@@ -103,16 +120,9 @@
     "name": "VoodooCurse",
     "deathSpawnCount": 1,
     "deathSpawnIsEnemy": true,
+    "ignoreBuildings": true,
+    "deathSpawnDeployDelay": true,
     "deathSpawn": "VoodooHog"
-  },
-  "GoblinCurse": {
-    "name": "GoblinCurse",
-    "damagePerSecond": 14,
-    "crownTowerDamagePerHit": 4,
-    "hitFrequency": 1.0,
-    "deathSpawnCount": 1,
-    "deathSpawnIsEnemy": true,
-    "deathSpawn": "GoblinCurseGoblin"
   },
   "ZapFreeze": {
     "name": "ZapFreeze",

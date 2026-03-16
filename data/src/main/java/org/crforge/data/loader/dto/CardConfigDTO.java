@@ -76,4 +76,10 @@ public class CardConfigDTO {
 
   // Whether this spell can be placed at a location where a building entity exists
   private boolean canPlaceOnBuildings;
+
+  // Variant definitions for dual-form cards (e.g. MergeMaiden mounted/normal)
+  private List<VariantConfigDTO> variants;
+
+  // Whether Mirror should replay the resolved variant instead of re-evaluating triggers
+  private boolean mirrorCopiesVariant;
 }

@@ -1528,13 +1528,29 @@
       "name": "GoblinCurse",
       "radius": 3.0,
       "lifeDuration": 6.0,
-      "hitSpeed": 1.0,
-      "hitsGround": true,
-      "hitsAir": true,
+      "hitsGround": false,
+      "hitsAir": false,
       "onlyEnemies": true,
-      "damage": 0,
-      "buff": "GoblinCurse",
-      "buffDuration": 1.5
+      "damage": 100,
+      "subAreaEffect": {
+        "name": "GoblinCurseBase",
+        "radius": 3.0,
+        "lifeDuration": 6.0,
+        "hitSpeed": 0.05,
+        "hitsGround": true,
+        "hitsAir": true,
+        "onlyEnemies": true,
+        "buffs": [
+          {
+            "buff": "GoblinCurse",
+            "buffDuration": 0.1
+          },
+          {
+            "buff": "GoblinCurseDamage",
+            "buffDuration": 0.1
+          }
+        ]
+      }
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
@@ -1543,9 +1559,24 @@
   {
     "id": "mergemaiden",
     "name": "MergeMaiden",
-    "type": "SPELL",
+    "type": "TROOP",
     "rarity": "Legendary",
-    "cost": 6
+    "cost": 6,
+    "variants": [
+      {
+        "name": "MergeMaiden_Mounted",
+        "cost": 6,
+        "manaTrigger": 6,
+        "summonCharacter": "MergeMaiden_Mounted"
+      },
+      {
+        "name": "MergeMaiden_Normal",
+        "cost": 3,
+        "manaTrigger": 3,
+        "summonCharacter": "MergeMaiden_Normal"
+      }
+    ],
+    "mirrorCopiesVariant": true
   },
   {
     "id": "vines",
@@ -1666,14 +1697,6 @@
     "unit": "BalloonBomb"
   },
   {
-    "id": "firespirithut",
-    "name": "FirespiritHut",
-    "type": "BUILDING",
-    "rarity": "Rare",
-    "cost": 4,
-    "unit": "FirespiritHut"
-  },
-  {
     "id": "ragebarbarianbottle",
     "name": "RageBarbarianBottle",
     "type": "BUILDING",
@@ -1755,5 +1778,13 @@
     "rarity": "",
     "cost": 0,
     "unit": "SkeletonContainerNew"
+  },
+  {
+    "id": "firespirithut",
+    "name": "FirespiritHut",
+    "type": "BUILDING",
+    "rarity": "Rare",
+    "cost": 4,
+    "unit": "Furnace_rework"
   }
 ]

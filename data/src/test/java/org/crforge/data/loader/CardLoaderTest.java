@@ -12,6 +12,7 @@ import org.crforge.core.ability.AbilityType;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.card.CardVariant;
 import org.crforge.core.card.DamageTier;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
@@ -1041,5 +1042,86 @@ class CardLoaderTest {
 
     // isDummy should return false because damageTiers is non-empty
     assertThat(ae.isDummy()).as("DarkMagic should not be a dummy area effect").isFalse();
+  }
+
+  @Test
+  void loadCards_shouldParseVariantCard() {
+    TroopStats mounted =
+        TroopStats.builder()
+            .name("MergeMaiden_Mounted")
+            .health(466)
+            .damage(121)
+            .movementType(MovementType.AIR)
+            .targetType(TargetType.ALL)
+            .build();
+
+    TroopStats normal =
+        TroopStats.builder()
+            .name("MergeMaiden_Normal")
+            .health(486)
+            .damage(121)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
+
+    String json =
+        """
+        [
+          {
+            "id": "mergemaiden",
+            "name": "MergeMaiden",
+            "type": "TROOP",
+            "rarity": "Legendary",
+            "cost": 6,
+            "variants": [
+              {
+                "name": "MergeMaiden_Mounted",
+                "cost": 6,
+                "manaTrigger": 6,
+                "summonCharacter": "MergeMaiden_Mounted"
+              },
+              {
+                "name": "MergeMaiden_Normal",
+                "cost": 3,
+                "manaTrigger": 3,
+                "summonCharacter": "MergeMaiden_Normal"
+              }
+            ],
+            "mirrorCopiesVariant": true
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(mounted, normal), Map.of());
+
+    assertThat(cards).hasSize(1);
+    Card card = cards.get(0);
+    assertThat(card.getId()).isEqualTo("mergemaiden");
+    assertThat(card.getType()).isEqualTo(CardType.TROOP);
+    assertThat(card.getCost()).isEqualTo(6);
+    assertThat(card.getRarity()).isEqualTo(Rarity.LEGENDARY);
+    assertThat(card.isMirrorCopiesVariant()).isTrue();
+
+    // Should have 2 resolved variants
+    assertThat(card.hasVariants()).isTrue();
+    List<CardVariant> variants = card.getVariants();
+    assertThat(variants).hasSize(2);
+
+    // First variant: Mounted (manaTrigger=6)
+    assertThat(variants.get(0).name()).isEqualTo("MergeMaiden_Mounted");
+    assertThat(variants.get(0).manaTrigger()).isEqualTo(6);
+    assertThat(variants.get(0).cost()).isEqualTo(6);
+    assertThat(variants.get(0).unitStats().getName()).isEqualTo("MergeMaiden_Mounted");
+    assertThat(variants.get(0).unitStats().getMovementType()).isEqualTo(MovementType.AIR);
+
+    // Second variant: Normal (manaTrigger=3)
+    assertThat(variants.get(1).name()).isEqualTo("MergeMaiden_Normal");
+    assertThat(variants.get(1).manaTrigger()).isEqualTo(3);
+    assertThat(variants.get(1).cost()).isEqualTo(3);
+    assertThat(variants.get(1).unitStats().getName()).isEqualTo("MergeMaiden_Normal");
+    assertThat(variants.get(1).unitStats().getMovementType()).isEqualTo(MovementType.GROUND);
+
+    // No base unitStats on the card itself (variants supply them at resolution time)
+    assertThat(card.getUnitStats()).isNull();
   }
 }

@@ -288,6 +288,25 @@
     "gravity": 50,
     "spawnProjectile": "FirecrackerExplosion"
   },
+  "Furnace_Rework_Projectile": {
+    "name": "Furnace_Rework_Projectile",
+    "damage": 70,
+    "speed": 600,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "gravity": 20
+  },
+  "GiantBuffProjectile": {
+    "name": "GiantBuffProjectile",
+    "damage": 0,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyOwnTroops": true,
+    "radius": 0.001
+  },
   "GoblinBarrelSpell": {
     "name": "GoblinBarrelSpell",
     "damage": 0,
@@ -329,6 +348,18 @@
     "onlyEnemies": true,
     "radius": 1.5,
     "gravity": 200
+  },
+  "GoblinMachineRocketProjectile": {
+    "name": "GoblinMachineRocketProjectile",
+    "damage": 119,
+    "speed": 250,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 1.5,
+    "gravity": 44,
+    "crownTowerDamagePercent": -50
   },
   "GoblinProjectile": {
     "name": "GoblinProjectile",
@@ -482,6 +513,15 @@
     "name": "MegaMinionSpit",
     "damage": 122,
     "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "onlyEnemies": true
+  },
+  "MergeMaidenProjectile_Mounted": {
+    "name": "MergeMaidenProjectile_Mounted",
+    "damage": 121,
+    "speed": 600,
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
@@ -762,14 +802,5 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true
-  },
-  "GiantBuffProjectile": {
-    "name": "GiantBuffProjectile",
-    "damage": 0,
-    "speed": 600,
-    "homing": true,
-    "aoeToAir": true,
-    "aoeToGround": true,
-    "radius": 0.001
   }
 }

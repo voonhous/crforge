@@ -6,7 +6,7 @@ import lombok.Getter;
 
 /** Represents the static configuration and definition of a Card. */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class Card {
 
   private final String id;
@@ -106,6 +106,12 @@ public class Card {
   /** Whether this spell can be placed at a location where a building entity exists. */
   @Builder.Default private final boolean canPlaceOnBuildings = true;
 
+  /** Variant definitions for dual-form cards (e.g. MergeMaiden mounted/normal). */
+  private final List<CardVariant> variants;
+
+  /** Whether Mirror should replay the resolved variant instead of re-evaluating triggers. */
+  @Builder.Default private final boolean mirrorCopiesVariant = false;
+
   public boolean isMirror() {
     return mirror;
   }
@@ -124,5 +130,36 @@ public class Card {
 
   public boolean isBuilding() {
     return type == CardType.BUILDING;
+  }
+
+  /** Returns true if this card has variant definitions that need elixir-based resolution. */
+  public boolean hasVariants() {
+    return variants != null && !variants.isEmpty();
+  }
+
+  /**
+   * Returns a resolved Card with the matching variant's unitStats and cost. Variants are checked in
+   * order; the first variant whose manaTrigger is <= currentElixir is selected. For non-variant
+   * cards, returns this.
+   *
+   * @param currentElixir the player's elixir floor before spending
+   * @return a new Card with the variant's stats, or this if no variants
+   */
+  public Card resolveVariant(int currentElixir) {
+    if (variants == null || variants.isEmpty()) {
+      return this;
+    }
+    for (CardVariant v : variants) {
+      if (currentElixir >= v.manaTrigger()) {
+        return this.toBuilder()
+            .unitStats(v.unitStats())
+            .unitCount(1)
+            .cost(v.cost())
+            .variants(null)
+            .build();
+      }
+    }
+    // Fallback: should not happen if variants are well-defined, but return this
+    return this;
   }
 }
