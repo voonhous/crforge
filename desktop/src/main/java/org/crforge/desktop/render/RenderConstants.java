@@ -132,6 +132,9 @@ public final class RenderConstants {
   /** Earthy brown at low alpha for hidden (underground) buildings like Tesla. */
   public static final Color COLOR_HIDDEN_BUILDING = new Color(0.4f, 0.3f, 0.2f, 0.25f);
 
+  /** Purple/magenta color for laser ball (DarkMagic/Void) AOE overlays. */
+  public static final Color COLOR_LASER_BALL = new Color(0.7f, 0.2f, 1f, 1f);
+
   // Ability indicator colors
   public static final Color COLOR_CHARGE_BAR = new Color(1f, 0.6f, 0.1f, 0.9f);
   public static final Color COLOR_CHARGE_READY = new Color(1f, 1f, 1f, 0.9f);

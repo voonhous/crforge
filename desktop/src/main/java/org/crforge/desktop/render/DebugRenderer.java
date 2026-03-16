@@ -142,6 +142,9 @@ public class DebugRenderer {
     // 13. Area effect zones
     debugOverlayRenderer.renderAreaEffects(state);
 
+    // 13.5. Laser ball overlays (beam lines, tier/scan labels, pulse rings)
+    debugOverlayRenderer.renderLaserBallOverlays(state);
+
     // 14. Ability indicators (charge, dash, hook, reflect, variable damage)
     debugOverlayRenderer.renderAbilityIndicators(state);
 

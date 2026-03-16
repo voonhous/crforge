@@ -11,6 +11,7 @@ import static org.crforge.desktop.render.RenderConstants.COLOR_CHARGE_READY;
 import static org.crforge.desktop.render.RenderConstants.COLOR_DASH_LINE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_DEPLOY_TIMER;
 import static org.crforge.desktop.render.RenderConstants.COLOR_HOOK_LINE;
+import static org.crforge.desktop.render.RenderConstants.COLOR_LASER_BALL;
 import static org.crforge.desktop.render.RenderConstants.COLOR_MINIMUM_RANGE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_PATH;
 import static org.crforge.desktop.render.RenderConstants.COLOR_RED_ENTITY;
@@ -32,6 +33,7 @@ import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.ScaledDamageTier;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.SpawnerComponent;
@@ -558,6 +560,114 @@ public class DebugOverlayRenderer {
     ctx.getSpriteBatch().end();
   }
 
+  /**
+   * Render laser ball (DarkMagic/Void) overlays: beam lines to locked targets, pulse ring on scan
+   * boundaries, tier label, and scan progress text.
+   */
+  public void renderLaserBallOverlays(GameState state) {
+    var areaEffects = state.getEntitiesOfType(AreaEffect.class);
+    if (areaEffects.isEmpty()) {
+      return;
+    }
+
+    // Pass 1 (Line): beam lines to targets + pulse ring
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    ctx.getShapeRenderer().begin(ShapeType.Line);
+
+    for (AreaEffect effect : areaEffects) {
+      if (effect.isDead() || effect.getScaledDamageTiers().isEmpty()) {
+        continue;
+      }
+
+      float x = effect.getPosition().getX() * TILE_PIXELS;
+      float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float radius = effect.getStats().getRadius() * TILE_PIXELS;
+
+      // Beam lines from center to each locked target
+      if (effect.isLaserActive()) {
+        ctx.getShapeRenderer()
+            .setColor(COLOR_LASER_BALL.r, COLOR_LASER_BALL.g, COLOR_LASER_BALL.b, 0.8f);
+        for (long targetId : effect.getLaserTargetIds()) {
+          Optional<Entity> targetOpt = state.getEntityById(targetId);
+          if (targetOpt.isPresent() && targetOpt.get().isAlive()) {
+            Entity target = targetOpt.get();
+            float tx = target.getPosition().getX() * TILE_PIXELS;
+            float ty = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+            ctx.getShapeRenderer().line(x, y, tx, ty);
+          }
+        }
+
+        // Pulse ring: expands and fades between scans
+        float scanInterval = effect.getStats().getScanInterval();
+        if (scanInterval > 0) {
+          float progress = effect.getLaserScanAccumulator() / scanInterval;
+          float pulseRadius = radius * (1f + 0.3f * progress);
+          float pulseAlpha = 0.6f * (1f - progress);
+          ctx.getShapeRenderer()
+              .setColor(COLOR_LASER_BALL.r, COLOR_LASER_BALL.g, COLOR_LASER_BALL.b, pulseAlpha);
+          ctx.getShapeRenderer().circle(x, y, pulseRadius, CIRCLE_SEGMENTS);
+        }
+      }
+    }
+
+    ctx.getShapeRenderer().end();
+
+    // Pass 2 (SpriteBatch): tier label + scan progress text
+    ctx.getSpriteBatch().begin();
+
+    for (AreaEffect effect : areaEffects) {
+      if (effect.isDead() || effect.getScaledDamageTiers().isEmpty()) {
+        continue;
+      }
+
+      float x = effect.getPosition().getX() * TILE_PIXELS;
+      float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float radius = effect.getStats().getRadius() * TILE_PIXELS;
+
+      // Scan progress text above the AOE circle: "N/M"
+      String scanText = effect.getLaserScanCount() + "/" + effect.getTotalLaserScans();
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), scanText);
+      float scanTextWidth = ctx.getGlyphLayout().width;
+      ctx.getEntityNameFont()
+          .draw(ctx.getSpriteBatch(), scanText, x - scanTextWidth / 2, y + radius + 14);
+
+      // Tier label below the AOE circle
+      String tierLabel;
+      if (!effect.isLaserActive()) {
+        tierLabel = "...";
+      } else {
+        tierLabel = determineTierLabel(effect);
+      }
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), tierLabel);
+      float tierTextWidth = ctx.getGlyphLayout().width;
+      ctx.getEntityNameFont()
+          .draw(ctx.getSpriteBatch(), tierLabel, x - tierTextWidth / 2, y - radius - 3);
+    }
+
+    ctx.getSpriteBatch().end();
+  }
+
+  /**
+   * Determines the current tier label ("T1", "T2", "T3", etc.) for a laser ball effect based on
+   * target count and scaled damage tiers. Uses the same tier selection logic as
+   * AreaEffectSystem.performLaserScan().
+   */
+  private String determineTierLabel(AreaEffect effect) {
+    List<ScaledDamageTier> tiers = effect.getScaledDamageTiers();
+    int targetCount = effect.getLaserTargetIds().size();
+
+    for (int i = 0; i < tiers.size(); i++) {
+      ScaledDamageTier tier = tiers.get(i);
+      if (tier.maxTargets() > 0 && targetCount <= tier.maxTargets()) {
+        return "T" + (i + 1);
+      }
+      if (tier.maxTargets() == 0) {
+        return "T" + (i + 1);
+      }
+    }
+    return "T" + tiers.size();
+  }
+
   // ---- Private helpers for ability indicators ----
 
   private void renderChargeBar(float x, float y, float visualRadius, AbilityComponent ability) {
@@ -655,6 +765,10 @@ public class DebugOverlayRenderer {
 
   /** Determine the color for an area effect based on its buff type. */
   private Color getAreaEffectColor(AreaEffectStats stats) {
+    // Laser ball effects (DarkMagic) get a distinct purple color
+    if (!stats.getDamageTiers().isEmpty()) {
+      return COLOR_LASER_BALL;
+    }
     if (stats.getBuff() != null) {
       StatusEffectType effectType = StatusEffectType.fromBuffName(stats.getBuff());
       if (effectType != null) {
