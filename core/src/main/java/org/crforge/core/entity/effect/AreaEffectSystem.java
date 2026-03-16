@@ -665,6 +665,11 @@ public class AreaEffectSystem {
 
           target.getHealth().takeDamage(effectiveDamage);
         }
+
+        // Apply knockback if the effect has pushback (e.g. GoblinDrillDamage)
+        if (stats.getPushback() > 0) {
+          applyAreaEffectKnockback(target, centerX, centerY, stats.getPushback());
+        }
       }
     }
   }
@@ -971,6 +976,32 @@ public class AreaEffectSystem {
         applyBuff(effect, target);
       }
     }
+  }
+
+  private static final float KNOCKBACK_DURATION = 0.5f;
+  private static final float KNOCKBACK_MAX_TIME = 1.0f;
+
+  /**
+   * Applies knockback to an entity hit by an area effect. Buildings and entities with
+   * ignorePushback are immune.
+   */
+  private void applyAreaEffectKnockback(
+      Entity target, float centerX, float centerY, float pushback) {
+    Movement movement = target.getMovement();
+    if (movement == null) {
+      return;
+    }
+    if (movement.isBuilding() || movement.isIgnorePushback()) {
+      return;
+    }
+
+    float dx = target.getPosition().getX() - centerX;
+    float dy = target.getPosition().getY() - centerY;
+    float dist = (float) Math.sqrt(dx * dx + dy * dy);
+    float dirX = dist > 0.001f ? dx / dist : 0f;
+    float dirY = dist > 0.001f ? dy / dist : 1f;
+
+    movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
   }
 
   private boolean canHit(AreaEffectStats stats, Entity target) {

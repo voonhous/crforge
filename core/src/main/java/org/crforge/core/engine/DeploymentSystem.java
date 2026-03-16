@@ -9,6 +9,7 @@ import lombok.Getter;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.combat.AoeDamageService;
+import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -118,7 +119,14 @@ public class DeploymentSystem {
           }
         } else {
           // Non-staggered: buildings and spells
-          entityFactory.spawnCard(pending.team, pending.card, pending.x, pending.y, pending.level);
+          if (pending.isTunnelBuilding()) {
+            // Tunnel building: spawn dig troop instead of building directly
+            entityFactory.spawnTunnelBuilding(
+                pending.team, pending.card, pending.x, pending.y, pending.level);
+          } else {
+            entityFactory.spawnCard(
+                pending.team, pending.card, pending.x, pending.y, pending.level);
+          }
           pending.nextUnitIndex = pending.totalUnits; // mark complete
           break;
         }
@@ -131,6 +139,29 @@ public class DeploymentSystem {
       if (pending.nextUnitIndex >= pending.totalUnits) {
         it.remove();
       }
+    }
+  }
+
+  /**
+   * Handles the morph event when a tunnel dig troop arrives at its target. Kills the dig troop and
+   * spawns the building card at the target location. Also fires the building's deploy area effect
+   * (e.g. GoblinDrillDamage).
+   */
+  public void handleTunnelMorph(Troop digTroop, float targetX, float targetY) {
+    Card card = digTroop.getMorphCard();
+    int level = digTroop.getMorphLevel();
+    Team team = digTroop.getTeam();
+
+    // Kill the dig troop
+    digTroop.getHealth().takeDamage(digTroop.getHealth().getCurrent());
+
+    // Spawn the building at the target location
+    entityFactory.spawnCard(team, card, targetX, targetY, level);
+
+    // Fire the building's deploy effect (e.g. GoblinDrillDamage from spawnAreaEffect)
+    if (card.getDeployEffect() != null) {
+      entityFactory.deployAreaEffect(
+          team, card.getDeployEffect(), targetX, targetY, card.getRarity(), level);
     }
   }
 
@@ -212,6 +243,11 @@ public class DeploymentSystem {
     /** Whether this deployment is a troop card (all troops go through the stagger path). */
     public boolean isTroop() {
       return card.getType() == CardType.TROOP;
+    }
+
+    /** Whether this deployment is a tunnel building (e.g. GoblinDrill deploys via dig unit). */
+    public boolean isTunnelBuilding() {
+      return card.getTunnelDigUnit() != null;
     }
 
     /**

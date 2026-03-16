@@ -1,6 +1,7 @@
 package org.crforge.core.ability;
 
 import java.util.List;
+import lombok.Setter;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
@@ -20,6 +21,8 @@ import org.crforge.core.entity.unit.Troop;
 public class AbilitySystem {
 
   private final GameState gameState;
+
+  @Setter private TunnelMorphHandler tunnelMorphHandler;
 
   public AbilitySystem(GameState gameState) {
     this.gameState = gameState;
@@ -588,7 +591,16 @@ public class AbilitySystem {
 
   /** Completes the tunnel travel: snap to target, become targetable, enter deploy animation. */
   private void emergeTunnel(Troop troop, AbilityComponent ability) {
-    troop.getPosition().set(ability.getTunnelTargetX(), ability.getTunnelTargetY());
+    float targetX = ability.getTunnelTargetX();
+    float targetY = ability.getTunnelTargetY();
+
+    // Morph path: dig troop transforms into a building (e.g. GoblinDrillDig -> GoblinDrill)
+    if (troop.getMorphCard() != null && tunnelMorphHandler != null) {
+      tunnelMorphHandler.onTunnelMorph(troop, targetX, targetY);
+      return;
+    }
+
+    troop.getPosition().set(targetX, targetY);
     ability.setTunnelState(AbilityComponent.TunnelState.EMERGED);
     troop.setTunneling(false);
     troop.setInvulnerable(false);

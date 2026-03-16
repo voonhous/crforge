@@ -88,11 +88,11 @@ the live game name.
 | 76 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling                         |
 | 77 | Suspicious Bush   | suspiciousbush   | `DONE`    | permanent stealth, kamikaze, death spawn      |
 | 78 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
-| 79 | Goblin Demolisher | --               | `MISSING` | newer card                                    |
-| 80 | Rune Giant        | --               | `MISSING` | newer card                                    |
-| 81 | Goblin Machine    | --               | `MISSING` | newer card                                    |
-| 82 | Goblinstein       | --               | `MISSING` | newer card                                    |
-| 83 | Boss Bandit       | --               | `MISSING` | newer card                                    |
+| 79 | Goblin Demolisher | goblindemolisher | `MISSING` | newer card                                    |
+| 80 | Rune Giant        | giantbuffer      | `MISSING` | newer card                                    |
+| 81 | Goblin Machine    | goblinmachine    | `MISSING` | newer card                                    |
+| 82 | Goblinstein       | --               | `MISSING` | needs ability cycling                         |
+| 83 | Boss Bandit       | --               | `MISSING` | needs ability cycling                         |
 
 ## Spells
 
@@ -138,7 +138,7 @@ the live game name.
 | 10 | Tombstone          | tombstone         | `DONE`    | spawner                                     |
 | 11 | Furnace            | firespirithut     | `MISSING` | spawner                                     |
 | 12 | Goblin Cage        | goblincage        | `DONE`    | death spawn (0.5s deploy)                   |
-| 13 | Goblin Drill       | goblindrill       | `MISSING` | tunnel + death spawn (0.5s)                 |
+| 13 | Goblin Drill       | goblindrill       | `DONE`    | tunnel + morph + spawn AOE + death spawn    |
 | 14 | Dark Elixir Bottle | darkelixir_bottle | `MISSING` | special gamemode only, deprioritised        |
 | 15 | Elixir Barrel      | elixirbarrel      | `MISSING` | special gamemode only, deprioritised        |
 | 16 | Goblin Party Hut   | goblinpartyhut    | `MISSING` | special gamemode only, deprioritised        |
@@ -180,9 +180,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 105     | Fully functional in simulation              |
+| `DONE`     | 106     | Fully functional in simulation              |
 | `PARTIAL`  | 8       | In cards.json but missing complex mechanics |
-| `MISSING`  | 15      | Not yet implemented or newer cards          |
+| `MISSING`  | 14      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

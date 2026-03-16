@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.card.Card;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -40,6 +41,10 @@ public class Troop extends AbstractEntity {
 
   // Air-to-ground timer: while > 0, air units are treated as ground for targeting (Vines)
   @Setter @Builder.Default private float groundedTimer = 0f;
+
+  // Morph context: carried by tunnel dig troops so the building can be created on arrival
+  @Setter @Builder.Default private Card morphCard = null;
+  @Setter @Builder.Default private int morphLevel = 0;
 
   /** Returns true if this troop is currently invisible (stealth ability active). */
   public boolean isInvisible() {

@@ -62,6 +62,7 @@ public class GameEngine {
     this.areaEffectSystem = new AreaEffectSystem(gameState);
     areaEffectSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     this.abilitySystem = new AbilitySystem(gameState);
+    abilitySystem.setTunnelMorphHandler(deploymentSystem::handleTunnelMorph);
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);
     this.elixirCollectionSystem = new ElixirCollectionSystem(gameState);
     this.running = false;

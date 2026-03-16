@@ -117,6 +117,10 @@ public class TroopStats {
   // Underground tunnel travel speed in tiles/sec (converted from spawnPathfindSpeed / 60)
   @Builder.Default private final float spawnPathfindSpeed = 0f;
 
+  // Resolved morph target: the unit this dig troop transforms into on arrival
+  // (e.g. GoblinDrillDig -> GoblinDrill TroopStats)
+  private final TroopStats morphTarget;
+
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   @Builder.Default private final float attackDashTime = 0f;
 

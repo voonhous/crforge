@@ -87,6 +87,9 @@ public class AreaEffectConfigDTO {
   /** Damage tier definitions for the laser ball mechanic (DarkMagic). Null if not applicable. */
   private List<DamageTierConfigDTO> damageTiers;
 
+  /** Knockback strength applied to enemies on hit (e.g. GoblinDrillDamage pushback: 1.0). */
+  private float pushback;
+
   /** Spawn timing configuration (delay before character spawns). Null if no spawn. */
   private SpawnTimingConfigDTO spawn;
 

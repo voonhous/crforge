@@ -50,6 +50,13 @@ public class Card {
   private final TroopStats summonTemplate;
 
   /**
+   * Tunnel dig unit for buildings that deploy via underground travel (e.g. GoblinDrill uses
+   * GoblinDrillDig). The dig unit tunnels from the king tower to the target, then morphs into the
+   * building.
+   */
+  private final TroopStats tunnelDigUnit;
+
+  /**
    * Projectile spawned at the deploy location when the card enters the arena (e.g. MegaKnight
    * landing damage). Null for most cards.
    */

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.CardType;
 import org.crforge.core.card.DamageTier;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
@@ -140,10 +141,16 @@ public class CardLoader {
     }
 
     // Resolve summonCharacter for spells (e.g. Rage -> RageBottle)
+    // For BUILDING cards, if the summonCharacter resolves to a unit with a morphTarget,
+    // it becomes the tunnelDigUnit (e.g. GoblinDrill -> GoblinDrillDig)
     if (dto.getSummonCharacter() != null) {
       TroopStats summonTemplate = unitMap.get(dto.getSummonCharacter());
       if (summonTemplate != null) {
-        builder.summonTemplate(summonTemplate);
+        if (dto.getType() == CardType.BUILDING && summonTemplate.getMorphTarget() != null) {
+          builder.tunnelDigUnit(summonTemplate);
+        } else {
+          builder.summonTemplate(summonTemplate);
+        }
       }
     }
 
@@ -226,6 +233,7 @@ public class CardLoader {
             .buff(dto.getBuff())
             .buffDuration(dto.getBuffDuration())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
+            .pushback(dto.getPushback())
             .hitBiggestTargets(dto.isHitBiggestTargets())
             .controlsBuff(dto.isControlsBuff())
             .capBuffTimeToAreaEffectTime(dto.isCapBuffTimeToAreaEffectTime())

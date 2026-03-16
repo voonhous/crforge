@@ -650,6 +650,23 @@ class UnitLoaderTest {
       // Verify ignoreBuff defaults to empty list when not present
       assertThat(knight.getIgnoreBuff()).isEmpty();
 
+      // Verify GoblinDrillDig has morphTarget resolved to GoblinDrill
+      TroopStats goblinDrillDig = map.get("GoblinDrillDig");
+      assertThat(goblinDrillDig).isNotNull();
+      assertThat(goblinDrillDig.getSpawnPathfindSpeed()).isGreaterThan(0f);
+      assertThat(goblinDrillDig.getMorphTarget()).isNotNull();
+      assertThat(goblinDrillDig.getMorphTarget().getName()).isEqualTo("GoblinDrill");
+
+      TroopStats goblinDrill = map.get("GoblinDrill");
+      assertThat(goblinDrill).isNotNull();
+      assertThat(goblinDrill.getLifeTime()).isEqualTo(10.0f);
+      assertThat(goblinDrill.getDeathSpawns()).isNotEmpty();
+      assertThat(goblinDrill.getLiveSpawn()).isNotNull();
+      assertThat(goblinDrill.getLiveSpawn().spawnCharacter()).isEqualTo("Goblin");
+      assertThat(goblinDrill.getSpawnAreaEffect()).isNotNull();
+      assertThat(goblinDrill.getSpawnAreaEffect().getName()).isEqualTo("GoblinDrillDamage");
+      assertThat(goblinDrill.getSpawnAreaEffect().getPushback()).isGreaterThan(0f);
+
       // Verify Phoenix chain resolution from real data
       TroopStats phoenix = map.get("Phoenix");
       assertThat(phoenix).isNotNull();

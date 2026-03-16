@@ -105,6 +105,10 @@ public class UnitLoader {
     if (dto.getLiveSpawn() != null && dto.getLiveSpawn().getSpawnCharacter() != null) {
       resolveUnit(dto.getLiveSpawn().getSpawnCharacter(), dtos, projectileMap, result, resolving);
     }
+    // Recursively resolve spawnPathfindMorph target (e.g. GoblinDrillDig -> GoblinDrill)
+    if (dto.getSpawnPathfindMorph() != null) {
+      resolveUnit(dto.getSpawnPathfindMorph(), dtos, projectileMap, result, resolving);
+    }
     // Recursively resolve deathSpawnProjectile's spawn character (e.g. Phoenix -> PhoenixFireball
     // -> PhoenixEgg)
     if (dto.getDeathSpawnProjectile() != null && projectileMap != null) {
@@ -317,6 +321,14 @@ public class UnitLoader {
       AbilityData ability = convertAbility(abilityDto);
       if (ability != null) {
         builder.ability(ability);
+      }
+    }
+
+    // Resolve spawnPathfindMorph target (e.g. GoblinDrillDig -> GoblinDrill)
+    if (dto.getSpawnPathfindMorph() != null && unitMap != null) {
+      TroopStats morphTarget = unitMap.get(dto.getSpawnPathfindMorph());
+      if (morphTarget != null) {
+        builder.morphTarget(morphTarget);
       }
     }
 

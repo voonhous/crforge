@@ -87,6 +87,10 @@ public class UnitConfigDTO {
   // Tunnel spawn pathfinding speed (e.g. Miner underground travel speed)
   private float spawnPathfindSpeed;
 
+  // Tunnel morph target: the unit this dig troop transforms into on arrival (e.g. GoblinDrillDig ->
+  // GoblinDrill)
+  private String spawnPathfindMorph;
+
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   private float attackDashTime;
 

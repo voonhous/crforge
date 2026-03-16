@@ -288,6 +288,31 @@ class EntityFactory {
     state.spawnProjectile(p);
   }
 
+  /**
+   * Spawns a tunnel dig troop for a building card that deploys via underground travel (e.g.
+   * GoblinDrill -> GoblinDrillDig). The dig troop tunnels from the king tower to the target, then
+   * morphs into the building on arrival.
+   */
+  void spawnTunnelBuilding(Team team, Card card, float x, float y, int level) {
+    TroopStats digStats = card.getTunnelDigUnit();
+    if (digStats == null) {
+      return;
+    }
+
+    // Create the dig troop (single unit, no formation)
+    Troop digTroop =
+        createTroop(team, digStats, x, y, null, level, card.getRarity(), 0, 1, 0f, null);
+
+    // Set up tunnel travel from king tower to target
+    initializeTunnel(digTroop, x, y);
+
+    // Carry the original card and level so the building can be created on morph
+    digTroop.setMorphCard(card);
+    digTroop.setMorphLevel(level);
+
+    state.spawnEntity(digTroop);
+  }
+
   // --- Private methods ---
 
   /**

@@ -153,6 +153,12 @@ public abstract class Match {
       return true;
     }
 
+    // Cards that can deploy on enemy side (e.g. Miner, GoblinDrill) skip zone restriction
+    if (card.isCanDeployOnEnemySide()) {
+      Tile tile = arena.getTileAt(action.getX(), action.getY());
+      return tile != null && tile.type() != TileType.BANNED && tile.type() != TileType.TOWER;
+    }
+
     // Buildings must follow strict placement rules (entire footprint in zone)
     if (card.getType() == CardType.BUILDING) {
       float radius = 0.5f; // Default small radius
@@ -160,12 +166,6 @@ public abstract class Match {
         radius = card.getUnitStats().getCollisionRadius();
       }
       return arena.isValidBuildingPlacement(action.getX(), action.getY(), radius, player.getTeam());
-    }
-
-    // Cards that can deploy on enemy side (e.g. Miner, GoblinDrill) skip zone restriction
-    if (card.isCanDeployOnEnemySide()) {
-      Tile tile = arena.getTileAt(action.getX(), action.getY());
-      return tile != null && tile.type() != TileType.BANNED && tile.type() != TileType.TOWER;
     }
 
     // Troops check center point (legacy/standard behavior for now)

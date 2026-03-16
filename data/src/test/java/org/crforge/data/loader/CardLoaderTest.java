@@ -804,6 +804,40 @@ class CardLoaderTest {
       assertThat(barbLogRolling.getSpawnCharacterName()).isEqualTo("Barbarian");
       assertThat(barbLogRolling.getSpawnCharacter()).isNotNull();
       assertThat(barbLogRolling.getSpawnCharacter().getName()).isEqualTo("Barbarian");
+
+      // GoblinDrill: tunnel building with tunnelDigUnit, deploy effect, death spawn, live spawn
+      Card goblinDrill =
+          cards.stream().filter(c -> "goblindrill".equals(c.getId())).findFirst().orElse(null);
+      assertThat(goblinDrill).isNotNull();
+      assertThat(goblinDrill.getType()).isEqualTo(CardType.BUILDING);
+      assertThat(goblinDrill.isCanDeployOnEnemySide()).isTrue();
+
+      // tunnelDigUnit should be GoblinDrillDig (resolved from summonCharacter with morphTarget)
+      assertThat(goblinDrill.getTunnelDigUnit()).isNotNull();
+      assertThat(goblinDrill.getTunnelDigUnit().getName()).isEqualTo("GoblinDrillDig");
+      assertThat(goblinDrill.getTunnelDigUnit().getMorphTarget()).isNotNull();
+      assertThat(goblinDrill.getTunnelDigUnit().getMorphTarget().getName())
+          .isEqualTo("GoblinDrill");
+
+      // unitStats should be the GoblinDrill building itself
+      assertThat(goblinDrill.getUnitStats()).isNotNull();
+      assertThat(goblinDrill.getUnitStats().getName()).isEqualTo("GoblinDrill");
+      assertThat(goblinDrill.getUnitStats().getLifeTime()).isEqualTo(10.0f);
+
+      // Deploy effect should come from GoblinDrill's spawnAreaEffect (GoblinDrillDamage)
+      assertThat(goblinDrill.getDeployEffect()).isNotNull();
+      assertThat(goblinDrill.getDeployEffect().getName()).isEqualTo("GoblinDrillDamage");
+      assertThat(goblinDrill.getDeployEffect().getPushback()).isGreaterThan(0f);
+
+      // Live spawn: Goblin
+      assertThat(goblinDrill.getSpawnTemplate()).isNotNull();
+      assertThat(goblinDrill.getSpawnTemplate().getName()).isEqualTo("Goblin");
+
+      // Death spawn: 2 Goblins
+      assertThat(goblinDrill.getUnitStats().getDeathSpawns()).isNotEmpty();
+      assertThat(goblinDrill.getUnitStats().getDeathSpawns().get(0).stats().getName())
+          .isEqualTo("Goblin");
+      assertThat(goblinDrill.getUnitStats().getDeathSpawns().get(0).count()).isEqualTo(2);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
