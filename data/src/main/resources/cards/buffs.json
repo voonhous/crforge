@@ -105,6 +105,15 @@
     "deathSpawnIsEnemy": true,
     "deathSpawn": "VoodooHog"
   },
+  "GoblinCurse": {
+    "name": "GoblinCurse",
+    "damagePerSecond": 14,
+    "crownTowerDamagePerHit": 4,
+    "hitFrequency": 1.0,
+    "deathSpawnCount": 1,
+    "deathSpawnIsEnemy": true,
+    "deathSpawn": "GoblinCurseGoblin"
+  },
   "ZapFreeze": {
     "name": "ZapFreeze",
     "speedMultiplier": -100,

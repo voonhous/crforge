@@ -20,6 +20,9 @@ import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.SpawnSequenceEntry;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.effect.BuffDefinition;
+import org.crforge.core.effect.BuffRegistry;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.data.loader.dto.AreaEffectConfigDTO;
 import org.crforge.data.loader.dto.CardConfigDTO;
 import org.crforge.data.loader.dto.SpawnConfigDTO;
@@ -298,6 +301,20 @@ public class CardLoader {
         TroopStats spawnChar = unitMap.get(projSpawn.getSpawnCharacter());
         if (spawnChar != null) {
           builder.spawnCharacter(spawnChar);
+        }
+      }
+    }
+
+    // Resolve CURSE death-spawn unit from BuffDefinition
+    if (dto.getBuff() != null) {
+      StatusEffectType buffType = StatusEffectType.fromBuffName(dto.getBuff());
+      if (buffType == StatusEffectType.CURSE) {
+        BuffDefinition buffDef = BuffRegistry.get(dto.getBuff());
+        if (buffDef != null && buffDef.getDeathSpawn() != null && unitMap != null) {
+          TroopStats spawnStats = unitMap.get(buffDef.getDeathSpawn());
+          if (spawnStats != null) {
+            builder.curseSpawnStats(spawnStats);
+          }
         }
       }
     }

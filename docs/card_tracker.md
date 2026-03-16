@@ -118,7 +118,7 @@ the live game name.
 | 18 | Snowball         | snowball      | `DONE`    | projectile spell                                 |
 | 19 | Royal Delivery   | royaldelivery | `DONE`    | area effect + delayed troop spawn                |
 | 20 | Void             | darkmagic     | `DONE`    | laser ball: tiered DPS, 100ms ticks, scan-based  |
-| 21 | Goblin Curse     | goblincurse   | `PARTIAL` | stub, needs mechanics                            |
+| 21 | Goblin Curse     | goblincurse   | `DONE`    | death-spawn curse + DoT, flattened ticking AEO   |
 | 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics                            |
 | 23 | Vines            | vines         | `DONE`    | targeted freeze + DOT + air-to-ground            |
 
@@ -180,8 +180,8 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 106     | Fully functional in simulation              |
-| `PARTIAL`  | 8       | In cards.json but missing complex mechanics |
+| `DONE`     | 107     | Fully functional in simulation              |
+| `PARTIAL`  | 7       | In cards.json but missing complex mechanics |
 | `MISSING`  | 14      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
@@ -193,7 +193,7 @@ Data source: season 80 (202602) -- 121 entries in cards.json.
 | Category    | Cards                                                                         | What's needed                            |
 |-------------|-------------------------------------------------------------------------------|------------------------------------------|
 | Champions   | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
-| Newer stubs | Goblin Curse, Spirit Empress                                                  | Full mechanics TBD                       |
+| Newer stubs | Spirit Empress                                                                | Full mechanics TBD                       |
 
 ### Not yet planned
 

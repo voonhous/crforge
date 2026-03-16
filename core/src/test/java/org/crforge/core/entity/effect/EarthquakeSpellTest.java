@@ -2,6 +2,7 @@ package org.crforge.core.entity.effect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.card.AreaEffectStats;
@@ -37,12 +38,15 @@ class EarthquakeSpellTest {
 
   private GameState gameState;
   private AreaEffectSystem system;
+  private Map<String, BuffDefinition> savedBuffs;
 
   @BeforeEach
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
     system = new AreaEffectSystem(gameState);
+
+    savedBuffs = BuffRegistry.snapshot();
 
     // Register the Earthquake buff (matching buffs.json)
     BuffRegistry.register(
@@ -60,7 +64,7 @@ class EarthquakeSpellTest {
 
   @AfterEach
   void tearDown() {
-    BuffRegistry.clear();
+    BuffRegistry.restore(savedBuffs);
   }
 
   // -- Helpers --

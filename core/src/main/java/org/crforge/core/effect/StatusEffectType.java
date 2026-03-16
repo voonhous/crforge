@@ -53,6 +53,7 @@ public enum StatusEffectType {
           Map.entry("Poison", POISON),
           Map.entry("Rage", RAGE),
           Map.entry("VoodooCurse", CURSE),
+          Map.entry("GoblinCurse", CURSE),
           Map.entry("Earthquake", EARTHQUAKE),
           Map.entry("Tornado", TORNADO),
           Map.entry("BolaSnare", SLOW),

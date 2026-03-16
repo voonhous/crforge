@@ -216,6 +216,12 @@ class EntityFactory {
       }
     }
 
+    // Absolute CT damage for general ticking AEOs (GoblinCurse)
+    if (stats.getTargetCount() == 0 && buffDef != null && buffDef.getCrownTowerDamagePerHit() > 0) {
+      scaledCrownTowerDotDamage =
+          LevelScaling.scaleCard(buffDef.getCrownTowerDamagePerHit(), rarity, level);
+    }
+
     // Scale laser ball damage tiers (DarkMagic)
     // damageTier DPS and CT values are at Common L1 base, not the card's rarity base.
     // We must scale using COMMON rarity with the effective card level (clamped to rarity min).

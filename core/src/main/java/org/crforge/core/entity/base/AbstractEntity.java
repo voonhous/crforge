@@ -2,6 +2,7 @@ package org.crforge.core.entity.base;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
+import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.player.Team;
 
 @Getter
@@ -106,8 +108,13 @@ public abstract class AbstractEntity implements Entity {
     if (!stackable) {
       // Prevent stacking of effects of the same type.
       // Instead, refresh the duration of the existing effect.
+      // Exception: different CURSE buffs can coexist (e.g. GoblinCurse + VoodooCurse).
       for (AppliedEffect existing : appliedEffects) {
         if (existing.getType() == effect.getType()) {
+          if (existing.getType() == StatusEffectType.CURSE
+              && !Objects.equals(existing.getBuffName(), effect.getBuffName())) {
+            continue;
+          }
           existing.refresh(effect.getRemainingDuration());
           return;
         }

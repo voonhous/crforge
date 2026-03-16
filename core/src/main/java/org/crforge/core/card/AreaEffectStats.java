@@ -72,6 +72,9 @@ public class AreaEffectStats {
   /** Resolved TroopStats for the character to spawn. Null if no spawn. */
   @With private final TroopStats spawnCharacter;
 
+  /** Resolved TroopStats for death-spawn when this AEO applies a CURSE buff. Null if no curse. */
+  @With private final TroopStats curseSpawnStats;
+
   /** Number of characters to spawn. */
   @Builder.Default private final int spawnCount = 1;
 

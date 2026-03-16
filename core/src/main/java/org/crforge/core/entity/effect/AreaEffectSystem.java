@@ -660,8 +660,13 @@ public class AreaEffectSystem {
             effectiveDamage = effectiveDamage * (100 + effect.getBuildingDamagePercent()) / 100;
           }
 
-          // Then apply crown tower damage reduction
-          effectiveDamage = DamageUtil.adjustForCrownTower(effectiveDamage, target, ctdp);
+          // Absolute crown tower damage for ticking AEOs (GoblinCurse)
+          if (target instanceof Tower && effect.getScaledCrownTowerDotDamage() > 0) {
+            effectiveDamage = effect.getScaledCrownTowerDotDamage();
+          } else {
+            // Then apply crown tower damage reduction
+            effectiveDamage = DamageUtil.adjustForCrownTower(effectiveDamage, target, ctdp);
+          }
 
           target.getHealth().takeDamage(effectiveDamage);
         }
@@ -1023,12 +1028,24 @@ public class AreaEffectSystem {
       return;
     }
 
+    // Buildings cannot be Cursed (GoblinCurse, VoodooCurse convention)
+    if (effectType == StatusEffectType.CURSE && target.getMovementType() == MovementType.BUILDING) {
+      return;
+    }
+
     // Pass buff name for data-driven multiplier resolution in StatusEffectSystem
     float duration = stats.getBuffDuration() > 0 ? stats.getBuffDuration() : 1.0f;
     if (stats.isCapBuffTimeToAreaEffectTime()) {
       duration = Math.min(duration, effect.getRemainingLifetime());
     }
-    target.addEffect(new AppliedEffect(effectType, duration, stats.getBuff()));
+
+    // Pass spawnSpecies for CURSE buffs so death-spawn triggers correctly
+    if (effectType == StatusEffectType.CURSE && stats.getCurseSpawnStats() != null) {
+      target.addEffect(
+          new AppliedEffect(effectType, duration, stats.getBuff(), stats.getCurseSpawnStats()));
+    } else {
+      target.addEffect(new AppliedEffect(effectType, duration, stats.getBuff()));
+    }
 
     // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)
     if (effectType == StatusEffectType.STUN || effectType == StatusEffectType.FREEZE) {

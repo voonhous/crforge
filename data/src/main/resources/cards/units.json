@@ -2644,5 +2644,21 @@
     "movementType": "GROUND",
     "projectile": "prj_goblinstein_doctor",
     "deployDelay": 0.4
+  },
+  "GoblinCurseGoblin": {
+    "name": "GoblinCurseGoblin",
+    "health": 79,
+    "damage": 47,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 0.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "deployDelay": 0.4
   }
 }

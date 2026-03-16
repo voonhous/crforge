@@ -1528,10 +1528,13 @@
       "name": "GoblinCurse",
       "radius": 3.0,
       "lifeDuration": 6.0,
-      "hitsGround": false,
-      "hitsAir": false,
+      "hitSpeed": 1.0,
+      "hitsGround": true,
+      "hitsAir": true,
       "onlyEnemies": true,
-      "damage": 100
+      "damage": 0,
+      "buff": "GoblinCurse",
+      "buffDuration": 1.5
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
