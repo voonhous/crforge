@@ -7,7 +7,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.Getter;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.CardType;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Player;
@@ -247,14 +246,14 @@ public class DeploymentSystem {
       this.level = level;
       this.remainingDelay = remainingDelay;
 
-      // Multi-unit TROOP cards get staggered spawning
-      this.totalUnits = card.getType() == CardType.TROOP ? card.getTotalDeployCount() : 1;
+      // Multi-unit TROOP/HERO cards get staggered spawning
+      this.totalUnits = card.getType().isTroopLike() ? card.getTotalDeployCount() : 1;
       this.staggerDelay = totalUnits > 1 ? STAGGER_DELAY : 0f;
     }
 
-    /** Whether this deployment is a troop card (all troops go through the stagger path). */
+    /** Whether this deployment is a troop-like card (troops and heroes go through stagger path). */
     public boolean isTroop() {
-      return card.getType() == CardType.TROOP;
+      return card.getType().isTroopLike();
     }
 
     /** Whether this deployment is a tunnel building (e.g. GoblinDrill deploys via dig unit). */

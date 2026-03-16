@@ -912,14 +912,6 @@
     "unit": "Firecracker"
   },
   {
-    "id": "mightyminer",
-    "name": "MightyMiner",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 4,
-    "unit": "MightyMiner"
-  },
-  {
     "id": "elixirgolem",
     "name": "ElixirGolem",
     "type": "TROOP",
@@ -934,38 +926,6 @@
     "rarity": "Rare",
     "cost": 4,
     "unit": "BattleHealer"
-  },
-  {
-    "id": "skeletonking",
-    "name": "SkeletonKing",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 4,
-    "unit": "SkeletonKing"
-  },
-  {
-    "id": "archerqueen",
-    "name": "ArcherQueen",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 5,
-    "unit": "ArcherQueen"
-  },
-  {
-    "id": "goldenknight",
-    "name": "GoldenKnight",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 4,
-    "unit": "GoldenKnight"
-  },
-  {
-    "id": "monk",
-    "name": "Monk",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 5,
-    "unit": "Monk"
   },
   {
     "id": "skeletondragons",
@@ -1020,14 +980,6 @@
     "unit": "Phoenix"
   },
   {
-    "id": "littleprince",
-    "name": "LittlePrince",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 3,
-    "unit": "LittlePrince"
-  },
-  {
     "id": "goblindemolisher",
     "name": "GoblinDemolisher",
     "type": "TROOP",
@@ -1052,17 +1004,6 @@
     "unit": "SuspiciousBush"
   },
   {
-    "id": "goblinstein",
-    "name": "Goblinstein",
-    "type": "TROOP",
-    "rarity": "Champion",
-    "cost": 5,
-    "unit": "goblinstein",
-    "secondaryUnit": "goblinstein_doctor",
-    "secondaryCount": 1,
-    "summonRadius": 3500.0
-  },
-  {
     "id": "giantbuffer",
     "name": "GiantBuffer",
     "type": "TROOP",
@@ -1079,12 +1020,152 @@
     "unit": "Berserker"
   },
   {
+    "id": "mightyminer",
+    "name": "MightyMiner",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 4,
+    "unit": "MightyMiner",
+    "heroAbility": {
+      "name": "MightyMinerLaneSwitch",
+      "cooldown": 13.0,
+      "manaCost": 1,
+      "castTime": 0.933,
+      "triggerDelay": 0.5,
+      "switchLanes": true,
+      "spawnCharacter": "MightyMinerBomb"
+    }
+  },
+  {
+    "id": "skeletonking",
+    "name": "SkeletonKing",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 4,
+    "unit": "SkeletonKing",
+    "heroAbility": {
+      "name": "SkeletonKing",
+      "cooldown": 20.0,
+      "manaCost": 2,
+      "castTime": 0.933,
+      "triggerDelay": 0.5,
+      "areaEffect": "SkeletonKingGraveyard",
+      "resurrectBaseCount": 6,
+      "spawnLimit": 16
+    }
+  },
+  {
+    "id": "archerqueen",
+    "name": "ArcherQueen",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 5,
+    "unit": "ArcherQueen",
+    "heroAbility": {
+      "name": "ArcherQueenRapid",
+      "cooldown": 17.0,
+      "manaCost": 1,
+      "castTime": 0.933,
+      "triggerDelay": 0.2,
+      "buff": "ArcherQueenRapid",
+      "buffTime": 3.5
+    }
+  },
+  {
+    "id": "goldenknight",
+    "name": "GoldenKnight",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 4,
+    "unit": "GoldenKnight",
+    "heroAbility": {
+      "name": "GoldenKnightChain",
+      "cooldown": 12.0,
+      "manaCost": 1,
+      "castTime": 0.766,
+      "triggerDelay": 0.05,
+      "dashRange": 5.5,
+      "pendingBuff": "GoldenKnightCharge"
+    }
+  },
+  {
+    "id": "monk",
+    "name": "Monk",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 5,
+    "unit": "Monk",
+    "heroAbility": {
+      "name": "Deflect",
+      "cooldown": 17.0,
+      "manaCost": 1,
+      "castTime": 0.933,
+      "triggerDelay": 0.933,
+      "buff": "ShieldBoostMonk",
+      "buffTime": 4.0,
+      "areaEffect": "Deflect",
+      "abilityStateDuration": 4.0
+    }
+  },
+  {
+    "id": "littleprince",
+    "name": "LittlePrince",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 3,
+    "unit": "LittlePrince",
+    "heroAbility": {
+      "name": "ChampGuardianAbility",
+      "cooldown": 30.0,
+      "manaCost": 3,
+      "castTime": 0.944,
+      "triggerDelay": 0.05,
+      "guardSpawnCharacter": "ChampionGuard",
+      "guardPushBackDamage": 100,
+      "guardPushBackRadius": 2.5,
+      "guardTargetRadius": 4.0
+    }
+  },
+  {
+    "id": "goblinstein",
+    "name": "Goblinstein",
+    "type": "HERO",
+    "rarity": "Champion",
+    "cost": 5,
+    "unit": "goblinstein",
+    "secondaryUnit": "goblinstein_doctor",
+    "secondaryCount": 1,
+    "summonRadius": 3500.0,
+    "heroAbility": {
+      "name": "goblinstein_ability",
+      "cooldown": 17.0,
+      "manaCost": 2,
+      "castTime": 0.933,
+      "triggerDelay": 0.05,
+      "tetherDuration": 4.0,
+      "tetherDamage": 42,
+      "tetherCrownTowerDamage": 9,
+      "tetherWidth": 2.0,
+      "tetherHitInterval": 0.5
+    }
+  },
+  {
     "id": "bossbandit",
     "name": "BossBandit",
-    "type": "TROOP",
+    "type": "HERO",
     "rarity": "Champion",
     "cost": 6,
-    "unit": "BossBandit"
+    "unit": "BossBandit",
+    "heroAbility": {
+      "name": "BossBandit_ability",
+      "cooldown": 3.0,
+      "manaCost": 1,
+      "castTime": 0.933,
+      "triggerDelay": 0.2,
+      "maxCharges": 2,
+      "warpDistance": 6.0,
+      "invisibilityDuration": 1.0
+    }
   },
   {
     "id": "fireball",
@@ -1617,6 +1698,14 @@
     "unit": "Cannon"
   },
   {
+    "id": "goblinhut_rework",
+    "name": "GoblinHut_Rework",
+    "type": "BUILDING",
+    "rarity": "Rare",
+    "cost": 4,
+    "unit": "GoblinHut_Rework"
+  },
+  {
     "id": "mortar",
     "name": "Mortar",
     "type": "BUILDING",
@@ -1681,44 +1770,12 @@
     "unit": "Tombstone"
   },
   {
-    "id": "giantskeletonbomb",
-    "name": "GiantSkeletonBomb",
-    "type": "BUILDING",
-    "rarity": "",
-    "cost": 0,
-    "unit": "GiantSkeletonBomb"
-  },
-  {
-    "id": "balloonbomb",
-    "name": "BalloonBomb",
-    "type": "BUILDING",
-    "rarity": "",
-    "cost": 0,
-    "unit": "BalloonBomb"
-  },
-  {
-    "id": "ragebarbarianbottle",
-    "name": "RageBarbarianBottle",
-    "type": "BUILDING",
-    "rarity": "",
-    "cost": 0,
-    "unit": "RageBarbarianBottle"
-  },
-  {
-    "id": "goblincage",
-    "name": "GoblinCage",
-    "type": "BUILDING",
+    "id": "firespirithut",
+    "name": "FirespiritHut",
+    "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "unit": "GoblinCage"
-  },
-  {
-    "id": "goblinpartyhut",
-    "name": "GoblinPartyHut",
-    "type": "BUILDING",
-    "rarity": "Legendary",
-    "cost": 5,
-    "unit": "GoblinPartyHut"
+    "unit": "Furnace_rework"
   },
   {
     "id": "barbarianlauncher",
@@ -1729,12 +1786,12 @@
     "unit": "BarbarianLauncher"
   },
   {
-    "id": "bombtowerbomb",
-    "name": "BombTowerBomb",
+    "id": "goblincage",
+    "name": "GoblinCage",
     "type": "BUILDING",
-    "rarity": "",
-    "cost": 0,
-    "unit": "BombTowerBomb"
+    "rarity": "Rare",
+    "cost": 4,
+    "unit": "GoblinCage"
   },
   {
     "id": "goblindrill",
@@ -1743,8 +1800,16 @@
     "rarity": "Epic",
     "cost": 4,
     "unit": "GoblinDrill",
-    "canDeployOnEnemySide": true,
-    "summonCharacter": "GoblinDrillDig"
+    "summonCharacter": "GoblinDrillDig",
+    "canDeployOnEnemySide": true
+  },
+  {
+    "id": "goblinpartyhut",
+    "name": "GoblinPartyHut",
+    "type": "BUILDING",
+    "rarity": "Legendary",
+    "cost": 5,
+    "unit": "GoblinPartyHut"
   },
   {
     "id": "darkelixir_bottle",
@@ -1764,12 +1829,36 @@
     "unit": "ElixirBarrel"
   },
   {
-    "id": "goblinhut_rework",
-    "name": "GoblinHut_Rework",
+    "id": "balloonbomb",
+    "name": "BalloonBomb",
     "type": "BUILDING",
-    "rarity": "Rare",
-    "cost": 4,
-    "unit": "GoblinHut_Rework"
+    "rarity": "",
+    "cost": 0,
+    "unit": "BalloonBomb"
+  },
+  {
+    "id": "bombtowerbomb",
+    "name": "BombTowerBomb",
+    "type": "BUILDING",
+    "rarity": "",
+    "cost": 0,
+    "unit": "BombTowerBomb"
+  },
+  {
+    "id": "giantskeletonbomb",
+    "name": "GiantSkeletonBomb",
+    "type": "BUILDING",
+    "rarity": "",
+    "cost": 0,
+    "unit": "GiantSkeletonBomb"
+  },
+  {
+    "id": "ragebarbarianbottle",
+    "name": "RageBarbarianBottle",
+    "type": "BUILDING",
+    "rarity": "",
+    "cost": 0,
+    "unit": "RageBarbarianBottle"
   },
   {
     "id": "skeletoncontainernew",
@@ -1778,13 +1867,5 @@
     "rarity": "",
     "cost": 0,
     "unit": "SkeletonContainerNew"
-  },
-  {
-    "id": "firespirithut",
-    "name": "FirespiritHut",
-    "type": "BUILDING",
-    "rarity": "Rare",
-    "cost": 4,
-    "unit": "Furnace_rework"
   }
 ]

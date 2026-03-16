@@ -125,7 +125,6 @@ class DeploymentSystemTest {
         TroopStats.builder()
             .name("TombstoneBuilding")
             .health(500)
-            .speed(0f)
             .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f, false))
             .build();
 
@@ -171,7 +170,6 @@ class DeploymentSystemTest {
         TroopStats.builder()
             .name("TombstoneBuilding")
             .health(500)
-            .speed(0f)
             .liveSpawn(new LiveSpawnConfig("Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f, false))
             .build();
 
@@ -198,7 +196,7 @@ class DeploymentSystemTest {
 
   @Test
   void testDeployRegularBuilding() {
-    TroopStats cannonStats = TroopStats.builder().name("Cannon").health(500).speed(0f).build();
+    TroopStats cannonStats = TroopStats.builder().name("Cannon").health(500).build();
 
     Card cannon =
         Card.builder()

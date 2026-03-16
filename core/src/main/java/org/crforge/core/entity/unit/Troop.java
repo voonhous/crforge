@@ -29,10 +29,6 @@ public class Troop extends AbstractEntity {
 
   @Builder.Default private final AbilityComponent ability = null;
 
-  // Marks this troop as spawned from a BUILDING card (e.g. reworked Furnace).
-  // Building-targeting troops (Giant, Hog Rider) can target this troop.
-  @Builder.Default private final boolean buildingCard = false;
-
   // Marks this entity as a clone (1 HP, cannot be re-cloned)
   @Builder.Default private final boolean clone = false;
 

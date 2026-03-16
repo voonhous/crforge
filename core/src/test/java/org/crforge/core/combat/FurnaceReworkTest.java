@@ -22,10 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Furnace (rework): a 4-elixir Rare walking building that attacks with a ranged
- * projectile and spawns FireSpirits periodically. Unlike traditional buildings, the reworked
- * Furnace walks toward enemies (movementType=GROUND, speed=60) while retaining its BUILDING card
- * type for placement zone rules and building-targeting interactions.
+ * Tests for Furnace (rework): a 4-elixir Rare walking troop that attacks with a ranged projectile
+ * and spawns FireSpirits periodically. Unlike traditional buildings, the reworked Furnace walks
+ * toward enemies (movementType=GROUND, speed=60) and is classified as a TROOP card type.
  */
 class FurnaceReworkTest {
 
@@ -67,7 +66,7 @@ class FurnaceReworkTest {
   @Test
   void cardDataLoadsCorrectly() {
     assertThat(FURNACE).as("Card should be loaded").isNotNull();
-    assertThat(FURNACE.getType()).as("Card type").isEqualTo(CardType.BUILDING);
+    assertThat(FURNACE.getType()).as("Card type").isEqualTo(CardType.TROOP);
     assertThat(FURNACE.getCost()).as("Elixir cost").isEqualTo(4);
     assertThat(FURNACE.getRarity()).as("Rarity").isEqualTo(Rarity.RARE);
 
@@ -107,7 +106,6 @@ class FurnaceReworkTest {
 
     Troop furnace = findFurnaceTroop();
     assertThat(furnace).as("Furnace should exist as a Troop").isNotNull();
-    assertThat(furnace.isBuildingCard()).as("Should be marked as building card").isTrue();
     assertThat(furnace.getTeam()).as("Team").isEqualTo(Team.BLUE);
     assertThat(furnace.getHealth().getMax()).as("Max HP").isEqualTo(284);
 
@@ -243,23 +241,15 @@ class FurnaceReworkTest {
   }
 
   @Test
-  void buildingTargetingTroopsTargetFurnace() {
+  void furnaceIsATroopNotABuilding() {
     deployFurnace(DEPLOY_X, DEPLOY_Y);
 
     // Tick past sync + deploy so Furnace is targetable
     engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2);
 
     Troop furnace = findFurnaceTroop();
-    assertThat(furnace).as("Furnace should exist").isNotNull();
-    assertThat(furnace.isBuildingCard()).as("Furnace is a building card").isTrue();
-
-    // Verify that the TargetingSystem's canTarget allows building-targeting units to target
-    // a buildingCard troop. We do this by checking the Furnace is NOT a Building instance,
-    // but IS a Troop with buildingCard=true -- the exact condition our TargetingSystem handles.
+    assertThat(furnace).as("Furnace should exist as a Troop").isNotNull();
     assertThat(furnace).as("Furnace is a Troop, not a Building").isNotInstanceOf(Building.class);
-    assertThat(furnace.isBuildingCard())
-        .as("buildingCard flag makes it targetable by building-targeting troops")
-        .isTrue();
   }
 
   // -- Helpers --
