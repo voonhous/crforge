@@ -4,11 +4,11 @@
 
 ```
 crforge/
-  core/         Headless simulation engine (no GUI dependencies)
-  data/         Card/unit config loading (JSON -> Card objects)
-  desktop/      LibGDX visualization (ShapeRenderer debug renderer)
-  gym-bridge/   TCP server for Python Gymnasium integration
-  reference/    Original JS source and refactored ES6 modules
+├─ core/           Headless simulation engine (no GUI dependencies)
+├─ data/           Card/unit config loading (JSON -> Card objects)
+├─ desktop/        LibGDX visualization (ShapeRenderer debug renderer)
+├─ gym-bridge/     TCP server for Python Gymnasium integration
+└─ reference/      Original JS source and refactored ES6 modules
 ```
 
 - **core** depends on nothing (pure Java 17 + Lombok)
@@ -20,23 +20,51 @@ crforge/
 
 ```
 org.crforge.core/
-  arena/        Arena grid, Tile, TileType
-  card/         Card, CardType, TroopStats, ProjectileStats, EffectStats, etc.
-  combat/       TargetingSystem, CombatSystem, ProjectileSystem, AoeDamageService
-  component/    Health, Position, Combat, Movement, SpawnerComponent
-  engine/       GameEngine, GameState, DeploymentSystem
-  entity/
-    base/       Entity, AbstractEntity, EntityType, MovementType, TargetType
-    unit/       Troop
-    structure/  Building, Tower
-    projectile/ Projectile
-    effect/     AreaEffect, AreaEffectSystem
-  effect/       StatusEffectType, AppliedEffect, StatusEffectSystem
-  match/        Match, Standard1v1Match, GameMode
-  physics/      PhysicsSystem
-  player/       Player, Team, Deck, Hand, Elixir, LevelConfig
-  ability/      AbilitySystem, ChargeAbility, DashAbility, etc.
-  util/         Vector2
+├─ ability/
+│  ├─ AbilityComponent, AbilitySystem
+│  └─ ChargeAbility, DashAbility, HookAbility, TunnelAbility, ...
+├─ arena/
+│  └─ Arena, Tile, TileType
+├─ card/
+│  ├─ Card, CardType, Rarity, LevelScaling
+│  ├─ TroopStats, ProjectileStats, AreaEffectStats, EffectStats
+│  └─ AttackSequenceHit, LiveSpawnConfig, ...
+├─ combat/
+│  ├─ TargetingSystem, CombatSystem
+│  ├─ ProjectileSystem, AoeDamageService
+│  └─ AoeDamageEvent
+├─ component/
+│  ├─ Health, Position, Combat, Movement
+│  ├─ SpawnerComponent, AttachedComponent
+│  └─ ElixirCollectorComponent, ModifierSource
+├─ effect/
+│  ├─ StatusEffectType, AppliedEffect, StatusEffectSystem
+│  └─ BuffDefinition, BuffRegistry
+├─ engine/
+│  ├─ GameEngine               Tick loop, system orchestration
+│  ├─ GameState                Entity lifecycle, queries
+│  ├─ DeploymentSystem         Deployment orchestration (queue, sync delay, stagger)
+│  ├─ EntityFactory            Entity construction (troops, buildings, spells, projectiles)
+│  ├─ DeathHandler
+│  └─ ElixirCollectionSystem
+├─ entity/
+│  ├─ base/
+│  │  ├─ Entity, AbstractEntity
+│  │  ├─ EntityType, MovementType, TargetType
+│  │  └─ SpawnerSystem
+│  ├─ unit/        -> Troop
+│  ├─ structure/   -> Building, Tower
+│  ├─ projectile/  -> Projectile
+│  └─ effect/      -> AreaEffect, AreaEffectSystem
+├─ match/
+│  └─ Match, Standard1v1Match, GameMode
+├─ physics/
+│  └─ PhysicsSystem
+├─ player/
+│  ├─ Player, Team, Deck, Hand, Elixir, LevelConfig
+│  └─ dto/ -> PlayerActionDTO
+└─ util/
+   └─ Vector2, FormationLayout
 ```
 
 ## System Responsibilities
@@ -49,9 +77,10 @@ org.crforge.core/
 | CombatSystem       | Attack execution: windup, melee damage, multi-target, recoil      |
 | ProjectileSystem   | Projectile lifecycle: movement, hit detection, AOE, chain, pierce |
 | AoeDamageService   | Damage dealing, status effect application, AOE radius checks      |
-| DeploymentSystem   | Processes player card deployments (elixir, hand cycling, spawn)   |
+| DeploymentSystem   | Deployment orchestration (queue, sync delay, stagger timing)      |
+| EntityFactory      | Entity construction with level-scaled stats (used by Deployment)  |
 | SpawnerSystem      | Spawner ticks, death-spawn, live-spawn (Witch, Tombstone, etc.)   |
-| PhysicsSystem      | Movement, collision avoidance, knockback displacement              |
+| PhysicsSystem      | Movement, collision avoidance, knockback displacement             |
 | StatusEffectSystem | Manages buff/debuff durations and multiplier stacking             |
 | AbilitySystem      | Charge, dash, variable damage (inferno), reflect, hook            |
 | AreaEffectSystem   | Ticking/one-shot area effects (Poison, Freeze, heal zones)        |
@@ -64,7 +93,8 @@ AoeDamageService    --> GameState
 ProjectileSystem    --> GameState, AoeDamageService, UnitSpawner (functional interface)
 CombatSystem        --> GameState, AoeDamageService, ProjectileSystem
 SpawnerSystem       --> GameState, AoeDamageService, Match
-DeploymentSystem    --> GameState, AoeDamageService
+DeploymentSystem    --> EntityFactory
+EntityFactory       --> GameState, AoeDamageService
 StatusEffectSystem  --> GameState (passed per call)
 TargetingSystem     --> (stateless, receives entity list)
 PhysicsSystem       --> Arena, GameState
