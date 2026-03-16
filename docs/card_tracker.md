@@ -136,7 +136,7 @@ the live game name.
 | 8  | Elixir Collector   | elixircollector   | `DONE`    | elixir generation + death refund + cap hold |
 | 9  | X-Bow              | xbow              | `DONE`    | siege building                              |
 | 10 | Tombstone          | tombstone         | `DONE`    | spawner                                     |
-| 11 | Furnace            | firespirithut     | `MISSING` | spawner                                     |
+| 11 | Furnace            | firespirithut     | `DONE`    | walking spawner (rework)                    |
 | 12 | Goblin Cage        | goblincage        | `DONE`    | death spawn (0.5s deploy)                   |
 | 13 | Goblin Drill       | goblindrill       | `DONE`    | tunnel + morph + spawn AOE + death spawn    |
 | 14 | Dark Elixir Bottle | darkelixir_bottle | `MISSING` | special gamemode only, deprioritised        |
@@ -180,9 +180,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 110     | Fully functional in simulation              |
+| `DONE`     | 111     | Fully functional in simulation              |
 | `PARTIAL`  | 7       | In cards.json but missing complex mechanics |
-| `MISSING`  | 14      | Not yet implemented or newer cards          |
+| `MISSING`  | 13      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
@@ -190,9 +190,9 @@ Data source: season 80 (202602)
 
 ### Partial cards breakdown
 
-| Category    | Cards                                                                         | What's needed                            |
-|-------------|-------------------------------------------------------------------------------|------------------------------------------|
-| Champions   | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
+| Category  | Cards                                                                         | What's needed                            |
+|-----------|-------------------------------------------------------------------------------|------------------------------------------|
+| Champions | Skeleton King, Archer Queen, Golden Knight, Mighty Miner, Monk, Little Prince | Ability cycling system (tap to activate) |
 
 ### Not yet planned
 

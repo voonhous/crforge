@@ -415,6 +415,34 @@ class EntityFactory {
       int total,
       float summonRadius,
       List<float[]> formationOffsets) {
+    return createTroop(
+        team,
+        stats,
+        baseX,
+        baseY,
+        spawner,
+        level,
+        rarity,
+        index,
+        total,
+        summonRadius,
+        formationOffsets,
+        false);
+  }
+
+  private Troop createTroop(
+      Team team,
+      TroopStats stats,
+      float baseX,
+      float baseY,
+      SpawnerComponent spawner,
+      int level,
+      Rarity rarity,
+      int index,
+      int total,
+      float summonRadius,
+      List<float[]> formationOffsets,
+      boolean buildingCard) {
     float offsetX = 0f;
     float offsetY = 0f;
 
@@ -502,6 +530,7 @@ class EntityFactory {
         .deployTimer(stats.getDeployTime() + stats.getDeployDelay())
         .spawner(spawner)
         .ability(abilityComponent)
+        .buildingCard(buildingCard)
         .level(level)
         .build();
   }
@@ -555,6 +584,13 @@ class EntityFactory {
   private void spawnBuilding(Team team, Card card, float x, float y, int level) {
     TroopStats unitStats = card.getUnitStats();
     if (unitStats == null) {
+      return;
+    }
+
+    // Walking building rework: unit has non-zero speed (e.g. Furnace_rework with speed=60).
+    // Spawn as a Troop with buildingCard=true instead of a stationary Building.
+    if (unitStats.getSpeed() > 0) {
+      spawnWalkingBuilding(team, card, x, y, level);
       return;
     }
 
@@ -659,6 +695,74 @@ class EntityFactory {
             .build();
 
     state.spawnEntity(building);
+  }
+
+  /**
+   * Spawns a walking building: a BUILDING card whose unit has a non-BUILDING movementType (e.g.
+   * reworked Furnace with GROUND movement). Creates a Troop with buildingCard=true so that
+   * building-targeting troops (Giant, Hog Rider) still target it, while the troop can walk and
+   * attack like a normal unit.
+   */
+  private void spawnWalkingBuilding(Team team, Card card, float x, float y, int level) {
+    TroopStats unitStats = card.getUnitStats();
+
+    // Build SpawnerComponent from LiveSpawnConfig (same pattern as spawnSingleTroop)
+    SpawnerComponent spawner = null;
+    if (unitStats.getLiveSpawn() != null) {
+      LiveSpawnConfig ls = unitStats.getLiveSpawn();
+      TroopStats spawnStats = card.getSpawnTemplate();
+      if (spawnStats != null) {
+        float initialTimer = resolveInitialSpawnerTimer(ls);
+        spawner =
+            SpawnerComponent.builder()
+                .spawnInterval(ls.spawnInterval())
+                .spawnPauseTime(ls.spawnPauseTime())
+                .unitsPerWave(ls.spawnNumber())
+                .spawnStartTime(ls.spawnStartTime())
+                .currentTimer(initialTimer)
+                .spawnStats(spawnStats)
+                .formationRadius(ls.spawnRadius())
+                .spawnOnAggro(ls.spawnOnAggro())
+                .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0f)
+                .rarity(card.getRarity())
+                .level(level)
+                .build();
+      }
+    }
+
+    // Merge death mechanics if any
+    if (hasDeathMechanics(unitStats)) {
+      int scaledDeathDmg =
+          LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
+      ProjectileStats deathProjStats =
+          scaleDeathProjectile(unitStats.getDeathSpawnProjectile(), card.getRarity(), level);
+
+      if (spawner == null) {
+        spawner =
+            SpawnerComponent.builder()
+                .deathDamage(scaledDeathDmg)
+                .deathDamageRadius(unitStats.getDeathDamageRadius())
+                .deathSpawns(unitStats.getDeathSpawns())
+                .deathAreaEffect(unitStats.getDeathAreaEffect())
+                .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
+                .deathSpawnProjectile(deathProjStats)
+                .rarity(card.getRarity())
+                .level(level)
+                .build();
+      } else {
+        spawner.setDeathDamage(scaledDeathDmg);
+        spawner.setDeathDamageRadius(unitStats.getDeathDamageRadius());
+        spawner.setDeathSpawns(unitStats.getDeathSpawns());
+        spawner.setDeathAreaEffect(unitStats.getDeathAreaEffect());
+        spawner.setManaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent());
+        spawner.setDeathSpawnProjectile(deathProjStats);
+      }
+    }
+
+    Troop troop =
+        createTroop(team, unitStats, x, y, spawner, level, card.getRarity(), 0, 1, 0f, null, true);
+
+    state.spawnEntity(troop);
   }
 
   private void castSpell(Team team, Card card, float x, float y, int level) {

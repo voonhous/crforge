@@ -273,7 +273,8 @@ class MirrorTest {
             .type(CardType.BUILDING)
             .cost(3)
             .rarity(Rarity.COMMON)
-            .unitStats(TroopStats.builder().name("Cannon").health(500).damage(100).build())
+            .unitStats(
+                TroopStats.builder().name("Cannon").health(500).damage(100).speed(0f).build())
             .build();
 
     Player player = createPlayerWithSingleCard(Team.BLUE, mirrorCard);
@@ -358,7 +359,7 @@ class MirrorTest {
             .type(CardType.BUILDING)
             .cost(3)
             .rarity(Rarity.COMMON)
-            .unitStats(TroopStats.builder().name("Cannon").health(500).build())
+            .unitStats(TroopStats.builder().name("Cannon").health(500).speed(0f).build())
             .build();
 
     GameEngine engine = new GameEngine();

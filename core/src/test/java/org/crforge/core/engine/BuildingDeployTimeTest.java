@@ -48,6 +48,7 @@ class BuildingDeployTimeTest {
                 TroopStats.builder()
                     .name("Test Building")
                     .health(100)
+                    .speed(0f)
                     .deployTime(customDeployTime)
                     .build())
             .build();
@@ -93,6 +94,7 @@ class BuildingDeployTimeTest {
                 TroopStats.builder()
                     .name("Instant Building")
                     .health(100)
+                    .speed(0f)
                     .deployTime(customDeployTime)
                     .build())
             .build();

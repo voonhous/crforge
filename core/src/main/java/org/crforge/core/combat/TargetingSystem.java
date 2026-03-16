@@ -139,7 +139,10 @@ public class TargetingSystem {
 
   private boolean canTarget(Combat attackerCombat, Entity target) {
     // targetOnlyBuildings: unit ignores all non-building/tower entities (e.g. Giant, Hog Rider)
-    if (attackerCombat.isTargetOnlyBuildings() && !(target instanceof Building)) {
+    // Exception: troops with buildingCard=true (e.g. reworked Furnace) are valid targets
+    if (attackerCombat.isTargetOnlyBuildings()
+        && !(target instanceof Building)
+        && !(target instanceof Troop t && t.isBuildingCard())) {
       return false;
     }
 
