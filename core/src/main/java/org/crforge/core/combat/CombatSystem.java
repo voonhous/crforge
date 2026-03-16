@@ -174,14 +174,22 @@ public class CombatSystem {
       baseDamage = AbilitySystem.getChargeDamage(troop.getAbility(), baseDamage);
     }
 
+    // GiantBuffer buff: compute bonus damage for this attack (proc on every Nth attack)
+    int giantBuffBonus = 0;
+    if (attacker instanceof Troop buffedTroop) {
+      giantBuffBonus = AbilitySystem.processGiantBuffHit(buffedTroop, target, combat);
+    }
+
     if (combat.isRanged()
         && combat.getMultipleProjectiles() > 1
         && combat.getProjectileStats() != null
         && combat.getProjectileStats().getScatter() != null) {
-      projectileSystem.fireScatterProjectiles(attacker, target, baseDamage, combat);
+      projectileSystem.fireScatterProjectiles(
+          attacker, target, baseDamage + giantBuffBonus, combat);
     } else if (combat.isRanged()) {
       Projectile projectile =
-          projectileSystem.createAttackProjectile(attacker, target, baseDamage, combat);
+          projectileSystem.createAttackProjectile(
+              attacker, target, baseDamage + giantBuffBonus, combat);
       gameState.spawnProjectile(projectile);
 
       // Lock combat while returning projectile (boomerang) is in flight
@@ -193,6 +201,8 @@ public class CombatSystem {
       // Melee attack, deal damage immediately
       int effectiveDamage =
           DamageUtil.adjustForCrownTower(baseDamage, target, combat.getCrownTowerDamagePercent());
+      // Add GiantBuffer bonus after crown tower adjustment (buff has its own CT handling)
+      effectiveDamage += giantBuffBonus;
 
       if (combat.getAoeRadius() > 0) {
         // selfAsAoeCenter: AOE is centered on the attacker (e.g. Valkyrie 360-degree splash)
@@ -300,14 +310,22 @@ public class CombatSystem {
     for (int i = 0; i < fired; i++) {
       Entity extraTarget = candidates.get(i);
 
+      // GiantBuffer buff: each additional target increments the attack counter independently
+      int extraBuffBonus = 0;
+      if (attacker instanceof Troop buffedTroop) {
+        extraBuffBonus = AbilitySystem.processGiantBuffHit(buffedTroop, extraTarget, combat);
+      }
+
       if (combat.isRanged()) {
         Projectile projectile =
-            projectileSystem.createAttackProjectile(attacker, extraTarget, baseDamage, combat);
+            projectileSystem.createAttackProjectile(
+                attacker, extraTarget, baseDamage + extraBuffBonus, combat);
         gameState.spawnProjectile(projectile);
       } else {
         int effectiveDamage =
             DamageUtil.adjustForCrownTower(
                 baseDamage, extraTarget, combat.getCrownTowerDamagePercent());
+        effectiveDamage += extraBuffBonus;
         aoeDamageService.applyEffects(extraTarget, combat.getHitEffects());
         aoeDamageService.dealDamage(extraTarget, effectiveDamage);
         applyBuffOnDamage(combat, extraTarget);
@@ -317,14 +335,22 @@ public class CombatSystem {
     // If we couldn't find enough unique targets, fire remaining shots at the primary target
     int remaining = extraTargets - fired;
     for (int i = 0; i < remaining; i++) {
+      // GiantBuffer buff: fallback shots also increment the counter
+      int fallbackBuffBonus = 0;
+      if (attacker instanceof Troop buffedTroop) {
+        fallbackBuffBonus = AbilitySystem.processGiantBuffHit(buffedTroop, primaryTarget, combat);
+      }
+
       if (combat.isRanged()) {
         Projectile projectile =
-            projectileSystem.createAttackProjectile(attacker, primaryTarget, baseDamage, combat);
+            projectileSystem.createAttackProjectile(
+                attacker, primaryTarget, baseDamage + fallbackBuffBonus, combat);
         gameState.spawnProjectile(projectile);
       } else {
         int effectiveDamage =
             DamageUtil.adjustForCrownTower(
                 baseDamage, primaryTarget, combat.getCrownTowerDamagePercent());
+        effectiveDamage += fallbackBuffBonus;
         aoeDamageService.applyEffects(primaryTarget, combat.getHitEffects());
         aoeDamageService.dealDamage(primaryTarget, effectiveDamage);
         applyBuffOnDamage(combat, primaryTarget);

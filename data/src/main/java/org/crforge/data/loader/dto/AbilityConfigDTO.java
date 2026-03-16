@@ -41,6 +41,17 @@ public class AbilityConfigDTO {
   private String buff;
   private int crownTowerDamagePercent;
 
+  // BUFF_ALLY fields
+  private int maxTargets;
+  private float searchRange;
+  private float actionDelay;
+  private float buffDelay;
+  private int addedDamage;
+  private int addedCrownTowerDamage;
+  private int attackAmount;
+  private float persistAfterDeath;
+  private List<DamageMultiplierConfigDTO> damageMultipliers;
+
   @Data
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class VariableDamageStageDTO {

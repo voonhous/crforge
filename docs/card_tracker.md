@@ -80,19 +80,20 @@ the live game name.
 | 68 | Electro Spirit    | electrospirit    | `DONE`    |                                               |
 | 69 | Electro Giant     | electrogiant     | `DONE`    | reflect damage                                |
 | 70 | Phoenix           | phoenix          | `DONE`    | death -> egg -> respawn chain                 |
-| 71 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling                         |
-| 72 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling                         |
-| 73 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling                         |
-| 74 | Mighty Miner      | mightyminer      | `PARTIAL` | needs ability cycling                         |
-| 75 | Monk              | monk             | `PARTIAL` | needs ability cycling                         |
-| 76 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling                         |
-| 77 | Suspicious Bush   | suspiciousbush   | `DONE`    | permanent stealth, kamikaze, death spawn      |
-| 78 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
-| 79 | Goblin Demolisher | goblindemolisher | `MISSING` | newer card                                    |
-| 80 | Rune Giant        | giantbuffer      | `MISSING` | newer card                                    |
-| 81 | Goblin Machine    | goblinmachine    | `MISSING` | newer card                                    |
-| 82 | Goblinstein       | --               | `MISSING` | needs ability cycling                         |
-| 83 | Boss Bandit       | --               | `MISSING` | needs ability cycling                         |
+| 71 | Suspicious Bush   | suspiciousbush   | `DONE`    | permanent stealth, kamikaze, death spawn      |
+| 72 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
+| 73 | Goblin Demolisher | goblindemolisher | `MISSING` | newer card                                    |
+| 74 | Rune Giant        | giantbuffer      | `DONE`    | BUFF_ALLY ability: buffs 2 closest friendlies |
+| 75 | Goblin Machine    | goblinmachine    | `MISSING` | newer card                                    |
+| 76 | Spirit Empress    | mergemaiden      | `PARTIAL` | stub, needs mechanics (troop, not spell)      |
+| 77 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling                         |
+| 78 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling                         |
+| 79 | Golden Knight     | goldenknight     | `PARTIAL` | needs ability cycling                         |
+| 80 | Mighty Miner      | mightyminer      | `PARTIAL` | needs ability cycling                         |
+| 81 | Monk              | monk             | `PARTIAL` | needs ability cycling                         |
+| 82 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling                         |
+| 83 | Goblinstein       | --               | `MISSING` | needs ability cycling                         |
+| 84 | Boss Bandit       | --               | `MISSING` | needs ability cycling                         |
 
 ## Spells
 
@@ -119,8 +120,7 @@ the live game name.
 | 19 | Royal Delivery   | royaldelivery | `DONE`    | area effect + delayed troop spawn                |
 | 20 | Void             | darkmagic     | `DONE`    | laser ball: tiered DPS, 100ms ticks, scan-based  |
 | 21 | Goblin Curse     | goblincurse   | `DONE`    | death-spawn curse + DoT, flattened ticking AEO   |
-| 22 | Spirit Empress   | mergemaiden   | `PARTIAL` | stub, needs mechanics                            |
-| 23 | Vines            | vines         | `DONE`    | targeted freeze + DOT + air-to-ground            |
+| 22 | Vines            | vines         | `DONE`    | targeted freeze + DOT + air-to-ground            |
 
 ## Buildings
 
@@ -180,13 +180,13 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 107     | Fully functional in simulation              |
-| `PARTIAL`  | 7       | In cards.json but missing complex mechanics |
+| `DONE`     | 109     | Fully functional in simulation              |
+| `PARTIAL`  | 8       | In cards.json but missing complex mechanics |
 | `MISSING`  | 14      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
-Data source: season 80 (202602) -- 121 entries in cards.json.
+Data source: season 80 (202602)
 
 ### Partial cards breakdown
 

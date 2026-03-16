@@ -762,5 +762,14 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true
+  },
+  "GiantBuffProjectile": {
+    "name": "GiantBuffProjectile",
+    "damage": 0,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "radius": 0.001
   }
 }

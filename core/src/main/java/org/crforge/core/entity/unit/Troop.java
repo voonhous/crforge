@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.GiantBuffState;
 import org.crforge.core.card.Card;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
@@ -45,6 +46,9 @@ public class Troop extends AbstractEntity {
   // Morph context: carried by tunnel dig troops so the building can be created on arrival
   @Setter @Builder.Default private Card morphCard = null;
   @Setter @Builder.Default private int morphLevel = 0;
+
+  // GiantBuffer buff state: active buff from a friendly GiantBuffer
+  @Setter @Builder.Default private GiantBuffState giantBuff = null;
 
   /** Returns true if this troop is currently invisible (stealth ability active). */
   public boolean isInvisible() {

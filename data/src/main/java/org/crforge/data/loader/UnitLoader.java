@@ -16,7 +16,9 @@ import java.util.Objects;
 import java.util.Set;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilityType;
+import org.crforge.core.ability.BuffAllyAbility;
 import org.crforge.core.ability.ChargeAbility;
+import org.crforge.core.ability.DamageMultiplierEntry;
 import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.ability.HookAbility;
@@ -426,6 +428,26 @@ public class UnitLoader {
       case HIDING ->
           // Hiding ability is auto-created from stealth field, not from abilities array
           null;
+      case BUFF_ALLY -> {
+        List<DamageMultiplierEntry> multipliers =
+            dto.getDamageMultipliers() != null
+                ? dto.getDamageMultipliers().stream()
+                    .map(m -> new DamageMultiplierEntry(m.getName(), m.getMultiplier()))
+                    .toList()
+                : List.of();
+        yield new BuffAllyAbility(
+            dto.getAddedDamage(),
+            dto.getAddedCrownTowerDamage(),
+            dto.getAttackAmount(),
+            dto.getSearchRange(),
+            dto.getMaxTargets(),
+            dto.getCooldown(),
+            dto.getActionDelay(),
+            dto.getBuffDelay(),
+            dto.getMaxRange(),
+            dto.getPersistAfterDeath(),
+            multipliers);
+      }
     };
   }
 }

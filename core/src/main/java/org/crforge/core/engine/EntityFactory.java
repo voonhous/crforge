@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.BuffAllyAbility;
 import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
@@ -468,6 +469,15 @@ class EntityFactory {
     // Create ability component if unit has one
     AbilityComponent abilityComponent =
         stats.getAbility() != null ? new AbilityComponent(stats.getAbility()) : null;
+
+    // Scale BUFF_ALLY bonus damage by card level
+    if (abilityComponent != null
+        && abilityComponent.getData() instanceof BuffAllyAbility buffAlly) {
+      abilityComponent.setScaledAddedDamage(
+          LevelScaling.scaleCard(buffAlly.addedDamage(), rarity, level));
+      abilityComponent.setScaledAddedCrownTowerDamage(
+          LevelScaling.scaleCard(buffAlly.addedCrownTowerDamage(), rarity, level));
+    }
 
     Movement movement =
         new Movement(

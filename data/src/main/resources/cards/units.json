@@ -963,7 +963,36 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "targetOnlyBuildings": true,
-    "ignorePushback": true
+    "ignorePushback": true,
+    "abilities": [
+      {
+        "type": "BUFF_ALLY",
+        "maxTargets": 2,
+        "searchRange": 7.0,
+        "maxRange": 8.5,
+        "cooldown": 3.0,
+        "projectile": "GiantBuffProjectile",
+        "buffDelay": 0.28,
+        "actionDelay": 1.0,
+        "addedDamage": 86,
+        "addedCrownTowerDamage": 86,
+        "attackAmount": 3,
+        "persistAfterDeath": 5.0,
+        "damageMultipliers": [
+          { "name": "ElectroWizard", "multiplier": 500 },
+          { "name": "FirecrackerExplosion", "multiplier": 200 },
+          { "name": "FirecrackerExplosion_EV1", "multiplier": 200 },
+          { "name": "HunterProjectile", "multiplier": 100 },
+          { "name": "Hunter_EV1_shotgun_projectile", "multiplier": 100 },
+          { "name": "RamRiderBola", "multiplier": 0 },
+          { "name": "SpearGoblinGiantProjectile", "multiplier": 0 },
+          { "name": "GoblinMachineRocketProjectile", "multiplier": 0 },
+          { "name": "PhoenixFireball", "multiplier": 0 },
+          { "name": "GoblinDemolisherDeathProjectile", "multiplier": 0 },
+          { "name": "BarbLogHeroProjectileReRolling", "multiplier": 0 }
+        ]
+      }
+    ]
   },
   "GiantSkeleton": {
     "name": "GiantSkeleton",

@@ -8,5 +8,6 @@ public enum AbilityType {
   REFLECT,
   TUNNEL,
   STEALTH,
-  HIDING
+  HIDING,
+  BUFF_ALLY
 }

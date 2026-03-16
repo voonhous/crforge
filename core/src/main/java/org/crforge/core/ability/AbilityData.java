@@ -13,6 +13,7 @@ public sealed interface AbilityData
         ReflectAbility,
         TunnelAbility,
         StealthAbility,
-        HidingAbility {
+        HidingAbility,
+        BuffAllyAbility {
   AbilityType type();
 }

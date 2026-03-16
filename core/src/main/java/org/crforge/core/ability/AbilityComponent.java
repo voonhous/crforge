@@ -62,6 +62,12 @@ public class AbilityComponent {
   private float hidingTimer = 0f;
   private float upTimer = 0f;
 
+  // BUFF_ALLY state (on the GiantBuffer entity itself)
+  private float buffAllyTimer = 0f;
+  private boolean buffAllyActionDelayDone = false;
+  private int scaledAddedDamage = 0;
+  private int scaledAddedCrownTowerDamage = 0;
+
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
@@ -74,6 +80,11 @@ public class AbilityComponent {
       this.invisible = true;
       this.stealthFadeTimer = stealth.fadeTime();
       this.stealthRevealTimer = 0f;
+    }
+    // BUFF_ALLY: start with action delay timer
+    if (data instanceof BuffAllyAbility buffAlly) {
+      this.buffAllyTimer = buffAlly.actionDelay();
+      this.buffAllyActionDelayDone = false;
     }
   }
 
