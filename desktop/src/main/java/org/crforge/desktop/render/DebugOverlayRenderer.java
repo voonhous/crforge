@@ -572,30 +572,44 @@ public class DebugOverlayRenderer {
 
     // Pass 1 (Line): beam lines to targets + pulse ring
     Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
-
+    // Filled pass: target marker circles on units hit by laser
+    ctx.getShapeRenderer().begin(ShapeType.Filled);
     for (AreaEffect effect : areaEffects) {
       if (effect.isDead() || effect.getScaledDamageTiers().isEmpty()) {
         continue;
       }
-
-      float x = effect.getPosition().getX() * TILE_PIXELS;
-      float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = effect.getStats().getRadius() * TILE_PIXELS;
-
-      // Beam lines from center to each locked target
       if (effect.isLaserActive()) {
-        ctx.getShapeRenderer()
-            .setColor(COLOR_LASER_BALL.r, COLOR_LASER_BALL.g, COLOR_LASER_BALL.b, 0.8f);
-        for (long targetId : effect.getLaserTargetIds()) {
-          Optional<Entity> targetOpt = state.getEntityById(targetId);
-          if (targetOpt.isPresent() && targetOpt.get().isAlive()) {
-            Entity target = targetOpt.get();
-            float tx = target.getPosition().getX() * TILE_PIXELS;
-            float ty = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-            ctx.getShapeRenderer().line(x, y, tx, ty);
+        // Blink: show markers only in the first 30% of each scan cycle (flash on hit)
+        float scanInterval = effect.getStats().getScanInterval();
+        float progress = scanInterval > 0 ? effect.getLaserScanAccumulator() / scanInterval : 0f;
+        if (progress < 0.3f) {
+          float blinkAlpha = 0.8f * (1f - progress / 0.3f);
+          ctx.getShapeRenderer()
+              .setColor(COLOR_LASER_BALL.r, COLOR_LASER_BALL.g, COLOR_LASER_BALL.b, blinkAlpha);
+          for (long targetId : effect.getLaserTargetIds()) {
+            Optional<Entity> targetOpt = state.getEntityById(targetId);
+            if (targetOpt.isPresent()) {
+              Entity target = targetOpt.get();
+              float tx = target.getPosition().getX() * TILE_PIXELS;
+              float ty = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+              ctx.getShapeRenderer().circle(tx, ty, 4f, CIRCLE_SEGMENTS);
+            }
           }
         }
+      }
+    }
+    ctx.getShapeRenderer().end();
+
+    // Line pass: pulse ring for laser effects
+    ctx.getShapeRenderer().begin(ShapeType.Line);
+    for (AreaEffect effect : areaEffects) {
+      if (effect.isDead() || effect.getScaledDamageTiers().isEmpty()) {
+        continue;
+      }
+      if (effect.isLaserActive()) {
+        float x = effect.getPosition().getX() * TILE_PIXELS;
+        float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+        float radius = effect.getStats().getRadius() * TILE_PIXELS;
 
         // Pulse ring: expands and fades between scans
         float scanInterval = effect.getStats().getScanInterval();
@@ -609,7 +623,6 @@ public class DebugOverlayRenderer {
         }
       }
     }
-
     ctx.getShapeRenderer().end();
 
     // Pass 2 (SpriteBatch): tier label + scan progress text
