@@ -14,11 +14,14 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DamageTierConfigDTO {
 
-  /** Damage per second for this tier. Converted to per-tick damage at runtime. */
+  /** Damage per second for this tier. Converted to per-hit damage at runtime. */
   private int damagePerSecond;
 
-  /** Crown tower damage per 100ms tick. Zero if none. */
+  /** Crown tower damage per hit. Zero if none. */
   private int crownTowerDamagePerHit;
+
+  /** Seconds per hit (e.g. 0.1 = 100ms). Used to convert DPS to per-hit damage. */
+  private float hitFrequency;
 
   /** Maximum number of targets for this tier. Zero means catch-all (no cap). */
   private int maxTargets;

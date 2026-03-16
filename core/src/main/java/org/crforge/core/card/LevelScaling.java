@@ -96,7 +96,7 @@ public final class LevelScaling {
     return (int) Math.floor(base * m / 100.0);
   }
 
-  private static int getMinLevel(Rarity rarity) {
+  public static int getMinLevel(Rarity rarity) {
     return switch (rarity) {
       case COMMON, UNKNOWN -> COMMON_MIN_LEVEL;
       case RARE -> RARE_MIN_LEVEL;

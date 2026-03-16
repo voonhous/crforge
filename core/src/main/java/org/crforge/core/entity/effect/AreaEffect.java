@@ -97,29 +97,29 @@ public class AreaEffect extends AbstractEntity {
   /** Time accumulator for the initial delay before the first laser scan. */
   @Builder.Default @Setter private float laserDelayAccumulator = 0f;
 
-  /** Time accumulator for the 100ms laser tick interval. */
-  @Builder.Default @Setter private float laserTickAccumulator = 0f;
+  /** Time accumulator for tracking scan intervals. */
+  @Builder.Default @Setter private float laserScanAccumulator = 0f;
 
-  /** Number of laser ticks fired so far. */
-  @Builder.Default @Setter private int laserTickCount = 0;
+  /** Number of laser scans performed so far. */
+  @Builder.Default @Setter private int laserScanCount = 0;
 
-  /** Whether the laser ball is actively ticking (past the initial delay). */
+  /** Whether the laser ball is actively scanning (past the initial delay). */
   @Builder.Default @Setter private boolean laserActive = false;
 
-  /** Entity IDs currently locked as laser targets (refreshed each scan). */
+  /** Entity IDs currently targeted by the laser (refreshed each scan). */
   @Builder.Default private final Set<Long> laserTargetIds = new HashSet<>();
 
-  /** Current per-tick damage for locked targets (set on each scan). */
-  @Builder.Default @Setter private int laserDamagePerTick = 0;
+  /** Current per-hit damage for targets (set on each scan). */
+  @Builder.Default @Setter private int laserDamagePerHit = 0;
 
-  /** Current per-tick crown tower damage for locked targets (set on each scan). */
-  @Builder.Default @Setter private int laserCtDamagePerTick = 0;
+  /** Current per-hit crown tower damage (set on each scan). */
+  @Builder.Default @Setter private int laserCtDamagePerHit = 0;
 
   /** Level-scaled damage tiers computed at deploy time. */
   @Builder.Default private final List<ScaledDamageTier> scaledDamageTiers = List.of();
 
-  /** Total number of laser ticks across all scans. Effect stays alive until all are consumed. */
-  @Builder.Default private final int totalLaserTicks = 0;
+  /** Total number of laser scans across the effect's lifetime. */
+  @Builder.Default private final int totalLaserScans = 0;
 
   /** Rarity of the caster card, used to level-scale the spawned character. */
   @Builder.Default private final Rarity rarity = Rarity.COMMON;
@@ -173,8 +173,8 @@ public class AreaEffect extends AbstractEntity {
           && (nextTargetSelectionIndex < stats.getTargetDelays().size() || dotActive)) {
         return;
       }
-      // Keep alive if laser ball has pending ticks
-      if (totalLaserTicks > 0 && laserTickCount < totalLaserTicks) {
+      // Keep alive if laser ball has pending scans
+      if (totalLaserScans > 0 && laserScanCount < totalLaserScans) {
         return;
       }
       markDead();

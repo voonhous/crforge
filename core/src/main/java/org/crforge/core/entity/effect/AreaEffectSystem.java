@@ -376,18 +376,18 @@ public class AreaEffectSystem {
 
   /**
    * Processes the DarkMagic laser ball mechanic. After an initial delay, scans every scanInterval
-   * seconds to count targets and select a damage tier, then fires 100ms damage ticks at locked
-   * targets until the next scan or the total tick budget is exhausted.
+   * seconds to count targets and select a damage tier, then applies exactly one hit per scan to all
+   * locked targets.
    *
    * <p>The laser ball bypasses hitsGround/hitsAir (both are false in data) and directly damages all
    * alive enemy entities within radius.
    */
   private void processLaserBall(AreaEffect effect, float deltaTime) {
     AreaEffectStats stats = effect.getStats();
-    int totalTicks = effect.getTotalLaserTicks();
+    int totalScans = effect.getTotalLaserScans();
 
-    // All ticks consumed -- effect can die naturally via update()
-    if (totalTicks > 0 && effect.getLaserTickCount() >= totalTicks) {
+    // All scans completed -- effect can die naturally via update()
+    if (totalScans > 0 && effect.getLaserScanCount() >= totalScans) {
       return;
     }
 
@@ -403,33 +403,25 @@ public class AreaEffectSystem {
       float excess = acc - stats.getFirstHitDelay();
       effect.setLaserDelayAccumulator(0f);
 
-      // Perform the first scan immediately
+      // Perform the first scan and apply damage immediately
       performLaserScan(effect);
+      applyLaserHit(effect);
+      effect.setLaserScanCount(effect.getLaserScanCount() + 1);
 
-      // Seed the tick accumulator with leftover time
-      effect.setLaserTickAccumulator(excess);
+      // Seed the scan accumulator with leftover time
+      effect.setLaserScanAccumulator(excess);
     } else {
-      effect.setLaserTickAccumulator(effect.getLaserTickAccumulator() + deltaTime);
+      effect.setLaserScanAccumulator(effect.getLaserScanAccumulator() + deltaTime);
     }
 
-    // Phase 2: Fire 100ms ticks
-    float tickInterval = AreaEffectStats.LASER_TICK_INTERVAL;
-    int ticksPerScan = Math.round(stats.getScanInterval() / tickInterval);
-
-    while (effect.getLaserTickAccumulator() >= tickInterval
-        && effect.getLaserTickCount() < totalTicks) {
-      effect.setLaserTickAccumulator(effect.getLaserTickAccumulator() - tickInterval);
-
-      // Check for scan boundary (rescan targets at the start of each scan period)
-      if (ticksPerScan > 0
-          && effect.getLaserTickCount() > 0
-          && effect.getLaserTickCount() % ticksPerScan == 0) {
-        performLaserScan(effect);
-      }
-
-      // Apply damage to all locked targets
-      applyLaserTick(effect);
-      effect.setLaserTickCount(effect.getLaserTickCount() + 1);
+    // Phase 2: Fire scans at scanInterval boundaries
+    float scanInterval = stats.getScanInterval();
+    while (effect.getLaserScanAccumulator() >= scanInterval
+        && effect.getLaserScanCount() < totalScans) {
+      effect.setLaserScanAccumulator(effect.getLaserScanAccumulator() - scanInterval);
+      performLaserScan(effect);
+      applyLaserHit(effect);
+      effect.setLaserScanCount(effect.getLaserScanCount() + 1);
     }
   }
 
@@ -468,18 +460,18 @@ public class AreaEffectSystem {
     }
 
     if (selectedTier != null) {
-      effect.setLaserDamagePerTick(selectedTier.damagePerTick());
-      effect.setLaserCtDamagePerTick(selectedTier.ctDamagePerTick());
+      effect.setLaserDamagePerHit(selectedTier.damagePerHit());
+      effect.setLaserCtDamagePerHit(selectedTier.ctDamagePerHit());
     } else {
-      effect.setLaserDamagePerTick(0);
-      effect.setLaserCtDamagePerTick(0);
+      effect.setLaserDamagePerHit(0);
+      effect.setLaserCtDamagePerHit(0);
     }
   }
 
-  /** Applies one laser tick of damage to all locked targets. Skips dead entities. */
-  private void applyLaserTick(AreaEffect effect) {
-    int damage = effect.getLaserDamagePerTick();
-    int ctDamage = effect.getLaserCtDamagePerTick();
+  /** Applies one laser hit of damage to all locked targets. Skips dead entities. */
+  private void applyLaserHit(AreaEffect effect) {
+    int damage = effect.getLaserDamagePerHit();
+    int ctDamage = effect.getLaserCtDamagePerHit();
     if (damage <= 0 && ctDamage <= 0) {
       return;
     }

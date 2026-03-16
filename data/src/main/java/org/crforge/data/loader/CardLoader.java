@@ -250,7 +250,10 @@ public class CardLoader {
               .map(
                   t ->
                       new DamageTier(
-                          t.getDamagePerSecond(), t.getCrownTowerDamagePerHit(), t.getMaxTargets()))
+                          t.getDamagePerSecond(),
+                          t.getCrownTowerDamagePerHit(),
+                          t.getHitFrequency(),
+                          t.getMaxTargets()))
               .toList());
     }
 

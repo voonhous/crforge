@@ -217,25 +217,33 @@ class EntityFactory {
     }
 
     // Scale laser ball damage tiers (DarkMagic)
+    // damageTier DPS and CT values are at Common L1 base, not the card's rarity base.
+    // We must scale using COMMON rarity with the effective card level (clamped to rarity min).
+    // IMPORTANT: scale damagePerSecond FIRST, then multiply by hitFrequency. This avoids
+    // intermediate rounding errors that cause +/-1 deviations from expected values.
     List<ScaledDamageTier> scaledTiers = List.of();
-    int totalLaserTicks = 0;
+    int totalLaserScans = 0;
     if (!stats.getDamageTiers().isEmpty()) {
-      float tickInterval = AreaEffectStats.LASER_TICK_INTERVAL;
+      totalLaserScans = stats.computeTotalLaserScans();
+      int effectiveLevel = Math.max(level, LevelScaling.getMinLevel(rarity));
       scaledTiers =
           stats.getDamageTiers().stream()
               .map(
                   tier -> {
-                    int basePerTick = Math.round(tier.damagePerSecond() * tickInterval);
-                    int scaledPerTick = LevelScaling.scaleCard(basePerTick, rarity, level);
-                    int scaledCt =
+                    // Scale raw DPS as Common L1 base, then convert to per-hit
+                    int scaledDPS =
+                        LevelScaling.scaleCard(
+                            tier.damagePerSecond(), Rarity.COMMON, effectiveLevel);
+                    int scaledDamagePerHit = (int) (scaledDPS * tier.hitFrequency());
+                    int scaledCtPerHit =
                         tier.crownTowerDamagePerHit() > 0
-                            ? LevelScaling.scaleCard(tier.crownTowerDamagePerHit(), rarity, level)
+                            ? LevelScaling.scaleCard(
+                                tier.crownTowerDamagePerHit(), Rarity.COMMON, effectiveLevel)
                             : 0;
-                    return new ScaledDamageTier(scaledPerTick, scaledCt, tier.maxTargets());
+                    return new ScaledDamageTier(
+                        scaledDamagePerHit, scaledCtPerHit, tier.maxTargets());
                   })
               .toList();
-      int ticksPerScan = Math.round(stats.getScanInterval() / tickInterval);
-      totalLaserTicks = stats.computeTotalLaserScans() * ticksPerScan;
     }
 
     AreaEffect effect =
@@ -250,7 +258,7 @@ class EntityFactory {
             .scaledDotDamage(scaledDotDamage)
             .scaledCrownTowerDotDamage(scaledCrownTowerDotDamage)
             .scaledDamageTiers(scaledTiers)
-            .totalLaserTicks(totalLaserTicks)
+            .totalLaserScans(totalLaserScans)
             .remainingLifetime(stats.getLifeDuration())
             .rarity(rarity)
             .level(level)

@@ -1497,16 +1497,19 @@
         {
           "damagePerSecond": 1330,
           "crownTowerDamagePerHit": 19,
+          "hitFrequency": 0.1,
           "maxTargets": 1
         },
         {
           "damagePerSecond": 625,
           "crownTowerDamagePerHit": 10,
+          "hitFrequency": 0.1,
           "maxTargets": 4
         },
         {
           "damagePerSecond": 297,
-          "crownTowerDamagePerHit": 7
+          "crownTowerDamagePerHit": 7,
+          "hitFrequency": 0.1
         }
       ]
     },

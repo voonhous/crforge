@@ -955,9 +955,9 @@ class CardLoaderTest {
               "firstHitDelay": 1.0,
               "hitFrequency": 1.0,
               "damageTiers": [
-                { "damagePerSecond": 1330, "crownTowerDamagePerHit": 19, "maxTargets": 1 },
-                { "damagePerSecond": 625, "crownTowerDamagePerHit": 10, "maxTargets": 4 },
-                { "damagePerSecond": 297, "crownTowerDamagePerHit": 7 }
+                { "damagePerSecond": 1330, "crownTowerDamagePerHit": 19, "hitFrequency": 0.1, "maxTargets": 1 },
+                { "damagePerSecond": 625, "crownTowerDamagePerHit": 10, "hitFrequency": 0.1, "maxTargets": 4 },
+                { "damagePerSecond": 297, "crownTowerDamagePerHit": 7, "hitFrequency": 0.1 }
               ]
             }
           }
@@ -988,14 +988,17 @@ class CardLoaderTest {
 
     assertThat(tiers.get(0).damagePerSecond()).isEqualTo(1330);
     assertThat(tiers.get(0).crownTowerDamagePerHit()).isEqualTo(19);
+    assertThat(tiers.get(0).hitFrequency()).isEqualTo(0.1f);
     assertThat(tiers.get(0).maxTargets()).isEqualTo(1);
 
     assertThat(tiers.get(1).damagePerSecond()).isEqualTo(625);
     assertThat(tiers.get(1).crownTowerDamagePerHit()).isEqualTo(10);
+    assertThat(tiers.get(1).hitFrequency()).isEqualTo(0.1f);
     assertThat(tiers.get(1).maxTargets()).isEqualTo(4);
 
     assertThat(tiers.get(2).damagePerSecond()).isEqualTo(297);
     assertThat(tiers.get(2).crownTowerDamagePerHit()).isEqualTo(7);
+    assertThat(tiers.get(2).hitFrequency()).isEqualTo(0.1f);
     assertThat(tiers.get(2).maxTargets()).isEqualTo(0); // catch-all
 
     // computeTotalLaserScans: firstHitDelay=1.0, scanInterval=1.0, lifeDuration=4.0

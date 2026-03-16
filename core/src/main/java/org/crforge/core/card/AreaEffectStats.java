@@ -105,9 +105,6 @@ public class AreaEffectStats {
   /** Base damage tier definitions for the laser ball mechanic (DarkMagic). */
   @Builder.Default private final List<DamageTier> damageTiers = List.of();
 
-  /** Laser ball tick interval in seconds (100ms). */
-  public static final float LASER_TICK_INTERVAL = 0.1f;
-
   /**
    * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.
    * RageBarbarian/Lumberjack, SuspiciousBush) carry a deathAreaEffect in units.json purely as an

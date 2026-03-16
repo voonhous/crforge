@@ -28,17 +28,17 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests for the DarkMagic (Void) spell: a 3-elixir Epic spell with a laser ball mechanic. The AOE
  * persists for 4.0s, scans every 1.0s (after a 1.0s delay), selects a damage tier based on target
- * count, and applies 100ms-interval damage ticks to locked targets.
+ * count, and applies exactly 1 hit per scan to locked targets.
  *
- * <p>Base damage tiers (Epic L6, no scaling applied):
+ * <p>Damage tiers at default level 6 (Common L1 base scaled with COMMON rarity, 5 steps of x1.10):
  *
  * <ul>
- *   <li>Tier 1 (1 target): 1330 DPS -> 133/tick, CT 19/tick
- *   <li>Tier 2 (2-4 targets): 625 DPS -> 63/tick, CT 10/tick (rounded)
- *   <li>Tier 3 (5+ targets): 297 DPS -> 30/tick, CT 7/tick (rounded)
+ *   <li>Tier 1 (1 target): 1330 DPS -> scaled 2128 -> per-hit 212, CT 30/hit
+ *   <li>Tier 2 (2-4 targets): 625 DPS -> scaled 1000 -> per-hit 100, CT 16/hit
+ *   <li>Tier 3 (5+ targets): 297 DPS -> scaled 475 -> per-hit 47, CT 11/hit
  * </ul>
  *
- * Each scan period = 1.0s = 10 laser ticks at 100ms interval. 3 scan periods -> 30 total ticks.
+ * 3 scans (at t=1.0, 2.0, 3.0) -> 3 total hits per target.
  */
 class DarkMagicSpellTest {
 
@@ -57,29 +57,26 @@ class DarkMagicSpellTest {
   // First hit delay (1.0s = 30 ticks)
   private static final int FIRST_HIT_DELAY_TICKS = 30;
 
-  // Laser ticks per scan (1.0s / 0.1s = 10)
-  private static final int LASER_TICKS_PER_SCAN = 10;
+  // Number of scans over the lifetime (at t=1.0, 2.0, 3.0)
+  private static final int TOTAL_SCANS = 3;
 
   // Game ticks per scan (1.0s * 30 FPS = 30)
   private static final int GAME_TICKS_PER_SCAN = 30;
 
-  // Total laser ticks across all 3 scans
-  private static final int TOTAL_LASER_TICKS = 30;
-
   // Total game ticks for all 3 scan periods (3.0s * 30 FPS = 90)
   private static final int TOTAL_ACTIVE_GAME_TICKS = 90;
 
-  // Tier 1 base damage per tick (1330 DPS * 0.1s = 133)
-  private static final int TIER1_DAMAGE_PER_TICK = 133;
+  // Tier 1 per-hit damage: scaleCard(1330, COMMON, 6) = 2128, * 0.1 = 212
+  private static final int TIER1_DAMAGE_PER_HIT = 212;
 
-  // Tier 2 base damage per tick (625 DPS * 0.1s = 63, since round(62.5) = 63)
-  private static final int TIER2_DAMAGE_PER_TICK = 63;
+  // Tier 2 per-hit: scaleCard(625, COMMON, 6) = 1000, * 0.1 = 100
+  private static final int TIER2_DAMAGE_PER_HIT = 100;
 
-  // Tier 3 base damage per tick (297 DPS * 0.1s = 30, since round(29.7) = 30)
-  private static final int TIER3_DAMAGE_PER_TICK = 30;
+  // Tier 3 per-hit: scaleCard(297, COMMON, 6) = 475, * 0.1 = 47
+  private static final int TIER3_DAMAGE_PER_HIT = 47;
 
-  // Crown tower damage per tick (tier 1)
-  private static final int TIER1_CT_DAMAGE_PER_TICK = 19;
+  // Crown tower per-hit (tier 1): scaleCard(19, COMMON, 6) = 30
+  private static final int TIER1_CT_DAMAGE_PER_HIT = 30;
 
   @BeforeEach
   void setUp() {
@@ -144,17 +141,17 @@ class DarkMagicSpellTest {
 
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
 
-    // Tick past sync delay + first hit delay + enough time for all 30 laser ticks
+    // Tick past sync delay + first hit delay + enough time for all 3 scans
     // firstHitDelay=1.0s, then 3 scan periods of 1.0s each = 3.0s active
     // Total: sync(1.0s) + delay(1.0s) + active(3.0s) = 5.0s = 150 ticks
     engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + TOTAL_ACTIVE_GAME_TICKS + 5);
 
     int damageTaken = 50000 - enemy.getHealth().getCurrent();
-    int expectedDamage = TIER1_DAMAGE_PER_TICK * TOTAL_LASER_TICKS; // 133 * 30 = 3990
+    int expectedDamage = TIER1_DAMAGE_PER_HIT * TOTAL_SCANS; // 212 * 3 = 636
     assertThat(damageTaken)
         .as(
-            "Single target should take Tier 1 damage: %d per tick * %d ticks = %d total",
-            TIER1_DAMAGE_PER_TICK, TOTAL_LASER_TICKS, expectedDamage)
+            "Single target should take Tier 1 damage: %d per hit * %d scans = %d total",
+            TIER1_DAMAGE_PER_HIT, TOTAL_SCANS, expectedDamage)
         .isEqualTo(expectedDamage);
   }
 
@@ -167,7 +164,7 @@ class DarkMagicSpellTest {
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
     engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + TOTAL_ACTIVE_GAME_TICKS + 5);
 
-    int expectedPerTarget = TIER2_DAMAGE_PER_TICK * TOTAL_LASER_TICKS; // 63 * 30 = 1890
+    int expectedPerTarget = TIER2_DAMAGE_PER_HIT * TOTAL_SCANS; // 100 * 3 = 300
     for (Troop e : List.of(e1, e2, e3)) {
       int damageTaken = 50000 - e.getHealth().getCurrent();
       assertThat(damageTaken)
@@ -187,7 +184,7 @@ class DarkMagicSpellTest {
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
     engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + TOTAL_ACTIVE_GAME_TICKS + 5);
 
-    int expectedPerTarget = TIER3_DAMAGE_PER_TICK * TOTAL_LASER_TICKS; // 30 * 30 = 900
+    int expectedPerTarget = TIER3_DAMAGE_PER_HIT * TOTAL_SCANS; // 47 * 3 = 141
     for (Troop e : enemies) {
       int damageTaken = 50000 - e.getHealth().getCurrent();
       assertThat(damageTaken)
@@ -198,36 +195,37 @@ class DarkMagicSpellTest {
 
   @Test
   void tierReEvaluatesOnScan() {
-    // Start with 3 targets -> Tier 2 (63/tick)
+    // Start with 3 targets -> Tier 2 (100/hit)
     Troop e1 = spawnEnemyAt(DEPLOY_X, DEPLOY_Y, 50000, "Survivor");
     Troop e2 = spawnEnemyAt(DEPLOY_X + 0.5f, DEPLOY_Y, 50, "Fragile1");
     Troop e3 = spawnEnemyAt(DEPLOY_X - 0.5f, DEPLOY_Y, 50, "Fragile2");
 
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
 
-    // Tick past sync delay + first hit delay + exactly one scan period (30 game ticks = 1.0s)
-    // The fragile enemies (50 HP) will die on the first laser tick from Tier 2 damage (63/tick)
-    engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + GAME_TICKS_PER_SCAN);
+    // Tick past sync delay + first hit delay + small buffer (2 ticks past delay boundary).
+    // The first scan fires right at the firstHitDelay boundary, so +2 ensures exactly 1 scan
+    // has occurred without reaching the next scan boundary (30 ticks away).
+    engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + 2);
 
-    // Fragile enemies should be dead (50 HP < 63 damage per tick)
+    // Fragile enemies should be dead (50 HP < 100 damage per hit)
     assertThat(e2.isAlive()).as("Fragile1 should be dead after first scan").isFalse();
     assertThat(e3.isAlive()).as("Fragile2 should be dead after first scan").isFalse();
 
     int damageAfterFirstScan = 50000 - e1.getHealth().getCurrent();
-    // First scan: 10 laser ticks at tier 2 = 63 * 10 = 630
+    // First scan: 1 hit at tier 2 = 100
     assertThat(damageAfterFirstScan)
-        .as("Survivor should take 10 laser ticks of Tier 2 damage in first scan")
-        .isEqualTo(TIER2_DAMAGE_PER_TICK * LASER_TICKS_PER_SCAN);
+        .as("Survivor should take 1 hit of Tier 2 damage in first scan")
+        .isEqualTo(TIER2_DAMAGE_PER_HIT);
 
-    // Now tick through remaining 2 scans (60 game ticks = 2.0s) + buffer
-    // Only 1 target left -> rescan at scan boundary switches to Tier 1
+    // Now tick through remaining 2 scans + buffer.
+    // Only 1 target left -> rescan at scan boundary switches to Tier 1.
     engine.tick(GAME_TICKS_PER_SCAN * 2 + 5);
 
     int totalDamage = 50000 - e1.getHealth().getCurrent();
     int damageInRemainingScans = totalDamage - damageAfterFirstScan;
 
-    // The remaining scans should use Tier 1 damage (133/tick * 20 ticks = 2660)
-    int expectedRemainingDamage = TIER1_DAMAGE_PER_TICK * 20;
+    // The remaining 2 scans should use Tier 1 damage (212/hit * 2 hits = 424)
+    int expectedRemainingDamage = TIER1_DAMAGE_PER_HIT * 2;
     assertThat(damageInRemainingScans)
         .as("After fragile enemies die, survivor should take Tier 1 damage for remaining scans")
         .isEqualTo(expectedRemainingDamage);
@@ -264,12 +262,12 @@ class DarkMagicSpellTest {
     int towerHpAfter = redTower.get().getHealth().getCurrent();
     int damageTaken = towerHpBefore - towerHpAfter;
 
-    // Crown tower should take CT damage (19/tick * 30 ticks = 570)
-    int expectedCtDamage = TIER1_CT_DAMAGE_PER_TICK * TOTAL_LASER_TICKS;
+    // Crown tower should take CT damage (30/hit * 3 scans = 90)
+    int expectedCtDamage = TIER1_CT_DAMAGE_PER_HIT * TOTAL_SCANS;
     assertThat(damageTaken)
         .as(
-            "Crown tower should take CT damage: %d/tick * %d ticks = %d",
-            TIER1_CT_DAMAGE_PER_TICK, TOTAL_LASER_TICKS, expectedCtDamage)
+            "Crown tower should take CT damage: %d/hit * %d scans = %d",
+            TIER1_CT_DAMAGE_PER_HIT, TOTAL_SCANS, expectedCtDamage)
         .isEqualTo(expectedCtDamage);
   }
 
@@ -302,8 +300,8 @@ class DarkMagicSpellTest {
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
     engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + TOTAL_ACTIVE_GAME_TICKS + 5);
 
-    // Both should take damage (Tier 2 since 2 targets: 63/tick * 30 = 1890)
-    int expectedDamage = TIER2_DAMAGE_PER_TICK * TOTAL_LASER_TICKS;
+    // Both should take damage (Tier 2 since 2 targets: 100/hit * 3 = 300)
+    int expectedDamage = TIER2_DAMAGE_PER_HIT * TOTAL_SCANS;
     assertThat(50000 - groundEnemy.getHealth().getCurrent())
         .as("Ground target should take laser damage despite hitsGround=false")
         .isEqualTo(expectedDamage);
@@ -313,7 +311,7 @@ class DarkMagicSpellTest {
   }
 
   @Test
-  void effectExpiresAfterAllTicks() {
+  void effectExpiresAfterAllScans() {
     spawnEnemyAt(DEPLOY_X, DEPLOY_Y, 50000, "Enemy");
 
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
@@ -325,7 +323,7 @@ class DarkMagicSpellTest {
     boolean darkMagicAlive =
         effects.stream().anyMatch(e -> "DarkMagicAOE".equals(e.getName()) && e.isAlive());
     assertThat(darkMagicAlive)
-        .as("DarkMagic area effect should be dead after all ticks are consumed")
+        .as("DarkMagic area effect should be dead after all scans are consumed")
         .isFalse();
   }
 
@@ -336,22 +334,23 @@ class DarkMagicSpellTest {
 
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
 
-    // Tick past sync delay + first hit delay + half of first scan (15 game ticks = 5 laser ticks)
+    // Tick past sync delay + first hit delay + some buffer into the scan period (15 ticks = 0.5s).
+    // The first scan has already fired at the delay boundary; we're now between scan 1 and scan 2.
     engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + 15);
 
-    // Spawn a new enemy mid-scan
+    // Spawn a new enemy mid-scan period (scan accumulator ~0.5, second scan at 1.0)
     Troop newcomer = spawnEnemyAt(DEPLOY_X + 0.5f, DEPLOY_Y, 50000, "Newcomer");
 
-    // Tick through rest of first scan (15 game ticks = 5 laser ticks) + buffer
-    engine.tick(17);
+    // Tick a few more ticks (5) -- still before the second scan boundary (scan acc ~0.67)
+    engine.tick(5);
 
     int newcomerDamageAfterFirstScan = 50000 - newcomer.getHealth().getCurrent();
     assertThat(newcomerDamageAfterFirstScan)
         .as("Newcomer should take zero damage during the scan they entered")
         .isEqualTo(0);
 
-    // Tick through the second scan (30 game ticks = 10 laser ticks) + buffer
-    engine.tick(GAME_TICKS_PER_SCAN + 5);
+    // Tick past the second scan boundary (30 more ticks ensures scan acc >= 1.0)
+    engine.tick(GAME_TICKS_PER_SCAN);
 
     int newcomerDamageAfterSecondScan = 50000 - newcomer.getHealth().getCurrent();
     assertThat(newcomerDamageAfterSecondScan)
