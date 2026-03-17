@@ -45,14 +45,14 @@ public class AoeDamageService {
     return filtered;
   }
 
-  void dealDamage(Entity target, int damage) {
+  public void dealDamage(Entity target, int damage) {
     if (target == null || !target.isAlive()) {
       return;
     }
     target.getHealth().takeDamage(damage);
   }
 
-  void applyEffects(Entity target, List<EffectStats> effects) {
+  public void applyEffects(Entity target, List<EffectStats> effects) {
     if (target == null || !target.isAlive() || effects == null || effects.isEmpty()) {
       return;
     }

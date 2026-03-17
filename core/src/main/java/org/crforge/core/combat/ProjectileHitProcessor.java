@@ -6,7 +6,6 @@ import lombok.Setter;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.handler.ReflectHandler;
 import org.crforge.core.card.AreaEffectStats;
-import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
@@ -70,13 +69,17 @@ class ProjectileHitProcessor {
             projectile.getEffects(),
             ctdp);
       } else {
-        dealAoeDamage(
-            projectile.getSource(),
-            projectile.getTarget(),
-            baseDamage,
-            projectile.getAoeRadius(),
-            projectile.getEffects(),
-            ctdp);
+        Entity hTarget = projectile.getTarget();
+        if (hTarget != null) {
+          aoeDamageService.applySpellDamage(
+              projectile.getTeam(),
+              hTarget.getPosition().getX(),
+              hTarget.getPosition().getY(),
+              baseDamage,
+              projectile.getAoeRadius(),
+              projectile.getEffects(),
+              ctdp);
+        }
       }
     } else {
       Entity target = projectile.getTarget();
@@ -107,7 +110,7 @@ class ProjectileHitProcessor {
             float dist = source.getPosition().distanceTo(reflector.getPosition());
             float effectiveRadius = reflect.reflectRadius() + source.getCollisionRadius();
             if (dist <= effectiveRadius) {
-              applyReflectDamage(reflector, source, reflectDmg);
+              ReflectHandler.applyReflectDamage(reflector, source, reflectDmg, aoeDamageService);
             }
           }
         }
@@ -429,44 +432,5 @@ class ProjectileHitProcessor {
             .build();
 
     gameState.spawnEntity(effect);
-  }
-
-  private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
-    ReflectAbility reflect = (ReflectAbility) reflector.getAbility().getData();
-    int effectiveDamage =
-        DamageUtil.adjustForCrownTower(
-            reflectDamage, attacker, reflect.reflectCrownTowerDamagePercent());
-    aoeDamageService.dealDamage(attacker, effectiveDamage);
-
-    // Apply reflect buff (e.g. ZapFreeze stun) to attacker
-    if (reflect.reflectBuff() != null && reflect.reflectBuffDuration() > 0) {
-      EffectStats reflectEffect =
-          EffectStats.builder()
-              .type(reflect.reflectBuff())
-              .duration(reflect.reflectBuffDuration())
-              .buffName(reflect.reflectBuffName())
-              .build();
-      aoeDamageService.applyEffects(attacker, List.of(reflectEffect));
-    }
-  }
-
-  private void dealAoeDamage(
-      Entity source,
-      Entity primaryTarget,
-      int damage,
-      float radius,
-      List<EffectStats> effects,
-      int crownTowerDamagePercent) {
-    if (primaryTarget == null) {
-      return;
-    }
-    aoeDamageService.applySpellDamage(
-        source.getTeam(),
-        primaryTarget.getPosition().getX(),
-        primaryTarget.getPosition().getY(),
-        damage,
-        radius,
-        effects,
-        crownTowerDamagePercent);
   }
 }

@@ -209,8 +209,14 @@ public class CombatSystem {
       if (combat.getAoeRadius() > 0) {
         // selfAsAoeCenter: AOE is centered on the attacker (e.g. Valkyrie 360-degree splash)
         Entity aoeCenter = combat.isSelfAsAoeCenter() ? attacker : target;
-        dealAoeDamage(
-            attacker, aoeCenter, effectiveDamage, combat.getAoeRadius(), combat.getHitEffects());
+        aoeDamageService.applySpellDamage(
+            attacker.getTeam(),
+            aoeCenter.getPosition().getX(),
+            aoeCenter.getPosition().getY(),
+            effectiveDamage,
+            combat.getAoeRadius(),
+            combat.getHitEffects(),
+            0);
       } else {
         // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g.
         // Curse)
@@ -229,7 +235,7 @@ public class CombatSystem {
           float dist = attacker.getPosition().distanceTo(reflector.getPosition());
           float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
           if (dist <= effectiveRadius) {
-            applyReflectDamage(reflector, attacker, reflectDmg);
+            ReflectHandler.applyReflectDamage(reflector, attacker, reflectDmg, aoeDamageService);
           }
         }
       }
@@ -369,25 +375,6 @@ public class CombatSystem {
     aoeDamageService.applyEffects(target, List.of(buff));
   }
 
-  private void applyReflectDamage(Troop reflector, Entity attacker, int reflectDamage) {
-    ReflectAbility reflect = (ReflectAbility) reflector.getAbility().getData();
-    int effectiveDamage =
-        DamageUtil.adjustForCrownTower(
-            reflectDamage, attacker, reflect.reflectCrownTowerDamagePercent());
-    aoeDamageService.dealDamage(attacker, effectiveDamage);
-
-    // Apply reflect buff (e.g. ZapFreeze stun) to attacker
-    if (reflect.reflectBuff() != null && reflect.reflectBuffDuration() > 0) {
-      EffectStats reflectEffect =
-          EffectStats.builder()
-              .type(reflect.reflectBuff())
-              .duration(reflect.reflectBuffDuration())
-              .buffName(reflect.reflectBuffName())
-              .build();
-      aoeDamageService.applyEffects(attacker, List.of(reflectEffect));
-    }
-  }
-
   /**
    * Spawns an AreaEffect entity centered on the attacker when they land an attack. Used by units
    * that trigger area effects on hit (e.g. BattleHealer heal zone).
@@ -402,21 +389,6 @@ public class CombatSystem {
             .remainingLifetime(stats.getLifeDuration())
             .build();
     gameState.spawnEntity(effect);
-  }
-
-  private void dealAoeDamage(
-      Entity source, Entity primaryTarget, int damage, float radius, List<EffectStats> effects) {
-    if (primaryTarget == null) {
-      return;
-    }
-    aoeDamageService.applySpellDamage(
-        source.getTeam(),
-        primaryTarget.getPosition().getX(),
-        primaryTarget.getPosition().getY(),
-        damage,
-        radius,
-        effects,
-        0);
   }
 
   /** Check if an entity can attack a target (used for validation). */
