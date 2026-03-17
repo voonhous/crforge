@@ -261,8 +261,8 @@ public class CombatSystem {
                 recoilDirX,
                 recoilDirY,
                 combat.getAttackPushBack(),
-                ProjectileSystem.KNOCKBACK_DURATION,
-                ProjectileSystem.KNOCKBACK_MAX_TIME);
+                KnockbackHelper.KNOCKBACK_DURATION,
+                KnockbackHelper.KNOCKBACK_MAX_TIME);
       }
     }
 

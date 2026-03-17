@@ -92,7 +92,7 @@ class TransformationSystem {
     // Build combat component (includes kamikaze=true, targetOnlyBuildings=true from stats)
     float initialLoad = kamikazeStats.isNoPreload() ? 0f : kamikazeStats.getLoadTime();
     Combat combat =
-        EntityFactory.buildCombatComponent(kamikazeStats, scaledDamage, initialLoad)
+        EntityScaling.buildCombatComponent(kamikazeStats, scaledDamage, initialLoad)
             .aoeRadius(kamikazeStats.getAoeRadius())
             .multipleTargets(kamikazeStats.getMultipleTargets())
             .multipleProjectiles(kamikazeStats.getMultipleProjectiles())
