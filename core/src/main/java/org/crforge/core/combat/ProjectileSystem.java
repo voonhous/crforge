@@ -3,8 +3,8 @@ package org.crforge.core.combat;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Setter;
-import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.ability.handler.ReflectHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
@@ -314,7 +314,7 @@ public class ProjectileSystem {
     if (!projectile.isPositionTargeted()) {
       Entity target = projectile.getTarget();
       if (target instanceof Troop reflector) {
-        int reflectDmg = AbilitySystem.getReflectDamage(reflector);
+        int reflectDmg = ReflectHandler.getReflectDamage(reflector);
         if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
           Entity source = projectile.getSource();
           if (source != null && source.isAlive()) {

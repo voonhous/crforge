@@ -3,7 +3,8 @@ package org.crforge.core.combat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.ability.AbilitySystem;
+import org.crforge.core.ability.handler.ChargeHandler;
+import org.crforge.core.ability.handler.VariableDamageHandler;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
@@ -78,10 +79,10 @@ public class AoeDamageService {
         // Reset charge ability state (Prince, Dark Prince, Battle Ram)
         // Reset variable damage state (Inferno Dragon, Inferno Tower)
         if (target instanceof Troop troop) {
-          AbilitySystem.consumeCharge(troop);
-          AbilitySystem.resetVariableDamage(troop);
+          ChargeHandler.consumeCharge(troop);
+          VariableDamageHandler.resetVariableDamage(troop);
         } else if (target instanceof Building building && building.getAbility() != null) {
-          AbilitySystem.resetVariableDamage(building.getAbility(), building.getCombat());
+          VariableDamageHandler.resetVariableDamage(building.getAbility(), building.getCombat());
         }
       }
     }

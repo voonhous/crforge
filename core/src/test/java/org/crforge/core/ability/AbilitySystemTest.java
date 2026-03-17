@@ -3,6 +3,7 @@ package org.crforge.core.ability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.ability.handler.ChargeHandler;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
@@ -181,7 +182,7 @@ class AbilitySystemTest {
     prince.getCombat().setCurrentTarget(target);
 
     // Verify getChargeDamage returns charge damage
-    int chargeDmg = AbilitySystem.getChargeDamage(prince.getAbility(), 100);
+    int chargeDmg = ChargeHandler.getChargeDamage(prince.getAbility(), 100);
     assertThat(chargeDmg).isEqualTo(306);
 
     // Trigger attack: set up windup=0 to execute immediately
@@ -246,7 +247,7 @@ class AbilitySystemTest {
     prince.getCombat().setCurrentTarget(target);
     assertThat(prince.getAbility().isCharged()).isFalse();
 
-    int normalDmg = AbilitySystem.getChargeDamage(prince.getAbility(), 100);
+    int normalDmg = ChargeHandler.getChargeDamage(prince.getAbility(), 100);
     assertThat(normalDmg).isEqualTo(100); // Returns base damage when not charged
 
     prince.getCombat().startAttackSequence();

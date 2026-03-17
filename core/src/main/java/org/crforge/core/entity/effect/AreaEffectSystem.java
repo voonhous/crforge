@@ -5,7 +5,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.crforge.core.ability.AbilityComponent;
-import org.crforge.core.ability.AbilitySystem;
+import org.crforge.core.ability.handler.ChargeHandler;
+import org.crforge.core.ability.handler.HidingHandler;
+import org.crforge.core.ability.handler.VariableDamageHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Rarity;
@@ -1064,16 +1066,16 @@ public class AreaEffectSystem {
       // Reset charge ability state (Prince, Dark Prince, Battle Ram, Ram Rider)
       // Reset variable damage state (Inferno Dragon, Inferno Tower)
       if (target instanceof Troop troop) {
-        AbilitySystem.consumeCharge(troop);
-        AbilitySystem.resetVariableDamage(troop);
+        ChargeHandler.consumeCharge(troop);
+        VariableDamageHandler.resetVariableDamage(troop);
       } else if (target instanceof Building building && building.getAbility() != null) {
-        AbilitySystem.resetVariableDamage(building.getAbility(), building.getCombat());
+        VariableDamageHandler.resetVariableDamage(building.getAbility(), building.getCombat());
       }
     }
 
     // Freeze forces hidden buildings (Tesla) to reveal
     if (appliedFreeze && target instanceof Building building) {
-      AbilitySystem.forceRevealHiding(building);
+      HidingHandler.forceRevealHiding(building);
     }
   }
 }

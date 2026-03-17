@@ -3,6 +3,7 @@ package org.crforge.core.ability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.ability.handler.BuffAllyHandler;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
@@ -236,16 +237,16 @@ class GiantBufferTest {
     Combat combat = ally.getCombat();
 
     // Attacks 1 and 2: no bonus
-    int bonus1 = AbilitySystem.processGiantBuffHit(ally, enemy, combat);
+    int bonus1 = BuffAllyHandler.processGiantBuffHit(ally, enemy, combat);
     assertThat(bonus1).isEqualTo(0);
     assertThat(buff.getAttackCounter()).isEqualTo(1);
 
-    int bonus2 = AbilitySystem.processGiantBuffHit(ally, enemy, combat);
+    int bonus2 = BuffAllyHandler.processGiantBuffHit(ally, enemy, combat);
     assertThat(bonus2).isEqualTo(0);
     assertThat(buff.getAttackCounter()).isEqualTo(2);
 
     // Attack 3: proc! Bonus = addedDamage * 100/100 = addedDamage
-    int bonus3 = AbilitySystem.processGiantBuffHit(ally, enemy, combat);
+    int bonus3 = BuffAllyHandler.processGiantBuffHit(ally, enemy, combat);
     assertThat(bonus3).isEqualTo(BASE_ADDED_DAMAGE);
     assertThat(buff.getAttackCounter()).isEqualTo(0);
   }
@@ -261,15 +262,17 @@ class GiantBufferTest {
 
     // Attacks 1-3: proc on 3
     for (int i = 0; i < 2; i++) {
-      assertThat(AbilitySystem.processGiantBuffHit(ally, enemy, combat)).isEqualTo(0);
+      assertThat(BuffAllyHandler.processGiantBuffHit(ally, enemy, combat)).isEqualTo(0);
     }
-    assertThat(AbilitySystem.processGiantBuffHit(ally, enemy, combat)).isEqualTo(BASE_ADDED_DAMAGE);
+    assertThat(BuffAllyHandler.processGiantBuffHit(ally, enemy, combat))
+        .isEqualTo(BASE_ADDED_DAMAGE);
 
     // Attacks 4-6: proc on 6
     for (int i = 0; i < 2; i++) {
-      assertThat(AbilitySystem.processGiantBuffHit(ally, enemy, combat)).isEqualTo(0);
+      assertThat(BuffAllyHandler.processGiantBuffHit(ally, enemy, combat)).isEqualTo(0);
     }
-    assertThat(AbilitySystem.processGiantBuffHit(ally, enemy, combat)).isEqualTo(BASE_ADDED_DAMAGE);
+    assertThat(BuffAllyHandler.processGiantBuffHit(ally, enemy, combat))
+        .isEqualTo(BASE_ADDED_DAMAGE);
   }
 
   // -- Singleton refresh --
@@ -380,9 +383,9 @@ class GiantBufferTest {
     GiantBuffState buff = createActiveBuff(ally);
 
     // Skip to proc (3 attacks)
-    AbilitySystem.processGiantBuffHit(ally, tower, combat);
-    AbilitySystem.processGiantBuffHit(ally, tower, combat);
-    int bonus = AbilitySystem.processGiantBuffHit(ally, tower, combat);
+    BuffAllyHandler.processGiantBuffHit(ally, tower, combat);
+    BuffAllyHandler.processGiantBuffHit(ally, tower, combat);
+    int bonus = BuffAllyHandler.processGiantBuffHit(ally, tower, combat);
 
     // Tower should use addedCrownTowerDamage
     assertThat(bonus).isEqualTo(BASE_ADDED_CT_DAMAGE);
@@ -417,9 +420,9 @@ class GiantBufferTest {
     Combat combat = ewiz.getCombat();
 
     // Skip to proc
-    AbilitySystem.processGiantBuffHit(ewiz, enemy, combat);
-    AbilitySystem.processGiantBuffHit(ewiz, enemy, combat);
-    int bonus = AbilitySystem.processGiantBuffHit(ewiz, enemy, combat);
+    BuffAllyHandler.processGiantBuffHit(ewiz, enemy, combat);
+    BuffAllyHandler.processGiantBuffHit(ewiz, enemy, combat);
+    int bonus = BuffAllyHandler.processGiantBuffHit(ewiz, enemy, combat);
 
     // 86 * 500 / 100 = 430
     assertThat(bonus).isEqualTo(BASE_ADDED_DAMAGE * 500 / 100);
@@ -454,9 +457,9 @@ class GiantBufferTest {
     Combat combat = ramRider.getCombat();
 
     // Skip to proc
-    AbilitySystem.processGiantBuffHit(ramRider, enemy, combat);
-    AbilitySystem.processGiantBuffHit(ramRider, enemy, combat);
-    int bonus = AbilitySystem.processGiantBuffHit(ramRider, enemy, combat);
+    BuffAllyHandler.processGiantBuffHit(ramRider, enemy, combat);
+    BuffAllyHandler.processGiantBuffHit(ramRider, enemy, combat);
+    int bonus = BuffAllyHandler.processGiantBuffHit(ramRider, enemy, combat);
 
     // Multiplier 0 = 86 * 0 / 100 = 0
     assertThat(bonus).isEqualTo(0);
@@ -475,17 +478,17 @@ class GiantBufferTest {
     GiantBuffState buff = createActiveBuff(ally);
 
     // Attack 1: primary target (counter 0 -> 1)
-    int bonus1 = AbilitySystem.processGiantBuffHit(ally, enemy1, combat);
+    int bonus1 = BuffAllyHandler.processGiantBuffHit(ally, enemy1, combat);
     assertThat(bonus1).isEqualTo(0);
     assertThat(buff.getAttackCounter()).isEqualTo(1);
 
     // Attack 1: additional target (counter 1 -> 2)
-    int bonus2 = AbilitySystem.processGiantBuffHit(ally, enemy2, combat);
+    int bonus2 = BuffAllyHandler.processGiantBuffHit(ally, enemy2, combat);
     assertThat(bonus2).isEqualTo(0);
     assertThat(buff.getAttackCounter()).isEqualTo(2);
 
     // Attack 2: primary target (counter 2 -> 3 = proc!)
-    int bonus3 = AbilitySystem.processGiantBuffHit(ally, enemy1, combat);
+    int bonus3 = BuffAllyHandler.processGiantBuffHit(ally, enemy1, combat);
     assertThat(bonus3).isEqualTo(BASE_ADDED_DAMAGE);
     assertThat(buff.getAttackCounter()).isEqualTo(0);
   }
@@ -519,9 +522,9 @@ class GiantBufferTest {
     Troop enemy = createDummyTarget(Team.RED, 5, 6);
 
     // Skip to proc
-    AbilitySystem.processGiantBuffHit(ally, enemy, combat);
-    AbilitySystem.processGiantBuffHit(ally, enemy, combat);
-    int bonus = AbilitySystem.processGiantBuffHit(ally, enemy, combat);
+    BuffAllyHandler.processGiantBuffHit(ally, enemy, combat);
+    BuffAllyHandler.processGiantBuffHit(ally, enemy, combat);
+    int bonus = BuffAllyHandler.processGiantBuffHit(ally, enemy, combat);
 
     assertThat(bonus).isEqualTo(expected);
     // Verify level 11 Epic scaling is greater than base

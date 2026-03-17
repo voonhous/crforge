@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
-import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.HookAbility;
+import org.crforge.core.ability.handler.ChargeHandler;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
@@ -308,7 +308,7 @@ class SimHarnessAbilityTest {
     sim.tick();
 
     // Consume charge via static helper (simulates CombatSystem consuming after attack)
-    AbilitySystem.consumeCharge(prince);
+    ChargeHandler.consumeCharge(prince);
 
     // Tick to let StatusEffectSystem recalculate
     sim.tick();

@@ -3,6 +3,7 @@ package org.crforge.core.ability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.ability.handler.VariableDamageHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.EffectStats;
@@ -98,7 +99,7 @@ class InfernoTowerTest {
 
     // Apply stun via the static resetVariableDamage (same code path as
     // AoeDamageService.applyEffects)
-    AbilitySystem.resetVariableDamage(tower.getAbility(), tower.getCombat());
+    VariableDamageHandler.resetVariableDamage(tower.getAbility(), tower.getCombat());
 
     // Should reset to stage 0
     assertThat(tower.getAbility().getCurrentStage()).isEqualTo(0);

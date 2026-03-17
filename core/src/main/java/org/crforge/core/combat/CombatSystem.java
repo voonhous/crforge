@@ -2,8 +2,10 @@ package org.crforge.core.combat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.ReflectAbility;
+import org.crforge.core.ability.handler.BuffAllyHandler;
+import org.crforge.core.ability.handler.ChargeHandler;
+import org.crforge.core.ability.handler.ReflectHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
@@ -171,13 +173,13 @@ public class CombatSystem {
 
     // Charge ability: override damage for this attack if charged
     if (attacker instanceof Troop troop) {
-      baseDamage = AbilitySystem.getChargeDamage(troop.getAbility(), baseDamage);
+      baseDamage = ChargeHandler.getChargeDamage(troop.getAbility(), baseDamage);
     }
 
     // GiantBuffer buff: compute bonus damage for this attack (proc on every Nth attack)
     int giantBuffBonus = 0;
     if (attacker instanceof Troop buffedTroop) {
-      giantBuffBonus = AbilitySystem.processGiantBuffHit(buffedTroop, target, combat);
+      giantBuffBonus = BuffAllyHandler.processGiantBuffHit(buffedTroop, target, combat);
     }
 
     if (combat.isRanged()
@@ -222,7 +224,7 @@ public class CombatSystem {
       // Reflect: if target has REFLECT ability and attacker is within reflect radius, deal
       // counter-damage
       if (target instanceof Troop reflector) {
-        int reflectDmg = AbilitySystem.getReflectDamage(reflector);
+        int reflectDmg = ReflectHandler.getReflectDamage(reflector);
         if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
           float dist = attacker.getPosition().distanceTo(reflector.getPosition());
           float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
@@ -235,7 +237,7 @@ public class CombatSystem {
 
     // Consume charge after attack
     if (attacker instanceof Troop t) {
-      AbilitySystem.consumeCharge(t);
+      ChargeHandler.consumeCharge(t);
     }
 
     combat.finishAttack();
@@ -313,7 +315,7 @@ public class CombatSystem {
       // GiantBuffer buff: each additional target increments the attack counter independently
       int extraBuffBonus = 0;
       if (attacker instanceof Troop buffedTroop) {
-        extraBuffBonus = AbilitySystem.processGiantBuffHit(buffedTroop, extraTarget, combat);
+        extraBuffBonus = BuffAllyHandler.processGiantBuffHit(buffedTroop, extraTarget, combat);
       }
 
       if (combat.isRanged()) {
@@ -338,7 +340,7 @@ public class CombatSystem {
       // GiantBuffer buff: fallback shots also increment the counter
       int fallbackBuffBonus = 0;
       if (attacker instanceof Troop buffedTroop) {
-        fallbackBuffBonus = AbilitySystem.processGiantBuffHit(buffedTroop, primaryTarget, combat);
+        fallbackBuffBonus = BuffAllyHandler.processGiantBuffHit(buffedTroop, primaryTarget, combat);
       }
 
       if (combat.isRanged()) {
