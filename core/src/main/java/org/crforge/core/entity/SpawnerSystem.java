@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
@@ -371,9 +372,12 @@ public class SpawnerSystem {
     int resolvedCtdp = stats.getCrownTowerDamagePercent();
     int buildingDmgPct = 0;
 
-    // Resolve values from BuffDefinition if the area effect has a buff
-    BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
-    if (buffDef != null) {
+    // Resolve values from BuffDefinitions in the buff applications
+    for (BuffApplication ba : stats.getBuffApplications()) {
+      BuffDefinition buffDef = BuffRegistry.get(ba.buffName());
+      if (buffDef == null) {
+        continue;
+      }
       if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
         float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
         int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
@@ -382,7 +386,7 @@ public class SpawnerSystem {
       if (resolvedCtdp == 0 && buffDef.getCrownTowerDamagePercent() != 0) {
         resolvedCtdp = buffDef.getCrownTowerDamagePercent();
       }
-      if (buffDef.getBuildingDamagePercent() != 0) {
+      if (buildingDmgPct == 0 && buffDef.getBuildingDamagePercent() != 0) {
         buildingDmgPct = buffDef.getBuildingDamagePercent();
       }
     }

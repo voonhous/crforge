@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.ScaledDamageTier;
 import org.crforge.core.card.SpawnSequenceEntry;
@@ -154,17 +155,14 @@ public class AreaEffectSystem {
       return;
     }
     AreaEffectStats stats = effect.getStats();
-    if (!stats.isControlsBuff() || stats.getBuff() == null) {
+    if (!stats.isControlsBuff() || stats.getBuffApplications().isEmpty()) {
       return;
     }
-    String buffName = stats.getBuff();
-    for (Entity entity : gameState.getAliveEntities()) {
-      entity
-          .getAppliedEffects()
-          .removeIf(
-              appliedEffect ->
-                  appliedEffect.getBuffName() != null
-                      && appliedEffect.getBuffName().equals(buffName));
+    for (BuffApplication buffApp : stats.getBuffApplications()) {
+      String buffName = buffApp.buffName();
+      for (Entity entity : gameState.getAliveEntities()) {
+        entity.getAppliedEffects().removeIf(e -> buffName.equals(e.getBuffName()));
+      }
     }
     effect.setBuffsCleaned(true);
   }
@@ -1020,35 +1018,45 @@ public class AreaEffectSystem {
 
   private void applyBuff(AreaEffect effect, Entity target) {
     AreaEffectStats stats = effect.getStats();
-    if (stats.getBuff() == null) {
-      return;
-    }
-    StatusEffectType effectType = StatusEffectType.fromBuffName(stats.getBuff());
-    if (effectType == null) {
-      return;
-    }
 
-    // Buildings cannot be Cursed (GoblinCurse, VoodooCurse convention)
-    if (effectType == StatusEffectType.CURSE && target.getMovementType() == MovementType.BUILDING) {
-      return;
-    }
+    boolean appliedStunOrFreeze = false;
+    boolean appliedFreeze = false;
 
-    // Pass buff name for data-driven multiplier resolution in StatusEffectSystem
-    float duration = stats.getBuffDuration() > 0 ? stats.getBuffDuration() : 1.0f;
-    if (stats.isCapBuffTimeToAreaEffectTime()) {
-      duration = Math.min(duration, effect.getRemainingLifetime());
-    }
+    for (BuffApplication buffApp : stats.getBuffApplications()) {
+      StatusEffectType effectType = StatusEffectType.fromBuffName(buffApp.buffName());
+      if (effectType == null) {
+        continue;
+      }
 
-    // Pass spawnSpecies for CURSE buffs so death-spawn triggers correctly
-    if (effectType == StatusEffectType.CURSE && stats.getCurseSpawnStats() != null) {
-      target.addEffect(
-          new AppliedEffect(effectType, duration, stats.getBuff(), stats.getCurseSpawnStats()));
-    } else {
-      target.addEffect(new AppliedEffect(effectType, duration, stats.getBuff()));
+      // Buildings cannot be Cursed (GoblinCurse, VoodooCurse convention)
+      if (effectType == StatusEffectType.CURSE
+          && target.getMovementType() == MovementType.BUILDING) {
+        continue;
+      }
+
+      float duration = buffApp.duration() > 0 ? buffApp.duration() : 1.0f;
+      if (stats.isCapBuffTimeToAreaEffectTime()) {
+        duration = Math.min(duration, effect.getRemainingLifetime());
+      }
+
+      // Pass spawnSpecies for CURSE buffs so death-spawn triggers correctly
+      if (effectType == StatusEffectType.CURSE && buffApp.curseSpawnStats() != null) {
+        target.addEffect(
+            new AppliedEffect(effectType, duration, buffApp.buffName(), buffApp.curseSpawnStats()));
+      } else {
+        target.addEffect(new AppliedEffect(effectType, duration, buffApp.buffName()));
+      }
+
+      if (effectType == StatusEffectType.STUN || effectType == StatusEffectType.FREEZE) {
+        appliedStunOrFreeze = true;
+      }
+      if (effectType == StatusEffectType.FREEZE) {
+        appliedFreeze = true;
+      }
     }
 
     // Handle Stun/Freeze Reset Logic (Reset attack windup and charge ability)
-    if (effectType == StatusEffectType.STUN || effectType == StatusEffectType.FREEZE) {
+    if (appliedStunOrFreeze) {
       Combat combat = target.getCombat();
       if (combat != null) {
         combat.resetAttackState();
@@ -1064,7 +1072,7 @@ public class AreaEffectSystem {
     }
 
     // Freeze forces hidden buildings (Tesla) to reveal
-    if (effectType == StatusEffectType.FREEZE && target instanceof Building building) {
+    if (appliedFreeze && target instanceof Building building) {
       AbilitySystem.forceRevealHiding(building);
     }
   }

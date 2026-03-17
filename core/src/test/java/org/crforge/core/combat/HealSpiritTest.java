@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -208,8 +209,7 @@ class HealSpiritTest {
             .lifeDuration(1.0f)
             .hitsGround(true)
             .hitsAir(true)
-            .buff("HealSpiritBuff")
-            .buffDuration(1.0f)
+            .buffApplication(BuffApplication.of("HealSpiritBuff", 1.0f))
             .build();
 
     ProjectileStats projStats =

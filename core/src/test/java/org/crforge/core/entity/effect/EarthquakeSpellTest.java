@@ -6,6 +6,7 @@ import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -77,8 +78,7 @@ class EarthquakeSpellTest {
         .hitsGround(true)
         .hitsAir(false)
         .hitSpeed(0.1f)
-        .buff("Earthquake")
-        .buffDuration(1.0f)
+        .buffApplication(BuffApplication.of("Earthquake", 1.0f))
         .capBuffTimeToAreaEffectTime(true)
         .onlyEnemies(true)
         .build();

@@ -87,6 +87,12 @@ public class AreaEffectConfigDTO {
   /** Damage tier definitions for the laser ball mechanic (DarkMagic). Null if not applicable. */
   private List<DamageTierConfigDTO> damageTiers;
 
+  /** Nested sub-area-effect (e.g. GoblinCurse wraps targeting/buff config in a subAreaEffect). */
+  private AreaEffectConfigDTO subAreaEffect;
+
+  /** Multiple buff applications per tick (e.g. GoblinCurse applies CURSE + DPS buffs). */
+  private List<BuffApplicationDTO> buffs;
+
   /** Knockback strength applied to enemies on hit (e.g. GoblinDrillDamage pushback: 1.0). */
   private float pushback;
 

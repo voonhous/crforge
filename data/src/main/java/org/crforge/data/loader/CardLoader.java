@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.CardVariant;
@@ -26,6 +27,7 @@ import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.data.loader.dto.AreaEffectConfigDTO;
+import org.crforge.data.loader.dto.BuffApplicationDTO;
 import org.crforge.data.loader.dto.CardConfigDTO;
 import org.crforge.data.loader.dto.SpawnConfigDTO;
 import org.crforge.data.loader.dto.SpawnTimingConfigDTO;
@@ -241,6 +243,27 @@ public class CardLoader {
     if (dto == null) {
       return null;
     }
+
+    // Flatten subAreaEffect if present (e.g. GoblinCurse wraps targeting + buffs in a sub-AEO)
+    if (dto.getSubAreaEffect() != null) {
+      AreaEffectConfigDTO sub = dto.getSubAreaEffect();
+      dto.setHitsGround(sub.isHitsGround());
+      dto.setHitsAir(sub.isHitsAir());
+      dto.setOnlyEnemies(sub.isOnlyEnemies());
+      dto.setDamage(0); // Wrapper damage is display-only
+
+      // Derive hitSpeed from damage buff's hitFrequency
+      if (sub.getBuffs() != null) {
+        for (BuffApplicationDTO ba : sub.getBuffs()) {
+          BuffDefinition bd = BuffRegistry.get(ba.getBuff());
+          if (bd != null && bd.getDamagePerSecond() > 0) {
+            dto.setHitSpeed(bd.getHitFrequency());
+            break;
+          }
+        }
+      }
+    }
+
     AreaEffectStats.AreaEffectStatsBuilder builder =
         AreaEffectStats.builder()
             .name(dto.getName())
@@ -250,8 +273,6 @@ public class CardLoader {
             .hitsAir(dto.isHitsAir())
             .damage(dto.getDamage())
             .hitSpeed(dto.getHitSpeed())
-            .buff(dto.getBuff())
-            .buffDuration(dto.getBuffDuration())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
             .pushback(dto.getPushback())
             .hitBiggestTargets(dto.isHitBiggestTargets())
@@ -270,6 +291,25 @@ public class CardLoader {
             .airToGroundDuration(dto.getAirToGroundDuration())
             .firstHitDelay(dto.getFirstHitDelay())
             .scanInterval(dto.getHitFrequency());
+
+    // Build buff applications list
+    List<BuffApplication> buffApps = new ArrayList<>();
+
+    if (dto.getSubAreaEffect() != null && dto.getSubAreaEffect().getBuffs() != null) {
+      // Multi-buff from subAreaEffect (GoblinCurse pattern)
+      float hitSpeed = dto.getHitSpeed() > 0 ? dto.getHitSpeed() : 1.0f;
+      for (BuffApplicationDTO ba : dto.getSubAreaEffect().getBuffs()) {
+        float duration = hitSpeed * 1.5f;
+        TroopStats curseSpawn = resolveCurseSpawn(ba.getBuff(), unitMap);
+        buffApps.add(new BuffApplication(ba.getBuff(), duration, curseSpawn));
+      }
+    } else if (dto.getBuff() != null) {
+      // Single buff (existing cards)
+      TroopStats curseSpawn = resolveCurseSpawn(dto.getBuff(), unitMap);
+      buffApps.add(new BuffApplication(dto.getBuff(), dto.getBuffDuration(), curseSpawn));
+    }
+
+    builder.buffApplications(buffApps);
 
     // Damage tiers for laser ball mechanic (DarkMagic)
     if (dto.getDamageTiers() != null && !dto.getDamageTiers().isEmpty()) {
@@ -322,20 +362,19 @@ public class CardLoader {
       }
     }
 
-    // Resolve CURSE death-spawn unit from BuffDefinition
-    if (dto.getBuff() != null) {
-      StatusEffectType buffType = StatusEffectType.fromBuffName(dto.getBuff());
-      if (buffType == StatusEffectType.CURSE) {
-        BuffDefinition buffDef = BuffRegistry.get(dto.getBuff());
-        if (buffDef != null && buffDef.getDeathSpawn() != null && unitMap != null) {
-          TroopStats spawnStats = unitMap.get(buffDef.getDeathSpawn());
-          if (spawnStats != null) {
-            builder.curseSpawnStats(spawnStats);
-          }
-        }
-      }
-    }
-
     return builder.build();
+  }
+
+  /** Resolves CURSE death-spawn TroopStats from a buff name, or null if not a CURSE buff. */
+  private static TroopStats resolveCurseSpawn(String buffName, Map<String, TroopStats> unitMap) {
+    StatusEffectType type = StatusEffectType.fromBuffName(buffName);
+    if (type != StatusEffectType.CURSE) {
+      return null;
+    }
+    BuffDefinition def = BuffRegistry.get(buffName);
+    if (def == null || def.getDeathSpawn() == null || unitMap == null) {
+      return null;
+    }
+    return unitMap.get(def.getDeathSpawn());
   }
 }

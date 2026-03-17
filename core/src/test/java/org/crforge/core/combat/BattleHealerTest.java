@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.Rarity;
@@ -164,8 +165,7 @@ class BattleHealerTest {
             .lifeDuration(1.0f)
             .hitsGround(true)
             .hitsAir(true)
-            .buff("BattleHealerSpawnBuff")
-            .buffDuration(1.0f)
+            .buffApplication(BuffApplication.of("BattleHealerSpawnBuff", 1.0f))
             .build();
 
     AreaEffect effect =
@@ -236,8 +236,7 @@ class BattleHealerTest {
             .lifeDuration(0.05f)
             .hitsGround(true)
             .hitsAir(true)
-            .buff("BattleHealerAll")
-            .buffDuration(1.0f)
+            .buffApplication(BuffApplication.of("BattleHealerAll", 1.0f))
             .build();
 
     TroopStats stats =
@@ -275,8 +274,7 @@ class BattleHealerTest {
             .name("BattleHealerSpawnHeal")
             .radius(2.5f)
             .lifeDuration(1.0f)
-            .buff("BattleHealerSpawnBuff")
-            .buffDuration(1.0f)
+            .buffApplication(BuffApplication.of("BattleHealerSpawnBuff", 1.0f))
             .build();
 
     TroopStats unitStats =
@@ -316,8 +314,7 @@ class BattleHealerTest {
             .lifeDuration(0.05f)
             .hitsGround(true)
             .hitsAir(true)
-            .buff("BattleHealerAll")
-            .buffDuration(1.0f)
+            .buffApplication(BuffApplication.of("BattleHealerAll", 1.0f))
             .build();
 
     Combat combat =

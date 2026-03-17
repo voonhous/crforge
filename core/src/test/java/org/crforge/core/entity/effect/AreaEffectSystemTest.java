@@ -3,6 +3,7 @@ package org.crforge.core.entity.effect;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -111,8 +112,7 @@ class AreaEffectSystemTest {
             .hitsGround(true)
             .hitsAir(true)
             .damage(75)
-            .buff("ZapFreeze")
-            .buffDuration(0.5f)
+            .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
             .onlyEnemies(true)
             .build();
 
@@ -327,8 +327,7 @@ class AreaEffectSystemTest {
             .hitsGround(true)
             .hitsAir(true)
             .damage(75)
-            .buff("ZapFreeze")
-            .buffDuration(0.5f)
+            .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
             .onlyEnemies(true)
             .build();
 
@@ -382,8 +381,7 @@ class AreaEffectSystemTest {
             .hitsGround(true)
             .hitsAir(true)
             .damage(58)
-            .buff("Freeze")
-            .buffDuration(4.0f)
+            .buffApplication(BuffApplication.of("Freeze", 4.0f))
             .crownTowerDamagePercent(-70)
             .onlyEnemies(true)
             .build();
@@ -434,8 +432,7 @@ class AreaEffectSystemTest {
         .hitBiggestTargets(true)
         .hitSpeed(0.46f)
         .damage(413)
-        .buff("ZapFreeze")
-        .buffDuration(0.5f)
+        .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
         .crownTowerDamagePercent(-73)
         .onlyEnemies(true)
         .build();

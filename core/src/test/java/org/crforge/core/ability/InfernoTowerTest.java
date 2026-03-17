@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -239,8 +240,7 @@ class InfernoTowerTest {
             .name("Freeze")
             .radius(3.0f)
             .lifeDuration(0.1f)
-            .buff("Freeze")
-            .buffDuration(4.0f)
+            .buffApplication(BuffApplication.of("Freeze", 4.0f))
             .damage(0)
             .onlyEnemies(true)
             .build();

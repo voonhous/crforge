@@ -10,6 +10,7 @@ import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.ability.VariableDamageStage;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -75,8 +76,7 @@ class TornadoTest {
         .hitsGround(true)
         .hitsAir(true)
         .hitSpeed(0.05f)
-        .buff("Tornado")
-        .buffDuration(0.5f)
+        .buffApplication(BuffApplication.of("Tornado", 0.5f))
         .controlsBuff(true)
         .onlyEnemies(true)
         .build();
@@ -304,8 +304,7 @@ class TornadoTest {
             .hitsAir(true)
             .hitSpeed(0.05f)
             .damage(3) // Low per-tick damage (DPS 60 * hitSpeed 0.05 = 3 per tick)
-            .buff("Tornado")
-            .buffDuration(0.5f)
+            .buffApplication(BuffApplication.of("Tornado", 0.5f))
             .controlsBuff(true)
             .onlyEnemies(true)
             .build();
@@ -346,8 +345,7 @@ class TornadoTest {
             .hitsAir(true)
             .hitSpeed(0.05f)
             .damage(100) // Use round number for easy verification
-            .buff("Tornado")
-            .buffDuration(0.5f)
+            .buffApplication(BuffApplication.of("Tornado", 0.5f))
             .crownTowerDamagePercent(-70)
             .controlsBuff(true)
             .onlyEnemies(true)

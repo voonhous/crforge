@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
@@ -414,8 +415,7 @@ class AbilitySystemTest {
             .name("Zap")
             .radius(2.5f)
             .lifeDuration(0.1f)
-            .buff("ZapFreeze")
-            .buffDuration(0.5f)
+            .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
             .damage(75)
             .onlyEnemies(true)
             .build();
@@ -463,8 +463,7 @@ class AbilitySystemTest {
             .name("Zap")
             .radius(2.5f)
             .lifeDuration(0.1f)
-            .buff("ZapFreeze")
-            .buffDuration(0.5f)
+            .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
             .damage(75)
             .onlyEnemies(true)
             .build();
@@ -659,8 +658,7 @@ class AbilitySystemTest {
             .name("Freeze")
             .radius(3.0f)
             .lifeDuration(0.1f)
-            .buff("Freeze")
-            .buffDuration(4.0f)
+            .buffApplication(BuffApplication.of("Freeze", 4.0f))
             .damage(0)
             .onlyEnemies(true)
             .build();

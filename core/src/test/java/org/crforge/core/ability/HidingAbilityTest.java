@@ -3,6 +3,7 @@ package org.crforge.core.ability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
@@ -289,8 +290,7 @@ class HidingAbilityTest {
                     .name("Earthquake")
                     .radius(3.5f)
                     .damage(50)
-                    .buff("Earthquake")
-                    .buffDuration(1.0f)
+                    .buffApplication(BuffApplication.of("Earthquake", 1.0f))
                     .hitSpeed(0.0f) // One-shot
                     .hitsGround(true)
                     .onlyEnemies(true)
@@ -343,8 +343,7 @@ class HidingAbilityTest {
                     .name("Freeze")
                     .radius(3.0f)
                     .damage(0)
-                    .buff("Freeze")
-                    .buffDuration(4.0f)
+                    .buffApplication(BuffApplication.of("Freeze", 4.0f))
                     .hitSpeed(0.0f) // One-shot
                     .hitsGround(true)
                     .onlyEnemies(true)
@@ -395,8 +394,7 @@ class HidingAbilityTest {
                     .name("Zap")
                     .radius(2.5f)
                     .damage(75)
-                    .buff("ZapFreeze")
-                    .buffDuration(0.5f)
+                    .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
                     .hitSpeed(0.0f)
                     .hitsGround(true)
                     .onlyEnemies(true)
@@ -448,8 +446,7 @@ class HidingAbilityTest {
                     .name("Freeze")
                     .radius(3.0f)
                     .damage(0)
-                    .buff("Freeze")
-                    .buffDuration(1.0f)
+                    .buffApplication(BuffApplication.of("Freeze", 1.0f))
                     .hitSpeed(0.0f)
                     .hitsGround(true)
                     .onlyEnemies(true)

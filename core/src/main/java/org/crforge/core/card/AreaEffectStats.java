@@ -3,6 +3,7 @@ package org.crforge.core.card;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Singular;
 import lombok.With;
 
 /**
@@ -27,11 +28,12 @@ public class AreaEffectStats {
   /** Interval in seconds between damage/buff ticks. Zero for one-shot effects. */
   @Builder.Default private final float hitSpeed = 0f;
 
-  /** Buff name from the parsed data (e.g. "ZapFreeze", "Poison"). Null if no buff. */
-  private final String buff;
-
-  /** Duration of the buff in seconds. */
-  @Builder.Default private final float buffDuration = 0f;
+  /**
+   * Buff applications for this area effect. Most effects have a single entry; multi-buff effects
+   * (e.g. GoblinCurse) have multiple.
+   */
+  @Singular("buffApplication")
+  private final List<BuffApplication> buffApplications;
 
   /** Damage modifier for crown towers (e.g. -70 means 30% damage). Zero if none. */
   @Builder.Default private final int crownTowerDamagePercent = 0;
@@ -72,9 +74,6 @@ public class AreaEffectStats {
   /** Resolved TroopStats for the character to spawn. Null if no spawn. */
   @With private final TroopStats spawnCharacter;
 
-  /** Resolved TroopStats for death-spawn when this AEO applies a CURSE buff. Null if no curse. */
-  @With private final TroopStats curseSpawnStats;
-
   /** Number of characters to spawn. */
   @Builder.Default private final int spawnCount = 1;
 
@@ -110,6 +109,25 @@ public class AreaEffectStats {
 
   /** Base damage tier definitions for the laser ball mechanic (DarkMagic). */
   @Builder.Default private final List<DamageTier> damageTiers = List.of();
+
+  /** First buff name, or null. Most area effects have a single buff. */
+  public String getBuff() {
+    return buffApplications.isEmpty() ? null : buffApplications.get(0).buffName();
+  }
+
+  /** First buff duration, or 0. */
+  public float getBuffDuration() {
+    return buffApplications.isEmpty() ? 0f : buffApplications.get(0).duration();
+  }
+
+  /** Curse spawn stats from the first CURSE-type buff, or null. */
+  public TroopStats getCurseSpawnStats() {
+    return buffApplications.stream()
+        .filter(b -> b.curseSpawnStats() != null)
+        .map(BuffApplication::curseSpawnStats)
+        .findFirst()
+        .orElse(null);
+  }
 
   /**
    * Returns true if this is a dummy area effect that has no gameplay impact. Some units (e.g.

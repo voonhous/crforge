@@ -8,6 +8,7 @@ import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.AttackSequenceHit;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
@@ -184,44 +185,61 @@ class EntityFactory {
     int resolvedCtdp = stats.getCrownTowerDamagePercent();
     int buildingDmgPct = 0;
 
-    // Resolve values from BuffDefinition if the area effect has a buff
-    BuffDefinition buffDef = BuffRegistry.get(stats.getBuff());
-    if (buffDef != null) {
-      // If area effect has no damage but buff defines DPS, compute base damage per tick
+    // Resolve values from BuffDefinitions in the buff applications
+    for (BuffApplication buffApp : stats.getBuffApplications()) {
+      BuffDefinition buffDef = BuffRegistry.get(buffApp.buffName());
+      if (buffDef == null) {
+        continue;
+      }
+
+      // DPS derivation from any buff with damagePerSecond
       if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
         float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
         int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
         scaledDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
       }
 
-      // Resolve crown tower damage percent from buff if not set on stats
+      // Crown tower damage percent
       if (resolvedCtdp == 0 && buffDef.getCrownTowerDamagePercent() != 0) {
         resolvedCtdp = buffDef.getCrownTowerDamagePercent();
       }
 
-      // Resolve building damage percent from buff (e.g. Earthquake)
-      if (buffDef.getBuildingDamagePercent() != 0) {
+      // Building damage percent
+      if (buildingDmgPct == 0 && buffDef.getBuildingDamagePercent() != 0) {
         buildingDmgPct = buffDef.getBuildingDamagePercent();
       }
     }
 
-    // Resolve DOT scaling for targeted effects (Vines)
+    // DOT scaling for targeted effects (Vines)
     int scaledDotDamage = 0;
     int scaledCrownTowerDotDamage = 0;
-    if (stats.getTargetCount() > 0 && buffDef != null) {
-      float hitFrequency = buffDef.getHitFrequency() > 0 ? buffDef.getHitFrequency() : 1.0f;
-      int baseDotDamage = Math.round(buffDef.getDamagePerSecond() * hitFrequency);
-      scaledDotDamage = LevelScaling.scaleCard(baseDotDamage, rarity, level);
-      if (buffDef.getCrownTowerDamagePerHit() > 0) {
-        scaledCrownTowerDotDamage =
-            LevelScaling.scaleCard(buffDef.getCrownTowerDamagePerHit(), rarity, level);
+    if (stats.getTargetCount() > 0) {
+      for (BuffApplication buffApp : stats.getBuffApplications()) {
+        BuffDefinition bd = BuffRegistry.get(buffApp.buffName());
+        if (bd != null && bd.getDamagePerSecond() > 0) {
+          float hitFrequency = bd.getHitFrequency() > 0 ? bd.getHitFrequency() : 1.0f;
+          scaledDotDamage =
+              LevelScaling.scaleCard(
+                  Math.round(bd.getDamagePerSecond() * hitFrequency), rarity, level);
+          if (bd.getCrownTowerDamagePerHit() > 0) {
+            scaledCrownTowerDotDamage =
+                LevelScaling.scaleCard(bd.getCrownTowerDamagePerHit(), rarity, level);
+          }
+          break;
+        }
       }
     }
 
-    // Absolute CT damage for general ticking AEOs (GoblinCurse)
-    if (stats.getTargetCount() == 0 && buffDef != null && buffDef.getCrownTowerDamagePerHit() > 0) {
-      scaledCrownTowerDotDamage =
-          LevelScaling.scaleCard(buffDef.getCrownTowerDamagePerHit(), rarity, level);
+    // Absolute CT damage for general ticking AEOs
+    if (stats.getTargetCount() == 0 && scaledCrownTowerDotDamage == 0) {
+      for (BuffApplication buffApp : stats.getBuffApplications()) {
+        BuffDefinition bd = BuffRegistry.get(buffApp.buffName());
+        if (bd != null && bd.getCrownTowerDamagePerHit() > 0) {
+          scaledCrownTowerDotDamage =
+              LevelScaling.scaleCard(bd.getCrownTowerDamagePerHit(), rarity, level);
+          break;
+        }
+      }
     }
 
     // Scale laser ball damage tiers (DarkMagic)

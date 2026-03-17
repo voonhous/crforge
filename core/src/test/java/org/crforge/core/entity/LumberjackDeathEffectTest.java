@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
@@ -77,8 +78,7 @@ class LumberjackDeathEffectTest {
             .hitsGround(true)
             .hitsAir(true)
             .hitSpeed(0.3f)
-            .buff("Rage")
-            .buffDuration(1.0f)
+            .buffApplication(BuffApplication.of("Rage", 1.0f))
             .build();
   }
 
