@@ -92,8 +92,8 @@ the live game name.
 | 80 | Mighty Miner      | mightyminer      | `PARTIAL` | needs ability cycling                         |
 | 81 | Monk              | monk             | `PARTIAL` | needs ability cycling                         |
 | 82 | Little Prince     | littleprince     | `PARTIAL` | needs ability cycling                         |
-| 83 | Goblinstein       | --               | `MISSING` | needs ability cycling                         |
-| 84 | Boss Bandit       | --               | `MISSING` | needs ability cycling                         |
+| 83 | Goblinstein       | goblinstein      | `MISSING` | needs ability cycling                         |
+| 84 | Boss Bandit       | BossBandit       | `MISSING` | needs ability cycling                         |
 
 ## Spells
 
