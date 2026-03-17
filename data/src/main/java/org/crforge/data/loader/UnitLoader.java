@@ -22,6 +22,7 @@ import org.crforge.core.ability.DamageMultiplierEntry;
 import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.ability.HookAbility;
+import org.crforge.core.ability.RangedAttackAbility;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.StealthAbility;
 import org.crforge.core.ability.TunnelAbility;
@@ -35,6 +36,7 @@ import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.effect.StatusEffectType;
+import org.crforge.core.entity.base.TargetType;
 import org.crforge.data.loader.dto.AbilityConfigDTO;
 import org.crforge.data.loader.dto.BuffOnDamageConfigDTO;
 import org.crforge.data.loader.dto.DeathDamageConfigDTO;
@@ -328,7 +330,7 @@ public class UnitLoader {
     if (dto.getAbilities() != null && !dto.getAbilities().isEmpty()) {
       // Use the first ability (cards have at most one primary ability)
       AbilityConfigDTO abilityDto = dto.getAbilities().get(0);
-      AbilityData ability = convertAbility(abilityDto);
+      AbilityData ability = convertAbility(abilityDto, projectileMap);
       if (ability != null) {
         builder.ability(ability);
       }
@@ -390,7 +392,8 @@ public class UnitLoader {
     return builder.build();
   }
 
-  static AbilityData convertAbility(AbilityConfigDTO dto) {
+  static AbilityData convertAbility(
+      AbilityConfigDTO dto, Map<String, ProjectileStats> projectileMap) {
     AbilityType type;
     try {
       type = AbilityType.valueOf(dto.getType());
@@ -465,6 +468,22 @@ public class UnitLoader {
             dto.getMaxRange(),
             dto.getPersistAfterDeath(),
             multipliers);
+      }
+      case RANGED_ATTACK -> {
+        ProjectileStats projStats =
+            (dto.getProjectile() != null && projectileMap != null)
+                ? projectileMap.get(dto.getProjectile())
+                : null;
+        TargetType targetType =
+            dto.getTargetType() != null ? TargetType.valueOf(dto.getTargetType()) : TargetType.ALL;
+        yield new RangedAttackAbility(
+            projStats,
+            dto.getRange(),
+            dto.getMinimumRange(),
+            dto.getLoadTime(),
+            dto.getAttackDelay(),
+            dto.getAttackCooldown(),
+            targetType);
       }
     };
   }

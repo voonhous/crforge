@@ -3,6 +3,7 @@ package org.crforge.core.engine;
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.BuffAllyAbility;
+import org.crforge.core.ability.RangedAttackAbility;
 import org.crforge.core.ability.TunnelAbility;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
@@ -477,6 +478,12 @@ class EntityFactory {
           LevelScaling.scaleCard(buffAlly.addedDamage(), rarity, level));
       abilityComponent.setScaledAddedCrownTowerDamage(
           LevelScaling.scaleCard(buffAlly.addedCrownTowerDamage(), rarity, level));
+    }
+
+    // Scale RANGED_ATTACK projectile damage by card level
+    if (abilityComponent != null && abilityComponent.getData() instanceof RangedAttackAbility ra) {
+      int baseDmg = ra.projectile() != null ? ra.projectile().getDamage() : 0;
+      abilityComponent.setScaledRangedDamage(LevelScaling.scaleCard(baseDmg, rarity, level));
     }
 
     Movement movement =

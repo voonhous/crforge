@@ -9,5 +9,6 @@ public enum AbilityType {
   TUNNEL,
   STEALTH,
   HIDING,
-  BUFF_ALLY
+  BUFF_ALLY,
+  RANGED_ATTACK
 }

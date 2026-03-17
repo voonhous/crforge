@@ -14,6 +14,7 @@ public sealed interface AbilityData
         TunnelAbility,
         StealthAbility,
         HidingAbility,
-        BuffAllyAbility {
+        BuffAllyAbility,
+        RangedAttackAbility {
   AbilityType type();
 }

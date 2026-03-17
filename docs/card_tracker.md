@@ -84,7 +84,7 @@ the live game name.
 | 72 | Berserker         | berserker        | `DONE`    | 3-hit attack sequence combo                   |
 | 73 | Goblin Demolisher | goblindemolisher | `DONE`    | HP-threshold transformation + kamikaze form   |
 | 74 | Rune Giant        | giantbuffer      | `DONE`    | BUFF_ALLY ability: buffs 2 closest friendlies |
-| 75 | Goblin Machine    | goblinmachine    | `MISSING` | newer card                                    |
+| 75 | Goblin Machine    | goblinmachine    | `DONE`    | dual-attack: melee + RANGED_ATTACK rocket     |
 | 76 | Spirit Empress    | mergemaiden      | `DONE`    | variant selection (dual-form AIR/GROUND)      |
 | 77 | Skeleton King     | skeletonking     | `PARTIAL` | needs ability cycling                         |
 | 78 | Archer Queen      | archerqueen      | `PARTIAL` | needs ability cycling                         |
@@ -180,9 +180,9 @@ Crown Towers. This system is not yet implemented in crforge.
 
 | Status     | Count   | Description                                 |
 |------------|---------|---------------------------------------------|
-| `DONE`     | 112     | Fully functional in simulation              |
+| `DONE`     | 113     | Fully functional in simulation              |
 | `PARTIAL`  | 7       | In cards.json but missing complex mechanics |
-| `MISSING`  | 12      | Not yet implemented or newer cards          |
+| `MISSING`  | 11      | Not yet implemented or newer cards          |
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 

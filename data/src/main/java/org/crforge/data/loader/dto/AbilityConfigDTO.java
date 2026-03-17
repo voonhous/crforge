@@ -41,6 +41,12 @@ public class AbilityConfigDTO {
   private String buff;
   private int crownTowerDamagePercent;
 
+  // RANGED_ATTACK fields
+  private String projectile;
+  private float attackDelay;
+  private float attackCooldown;
+  private String targetType;
+
   // BUFF_ALLY fields
   private int maxTargets;
   private float searchRange;

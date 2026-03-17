@@ -68,6 +68,12 @@ public class AbilityComponent {
   private int scaledAddedDamage = 0;
   private int scaledAddedCrownTowerDamage = 0;
 
+  // RANGED_ATTACK state (independent secondary ranged attack, e.g. Goblin Machine rocket)
+  private RangedAttackState rangedAttackState = RangedAttackState.IDLE;
+  private float rangedAttackTimer = 0f;
+  private long rangedAttackTargetId = -1;
+  private int scaledRangedDamage = 0;
+
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
@@ -160,5 +166,12 @@ public class AbilityComponent {
 
   public boolean isHidingUnderground() {
     return hidingState == HidingState.HIDDEN;
+  }
+
+  public enum RangedAttackState {
+    IDLE,
+    WINDING_UP,
+    ATTACK_DELAY,
+    COOLDOWN
   }
 }
