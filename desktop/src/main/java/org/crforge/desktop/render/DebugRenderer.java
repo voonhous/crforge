@@ -22,6 +22,9 @@ public class DebugRenderer {
   private final ProjectileRenderer projectileRenderer;
   private final HealthBarRenderer healthBarRenderer;
   private final DebugOverlayRenderer debugOverlayRenderer;
+  private final DeployOverlayRenderer deployOverlayRenderer;
+  private final AreaEffectOverlayRenderer areaEffectOverlayRenderer;
+  private final AbilityOverlayRenderer abilityOverlayRenderer;
   private final HudRenderer hudRenderer;
   private final DamageNumberRenderer damageNumberRenderer;
   private final AoeDamageRenderer aoeDamageRenderer;
@@ -38,6 +41,9 @@ public class DebugRenderer {
     this.projectileRenderer = new ProjectileRenderer(ctx);
     this.healthBarRenderer = new HealthBarRenderer(ctx);
     this.debugOverlayRenderer = new DebugOverlayRenderer(ctx);
+    this.deployOverlayRenderer = new DeployOverlayRenderer(ctx);
+    this.areaEffectOverlayRenderer = new AreaEffectOverlayRenderer(ctx);
+    this.abilityOverlayRenderer = new AbilityOverlayRenderer(ctx);
     this.hudRenderer = new HudRenderer(ctx);
     this.damageNumberRenderer = new DamageNumberRenderer(ctx);
     this.aoeDamageRenderer = new AoeDamageRenderer(ctx);
@@ -82,7 +88,7 @@ public class DebugRenderer {
     arenaRenderer.renderGrid(arena);
 
     // 3. Pending deployment ghosts (sync delay silhouettes, rendered under entities)
-    debugOverlayRenderer.renderPendingDeployments(
+    deployOverlayRenderer.renderPendingDeployments(
         engine.getDeploymentSystem().getPendingDeployments());
 
     // 4. Entities
@@ -103,7 +109,7 @@ public class DebugRenderer {
     }
 
     // 6. Deploy timers (radial countdown overlay on deploying entities)
-    debugOverlayRenderer.renderDeployTimers(state);
+    deployOverlayRenderer.renderDeployTimers(state);
 
     // 7. Projectiles
     projectileRenderer.render(state);
@@ -140,13 +146,13 @@ public class DebugRenderer {
     }
 
     // 13. Area effect zones
-    debugOverlayRenderer.renderAreaEffects(state);
+    areaEffectOverlayRenderer.renderAreaEffects(state);
 
     // 13.5. Laser ball overlays (beam lines, tier/scan labels, pulse rings)
-    debugOverlayRenderer.renderLaserBallOverlays(state);
+    areaEffectOverlayRenderer.renderLaserBallOverlays(state);
 
     // 14. Ability indicators (charge, dash, hook, reflect, variable damage)
-    debugOverlayRenderer.renderAbilityIndicators(state);
+    abilityOverlayRenderer.renderAbilityIndicators(state);
 
     // 15. Spawner timers
     debugOverlayRenderer.renderSpawnerTimers(state);

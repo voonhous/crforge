@@ -134,46 +134,19 @@ public class ArenaRenderer {
         ctx.getShapeRenderer().setColor(COLOR_SPELL_RADIUS);
         ctx.getShapeRenderer().circle(centerX, centerY, radius, CIRCLE_SEGMENTS);
       }
-    } else {
-      TroopStats unitStats = card.getUnitStats();
-      if (unitStats != null) {
-        List<float[]> formationOffsets = card.getFormationOffsets();
-        int primaryCount = card.getUnitCount();
-        int totalUnits = card.getTotalDeployCount();
-        float summonRadius = card.getSummonRadius();
+    } else if (card.getUnitStats() != null) {
+      int totalUnits = card.getTotalDeployCount();
+      List<float[]> positions =
+          GhostFormation.computePositions(
+              card, totalUnits, 0, team, card.getUnitStats().getVisualRadius());
 
-        for (int idx = 0; idx < totalUnits; idx++) {
-          boolean isSecondary = idx >= primaryCount;
-          TroopStats stats = isSecondary ? card.getSecondaryUnitStats() : unitStats;
-          if (stats == null) continue;
-          float visRadius = stats.getVisualRadius() * TILE_PIXELS;
+      for (float[] pos : positions) {
+        float ghostX = centerX + pos[0] * TILE_PIXELS;
+        float ghostY = centerY + pos[1] * TILE_PIXELS;
+        float visRadius = pos[2] * TILE_PIXELS;
 
-          float offsetX = 0f;
-          float offsetY = 0f;
-
-          if (formationOffsets != null && idx < formationOffsets.size()) {
-            float[] offset = formationOffsets.get(idx);
-            offsetX = offset[0];
-            offsetY = offset[1];
-          } else if (totalUnits > 1 && summonRadius > 0) {
-            org.crforge.core.util.Vector2 offset =
-                org.crforge.core.util.FormationLayout.calculateDeployOffset(
-                    idx, totalUnits, summonRadius, stats.getCollisionRadius());
-            offsetX = offset.getX();
-            offsetY = offset.getY();
-          }
-
-          if (team == Team.RED) {
-            offsetX = -offsetX;
-            offsetY = -offsetY;
-          }
-
-          float ghostX = centerX + (offsetX * TILE_PIXELS);
-          float ghostY = centerY + (offsetY * TILE_PIXELS);
-
-          ctx.getShapeRenderer().setColor(ghostColor);
-          ctx.getShapeRenderer().circle(ghostX, ghostY, visRadius);
-        }
+        ctx.getShapeRenderer().setColor(ghostColor);
+        ctx.getShapeRenderer().circle(ghostX, ghostY, visRadius);
       }
     }
   }
