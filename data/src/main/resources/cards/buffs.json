@@ -1,4 +1,10 @@
 {
+  "ArcherQueenRapid": {
+    "name": "ArcherQueenRapid",
+    "speedMultiplier": -25,
+    "hitSpeedMultiplier": 280,
+    "invisible": true
+  },
   "BattleHealerAll": {
     "name": "BattleHealerAll",
     "healPerSecond": 40,
@@ -95,6 +101,11 @@
     "speedMultiplier": 130,
     "hitSpeedMultiplier": 130,
     "spawnSpeedMultiplier": 130
+  },
+  "ShieldBoostMonk": {
+    "name": "ShieldBoostMonk",
+    "damageReduction": 65,
+    "ignorePushback": true
   },
   "Tornado": {
     "name": "Tornado",

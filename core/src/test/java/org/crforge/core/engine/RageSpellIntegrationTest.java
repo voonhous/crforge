@@ -1,7 +1,6 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
@@ -23,9 +22,9 @@ import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.Test;
 
 /**
- * Integration tests for the Rage spell. Rage deploys a RageBarbarianBottle (health=0 bomb entity)
- * that self-destructs after its deploy time, spawning a BarbarianRage AreaEffect on death. The area
- * effect applies the Rage buff to friendly troops, boosting movement and attack speed by 1.3x.
+ * Integration tests for the Rage spell. Rage deploys a RageBottle (health=0 bomb entity) that
+ * self-destructs after its deploy time, spawning a Rage AreaEffect on death. The area effect
+ * applies the Rage buff to friendly troops, boosting movement and attack speed by 1.3x.
  */
 class RageSpellIntegrationTest {
 
@@ -38,10 +37,8 @@ class RageSpellIntegrationTest {
     assertThat(card.getRarity()).isEqualTo(Rarity.EPIC);
 
     // Summon template should point to the rage bottle unit.
-    // Data pipeline may not include the unit (e.g. "RageBottle" not in units.json);
-    // skip gracefully if the reference is unresolved.
     TroopStats summon = card.getSummonTemplate();
-    assumeTrue(summon != null, "Rage summonCharacter not resolved (data pipeline issue)");
+    assertThat(summon).as("Rage summonCharacter must be resolved").isNotNull();
     assertThat(summon.getHealth()).isEqualTo(0);
 
     AreaEffectStats deathAe = summon.getDeathAreaEffect();
@@ -61,7 +58,7 @@ class RageSpellIntegrationTest {
 
     Card rageCard = CardRegistry.get("rage");
     TroopStats bottleStats = rageCard.getSummonTemplate();
-    assumeTrue(bottleStats != null, "Rage summonCharacter not resolved (data pipeline issue)");
+    assertThat(bottleStats).as("Rage summonCharacter must be resolved").isNotNull();
 
     // Build bottle troop as a bomb entity (mirroring what castSpell should do)
     SpawnerComponent spawner =
@@ -98,11 +95,11 @@ class RageSpellIntegrationTest {
     // Bottle should have self-destructed
     assertThat(bottle.getHealth().isAlive()).isFalse();
 
-    // BarbarianRage AreaEffect should exist
+    // Rage AreaEffect should exist
     List<Entity> entities = sim.gameState().getEntities();
     AreaEffect rageZone =
         entities.stream()
-            .filter(e -> e instanceof AreaEffect && e.getName().equals("BarbarianRage"))
+            .filter(e -> e instanceof AreaEffect && e.getName().equals("Rage"))
             .map(e -> (AreaEffect) e)
             .findFirst()
             .orElse(null);
@@ -126,7 +123,7 @@ class RageSpellIntegrationTest {
 
     Card rageCard = CardRegistry.get("rage");
     TroopStats bottleStats = rageCard.getSummonTemplate();
-    assumeTrue(bottleStats != null, "Rage summonCharacter not resolved (data pipeline issue)");
+    assertThat(bottleStats).as("Rage summonCharacter must be resolved").isNotNull();
 
     SpawnerComponent spawner =
         SpawnerComponent.builder()
@@ -180,7 +177,7 @@ class RageSpellIntegrationTest {
 
     Card rageCard = CardRegistry.get("rage");
     TroopStats bottleStats = rageCard.getSummonTemplate();
-    assumeTrue(bottleStats != null, "Rage summonCharacter not resolved (data pipeline issue)");
+    assertThat(bottleStats).as("Rage summonCharacter must be resolved").isNotNull();
 
     SpawnerComponent spawner =
         SpawnerComponent.builder()

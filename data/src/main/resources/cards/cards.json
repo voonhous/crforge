@@ -1051,6 +1051,8 @@
       "triggerDelay": 0.5,
       "areaEffect": "SkeletonKingGraveyard",
       "resurrectBaseCount": 6,
+      "resurrectEnemies": true,
+      "resurrectOwnTroops": true,
       "spawnLimit": 16
     }
   },
@@ -1120,6 +1122,7 @@
       "manaCost": 3,
       "castTime": 0.944,
       "triggerDelay": 0.05,
+      "keepCurrentTarget": true,
       "guardSpawnCharacter": "ChampionGuard",
       "guardPushBackDamage": 100,
       "guardPushBackRadius": 2.5,
@@ -1142,6 +1145,7 @@
       "manaCost": 2,
       "castTime": 0.933,
       "triggerDelay": 0.05,
+      "keepCurrentTarget": true,
       "tetherDuration": 4.0,
       "tetherDamage": 42,
       "tetherCrownTowerDamage": 9,

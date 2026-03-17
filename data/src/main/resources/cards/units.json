@@ -514,6 +514,21 @@
     "projectile": "TowerCannonball",
     "lifeTime": 30.0
   },
+  "ChampionGuard": {
+    "name": "ChampionGuard",
+    "health": 625,
+    "damage": 85,
+    "speed": 60.0,
+    "mass": 10.0,
+    "collisionRadius": 0.8,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.2,
+    "loadTime": 0.7,
+    "deployTime": 0.3,
+    "targetType": "GROUND",
+    "movementType": "GROUND"
+  },
   "DarkElixir_Bottle": {
     "name": "DarkElixir_Bottle",
     "health": 0,
@@ -1849,6 +1864,29 @@
       }
     ]
   },
+  "MightyMinerBomb": {
+    "name": "MightyMinerBomb",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.45,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "deathDamage": {
+      "damage": 130,
+      "radius": 3.0,
+      "pushback": 1800
+    },
+    "ignoreBuff": [
+      "Event_Berserk_OnStartBuff"
+    ]
+  },
   "Miner": {
     "name": "Miner",
     "health": 473,
@@ -2183,6 +2221,33 @@
       "name": "BarbarianRage",
       "radius": 3.0,
       "lifeDuration": 5.5,
+      "hitsGround": true,
+      "hitsAir": true,
+      "onlyOwnTroops": true,
+      "capBuffTimeToAreaEffectTime": true,
+      "hitSpeed": 0.3,
+      "buff": "Rage",
+      "buffDuration": 1.0
+    }
+  },
+  "RageBottle": {
+    "name": "RageBottle",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.5,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "deathAreaEffect": {
+      "name": "Rage",
+      "radius": 3.0,
+      "lifeDuration": 4.5,
       "hitsGround": true,
       "hitsAir": true,
       "onlyOwnTroops": true,
