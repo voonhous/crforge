@@ -163,9 +163,10 @@ class GoblinBarrelTest {
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
             .filter(t -> t.getName().equals("Goblin") && t.getTeam() == Team.BLUE)
+            .filter(t -> t.getHealth().isAlive())
             .toList();
 
-    // Goblins should have finished deploying by now
+    // Surviving goblins should have finished deploying by now
     boolean anyStillDeploying = goblins.stream().anyMatch(Troop::isDeploying);
     assertThat(anyStillDeploying).as("Goblins should finish deploying after 1.1s").isFalse();
   }

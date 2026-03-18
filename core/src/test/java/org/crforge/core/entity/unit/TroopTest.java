@@ -55,17 +55,30 @@ class TroopTest {
   }
 
   @Test
-  void troop_shouldDeployBeforeBecomingTargetable() {
+  void troop_shouldBeTargetableWhileDeploying() {
     Troop troop = Troop.builder().deployTime(1.0f).build();
     troop.onSpawn();
 
     assertThat(troop.isDeploying()).isTrue();
-    assertThat(troop.isTargetable()).isFalse();
+    // Deploying troops are on the field and can be targeted/attacked by enemies
+    assertThat(troop.isTargetable()).isTrue();
 
-    // Simulate time passing
+    // Still targetable after deploy finishes
     troop.update(1.0f);
 
     assertThat(troop.isDeploying()).isFalse();
+    assertThat(troop.isTargetable()).isTrue();
+  }
+
+  @Test
+  void troop_shouldTakeDamageWhileDeploying() {
+    Troop troop = Troop.builder().deployTime(1.0f).health(new Health(500)).build();
+    troop.onSpawn();
+
+    assertThat(troop.isDeploying()).isTrue();
+    troop.getHealth().takeDamage(100);
+
+    assertThat(troop.getHealth().getCurrent()).isEqualTo(400);
     assertThat(troop.isTargetable()).isTrue();
   }
 

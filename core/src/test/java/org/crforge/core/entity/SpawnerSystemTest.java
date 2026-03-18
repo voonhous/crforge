@@ -479,10 +479,10 @@ class SpawnerSystemTest {
 
     freshState.processPending();
 
-    // Bomb is deploying -- should NOT be targetable
+    // Bomb is deploying but still targetable (deploying troops can be targeted)
     Troop bombTroop = (Troop) bomb;
     assertThat(bombTroop.isDeploying()).isTrue();
-    assertThat(bombTroop.isTargetable()).isFalse();
+    assertThat(bombTroop.isTargetable()).isTrue();
 
     // SpawnerSystem should not self-destruct during deploy
     freshSystem.update(0.1f);
@@ -784,12 +784,12 @@ class SpawnerSystemTest {
 
     // Brawler should be in deploying state (0.5s deploy delay from death spawn)
     assertThat(brawler.isDeploying()).isTrue();
-    assertThat(brawler.isTargetable()).isFalse();
+    assertThat(brawler.isTargetable()).isTrue(); // Deploying troops are targetable
 
     // Advance partially -- still deploying
     brawler.update(0.4f);
     assertThat(brawler.isDeploying()).isTrue();
-    assertThat(brawler.isTargetable()).isFalse();
+    assertThat(brawler.isTargetable()).isTrue();
 
     // Advance past deploy time
     brawler.update(0.2f);

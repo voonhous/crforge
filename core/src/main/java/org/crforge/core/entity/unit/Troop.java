@@ -170,6 +170,6 @@ public class Troop extends AbstractEntity {
 
   @Override
   public boolean isTargetable() {
-    return super.isTargetable() && !isDeploying() && !jumping && !tunneling && !isAttached();
+    return super.isTargetable() && !jumping && !tunneling && !isAttached();
   }
 }

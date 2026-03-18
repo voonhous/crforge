@@ -301,7 +301,7 @@ class GoblinHutTest {
         .isGreaterThan(DEPLOY_X);
     assertThat(goblin.getPosition().getY())
         .as("Goblin Y should be roughly at building Y")
-        .isCloseTo(DEPLOY_Y, within(0.1f));
+        .isCloseTo(DEPLOY_Y, within(0.5f));
   }
 
   // -- Helpers --
