@@ -153,7 +153,7 @@ public class AbilityOverlayRenderer {
       float dotX = startX + i * dotSpacing;
       float dotY = y;
 
-      if (i < currentStage) {
+      if (i <= currentStage) {
         // Filled dot for active stages
         ctx.getShapeRenderer().setColor(COLOR_VARIABLE_DAMAGE_DOT);
       } else {
