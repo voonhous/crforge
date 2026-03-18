@@ -156,15 +156,17 @@ class InfernoTowerTest {
 
     Building tower = sim.building("InfernoTower");
 
-    // Manually target Tank1 and ramp up
+    // Manually target Tank1 and ramp up (lock to simulate CombatSystem in-range behavior)
     Troop tank1 = sim.troop("Tank1");
     Troop tank2 = sim.troop("Tank2");
     tower.getCombat().setCurrentTarget(tank1);
+    tower.getCombat().setTargetLocked(true);
     sim.tick(61);
     assertThat(tower.getAbility().getCurrentStage()).isEqualTo(1);
 
-    // Switch target to Tank2
+    // Switch target to Tank2 (lock so targeting system keeps it)
     tower.getCombat().setCurrentTarget(tank2);
+    tower.getCombat().setTargetLocked(true);
     sim.tick(1);
 
     // Should have reset back to stage 0

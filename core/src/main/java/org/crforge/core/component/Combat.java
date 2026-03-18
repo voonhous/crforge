@@ -72,7 +72,7 @@ public class Combat {
 
   // Dynamic states
   private Entity currentTarget;
-  private boolean targetLocked;
+  @Setter private boolean targetLocked;
 
   @Setter private float currentCooldown; // Time remaining in "Hit Speed" wait after an attack
   @Setter private float currentWindup; // Time remaining in "Attack Animation" before damage
@@ -107,7 +107,7 @@ public class Combat {
   public void setCurrentTarget(Entity currentTarget) {
     if (this.currentTarget != currentTarget) {
       this.currentTarget = currentTarget;
-      this.targetLocked = currentTarget != null;
+      this.targetLocked = false;
       // Reset attack state on retarget
       this.isAttacking = false;
       this.currentWindup = 0;
@@ -239,5 +239,6 @@ public class Combat {
     this.currentWindup = 0;
     this.isAttacking = false;
     this.accumulatedLoadTime = 0; // Stun resets charge
+    this.targetLocked = false; // Stun unlocks target
   }
 }

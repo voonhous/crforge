@@ -59,12 +59,19 @@ public class TargetingSystem {
       return;
     }
 
-    // If target is still valid, keep it
-    if (isValidTarget(attacker, combat, currentTarget)) {
-      return;
+    if (combat.isTargetLocked()) {
+      // Locked phase (in attack range, fighting): keep current target if still valid.
+      // If target dies, leaves retention range, or becomes invalid, unlock and rescan.
+      if (isValidTarget(attacker, combat, currentTarget)) {
+        return;
+      }
+      combat.setTargetLocked(false);
     }
 
-    // Find new target
+    // Unlocked phase (moving toward target): always rescan for the closest enemy.
+    // This enables "pull" mechanics where placing a unit/building closer diverts the troop.
+    // The identity guard in setCurrentTarget prevents state reset when rescan returns the same
+    // target.
     Entity newTarget = findBestTarget(attacker, combat, entities);
     combat.setCurrentTarget(newTarget);
   }

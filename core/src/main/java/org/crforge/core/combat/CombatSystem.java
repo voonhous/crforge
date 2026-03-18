@@ -92,6 +92,8 @@ public class CombatSystem {
 
     // Range Check
     if (!isInAttackRange(entity, target, combat)) {
+      // Target retreated out of attack range -- unlock so troop can retarget to closer enemies
+      combat.setTargetLocked(false);
       // If out of range, cancel any ongoing attack
       if (combat.isAttacking()) {
         combat.setAttacking(false);
@@ -99,6 +101,9 @@ public class CombatSystem {
       }
       return;
     }
+
+    // In attack range -- lock onto this target (troop will not retarget while fighting)
+    combat.setTargetLocked(true);
 
     // Check Cooldown
     if (!combat.canAttack()) {

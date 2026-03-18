@@ -440,6 +440,86 @@ class TargetingSystemTest {
     return mortar;
   }
 
+  // -- Two-phase target locking tests --
+
+  @Test
+  void unlocked_shouldRetargetToCloserEnemyWhileMoving() {
+    Troop attacker = createDeployedTroop("Attacker", Team.BLUE, 10, 10);
+    Troop farEnemy = createDeployedTroop("Far Enemy", Team.RED, 14, 10);
+
+    java.util.List<Entity> entities = new java.util.ArrayList<>(List.of(attacker, farEnemy));
+
+    // Acquire initial target
+    targetingSystem.updateTargets(entities);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(farEnemy);
+    // Target is unlocked (not in attack range yet)
+    assertThat(attacker.getCombat().isTargetLocked()).isFalse();
+
+    // A closer enemy appears
+    Troop nearEnemy = createDeployedTroop("Near Enemy", Team.RED, 12, 10);
+    entities.add(nearEnemy);
+
+    // Should retarget to the closer enemy because target is unlocked
+    targetingSystem.updateTargets(entities);
+    assertThat(attacker.getCombat().getCurrentTarget())
+        .as("Unlocked troop should retarget to closer enemy")
+        .isEqualTo(nearEnemy);
+  }
+
+  @Test
+  void locked_shouldKeepTargetDespiteCloserEnemy() {
+    Troop attacker = createDeployedTroop("Attacker", Team.BLUE, 10, 10);
+    Troop originalEnemy = createDeployedTroop("Original Enemy", Team.RED, 14, 10);
+
+    java.util.List<Entity> entities = new java.util.ArrayList<>(List.of(attacker, originalEnemy));
+
+    // Acquire initial target
+    targetingSystem.updateTargets(entities);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(originalEnemy);
+
+    // Simulate entering attack range -- lock the target (normally done by CombatSystem)
+    attacker.getCombat().setTargetLocked(true);
+
+    // A closer enemy appears
+    Troop closerEnemy = createDeployedTroop("Closer Enemy", Team.RED, 12, 10);
+    entities.add(closerEnemy);
+
+    // Should keep original target because it is locked
+    targetingSystem.updateTargets(entities);
+    assertThat(attacker.getCombat().getCurrentTarget())
+        .as("Locked troop should keep current target despite closer enemy")
+        .isEqualTo(originalEnemy);
+  }
+
+  @Test
+  void locked_shouldUnlockAndRescanWhenTargetDies() {
+    Troop attacker = createDeployedTroop("Attacker", Team.BLUE, 10, 10);
+    Troop enemy1 = createDeployedTroop("Enemy1", Team.RED, 12, 10);
+    Troop enemy2 = createDeployedTroop("Enemy2", Team.RED, 14, 10);
+
+    List<Entity> entities = List.of(attacker, enemy1, enemy2);
+
+    // Acquire target (enemy1 is closer) and lock it
+    targetingSystem.updateTargets(entities);
+    assertThat(attacker.getCombat().getCurrentTarget()).isEqualTo(enemy1);
+    attacker.getCombat().setTargetLocked(true);
+
+    // Kill the locked target
+    enemy1.getHealth().takeDamage(10000);
+    enemy1.markDead();
+
+    // Should unlock, rescan, and acquire enemy2
+    targetingSystem.updateTargets(entities);
+    assertThat(attacker.getCombat().isTargetLocked())
+        .as("Target lock should be released after locked target dies")
+        .isFalse();
+    assertThat(attacker.getCombat().getCurrentTarget())
+        .as("Should retarget to remaining enemy after locked target dies")
+        .isEqualTo(enemy2);
+  }
+
+  // -- Minimum range (blind spot) tests for Mortar-like buildings --
+
   @Test
   void minimumRange_shouldNotAcquireTargetInBlindSpot() {
     // Mortar at (9,16), enemy at (9,18) -> 2 tiles apart, inside 3.5-tile blind spot
