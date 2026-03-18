@@ -44,6 +44,16 @@ public class VariableDamageHandler implements AbilityHandler {
       return;
     }
 
+    // Target went out of attack range (entity is chasing, not fighting) -- reset to stage 0.
+    // In Clash Royale, the inferno beam resets whenever the unit has to move to reach its target.
+    // We detect this as: target was previously locked (actively fighting) but is no longer locked.
+    if (ability.isWasTargetLocked() && !combat.isTargetLocked()) {
+      ability.setCurrentStage(0);
+      ability.setStageTimer(0f);
+      combat.setDamageOverride(ability.getCurrentStageDamage());
+    }
+    ability.setWasTargetLocked(combat.isTargetLocked());
+
     // Accumulate time and advance stages
     List<VariableDamageStage> stages = ((VariableDamageAbility) ability.getData()).stages();
     if (stages.isEmpty()) {

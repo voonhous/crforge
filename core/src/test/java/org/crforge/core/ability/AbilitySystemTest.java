@@ -685,6 +685,49 @@ class AbilitySystemTest {
     assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(14);
   }
 
+  @Test
+  void variableDamage_shouldResetWhenTargetLeavesAttackRange() {
+    // Integration test: uses targeting + combat + ability systems together so that
+    // CombatSystem sets targetLocked correctly. The inferno dragon (range 4.0) should
+    // reset its variable damage stage when the target moves out of attack range.
+    Troop inferno = createVariableDamageTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 8, 5); // distance 3.0, within range 4.0
+
+    gameState.spawnEntity(inferno);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+
+    inferno.update(2.0f);
+    target.update(2.0f);
+
+    // Run full system loop: targeting -> combat -> ability
+    // First tick: targeting acquires, combat locks, ability starts at stage 0
+    for (int i = 0; i < 61; i++) {
+      targetingSystem.updateTargets(gameState.getAliveEntities());
+      combatSystem.update(DT);
+      abilitySystem.update(DT);
+    }
+
+    // Should have ramped to stage 1
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(1);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(47);
+    assertThat(inferno.getCombat().isTargetLocked()).isTrue();
+
+    // Move target out of attack range but within sight range so targeting keeps it.
+    // Center distance 6.0 -> edge-to-edge 5.0 > range 4.0, but <= sightRange 5.5.
+    target.getPosition().set(11, 5);
+
+    // Next tick: combat detects out-of-range and unlocks target
+    targetingSystem.updateTargets(gameState.getAliveEntities());
+    combatSystem.update(DT);
+    abilitySystem.update(DT);
+
+    // Variable damage should reset to stage 0 because the target left attack range
+    assertThat(inferno.getCombat().isTargetLocked()).isFalse();
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(0);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(14);
+  }
+
   // -- DASH tests --
 
   @Test

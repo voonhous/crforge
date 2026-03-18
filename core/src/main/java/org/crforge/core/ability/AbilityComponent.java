@@ -26,6 +26,9 @@ public class AbilityComponent {
   // Tracks the target ID for reset detection
   private long lastTargetId = -1;
 
+  // Tracks whether the combat target was locked last tick (for out-of-range reset detection)
+  private boolean wasTargetLocked = false;
+
   // DASH state
   private DashState dashState = DashState.IDLE;
   private float dashTimer = 0f;
@@ -101,6 +104,7 @@ public class AbilityComponent {
     currentStage = 0;
     stageTimer = 0f;
     lastTargetId = -1;
+    wasTargetLocked = false;
   }
 
   /**
