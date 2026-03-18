@@ -173,6 +173,11 @@ public class CombatSystem {
   }
 
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
+    // Skip hits on invulnerable targets (e.g. Bandit during dash)
+    if (target.isInvulnerable()) {
+      return;
+    }
+
     int baseDamage =
         combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getEffectiveDamage();
 

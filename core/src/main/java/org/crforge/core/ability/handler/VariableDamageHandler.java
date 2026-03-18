@@ -37,6 +37,7 @@ public class VariableDamageHandler implements AbilityHandler {
       ability.setCurrentStage(0);
       ability.setStageTimer(0f);
       ability.setLastTargetId(currentTargetId);
+      combat.setDamageOverride(ability.getCurrentStageDamage());
     }
 
     // No target -- stay at stage 0

@@ -46,7 +46,7 @@ public class AoeDamageService {
   }
 
   public void dealDamage(Entity target, int damage) {
-    if (target == null || !target.isAlive()) {
+    if (target == null || !target.isAlive() || target.isInvulnerable()) {
       return;
     }
     target.getHealth().takeDamage(damage);

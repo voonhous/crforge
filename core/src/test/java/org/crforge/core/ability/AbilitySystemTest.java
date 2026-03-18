@@ -728,6 +728,66 @@ class AbilitySystemTest {
     assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(14);
   }
 
+  @Test
+  void dash_shouldMakeBanditUntargetableAndResetInfernoDamage() {
+    // Inferno Dragon (BLUE) targets Bandit (RED). When the Bandit dashes, she becomes
+    // invulnerable and untargetable, forcing the inferno to drop its target and reset
+    // variable damage back to stage 0.
+    Troop inferno = createVariableDamageTroop(Team.BLUE, 5, 5);
+    Troop bandit = createDashTroop(Team.RED, 8, 5); // distance 3.0, within inferno range 4.0
+
+    gameState.spawnEntity(inferno);
+    gameState.spawnEntity(bandit);
+    gameState.processPending();
+
+    inferno.update(2.0f);
+    bandit.update(2.0f);
+
+    // Phase 1: Ramp inferno to stage 1 by running full system loop for 2+ seconds.
+    // Targeting acquires bandit as inferno's target; combat locks and deals damage;
+    // ability system escalates variable damage stages.
+    for (int i = 0; i < 61; i++) {
+      targetingSystem.updateTargets(gameState.getAliveEntities());
+      combatSystem.update(DT);
+      abilitySystem.update(DT);
+    }
+    assertThat(inferno.getCombat().getCurrentTarget()).isEqualTo(bandit);
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(1);
+
+    int banditHpBeforeDash = bandit.getHealth().getCurrent();
+
+    // Phase 2: Trigger Bandit's dash toward a new target in dash range [3.5, 6.0].
+    Troop dashTarget = createDummyTarget(Team.BLUE, 13, 5); // 5.0 from bandit
+    gameState.spawnEntity(dashTarget);
+    gameState.processPending();
+    dashTarget.update(2.0f);
+
+    bandit.getCombat().setCurrentTarget(dashTarget);
+
+    // Burn through dash cooldown (25 ticks ~ 0.83s > 0.8s cooldown)
+    for (int i = 0; i < 25; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+    assertThat(bandit.isInvulnerable()).isTrue();
+    assertThat(bandit.isTargetable()).isFalse();
+
+    // Phase 3: Run targeting + combat + ability. The inferno should lose its target
+    // (bandit is invulnerable -> not targetable) and variable damage should reset.
+    targetingSystem.updateTargets(gameState.getAliveEntities());
+    combatSystem.update(DT);
+    abilitySystem.update(DT);
+
+    // Inferno lost its target (bandit untargetable, no other RED entities)
+    assertThat(inferno.getCombat().getCurrentTarget()).isNotEqualTo(bandit);
+    // Variable damage reset to stage 0
+    assertThat(inferno.getAbility().getCurrentStage()).isEqualTo(0);
+    assertThat(inferno.getCombat().getDamageOverride()).isEqualTo(14);
+
+    // Bandit took no damage during the dash (invulnerable)
+    assertThat(bandit.getHealth().getCurrent()).isEqualTo(banditHpBeforeDash);
+  }
+
   // -- DASH tests --
 
   @Test

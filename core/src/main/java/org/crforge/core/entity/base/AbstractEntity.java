@@ -77,7 +77,7 @@ public abstract class AbstractEntity implements Entity {
 
   @Override
   public boolean isTargetable() {
-    return isAlive() && spawned;
+    return isAlive() && spawned && !invulnerable;
   }
 
   public void markDead() {
