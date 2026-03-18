@@ -1,22 +1,20 @@
 # crforge
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Build](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml)
+[![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://adoptium.net/)
 
 A headless Clash Royale battle simulator built in Java, designed for reinforcement learning and AI
-research. Deterministic tick-based engine with 121 data-driven cards, a LibGDX debug visualizer,
+research. Deterministic tick-based engine with data-driven cards, a LibGDX debug visualizer,
 and a Python Gymnasium integration via ZMQ bridge.
 
 ## Features
 
-- **121 cards**: troops, spells, and buildings loaded from community-decoded game data
-- **Deterministic simulation**: 30 FPS fixed timestep, reproducible for RL training
-- **Component-Entity-System architecture**: entities hold data, systems hold logic
-- **Full combat mechanics**: melee, ranged, AOE, chain lightning, scatter projectiles,
-  charge, dash, hook, reflect, shields, death spawn, variable damage (inferno), burst attacks
+- **Full combat**: melee, ranged, AOE, chain lightning, scatter projectiles, charge, dash, hook, reflect, shields, death spawn, burst attacks
 - **Status effects**: stun, slow, rage, freeze with multiplier-based stacking
 - **Level scaling**: rarity-based iterative growth matching the original game's formulas
-- **Python bridge**: ZMQ + JSON Gymnasium environment for RL training
-- **Debug visualizer**: real-time LibGDX rendering with pause, speed control, and card deployment
+- **Component-Entity-System**: entities hold data, systems hold logic
+- **Community card data**: >100 troops, spells, and buildings loaded from JSON with automatic reference resolution
 
 ## Quick Start
 
@@ -37,6 +35,32 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew :gym-bridge:run
 ```
 
+> **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
+
+### Python / RL Training
+
+**Requirements:** Python 3.10+, Java bridge server running
+
+```bash
+pip install -e python/
+python python/examples/run_episodes.py
+```
+
+```python
+from crforge_gym import CRForgeEnv
+
+env = CRForgeEnv()
+obs, info = env.reset(seed=42)
+
+while True:
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        break
+
+env.close()
+```
+
 ## Modules
 
 | Module       | Description                                                       |
@@ -49,86 +73,23 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 `core` has no GUI dependencies. `data` depends on `core`. `desktop` and `gym-bridge` depend on
 both.
 
-## Architecture
+## Docs
 
-The simulation uses a Component-Entity-System (CES) design. Entities (Troop, Building, Tower,
-Projectile, AreaEffect) are containers for components (Health, Position, Combat, Movement).
-Logic lives in systems that operate on entities each tick.
+| Document                                                   | Description                                              |
+|------------------------------------------------------------|----------------------------------------------------------|
+| [Simulation & Entities](docs/simulation.md)                | Tick loop, entity lifecycle, entity types                |
+| [Arena, Match & Economy](docs/arena-and-match.md)          | Arena layout, placement, win conditions, elixir, hand    |
+| [Targeting, Combat & Abilities](docs/combat.md)            | Target locking, attack pipeline, 10 ability types        |
+| [Card Data Schema](docs/schema.md)                         | JSON schema, loading pipeline, reference resolution      |
+| [Python Gymnasium Bridge](python/README.md)                | ZMQ transport, observation/action spaces, rewards        |
 
-**Tick loop** (30 FPS, each frame):
-
-```
- 1. processPending       Flush spawn/removal queues
- 2. match.update         Elixir regen, overtime transitions
- 3. DeploymentSystem     Process queued card deploys
- 4. SpawnerSystem        Tick live-spawners (Witch, Tombstone, etc.)
- 5. StatusEffectSystem   Decrement durations, recalculate multipliers
- 6. Entity.update        Per-entity timers (deploy, cooldowns, lifetime)
- 7. AreaEffectSystem     Tick damage/buff zones (Poison, Freeze, Rage)
- 8. TargetingSystem      Assign/update combat targets
- 9. AbilitySystem        Charge, dash, variable damage ramp
-10. CombatSystem         Execute attacks, spawn projectiles
-    ProjectileSystem     Move projectiles, hit detection, chain/pierce
-11. PhysicsSystem        Movement, collision avoidance, knockback
-12. processDeaths        Death spawn, death projectile handlers
-13. checkTimeLimit       Overtime, win conditions, sudden death
-```
-
-See [docs/architecture.md](docs/architecture.md) for the full documentation index, system dependency
-graph, and module layout.
-
-## Card Data
-
-Card statistics are loaded from JSON files in `data/src/main/resources/cards/`:
-
-| File               | Format          | Contents                            |
-|--------------------|-----------------|-------------------------------------|
-| `buffs.json`       | map (name->def) | Buff/debuff definitions             |
-| `projectiles.json` | map (name->def) | Projectile definitions              |
-| `units.json`       | map (name->def) | Unit stats (refs projectiles)       |
-| `cards.json`       | array           | Card definitions (refs units/projs) |
-
-Stats are community-decoded from publicly available game data. Loading order:
-buffs -> projectiles -> units -> cards (each stage resolves string references from prior stages).
-
-## Visualizer Controls
-
-| Key           | Action                                                     |
-|---------------|------------------------------------------------------------|
-| `Space`       | Pause / Resume                                             |
-| `R`           | Reset match                                                |
-| `P`           | Toggle path visualization                                  |
-| `O`           | Toggle attack range circles                                |
-| `D`           | Toggle floating damage numbers                             |
-| `A`           | Toggle AOE damage indicators                               |
-| `+` / `-`     | Speed up / slow down (0.25x - 8x)                          |
-| `1-4`         | Select blue player's card from hand                        |
-| `5-8`         | Select red player's card from hand                         |
-| `Left click`  | Select card from hand UI, or deploy selected card on arena |
-| `Right click` | Deselect card                                              |
+See [docs/architecture.md](docs/architecture.md) for the full documentation index.
 
 ## Tools
 
 | Tool                                                | Description                                                            |
 |-----------------------------------------------------|------------------------------------------------------------------------|
 | [Formation Visualizer](tools/formation_visualizer/) | Tkinter app for viewing and editing multi-unit spawn formation offsets |
-
-## Docs
-
-| Document                                                   | Description                                              |
-|------------------------------------------------------------|----------------------------------------------------------|
-| [Architecture Overview](docs/architecture.md)              | Index page: system diagram, doc map, module structure    |
-| [Simulation & Entities](docs/simulation.md)                | Tick loop, entity lifecycle, entity types                |
-| [Arena, Match & Economy](docs/arena-and-match.md)          | Arena layout, placement, win conditions, elixir, hand    |
-| [Targeting, Combat & Abilities](docs/combat.md)            | Target locking, attack pipeline, 10 ability types        |
-| [Physics & Status Effects](docs/physics-and-effects.md)    | Movement, pathfinding, collisions, buff stacking         |
-| [Deployment & Spawning](docs/spawning.md)                  | Deploy pipeline, live/death spawning, transformation     |
-| [Card Data Schema](docs/schema.md)                         | JSON schema, loading pipeline, reference resolution      |
-| [Level Scaling](docs/level_scaling.md)                     | Rarity multiplier tables and tower stat scaling formulas |
-| [Card Tracker](docs/card_tracker.md)                       | Implementation status for all 121 cards                  |
-| [Secret Stats](docs/secret_stats.md)                       | Undocumented unit stats from in-game observation         |
-| [Measuring Missing Fields](docs/reverse_engineering.md)    | Guide for measuring unit stats from in-game observation  |
-| [Python Gymnasium Bridge](python/README.md)                | ZMQ transport, observation/action spaces, rewards        |
 
 ## Code Style
 
@@ -138,12 +99,6 @@ via [Spotless](https://github.com/diffplug/spotless). Formatting is checked on b
 ```bash
 ./gradlew spotlessApply
 ```
-
-## macOS Note
-
-On macOS, the LibGDX visualizer requires the `-XstartOnFirstThread` JVM argument. The Gradle
-`desktop:run` task handles this automatically. If running from an IDE, add `-XstartOnFirstThread` to
-your VM options.
 
 ## Acknowledgements
 
