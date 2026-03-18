@@ -6,7 +6,7 @@ slf4j = "2.0.12"
 jeromq = "0.6.0"
 
 # Test dependencies
-junit = "5.10.2"
+junit = "6.0.3"
 assertj = "3.25.3"
 mockito = "5.10.0"
 
