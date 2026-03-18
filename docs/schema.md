@@ -7,6 +7,63 @@ cards.json  ->  units.json  ->  projectiles.json
                              ->  buffs.json
 ```
 
+---
+
+## Loading Pipeline
+
+Four JSON resource files in `data/src/main/resources/cards/`, loaded in strict dependency order:
+
+| File               | Format            | Contents                                  |
+|--------------------|-------------------|-------------------------------------------|
+| `buffs.json`       | Map (name -> def) | Buff definitions (multipliers, DOT, etc.) |
+| `projectiles.json` | Map (name -> def) | All projectile definitions                |
+| `units.json`       | Map (name -> def) | All unit definitions                      |
+| `cards.json`       | Array             | Slim card definitions with string refs    |
+
+### Loading Order
+
+```
+buffs.json -> BuffLoader -> BuffRegistry (global singleton)
+projectiles.json -> ProjectileLoader -> Map<String, ProjectileStats>
+units.json -> UnitLoader -> Map<String, TroopStats>     (needs projectile map)
+cards.json -> CardLoader -> List<Card> -> CardRegistry   (needs unit + projectile maps)
+```
+
+Executed in `CardRegistry` static initializer.
+
+### Reference Resolution
+
+- **ProjectileLoader**: two-pass. Pass 1 converts all projectiles without `spawnProjectile`. Pass 2
+  resolves `spawnProjectile` string references within the projectile map.
+- **UnitLoader**: recursive resolution with memoization. Depth-first traversal of death spawn
+  chains (Golem -> Golemite -> ...) with circular dependency detection via `resolving` set.
+  Resolves: projectile refs, death spawn character refs, live spawn template refs, transformation
+  target refs, tunnel morph targets.
+- **CardLoader**: single-pass (all deps pre-resolved). Resolves unit refs, projectile refs, summon
+  character refs, deploy effects, area effects, formation offsets, secondary units for dual-unit
+  cards.
+
+### Speed Conversion
+
+Raw JSON speed values divide by 60: `effectiveSpeed = dto.getSpeed() / 60.0` (base unit = 60
+pixels/sec = 1 tile/sec).
+
+### CardRegistry
+
+- Maintains `LinkedHashMap<String, Card>` (insertion-order) and `LinkedHashMap<String, Integer>` for
+  stable card index (used in observation encoding)
+- Public API: `get(id)`, `getAll()`, `getAllIds()`, `exists(id)`, `getIndex(id)`, `size()`
+
+### Key files
+
+- `data/.../loader/BuffLoader.java`
+- `data/.../loader/ProjectileLoader.java`
+- `data/.../loader/UnitLoader.java`
+- `data/.../loader/CardLoader.java`
+- `data/.../card/CardRegistry.java`
+
+---
+
 ## Damage resolution convention
 
 Projectile `damage` stores the intrinsic CSV value. When a unit fires a projectile:

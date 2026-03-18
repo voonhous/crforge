@@ -74,8 +74,8 @@ Logic lives in systems that operate on entities each tick.
 13. checkTimeLimit       Overtime, win conditions, sudden death
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the full system dependency graph, entity
-lifecycle, and data loading pipeline.
+See [docs/architecture.md](docs/architecture.md) for the full documentation index, system dependency
+graph, and module layout.
 
 ## Card Data
 
@@ -117,8 +117,18 @@ buffs -> projectiles -> units -> cards (each stage resolves string references fr
 
 | Document                                                   | Description                                              |
 |------------------------------------------------------------|----------------------------------------------------------|
+| [Architecture Overview](docs/architecture.md)              | Index page: system diagram, doc map, module structure    |
+| [Simulation & Entities](docs/simulation.md)                | Tick loop, entity lifecycle, entity types                |
+| [Arena, Match & Economy](docs/arena-and-match.md)          | Arena layout, placement, win conditions, elixir, hand    |
+| [Targeting, Combat & Abilities](docs/combat.md)            | Target locking, attack pipeline, 10 ability types        |
+| [Physics & Status Effects](docs/physics-and-effects.md)    | Movement, pathfinding, collisions, buff stacking         |
+| [Deployment & Spawning](docs/spawning.md)                  | Deploy pipeline, live/death spawning, transformation     |
+| [Card Data Schema](docs/schema.md)                         | JSON schema, loading pipeline, reference resolution      |
 | [Level Scaling](docs/level_scaling.md)                     | Rarity multiplier tables and tower stat scaling formulas |
+| [Card Tracker](docs/card_tracker.md)                       | Implementation status for all 121 cards                  |
+| [Secret Stats](docs/secret_stats.md)                       | Undocumented unit stats from in-game observation         |
 | [Measuring Missing Fields](docs/reverse_engineering.md)    | Guide for measuring unit stats from in-game observation  |
+| [Python Gymnasium Bridge](python/README.md)                | ZMQ transport, observation/action spaces, rewards        |
 
 ## Code Style
 
@@ -134,6 +144,12 @@ via [Spotless](https://github.com/diffplug/spotless). Formatting is checked on b
 On macOS, the LibGDX visualizer requires the `-XstartOnFirstThread` JVM argument. The Gradle
 `desktop:run` task handles this automatically. If running from an IDE, add `-XstartOnFirstThread` to
 your VM options.
+
+## Acknowledgements
+
+This project was inspired by
+[scholarlygaming's Clash Royale engine](https://www.reddit.com/r/ClashRoyale/comments/f21isa/effort_post_clash_royale_engine_development/),
+the first somewhat complete open-source Clash Royale simulation engine.
 
 ## Disclaimer
 
