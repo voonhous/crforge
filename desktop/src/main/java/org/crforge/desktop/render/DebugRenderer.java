@@ -33,6 +33,7 @@ public class DebugRenderer {
   @Getter private boolean drawRanges = false;
   @Getter private boolean drawDamageNumbers = false;
   @Getter private boolean drawAoeDamage = true;
+  @Getter private boolean drawHpNumbers = false;
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
@@ -63,6 +64,10 @@ public class DebugRenderer {
 
   public void toggleDrawAoeDamage() {
     drawAoeDamage = !drawAoeDamage;
+  }
+
+  public void toggleDrawHpNumbers() {
+    drawHpNumbers = !drawHpNumbers;
   }
 
   public void render(
@@ -115,7 +120,7 @@ public class DebugRenderer {
     projectileRenderer.render(state);
 
     // 8. Health bars
-    healthBarRenderer.render(state);
+    healthBarRenderer.render(state, drawHpNumbers);
 
     // 9. Targeting lines
     debugOverlayRenderer.renderTargetingLines(state);
@@ -145,6 +150,11 @@ public class DebugRenderer {
       aoeDamageRenderer.render();
     }
 
+    // 12.7. HP numbers
+    if (drawHpNumbers) {
+      debugOverlayRenderer.renderHpNumbers(state);
+    }
+
     // 13. Area effect zones
     areaEffectOverlayRenderer.renderAreaEffects(state);
 
@@ -167,7 +177,8 @@ public class DebugRenderer {
         drawPaths,
         drawRanges,
         drawDamageNumbers,
-        drawAoeDamage);
+        drawAoeDamage,
+        drawHpNumbers);
   }
 
   private Player getPlayer(Match match, Team selectedTeam) {

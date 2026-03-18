@@ -27,10 +27,11 @@ public final class RenderConstants {
   // Entity rendering
   public static final int CIRCLE_SEGMENTS = 32;
   public static final float PROJECTILE_RADIUS = 4f;
-  public static final float ENTITY_NAME_FONT_SCALE = 0.7f;
 
   // Health bar
-  public static final float HEALTH_BAR_HEIGHT = 4f;
+  public static final float HEALTH_BAR_HEIGHT = 12f;
+  public static final float HEALTH_BAR_BORDER = 1f;
+  public static final Color COLOR_HP_TEXT = new Color(0.1f, 0.1f, 0.1f, 1f);
   public static final float HEALTH_BAR_MIN_WIDTH = 20f;
   public static final float HEALTH_BAR_Y_OFFSET = 4f;
   public static final float HEALTH_THRESHOLD_HIGH = 0.6f;

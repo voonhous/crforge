@@ -49,7 +49,8 @@ public class HudRenderer {
       boolean drawPaths,
       boolean drawRanges,
       boolean drawDamageNumbers,
-      boolean drawAoeDamage) {
+      boolean drawAoeDamage,
+      boolean drawHpNumbers) {
     float screenWidth = camera.viewportWidth;
     float screenHeight = camera.viewportHeight;
 
@@ -77,31 +78,27 @@ public class HudRenderer {
 
     // Screen Center Text (Timer, State)
     ctx.getSpriteBatch().begin();
-    ctx.getFont().getData().setScale(1.2f);
-    ctx.getGlyphLayout().setText(ctx.getFont(), timeText);
-    ctx.getFont()
+    ctx.getGlyphLayout().setText(ctx.getTimerFont(), timeText);
+    ctx.getTimerFont()
         .draw(
             ctx.getSpriteBatch(),
             timeText,
             (screenWidth - ctx.getGlyphLayout().width) / 2,
             screenHeight - 10);
 
-    ctx.getFont().getData().setScale(1.0f);
     String entityCount = "Entities: " + engine.getGameState().getAliveEntities().size();
     ctx.getFont().draw(ctx.getSpriteBatch(), entityCount, 10, screenHeight / 2 + 20);
 
     if (engine.getGameState().isGameOver()) {
       Team winner = engine.getGameState().getWinner();
       String winText = winner != null ? winner + " WINS!" : "DRAW!";
-      ctx.getFont().getData().setScale(2.0f);
-      ctx.getGlyphLayout().setText(ctx.getFont(), winText);
-      ctx.getFont()
+      ctx.getGlyphLayout().setText(ctx.getTitleFont(), winText);
+      ctx.getTitleFont()
           .draw(
               ctx.getSpriteBatch(),
               winText,
               (screenWidth - ctx.getGlyphLayout().width) / 2,
               screenHeight / 2);
-      ctx.getFont().getData().setScale(1.0f);
     }
 
     // Debug overlay status
@@ -135,6 +132,14 @@ public class HudRenderer {
           .draw(
               ctx.getSpriteBatch(),
               "AOE: ON",
+              screenWidth - 110,
+              screenHeight / 2 + 20 + (overlayLine++ * 16));
+    }
+    if (drawHpNumbers) {
+      ctx.getFont()
+          .draw(
+              ctx.getSpriteBatch(),
+              "HP: ON",
               screenWidth - 110,
               screenHeight / 2 + 20 + (overlayLine++ * 16));
     }
@@ -228,24 +233,24 @@ public class HudRenderer {
 
     ctx.getFont().setColor(COLOR_ELIXIR);
     ctx.getFont().draw(ctx.getSpriteBatch(), String.valueOf(card.getCost()), x + 5, y + h - 5);
-
     ctx.getFont().setColor(Color.WHITE);
-    ctx.getFont().getData().setScale(ENTITY_NAME_FONT_SCALE);
+
     String name = card.getName();
     if (name.length() > 8) {
       name = name.substring(0, 8) + "..";
     }
 
-    ctx.getGlyphLayout().setText(ctx.getFont(), name);
-    ctx.getFont()
+    ctx.getEntityNameFont().setColor(Color.WHITE);
+    ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), name);
+    ctx.getEntityNameFont()
         .draw(ctx.getSpriteBatch(), name, x + (w - ctx.getGlyphLayout().width) / 2, y + h / 2);
 
     // Level indicator (bottom-left corner)
-    ctx.getFont().setColor(Color.LIGHT_GRAY);
+    ctx.getEntityNameFont().setColor(Color.LIGHT_GRAY);
     String lvlText = "Lv" + level;
-    ctx.getFont().draw(ctx.getSpriteBatch(), lvlText, x + 3, y + 12);
+    ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), lvlText, x + 3, y + 12);
 
-    ctx.getFont().getData().setScale(1.0f);
+    ctx.getEntityNameFont().setColor(Color.WHITE);
     ctx.getSpriteBatch().end();
   }
 }

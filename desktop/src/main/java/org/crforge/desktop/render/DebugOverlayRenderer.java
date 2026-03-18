@@ -4,6 +4,7 @@ import static org.crforge.desktop.render.RenderConstants.BOTTOM_UI_HEIGHT;
 import static org.crforge.desktop.render.RenderConstants.CIRCLE_SEGMENTS;
 import static org.crforge.desktop.render.RenderConstants.COLOR_AGGRO_RANGE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_ATTACK_RANGE;
+import static org.crforge.desktop.render.RenderConstants.COLOR_HP_TEXT;
 import static org.crforge.desktop.render.RenderConstants.COLOR_MINIMUM_RANGE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_PATH;
 import static org.crforge.desktop.render.RenderConstants.HEALTH_BAR_HEIGHT;
@@ -161,6 +162,31 @@ public class DebugOverlayRenderer {
 
       ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, x - textWidth / 2, textY);
     }
+    ctx.getSpriteBatch().end();
+  }
+
+  /** Draw current/max HP text centered on the existing health bar for each alive entity. */
+  public void renderHpNumbers(GameState state) {
+    ctx.getSpriteBatch().begin();
+    ctx.getEntityNameFont().setColor(COLOR_HP_TEXT);
+
+    for (Entity entity : state.getAliveEntities()) {
+      float x = entity.getPosition().getX() * TILE_PIXELS;
+      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float radius = entity.getVisualRadius() * TILE_PIXELS;
+
+      float barY = y + radius + HEALTH_BAR_Y_OFFSET;
+      float barCenterY = barY + HEALTH_BAR_HEIGHT / 2;
+
+      String hpText = entity.getHealth().getCurrent() + "/" + entity.getHealth().getMax();
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), hpText);
+      float tw = ctx.getGlyphLayout().width;
+      float th = ctx.getGlyphLayout().height;
+
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), hpText, x - tw / 2, barCenterY + th / 2);
+    }
+
+    ctx.getEntityNameFont().setColor(com.badlogic.gdx.graphics.Color.WHITE);
     ctx.getSpriteBatch().end();
   }
 

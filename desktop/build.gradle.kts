@@ -11,6 +11,8 @@ dependencies {
     implementation(libs.gdx)
     implementation(libs.gdx.backend.lwjgl3)
     implementation("com.badlogicgames.gdx:gdx-platform:${libs.versions.gdx.get()}:natives-desktop")
+    implementation(libs.gdx.freetype)
+    implementation("com.badlogicgames.gdx:gdx-freetype-platform:${libs.versions.gdx.get()}:natives-desktop")
 
     // Logging
     api(libs.slf4j.api)

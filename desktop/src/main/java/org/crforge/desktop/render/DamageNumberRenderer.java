@@ -94,33 +94,31 @@ public class DamageNumberRenderer {
     }
 
     ctx.getSpriteBatch().begin();
-    ctx.getFont().getData().setScale(0.9f);
 
     for (DamagePopup popup : activePopups) {
       float yOffset = popup.elapsed * FLOAT_SPEED;
       float alpha = 1.0f - (popup.elapsed / POPUP_DURATION);
 
       if (popup.isShieldDamage) {
-        ctx.getFont()
+        ctx.getDamageFont()
             .setColor(
                 COLOR_SHIELD_DAMAGE_NUMBER.r,
                 COLOR_SHIELD_DAMAGE_NUMBER.g,
                 COLOR_SHIELD_DAMAGE_NUMBER.b,
                 alpha);
       } else {
-        ctx.getFont()
+        ctx.getDamageFont()
             .setColor(COLOR_DAMAGE_NUMBER.r, COLOR_DAMAGE_NUMBER.g, COLOR_DAMAGE_NUMBER.b, alpha);
       }
 
       String text = "-" + popup.amount;
-      ctx.getGlyphLayout().setText(ctx.getFont(), text);
+      ctx.getGlyphLayout().setText(ctx.getDamageFont(), text);
       float drawX = popup.x - ctx.getGlyphLayout().width / 2;
       float drawY = popup.y + yOffset + 20; // offset above entity center
-      ctx.getFont().draw(ctx.getSpriteBatch(), text, drawX, drawY);
+      ctx.getDamageFont().draw(ctx.getSpriteBatch(), text, drawX, drawY);
     }
 
-    ctx.getFont().getData().setScale(1.0f);
-    ctx.getFont().setColor(1f, 1f, 1f, 1f);
+    ctx.getDamageFont().setColor(1f, 1f, 1f, 1f);
     ctx.getSpriteBatch().end();
   }
 
