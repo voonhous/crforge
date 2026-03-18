@@ -35,7 +35,16 @@ public class ArenaRenderer {
       for (int y = 0; y < Arena.HEIGHT; y++) {
         TileType type = arena.getTile(x, y).type();
         Color color = getTileColor(type);
-        ctx.getShapeRenderer().setColor(color);
+        if (type != TileType.RIVER && (x + y) % 2 == 0) {
+          ctx.getShapeRenderer()
+              .setColor(
+                  color.r * CHECKER_DARKEN,
+                  color.g * CHECKER_DARKEN,
+                  color.b * CHECKER_DARKEN,
+                  color.a);
+        } else {
+          ctx.getShapeRenderer().setColor(color);
+        }
         ctx.getShapeRenderer()
             .rect(x * TILE_PIXELS, y * TILE_PIXELS + BOTTOM_UI_HEIGHT, TILE_PIXELS, TILE_PIXELS);
       }

@@ -42,6 +42,9 @@ public final class RenderConstants {
   public static final float ELIXIR_BAR_HEIGHT = 15f;
   public static final float MAX_ELIXIR = 10f;
 
+  /** Darken factor for alternating checkerboard tiles (multiplied against RGB). */
+  public static final float CHECKER_DARKEN = 0.92f;
+
   // ---- Tile colors ----
 
   public static final Color COLOR_BLUE_ZONE = new Color(0.2f, 0.3f, 0.6f, 1f);
