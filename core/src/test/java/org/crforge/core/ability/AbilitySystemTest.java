@@ -1183,6 +1183,43 @@ class AbilitySystemTest {
         .isLessThan(15);
   }
 
+  @Test
+  void dash_megaKnightShouldNotBeInvulnerableDuringJump() {
+    // MegaKnight has dashImmuneTime=0 -- he should remain targetable during his jump,
+    // unlike Bandit who becomes invulnerable.
+    Troop mk = createConstantTimeDashTroop(Team.BLUE, 5, 5);
+    Troop target = createDummyTarget(Team.RED, 10, 5);
+
+    gameState.spawnEntity(mk);
+    gameState.spawnEntity(target);
+    gameState.processPending();
+    mk.update(2.0f);
+    target.update(2.0f);
+
+    mk.getCombat().setCurrentTarget(target);
+
+    // Burn through initial cooldown (0.9s = 27 ticks), then trigger dash
+    for (int i = 0; i < 28; i++) {
+      abilitySystem.update(DT);
+    }
+    assertThat(mk.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
+
+    // MegaKnight should NOT be invulnerable during his jump
+    assertThat(mk.isInvulnerable()).isFalse();
+    assertThat(mk.isTargetable()).isTrue();
+
+    // Advance until landing
+    for (int i = 0; i < 60; i++) {
+      abilitySystem.update(DT);
+      if (mk.getAbility().getDashState() != AbilityComponent.DashState.DASHING) {
+        break;
+      }
+    }
+
+    // After landing, still not invulnerable
+    assertThat(mk.isInvulnerable()).isFalse();
+  }
+
   // -- HOOK tests --
 
   @Test
@@ -1629,7 +1666,7 @@ class AbilitySystemTest {
   }
 
   private Troop createConstantTimeDashTroop(Team team, float x, float y) {
-    AbilityData dashData = new DashAbility(480, 3.5f, 7.0f, 2.5f, 0.9f, 0.1f, 0.3f, 0.8f, 0f);
+    AbilityData dashData = new DashAbility(480, 3.5f, 7.0f, 2.5f, 0.9f, 0f, 0.3f, 0.8f, 0f);
 
     return Troop.builder()
         .name("MegaKnight")

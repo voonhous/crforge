@@ -104,8 +104,10 @@ public class DashHandler implements AbilityHandler {
           } else {
             ability.setDashSpeed(DASH_SPEED);
           }
-          // Immune during dash
-          troop.setInvulnerable(true);
+          // Immune during dash (only for troops with dashImmuneTime, e.g. Bandit)
+          if (data.dashImmuneTime() > 0) {
+            troop.setInvulnerable(true);
+          }
           // Disable normal combat during dash (set once, survives StatusEffectSystem)
           if (combat != null) {
             combat.setCombatDisabled(ModifierSource.ABILITY_DASH, true);
@@ -134,7 +136,9 @@ public class DashHandler implements AbilityHandler {
           applyDashDamage(troop, data);
 
           // End immunity
-          troop.setInvulnerable(false);
+          if (data.dashImmuneTime() > 0) {
+            troop.setInvulnerable(false);
+          }
         } else {
           // Move toward target
           float nx = dx / dist;
