@@ -8,6 +8,10 @@ A headless Clash Royale battle simulator built in Java, designed for reinforceme
 research. Deterministic tick-based engine with data-driven cards, a LibGDX debug visualizer,
 and a Python Gymnasium integration via ZMQ bridge.
 
+<p align="center">
+  <img src="docs/assets/debug-visualizer.gif" alt="Debug visualizer showing a simulated battle" width="320">
+</p>
+
 ## Features
 
 - **Full combat**: melee, ranged, AOE, chain lightning, scatter projectiles, charge, dash, hook, reflect, shields, death spawn, burst attacks
