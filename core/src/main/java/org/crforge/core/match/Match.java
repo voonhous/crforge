@@ -40,6 +40,7 @@ public abstract class Match {
   protected final List<Player> redPlayers;
 
   protected boolean overtime;
+  @Setter protected boolean draw;
   @Setter protected Team winner;
   @Setter protected GameState gameState;
 
@@ -48,6 +49,7 @@ public abstract class Match {
     this.bluePlayers = new ArrayList<>();
     this.redPlayers = new ArrayList<>();
     this.overtime = false;
+    this.draw = false;
     this.winner = null;
   }
 
@@ -105,7 +107,7 @@ public abstract class Match {
 
   /** Checks if the match has ended (has a winner or draw). */
   public boolean isEnded() {
-    return winner != null;
+    return winner != null || draw;
   }
 
   /**

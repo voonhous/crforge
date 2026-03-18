@@ -249,6 +249,9 @@ public class GameEngine {
   private void endGame(Team winner) {
     running = false;
     if (match != null) {
+      if (winner == null) {
+        match.setDraw(true);
+      }
       match.setWinner(winner);
     }
   }
