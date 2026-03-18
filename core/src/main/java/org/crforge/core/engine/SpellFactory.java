@@ -7,6 +7,7 @@ import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
@@ -78,9 +79,16 @@ class SpellFactory {
         float forward = proj.getMinDistance() > 0 ? proj.getMinDistance() / 1000f : 3.0f;
         destY = (team == Team.BLUE) ? y + forward : y - forward;
       } else {
-        // Standard: projectile flies in from behind
-        startX = x;
-        startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+        // Standard: projectile flies from the player's crown tower to the target
+        Tower crownTower = state.getCrownTower(team);
+        if (crownTower != null) {
+          startX = crownTower.getPosition().getX();
+          startY = crownTower.getPosition().getY();
+        } else {
+          // Fallback if crown tower destroyed: fly in from behind (old behavior)
+          startX = x;
+          startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+        }
         destX = x;
         destY = y;
       }
@@ -135,11 +143,19 @@ class SpellFactory {
   void fireSpawnProjectile(Team team, Card card, float x, float y, int level) {
     ProjectileStats stats = card.getSpawnProjectile();
     int damage = LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level);
-    float startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+    float startX, startY;
+    Tower crownTower = state.getCrownTower(team);
+    if (crownTower != null) {
+      startX = crownTower.getPosition().getX();
+      startY = crownTower.getPosition().getY();
+    } else {
+      startX = x;
+      startY = (team == Team.BLUE) ? y - SPELL_TRAVEL_DISTANCE : y + SPELL_TRAVEL_DISTANCE;
+    }
     Projectile p =
         new Projectile(
             team,
-            x,
+            startX,
             startY,
             x,
             y,

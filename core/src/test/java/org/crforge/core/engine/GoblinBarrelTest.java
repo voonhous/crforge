@@ -83,9 +83,9 @@ class GoblinBarrelTest {
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
     engine.queueAction(bluePlayer, action);
 
-    // Run enough ticks for sync delay + projectile travel time
-    // Speed = 400/60 tiles/s, distance ~10 tiles -> ~1.5s travel, total ~2.5s + margin
-    engine.runSeconds(4f);
+    // Projectile flies from crown tower (9,3) to target (9,25) = 22 tiles
+    // Speed = 400/60 tiles/s -> ~3.3s travel + 1s sync delay + margin
+    engine.runSeconds(6f);
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -122,7 +122,7 @@ class GoblinBarrelTest {
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
     engine.queueAction(bluePlayer, action);
 
-    engine.runSeconds(4f);
+    engine.runSeconds(6f);
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -177,9 +177,9 @@ class GoblinBarrelTest {
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 16f);
     engine.queueAction(bluePlayer, action);
 
-    // Run just enough for impact (~2.5s) but goblins still deploying (1.1s deploy time),
-    // so they haven't moved from their spawn positions yet
-    engine.runSeconds(3f);
+    // Projectile flies from crown tower (9,3) to (9,16) = 13 tiles
+    // Speed = 400/60 -> ~1.95s travel + 1s sync; goblins still deploying (1.1s deploy time)
+    engine.runSeconds(4f);
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -217,8 +217,9 @@ class GoblinBarrelTest {
     PlayerActionDTO action = PlayerActionDTO.play(0, towerX, towerY);
     engine.queueAction(bluePlayer, action);
 
-    // Run enough for impact but goblins still deploying so they haven't moved
-    engine.runSeconds(3f);
+    // Projectile flies from crown tower (9,3) to (14.5,25.5) = ~23.2 tiles
+    // Speed = 400/60 -> ~3.5s travel + 1s sync; goblins still deploying (1.1s deploy time)
+    engine.runSeconds(5.5f);
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -286,8 +287,9 @@ class GoblinBarrelTest {
     PlayerActionDTO action = PlayerActionDTO.play(0, barrelX, towerY);
     engine.queueAction(bluePlayer, action);
 
-    // Run enough for impact but goblins still deploying so they haven't moved
-    engine.runSeconds(3f);
+    // Projectile flies from crown tower (9,3) to (15.5,25.5) = ~23.4 tiles
+    // Speed = 400/60 -> ~3.5s travel + 1s sync; goblins still deploying (1.1s deploy time)
+    engine.runSeconds(5.5f);
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -336,7 +338,7 @@ class GoblinBarrelTest {
 
     PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
     leveledEngine.queueAction(leveledPlayer, action);
-    leveledEngine.runSeconds(4f);
+    leveledEngine.runSeconds(6f);
 
     List<Troop> goblins =
         leveledEngine.getGameState().getEntitiesOfType(Troop.class).stream()
