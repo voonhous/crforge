@@ -48,3 +48,13 @@ venv/
 
 # IDE build output
 bin/
+
+# Environment variables
+.env
+.env.*
+
+# Claude Code instructions
+CLAUDE.md
+
+# Internal scratch/planning files
+scratch/
