@@ -2,6 +2,8 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.arena.Arena;
+import org.crforge.core.arena.TileType;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.component.Health;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -207,6 +209,33 @@ class GameStateTest {
 
     assertThat(gameState.getFrameCount()).isEqualTo(3);
     assertThat(gameState.getGameTimeSeconds()).isEqualTo(0.1f);
+  }
+
+  @Test
+  void princessTowerDeath_shouldFreeTilesForPlacement() {
+    Arena arena = Arena.standard();
+    gameState.setArena(arena);
+
+    // Blue left princess tower at standard position (3.5, 6.5)
+    Tower princessTower =
+        Tower.createPrincessTower(Team.BLUE, 3.5f, 6.5f, LevelScaling.DEFAULT_TOWER_LEVEL);
+
+    gameState.spawnEntity(princessTower);
+    gameState.processPending();
+
+    // Tiles should be TOWER before destruction
+    assertThat(arena.getTile(3, 6).type()).isEqualTo(TileType.TOWER);
+    assertThat(arena.isValidPlacement(3.5f, 6.5f, Team.BLUE)).isFalse();
+
+    // Destroy the princess tower
+    princessTower.getHealth().takeDamage(100000);
+    gameState.processDeaths();
+
+    // Tiles should now be BLUE_ZONE, enabling placement
+    assertThat(arena.getTile(3, 6).type()).isEqualTo(TileType.BLUE_ZONE);
+    assertThat(arena.isValidPlacement(3.5f, 6.5f, Team.BLUE))
+        .as("Should be able to place on destroyed princess tower footprint")
+        .isTrue();
   }
 
   @Test

@@ -108,6 +108,26 @@ public class Arena {
         || (x >= RIGHT_BRIDGE_X && x < RIGHT_BRIDGE_X + BRIDGE_WIDTH);
   }
 
+  /**
+   * Converts a destroyed princess tower's 3x3 TOWER tiles back to the owning team's zone type,
+   * enabling troop placement on the former tower footprint.
+   */
+  public void freePrincessTowerTiles(float towerX, float towerY, Team team) {
+    TileType zoneType = (team == Team.BLUE) ? TileType.BLUE_ZONE : TileType.RED_ZONE;
+    int centerTileX = (int) towerX;
+    int centerTileY = (int) towerY;
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        int tx = centerTileX + dx;
+        int ty = centerTileY + dy;
+        Tile tile = getTile(tx, ty);
+        if (tile != null && tile.type() == TileType.TOWER) {
+          tiles[tx][ty] = new Tile(tx, ty, zoneType);
+        }
+      }
+    }
+  }
+
   public Tile getTile(int x, int y) {
     if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
       return null;

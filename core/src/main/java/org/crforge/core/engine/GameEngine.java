@@ -78,6 +78,7 @@ public class GameEngine {
     this.spawnerSystem.setMatch(match);
     this.elixirCollectionSystem.setMatch(match);
     match.setGameState(this.gameState);
+    gameState.setArena(match.getArena());
   }
 
   /** Queue a player action for processing on next tick. */

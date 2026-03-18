@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.arena.Arena;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
@@ -30,6 +31,7 @@ public class GameState {
 
   private final Map<Team, List<Tower>> towers;
   private List<Entity> cachedAliveEntities;
+  @Setter private Arena arena;
   @Setter private DeathHandler deathHandler;
   private int frameCount;
   private boolean gameOver;
@@ -121,6 +123,11 @@ public class GameState {
           Tower king = getCrownTower(tower.getTeam());
           if (king != null) {
             king.setActive(true);
+          }
+          // Free the tower's tiles so the owning team can deploy on the footprint
+          if (arena != null) {
+            arena.freePrincessTowerTiles(
+                tower.getPosition().getX(), tower.getPosition().getY(), tower.getTeam());
           }
         }
 
