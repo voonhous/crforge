@@ -64,7 +64,7 @@ class SpellFactory {
     // Scale spell damage by card level and rarity
     int damage = LevelScaling.scaleCard(proj.getDamage(), card.getRarity(), level);
     float speed = proj.getSpeed();
-    float radius = proj.getRadius();
+    float radius = card.getSpellRadius() > 0 ? card.getSpellRadius() : proj.getRadius();
     List<EffectStats> effects = proj.getHitEffects();
 
     if (speed > 0) {
