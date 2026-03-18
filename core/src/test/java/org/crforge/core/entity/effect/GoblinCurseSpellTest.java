@@ -422,7 +422,7 @@ class GoblinCurseSpellTest {
     engine.queueAction(bluePlayerL11, action);
     engine.tick(SYNC_DELAY_TICKS + HIT_SPEED_TICKS + 2);
 
-    // Level 11 damage: scaleCard(14, EPIC, 11) -> 5 steps of x1.10 -> 22
+    // Level 11 damage: scaleCard(14, EPIC, 11) -> 10 steps of x1.10 -> 35
     int expectedDamage = LevelScaling.scaleCard(14, Rarity.EPIC, 11);
     int damageTaken = 5000 - enemy.getHealth().getCurrent();
     assertThat(damageTaken)
@@ -431,7 +431,7 @@ class GoblinCurseSpellTest {
 
     // Also verify CT damage at level 11
     int expectedCtDamage = LevelScaling.scaleCard(4, Rarity.EPIC, 11);
-    assertThat(expectedCtDamage).as("CT damage at level 11 should be 6").isEqualTo(6);
+    assertThat(expectedCtDamage).as("CT damage at level 11 should be 10").isEqualTo(10);
   }
 
   // -- Helpers --

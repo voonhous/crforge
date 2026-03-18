@@ -162,13 +162,13 @@ class LightningTest {
     Card lightning = CardRegistry.get("lightning");
     AreaEffectStats stats = lightning.getAreaEffect();
 
-    // Level 11 scaling for Epic rarity (Epic min level = 6, so 5 upgrade steps)
+    // Level 11 scaling: 10 upgrade steps from level 1
     int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), Rarity.EPIC, 11);
     assertThat(scaledDamage).isGreaterThan(stats.getDamage());
 
     // Verify via LevelScaling's multiplier formula: m starts at 100, floor(m * 1.10) per step
     int m = 100;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 10; i++) {
       m = (int) Math.floor(m * 1.10);
     }
     int expected = (int) Math.floor(stats.getDamage() * m / 100.0);

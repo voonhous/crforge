@@ -4,29 +4,30 @@
 
 The base stats in our JSON data files are **level 1 values**.
 
-All card rarities share the same multiplier sequence (`floor(prev × 1.10)`), but each rarity's level 1 starts at a
-different point.
+All card rarities scale uniformly from level 1 using the same multiplier sequence (
+`floor(prev x 1.10)`). Rarity does not affect stat scaling, all cards share levels 1-16 with
+identical growth.
 
-| Level | Common | Rare | Epic | Legendary |
-|-------|--------|------|------|-----------|
-| 1     | 1.00   | -    | -    | -         |
-| 2     | 1.10   | -    | -    | -         |
-| 3     | 1.21   | 1.00 | -    | -         |
-| 4     | 1.33   | 1.10 | -    | -         |
-| 5     | 1.46   | 1.21 | -    | -         |
-| 6     | 1.60   | 1.33 | 1.00 | -         |
-| 7     | 1.76   | 1.46 | 1.10 | -         |
-| 8     | 1.93   | 1.60 | 1.21 | -         |
-| 9     | 2.12   | 1.76 | 1.33 | 1.00      |
-| 10    | 2.33   | 1.93 | 1.46 | 1.10      |
-| 11    | 2.56   | 2.12 | 1.60 | 1.21      |
-| 12    | 2.81   | 2.33 | 1.76 | 1.33      |
-| 13    | 3.09   | 2.56 | 1.93 | 1.46      |
-| 14    | 3.39   | 2.81 | 2.12 | 1.60      |
-| 15    | 3.72   | 3.09 | 2.33 | 1.76      |
-| 16    | 4.09   | 3.39 | 2.56 | 1.93      |
+| Level | Multiplier |
+|-------|------------|
+| 1     | 1.00       |
+| 2     | 1.10       |
+| 3     | 1.21       |
+| 4     | 1.33       |
+| 5     | 1.46       |
+| 6     | 1.60       |
+| 7     | 1.76       |
+| 8     | 1.93       |
+| 9     | 2.12       |
+| 10    | 2.33       |
+| 11    | 2.56       |
+| 12    | 2.81       |
+| 13    | 3.09       |
+| 14    | 3.39       |
+| 15    | 3.72       |
+| 16    | 4.09       |
 
-Formula: `stat_at_level = floor(base_stat × multiplier)`
+Formula: `stat_at_level = floor(base_stat x multiplier)`
 
 Source: community-decoded game data
 
@@ -60,7 +61,8 @@ Formula: `stat_at_level = floor(base_stat × multiplier)`
 
 ## King Tower
 
-King Tower HP and damage follow **different** growth rates early on. Damage uses the same sequence as Princess Tower,
+King Tower HP and damage follow **different** growth rates early on. Damage uses the same sequence
+as Princess Tower,
 but HP uses 7% growth (vs 8% for Princess Tower) in levels 1–9.
 
 - HP scaling:

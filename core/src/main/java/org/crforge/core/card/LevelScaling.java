@@ -10,9 +10,9 @@ package org.crforge.core.card;
  * LEVEL_SCALING.md tables.
  *
  * <ul>
- *   <li>Cards: ×1.10 per level, starting from the rarity's minimum level
- *   <li>Tower HP: ×1.07 (King) or ×1.08 (Princess) for levels 1–9, then ×1.10 for 10+
- *   <li>Tower damage: ×1.08 for levels 1–9, then ×1.10 for 10+
+ *   <li>Cards: x1.10 per level from level 1, uniform across all rarities
+ *   <li>Tower HP: x1.07 (King) or x1.08 (Princess) for levels 1-9, then x1.10 for 10+
+ *   <li>Tower damage: x1.08 for levels 1-9, then x1.10 for 10+
  * </ul>
  */
 public final class LevelScaling {
@@ -40,18 +40,17 @@ public final class LevelScaling {
   private LevelScaling() {}
 
   /**
-   * Scales a base stat by rarity and card level. Growth rate is 1.10 per level, applied iteratively
-   * with floor. Levels below the rarity's minimum are clamped to it.
+   * Scales a base stat by card level. Growth rate is 1.10 per level from level 1, applied
+   * iteratively with floor. All rarities scale uniformly from level 1.
    *
-   * @param baseStat base value at the rarity's minimum level
-   * @param rarity card rarity
+   * @param baseStat base value at level 1
+   * @param rarity card rarity (retained for API stability)
    * @param level target card level
    * @return scaled stat value
    */
   public static int scaleCard(int baseStat, Rarity rarity, int level) {
-    int minLevel = getMinLevel(rarity);
-    int clampedLevel = Math.max(minLevel, Math.min(level, MAX_CARD_LEVEL));
-    return applyMultiplier(baseStat, clampedLevel - minLevel, 1.10);
+    int clampedLevel = Math.max(1, Math.min(level, MAX_CARD_LEVEL));
+    return applyMultiplier(baseStat, clampedLevel - 1, 1.10);
   }
 
   public static int scalePrincessHp(int level) {

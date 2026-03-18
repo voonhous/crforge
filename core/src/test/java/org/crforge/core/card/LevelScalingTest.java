@@ -17,9 +17,9 @@ class LevelScalingTest {
     @Test
     void levelOneReturnsBaseStatUnchanged() {
       assertThat(LevelScaling.scaleCard(690, Rarity.COMMON, 1)).isEqualTo(690);
-      assertThat(LevelScaling.scaleCard(100, Rarity.RARE, 3)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(100, Rarity.EPIC, 6)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(100, Rarity.LEGENDARY, 9)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(100, Rarity.RARE, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(100, Rarity.EPIC, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(100, Rarity.LEGENDARY, 1)).isEqualTo(100);
     }
 
     @Test
@@ -42,36 +42,43 @@ class LevelScalingTest {
 
     @Test
     void rareMultipliersMatchTable() {
+      // All rarities now scale uniformly from level 1
       int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 3)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 4)).isEqualTo(110);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 11)).isEqualTo(212);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 14)).isEqualTo(281);
+      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 3)).isEqualTo(121);
+      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 11)).isEqualTo(256);
+      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 14)).isEqualTo(339);
     }
 
     @Test
     void epicMultipliersMatchTable() {
       int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 6)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 7)).isEqualTo(110);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 11)).isEqualTo(160);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 14)).isEqualTo(212);
+      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 6)).isEqualTo(160);
+      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 11)).isEqualTo(256);
+      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 14)).isEqualTo(339);
     }
 
     @Test
     void legendaryMultipliersMatchTable() {
       int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 9)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 10)).isEqualTo(110);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 11)).isEqualTo(121);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 14)).isEqualTo(160);
+      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 9)).isEqualTo(212);
+      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 11)).isEqualTo(256);
+      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 14)).isEqualTo(339);
     }
 
     @Test
-    void levelBelowRarityMinimumIsClamped() {
-      // Rare minimum is level 3 — requesting level 1 should behave as level 3
-      assertThat(LevelScaling.scaleCard(100, Rarity.RARE, 1))
-          .isEqualTo(LevelScaling.scaleCard(100, Rarity.RARE, 3));
+    void allRaritiesProduceSameResultAtSameLevel() {
+      // Post-unification: rarity no longer affects scaling
+      int base = 100;
+      int level = 11;
+      int expected = 256;
+      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, level)).isEqualTo(expected);
+      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, level)).isEqualTo(expected);
+      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, level)).isEqualTo(expected);
+      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, level)).isEqualTo(expected);
+      assertThat(LevelScaling.scaleCard(base, Rarity.CHAMPION, level)).isEqualTo(expected);
     }
 
     @Test
