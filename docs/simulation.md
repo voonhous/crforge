@@ -79,55 +79,7 @@ flowchart TD
 
 ## System Dependencies
 
-No circular dependencies between systems. Cross-system callbacks use functional interfaces wired at construction time.
-
-```mermaid
-graph LR
-    GE[GameEngine] --> CS[CombatSystem]
-    GE --> PS[ProjectileSystem]
-    GE --> SS[SpawnerSystem]
-    GE --> DS[DeploymentSystem]
-    GE --> PH[PhysicsSystem]
-    GE --> AB[AbilitySystem]
-    GE --> AE[AreaEffectSystem]
-    GE --> AU[AttachedUnitSystem]
-    GE --> SE[StatusEffectSystem]
-    GE --> TS[TargetingSystem]
-    GE --> TR[TransformationSystem]
-    GE --> EC[ElixirCollectionSystem]
-
-    CS --> GS[GameState]
-    CS --> AOE[AoeDamageService]
-    CS --> PS
-
-    PS --> GS
-    PS --> AOE
-
-    SS --> GS
-    SS --> AOE
-    SS --> MA[Match]
-
-    DS --> EF[EntityFactory]
-    EF --> GS
-    EF --> AOE
-
-    PH --> AR[Arena]
-    PH --> GS
-
-    AB --> GS
-    AE --> GS
-    AU --> GS
-    SE -.-> |"passed per call"| GS
-
-    GS -.-> |"DeathHandler\n(functional interface)"| SS
-
-    TS --- ST((stateless))
-```
-
-**Key files:**
-
-- `core/.../engine/GameEngine.java` (wiring in constructor)
-- `core/.../engine/GameState.java` (DeathHandler functional interface)
+See [Architecture Overview -> System Dependencies](architecture.md#system-dependencies) for the full dependency graph between systems.
 
 ---
 
