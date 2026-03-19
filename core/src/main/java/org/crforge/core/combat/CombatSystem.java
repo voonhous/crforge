@@ -9,6 +9,7 @@ import org.crforge.core.ability.handler.ReflectHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -193,85 +194,128 @@ public class CombatSystem {
     return distanceSq <= effectiveRange * effectiveRange;
   }
 
+  // -- executeAttack and its extracted sub-methods --
+
   private void executeAttack(Entity attacker, Entity target, Combat combat) {
     // Skip hits on invulnerable targets (e.g. Bandit during dash)
     if (target.isInvulnerable()) {
       return;
     }
 
+    int baseDamage = calculateAttackDamage(attacker, combat);
+    int giantBuffBonus = calculateGiantBuffBonus(attacker, target, combat);
+
+    if (isScatterAttack(combat)) {
+      projectileSystem.fireScatterProjectiles(
+          attacker, target, baseDamage + giantBuffBonus, combat);
+    } else if (combat.isRanged()) {
+      fireRangedAttack(attacker, target, baseDamage + giantBuffBonus, combat);
+    } else {
+      dealMeleeDamage(attacker, target, baseDamage, giantBuffBonus, combat);
+    }
+
+    applyPostAttackEffects(attacker, target, combat);
+  }
+
+  /** Computes base damage with charge override applied. */
+  private int calculateAttackDamage(Entity attacker, Combat combat) {
     int baseDamage =
         combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getEffectiveDamage();
-
     // Charge ability: override damage for this attack if charged
     if (attacker instanceof Troop troop) {
       baseDamage = ChargeHandler.getChargeDamage(troop.getAbility(), baseDamage);
     }
+    return baseDamage;
+  }
 
-    // GiantBuffer buff: compute bonus damage for this attack (proc on every Nth attack)
-    int giantBuffBonus = 0;
+  /** Computes GiantBuffer bonus damage for this attack (proc on every Nth attack). */
+  private int calculateGiantBuffBonus(Entity attacker, Entity target, Combat combat) {
     if (attacker instanceof Troop buffedTroop) {
-      giantBuffBonus = BuffAllyHandler.processGiantBuffHit(buffedTroop, target, combat);
+      return BuffAllyHandler.processGiantBuffHit(buffedTroop, target, combat);
     }
+    return 0;
+  }
 
-    if (combat.isRanged()
+  /** Returns true if the attack should fire scatter projectiles (e.g. Firecracker). */
+  private boolean isScatterAttack(Combat combat) {
+    return combat.isRanged()
         && combat.getMultipleProjectiles() > 1
         && combat.getProjectileStats() != null
-        && combat.getProjectileStats().getScatter() != null) {
-      projectileSystem.fireScatterProjectiles(
-          attacker, target, baseDamage + giantBuffBonus, combat);
-    } else if (combat.isRanged()) {
-      Projectile projectile =
-          projectileSystem.createAttackProjectile(
-              attacker, target, baseDamage + giantBuffBonus, combat);
-      gameState.spawnProjectile(projectile);
+        && combat.getProjectileStats().getScatter() != null;
+  }
 
-      // Lock combat while returning projectile (boomerang) is in flight
-      if (projectile.isReturningEnabled()) {
-        combat.setCombatDisabled(
-            org.crforge.core.component.ModifierSource.RETURNING_PROJECTILE, true);
-      }
+  /** Fires a single ranged projectile, locking combat if it is a returning (boomerang) type. */
+  private void fireRangedAttack(Entity attacker, Entity target, int damage, Combat combat) {
+    Projectile projectile =
+        projectileSystem.createAttackProjectile(attacker, target, damage, combat);
+    gameState.spawnProjectile(projectile);
+    // Lock combat while returning projectile (boomerang) is in flight
+    if (projectile.isReturningEnabled()) {
+      combat.setCombatDisabled(ModifierSource.RETURNING_PROJECTILE, true);
+    }
+  }
+
+  /**
+   * Deals melee damage to the primary target, including crown tower adjustment, AOE, effects,
+   * buff-on-damage, and reflect counter-damage.
+   */
+  private void dealMeleeDamage(
+      Entity attacker, Entity target, int baseDamage, int giantBuffBonus, Combat combat) {
+    int effectiveDamage =
+        DamageUtil.adjustForCrownTower(baseDamage, target, combat.getCrownTowerDamagePercent());
+    // Add GiantBuffer bonus after crown tower adjustment (buff has its own CT handling)
+    effectiveDamage += giantBuffBonus;
+
+    if (combat.getAoeRadius() > 0) {
+      // selfAsAoeCenter: AOE is centered on the attacker (e.g. Valkyrie 360-degree splash)
+      Entity aoeCenter = combat.isSelfAsAoeCenter() ? attacker : target;
+      aoeDamageService.applySpellDamage(
+          attacker.getTeam(),
+          aoeCenter.getPosition().getX(),
+          aoeCenter.getPosition().getY(),
+          effectiveDamage,
+          combat.getAoeRadius(),
+          combat.getHitEffects(),
+          0);
     } else {
-      // Melee attack, deal damage immediately
-      int effectiveDamage =
-          DamageUtil.adjustForCrownTower(baseDamage, target, combat.getCrownTowerDamagePercent());
-      // Add GiantBuffer bonus after crown tower adjustment (buff has its own CT handling)
-      effectiveDamage += giantBuffBonus;
+      // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g. Curse)
+      aoeDamageService.applyEffects(target, combat.getHitEffects());
+      aoeDamageService.dealDamage(target, effectiveDamage);
+    }
 
-      if (combat.getAoeRadius() > 0) {
-        // selfAsAoeCenter: AOE is centered on the attacker (e.g. Valkyrie 360-degree splash)
-        Entity aoeCenter = combat.isSelfAsAoeCenter() ? attacker : target;
-        aoeDamageService.applySpellDamage(
-            attacker.getTeam(),
-            aoeCenter.getPosition().getX(),
-            aoeCenter.getPosition().getY(),
-            effectiveDamage,
-            combat.getAoeRadius(),
-            combat.getHitEffects(),
-            0);
-      } else {
-        // Apply effects BEFORE damage to ensure One-Hit Kills still trigger effect logic (e.g.
-        // Curse)
-        aoeDamageService.applyEffects(target, combat.getHitEffects());
-        aoeDamageService.dealDamage(target, effectiveDamage);
-      }
+    // Apply buff-on-damage for melee attacks
+    applyBuffOnDamage(combat, target);
 
-      // Apply buff-on-damage for melee attacks
-      applyBuffOnDamage(combat, target);
-
-      // Reflect: if target has REFLECT ability and attacker is within reflect radius, deal
-      // counter-damage
-      if (target instanceof Troop reflector) {
-        int reflectDmg = ReflectHandler.getReflectDamage(reflector);
-        if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
-          float dist = attacker.getPosition().distanceTo(reflector.getPosition());
-          float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
-          if (dist <= effectiveRadius) {
-            ReflectHandler.applyReflectDamage(reflector, attacker, reflectDmg, aoeDamageService);
-          }
+    // Reflect: if target has REFLECT ability and attacker is within reflect radius,
+    // deal counter-damage
+    if (target instanceof Troop reflector) {
+      int reflectDmg = ReflectHandler.getReflectDamage(reflector);
+      if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
+        float dist = attacker.getPosition().distanceTo(reflector.getPosition());
+        float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
+        if (dist <= effectiveRadius) {
+          ReflectHandler.applyReflectDamage(reflector, attacker, reflectDmg, aoeDamageService);
         }
       }
     }
+  }
 
+  /**
+   * Deals melee damage to a secondary target (no reflect, no recoil, no kamikaze). Used by
+   * attackAdditionalTargets for multi-target units like EWiz.
+   */
+  private void dealExtraMeleeDamage(
+      Entity attacker, Entity target, int baseDamage, int giantBuffBonus, Combat combat) {
+    int effectiveDamage =
+        DamageUtil.adjustForCrownTower(baseDamage, target, combat.getCrownTowerDamagePercent());
+    effectiveDamage += giantBuffBonus;
+    aoeDamageService.applyEffects(target, combat.getHitEffects());
+    aoeDamageService.dealDamage(target, effectiveDamage);
+    applyBuffOnDamage(combat, target);
+  }
+
+  /** Applies post-attack effects: charge consumption, finish, area effect, recoil, kamikaze. */
+  private void applyPostAttackEffects(Entity attacker, Entity target, Combat combat) {
     // Consume charge after attack
     if (attacker instanceof Troop t) {
       ChargeHandler.consumeCharge(t);
@@ -308,6 +352,8 @@ public class CombatSystem {
       attacker.getHealth().kill();
     }
   }
+
+  // -- Additional targets --
 
   /**
    * Finds and attacks additional targets for units with multipleTargets > 1 (e.g. EWiz). The
@@ -348,54 +394,27 @@ public class CombatSystem {
 
     for (int i = 0; i < fired; i++) {
       Entity extraTarget = candidates.get(i);
-
-      // GiantBuffer buff: each additional target increments the attack counter independently
-      int extraBuffBonus = 0;
-      if (attacker instanceof Troop buffedTroop) {
-        extraBuffBonus = BuffAllyHandler.processGiantBuffHit(buffedTroop, extraTarget, combat);
-      }
-
+      int extraBuffBonus = calculateGiantBuffBonus(attacker, extraTarget, combat);
       if (combat.isRanged()) {
-        Projectile projectile =
-            projectileSystem.createAttackProjectile(
-                attacker, extraTarget, baseDamage + extraBuffBonus, combat);
-        gameState.spawnProjectile(projectile);
+        fireRangedAttack(attacker, extraTarget, baseDamage + extraBuffBonus, combat);
       } else {
-        int effectiveDamage =
-            DamageUtil.adjustForCrownTower(
-                baseDamage, extraTarget, combat.getCrownTowerDamagePercent());
-        effectiveDamage += extraBuffBonus;
-        aoeDamageService.applyEffects(extraTarget, combat.getHitEffects());
-        aoeDamageService.dealDamage(extraTarget, effectiveDamage);
-        applyBuffOnDamage(combat, extraTarget);
+        dealExtraMeleeDamage(attacker, extraTarget, baseDamage, extraBuffBonus, combat);
       }
     }
 
     // If we couldn't find enough unique targets, fire remaining shots at the primary target
     int remaining = extraTargets - fired;
     for (int i = 0; i < remaining; i++) {
-      // GiantBuffer buff: fallback shots also increment the counter
-      int fallbackBuffBonus = 0;
-      if (attacker instanceof Troop buffedTroop) {
-        fallbackBuffBonus = BuffAllyHandler.processGiantBuffHit(buffedTroop, primaryTarget, combat);
-      }
-
+      int fallbackBuffBonus = calculateGiantBuffBonus(attacker, primaryTarget, combat);
       if (combat.isRanged()) {
-        Projectile projectile =
-            projectileSystem.createAttackProjectile(
-                attacker, primaryTarget, baseDamage + fallbackBuffBonus, combat);
-        gameState.spawnProjectile(projectile);
+        fireRangedAttack(attacker, primaryTarget, baseDamage + fallbackBuffBonus, combat);
       } else {
-        int effectiveDamage =
-            DamageUtil.adjustForCrownTower(
-                baseDamage, primaryTarget, combat.getCrownTowerDamagePercent());
-        effectiveDamage += fallbackBuffBonus;
-        aoeDamageService.applyEffects(primaryTarget, combat.getHitEffects());
-        aoeDamageService.dealDamage(primaryTarget, effectiveDamage);
-        applyBuffOnDamage(combat, primaryTarget);
+        dealExtraMeleeDamage(attacker, primaryTarget, baseDamage, fallbackBuffBonus, combat);
       }
     }
   }
+
+  // -- Utility methods --
 
   private void applyBuffOnDamage(Combat combat, Entity target) {
     EffectStats buff = combat.getBuffOnDamage();
