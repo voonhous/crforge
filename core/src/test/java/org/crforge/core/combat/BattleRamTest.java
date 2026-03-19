@@ -15,6 +15,8 @@ import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
+import org.crforge.core.entity.DeathHandlingSystem;
+import org.crforge.core.entity.SpawnFactory;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
@@ -35,6 +37,7 @@ class BattleRamTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private SpawnerSystem spawnerSystem;
+  private DeathHandlingSystem deathHandlingSystem;
   private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   // Barbarian stats used for death spawn
@@ -58,8 +61,10 @@ class BattleRamTest {
     AoeDamageService aoeDamageService = new AoeDamageService(gameState);
     ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
     combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
-    gameState.setDeathHandler(spawnerSystem::onDeath);
+    SpawnFactory spawnFactory = new SpawnFactory(gameState);
+    spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
+    deathHandlingSystem = new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory);
+    gameState.setDeathHandler(deathHandlingSystem::onDeath);
   }
 
   @Test

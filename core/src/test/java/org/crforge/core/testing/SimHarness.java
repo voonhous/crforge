@@ -13,6 +13,8 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
+import org.crforge.core.entity.DeathHandlingSystem;
+import org.crforge.core.entity.SpawnFactory;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -56,6 +58,7 @@ public class SimHarness {
   private final CombatSystem combatSystem;
   private final PhysicsSystem physicsSystem;
   private final SpawnerSystem spawnerSystem;
+  private final DeathHandlingSystem deathHandlingSystem;
   private final AreaEffectSystem areaEffectSystem;
   private final EntityTimerSystem entityTimerSystem;
 
@@ -90,9 +93,15 @@ public class SimHarness {
     this.physicsSystem =
         enabledSystems.contains(SimSystems.PHYSICS) ? new PhysicsSystem(arena) : null;
 
+    SpawnFactory spawnFactory = new SpawnFactory(gameState);
     this.spawnerSystem =
         enabledSystems.contains(SimSystems.SPAWNER)
-            ? new SpawnerSystem(gameState, aoeDamageService)
+            ? new SpawnerSystem(gameState, spawnFactory)
+            : null;
+
+    this.deathHandlingSystem =
+        enabledSystems.contains(SimSystems.SPAWNER)
+            ? new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory)
             : null;
 
     this.areaEffectSystem =
@@ -107,8 +116,8 @@ public class SimHarness {
     if (areaEffectSystem != null && spawnerSystem != null) {
       areaEffectSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     }
-    if (spawnerSystem != null) {
-      gameState.setDeathHandler(spawnerSystem::onDeath);
+    if (deathHandlingSystem != null) {
+      gameState.setDeathHandler(deathHandlingSystem::onDeath);
     }
 
     // Spawn entities and process pending
@@ -174,9 +183,14 @@ public class SimHarness {
       targetingSystem.updateTargets(gameState.getAliveEntities());
     }
 
-    // 5. Spawner
+    // 5. Spawner (live spawning only)
     if (spawnerSystem != null) {
       spawnerSystem.update(DT);
+    }
+
+    // 5.5 Process pending delayed death spawns
+    if (deathHandlingSystem != null) {
+      deathHandlingSystem.processDelayedSpawns(DT);
     }
 
     // 6. Abilities

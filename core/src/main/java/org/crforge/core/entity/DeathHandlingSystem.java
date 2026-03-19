@@ -38,7 +38,7 @@ import org.crforge.core.util.Vector2;
  * Handles all death-related mechanics: death damage, knockback, death spawns (immediate and
  * delayed), death area effects, death projectiles, elixir grants, and curse spawns.
  */
-class DeathHandler {
+public class DeathHandlingSystem {
 
   private static final float KNOCKBACK_DURATION = 0.5f;
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
@@ -53,14 +53,15 @@ class DeathHandler {
    */
   @Setter private Match match;
 
-  DeathHandler(GameState gameState, AoeDamageService aoeDamageService, SpawnFactory spawnFactory) {
+  public DeathHandlingSystem(
+      GameState gameState, AoeDamageService aoeDamageService, SpawnFactory spawnFactory) {
     this.gameState = gameState;
     this.aoeDamageService = aoeDamageService;
     this.spawnFactory = spawnFactory;
   }
 
-  /** Called by GameState.processDeaths() via SpawnerSystem. */
-  void onDeath(Entity entity) {
+  /** Called by GameState.processDeaths() via the registered death handler callback. */
+  public void onDeath(Entity entity) {
     // Handle manaOnDeath for elixir collector buildings (grants elixir to owner on death)
     if (entity instanceof Building building && building.getElixirCollector() != null) {
       ElixirCollectorComponent collector = building.getElixirCollector();
@@ -187,8 +188,8 @@ class DeathHandler {
     }
   }
 
-  /** Process pending delayed death spawns. Called by SpawnerSystem.update() each tick. */
-  void processDelayedSpawns(float deltaTime) {
+  /** Process pending delayed death spawns. Called each tick after spawner update. */
+  public void processDelayedSpawns(float deltaTime) {
     if (pendingDeathSpawns.isEmpty()) {
       return;
     }

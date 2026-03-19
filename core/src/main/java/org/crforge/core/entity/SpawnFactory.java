@@ -19,11 +19,11 @@ import org.crforge.core.util.Vector2;
  * Builds and spawns Troop entities from TroopStats. Handles level scaling, combat component
  * assembly, spawner wiring, and clone logic. Used by both live spawning and death spawning paths.
  */
-class SpawnFactory {
+public class SpawnFactory {
 
   private final GameState gameState;
 
-  SpawnFactory(GameState gameState) {
+  public SpawnFactory(GameState gameState) {
     this.gameState = gameState;
   }
 

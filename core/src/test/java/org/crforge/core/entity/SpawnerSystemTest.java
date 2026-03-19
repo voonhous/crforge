@@ -7,8 +7,6 @@ import java.util.List;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
-import org.crforge.core.combat.CombatSystem;
-import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
@@ -31,13 +29,16 @@ class SpawnerSystemTest {
   private Building spawnerBuilding;
   private GameState gameState;
   private SpawnerSystem spawnerSystem;
+  private DeathHandlingSystem deathHandlingSystem;
   private TroopStats skeletonStats;
 
   @BeforeEach
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    spawnerSystem = new SpawnerSystem(gameState);
+    SpawnFactory spawnFactory = new SpawnFactory(gameState);
+    spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
+    deathHandlingSystem = new DeathHandlingSystem(gameState, null, spawnFactory);
 
     skeletonStats = TroopStats.builder().name("Skeleton").health(67).damage(67).speed(1.2f).build();
 
@@ -100,7 +101,7 @@ class SpawnerSystemTest {
 
   @Test
   void onDeath_shouldSpawnDeathUnits() {
-    spawnerSystem.onDeath(spawnerBuilding);
+    deathHandlingSystem.onDeath(spawnerBuilding);
 
     // Should spawn 4 skeletons on death
     assertThat(gameState.getPendingSpawns()).hasSize(4);
@@ -111,10 +112,9 @@ class SpawnerSystemTest {
 
   @Test
   void onDeath_shouldApplyDeathDamageAOE() {
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    DeathHandlingSystem deathHandler =
+        new DeathHandlingSystem(
+            gameState, new AoeDamageService(gameState), new SpawnFactory(gameState));
 
     // Create a unit with death damage (like Ice Golem)
     SpawnerComponent deathDmgSpawner =
@@ -159,7 +159,7 @@ class SpawnerSystemTest {
     nearEnemy.setDeployTimer(0);
     farEnemy.setDeployTimer(0);
 
-    systemWithCombat.onDeath(iceGolem);
+    deathHandler.onDeath(iceGolem);
 
     assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(400); // 500 - 100
     assertThat(farEnemy.getHealth().getCurrent()).isEqualTo(500); // No damage
@@ -202,12 +202,11 @@ class SpawnerSystemTest {
     gameState.spawnEntity(golem);
     gameState.processPending();
 
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    SpawnerSystem systemWithCombat = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    DeathHandlingSystem deathHandler =
+        new DeathHandlingSystem(
+            gameState, new AoeDamageService(gameState), new SpawnFactory(gameState));
 
-    systemWithCombat.onDeath(golem);
+    deathHandler.onDeath(golem);
 
     // Should spawn 2 Golemites
     assertThat(gameState.getPendingSpawns()).hasSize(2);
@@ -401,11 +400,11 @@ class SpawnerSystemTest {
   void deathSpawn_bombEntity_shouldExplodeAfterDeployTime() {
     // BalloonBomb-like entity: health=0, deployTime=3.0, deathDamage=100, radius=2.0
     GameState freshState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
-    freshState.setDeathHandler(freshSystem::onDeath);
+    SpawnFactory freshSpawnFactory = new SpawnFactory(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, freshSpawnFactory);
+    DeathHandlingSystem freshDeathHandler =
+        new DeathHandlingSystem(freshState, new AoeDamageService(freshState), freshSpawnFactory);
+    freshState.setDeathHandler(freshDeathHandler::onDeath);
 
     TroopStats bombStats =
         TroopStats.builder()
@@ -510,11 +509,10 @@ class SpawnerSystemTest {
   void deathSpawn_normalUnitWithDeathMechanics_shouldGetSpawnerComponent() {
     // Golemite-like unit: has health AND deathDamage
     GameState freshState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
-    freshState.setDeathHandler(freshSystem::onDeath);
+    SpawnFactory freshSpawnFactory = new SpawnFactory(freshState);
+    DeathHandlingSystem freshDeathHandler =
+        new DeathHandlingSystem(freshState, new AoeDamageService(freshState), freshSpawnFactory);
+    freshState.setDeathHandler(freshDeathHandler::onDeath);
 
     TroopStats golemiteStats =
         TroopStats.builder()
@@ -636,10 +634,9 @@ class SpawnerSystemTest {
   void onDeath_shouldApplyDeathPushback() {
     // Golem-like unit with death damage + pushback
     GameState freshState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
+    DeathHandlingSystem freshDeathHandler =
+        new DeathHandlingSystem(
+            freshState, new AoeDamageService(freshState), new SpawnFactory(freshState));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
@@ -674,7 +671,7 @@ class SpawnerSystemTest {
     freshState.processPending();
     nearEnemy.setDeployTimer(0); // finish deploy
 
-    freshSystem.onDeath(golem);
+    freshDeathHandler.onDeath(golem);
 
     // Should take death damage
     assertThat(nearEnemy.getHealth().getCurrent()).isEqualTo(241); // 500 - 259
@@ -686,10 +683,9 @@ class SpawnerSystemTest {
   void onDeath_deathPushbackShouldRespectIgnorePushback() {
     // Same setup but enemy has ignorePushback=true
     GameState freshState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(freshState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(freshState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(freshState, aoeDamageService, projectileSystem);
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new AoeDamageService(freshState));
+    DeathHandlingSystem freshDeathHandler =
+        new DeathHandlingSystem(
+            freshState, new AoeDamageService(freshState), new SpawnFactory(freshState));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
@@ -727,7 +723,7 @@ class SpawnerSystemTest {
     freshState.processPending();
     immune.setDeployTimer(0); // finish deploy
 
-    freshSystem.onDeath(golem);
+    freshDeathHandler.onDeath(golem);
 
     // Should take death damage
     assertThat(immune.getHealth().getCurrent()).isEqualTo(241); // 500 - 259
@@ -739,8 +735,10 @@ class SpawnerSystemTest {
   void deathSpawn_withDeployTime_shouldSpawnInDeployingState() {
     // GoblinCage-like building: death-spawns a GoblinBrawler with 0.5s deploy delay
     GameState freshState = new GameState();
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
-    freshState.setDeathHandler(freshSystem::onDeath);
+    SpawnFactory freshSpawnFactory = new SpawnFactory(freshState);
+    DeathHandlingSystem freshDeathHandler =
+        new DeathHandlingSystem(freshState, null, freshSpawnFactory);
+    freshState.setDeathHandler(freshDeathHandler::onDeath);
 
     TroopStats brawlerStats =
         TroopStats.builder()

@@ -9,8 +9,6 @@ import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
-import org.crforge.core.combat.CombatSystem;
-import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
@@ -39,8 +37,8 @@ import org.junit.jupiter.api.Test;
 class LumberjackDeathEffectTest {
 
   private GameState gameState;
-  private CombatSystem combatSystem;
   private SpawnerSystem spawnerSystem;
+  private DeathHandlingSystem deathHandlingSystem;
   private AreaEffectSystem areaEffectSystem;
   private Map<String, BuffDefinition> savedBuffs;
 
@@ -52,10 +50,10 @@ class LumberjackDeathEffectTest {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
     AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
-    gameState.setDeathHandler(spawnerSystem::onDeath);
+    SpawnFactory spawnFactory = new SpawnFactory(gameState);
+    spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
+    deathHandlingSystem = new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory);
+    gameState.setDeathHandler(deathHandlingSystem::onDeath);
     areaEffectSystem = new AreaEffectSystem(gameState);
 
     // Register the Rage buff (matches buffs.json)
@@ -107,7 +105,7 @@ class LumberjackDeathEffectTest {
     gameState.processPending();
 
     // Kill the bottle -> should spawn a Rage AreaEffect
-    spawnerSystem.onDeath(bottle);
+    deathHandlingSystem.onDeath(bottle);
     gameState.processPending();
 
     List<AreaEffect> effects = gameState.getEntitiesOfType(AreaEffect.class);

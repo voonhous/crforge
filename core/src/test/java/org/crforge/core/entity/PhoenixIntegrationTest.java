@@ -35,6 +35,7 @@ class PhoenixIntegrationTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private SpawnerSystem spawnerSystem;
+  private DeathHandlingSystem deathHandlingSystem;
 
   // Pre-built stats for the Phoenix chain
   private TroopStats phoenixNoRespawnStats;
@@ -50,9 +51,11 @@ class PhoenixIntegrationTest {
     AoeDamageService aoeDamageService = new AoeDamageService(gameState);
     ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
     combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    spawnerSystem = new SpawnerSystem(gameState, new AoeDamageService(gameState));
+    SpawnFactory spawnFactory = new SpawnFactory(gameState);
+    spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
+    deathHandlingSystem = new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory);
     projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
-    gameState.setDeathHandler(spawnerSystem::onDeath);
+    gameState.setDeathHandler(deathHandlingSystem::onDeath);
 
     // Build the chain bottom-up: PhoenixNoRespawn -> PhoenixEgg -> PhoenixFireball -> Phoenix
     phoenixNoRespawnStats =

@@ -9,6 +9,8 @@ import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.entity.AttachedUnitSystem;
+import org.crforge.core.entity.DeathHandlingSystem;
+import org.crforge.core.entity.SpawnFactory;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffectSystem;
@@ -33,6 +35,7 @@ public class GameEngine {
   private final DeploymentSystem deploymentSystem;
   private final StatusEffectSystem statusEffectSystem;
   private final SpawnerSystem spawnerSystem;
+  private final DeathHandlingSystem deathHandlingSystem;
   private final AreaEffectSystem areaEffectSystem;
   private final AbilitySystem abilitySystem;
   private final AttachedUnitSystem attachedUnitSystem;
@@ -54,11 +57,14 @@ public class GameEngine {
     ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
     this.combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
     this.deploymentSystem = new DeploymentSystem(gameState, aoeDamageService);
-    this.spawnerSystem = new SpawnerSystem(gameState, aoeDamageService);
+
+    SpawnFactory spawnFactory = new SpawnFactory(gameState);
+    this.spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
+    this.deathHandlingSystem = new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory);
 
     // One-directional callback wiring (no circular dependencies)
     projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
-    this.gameState.setDeathHandler(spawnerSystem::onDeath);
+    this.gameState.setDeathHandler(deathHandlingSystem::onDeath);
 
     this.statusEffectSystem = new StatusEffectSystem();
     this.areaEffectSystem = new AreaEffectSystem(gameState);
@@ -77,7 +83,7 @@ public class GameEngine {
     this.match = match;
     this.physicsSystem = new PhysicsSystem(match.getArena());
     this.physicsSystem.setGameState(gameState);
-    this.spawnerSystem.setMatch(match);
+    this.deathHandlingSystem.setMatch(match);
     this.elixirCollectionSystem.setMatch(match);
     match.setGameState(this.gameState);
     gameState.setArena(match.getArena());
@@ -131,8 +137,11 @@ public class GameEngine {
     // 3. Process queued deployments (includes server sync delay)
     deploymentSystem.update(DELTA_TIME);
 
-    // 4. Update Spawners (new CES system)
+    // 4. Update Spawners (live spawning only)
     spawnerSystem.update(DELTA_TIME);
+
+    // 4.5 Process pending delayed death spawns
+    deathHandlingSystem.processDelayedSpawns(DELTA_TIME);
 
     // 5. Update status effects (Update durations and calculate multipliers)
     statusEffectSystem.update(gameState, DELTA_TIME);

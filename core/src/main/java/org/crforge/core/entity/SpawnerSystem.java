@@ -2,7 +2,6 @@ package org.crforge.core.entity;
 
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
-import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.engine.GameState;
@@ -10,7 +9,6 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.match.Match;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
 import org.crforge.core.util.Vector2;
@@ -19,22 +17,15 @@ public class SpawnerSystem {
 
   private final GameState gameState;
   private final SpawnFactory spawnFactory;
-  private final DeathHandler deathHandler;
 
-  public SpawnerSystem(GameState gameState, AoeDamageService aoeDamageService) {
+  public SpawnerSystem(GameState gameState, SpawnFactory spawnFactory) {
     this.gameState = gameState;
-    this.spawnFactory = new SpawnFactory(gameState);
-    this.deathHandler = new DeathHandler(gameState, aoeDamageService, spawnFactory);
+    this.spawnFactory = spawnFactory;
   }
 
-  /** Legacy constructor for tests that don't need death damage. */
+  /** Convenience constructor that creates a SpawnFactory internally. */
   public SpawnerSystem(GameState gameState) {
-    this(gameState, null);
-  }
-
-  /** Sets the match reference, needed for elixir grant on death (e.g. Elixir Golem). */
-  public void setMatch(Match match) {
-    deathHandler.setMatch(match);
+    this(gameState, new SpawnFactory(gameState));
   }
 
   /**
@@ -114,14 +105,6 @@ public class SpawnerSystem {
         }
       }
     }
-
-    // Process pending delayed death spawns
-    deathHandler.processDelayedSpawns(deltaTime);
-  }
-
-  // Called by GameState.processDeaths() or GameEngine
-  public void onDeath(Entity entity) {
-    deathHandler.onDeath(entity);
   }
 
   /**
