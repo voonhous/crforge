@@ -3,8 +3,12 @@ package org.crforge.core.engine;
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.BuffAllyAbility;
+import org.crforge.core.ability.ChargeAbility;
+import org.crforge.core.ability.DashAbility;
 import org.crforge.core.ability.RangedAttackAbility;
+import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.ability.TunnelAbility;
+import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.Card;
@@ -355,6 +359,33 @@ class TroopFactory {
     if (abilityComponent != null && abilityComponent.getData() instanceof RangedAttackAbility ra) {
       int baseDmg = ra.projectile() != null ? ra.projectile().getDamage() : 0;
       abilityComponent.setScaledRangedDamage(LevelScaling.scaleCard(baseDmg, rarity, level));
+    }
+
+    // Scale DASH damage by card level
+    if (abilityComponent != null && abilityComponent.getData() instanceof DashAbility dash) {
+      abilityComponent.setScaledDashDamage(
+          LevelScaling.scaleCard(dash.dashDamage(), rarity, level));
+    }
+
+    // Scale CHARGE damage by card level
+    if (abilityComponent != null && abilityComponent.getData() instanceof ChargeAbility charge) {
+      abilityComponent.setScaledChargeDamage(
+          LevelScaling.scaleCard(charge.chargeDamage(), rarity, level));
+    }
+
+    // Scale REFLECT damage by card level
+    if (abilityComponent != null && abilityComponent.getData() instanceof ReflectAbility reflect) {
+      abilityComponent.setScaledReflectDamage(
+          LevelScaling.scaleCard(reflect.reflectDamage(), rarity, level));
+    }
+
+    // Scale VARIABLE_DAMAGE stage damages by card level
+    if (abilityComponent != null
+        && abilityComponent.getData() instanceof VariableDamageAbility varDmg) {
+      abilityComponent.setScaledVariableDamageStageDamages(
+          varDmg.stages().stream()
+              .map(s -> LevelScaling.scaleCard(s.damage(), rarity, level))
+              .toList());
     }
 
     Movement movement =

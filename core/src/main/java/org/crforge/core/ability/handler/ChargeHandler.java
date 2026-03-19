@@ -55,7 +55,8 @@ public class ChargeHandler implements AbilityHandler {
     if (ability != null
         && ability.getData() instanceof ChargeAbility charge
         && ability.isCharged()) {
-      return charge.chargeDamage();
+      int scaled = ability.getScaledChargeDamage();
+      return scaled > 0 ? scaled : charge.chargeDamage();
     }
     return baseDamage;
   }

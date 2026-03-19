@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
@@ -98,6 +99,15 @@ class BuildingFactory {
     // Create ability component if unit has one (e.g. Inferno Tower with VARIABLE_DAMAGE)
     AbilityComponent abilityComponent =
         unitStats.getAbility() != null ? new AbilityComponent(unitStats.getAbility()) : null;
+
+    // Scale VARIABLE_DAMAGE stage damages by card level (e.g. Inferno Tower)
+    if (abilityComponent != null
+        && abilityComponent.getData() instanceof VariableDamageAbility varDmg) {
+      abilityComponent.setScaledVariableDamageStageDamages(
+          varDmg.stages().stream()
+              .map(s -> LevelScaling.scaleCard(s.damage(), card.getRarity(), level))
+              .toList());
+    }
 
     // Create ElixirCollectorComponent if this building generates elixir
     ElixirCollectorComponent elixirCollector = null;

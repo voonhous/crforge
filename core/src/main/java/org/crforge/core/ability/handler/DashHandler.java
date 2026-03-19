@@ -163,7 +163,8 @@ public class DashHandler implements AbilityHandler {
   }
 
   private void applyDashDamage(Troop dasher, DashAbility data) {
-    int damage = data.dashDamage();
+    int scaledDmg = dasher.getAbility().getScaledDashDamage();
+    int damage = scaledDmg > 0 ? scaledDmg : data.dashDamage();
     if (damage <= 0) {
       return;
     }

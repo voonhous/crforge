@@ -77,6 +77,12 @@ public class AbilityComponent {
   private long rangedAttackTargetId = -1;
   private int scaledRangedDamage = 0;
 
+  // Scaled ability damage fields (set by TroopFactory/BuildingFactory after level scaling)
+  private int scaledDashDamage = 0;
+  private int scaledChargeDamage = 0;
+  private int scaledReflectDamage = 0;
+  private List<Integer> scaledVariableDamageStageDamages = List.of();
+
   public AbilityComponent(AbilityData data) {
     this.data = data;
     // First dash must also wait for the cooldown before triggering
@@ -119,10 +125,12 @@ public class AbilityComponent {
     if (stages.isEmpty()) {
       return 0;
     }
-    if (currentStage >= stages.size()) {
-      return stages.get(stages.size() - 1).damage();
+    int idx = Math.min(currentStage, stages.size() - 1);
+    // Use scaled damage if available
+    if (!scaledVariableDamageStageDamages.isEmpty()) {
+      return scaledVariableDamageStageDamages.get(idx);
     }
-    return stages.get(currentStage).damage();
+    return stages.get(idx).damage();
   }
 
   /** Returns the charge time threshold in seconds. */

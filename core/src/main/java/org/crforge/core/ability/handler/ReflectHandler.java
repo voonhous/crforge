@@ -26,7 +26,8 @@ public class ReflectHandler implements AbilityHandler {
     if (ability == null || !(ability.getData() instanceof ReflectAbility reflect)) {
       return 0;
     }
-    return reflect.reflectDamage();
+    int scaled = ability.getScaledReflectDamage();
+    return scaled > 0 ? scaled : reflect.reflectDamage();
   }
 
   /**
