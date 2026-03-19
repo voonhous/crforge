@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Setter;
 import org.crforge.core.ability.ReflectAbility;
-import org.crforge.core.ability.handler.ReflectHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
@@ -34,14 +33,19 @@ class ProjectileHitProcessor {
   private final GameState gameState;
   private final AoeDamageService aoeDamageService;
   private final KnockbackHelper knockbackHelper;
+  private final CombatAbilityBridge abilityBridge;
 
   @Setter @lombok.Getter private UnitSpawner unitSpawner;
 
   ProjectileHitProcessor(
-      GameState gameState, AoeDamageService aoeDamageService, KnockbackHelper knockbackHelper) {
+      GameState gameState,
+      AoeDamageService aoeDamageService,
+      KnockbackHelper knockbackHelper,
+      CombatAbilityBridge abilityBridge) {
     this.gameState = gameState;
     this.aoeDamageService = aoeDamageService;
     this.knockbackHelper = knockbackHelper;
+    this.abilityBridge = abilityBridge;
   }
 
   void onProjectileHit(Projectile projectile) {
@@ -102,16 +106,16 @@ class ProjectileHitProcessor {
     // zap them
     if (!projectile.isPositionTargeted()) {
       Entity target = projectile.getTarget();
-      if (target instanceof Troop reflector) {
-        int reflectDmg = ReflectHandler.getReflectDamage(reflector);
-        if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
-          Entity source = projectile.getSource();
-          if (source != null && source.isAlive()) {
-            float dist = source.getPosition().distanceTo(reflector.getPosition());
-            float effectiveRadius = reflect.reflectRadius() + source.getCollisionRadius();
-            if (dist <= effectiveRadius) {
-              ReflectHandler.applyReflectDamage(reflector, source, reflectDmg, aoeDamageService);
-            }
+      int reflectDmg = abilityBridge.getReflectDamage(target);
+      if (reflectDmg > 0
+          && target instanceof Troop reflector
+          && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
+        Entity source = projectile.getSource();
+        if (source != null && source.isAlive()) {
+          float dist = source.getPosition().distanceTo(reflector.getPosition());
+          float effectiveRadius = reflect.reflectRadius() + source.getCollisionRadius();
+          if (dist <= effectiveRadius) {
+            abilityBridge.applyReflectDamage(reflector, source, reflectDmg, aoeDamageService);
           }
         }
       }

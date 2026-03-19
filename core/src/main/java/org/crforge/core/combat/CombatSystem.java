@@ -2,10 +2,8 @@ package org.crforge.core.combat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.ability.ReflectAbility;
-import org.crforge.core.ability.handler.BuffAllyHandler;
-import org.crforge.core.ability.handler.ChargeHandler;
-import org.crforge.core.ability.handler.ReflectHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
@@ -26,12 +24,23 @@ public class CombatSystem {
   private final GameState gameState;
   private final AoeDamageService aoeDamageService;
   private final ProjectileSystem projectileSystem;
+  private final CombatAbilityBridge abilityBridge;
 
   public CombatSystem(
-      GameState gameState, AoeDamageService aoeDamageService, ProjectileSystem projectileSystem) {
+      GameState gameState,
+      AoeDamageService aoeDamageService,
+      ProjectileSystem projectileSystem,
+      CombatAbilityBridge abilityBridge) {
     this.gameState = gameState;
     this.aoeDamageService = aoeDamageService;
     this.projectileSystem = projectileSystem;
+    this.abilityBridge = abilityBridge;
+  }
+
+  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
+  public CombatSystem(
+      GameState gameState, AoeDamageService aoeDamageService, ProjectileSystem projectileSystem) {
+    this(gameState, aoeDamageService, projectileSystem, new DefaultCombatAbilityBridge());
   }
 
   /** Process combat for all entities. Called each tick. */
@@ -222,18 +231,13 @@ public class CombatSystem {
     int baseDamage =
         combat.getDamageOverride() > 0 ? combat.getDamageOverride() : combat.getEffectiveDamage();
     // Charge ability: override damage for this attack if charged
-    if (attacker instanceof Troop troop) {
-      baseDamage = ChargeHandler.getChargeDamage(troop.getAbility(), baseDamage);
-    }
+    baseDamage = abilityBridge.getChargeDamage(attacker, baseDamage);
     return baseDamage;
   }
 
   /** Computes GiantBuffer bonus damage for this attack (proc on every Nth attack). */
   private int calculateGiantBuffBonus(Entity attacker, Entity target, Combat combat) {
-    if (attacker instanceof Troop buffedTroop) {
-      return BuffAllyHandler.processGiantBuffHit(buffedTroop, target, combat);
-    }
-    return 0;
+    return abilityBridge.processGiantBuffHit(attacker, target, combat);
   }
 
   /** Returns true if the attack should fire scatter projectiles (e.g. Firecracker). */
@@ -288,14 +292,14 @@ public class CombatSystem {
 
     // Reflect: if target has REFLECT ability and attacker is within reflect radius,
     // deal counter-damage
-    if (target instanceof Troop reflector) {
-      int reflectDmg = ReflectHandler.getReflectDamage(reflector);
-      if (reflectDmg > 0 && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
-        float dist = attacker.getPosition().distanceTo(reflector.getPosition());
-        float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
-        if (dist <= effectiveRadius) {
-          ReflectHandler.applyReflectDamage(reflector, attacker, reflectDmg, aoeDamageService);
-        }
+    int reflectDmg = abilityBridge.getReflectDamage(target);
+    if (reflectDmg > 0
+        && target instanceof Troop reflector
+        && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
+      float dist = attacker.getPosition().distanceTo(reflector.getPosition());
+      float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
+      if (dist <= effectiveRadius) {
+        abilityBridge.applyReflectDamage(reflector, attacker, reflectDmg, aoeDamageService);
       }
     }
   }
@@ -317,9 +321,7 @@ public class CombatSystem {
   /** Applies post-attack effects: charge consumption, finish, area effect, recoil, kamikaze. */
   private void applyPostAttackEffects(Entity attacker, Entity target, Combat combat) {
     // Consume charge after attack
-    if (attacker instanceof Troop t) {
-      ChargeHandler.consumeCharge(t);
-    }
+    abilityBridge.consumeCharge(attacker);
 
     combat.finishAttack();
 

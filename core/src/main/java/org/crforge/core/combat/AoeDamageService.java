@@ -3,8 +3,7 @@ package org.crforge.core.combat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.ability.handler.ChargeHandler;
-import org.crforge.core.ability.handler.VariableDamageHandler;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
@@ -12,8 +11,6 @@ import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
-import org.crforge.core.entity.structure.Building;
-import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 
 /**
@@ -24,9 +21,16 @@ import org.crforge.core.player.Team;
 public class AoeDamageService {
 
   private final GameState gameState;
+  private final CombatAbilityBridge abilityBridge;
 
-  public AoeDamageService(GameState gameState) {
+  public AoeDamageService(GameState gameState, CombatAbilityBridge abilityBridge) {
     this.gameState = gameState;
+    this.abilityBridge = abilityBridge;
+  }
+
+  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
+  public AoeDamageService(GameState gameState) {
+    this(gameState, new DefaultCombatAbilityBridge());
   }
 
   /**
@@ -76,14 +80,7 @@ public class AoeDamageService {
         if (combat != null) {
           combat.resetAttackState();
         }
-        // Reset charge ability state (Prince, Dark Prince, Battle Ram)
-        // Reset variable damage state (Inferno Dragon, Inferno Tower)
-        if (target instanceof Troop troop) {
-          ChargeHandler.consumeCharge(troop);
-          VariableDamageHandler.resetVariableDamage(troop);
-        } else if (target instanceof Building building && building.getAbility() != null) {
-          VariableDamageHandler.resetVariableDamage(building.getAbility(), building.getCombat());
-        }
+        abilityBridge.resetAbilitiesOnStun(target);
       }
     }
   }

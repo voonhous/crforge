@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import org.crforge.core.ability.AbilitySystem;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
@@ -66,8 +67,11 @@ public class SimHarness {
     this.gameState = builder.gameState;
     this.enabledSystems = builder.enabledSystems;
 
+    // Shared ability bridge for all systems
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+
     // AoeDamageService is always created (lightweight, no side effects)
-    this.aoeDamageService = new AoeDamageService(gameState);
+    this.aoeDamageService = new AoeDamageService(gameState, abilityBridge);
 
     // Initialize enabled systems
     this.statusEffectSystem =
@@ -78,12 +82,12 @@ public class SimHarness {
 
     this.projectileSystem =
         enabledSystems.contains(SimSystems.COMBAT)
-            ? new ProjectileSystem(gameState, aoeDamageService)
+            ? new ProjectileSystem(gameState, aoeDamageService, abilityBridge)
             : null;
 
     this.combatSystem =
         enabledSystems.contains(SimSystems.COMBAT)
-            ? new CombatSystem(gameState, aoeDamageService, projectileSystem)
+            ? new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge)
             : null;
 
     this.abilitySystem =
@@ -105,7 +109,9 @@ public class SimHarness {
             : null;
 
     this.areaEffectSystem =
-        enabledSystems.contains(SimSystems.AREA_EFFECT) ? new AreaEffectSystem(gameState) : null;
+        enabledSystems.contains(SimSystems.AREA_EFFECT)
+            ? new AreaEffectSystem(gameState, abilityBridge)
+            : null;
 
     this.entityTimerSystem = new EntityTimerSystem();
 

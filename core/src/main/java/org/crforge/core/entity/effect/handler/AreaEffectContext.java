@@ -1,10 +1,10 @@
 package org.crforge.core.entity.effect.handler;
 
-import org.crforge.core.ability.handler.ChargeHandler;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.ability.handler.HidingHandler;
-import org.crforge.core.ability.handler.VariableDamageHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
+import org.crforge.core.combat.CombatAbilityBridge;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Movement;
 import org.crforge.core.effect.AppliedEffect;
@@ -14,7 +14,6 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
-import org.crforge.core.entity.unit.Troop;
 
 /**
  * Shared utilities for area effect handlers. Holds a {@link GameState} reference and provides
@@ -27,9 +26,16 @@ public class AreaEffectContext {
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
   private final GameState gameState;
+  private final CombatAbilityBridge abilityBridge;
 
-  public AreaEffectContext(GameState gameState) {
+  public AreaEffectContext(GameState gameState, CombatAbilityBridge abilityBridge) {
     this.gameState = gameState;
+    this.abilityBridge = abilityBridge;
+  }
+
+  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
+  public AreaEffectContext(GameState gameState) {
+    this(gameState, new DefaultCombatAbilityBridge());
   }
 
   public GameState getGameState() {
@@ -116,14 +122,7 @@ public class AreaEffectContext {
       if (combat != null) {
         combat.resetAttackState();
       }
-      // Reset charge ability state (Prince, Dark Prince, Battle Ram, Ram Rider)
-      // Reset variable damage state (Inferno Dragon, Inferno Tower)
-      if (target instanceof Troop troop) {
-        ChargeHandler.consumeCharge(troop);
-        VariableDamageHandler.resetVariableDamage(troop);
-      } else if (target instanceof Building building && building.getAbility() != null) {
-        VariableDamageHandler.resetVariableDamage(building.getAbility(), building.getCombat());
-      }
+      abilityBridge.resetAbilitiesOnStun(target);
     }
 
     // Freeze forces hidden buildings (Tesla) to reveal

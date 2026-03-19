@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import lombok.Getter;
 import org.crforge.core.ability.AbilitySystem;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
@@ -53,9 +54,12 @@ public class GameEngine {
     this.gameState = new GameState();
     this.targetingSystem = new TargetingSystem();
 
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    this.combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    this.combatSystem =
+        new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     this.deploymentSystem = new DeploymentSystem(gameState, aoeDamageService);
 
     SpawnFactory spawnFactory = new SpawnFactory(gameState);
@@ -67,7 +71,7 @@ public class GameEngine {
     this.gameState.setDeathHandler(deathHandlingSystem::onDeath);
 
     this.statusEffectSystem = new StatusEffectSystem();
-    this.areaEffectSystem = new AreaEffectSystem(gameState);
+    this.areaEffectSystem = new AreaEffectSystem(gameState, abilityBridge);
     areaEffectSystem.setUnitSpawner(spawnerSystem::spawnUnit);
     this.abilitySystem = new AbilitySystem(gameState);
     abilitySystem.setTunnelMorphHandler(deploymentSystem::handleTunnelMorph);
