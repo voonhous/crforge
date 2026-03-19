@@ -8,6 +8,7 @@ import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -197,7 +198,7 @@ class BattleRamTest {
             .sightRange(5.5f)
             .attackCooldown(0.4f)
             .loadTime(0.35f)
-            .accumulatedLoadTime(0.35f) // Preloaded
+            .attackState(AttackStateMachine.withLoad(0.35f)) // Preloaded
             .targetOnlyBuildings(true)
             .kamikaze(true)
             .targetType(TargetType.GROUND)

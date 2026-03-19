@@ -7,6 +7,7 @@ import org.crforge.core.ability.handler.VariableDamageHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.EffectStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -292,7 +293,7 @@ class InfernoTowerTest {
             .sightRange(9.5f)
             .attackCooldown(0.4f)
             .loadTime(0.4f)
-            .accumulatedLoadTime(0.4f)
+            .attackState(AttackStateMachine.withLoad(0.4f))
             .build();
 
     return BuildingTemplate.defense("InfernoTower", team)

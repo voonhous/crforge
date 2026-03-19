@@ -9,6 +9,7 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -325,7 +326,7 @@ class BattleHealerTest {
             .sightRange(5.5f)
             .attackCooldown(1.5f)
             .loadTime(1.2f)
-            .accumulatedLoadTime(1.2f)
+            .attackState(AttackStateMachine.withLoad(1.2f))
             .targetType(TargetType.GROUND)
             .areaEffectOnHit(aoeOnHit)
             .build();

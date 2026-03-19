@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -352,7 +353,7 @@ class ReturningProjectileTest {
                 .sightRange(5.5f)
                 .attackCooldown(0.9f)
                 .loadTime(0.4f)
-                .accumulatedLoadTime(0.4f)
+                .attackState(AttackStateMachine.withLoad(0.4f))
                 .projectileStats(axeProjectile)
                 .build())
         .build();
@@ -391,7 +392,7 @@ class ReturningProjectileTest {
                 .sightRange(5.5f)
                 .attackCooldown(0.9f)
                 .loadTime(0.4f)
-                .accumulatedLoadTime(0.4f)
+                .attackState(AttackStateMachine.withLoad(0.4f))
                 .projectileStats(pingpongProjectile)
                 .build())
         .build();

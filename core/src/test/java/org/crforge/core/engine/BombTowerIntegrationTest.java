@@ -9,6 +9,7 @@ import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.entity.base.Entity;
@@ -242,7 +243,7 @@ class BombTowerIntegrationTest {
             .sightRange(BOMB_TOWER_RANGE)
             .attackCooldown(1.8f)
             .loadTime(1.3f)
-            .accumulatedLoadTime(1.3f)
+            .attackState(AttackStateMachine.withLoad(1.3f))
             .targetType(TargetType.GROUND)
             .projectileStats(projectile)
             .build();

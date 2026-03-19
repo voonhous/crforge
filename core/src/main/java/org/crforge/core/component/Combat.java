@@ -18,6 +18,8 @@ import org.crforge.core.entity.base.TargetType;
 @Builder
 public class Combat {
 
+  // -- Config fields (static for the lifetime of this component) --
+
   @Builder.Default private final int damage = 0;
   @Builder.Default private final float range = 1.0f;
   @Builder.Default private final float sightRange = 5.5f;
@@ -52,7 +54,6 @@ public class Combat {
 
   // Attack sequence: per-hit damage values for units with multi-hit combos (e.g. Berserker)
   @Builder.Default private final List<AttackSequenceHit> attackSequence = List.of();
-  @Setter @Builder.Default private int attackSequenceIndex = 0;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
   @Builder.Default private final boolean kamikaze = false;
@@ -70,15 +71,16 @@ public class Combat {
   // When > 0, used instead of base damage
   @Setter @Builder.Default private int damageOverride = 0;
 
-  // Dynamic states
+  // -- Attack state machine (runtime attack sequencing) --
+
+  @Builder.Default private final AttackStateMachine attackState = new AttackStateMachine();
+
+  // -- Target management --
+
   private Entity currentTarget;
   @Setter private boolean targetLocked;
 
-  @Setter private float currentCooldown; // Time remaining in "Hit Speed" wait after an attack
-  @Setter private float currentWindup; // Time remaining in "Attack Animation" before damage
-
-  @Setter @Builder.Default
-  private float accumulatedLoadTime = 0f; // Time charged while moving/deploying/idling
+  // -- Modifier management --
 
   // Source-tracked combat disable -- any source present means combat is disabled
   @Builder.Default
@@ -88,9 +90,6 @@ public class Combat {
   @Builder.Default
   private final EnumMap<ModifierSource, Float> attackSpeedMultipliers =
       new EnumMap<>(ModifierSource.class);
-
-  // Track if we are currently in the middle of an attack sequence (winding up)
-  @Setter @Builder.Default private boolean isAttacking = false;
 
   // Units with range >= this threshold use projectile attacks instead of melee
   private static final float RANGED_THRESHOLD = 2.0f;
@@ -109,8 +108,8 @@ public class Combat {
       this.currentTarget = currentTarget;
       this.targetLocked = false;
       // Reset attack state on retarget
-      this.isAttacking = false;
-      this.currentWindup = 0;
+      attackState.setAttacking(false);
+      attackState.setCurrentWindup(0);
       // Do NOT reset accumulatedLoadTime here; moving to new target preserves charge.
     }
   }
@@ -118,6 +117,8 @@ public class Combat {
   public void clearTarget() {
     setCurrentTarget(null);
   }
+
+  // -- Modifier management methods --
 
   /** Set combat disabled state for a specific source. */
   public void setCombatDisabled(ModifierSource source, boolean disabled) {
@@ -165,45 +166,47 @@ public class Combat {
     return combatDisableSources.contains(ModifierSource.RETURNING_PROJECTILE);
   }
 
+  // -- Delegation methods to AttackStateMachine for backward compatibility --
+
   /** Returns the effective damage for the current attack, using attack sequence if available. */
   public int getEffectiveDamage() {
-    if (!attackSequence.isEmpty()) {
-      return attackSequence.get(attackSequenceIndex).damage();
-    }
-    return damage;
+    return attackState.getEffectiveDamage(damage, attackSequence);
   }
 
   public boolean canAttack() {
-    return !isCombatDisabled() && currentCooldown <= 0;
+    return attackState.canAttack(isCombatDisabled());
   }
 
   public boolean isWindingUp() {
-    return currentWindup > 0;
+    return attackState.isWindingUp();
+  }
+
+  public boolean isAttacking() {
+    return attackState.isAttacking();
+  }
+
+  public void setAttacking(boolean attacking) {
+    attackState.setAttacking(attacking);
   }
 
   /**
    * Starts an attack sequence. Calculates windup based on attackCooldown and accumulatedLoadTime.
    */
   public void startAttackSequence() {
-    // Formula: Windup = HitTime - Charge
-    // Ensure we don't go below 0 (instant)
-    float calculatedWindup = Math.max(0, attackCooldown - accumulatedLoadTime);
-
-    this.currentWindup = calculatedWindup;
-    this.isAttacking = true;
-
-    // Charge is consumed for this attack
-    this.accumulatedLoadTime = 0;
+    attackState.startAttackSequence(attackCooldown);
   }
 
   public void finishAttack() {
-    // Attack finished. Reset state.
-    this.currentCooldown = 0; // Immediate chaining if windup accounts for full duration
-    this.isAttacking = false;
-    // Advance attack sequence index for multi-hit combos (e.g. Berserker)
-    if (!attackSequence.isEmpty()) {
-      attackSequenceIndex = (attackSequenceIndex + 1) % attackSequence.size();
-    }
+    attackState.finishAttack(attackSequence);
+  }
+
+  /**
+   * Resets the attack animation/load time. Used for Stun (Zap) mechanics. Unlike Freeze (which
+   * pauses), Stun forces the unit to restart their attack windup. Also unlocks target.
+   */
+  public void resetAttackState() {
+    attackState.resetAttackState();
+    this.targetLocked = false; // Stun unlocks target
   }
 
   /**
@@ -215,30 +218,38 @@ public class Combat {
   public void update(float deltaTime, boolean canAccumulateLoad) {
     boolean disabled = isCombatDisabled();
     float effectiveDelta = deltaTime * (disabled ? 0 : getAttackSpeedMultiplier());
-
-    if (currentCooldown > 0) {
-      currentCooldown -= effectiveDelta;
-    }
-
-    if (isAttacking) {
-      currentWindup -= effectiveDelta;
-    } else if (canAccumulateLoad && !disabled) {
-      // Charge up logic
-      accumulatedLoadTime += effectiveDelta;
-      if (accumulatedLoadTime > loadTime) {
-        accumulatedLoadTime = loadTime;
-      }
-    }
+    attackState.update(effectiveDelta, canAccumulateLoad, loadTime);
   }
 
-  /**
-   * Resets the attack animation/load time. Used for Stun (Zap) mechanics. Unlike Freeze (which
-   * pauses), Stun forces the unit to restart their attack windup.
-   */
-  public void resetAttackState() {
-    this.currentWindup = 0;
-    this.isAttacking = false;
-    this.accumulatedLoadTime = 0; // Stun resets charge
-    this.targetLocked = false; // Stun unlocks target
+  public float getCurrentWindup() {
+    return attackState.getCurrentWindup();
+  }
+
+  public void setCurrentWindup(float currentWindup) {
+    attackState.setCurrentWindup(currentWindup);
+  }
+
+  public float getCurrentCooldown() {
+    return attackState.getCurrentCooldown();
+  }
+
+  public void setCurrentCooldown(float currentCooldown) {
+    attackState.setCurrentCooldown(currentCooldown);
+  }
+
+  public float getAccumulatedLoadTime() {
+    return attackState.getAccumulatedLoadTime();
+  }
+
+  public void setAccumulatedLoadTime(float accumulatedLoadTime) {
+    attackState.setAccumulatedLoadTime(accumulatedLoadTime);
+  }
+
+  public int getAttackSequenceIndex() {
+    return attackState.getAttackSequenceIndex();
+  }
+
+  public void setAttackSequenceIndex(int attackSequenceIndex) {
+    attackState.setAttackSequenceIndex(attackSequenceIndex);
   }
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.card.AreaEffectStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -106,7 +107,7 @@ public class CloneApplicator {
               .sightRange(originalCombat.getSightRange())
               .attackCooldown(originalCombat.getAttackCooldown())
               .loadTime(originalCombat.getLoadTime())
-              .accumulatedLoadTime(initialLoad)
+              .attackState(AttackStateMachine.withLoad(initialLoad))
               .aoeRadius(originalCombat.getAoeRadius())
               .targetType(originalCombat.getTargetType())
               .hitEffects(originalCombat.getHitEffects())

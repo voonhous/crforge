@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -178,7 +179,7 @@ class WallBreakerTest {
             .sightRange(5.5f)
             .attackCooldown(1.2f)
             .loadTime(1.0f)
-            .accumulatedLoadTime(1.0f) // Preloaded
+            .attackState(AttackStateMachine.withLoad(1.0f)) // Preloaded
             .aoeRadius(AOE_RADIUS)
             .kamikaze(true)
             .targetOnlyBuildings(true)

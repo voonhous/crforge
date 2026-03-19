@@ -6,6 +6,7 @@ import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 
 /**
@@ -27,7 +28,7 @@ class EntityScaling {
         .sightRange(stats.getSightRange())
         .attackCooldown(stats.getAttackCooldown())
         .loadTime(stats.getLoadTime())
-        .accumulatedLoadTime(initialLoad)
+        .attackState(AttackStateMachine.withLoad(initialLoad))
         .targetType(stats.getTargetType())
         .hitEffects(stats.getHitEffects())
         .projectileStats(stats.getProjectile())

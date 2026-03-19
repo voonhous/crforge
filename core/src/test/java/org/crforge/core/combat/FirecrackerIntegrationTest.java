@@ -8,6 +8,7 @@ import org.crforge.core.card.CardType;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -224,7 +225,7 @@ class FirecrackerIntegrationTest {
                 .sightRange(8.0f)
                 .attackCooldown(3.0f)
                 .loadTime(2.35f)
-                .accumulatedLoadTime(2.35f)
+                .attackState(AttackStateMachine.withLoad(2.35f))
                 .projectileStats(mainProjectileStats)
                 .attackPushBack(1.0f)
                 .build())

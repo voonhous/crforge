@@ -5,6 +5,7 @@ import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -68,7 +69,7 @@ public class SpawnFactory {
               .sightRange(stats.getSightRange())
               .attackCooldown(stats.getAttackCooldown())
               .loadTime(stats.getLoadTime())
-              .accumulatedLoadTime(initialLoad)
+              .attackState(AttackStateMachine.withLoad(initialLoad))
               .aoeRadius(stats.getAoeRadius())
               .targetType(stats.getTargetType())
               .selfAsAoeCenter(stats.isSelfAsAoeCenter())
