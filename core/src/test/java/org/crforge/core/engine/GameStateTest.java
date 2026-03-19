@@ -239,6 +239,38 @@ class GameStateTest {
   }
 
   @Test
+  void princessTowerDeath_shouldOpenPocketZoneForOpposingTeam() {
+    Arena arena = Arena.standard();
+    gameState.setArena(arena);
+
+    // Red left princess tower at standard position (3.5, 25.5)
+    Tower princessTower =
+        Tower.createPrincessTower(Team.RED, 3.5f, 25.5f, LevelScaling.DEFAULT_TOWER_LEVEL);
+
+    gameState.spawnEntity(princessTower);
+    gameState.processPending();
+
+    // Blue cannot deploy in Red territory before tower destruction
+    assertThat(arena.isValidPlacement(4.5f, 18.5f, Team.BLUE))
+        .as("Blue should not deploy in Red territory before pocket opens")
+        .isFalse();
+
+    // Destroy the Red left princess tower
+    princessTower.getHealth().takeDamage(100000);
+    gameState.processDeaths();
+
+    // Blue should now be able to deploy in the left pocket (x[0-8], y[17-20])
+    assertThat(arena.isValidPlacement(4.5f, 18.5f, Team.BLUE))
+        .as("Blue should deploy in pocket after destroying Red's left princess tower")
+        .isTrue();
+
+    // Right lane should still be blocked for Blue
+    assertThat(arena.isValidPlacement(14.5f, 18.5f, Team.BLUE))
+        .as("Right lane pocket should not open from left tower destruction")
+        .isFalse();
+  }
+
+  @Test
   void reset_shouldClearAllState() {
     Troop troop = Troop.builder().name("Knight").team(Team.BLUE).build();
     gameState.spawnEntity(troop);

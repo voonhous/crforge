@@ -124,10 +124,14 @@ public class GameState {
           if (king != null) {
             king.setActive(true);
           }
-          // Free the tower's tiles so the owning team can deploy on the footprint
           if (arena != null) {
+            // Free the tower's tiles so the owning team can deploy on the footprint
             arena.freePrincessTowerTiles(
                 tower.getPosition().getX(), tower.getPosition().getY(), tower.getTeam());
+            // Open pocket deploy zone for the opposing team in the destroyed tower's lane
+            Team attackingTeam = tower.getTeam().opposite();
+            boolean leftLane = tower.getPosition().getX() < Arena.WIDTH / 2.0f;
+            arena.openPocketZone(attackingTeam, leftLane);
           }
         }
 
