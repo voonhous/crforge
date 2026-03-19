@@ -60,7 +60,7 @@ class StealthAbilityTest {
     gameState.processPending();
 
     // Finish deploy
-    ghost.update(2.0f);
+    ghost.setDeployTimer(0);
 
     // Ghost should already be invisible -- no fade wait needed
     assertThat(ghost.isInvisible())
@@ -95,8 +95,8 @@ class StealthAbilityTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    enemy.update(2.0f);
+    ghost.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     // Ghost starts invisible from constructor
     assertThat(ghost.isInvisible()).isTrue();
@@ -122,9 +122,9 @@ class StealthAbilityTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    target.update(2.0f);
-    enemy.update(2.0f);
+    ghost.setDeployTimer(0);
+    target.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     // Reveal the ghost by attacking past the grace period
     makeVisible(ghost, target);
@@ -160,7 +160,7 @@ class StealthAbilityTest {
     gameState.spawnEntity(ghost);
     gameState.processPending();
 
-    ghost.update(2.0f);
+    ghost.setDeployTimer(0);
 
     // Ghost starts invisible
     assertThat(ghost.isInvisible()).isTrue();
@@ -186,8 +186,8 @@ class StealthAbilityTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    target.update(2.0f);
+    ghost.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Ghost starts invisible
     assertThat(ghost.isInvisible()).isTrue();
@@ -218,8 +218,8 @@ class StealthAbilityTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    target.update(2.0f);
+    ghost.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Ghost starts invisible
     assertThat(ghost.isInvisible()).isTrue();
@@ -249,8 +249,8 @@ class StealthAbilityTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    target.update(2.0f);
+    ghost.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Ghost starts invisible
 
@@ -279,8 +279,8 @@ class StealthAbilityTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    target.update(2.0f);
+    ghost.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Ghost starts invisible with revealTimer=0
     assertThat(ghost.isInvisible()).isTrue();
@@ -385,8 +385,8 @@ class StealthAbilityTest {
     assertThat(ghost.isInvisible()).isTrue();
 
     // Finish deploy
-    ghost.update(2.0f);
-    target.update(2.0f);
+    ghost.setDeployTimer(0);
+    target.setDeployTimer(0);
     assertThat(ghost.isDeploying()).isFalse();
 
     // Phase 2: Invisible after deploy -- no fade needed
@@ -454,8 +454,8 @@ class StealthAbilityTest {
     gameState.spawnEntity(ewiz);
     gameState.processPending();
 
-    ghost.update(2.0f);
-    visibleTroop.update(2.0f);
+    ghost.setDeployTimer(0);
+    visibleTroop.setDeployTimer(0);
 
     // Ghost starts invisible from constructor
     assertThat(ghost.isInvisible()).isTrue();

@@ -78,8 +78,8 @@ class FirecrackerIntegrationTest {
     gameState.spawnEntity(target);
     gameState.processPending();
     // Skip deploy time
-    firecracker.update(2.0f);
-    target.update(2.0f);
+    firecracker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     float initialY = firecracker.getPosition().getY();
 
@@ -110,8 +110,8 @@ class FirecrackerIntegrationTest {
     gameState.spawnEntity(firecracker);
     gameState.spawnEntity(target);
     gameState.processPending();
-    firecracker.update(2.0f);
-    target.update(2.0f);
+    firecracker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Fire at target
     firecracker.getCombat().setCurrentTarget(target);
@@ -148,9 +148,9 @@ class FirecrackerIntegrationTest {
     gameState.spawnEntity(enemy1);
     gameState.spawnEntity(enemy2);
     gameState.processPending();
-    firecracker.update(2.0f);
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
+    firecracker.setDeployTimer(0);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
 
     int hp1Before = enemy1.getHealth().getCurrent();
     int hp2Before = enemy2.getHealth().getCurrent();

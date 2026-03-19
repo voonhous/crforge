@@ -3,6 +3,7 @@ package org.crforge.core.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
@@ -22,6 +23,7 @@ class BuildingDeployTimeTest {
 
   private GameState gameState;
   private DeploymentSystem deploymentSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
   private Player player;
 
   @BeforeEach
@@ -74,7 +76,7 @@ class BuildingDeployTimeTest {
     assertThat(building.isDeploying()).isTrue();
 
     // 5. Verify it ticks down
-    building.update(1.0f);
+    entityTimerSystem.update(List.of(building), 1.0f);
     assertThat(building.getDeployTimer()).isEqualTo(customDeployTime - 1.0f);
   }
 

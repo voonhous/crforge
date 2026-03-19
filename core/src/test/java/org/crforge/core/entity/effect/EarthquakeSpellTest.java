@@ -108,7 +108,7 @@ class EarthquakeSpellTest {
             .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
             .deployTime(0f)
             .build();
-    troop.update(1.0f); // make targetable
+    troop.setDeployTimer(0); // make targetable
     return troop;
   }
 
@@ -122,7 +122,7 @@ class EarthquakeSpellTest {
             .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.AIR))
             .deployTime(0f)
             .build();
-    troop.update(1.0f);
+    troop.setDeployTimer(0);
     return troop;
   }
 
@@ -140,7 +140,6 @@ class EarthquakeSpellTest {
     // Run for 3.0 seconds (90 ticks at DT=1/30) to process all 30 damage ticks (hitSpeed=0.1s)
     for (int i = 0; i < 90; i++) {
       system.update(DT);
-      effect.update(DT);
     }
 
     // 30 ticks * 3 damage = 90 total
@@ -206,7 +205,7 @@ class EarthquakeSpellTest {
 
     // Crown tower at level 1
     Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
-    tower.update(1.0f);
+    tower.setDeployTimer(0);
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(tower);
@@ -266,7 +265,6 @@ class EarthquakeSpellTest {
     // exactly reach 3.0 due to floating point)
     for (int i = 0; i < 91; i++) {
       system.update(DT);
-      effect.update(DT);
     }
 
     assertThat(effect.isAlive()).isFalse();
@@ -295,7 +293,7 @@ class EarthquakeSpellTest {
             .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
             .deployTime(0f)
             .build();
-    friendly.update(1.0f);
+    friendly.setDeployTimer(0);
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(friendly);

@@ -13,6 +13,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.DeploymentSystem;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.unit.Troop;
@@ -75,9 +76,13 @@ class LoadTimeMechanicTest {
     gameState.processPending();
 
     // 1. Simulate Deploy Phase
+    // Use combatSystem.update() which ticks combat timers (load time accumulation)
+    // and skips combat decisions for deploying entities.
+    EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
     float deployStep = 0.1f;
     for (float t = 0; t < 1.0f; t += deployStep) {
-      attacker.update(deployStep);
+      entityTimerSystem.update(gameState.getAliveEntities(), deployStep);
+      combatSystem.update(deployStep);
     }
 
     assertThat(attacker.isDeploying()).isFalse();
@@ -98,8 +103,7 @@ class LoadTimeMechanicTest {
     // We need 6 ticks to be safe (5 * 0.1 = 0.5 exactly, but float precision/order might mean 6th
     // tick executes)
     for (int i = 0; i < 6; i++) {
-      attacker.update(0.1f); // Decrement windup
-      combatSystem.update(0.1f); // Check execute
+      combatSystem.update(0.1f); // Ticks combat timers and checks execute
     }
 
     assertThat(target.getHealth().getCurrent()).isEqualTo(90);
@@ -111,7 +115,9 @@ class LoadTimeMechanicTest {
     combatSystem.update(0.1f);
     assertThat(attacker.getCombat().isAttacking()).isTrue();
 
-    assertThat(attacker.getCombat().getCurrentWindup()).isCloseTo(1.2f, within(0.001f));
+    // CombatSystem now ticks combat timers before processing, so 0.1f of load time
+    // is accumulated before startAttackSequence: windup = max(0, 1.2 - 0.1) = 1.1
+    assertThat(attacker.getCombat().getCurrentWindup()).isCloseTo(1.1f, within(0.001f));
   }
 
   /**
@@ -201,8 +207,9 @@ class LoadTimeMechanicTest {
       Troop attacker = getFirstTroop();
 
       // Finish deploy phase
+      EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
       for (float t = 0; t < deployTime; t += 0.1f) {
-        attacker.update(0.1f);
+        entityTimerSystem.update(java.util.List.of(attacker), 0.1f);
       }
       assertThat(attacker.isDeploying()).isFalse();
       assertThat(attacker.getCombat().getAccumulatedLoadTime()).isCloseTo(loadTime, within(0.001f));

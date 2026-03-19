@@ -6,9 +6,9 @@ import java.util.List;
 import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.Rarity;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
@@ -20,6 +20,7 @@ class BerserkerTest {
 
   private GameState gameState;
   private CombatSystem combatSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   @BeforeEach
   void setUp() {
@@ -54,8 +55,8 @@ class BerserkerTest {
     gameState.processPending();
 
     // Finish deploy
-    berserker.update(2.0f);
-    target.update(2.0f);
+    berserker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     berserker.getCombat().setCurrentTarget(target);
 
@@ -91,8 +92,8 @@ class BerserkerTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    berserker.update(2.0f);
-    target.update(2.0f);
+    berserker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     berserker.getCombat().setCurrentTarget(target);
 
@@ -127,9 +128,9 @@ class BerserkerTest {
     gameState.spawnEntity(target2);
     gameState.processPending();
 
-    berserker.update(2.0f);
-    target1.update(2.0f);
-    target2.update(2.0f);
+    berserker.setDeployTimer(0);
+    target1.setDeployTimer(0);
+    target2.setDeployTimer(0);
 
     // Attack first target (hit index 0 -> 40 damage, kills it)
     berserker.getCombat().setCurrentTarget(target1);
@@ -175,8 +176,8 @@ class BerserkerTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    berserker.update(2.0f);
-    target.update(2.0f);
+    berserker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     berserker.getCombat().setCurrentTarget(target);
 
@@ -193,9 +194,7 @@ class BerserkerTest {
     float dt = 0.1f;
     int ticks = (int) (duration / dt);
     for (int i = 0; i < ticks; i++) {
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
     }
   }

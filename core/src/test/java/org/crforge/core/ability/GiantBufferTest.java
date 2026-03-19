@@ -17,6 +17,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
@@ -36,6 +37,7 @@ class GiantBufferTest {
   private CombatSystem combatSystem;
   private TargetingSystem targetingSystem;
   private PhysicsSystem physicsSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final float DT = 1.0f / 30;
 
@@ -648,13 +650,13 @@ class GiantBufferTest {
 
     // Fast-forward deploy timers
     for (Troop t : troops) {
-      t.update(2.0f); // skip deploy phase
+      t.setDeployTimer(0); // skip deploy phase
     }
   }
 
   private void runTicks(int ticks) {
     for (int i = 0; i < ticks; i++) {
-      gameState.getAliveEntities().forEach(e -> e.update(DT));
+      entityTimerSystem.update(gameState.getAliveEntities(), DT);
       abilitySystem.update(DT);
     }
   }

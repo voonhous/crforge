@@ -20,6 +20,7 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.DeploymentSystem;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -336,8 +337,9 @@ class MinerTunnelTest {
     assertThat(miner.getAbility().getTunnelState()).isEqualTo(AbilityComponent.TunnelState.EMERGED);
 
     // Finish deploy animation (1.0s = 30 ticks)
+    EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
     for (int i = 0; i < 31; i++) {
-      miner.update(DT);
+      entityTimerSystem.update(List.of(miner), DT);
     }
 
     assertThat(miner.isDeploying()).isFalse();

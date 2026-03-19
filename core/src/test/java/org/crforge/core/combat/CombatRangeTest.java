@@ -6,6 +6,7 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
@@ -18,6 +19,7 @@ class CombatRangeTest {
 
   private GameState gameState;
   private CombatSystem combatSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   @BeforeEach
   void setUp() {
@@ -114,10 +116,8 @@ class CombatRangeTest {
     float dt = 0.1f;
     int ticks = (int) (duration / dt);
     for (int i = 0; i < ticks; i++) {
-      // We need to update entities (for timers) AND combat system
-      for (org.crforge.core.entity.base.Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      // We need to update entity timers (for deploy/windup) AND combat system
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
     }
   }

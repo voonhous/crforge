@@ -10,9 +10,9 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.StatusEffectType;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.projectile.Projectile;
@@ -29,6 +29,7 @@ class ElectroSpiritTest {
 
   private GameState gameState;
   private CombatSystem combatSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final int ELECTRO_SPIRIT_DAMAGE = 39;
   private static final float PROJECTILE_SPEED = 1000f / 60f; // ~16.67 t/s
@@ -55,8 +56,8 @@ class ElectroSpiritTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -87,10 +88,10 @@ class ElectroSpiritTest {
     gameState.spawnEntity(enemy3);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
-    enemy3.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
+    enemy3.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy1);
     // Run enough ticks for primary + chain projectiles to hit
@@ -125,9 +126,9 @@ class ElectroSpiritTest {
     gameState.spawnEntity(spirit);
     gameState.processPending();
 
-    spirit.update(2.0f);
+    spirit.setDeployTimer(0);
     for (Troop enemy : enemies) {
-      enemy.update(2.0f);
+      enemy.setDeployTimer(0);
     }
 
     spirit.getCombat().setCurrentTarget(enemies[0]);
@@ -206,9 +207,7 @@ class ElectroSpiritTest {
     int ticks = Math.round(duration / dt);
     for (int i = 0; i < ticks; i++) {
       gameState.refreshCaches();
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
     }
   }

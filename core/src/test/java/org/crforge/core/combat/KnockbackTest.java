@@ -51,8 +51,8 @@ class KnockbackTest {
     gameState.spawnEntity(enemy1);
     gameState.spawnEntity(enemy2);
     gameState.processPending();
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
 
     float impactX = 10f;
     float impactY = 17f;
@@ -101,7 +101,7 @@ class KnockbackTest {
 
     gameState.spawnEntity(immune);
     gameState.processPending();
-    immune.update(2.0f);
+    immune.setDeployTimer(0);
 
     float impactX = 10f;
     float impactY = 17f;
@@ -179,8 +179,8 @@ class KnockbackTest {
     gameState.spawnEntity(attacker);
     gameState.spawnEntity(target);
     gameState.processPending();
-    attacker.update(2.0f);
-    target.update(2.0f);
+    attacker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Manually start knockback on the attacker
     attacker.getMovement().startKnockback(0f, -1f, 1.0f, 0.5f, 1.0f);
@@ -206,7 +206,7 @@ class KnockbackTest {
 
     gameState.spawnEntity(troop);
     gameState.processPending();
-    troop.update(2.0f);
+    troop.setDeployTimer(0);
 
     troop.getMovement().startKnockback(0f, 1f, 1.0f, 0.5f, 1.0f);
     assertThat(troop.getMovement().isKnockedBack()).isTrue();
@@ -233,9 +233,9 @@ class KnockbackTest {
     gameState.spawnEntity(directTarget);
     gameState.spawnEntity(bystander);
     gameState.processPending();
-    source.update(2.0f);
-    directTarget.update(2.0f);
-    bystander.update(2.0f);
+    source.setDeployTimer(0);
+    directTarget.setDeployTimer(0);
+    bystander.setDeployTimer(0);
 
     // Create entity-targeted projectile with no AOE radius but with pushback
     Projectile proj = new Projectile(source, directTarget, 50, 0f, 15f, Collections.emptyList());
@@ -286,9 +286,9 @@ class KnockbackTest {
     gameState.spawnEntity(enemy1);
     gameState.spawnEntity(enemy2);
     gameState.processPending();
-    dasher.update(2.0f);
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
+    dasher.setDeployTimer(0);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
 
     AbilitySystem abilitySystem = new AbilitySystem(gameState);
 
@@ -349,8 +349,8 @@ class KnockbackTest {
     gameState.spawnEntity(dasher);
     gameState.spawnEntity(immune);
     gameState.processPending();
-    dasher.update(2.0f);
-    immune.update(2.0f);
+    dasher.setDeployTimer(0);
+    immune.setDeployTimer(0);
 
     AbilitySystem abilitySystem = new AbilitySystem(gameState);
 

@@ -7,9 +7,9 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.projectile.Projectile;
@@ -26,6 +26,7 @@ class FireSpiritTest {
 
   private GameState gameState;
   private CombatSystem combatSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final int FIRE_SPIRIT_DAMAGE = 81;
   private static final float PROJECTILE_SPEED = 400f / 60f; // ~6.67 t/s
@@ -51,8 +52,8 @@ class FireSpiritTest {
     gameState.processPending();
 
     // Finish deploy
-    spirit.update(2.0f);
-    enemy.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -77,9 +78,9 @@ class FireSpiritTest {
     gameState.spawnEntity(enemy2);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy1);
     runCombatUpdates(1.0f);
@@ -102,8 +103,8 @@ class FireSpiritTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -161,9 +162,7 @@ class FireSpiritTest {
     int ticks = Math.round(duration / dt);
     for (int i = 0; i < ticks; i++) {
       gameState.refreshCaches();
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
     }
   }

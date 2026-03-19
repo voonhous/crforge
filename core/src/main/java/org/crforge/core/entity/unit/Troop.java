@@ -120,47 +120,6 @@ public class Troop extends AbstractEntity {
   }
 
   @Override
-  public void update(float deltaTime) {
-    if (dead) {
-      return;
-    }
-
-    // Handle deploy timer
-    if (deployTimer > 0) {
-      deployTimer -= deltaTime;
-      if (deployTimer <= 0) {
-        deployTimer = 0;
-        spawned = true;
-      }
-      // Troops accumulate load time while deploying
-      if (combat != null) {
-        combat.update(deltaTime, true);
-      }
-      return;
-    }
-
-    // Lifetime countdown: kill troop when timer expires (e.g. kamikaze form's 20s lifeTime)
-    if (lifeTimer > 0) {
-      lifeTimer -= deltaTime;
-      if (lifeTimer <= 0) {
-        health.kill();
-        return;
-      }
-    }
-
-    // Decrement grounded timer (Vines air-to-ground)
-    if (groundedTimer > 0) {
-      groundedTimer -= deltaTime;
-    }
-
-    // Update combat
-    if (combat != null) {
-      // Pass true to allow accumulating load time if not attacking
-      combat.update(deltaTime, true);
-    }
-  }
-
-  @Override
   public void onSpawn() {
     super.onSpawn();
     if (deployTime <= 0) {

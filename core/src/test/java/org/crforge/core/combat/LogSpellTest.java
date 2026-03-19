@@ -470,7 +470,7 @@ class LogSpellTest {
   /** Skip deploy time so troops are ready for combat. */
   private void skipDeployTime(Troop... troops) {
     for (Troop t : troops) {
-      t.update(2.0f);
+      t.setDeployTimer(0);
     }
   }
 }

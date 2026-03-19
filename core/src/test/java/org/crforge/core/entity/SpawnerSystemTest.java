@@ -2,6 +2,7 @@ package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.List;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
@@ -13,6 +14,7 @@ import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -66,10 +68,10 @@ class SpawnerSystemTest {
     gameState.spawnEntity(spawnerBuilding);
     gameState.processPending();
 
-    // Advance past the building's deploy phase (1.0f seconds) so SpawnerSystem
+    // Skip past the building's deploy phase so SpawnerSystem
     // can tick the spawner. The SpawnerComponent timer (3.0f) is unaffected since
     // SpawnerSystem skips deploying entities.
-    spawnerBuilding.update(1.0f);
+    spawnerBuilding.setDeployTimer(0);
   }
 
   @Test
@@ -154,8 +156,8 @@ class SpawnerSystemTest {
     gameState.processPending();
 
     // Finish deploying so they're targetable
-    nearEnemy.update(1.0f);
-    farEnemy.update(1.0f);
+    nearEnemy.setDeployTimer(0);
+    farEnemy.setDeployTimer(0);
 
     systemWithCombat.onDeath(iceGolem);
 
@@ -319,7 +321,7 @@ class SpawnerSystemTest {
 
     freshState.spawnEntity(hut);
     freshState.processPending();
-    hut.update(1.0f); // finish deploy
+    hut.setDeployTimer(0); // finish deploy
 
     // First spawn is immediate (no spawnStartTime)
     freshSystem.update(0f);
@@ -374,7 +376,7 @@ class SpawnerSystemTest {
 
     freshState.spawnEntity(tombstone);
     freshState.processPending();
-    tombstone.update(1.0f); // finish deploy
+    tombstone.setDeployTimer(0); // finish deploy
 
     // First tick -- first unit of the wave spawns immediately
     freshSystem.update(0f);
@@ -456,8 +458,8 @@ class SpawnerSystemTest {
     freshState.processPending();
 
     // Finish deploying enemies so they're targetable
-    nearEnemy.update(1.0f);
-    farEnemy.update(1.0f);
+    nearEnemy.setDeployTimer(0);
+    farEnemy.setDeployTimer(0);
 
     // Kill the balloon -> should death-spawn a BalloonBomb
     freshState.processDeaths();
@@ -489,7 +491,8 @@ class SpawnerSystemTest {
     assertThat(bomb.getHealth().isAlive()).isTrue();
 
     // Advance the bomb's deploy timer past 3.0s
-    bombTroop.update(3.1f);
+    EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
+    entityTimerSystem.update(Collections.singletonList(bombTroop), 3.1f);
     assertThat(bombTroop.isDeploying()).isFalse();
 
     // Now SpawnerSystem should self-destruct the bomb
@@ -555,7 +558,7 @@ class SpawnerSystemTest {
     freshState.spawnEntity(golem);
     freshState.spawnEntity(nearEnemy);
     freshState.processPending();
-    nearEnemy.update(1.0f); // finish deploy
+    nearEnemy.setDeployTimer(0); // finish deploy
 
     // Kill Golem -> spawns 2 Golemites
     golem.getHealth().takeDamage(1);
@@ -605,7 +608,7 @@ class SpawnerSystemTest {
 
     freshState.spawnEntity(witchBuilding);
     freshState.processPending();
-    witchBuilding.update(1.0f); // finish deploy
+    witchBuilding.setDeployTimer(0); // finish deploy
 
     // First tick -- should NOT spawn (spawnStartTime=1.0)
     freshSystem.update(0f);
@@ -669,7 +672,7 @@ class SpawnerSystemTest {
     freshState.spawnEntity(golem);
     freshState.spawnEntity(nearEnemy);
     freshState.processPending();
-    nearEnemy.update(1.0f); // finish deploy
+    nearEnemy.setDeployTimer(0); // finish deploy
 
     freshSystem.onDeath(golem);
 
@@ -722,7 +725,7 @@ class SpawnerSystemTest {
     freshState.spawnEntity(golem);
     freshState.spawnEntity(immune);
     freshState.processPending();
-    immune.update(1.0f); // finish deploy
+    immune.setDeployTimer(0); // finish deploy
 
     freshSystem.onDeath(golem);
 
@@ -787,12 +790,13 @@ class SpawnerSystemTest {
     assertThat(brawler.isTargetable()).isTrue(); // Deploying troops are targetable
 
     // Advance partially -- still deploying
-    brawler.update(0.4f);
+    EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
+    entityTimerSystem.update(Collections.singletonList(brawler), 0.4f);
     assertThat(brawler.isDeploying()).isTrue();
     assertThat(brawler.isTargetable()).isTrue();
 
     // Advance past deploy time
-    brawler.update(0.2f);
+    entityTimerSystem.update(Collections.singletonList(brawler), 0.2f);
     assertThat(brawler.isDeploying()).isFalse();
     assertThat(brawler.isTargetable()).isTrue();
   }

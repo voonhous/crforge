@@ -13,10 +13,10 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.projectile.Projectile;
@@ -35,6 +35,7 @@ class BattleRamTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private SpawnerSystem spawnerSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   // Barbarian stats used for death spawn
   private static final TroopStats BARBARIAN_STATS =
@@ -71,8 +72,8 @@ class BattleRamTest {
     gameState.processPending();
 
     // Finish deploy
-    battleRam.update(2.0f);
-    tower.update(2.0f);
+    battleRam.setDeployTimer(0);
+    tower.setDeployTimer(0);
 
     // Fully charge the Battle Ram
     battleRam.getAbility().setCharged(true);
@@ -113,8 +114,8 @@ class BattleRamTest {
     gameState.processPending();
 
     // Finish deploy
-    battleRam.update(2.0f);
-    tower.update(2.0f);
+    battleRam.setDeployTimer(0);
+    tower.setDeployTimer(0);
 
     // Do NOT charge -- ability stays uncharged
     assertThat(battleRam.getAbility().isCharged()).isFalse();
@@ -156,7 +157,7 @@ class BattleRamTest {
     gameState.processPending();
 
     // Finish deploy
-    battleRam.update(2.0f);
+    battleRam.setDeployTimer(0);
 
     // Kill Battle Ram via external damage (simulating enemy troop killing it)
     battleRam.getHealth().takeDamage(5000);
@@ -228,9 +229,7 @@ class BattleRamTest {
     float dt = 0.1f;
     int ticks = (int) (duration / dt);
     for (int i = 0; i < ticks; i++) {
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
     }
   }

@@ -6,9 +6,9 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.projectile.Projectile;
@@ -27,6 +27,7 @@ class WallBreakerTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private TargetingSystem targetingSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final int WALL_BREAKER_DAMAGE = 137;
   private static final float AOE_RADIUS = 1.5f;
@@ -52,8 +53,7 @@ class WallBreakerTest {
     gameState.processPending();
 
     // Finish deploy
-    wallBreaker.update(2.0f);
-    tower.update(2.0f);
+    wallBreaker.setDeployTimer(0);
 
     wallBreaker.getCombat().setCurrentTarget(tower);
     // Windup = max(0, attackCooldown - loadTime) = max(0, 1.2 - 1.0) = 0.2s
@@ -80,9 +80,8 @@ class WallBreakerTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    wallBreaker.update(2.0f);
-    tower.update(2.0f);
-    enemy.update(2.0f);
+    wallBreaker.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     wallBreaker.getCombat().setCurrentTarget(tower);
     runCombatUpdates(0.5f);
@@ -109,9 +108,8 @@ class WallBreakerTest {
     gameState.spawnEntity(ally);
     gameState.processPending();
 
-    wallBreaker.update(2.0f);
-    tower.update(2.0f);
-    ally.update(2.0f);
+    wallBreaker.setDeployTimer(0);
+    ally.setDeployTimer(0);
 
     wallBreaker.getCombat().setCurrentTarget(tower);
     runCombatUpdates(0.5f);
@@ -133,9 +131,8 @@ class WallBreakerTest {
     gameState.spawnEntity(tower);
     gameState.processPending();
 
-    wallBreaker.update(2.0f);
-    enemyTroop.update(2.0f);
-    tower.update(2.0f);
+    wallBreaker.setDeployTimer(0);
+    enemyTroop.setDeployTimer(0);
 
     // Let targeting system pick the target
     targetingSystem.updateTargets(gameState.getAliveEntities());
@@ -158,9 +155,8 @@ class WallBreakerTest {
     gameState.spawnEntity(farEnemy);
     gameState.processPending();
 
-    wallBreaker.update(2.0f);
-    tower.update(2.0f);
-    farEnemy.update(2.0f);
+    wallBreaker.setDeployTimer(0);
+    farEnemy.setDeployTimer(0);
 
     wallBreaker.getCombat().setCurrentTarget(tower);
     runCombatUpdates(0.5f);
@@ -228,9 +224,7 @@ class WallBreakerTest {
     int ticks = Math.round(duration / dt);
     for (int i = 0; i < ticks; i++) {
       gameState.refreshCaches();
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
     }
   }

@@ -127,7 +127,7 @@ class LightningTest {
     // Manually spawn a princess tower within Lightning range
     org.crforge.core.entity.structure.Tower tower =
         org.crforge.core.entity.structure.Tower.createPrincessTower(Team.RED, 10, 10, 1);
-    tower.update(2.0f); // make targetable
+    tower.setDeployTimer(0); // make targetable
     sim.gameState().spawnEntity(tower);
     sim.gameState().processPending();
 

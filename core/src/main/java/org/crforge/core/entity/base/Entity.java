@@ -45,7 +45,7 @@ public interface Entity {
 
   boolean isInvulnerable();
 
-  void update(float deltaTime);
+  default void update(float deltaTime) {}
 
   void onSpawn();
 

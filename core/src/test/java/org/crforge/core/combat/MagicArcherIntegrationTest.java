@@ -75,10 +75,10 @@ class MagicArcherIntegrationTest {
     gameState.spawnEntity(enemy2);
     gameState.spawnEntity(enemy3);
     gameState.processPending();
-    archer.update(2.0f);
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
-    enemy3.update(2.0f);
+    archer.setDeployTimer(0);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
+    enemy3.setDeployTimer(0);
 
     int hp1 = enemy1.getHealth().getCurrent();
     int hp2 = enemy2.getHealth().getCurrent();
@@ -89,6 +89,8 @@ class MagicArcherIntegrationTest {
     archer.getCombat().startAttackSequence();
     archer.getCombat().setCurrentWindup(0);
     combatSystem.update(1.0f / 30f);
+    // Clear target to prevent re-firing (CombatSystem now ticks combat timers)
+    archer.getCombat().clearTarget();
 
     float dt = 1.0f / 30f;
     for (int i = 0; i < 300; i++) {
@@ -112,9 +114,9 @@ class MagicArcherIntegrationTest {
     gameState.spawnEntity(onAxis);
     gameState.spawnEntity(offAxis);
     gameState.processPending();
-    archer.update(2.0f);
-    onAxis.update(2.0f);
-    offAxis.update(2.0f);
+    archer.setDeployTimer(0);
+    onAxis.setDeployTimer(0);
+    offAxis.setDeployTimer(0);
 
     int onAxisHp = onAxis.getHealth().getCurrent();
     int offAxisHp = offAxis.getHealth().getCurrent();
@@ -142,8 +144,8 @@ class MagicArcherIntegrationTest {
     gameState.spawnEntity(archer);
     gameState.spawnEntity(target);
     gameState.processPending();
-    archer.update(2.0f);
-    target.update(2.0f);
+    archer.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     int initialHp = target.getHealth().getCurrent();
 
@@ -152,7 +154,10 @@ class MagicArcherIntegrationTest {
     archer.getCombat().setCurrentWindup(0);
 
     float dt = 1.0f / 30f;
-    for (int i = 0; i < 300; i++) {
+    combatSystem.update(dt);
+    // Clear target to prevent re-firing (CombatSystem now ticks combat timers)
+    archer.getCombat().clearTarget();
+    for (int i = 0; i < 299; i++) {
       combatSystem.update(dt);
     }
 
@@ -183,8 +188,8 @@ class MagicArcherIntegrationTest {
     gameState.spawnEntity(frontTroop);
     gameState.spawnEntity(backBuilding);
     gameState.processPending();
-    archer.update(2.0f);
-    frontTroop.update(2.0f);
+    archer.setDeployTimer(0);
+    frontTroop.setDeployTimer(0);
 
     int troopHp = frontTroop.getHealth().getCurrent();
     int buildingHp = backBuilding.getHealth().getCurrent();

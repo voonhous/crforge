@@ -28,6 +28,7 @@ graph LR
     GE --> TS[TargetingSystem]
     GE --> TR[TransformationSystem]
     GE --> EC[ElixirCollectionSystem]
+    GE --> ET[EntityTimerSystem]
 
     CS --> GS[GameState]
     CS --> AOE[AoeDamageService]
@@ -98,7 +99,7 @@ org.crforge.core/
   combat/      TargetingSystem, CombatSystem, AoeDamageService, ProjectileSystem, ProjectileFactory, ...
   component/   Health, Position, Combat, Movement, SpawnerComponent, ModifierSource, ...
   effect/      StatusEffectType, StatusEffectSystem, AppliedEffect, BuffDefinition, BuffRegistry
-  engine/      GameEngine, GameState, DeploymentSystem, ElixirCollectionSystem, TransformationSystem
+  engine/      GameEngine, GameState, DeploymentSystem, EntityTimerSystem, ElixirCollectionSystem, TransformationSystem
   entity/
     base/        Entity, AbstractEntity, EntityType, MovementType, TargetType
     unit/        Troop

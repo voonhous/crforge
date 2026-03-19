@@ -38,6 +38,10 @@ public class CombatSystem {
     // Capture alive entities once for the entire combat update
     List<Entity> aliveEntities = gameState.getAliveEntities();
 
+    // Tick combat timers for ALL entities (including deploying ones for load time accumulation).
+    // CES: combat timer ticking lives in the combat system, not in entity update() methods.
+    updateCombatTimers(aliveEntities, deltaTime);
+
     // Process attacks for ANY entity with a combat component (Troop or Building)
     for (Entity entity : aliveEntities) {
       processEntityCombat(entity, aliveEntities);
@@ -45,6 +49,23 @@ public class CombatSystem {
 
     // Update and process projectiles
     projectileSystem.update(deltaTime);
+  }
+
+  /**
+   * Tick combat component timers (cooldown, windup, load time) for all alive entities. This runs
+   * before combat decisions so timers are up-to-date when canAttack() / isWindingUp() are checked.
+   */
+  private void updateCombatTimers(List<Entity> entities, float deltaTime) {
+    for (Entity entity : entities) {
+      Combat combat = entity.getCombat();
+      if (combat == null) {
+        continue;
+      }
+      if (!entity.isAlive()) {
+        continue;
+      }
+      combat.update(deltaTime, true);
+    }
   }
 
   private void processEntityCombat(Entity entity, List<Entity> aliveEntities) {

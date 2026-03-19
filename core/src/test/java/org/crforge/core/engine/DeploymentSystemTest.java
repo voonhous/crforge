@@ -236,7 +236,7 @@ class DeploymentSystemTest {
     enemy.onSpawn();
     gameState.spawnEntity(enemy);
     gameState.processPending(); // Add enemy to alive entities
-    enemy.update(2.0f); // Finish deploying so enemy is targetable
+    enemy.setDeployTimer(0); // Finish deploying so enemy is targetable
 
     Card fireball =
         Card.builder()
@@ -321,7 +321,7 @@ class DeploymentSystemTest {
     enemy.onSpawn();
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(2.0f);
+    enemy.setDeployTimer(0);
 
     int baseDamage = 100;
     Rarity rarity = Rarity.RARE;

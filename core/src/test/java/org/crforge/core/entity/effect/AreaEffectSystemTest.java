@@ -90,9 +90,9 @@ class AreaEffectSystemTest {
     gameState.processPending();
 
     // Make targets targetable
-    nearEnemy.update(1.0f);
-    farEnemy.update(1.0f);
-    friendly.update(1.0f);
+    nearEnemy.setDeployTimer(0);
+    farEnemy.setDeployTimer(0);
+    friendly.setDeployTimer(0);
 
     system.update(1.0f / 30);
 
@@ -138,7 +138,7 @@ class AreaEffectSystemTest {
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(1.0f);
+    enemy.setDeployTimer(0);
 
     system.update(1.0f / 30);
 
@@ -186,7 +186,7 @@ class AreaEffectSystemTest {
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(1.0f);
+    enemy.setDeployTimer(0);
 
     // After 1.0s -> 1 tick of damage
     system.update(1.0f);
@@ -249,8 +249,8 @@ class AreaEffectSystemTest {
     gameState.spawnEntity(groundEnemy);
     gameState.spawnEntity(airEnemy);
     gameState.processPending();
-    groundEnemy.update(1.0f);
-    airEnemy.update(1.0f);
+    groundEnemy.setDeployTimer(0);
+    airEnemy.setDeployTimer(0);
 
     system.update(1.0f / 30);
 
@@ -294,16 +294,14 @@ class AreaEffectSystemTest {
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(1.0f);
+    enemy.setDeployTimer(0);
 
     // Tick 0.5s -> 1 damage tick
     system.update(0.5f);
-    effect.update(0.5f);
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(450);
 
     // Tick another 0.5s -> 2nd damage tick
     system.update(0.5f);
-    effect.update(0.5f);
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(400);
 
     // Effect should now be dead (lifetime expired)
@@ -315,10 +313,10 @@ class AreaEffectSystemTest {
   }
 
   @Test
-  void oneShot_shouldSurviveEntityUpdateBeforeProcessing() {
-    // Reproduces the real GameEngine tick order: entity.update() runs BEFORE
-    // areaEffectSystem.update(). One-shot effects with very short lifeDuration
-    // (like Zap at 0.001s) must not die before being applied.
+  void oneShot_shouldSurviveAndGetProcessed() {
+    // One-shot effects with very short lifeDuration (like Zap at 0.001s) must
+    // survive and get processed by AreaEffectSystem. The one-shot guard inside
+    // AreaEffectSystem ensures the effect is applied before being marked dead.
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Zap")
@@ -353,20 +351,17 @@ class AreaEffectSystemTest {
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(1.0f);
+    enemy.setDeployTimer(0);
 
-    // Simulate real tick order: entity.update() BEFORE areaEffectSystem.update()
     float dt = 1.0f / 30;
-    effect.update(dt); // lifetime goes negative, but one-shot must stay alive
-    system.update(dt); // should still process and apply damage + buff
+    system.update(dt); // should process and apply damage + buff
 
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(425); // 500 - 75
     assertThat(enemy.getAppliedEffects()).hasSize(1);
     assertThat(enemy.getAppliedEffects().get(0).getType())
         .isEqualTo(org.crforge.core.effect.StatusEffectType.STUN);
 
-    // After application, the next update should mark it dead
-    effect.update(dt);
+    // After processing, the one-shot effect should be dead
     assertThat(effect.isAlive()).isFalse();
   }
 
@@ -408,7 +403,7 @@ class AreaEffectSystemTest {
     gameState.spawnEntity(effect);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(1.0f);
+    enemy.setDeployTimer(0);
 
     system.update(1.0f / 30);
 
@@ -459,7 +454,7 @@ class AreaEffectSystemTest {
             .health(new Health(hp))
             .deployTime(0f)
             .build();
-    troop.update(1.0f); // make targetable
+    troop.setDeployTimer(0); // make targetable
     return troop;
   }
 
@@ -571,7 +566,7 @@ class AreaEffectSystemTest {
             .health(new Health(200, 500))
             .deployTime(0f)
             .build();
-    shielded.update(1.0f);
+    shielded.setDeployTimer(0);
 
     Troop unshielded = createEnemyTroop("Unshielded", 600, 11, 10);
 
@@ -597,7 +592,7 @@ class AreaEffectSystemTest {
 
     // Crown tower with high HP (should be the biggest target)
     Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
-    tower.update(1.0f);
+    tower.setDeployTimer(0);
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(tower);

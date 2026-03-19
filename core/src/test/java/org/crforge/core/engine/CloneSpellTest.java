@@ -15,6 +15,7 @@ import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
+import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.crforge.core.testing.BuildingTemplate;
@@ -182,8 +183,14 @@ class CloneSpellTest {
     SimHarness sim =
         SimHarness.create().withSystems(SimSystems.AREA_EFFECT).spawn(shieldTroop).build();
 
-    // Fast-forward deploy (deployTime=0 but onSpawn needs to run)
-    sim.gameState().getAliveEntities().forEach(e -> e.update(2.0f));
+    // Fast-forward deploy
+    sim.gameState()
+        .getAliveEntities()
+        .forEach(
+            e -> {
+              if (e instanceof Troop t) t.setDeployTimer(0);
+              else if (e instanceof Building b) b.setDeployTimer(0);
+            });
 
     castCloneAndFlush(sim, Team.BLUE, 10, 10);
 
@@ -297,7 +304,13 @@ class CloneSpellTest {
             .spawn(golem)
             .build();
 
-    sim.gameState().getAliveEntities().forEach(e -> e.update(2.0f));
+    sim.gameState()
+        .getAliveEntities()
+        .forEach(
+            e -> {
+              if (e instanceof Troop t) t.setDeployTimer(0);
+              else if (e instanceof Building b) b.setDeployTimer(0);
+            });
 
     // Clone the Golem
     castCloneAndFlush(sim, Team.BLUE, 10, 10);
@@ -373,7 +386,13 @@ class CloneSpellTest {
             .spawn(witch)
             .build();
 
-    sim.gameState().getAliveEntities().forEach(e -> e.update(2.0f));
+    sim.gameState()
+        .getAliveEntities()
+        .forEach(
+            e -> {
+              if (e instanceof Troop t) t.setDeployTimer(0);
+              else if (e instanceof Building b) b.setDeployTimer(0);
+            });
 
     // Clone the Witch
     castCloneAndFlush(sim, Team.BLUE, 10, 10);

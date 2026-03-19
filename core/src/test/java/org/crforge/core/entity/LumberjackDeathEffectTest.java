@@ -292,7 +292,7 @@ class LumberjackDeathEffectTest {
 
     // Step 2: Advance bottle past deploy, then self-destruct
     Troop bottleTroop = (Troop) bottle;
-    bottleTroop.update(0.6f);
+    bottleTroop.setDeployTimer(0);
     spawnerSystem.update(0.1f);
     assertThat(bottle.getHealth().isAlive()).isFalse();
 
@@ -388,7 +388,7 @@ class LumberjackDeathEffectTest {
     assertThat(bottle.getHealth().isAlive()).isTrue();
 
     // Advance deploy timer past 0.5s
-    bottleTroop.update(0.6f);
+    bottleTroop.setDeployTimer(0);
     assertThat(bottleTroop.isDeploying()).isFalse();
 
     // Step 3: SpawnerSystem self-destructs the bottle

@@ -130,6 +130,8 @@ Units with `kamikaze=true` (Battle Ram): die immediately after executing their a
 - First attack windup: `max(0, attackCooldown - accumulatedLoadTime)`
 - Load time preloading: spawned troops start with `accumulatedLoadTime = loadTime` (fully charged)
 - Exception: `noPreload=true` (Sparky) starts at 0
+- Combat timer ticking (cooldown, windup, load time accumulation) is handled by `CombatSystem`,
+  not by entity update methods
 
 ### Attack Sequences
 

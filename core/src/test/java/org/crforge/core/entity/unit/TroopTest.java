@@ -64,7 +64,7 @@ class TroopTest {
     assertThat(troop.isTargetable()).isTrue();
 
     // Still targetable after deploy finishes
-    troop.update(1.0f);
+    troop.setDeployTimer(0);
 
     assertThat(troop.isDeploying()).isFalse();
     assertThat(troop.isTargetable()).isTrue();

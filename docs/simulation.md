@@ -24,11 +24,11 @@ The method returns immediately if `!running`, `gameState.isGameOver()`, or `matc
 | 5    | `spawnerSystem.update(deltaTime)`                 | Periodic live spawning, bomb self-destruct, delayed death spawns     |
 | 6    | `statusEffectSystem.update(gameState, deltaTime)` | Tick buff durations, compute multiplier stacking                     |
 | 7    | `attachedUnitSystem.update(deltaTime)`            | Sync attached unit positions, propagate parent status effects        |
-| 8    | `entity.update(deltaTime)` (loop)                 | Per-entity timers: deploy countdown, lifetime, combat cooldowns      |
+| 8    | `entityTimerSystem.update(aliveEntities, deltaTime)` | Deploy countdown, building lifetime decay, troop lifetime, grounded timer |
 | 9    | `areaEffectSystem.update(deltaTime)`              | Process AOE zones (one-shot, ticking, targeted, laser)               |
 | 10   | `targetingSystem.updateTargets(aliveEntities)`    | Target acquisition and two-phase locking                             |
 | 11   | `abilitySystem.update(deltaTime)`                 | Ability handlers (charge, dash, hook, etc.) before combat            |
-| 12   | `combatSystem.update(deltaTime)`                  | Attacks, projectile movement, hit processing                         |
+| 12   | `combatSystem.update(deltaTime)`                  | Combat timer ticking, attacks, projectile movement, hit processing   |
 | 13   | `transformationSystem.update()`                   | HP-threshold entity replacement (e.g. GoblinDemolisher)              |
 | 14   | `physicsSystem.update(aliveEntities, deltaTime)`  | Movement, collisions, bounds enforcement                             |
 | 15   | `gameState.processDeaths()`                       | Death handlers, win condition checks                                 |
@@ -73,6 +73,7 @@ flowchart TD
 
 - `core/.../engine/GameEngine.java`
 - `core/.../engine/GameState.java`
+- `core/.../engine/EntityTimerSystem.java`
 - `core/.../entity/base/AbstractEntity.java`
 
 ---
@@ -85,7 +86,7 @@ See [Architecture Overview -> System Dependencies](architecture.md#system-depend
 
 ## Entity Hierarchy
 
-CES architecture: entities are component containers; logic lives in systems.
+CES architecture: entities are data-only component containers; all per-tick logic lives in systems.
 
 ```
 Entity (interface)
@@ -102,6 +103,8 @@ Entity (interface)
 Deployable combat units. Spawn with a deploy timer that counts down before the troop becomes
 targetable and active.
 
+- Deploy timer, lifetime, and grounded timer are managed by `EntityTimerSystem`
+- Combat timers (cooldown, windup, load time) are managed by `CombatSystem`
 - During deployment: only combat load time advances (enables pre-charging); entity cannot move,
   target, or be targeted
 - `deployTimer <= 0` sets `spawned=true` making the troop targetable
@@ -121,6 +124,8 @@ targetable and active.
 
 Static structures with finite lifetime.
 
+- Deploy timer, lifetime decay, and health decay are managed by `EntityTimerSystem`
+- Combat timers are managed by `CombatSystem`
 - `lifetime` / `remainingLifetime` -- total and remaining lifetime in seconds
 - Health decays linearly: `decayRate = maxHP / lifetime` per second, applied via fractional
   accumulator
@@ -208,6 +213,9 @@ returns `false`).
 - `laserBallHandler` -- DarkMagic laser scans
 - `pullProcessor` -- Tornado pulling
 - `spawnProcessor` -- Character spawning within AOE
+
+Lifetime management (including keep-alive guards for pending spawns, active DOT, and pending laser
+scans) is handled by `AreaEffectSystem`.
 
 **Key files:**
 

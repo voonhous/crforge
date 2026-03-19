@@ -21,7 +21,7 @@ public class Tower extends Building {
 
   @Builder.Default @Setter private boolean active = true;
 
-  @Builder.Default private float activationTimer = 0f;
+  @Builder.Default @Setter private float activationTimer = 0f;
 
   // Factory methods for standard towers
   public static Tower createCrownTower(Team team, float x, float y, int level) {
@@ -87,19 +87,6 @@ public class Tower extends Building {
     if (!active) {
       active = true;
       activationTimer = 1.0f;
-    }
-  }
-
-  @Override
-  public void update(float deltaTime) {
-    super.update(deltaTime);
-
-    if (!active && health.getCurrent() < health.getMax()) {
-      activate();
-    }
-
-    if (activationTimer > 0) {
-      activationTimer -= deltaTime;
     }
   }
 

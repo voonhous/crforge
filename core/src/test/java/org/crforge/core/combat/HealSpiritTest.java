@@ -12,9 +12,9 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.effect.AreaEffectSystem;
@@ -35,6 +35,7 @@ class HealSpiritTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private AreaEffectSystem areaEffectSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
   private Map<String, BuffDefinition> savedBuffs;
 
   private static final int HEAL_SPIRIT_DAMAGE = 43;
@@ -80,8 +81,8 @@ class HealSpiritTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -110,9 +111,9 @@ class HealSpiritTest {
     gameState.spawnEntity(friendly);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
-    friendly.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
+    friendly.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -139,10 +140,10 @@ class HealSpiritTest {
     gameState.spawnEntity(friendly2);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
-    friendly1.update(2.0f);
-    friendly2.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
+    friendly1.setDeployTimer(0);
+    friendly2.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -164,8 +165,8 @@ class HealSpiritTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -191,9 +192,9 @@ class HealSpiritTest {
     gameState.spawnEntity(friendly);
     gameState.processPending();
 
-    spirit.update(2.0f);
-    enemy.update(2.0f);
-    friendly.update(2.0f);
+    spirit.setDeployTimer(0);
+    enemy.setDeployTimer(0);
+    friendly.setDeployTimer(0);
 
     spirit.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -260,9 +261,7 @@ class HealSpiritTest {
     int ticks = Math.round(duration / dt);
     for (int i = 0; i < ticks; i++) {
       gameState.refreshCaches();
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
       // Process pending entities (area effects spawned by projectile impact)
       gameState.processPending();

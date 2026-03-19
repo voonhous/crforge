@@ -9,7 +9,9 @@ import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.ProjectileSystem;
 import org.crforge.core.combat.TargetingSystem;
+import org.crforge.core.component.Combat;
 import org.crforge.core.effect.StatusEffectSystem;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.SpawnerSystem;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -55,6 +57,7 @@ public class SimHarness {
   private final PhysicsSystem physicsSystem;
   private final SpawnerSystem spawnerSystem;
   private final AreaEffectSystem areaEffectSystem;
+  private final EntityTimerSystem entityTimerSystem;
 
   private SimHarness(Builder builder) {
     this.gameState = builder.gameState;
@@ -95,6 +98,8 @@ public class SimHarness {
     this.areaEffectSystem =
         enabledSystems.contains(SimSystems.AREA_EFFECT) ? new AreaEffectSystem(gameState) : null;
 
+    this.entityTimerSystem = new EntityTimerSystem();
+
     // Wire callbacks if both systems exist
     if (projectileSystem != null && spawnerSystem != null) {
       projectileSystem.setUnitSpawner(spawnerSystem::spawnUnit);
@@ -115,7 +120,11 @@ public class SimHarness {
     // Fast-forward deploy timers if requested
     if (builder.deployed) {
       for (Entity entity : gameState.getEntities()) {
-        entity.update(2.0f);
+        if (entity instanceof Troop troop) {
+          troop.setDeployTimer(0);
+        } else if (entity instanceof Building building) {
+          building.setDeployTimer(0);
+        }
       }
     }
   }
@@ -141,9 +150,18 @@ public class SimHarness {
       statusEffectSystem.update(gameState, DT);
     }
 
-    // 2. Entity updates (timers, cooldowns)
-    for (Entity entity : gameState.getAliveEntities()) {
-      entity.update(DT);
+    // 2. Entity timers (deploy, lifetime, grounded) -- CES: logic in system
+    entityTimerSystem.update(gameState.getAliveEntities(), DT);
+
+    // 2.5 Combat timers (cooldown, windup, load time) -- always ticked regardless of
+    // whether COMBAT system is enabled, matching old entity.update() behavior
+    if (combatSystem == null) {
+      for (Entity entity : gameState.getAliveEntities()) {
+        Combat combat = entity.getCombat();
+        if (combat != null && entity.isAlive()) {
+          combat.update(DT, true);
+        }
+      }
     }
 
     // 3. Area effects

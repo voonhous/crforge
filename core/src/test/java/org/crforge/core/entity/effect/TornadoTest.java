@@ -105,7 +105,7 @@ class TornadoTest {
             .movement(new Movement(1.0f, mass, 0.5f, 0.5f, movementType))
             .deployTime(0f)
             .build();
-    troop.update(1.0f); // Make targetable
+    troop.setDeployTimer(0); // Make targetable
     return troop;
   }
 
@@ -194,7 +194,7 @@ class TornadoTest {
             .combat(null)
             .deployTime(0f)
             .build();
-    building.update(1.0f); // Make targetable
+    building.setDeployTimer(0); // Make targetable
 
     gameState.spawnEntity(tornado);
     gameState.spawnEntity(building);
@@ -362,7 +362,7 @@ class TornadoTest {
             .build();
 
     Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
-    tower.update(1.0f);
+    tower.setDeployTimer(0);
 
     gameState.spawnEntity(effect);
     gameState.spawnEntity(tower);
@@ -392,8 +392,7 @@ class TornadoTest {
     assertThat(troop.getAppliedEffects().get(0).getType()).isEqualTo(StatusEffectType.TORNADO);
 
     // Kill the area effect by expiring it
-    tornado.setRemainingLifetime(0);
-    tornado.update(DT);
+    tornado.markDead();
     assertThat(tornado.isAlive()).isFalse();
 
     // Next update should clean up the buff

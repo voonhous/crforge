@@ -113,7 +113,7 @@ class HidingAbilityTest {
         .spawnEntity(
             TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000).deployTime(0f).build());
     sim.gameState().processPending();
-    sim.troop("Enemy").update(2.0f);
+    sim.troop("Enemy").setDeployTimer(0);
 
     // After first tick: TargetingSystem assigns target, AbilitySystem sees target -> REVEALING
     sim.tick();
@@ -172,7 +172,7 @@ class HidingAbilityTest {
         .spawnEntity(
             TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000).deployTime(0f).build());
     sim.gameState().processPending();
-    sim.troop("Enemy").update(2.0f);
+    sim.troop("Enemy").setDeployTimer(0);
 
     int initialEnemyHp = sim.troop("Enemy").getHealth().getCurrent();
 
@@ -252,7 +252,7 @@ class HidingAbilityTest {
         .spawnEntity(
             TroopTemplate.target("NewEnemy", Team.RED).at(9, 14).hp(5000).deployTime(0f).build());
     sim.gameState().processPending();
-    sim.troop("NewEnemy").update(2.0f); // Deploy instantly
+    sim.troop("NewEnemy").setDeployTimer(0); // Deploy instantly
 
     // Next tick: TargetingSystem assigns new target, AbilitySystem cancels hide -> UP
     sim.tick();
@@ -525,7 +525,7 @@ class HidingAbilityTest {
                 .deployTime(0f)
                 .build());
     sim.gameState().processPending();
-    sim.troop("Ram").update(2.0f);
+    sim.troop("Ram").setDeployTimer(0);
 
     Tower farTower = Tower.createPrincessTower(Team.BLUE, 9, 3, 1);
     farTower.onSpawn();
@@ -575,7 +575,7 @@ class HidingAbilityTest {
         .spawnEntity(
             TroopTemplate.target("Enemy", Team.RED).at(9, 14).hp(5000).deployTime(0f).build());
     sim.gameState().processPending();
-    sim.troop("Enemy").update(2.0f);
+    sim.troop("Enemy").setDeployTimer(0);
 
     // HIDDEN -> REVEALING (1 tick) -> UP (COUNTDOWN_TICKS ticks)
     sim.tick(HIDDEN_TO_UP_TICKS);

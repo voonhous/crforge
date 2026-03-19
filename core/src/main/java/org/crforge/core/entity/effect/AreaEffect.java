@@ -143,44 +143,6 @@ public class AreaEffect extends AbstractEntity {
     return false;
   }
 
-  @Override
-  public void update(float deltaTime) {
-    if (dead) {
-      return;
-    }
-    remainingLifetime -= deltaTime;
-    if (remainingLifetime <= 0) {
-      // One-shot effects must survive until AreaEffectSystem applies them.
-      // Without this guard, effects with very short lifeDuration (e.g. Zap 0.001s)
-      // die during the entity update step before AreaEffectSystem processes them.
-      // Laser ball effects (damageTiers non-empty) are not one-shot despite hitSpeed=0.
-      if (isOneShot() && !initialApplied && stats.getDamageTiers().isEmpty()) {
-        return;
-      }
-      // Keep alive if a single character spawn is pending (e.g. Royal Delivery spawns at 2.05s
-      // but lifeDuration is 2.0s). Skip this guard when a spawn sequence is used instead.
-      if (stats.getSpawnCharacter() != null
-          && !spawnTriggered
-          && stats.getSpawnSequence().isEmpty()) {
-        return;
-      }
-      // Keep alive if spawn sequence has remaining entries (e.g. Graveyard)
-      if (!stats.getSpawnSequence().isEmpty() && nextSpawnIndex < stats.getSpawnSequence().size()) {
-        return;
-      }
-      // Keep alive if targeted effect has pending target selections or active DOT ticks
-      if (stats.getTargetCount() > 0
-          && (nextTargetSelectionIndex < stats.getTargetDelays().size() || dotActive)) {
-        return;
-      }
-      // Keep alive if laser ball has pending scans
-      if (totalLaserScans > 0 && laserScanCount < totalLaserScans) {
-        return;
-      }
-      markDead();
-    }
-  }
-
   /**
    * Returns the effective damage per application, using scaledDamage if set, otherwise falling back
    * to stats.getDamage().

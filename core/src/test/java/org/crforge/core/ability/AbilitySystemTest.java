@@ -69,7 +69,7 @@ class AbilitySystemTest {
     gameState.processPending();
 
     // Finish deploy
-    prince.update(2.0f);
+    prince.setDeployTimer(0);
 
     // No target needed -- charge builds while unit is moving (speed > 0)
 
@@ -92,7 +92,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(prince);
     gameState.processPending();
 
-    prince.update(2.0f);
+    prince.setDeployTimer(0);
 
     // Run for 2.5s (charge time threshold) -- no target needed
     for (int i = 0; i < 76; i++) { // 76 ticks = 2.533s
@@ -115,8 +115,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    prince.update(2.0f);
-    target.update(2.0f);
+    prince.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Build up charge while moving (no target needed)
     for (int i = 0; i < 78; i++) {
@@ -142,7 +142,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(prince);
     gameState.processPending();
 
-    prince.update(2.0f);
+    prince.setDeployTimer(0);
 
     // Build partial charge (1s)
     for (int i = 0; i < 30; i++) {
@@ -169,8 +169,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    prince.update(2.0f);
-    target.update(2.0f);
+    prince.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Build up charge while moving (no target needed)
     for (int i = 0; i < 78; i++) {
@@ -208,8 +208,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    prince.update(2.0f);
-    target.update(2.0f);
+    prince.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Build up charge
     for (int i = 0; i < 78; i++) {
@@ -240,8 +240,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    prince.update(2.0f);
-    target.update(2.0f);
+    prince.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Do NOT charge -- attack immediately
     prince.getCombat().setCurrentTarget(target);
@@ -291,8 +291,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(ewiz);
     gameState.processPending();
 
-    prince.update(2.0f);
-    ewiz.update(2.0f);
+    prince.setDeployTimer(0);
+    ewiz.setDeployTimer(0);
 
     // Build partial charge (1s out of 2.5s needed)
     for (int i = 0; i < 30; i++) {
@@ -321,8 +321,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(ewiz);
     gameState.processPending();
 
-    prince.update(2.0f);
-    ewiz.update(2.0f);
+    prince.setDeployTimer(0);
+    ewiz.setDeployTimer(0);
 
     // Build full charge (2.5s+)
     for (int i = 0; i < 78; i++) {
@@ -352,8 +352,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(ewiz);
     gameState.processPending();
 
-    prince.update(2.0f);
-    ewiz.update(2.0f);
+    prince.setDeployTimer(0);
+    ewiz.setDeployTimer(0);
 
     // Build full charge (2.5s+)
     for (int i = 0; i < 78; i++) {
@@ -401,7 +401,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(prince);
     gameState.processPending();
 
-    prince.update(2.0f);
+    prince.setDeployTimer(0);
 
     // Build full charge (2.5s+)
     for (int i = 0; i < 78; i++) {
@@ -449,7 +449,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(prince);
     gameState.processPending();
 
-    prince.update(2.0f);
+    prince.setDeployTimer(0);
 
     // Build partial charge (1s out of 2.5s needed)
     for (int i = 0; i < 30; i++) {
@@ -499,8 +499,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target.update(2.0f);
+    inferno.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     inferno.getCombat().setCurrentTarget(target);
     abilitySystem.update(DT);
@@ -519,8 +519,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target.update(2.0f);
+    inferno.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     inferno.getCombat().setCurrentTarget(target);
 
@@ -555,9 +555,9 @@ class AbilitySystemTest {
     gameState.spawnEntity(target2);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target1.update(2.0f);
-    target2.update(2.0f);
+    inferno.setDeployTimer(0);
+    target1.setDeployTimer(0);
+    target2.setDeployTimer(0);
 
     // Start on target1, escalate to stage 1
     inferno.getCombat().setCurrentTarget(target1);
@@ -583,8 +583,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target.update(2.0f);
+    inferno.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     inferno.getCombat().setCurrentTarget(target);
 
@@ -609,9 +609,9 @@ class AbilitySystemTest {
     gameState.spawnEntity(ewiz);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target.update(2.0f);
-    ewiz.update(2.0f);
+    inferno.setDeployTimer(0);
+    target.setDeployTimer(0);
+    ewiz.setDeployTimer(0);
 
     // Lock on target and escalate to stage 1 (2s)
     inferno.getCombat().setCurrentTarget(target);
@@ -642,8 +642,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target.update(2.0f);
+    inferno.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Lock on target and escalate to stage 2 (4s+)
     inferno.getCombat().setCurrentTarget(target);
@@ -697,8 +697,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    target.update(2.0f);
+    inferno.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Run full system loop: targeting -> combat -> ability
     // First tick: targeting acquires, combat locks, ability starts at stage 0
@@ -740,8 +740,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(bandit);
     gameState.processPending();
 
-    inferno.update(2.0f);
-    bandit.update(2.0f);
+    inferno.setDeployTimer(0);
+    bandit.setDeployTimer(0);
 
     // Phase 1: Ramp inferno to stage 1 by running full system loop for 2+ seconds.
     // Targeting acquires bandit as inferno's target; combat locks and deals damage;
@@ -760,7 +760,7 @@ class AbilitySystemTest {
     Troop dashTarget = createDummyTarget(Team.BLUE, 13, 5); // 5.0 from bandit
     gameState.spawnEntity(dashTarget);
     gameState.processPending();
-    dashTarget.update(2.0f);
+    dashTarget.setDeployTimer(0);
 
     bandit.getCombat().setCurrentTarget(dashTarget);
 
@@ -800,8 +800,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     bandit.getCombat().setCurrentTarget(target);
 
@@ -824,8 +824,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     bandit.getCombat().setCurrentTarget(target);
 
@@ -850,8 +850,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     bandit.getCombat().setCurrentTarget(target);
 
@@ -885,8 +885,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(cannon);
     gameState.processPending();
 
-    bandit.update(2.0f);
-    cannon.update(2.0f);
+    bandit.setDeployTimer(0);
+    cannon.setDeployTimer(0);
 
     // Manually set target and burn through initial cooldown, then trigger dash
     bandit.getCombat().setCurrentTarget(cannon);
@@ -930,8 +930,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(bandit);
     gameState.spawnEntity(target);
     gameState.processPending();
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
     bandit.getCombat().setCurrentTarget(target);
 
     // Initial cooldown is active (0.8s). Tick a few times -- should hold position.
@@ -963,8 +963,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(bandit);
     gameState.spawnEntity(target);
     gameState.processPending();
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
     bandit.getCombat().setCurrentTarget(target);
 
     float initialCooldown = bandit.getAbility().getDashCooldownTimer();
@@ -999,8 +999,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(bandit);
     gameState.spawnEntity(target);
     gameState.processPending();
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
     bandit.getCombat().setCurrentTarget(target);
 
     // Tick a few times to partially consume cooldown and acquire candidate
@@ -1031,8 +1031,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(bandit);
     gameState.spawnEntity(target);
     gameState.processPending();
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
     bandit.getCombat().setCurrentTarget(target);
 
     // Burn through cooldown (0.8s = 24 ticks) -- should dash on the tick it expires
@@ -1054,8 +1054,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(mk);
     gameState.spawnEntity(target);
     gameState.processPending();
-    mk.update(2.0f);
-    target.update(2.0f);
+    mk.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     mk.getCombat().setCurrentTarget(target);
 
@@ -1093,8 +1093,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(mk1);
     gameState.spawnEntity(target1);
     gameState.processPending();
-    mk1.update(2.0f);
-    target1.update(2.0f);
+    mk1.setDeployTimer(0);
+    target1.setDeployTimer(0);
     mk1.getCombat().setCurrentTarget(target1);
     // Burn through initial cooldown (0.9s = 27 ticks)
     for (int i = 0; i < 28; i++) {
@@ -1121,8 +1121,8 @@ class AbilitySystemTest {
     gs2.spawnEntity(mk2);
     gs2.spawnEntity(target2);
     gs2.processPending();
-    mk2.update(2.0f);
-    target2.update(2.0f);
+    mk2.setDeployTimer(0);
+    target2.setDeployTimer(0);
     mk2.getCombat().setCurrentTarget(target2);
     // Burn through initial cooldown (0.9s = 27 ticks)
     for (int i = 0; i < 28; i++) {
@@ -1157,8 +1157,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(bandit);
     gameState.spawnEntity(target);
     gameState.processPending();
-    bandit.update(2.0f);
-    target.update(2.0f);
+    bandit.setDeployTimer(0);
+    target.setDeployTimer(0);
     bandit.getCombat().setCurrentTarget(target);
 
     // Burn through initial cooldown (0.8s = 24 ticks)
@@ -1193,8 +1193,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(mk);
     gameState.spawnEntity(target);
     gameState.processPending();
-    mk.update(2.0f);
-    target.update(2.0f);
+    mk.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     mk.getCombat().setCurrentTarget(target);
 
@@ -1232,8 +1232,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    fisher.update(2.0f);
-    target.update(2.0f);
+    fisher.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     fisher.getCombat().setCurrentTarget(target);
 
@@ -1283,8 +1283,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(cannon);
     gameState.processPending();
 
-    fisher.update(2.0f);
-    cannon.update(2.0f);
+    fisher.setDeployTimer(0);
+    cannon.setDeployTimer(0);
 
     float speed = 1.0f; // tile/s, matching Fisherman's speed
     float startY = fisher.getPosition().getY();
@@ -1376,8 +1376,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    fisher.update(2.0f);
-    target.update(2.0f);
+    fisher.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Assign target and trigger hook
     fisher.getCombat().setCurrentTarget(target);
@@ -1441,8 +1441,8 @@ class AbilitySystemTest {
     gameState.spawnEntity(cannon);
     gameState.processPending();
 
-    fisher.update(2.0f);
-    cannon.update(2.0f);
+    fisher.setDeployTimer(0);
+    cannon.setDeployTimer(0);
 
     // Manually set target and trigger hook
     fisher.getCombat().setCurrentTarget(cannon);
@@ -1498,7 +1498,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(attacker);
     gameState.processPending();
 
-    eGiant.update(2.0f);
+    eGiant.setDeployTimer(0);
 
     // Attacker hits eGiant with melee
     attacker.getCombat().setCurrentTarget(eGiant);
@@ -1539,7 +1539,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(rangedAttacker);
     gameState.processPending();
 
-    eGiant.update(2.0f);
+    eGiant.setDeployTimer(0);
 
     // Create a projectile that is about to hit eGiant (simulates ranged attack)
     Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, 15f, List.of());
@@ -1585,7 +1585,7 @@ class AbilitySystemTest {
     gameState.spawnEntity(rangedAttacker);
     gameState.processPending();
 
-    eGiant.update(2.0f);
+    eGiant.setDeployTimer(0);
 
     // Create a projectile that is about to hit eGiant
     Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, 15f, List.of());

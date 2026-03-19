@@ -15,9 +15,9 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
-import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.effect.AreaEffect;
@@ -43,6 +43,7 @@ class BattleHealerTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private AreaEffectSystem areaEffectSystem;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
   private Map<String, BuffDefinition> savedBuffs;
 
   // BattleHealer heal on hit: 40 HP via BattleHealerAll buff (healPerSecond=40, buffDuration=1.0)
@@ -107,9 +108,9 @@ class BattleHealerTest {
     gameState.processPending();
 
     // Skip deploy time
-    healer.update(2.0f);
-    enemy.update(2.0f);
-    friendly.update(2.0f);
+    healer.setDeployTimer(0);
+    enemy.setDeployTimer(0);
+    friendly.setDeployTimer(0);
 
     // Set target and run combat (1.0s is enough for exactly one attack: windup = 1.5 - 1.2 = 0.3s)
     healer.getCombat().setCurrentTarget(enemy);
@@ -134,8 +135,8 @@ class BattleHealerTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    healer.update(2.0f);
-    enemy.update(2.0f);
+    healer.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     healer.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -155,7 +156,7 @@ class BattleHealerTest {
 
     gameState.spawnEntity(friendly);
     gameState.processPending();
-    friendly.update(2.0f);
+    friendly.setDeployTimer(0);
 
     // Deploy a BattleHealer heal zone (simulating the deploy effect)
     AreaEffectStats deployEffect =
@@ -213,8 +214,8 @@ class BattleHealerTest {
     gameState.spawnEntity(friendlyBuilding);
     gameState.processPending();
 
-    healer.update(2.0f);
-    enemy.update(2.0f);
+    healer.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     healer.getCombat().setCurrentTarget(enemy);
     runCombatUpdates(1.0f);
@@ -356,9 +357,7 @@ class BattleHealerTest {
     int ticks = Math.round(duration / dt);
     for (int i = 0; i < ticks; i++) {
       gameState.refreshCaches();
-      for (Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       combatSystem.update(dt);
       gameState.processPending();
       areaEffectSystem.update(dt);

@@ -96,7 +96,7 @@ class PiercingProjectileTest {
 
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(2.0f);
+    enemy.setDeployTimer(0);
 
     int initialHp = enemy.getHealth().getCurrent();
 
@@ -120,7 +120,7 @@ class PiercingProjectileTest {
 
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(2.0f);
+    enemy.setDeployTimer(0);
 
     Projectile boulder = createPiercingBoulder(Team.BLUE, 9f, 10f, 0f, 1f, 7.5f);
     gameState.spawnProjectile(boulder);

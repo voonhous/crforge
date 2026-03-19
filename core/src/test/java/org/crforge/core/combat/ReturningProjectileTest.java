@@ -209,6 +209,10 @@ class ReturningProjectileTest {
         .isTrue();
     assertThat(shooter.getCombat().isCombatDisabled()).isTrue();
 
+    // Clear target so shooter won't re-fire after projectile returns
+    // (CombatSystem now ticks combat timers, so cooldown would expire and trigger re-fire)
+    shooter.getCombat().clearTarget();
+
     // Run enough ticks for the projectile to return
     for (int i = 0; i < 120; i++) {
       combatSystem.update(1.0f / 30);
@@ -302,6 +306,9 @@ class ReturningProjectileTest {
     assertThat(executioner.getCombat().isCombatDisabled())
         .as("Combat should be disabled during returning flight even without pingpongMovingShooter")
         .isTrue();
+
+    // Clear target so executioner won't re-fire after projectile returns
+    executioner.getCombat().clearTarget();
 
     // Run enough ticks for the projectile to return
     for (int i = 0; i < 120; i++) {

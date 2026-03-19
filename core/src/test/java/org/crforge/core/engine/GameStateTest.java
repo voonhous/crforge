@@ -170,8 +170,8 @@ class GameStateTest {
     // Damage the King Tower
     kingTower.getHealth().takeDamage(100);
 
-    // Simulate game update (Tower.update() handles the activation check)
-    kingTower.update(0.1f);
+    // EntityTimerSystem handles tower activation check
+    new org.crforge.core.engine.EntityTimerSystem().update(java.util.List.of(kingTower), 0.1f);
 
     // Verify King Tower activated
     assertThat(kingTower.isActive()).as("King Tower should activate when damaged").isTrue();
@@ -186,18 +186,19 @@ class GameStateTest {
 
     // Activate the tower manually or via damage
     kingTower.getHealth().takeDamage(100);
-    kingTower.update(0.1f);
+    org.crforge.core.engine.EntityTimerSystem ets = new org.crforge.core.engine.EntityTimerSystem();
+    ets.update(java.util.List.of(kingTower), 0.1f);
 
     // Should be active but waking up
     assertThat(kingTower.isActive()).isTrue();
     assertThat(kingTower.isWakingUp()).isTrue();
 
     // Advance time by 0.5s (still waking up, assumes 1s delay)
-    kingTower.update(0.5f);
+    ets.update(java.util.List.of(kingTower), 0.5f);
     assertThat(kingTower.isWakingUp()).isTrue();
 
     // Advance time by another 0.6s (total > 1.0s)
-    kingTower.update(0.6f);
+    ets.update(java.util.List.of(kingTower), 0.6f);
     assertThat(kingTower.isWakingUp()).isFalse();
   }
 

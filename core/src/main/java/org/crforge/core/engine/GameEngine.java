@@ -38,6 +38,7 @@ public class GameEngine {
   private final AttachedUnitSystem attachedUnitSystem;
   private final ElixirCollectionSystem elixirCollectionSystem;
   private final TransformationSystem transformationSystem;
+  private final EntityTimerSystem entityTimerSystem;
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
@@ -67,6 +68,7 @@ public class GameEngine {
     this.attachedUnitSystem = new AttachedUnitSystem(gameState);
     this.elixirCollectionSystem = new ElixirCollectionSystem(gameState);
     this.transformationSystem = new TransformationSystem(gameState);
+    this.entityTimerSystem = new EntityTimerSystem();
     this.running = false;
   }
 
@@ -138,10 +140,8 @@ public class GameEngine {
     // 5.5 Sync attached units (position, death, effect propagation from parent)
     attachedUnitSystem.update(DELTA_TIME);
 
-    // 6. Update all entities (timers, cooldowns, etc.)
-    for (Entity entity : gameState.getAliveEntities()) {
-      entity.update(DELTA_TIME);
-    }
+    // 6. Update entity timers (deploy, lifetime, grounded) -- CES: logic in system, not entity
+    entityTimerSystem.update(gameState.getAliveEntities(), DELTA_TIME);
 
     // 7. Update area effects (damage/buff zones like Zap, Poison, Freeze)
     areaEffectSystem.update(DELTA_TIME);

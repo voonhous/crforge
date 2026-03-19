@@ -259,7 +259,7 @@ class AttachedUnitSystemTest {
 
     // Deploying troops are targetable; rider (attached) is not
     assertThat(ram.isTargetable()).isTrue();
-    ram.update(2.0f); // Finish deploying
+    ram.setDeployTimer(0); // Finish deploying
     assertThat(ram.isTargetable()).isTrue();
     assertThat(rider.isTargetable()).isFalse();
     assertThat(rider.isAttached()).isTrue();

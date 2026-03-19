@@ -10,6 +10,7 @@ import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.StatusEffectType;
+import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.MovementType;
@@ -25,6 +26,7 @@ class CombatSystemTest {
   private GameState gameState;
   private CombatSystem combatSystem;
   private AoeDamageService aoeDamageService;
+  private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   @BeforeEach
   void setUp() {
@@ -46,8 +48,8 @@ class CombatSystemTest {
     gameState.processPending();
 
     // Manually finish deploy
-    attacker.update(2.0f);
-    target.update(2.0f);
+    attacker.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Set target
     attacker.getCombat().setCurrentTarget(target);
@@ -72,8 +74,8 @@ class CombatSystemTest {
     gameState.spawnEntity(target);
     gameState.processPending();
 
-    attacker.update(2.0f);
-    target.update(2.0f);
+    attacker.setDeployTimer(0);
+    target.setDeployTimer(0);
     attacker.getCombat().setCurrentTarget(target);
 
     // 1. Start Attack logic
@@ -106,9 +108,9 @@ class CombatSystemTest {
     gameState.spawnEntity(farTarget);
     gameState.processPending();
 
-    attacker.update(2.0f);
-    closeTarget.update(2.0f);
-    farTarget.update(2.0f);
+    attacker.setDeployTimer(0);
+    closeTarget.setDeployTimer(0);
+    farTarget.setDeployTimer(0);
 
     assertThat(combatSystem.canAttack(attacker, closeTarget)).isTrue();
     assertThat(combatSystem.canAttack(attacker, farTarget)).isFalse();
@@ -124,8 +126,8 @@ class CombatSystemTest {
     gameState.spawnEntity(enemy2);
     gameState.processPending();
 
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
 
     aoeDamageService.applySpellDamage(Team.BLUE, 10f, 10f, 50, 3.0f, Collections.emptyList());
 
@@ -137,10 +139,8 @@ class CombatSystemTest {
     float dt = 0.1f;
     int ticks = (int) (duration / dt);
     for (int i = 0; i < ticks; i++) {
-      // Update entities (decrements windup timers)
-      for (org.crforge.core.entity.base.Entity e : gameState.getAliveEntities()) {
-        e.update(dt);
-      }
+      // Update entity timers (decrements deploy/windup timers)
+      entityTimerSystem.update(gameState.getAliveEntities(), dt);
       // Update combat system (checks windup completion)
       combatSystem.update(dt);
     }
@@ -195,9 +195,9 @@ class CombatSystemTest {
     gameState.spawnEntity(farEnemy);
     gameState.processPending();
 
-    mortar.update(2.0f);
-    closeEnemy.update(2.0f);
-    farEnemy.update(2.0f);
+    mortar.setDeployTimer(0);
+    closeEnemy.setDeployTimer(0);
+    farEnemy.setDeployTimer(0);
 
     // Close enemy is within minimumRange -- should NOT be attackable
     assertThat(combatSystem.canAttack(mortar, closeEnemy)).isFalse();
@@ -233,8 +233,7 @@ class CombatSystemTest {
     gameState.spawnEntity(miner);
     gameState.processPending();
 
-    miner.update(2.0f);
-    tower.update(2.0f);
+    miner.setDeployTimer(0);
 
     // Set target and run attack cycle
     miner.getCombat().setCurrentTarget(tower);
@@ -273,8 +272,8 @@ class CombatSystemTest {
     gameState.spawnEntity(enemy);
     gameState.processPending();
 
-    miner.update(2.0f);
-    enemy.update(2.0f);
+    miner.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     miner.getCombat().setCurrentTarget(enemy);
     combatSystem.update(0.1f);

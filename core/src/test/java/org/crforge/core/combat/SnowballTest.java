@@ -72,7 +72,7 @@ class SnowballTest {
     Troop enemy = createTroop("Enemy", Team.RED, 10f, 16f, 1000);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(2.0f);
+    enemy.setDeployTimer(0);
 
     spawnSnowball(Team.BLUE, 10f, 16f);
     advanceUntilResolved();
@@ -87,7 +87,7 @@ class SnowballTest {
     Troop enemy = createTroop("Enemy", Team.RED, 10f, 16f, 1000);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(2.0f);
+    enemy.setDeployTimer(0);
 
     spawnSnowball(Team.BLUE, 10f, 16f);
     advanceUntilResolved();
@@ -102,7 +102,7 @@ class SnowballTest {
     Troop enemy = createTroop("Enemy", Team.RED, 10f, 18f, 1000);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    enemy.update(2.0f);
+    enemy.setDeployTimer(0);
 
     float impactX = 10f;
     float impactY = 17f;
@@ -202,8 +202,8 @@ class SnowballTest {
     gameState.spawnEntity(friendly);
     gameState.spawnEntity(enemy);
     gameState.processPending();
-    friendly.update(2.0f);
-    enemy.update(2.0f);
+    friendly.setDeployTimer(0);
+    enemy.setDeployTimer(0);
 
     spawnSnowball(Team.BLUE, 10f, 16f);
     advanceUntilResolved();

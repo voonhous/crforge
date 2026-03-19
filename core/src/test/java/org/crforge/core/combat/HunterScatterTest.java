@@ -40,8 +40,8 @@ class HunterScatterTest {
     gameState.spawnEntity(target);
     gameState.processPending();
     // Finish deploy
-    hunter.update(2.0f);
-    target.update(2.0f);
+    hunter.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     // Set target and make attack ready
     hunter.getCombat().setCurrentTarget(target);
@@ -72,8 +72,8 @@ class HunterScatterTest {
     gameState.spawnEntity(hunter);
     gameState.spawnEntity(target);
     gameState.processPending();
-    hunter.update(2.0f);
-    target.update(2.0f);
+    hunter.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     int initialHp = target.getHealth().getCurrent();
 
@@ -83,8 +83,11 @@ class HunterScatterTest {
     hunter.getCombat().setCurrentWindup(0);
 
     float deltaTime = 1.0f / 30f;
+    combatSystem.update(deltaTime);
+    // Clear target to prevent re-firing (CombatSystem now ticks combat timers)
+    hunter.getCombat().clearTarget();
     // Tick enough for pellets to reach the close target
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 99; i++) {
       combatSystem.update(deltaTime);
     }
 
@@ -104,8 +107,8 @@ class HunterScatterTest {
     gameState.spawnEntity(hunter);
     gameState.spawnEntity(target);
     gameState.processPending();
-    hunter.update(2.0f);
-    target.update(2.0f);
+    hunter.setDeployTimer(0);
+    target.setDeployTimer(0);
 
     int initialHp = target.getHealth().getCurrent();
 
@@ -136,9 +139,9 @@ class HunterScatterTest {
     gameState.spawnEntity(enemy1);
     gameState.spawnEntity(enemy2);
     gameState.processPending();
-    hunter.update(2.0f);
-    enemy1.update(2.0f);
-    enemy2.update(2.0f);
+    hunter.setDeployTimer(0);
+    enemy1.setDeployTimer(0);
+    enemy2.setDeployTimer(0);
 
     int enemy1InitialHp = enemy1.getHealth().getCurrent();
     int enemy2InitialHp = enemy2.getHealth().getCurrent();
