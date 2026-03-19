@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
@@ -114,7 +115,9 @@ class SpawnerSystemTest {
   void onDeath_shouldApplyDeathDamageAOE() {
     DeathHandlingSystem deathHandler =
         new DeathHandlingSystem(
-            gameState, new AoeDamageService(gameState), new SpawnFactory(gameState));
+            gameState,
+            new AoeDamageService(gameState, new DefaultCombatAbilityBridge()),
+            new SpawnFactory(gameState));
 
     // Create a unit with death damage (like Ice Golem)
     SpawnerComponent deathDmgSpawner =
@@ -204,7 +207,9 @@ class SpawnerSystemTest {
 
     DeathHandlingSystem deathHandler =
         new DeathHandlingSystem(
-            gameState, new AoeDamageService(gameState), new SpawnFactory(gameState));
+            gameState,
+            new AoeDamageService(gameState, new DefaultCombatAbilityBridge()),
+            new SpawnFactory(gameState));
 
     deathHandler.onDeath(golem);
 
@@ -228,7 +233,7 @@ class SpawnerSystemTest {
     // A death-only spawner (like Golem) should NOT trigger live spawning
     // Use a fresh GameState to avoid interference from setUp's tombstone
     GameState freshState = new GameState();
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new SpawnFactory(freshState));
 
     TroopStats golemiteStats = TroopStats.builder().name("Golemite").health(394).damage(26).build();
 
@@ -297,7 +302,7 @@ class SpawnerSystemTest {
   void freeze_shouldPauseSpawnTimer() {
     // Use a fresh state to isolate this test
     GameState freshState = new GameState();
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new SpawnFactory(freshState));
 
     SpawnerComponent spawner =
         SpawnerComponent.builder()
@@ -351,7 +356,7 @@ class SpawnerSystemTest {
   void spawner_shouldSpawnFirstWaveImmediately() {
     // A spawner with no spawnStartTime should spawn its first wave on the first tick
     GameState freshState = new GameState();
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new SpawnFactory(freshState));
 
     SpawnerComponent spawner =
         SpawnerComponent.builder()
@@ -403,7 +408,10 @@ class SpawnerSystemTest {
     SpawnFactory freshSpawnFactory = new SpawnFactory(freshState);
     SpawnerSystem freshSystem = new SpawnerSystem(freshState, freshSpawnFactory);
     DeathHandlingSystem freshDeathHandler =
-        new DeathHandlingSystem(freshState, new AoeDamageService(freshState), freshSpawnFactory);
+        new DeathHandlingSystem(
+            freshState,
+            new AoeDamageService(freshState, new DefaultCombatAbilityBridge()),
+            freshSpawnFactory);
     freshState.setDeathHandler(freshDeathHandler::onDeath);
 
     TroopStats bombStats =
@@ -511,7 +519,10 @@ class SpawnerSystemTest {
     GameState freshState = new GameState();
     SpawnFactory freshSpawnFactory = new SpawnFactory(freshState);
     DeathHandlingSystem freshDeathHandler =
-        new DeathHandlingSystem(freshState, new AoeDamageService(freshState), freshSpawnFactory);
+        new DeathHandlingSystem(
+            freshState,
+            new AoeDamageService(freshState, new DefaultCombatAbilityBridge()),
+            freshSpawnFactory);
     freshState.setDeathHandler(freshDeathHandler::onDeath);
 
     TroopStats golemiteStats =
@@ -582,7 +593,7 @@ class SpawnerSystemTest {
   void spawner_shouldRespectSpawnStartTimeWhenSet() {
     // A spawner with explicit spawnStartTime should wait that duration before first wave
     GameState freshState = new GameState();
-    SpawnerSystem freshSystem = new SpawnerSystem(freshState);
+    SpawnerSystem freshSystem = new SpawnerSystem(freshState, new SpawnFactory(freshState));
 
     SpawnerComponent spawner =
         SpawnerComponent.builder()
@@ -636,7 +647,9 @@ class SpawnerSystemTest {
     GameState freshState = new GameState();
     DeathHandlingSystem freshDeathHandler =
         new DeathHandlingSystem(
-            freshState, new AoeDamageService(freshState), new SpawnFactory(freshState));
+            freshState,
+            new AoeDamageService(freshState, new DefaultCombatAbilityBridge()),
+            new SpawnFactory(freshState));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
@@ -685,7 +698,9 @@ class SpawnerSystemTest {
     GameState freshState = new GameState();
     DeathHandlingSystem freshDeathHandler =
         new DeathHandlingSystem(
-            freshState, new AoeDamageService(freshState), new SpawnFactory(freshState));
+            freshState,
+            new AoeDamageService(freshState, new DefaultCombatAbilityBridge()),
+            new SpawnFactory(freshState));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()

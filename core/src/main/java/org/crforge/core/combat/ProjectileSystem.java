@@ -1,7 +1,6 @@
 package org.crforge.core.combat;
 
 import java.util.List;
-import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.engine.GameState;
@@ -29,11 +28,6 @@ public class ProjectileSystem {
         new ProjectileHitProcessor(gameState, aoeDamageService, knockbackHelper, abilityBridge);
     this.piercingHitDetector =
         new PiercingHitDetector(gameState, aoeDamageService, knockbackHelper);
-  }
-
-  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
-  public ProjectileSystem(GameState gameState, AoeDamageService aoeDamageService) {
-    this(gameState, aoeDamageService, new DefaultCombatAbilityBridge());
   }
 
   /** Sets the UnitSpawner callback for spawn-on-impact projectiles (e.g. PhoenixFireball). */

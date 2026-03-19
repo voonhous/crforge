@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.DeathSpawnEntry;
@@ -49,12 +50,13 @@ class LumberjackDeathEffectTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
+    AoeDamageService aoeDamageService =
+        new AoeDamageService(gameState, new DefaultCombatAbilityBridge());
     SpawnFactory spawnFactory = new SpawnFactory(gameState);
     spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
     deathHandlingSystem = new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory);
     gameState.setDeathHandler(deathHandlingSystem::onDeath);
-    areaEffectSystem = new AreaEffectSystem(gameState);
+    areaEffectSystem = new AreaEffectSystem(gameState, new DefaultCombatAbilityBridge());
 
     // Register the Rage buff (matches buffs.json)
     savedBuffs = BuffRegistry.snapshot();

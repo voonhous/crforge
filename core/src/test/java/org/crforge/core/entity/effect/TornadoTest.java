@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.ChargeAbility;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.ability.VariableDamageStage;
 import org.crforge.core.card.AreaEffectStats;
@@ -44,7 +45,7 @@ class TornadoTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    areaEffectSystem = new AreaEffectSystem(gameState);
+    areaEffectSystem = new AreaEffectSystem(gameState, new DefaultCombatAbilityBridge());
     statusEffectSystem = new StatusEffectSystem();
 
     // Save existing BuffRegistry state and register Tornado buff for tests
@@ -511,7 +512,8 @@ class TornadoTest {
 
     // Create a separate game state for single tornado comparison
     GameState singleState = new GameState();
-    AreaEffectSystem singleSystem = new AreaEffectSystem(singleState);
+    AreaEffectSystem singleSystem =
+        new AreaEffectSystem(singleState, new DefaultCombatAbilityBridge());
     AreaEffect singleTornado = createTornado(10, 10);
     singleState.spawnEntity(singleTornado);
     singleState.spawnEntity(singleRefTroop);

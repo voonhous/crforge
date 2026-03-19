@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.within;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.LiveSpawnConfig;
@@ -190,11 +191,15 @@ class AttachedUnitSystemTest {
   @Test
   void deployRamRider_spawnsBothParentAndRider() {
     // Integration test: deploy a Ram Rider card through DeploymentSystem
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    CombatSystem combatSystem =
+        new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     DeploymentSystem deploymentSystem =
-        new DeploymentSystem(gameState, new AoeDamageService(gameState));
+        new DeploymentSystem(
+            gameState, new AoeDamageService(gameState, new DefaultCombatAbilityBridge()));
 
     TroopStats riderStats =
         TroopStats.builder()
@@ -276,11 +281,15 @@ class AttachedUnitSystemTest {
   @Test
   void deployGoblinGiant_spawnsTwoAttachedSpearGoblins() {
     // GoblinGiant uses spawnAttach with 2 SpearGoblinGiant units
-    AoeDamageService aoeDamageService2 = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem2 = new ProjectileSystem(gameState, aoeDamageService2);
-    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService2, projectileSystem2);
+    DefaultCombatAbilityBridge abilityBridge2 = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService2 = new AoeDamageService(gameState, abilityBridge2);
+    ProjectileSystem projectileSystem2 =
+        new ProjectileSystem(gameState, aoeDamageService2, abilityBridge2);
+    CombatSystem combatSystem =
+        new CombatSystem(gameState, aoeDamageService2, projectileSystem2, abilityBridge2);
     DeploymentSystem deploymentSystem =
-        new DeploymentSystem(gameState, new AoeDamageService(gameState));
+        new DeploymentSystem(
+            gameState, new AoeDamageService(gameState, new DefaultCombatAbilityBridge()));
 
     TroopStats spearGoblinStats =
         TroopStats.builder()

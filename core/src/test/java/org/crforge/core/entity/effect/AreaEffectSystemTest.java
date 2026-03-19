@@ -2,6 +2,7 @@ package org.crforge.core.entity.effect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.component.Health;
@@ -26,7 +27,7 @@ class AreaEffectSystemTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    system = new AreaEffectSystem(gameState);
+    system = new AreaEffectSystem(gameState, new DefaultCombatAbilityBridge());
   }
 
   @Test

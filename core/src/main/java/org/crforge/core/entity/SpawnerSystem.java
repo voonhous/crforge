@@ -23,11 +23,6 @@ public class SpawnerSystem {
     this.spawnFactory = spawnFactory;
   }
 
-  /** Convenience constructor that creates a SpawnFactory internally. */
-  public SpawnerSystem(GameState gameState) {
-    this(gameState, new SpawnFactory(gameState));
-  }
-
   /**
    * Spawns a unit at a specific position. Used by CombatSystem for projectile spawn-on-impact (e.g.
    * PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns Goblins).

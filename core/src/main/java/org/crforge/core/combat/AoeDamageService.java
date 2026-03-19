@@ -3,7 +3,6 @@ package org.crforge.core.combat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
@@ -26,11 +25,6 @@ public class AoeDamageService {
   public AoeDamageService(GameState gameState, CombatAbilityBridge abilityBridge) {
     this.gameState = gameState;
     this.abilityBridge = abilityBridge;
-  }
-
-  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
-  public AoeDamageService(GameState gameState) {
-    this(gameState, new DefaultCombatAbilityBridge());
   }
 
   /**

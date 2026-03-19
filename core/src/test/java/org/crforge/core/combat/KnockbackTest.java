@@ -7,6 +7,7 @@ import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.DashAbility;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -34,9 +35,11 @@ class KnockbackTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     Arena arena = new Arena("TestArena");
     physicsSystem = new PhysicsSystem(arena);
     physicsSystem.setGameState(gameState);

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.ability.HidingAbility;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
@@ -45,7 +46,7 @@ class EarthquakeSpellTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    system = new AreaEffectSystem(gameState);
+    system = new AreaEffectSystem(gameState, new DefaultCombatAbilityBridge());
 
     savedBuffs = BuffRegistry.snapshot();
 

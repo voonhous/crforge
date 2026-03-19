@@ -3,6 +3,7 @@ package org.crforge.core.combat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Card;
@@ -63,10 +64,12 @@ class BattleHealerTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    areaEffectSystem = new AreaEffectSystem(gameState);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
+    areaEffectSystem = new AreaEffectSystem(gameState, abilityBridge);
 
     savedBuffs = BuffRegistry.snapshot();
     BuffRegistry.clear();

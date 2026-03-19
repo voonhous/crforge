@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.ChargeAbility;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
@@ -59,9 +60,11 @@ class BattleRamTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     SpawnFactory spawnFactory = new SpawnFactory(gameState);
     spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
     deathHandlingSystem = new DeathHandlingSystem(gameState, aoeDamageService, spawnFactory);

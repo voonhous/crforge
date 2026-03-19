@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.CardVariant;
@@ -45,7 +46,9 @@ class MergeMaidenTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
+    deploymentSystem =
+        new DeploymentSystem(
+            gameState, new AoeDamageService(gameState, new DefaultCombatAbilityBridge()));
 
     mountedStats =
         TroopStats.builder()

@@ -3,6 +3,7 @@ package org.crforge.core.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.Combat;
@@ -28,7 +29,8 @@ class ZapStunTest {
     engine = new GameEngine();
     engine.setMatch(new Standard1v1Match());
     engine.initMatch();
-    aoeDamageService = new AoeDamageService(engine.getGameState());
+    aoeDamageService =
+        new AoeDamageService(engine.getGameState(), new DefaultCombatAbilityBridge());
   }
 
   @Test

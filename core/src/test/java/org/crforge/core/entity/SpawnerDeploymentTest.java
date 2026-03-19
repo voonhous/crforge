@@ -20,7 +20,7 @@ class SpawnerDeploymentTest {
   void setUp() {
     AbstractEntity.resetIdCounter();
     gameState = new GameState();
-    spawnerSystem = new SpawnerSystem(gameState);
+    spawnerSystem = new SpawnerSystem(gameState, new SpawnFactory(gameState));
   }
 
   @Test

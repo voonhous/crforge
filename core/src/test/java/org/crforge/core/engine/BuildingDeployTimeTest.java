@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.TroopStats;
@@ -29,10 +30,15 @@ class BuildingDeployTimeTest {
   @BeforeEach
   void setUp() {
     gameState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    CombatSystem combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
-    deploymentSystem = new DeploymentSystem(gameState, new AoeDamageService(gameState));
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    CombatSystem combatSystem =
+        new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
+    deploymentSystem =
+        new DeploymentSystem(
+            gameState, new AoeDamageService(gameState, new DefaultCombatAbilityBridge()));
   }
 
   @Test

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -78,12 +79,13 @@ class BarbLogSpellTest {
     Projectile.resetIdCounter();
     gameState = new GameState();
     spawnedUnits = new ArrayList<>();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    projectileSystem = new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
     projectileSystem.setUnitSpawner(
         (x, y, team, stats, rarity, level, deployTime) ->
             spawnedUnits.add(new SpawnRecord(x, y, team, stats, rarity, level, deployTime)));
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     deploymentSystem = new DeploymentSystem(gameState, aoeDamageService);
     Arena arena = new Arena("TestArena");
     physicsSystem = new PhysicsSystem(arena);

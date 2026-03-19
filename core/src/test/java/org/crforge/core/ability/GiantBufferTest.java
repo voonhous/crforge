@@ -64,9 +64,11 @@ class GiantBufferTest {
     Projectile.resetIdCounter();
     gameState = new GameState();
     abilitySystem = new AbilitySystem(gameState);
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     targetingSystem = new TargetingSystem();
     physicsSystem = new PhysicsSystem(new Arena("Test Arena"));
   }

@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -26,9 +27,11 @@ class HunterScatterTest {
     AbstractEntity.resetIdCounter();
     Projectile.resetIdCounter();
     gameState = new GameState();
-    AoeDamageService aoeDamageService = new AoeDamageService(gameState);
-    ProjectileSystem projectileSystem = new ProjectileSystem(gameState, aoeDamageService);
-    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem);
+    DefaultCombatAbilityBridge abilityBridge = new DefaultCombatAbilityBridge();
+    AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
+    ProjectileSystem projectileSystem =
+        new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
+    combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
   }
 
   @Test

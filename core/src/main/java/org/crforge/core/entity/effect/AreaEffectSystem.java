@@ -2,7 +2,6 @@ package org.crforge.core.entity.effect;
 
 import java.util.List;
 import lombok.Setter;
-import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.Rarity;
@@ -52,11 +51,6 @@ public class AreaEffectSystem {
     TargetApplicationRouter router = new TargetApplicationRouter(ctx);
     this.oneShotHandler = new OneShotHandler(router);
     this.tickingHandler = new TickingHandler(router);
-  }
-
-  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
-  public AreaEffectSystem(GameState gameState) {
-    this(gameState, new DefaultCombatAbilityBridge());
   }
 
   public void setUnitSpawner(UnitSpawner unitSpawner) {

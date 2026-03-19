@@ -1,6 +1,5 @@
 package org.crforge.core.entity.effect.handler;
 
-import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.ability.handler.HidingHandler;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
@@ -31,11 +30,6 @@ public class AreaEffectContext {
   public AreaEffectContext(GameState gameState, CombatAbilityBridge abilityBridge) {
     this.gameState = gameState;
     this.abilityBridge = abilityBridge;
-  }
-
-  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
-  public AreaEffectContext(GameState gameState) {
-    this(gameState, new DefaultCombatAbilityBridge());
   }
 
   public GameState getGameState() {

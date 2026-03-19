@@ -2,7 +2,6 @@ package org.crforge.core.combat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
@@ -35,12 +34,6 @@ public class CombatSystem {
     this.aoeDamageService = aoeDamageService;
     this.projectileSystem = projectileSystem;
     this.abilityBridge = abilityBridge;
-  }
-
-  /** Backward-compatible constructor that creates a DefaultCombatAbilityBridge internally. */
-  public CombatSystem(
-      GameState gameState, AoeDamageService aoeDamageService, ProjectileSystem projectileSystem) {
-    this(gameState, aoeDamageService, projectileSystem, new DefaultCombatAbilityBridge());
   }
 
   /** Process combat for all entities. Called each tick. */
