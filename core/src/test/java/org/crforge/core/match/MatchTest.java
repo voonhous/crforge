@@ -101,6 +101,43 @@ class MatchTest {
   }
 
   @Test
+  void enterOvertime_shouldSetElixirMultiplierTo2() {
+    match.addPlayer(bluePlayer);
+    match.addPlayer(redPlayer);
+
+    assertThat(match.getElixirMultiplier()).isEqualTo(1);
+    match.enterOvertime();
+    assertThat(match.getElixirMultiplier()).isEqualTo(2);
+    assertThat(bluePlayer.getElixir().getRegenMultiplier()).isEqualTo(2);
+    assertThat(redPlayer.getElixir().getRegenMultiplier()).isEqualTo(2);
+  }
+
+  @Test
+  void enterTripleElixir_shouldSetElixirMultiplierTo3() {
+    match.addPlayer(bluePlayer);
+    match.addPlayer(redPlayer);
+
+    match.enterOvertime();
+    match.enterTripleElixir();
+
+    assertThat(match.getElixirMultiplier()).isEqualTo(3);
+    assertThat(bluePlayer.getElixir().getRegenMultiplier()).isEqualTo(3);
+    assertThat(redPlayer.getElixir().getRegenMultiplier()).isEqualTo(3);
+  }
+
+  @Test
+  void enterTripleElixir_idempotent() {
+    match.addPlayer(bluePlayer);
+    match.addPlayer(redPlayer);
+
+    match.enterOvertime();
+    match.enterTripleElixir();
+    match.enterTripleElixir(); // Second call should be no-op
+
+    assertThat(match.getElixirMultiplier()).isEqualTo(3);
+  }
+
+  @Test
   void validateAction_blueShouldOnlyPlaceOnBottomHalf() {
     match.addPlayer(bluePlayer);
 

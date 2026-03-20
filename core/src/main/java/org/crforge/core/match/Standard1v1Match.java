@@ -22,6 +22,8 @@ public class Standard1v1Match extends Match {
   public static final int MATCH_DURATION_TICKS = 180 * GameEngine.TICKS_PER_SECOND;
   // Overtime duration: 2 minutes
   public static final int OVERTIME_DURATION_TICKS = 120 * GameEngine.TICKS_PER_SECOND;
+  // Triple elixir starts 60 seconds into overtime (at the 4-minute mark)
+  public static final int TRIPLE_ELIXIR_OFFSET_TICKS = 60 * GameEngine.TICKS_PER_SECOND;
 
   private final int towerLevel;
 
@@ -52,6 +54,11 @@ public class Standard1v1Match extends Match {
   @Override
   public GameMode getGameMode() {
     return GameMode.STANDARD_1V1;
+  }
+
+  @Override
+  public int getTripleElixirOffsetTicks() {
+    return TRIPLE_ELIXIR_OFFSET_TICKS;
   }
 
   /**

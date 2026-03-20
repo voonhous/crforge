@@ -229,6 +229,15 @@ public class GameEngine {
       }
     }
 
+    // Triple elixir: activates at the configured offset into overtime (e.g. 60s for standard 1v1)
+    int tripleOffset = match.getTripleElixirOffsetTicks();
+    if (tripleOffset > 0
+        && match.isOvertime()
+        && match.getElixirMultiplier() < 3
+        && frame >= matchDuration + tripleOffset) {
+      match.enterTripleElixir();
+    }
+
     // Overtime ended
     if (match.isOvertime() && frame >= matchDuration + overtimeDuration) {
       int blueCrowns = gameState.getCrownCount(Team.BLUE);
@@ -292,6 +301,11 @@ public class GameEngine {
   /** Returns true if the match is in overtime. */
   public boolean isOvertime() {
     return match != null && match.isOvertime();
+  }
+
+  /** Returns the current elixir regen multiplier (1=normal, 2=double, 3=triple). */
+  public int getElixirMultiplier() {
+    return match != null ? match.getElixirMultiplier() : 1;
   }
 
   /** Stop the game. */

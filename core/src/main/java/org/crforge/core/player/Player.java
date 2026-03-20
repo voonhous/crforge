@@ -51,8 +51,8 @@ public class Player {
     elixir.update(deltaTime);
   }
 
-  public void setOvertime(boolean overtime) {
-    elixir.setOvertime(overtime);
+  public void setElixirMultiplier(int multiplier) {
+    elixir.setRegenMultiplier(multiplier);
   }
 
   /**

@@ -34,6 +34,7 @@ public class ObservationBuilder {
         state.getFrameCount(),
         state.getGameTimeSeconds(),
         engine.isOvertime(),
+        engine.getElixirMultiplier(),
         blueObs,
         redObs,
         entities);

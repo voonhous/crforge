@@ -40,6 +40,7 @@ public abstract class Match {
   protected final List<Player> redPlayers;
 
   protected boolean overtime;
+  protected int elixirMultiplier = 1;
   @Setter protected boolean draw;
   @Setter protected Team winner;
   @Setter protected GameState gameState;
@@ -49,6 +50,7 @@ public abstract class Match {
     this.bluePlayers = new ArrayList<>();
     this.redPlayers = new ArrayList<>();
     this.overtime = false;
+    this.elixirMultiplier = 1;
     this.draw = false;
     this.winner = null;
   }
@@ -94,15 +96,36 @@ public abstract class Match {
     }
   }
 
-  /** Called when match enters overtime. Updates elixir rates for all players. */
+  /** Called when match enters overtime. Sets double elixir for all players. */
   public void enterOvertime() {
     if (overtime) {
       return;
     }
     overtime = true;
-    for (Player player : getAllPlayers()) {
-      player.setOvertime(true);
+    applyElixirMultiplier(2);
+  }
+
+  /** Called when match enters triple elixir phase (60s into overtime). */
+  public void enterTripleElixir() {
+    if (elixirMultiplier >= 3) {
+      return;
     }
+    applyElixirMultiplier(3);
+  }
+
+  private void applyElixirMultiplier(int multiplier) {
+    this.elixirMultiplier = multiplier;
+    for (Player player : getAllPlayers()) {
+      player.setElixirMultiplier(multiplier);
+    }
+  }
+
+  /**
+   * Returns the offset in ticks from the start of overtime at which triple elixir activates.
+   * Default is 0 (disabled). Subclasses override for mode-specific timing.
+   */
+  public int getTripleElixirOffsetTicks() {
+    return 0;
   }
 
   /** Checks if the match has ended (has a winner or draw). */

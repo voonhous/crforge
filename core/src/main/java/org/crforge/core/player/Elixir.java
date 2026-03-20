@@ -9,15 +9,13 @@ public class Elixir {
   public static final float MAX_ELIXIR = 10.0f;
   // Standard CR generation: 1 Elixir every 2.8 seconds
   public static final float REGEN_PERIOD_NORMAL = 2.8f;
-  // Overtime/Double Elixir: 1 Elixir every 1.4 seconds
-  public static final float REGEN_PERIOD_OVERTIME = REGEN_PERIOD_NORMAL / 2;
 
   private float current;
-  @Setter private boolean overtime;
+  @Setter private int regenMultiplier;
 
   public Elixir(float startAmount) {
     this.current = startAmount;
-    this.overtime = false;
+    this.regenMultiplier = 1;
   }
 
   /**
@@ -31,8 +29,8 @@ public class Elixir {
       return;
     }
 
-    // Calculate rate: 1 Elixir / Period
-    float period = overtime ? REGEN_PERIOD_OVERTIME : REGEN_PERIOD_NORMAL;
+    // Calculate rate: base period divided by multiplier (1x normal, 2x overtime, 3x triple)
+    float period = REGEN_PERIOD_NORMAL / regenMultiplier;
     float rate = 1.0f / period;
 
     current += rate * deltaTime;

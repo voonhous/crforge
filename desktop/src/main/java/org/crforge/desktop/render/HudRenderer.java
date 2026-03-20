@@ -79,12 +79,17 @@ public class HudRenderer {
     // Screen Center Text (Timer, State)
     ctx.getSpriteBatch().begin();
     ctx.getGlyphLayout().setText(ctx.getTimerFont(), timeText);
+    float timerX = (screenWidth - ctx.getGlyphLayout().width) / 2;
+    float timerWidth = ctx.getGlyphLayout().width;
+    ctx.getTimerFont().draw(ctx.getSpriteBatch(), timeText, timerX, screenHeight - 10);
+
+    // Elixir rate indicator (x1, x2, x3) to the right of the timer
+    int elixirMultiplier = engine.getElixirMultiplier();
+    String rateText = "x" + elixirMultiplier;
+    ctx.getTimerFont().setColor(COLOR_ELIXIR);
     ctx.getTimerFont()
-        .draw(
-            ctx.getSpriteBatch(),
-            timeText,
-            (screenWidth - ctx.getGlyphLayout().width) / 2,
-            screenHeight - 10);
+        .draw(ctx.getSpriteBatch(), rateText, timerX + timerWidth + 8, screenHeight - 10);
+    ctx.getTimerFont().setColor(Color.WHITE);
 
     String entityCount = "Entities: " + engine.getGameState().getAliveEntities().size();
     ctx.getFont().draw(ctx.getSpriteBatch(), entityCount, 10, screenHeight / 2 + 20);

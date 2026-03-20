@@ -130,6 +130,37 @@ class OvertimeWinConditionTest {
   }
 
   @Test
+  void tripleElixir_activatesAt4Minutes() {
+    // Enter overtime at tick 5401 (frame 5400 = 3 minutes)
+    engine.tick(5401);
+    assertThat(match.isOvertime()).isTrue();
+    assertThat(match.getElixirMultiplier()).isEqualTo(2);
+
+    // Tick to frame 7200 = 180s + 60s = 4-minute mark (need 7200 - 5401 = 1799 more ticks)
+    engine.tick(1799);
+    assertThat(gameState.getFrameCount()).isEqualTo(7200);
+    // Triple elixir hasn't triggered yet because checkTimeLimit sees frameCount from previous tick
+    // We need one more tick for the check to see frame 7200
+    engine.tick(1);
+    assertThat(match.getElixirMultiplier()).isEqualTo(3);
+  }
+
+  @Test
+  void tripleElixir_notActiveBeforeThreshold() {
+    // Enter overtime
+    engine.tick(5401);
+    assertThat(match.isOvertime()).isTrue();
+    assertThat(match.getElixirMultiplier()).isEqualTo(2);
+
+    // Tick to just before the 4-minute mark (frame 7199)
+    engine.tick(1798);
+    assertThat(gameState.getFrameCount()).isEqualTo(7199);
+    // One more tick: checkTimeLimit sees frame 7199, which is < 7200
+    engine.tick(1);
+    assertThat(match.getElixirMultiplier()).isEqualTo(2);
+  }
+
+  @Test
   void crownTowerDeath_endsGameDuringRegularTime() {
     // Advance partway into the match
     engine.tick(1000);

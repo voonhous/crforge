@@ -218,6 +218,33 @@ class PlayerDeploymentIntegrationTest {
   }
 
   @Test
+  void tripleElixir_shouldTripleElixirRegen() {
+    // Get elixir state at 2.0
+    bluePlayer.getElixir().spend(3); // Down to 2.0
+    float startElixir = bluePlayer.getElixir().getCurrent();
+
+    // Normal regen for 2.8 seconds = 1 elixir
+    engine.runSeconds(2.8f);
+    float afterNormalRegen = bluePlayer.getElixir().getCurrent();
+    float normalRegenAmount = afterNormalRegen - startElixir;
+
+    // Enter triple elixir
+    match.enterOvertime();
+    match.enterTripleElixir();
+
+    // Reset to same starting point
+    bluePlayer.getElixir().spend((int) (bluePlayer.getElixir().getCurrent() - startElixir));
+
+    // Triple regen for 2.8 seconds should give ~3 elixir
+    engine.runSeconds(2.8f);
+    float afterTripleRegen = bluePlayer.getElixir().getCurrent();
+    float tripleRegenAmount = afterTripleRegen - startElixir;
+
+    // Triple should regenerate roughly 3x normal
+    assertThat(tripleRegenAmount).isGreaterThan(normalRegenAmount * 2.5f);
+  }
+
+  @Test
   void spawnedTroop_shouldHaveCorrectStats() {
     // Find knight in hand
     int knightSlot = -1;
