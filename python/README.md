@@ -50,6 +50,7 @@ python python/examples/train_ppo.py --timesteps 50000
 ```
 
 Monitor training:
+
 ```bash
 tensorboard --logdir logs/ppo_crforge
 ```
@@ -66,43 +67,43 @@ python python/examples/evaluate.py --model models/ppo_crforge --episodes 50
 
 `MultiDiscrete([2, 4, 18, 32])`
 
-| Index | Meaning | Values |
-|-------|---------|--------|
-| 0 | action_type | 0=no-op, 1=play card |
-| 1 | hand_index | 0-3 (which card slot) |
-| 2 | tile_x | 0-17 (arena column) |
-| 3 | tile_y | 0-31 (arena row) |
+| Index | Meaning     | Values                |
+|-------|-------------|-----------------------|
+| 0     | action_type | 0=no-op, 1=play card  |
+| 1     | hand_index  | 0-3 (which card slot) |
+| 2     | tile_x      | 0-17 (arena column)   |
+| 3     | tile_y      | 0-31 (arena row)      |
 
 ### Observation Space
 
 All float32 for SB3 compatibility. Spatial coordinates normalized to [0, 1].
 
-| Key | Shape | Description |
-|-----|-------|-------------|
-| frame | (1,) | Current simulation frame |
-| game_time | (1,) | Game time in seconds (0-600) |
-| is_overtime | (1,) | 1.0 if overtime |
-| elixir | (2,) | [blue, red] elixir (0-10) |
-| crowns | (2,) | [blue, red] crown count |
-| hand_costs | (4,) | Card costs / 10 (normalized) |
-| hand_types | (4,) | 0=troop, 1=spell, 2=building |
-| next_card_cost | (1,) | Next card cost / 10 |
-| next_card_type | (1,) | Next card type |
-| towers | (6, 4) | [hp_frac, x_norm, y_norm, alive] |
-| entities | (64, 7) | [team, type, move, x, y, hp, shield] |
-| num_entities | (1,) | Active entity count |
+| Key            | Shape   | Description                          |
+|----------------|---------|--------------------------------------|
+| frame          | (1,)    | Current simulation frame             |
+| game_time      | (1,)    | Game time in seconds (0-600)         |
+| is_overtime    | (1,)    | 1.0 if overtime                      |
+| elixir         | (2,)    | [blue, red] elixir (0-10)            |
+| crowns         | (2,)    | [blue, red] crown count              |
+| hand_costs     | (4,)    | Card costs / 10 (normalized)         |
+| hand_types     | (4,)    | 0=troop, 1=spell, 2=building         |
+| next_card_cost | (1,)    | Next card cost / 10                  |
+| next_card_type | (1,)    | Next card type                       |
+| towers         | (6, 4)  | [hp_frac, x_norm, y_norm, alive]     |
+| entities       | (64, 7) | [team, type, move, x, y, hp, shield] |
+| num_entities   | (1,)    | Active entity count                  |
 
 ### Reward Structure
 
-| Source | Magnitude | Purpose |
-|--------|-----------|---------|
-| Tower damage | +0.005/HP | Incentivize attacking |
-| Crown earned | +1.0 | Major milestone |
-| Win | +5.0 | Terminal reward |
-| Loss | -5.0 | Terminal penalty |
-| Elixir waste | -0.005/step | Penalize capping at 10 |
-| Time penalty | -0.0001/step | Discourage passive play |
-| Invalid action | -0.01/step | Penalize unaffordable plays |
+| Source         | Magnitude    | Purpose                     |
+|----------------|--------------|-----------------------------|
+| Tower damage   | +0.005/HP    | Incentivize attacking       |
+| Crown earned   | +1.0         | Major milestone             |
+| Win            | +5.0         | Terminal reward             |
+| Loss           | -5.0         | Terminal penalty            |
+| Elixir waste   | -0.005/step  | Penalize capping at 10      |
+| Time penalty   | -0.0001/step | Discourage passive play     |
+| Invalid action | -0.01/step   | Penalize unaffordable plays |
 
 ### Configuration
 
