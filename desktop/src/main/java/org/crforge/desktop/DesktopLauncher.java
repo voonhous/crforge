@@ -9,6 +9,15 @@ import org.crforge.desktop.render.RenderConstants;
 public class DesktopLauncher {
 
   public static void main(String[] args) {
+    // Parse --ai-port argument
+    int aiPort = -1;
+    for (int i = 0; i < args.length - 1; i++) {
+      if ("--ai-port".equals(args[i])) {
+        aiPort = Integer.parseInt(args[i + 1]);
+        break;
+      }
+    }
+
     Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 
     // Window size based on arena dimensions + UI Margins
@@ -19,12 +28,14 @@ public class DesktopLauncher {
                 + RenderConstants.TOP_UI_HEIGHT
                 + RenderConstants.BOTTOM_UI_HEIGHT);
 
-    config.setTitle("CRForge - Debug Visualizer");
+    String title = aiPort > 0 ? "CRForge - AI Visualizer" : "CRForge - Debug Visualizer";
+    config.setTitle(title);
     config.setWindowedMode(width, height);
     config.setResizable(false);
     config.useVsync(true);
     config.setForegroundFPS(60);
 
-    new Lwjgl3Application(new CRForgeGame(), config);
+    CRForgeGame game = aiPort > 0 ? new CRForgeGame(aiPort) : new CRForgeGame();
+    new Lwjgl3Application(game, config);
   }
 }

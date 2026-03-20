@@ -61,6 +61,40 @@ tensorboard --logdir logs/ppo_crforge
 python python/examples/evaluate.py --model models/ppo_crforge --episodes 50
 ```
 
+### 5. Watch a trained model play (AI Visualizer)
+
+The desktop visualizer can run in AI mode, where Python controls the game via the same ZMQ protocol
+as the headless bridge. This lets you watch the trained model deploy cards with full rendering.
+
+```bash
+# Terminal 1: Start the desktop visualizer in AI mode
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+./gradlew :desktop:run --args="--ai-port 9876"
+
+# Terminal 2: Run the trained model (same command as headless evaluation)
+python python/examples/evaluate.py --model models/ppo_crforge
+```
+
+The visualizer renders each step in real-time: when the model sends a `step` message, the engine
+ticks are spread across render frames so you can see entities move, projectiles fly, and cards
+deploy visually.
+
+**Controls during AI playback:**
+
+| Key   | Action                         |
+|-------|--------------------------------|
+| SPACE | Pause/resume (Python blocks)   |
+| +/-   | Speed up/slow down (0.25x-8x)  |
+| P     | Toggle path visualization      |
+| O     | Toggle attack range circles    |
+| D     | Toggle floating damage numbers |
+| A     | Toggle AOE damage indicators   |
+| H     | Toggle HP numbers              |
+
+Any script that connects to the bridge server works -- `run_episodes.py`, `evaluate.py`, or your own
+custom loop. The Python side requires no changes; it cannot tell whether the server is headless or
+rendering.
+
 ## Environment Details
 
 ### Action Space

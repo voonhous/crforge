@@ -37,6 +37,9 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 # Run gym bridge server (default port 9876)
 ./gradlew :gym-bridge:run
+
+# Run visualizer in AI mode (Python controls the game via ZMQ)
+./gradlew :desktop:run --args="--ai-port 9876"
 ```
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
