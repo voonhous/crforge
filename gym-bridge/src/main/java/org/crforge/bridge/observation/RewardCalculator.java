@@ -16,28 +16,36 @@ import org.crforge.core.player.Team;
  *
  * <ul>
  *   <li>Tower damage dealt: +0.005 per HP of damage dealt to enemy towers
+ *   <li>Tower damage taken: -0.008 per HP of damage taken on own towers (asymmetric -- defense
+ *       weighted higher)
  *   <li>Crown earned: +1.0 per crown
  *   <li>Game win: +5.0
  *   <li>Game loss: -5.0
  *   <li>Elixir waste penalty: -0.005 when elixir is capped at 10
  *   <li>Time penalty: -0.0001 per step (discourages passive play)
- *   <li>Unit kill: +0.05 per enemy non-tower entity killed (B1)
- *   <li>Unit HP damage: +0.001 per HP of damage dealt to enemy units (B1)
+ *   <li>Unit kill: +0.05 per enemy non-tower entity killed
+ *   <li>Unit lost: -0.07 per own non-tower entity killed (asymmetric -- defense weighted higher)
+ *   <li>Unit HP damage dealt: +0.001 per HP of damage dealt to enemy units
+ *   <li>Unit HP damage taken: -0.0015 per HP of damage taken on own units (asymmetric)
  * </ul>
  *
- * <p>Rewards are computed as deltas between steps. Symmetric for both players (blue's reward for
- * damaging red = red's penalty).
+ * <p>Rewards are computed as deltas between steps. Both players use the same reward function but
+ * offense and defense are weighted asymmetrically: taking damage hurts more than dealing damage
+ * helps. This encourages the agent to defend before pushing.
  */
 public class RewardCalculator {
 
-  private static final float TOWER_DAMAGE_REWARD = 0.005f;
+  private static final float TOWER_DAMAGE_DEALT_REWARD = 0.005f;
+  private static final float TOWER_DAMAGE_TAKEN_PENALTY = 0.008f;
   private static final float CROWN_REWARD = 1.0f;
   private static final float WIN_REWARD = 5.0f;
   private static final float LOSS_REWARD = -5.0f;
   private static final float ELIXIR_WASTE_PENALTY = -0.005f;
   private static final float TIME_PENALTY = -0.0001f;
   private static final float UNIT_KILL_REWARD = 0.05f;
-  private static final float UNIT_DAMAGE_REWARD = 0.001f;
+  private static final float UNIT_LOST_PENALTY = 0.07f;
+  private static final float UNIT_DAMAGE_DEALT_REWARD = 0.001f;
+  private static final float UNIT_DAMAGE_TAKEN_PENALTY = 0.0015f;
 
   // Snapshots from previous step
   private int prevBlueTowerHp;
@@ -89,15 +97,15 @@ public class RewardCalculator {
     float blueReward = 0f;
     float redReward = 0f;
 
-    // Tower damage rewards: damage to enemy towers = positive reward
+    // Tower damage rewards (asymmetric: taking damage penalized more than dealing is rewarded)
     int blueDamageToRed = Math.max(0, prevRedTowerHp - currentRedTowerHp);
     int redDamageToBlue = Math.max(0, prevBlueTowerHp - currentBlueTowerHp);
 
-    blueReward += blueDamageToRed * TOWER_DAMAGE_REWARD;
-    blueReward -= redDamageToBlue * TOWER_DAMAGE_REWARD;
+    blueReward += blueDamageToRed * TOWER_DAMAGE_DEALT_REWARD;
+    blueReward -= redDamageToBlue * TOWER_DAMAGE_TAKEN_PENALTY;
 
-    redReward += redDamageToBlue * TOWER_DAMAGE_REWARD;
-    redReward -= blueDamageToRed * TOWER_DAMAGE_REWARD;
+    redReward += redDamageToBlue * TOWER_DAMAGE_DEALT_REWARD;
+    redReward -= blueDamageToRed * TOWER_DAMAGE_TAKEN_PENALTY;
 
     // Crown rewards
     int blueCrownsEarned = currentBlueCrowns - prevBlueCrowns;
@@ -109,7 +117,7 @@ public class RewardCalculator {
     redReward += redCrownsEarned * CROWN_REWARD;
     redReward -= blueCrownsEarned * CROWN_REWARD;
 
-    // B1: Unit kill rewards (entity count drops = kills)
+    // Unit kill rewards (asymmetric: losing own units penalized more than killing enemy units)
     int currentBlueEntityCount = countNonTowerEntities(state, Team.BLUE);
     int currentRedEntityCount = countNonTowerEntities(state, Team.RED);
 
@@ -117,23 +125,23 @@ public class RewardCalculator {
     int redUnitsKilled = Math.max(0, prevBlueEntityCount - currentBlueEntityCount);
 
     blueReward += blueUnitsKilled * UNIT_KILL_REWARD;
-    blueReward -= redUnitsKilled * UNIT_KILL_REWARD;
+    blueReward -= redUnitsKilled * UNIT_LOST_PENALTY;
 
     redReward += redUnitsKilled * UNIT_KILL_REWARD;
-    redReward -= blueUnitsKilled * UNIT_KILL_REWARD;
+    redReward -= blueUnitsKilled * UNIT_LOST_PENALTY;
 
-    // B1: Unit HP damage rewards (HP loss on non-tower entities)
+    // Unit HP damage rewards (asymmetric: taking damage penalized more than dealing)
     int currentBlueEntityHp = getTotalNonTowerEntityHp(state, Team.BLUE);
     int currentRedEntityHp = getTotalNonTowerEntityHp(state, Team.RED);
 
     int blueDamageToRedUnits = Math.max(0, prevRedEntityHp - currentRedEntityHp);
     int redDamageToBlueUnits = Math.max(0, prevBlueEntityHp - currentBlueEntityHp);
 
-    blueReward += blueDamageToRedUnits * UNIT_DAMAGE_REWARD;
-    blueReward -= redDamageToBlueUnits * UNIT_DAMAGE_REWARD;
+    blueReward += blueDamageToRedUnits * UNIT_DAMAGE_DEALT_REWARD;
+    blueReward -= redDamageToBlueUnits * UNIT_DAMAGE_TAKEN_PENALTY;
 
-    redReward += redDamageToBlueUnits * UNIT_DAMAGE_REWARD;
-    redReward -= blueDamageToRedUnits * UNIT_DAMAGE_REWARD;
+    redReward += redDamageToBlueUnits * UNIT_DAMAGE_DEALT_REWARD;
+    redReward -= blueDamageToRedUnits * UNIT_DAMAGE_TAKEN_PENALTY;
 
     // Elixir waste penalty: penalize capping at max elixir
     if (bluePlayer != null && bluePlayer.getElixir().getCurrent() >= Elixir.MAX_ELIXIR) {

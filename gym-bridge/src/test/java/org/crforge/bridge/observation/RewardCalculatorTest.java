@@ -103,8 +103,10 @@ class RewardCalculatorTest {
   }
 
   @Test
-  void symmetricDamageYieldsOnlyTimePenalty() {
-    // Both sides take equal damage
+  void symmetricDamageYieldsNetNegativeReward() {
+    // Both sides take equal damage. With asymmetric weights, the penalty for taking
+    // damage (-0.008/HP) outweighs the reward for dealing damage (+0.005/HP), so both
+    // players end up net negative -- defense matters.
     Tower redTower =
         state.getTowers().get(Team.RED).stream()
             .filter(Tower::isPrincessTower)
@@ -120,9 +122,11 @@ class RewardCalculatorTest {
     blueTower.getHealth().takeDamage(100);
 
     RewardDTO reward = calculator.computeReward(state);
-    // Symmetric tower damage cancels out, only time penalty remains
-    assertThat(reward.blue()).isCloseTo(TIME_PENALTY, offset(1e-6f));
-    assertThat(reward.red()).isCloseTo(TIME_PENALTY, offset(1e-6f));
+    // Both players get +0.5 (dealt) -0.8 (taken) + time penalty = -0.3 + time penalty
+    assertThat(reward.blue()).isLessThan(0f);
+    assertThat(reward.red()).isLessThan(0f);
+    // Both should be equal (same damage dealt and taken)
+    assertThat(reward.blue()).isCloseTo(reward.red(), offset(1e-6f));
   }
 
   @Test

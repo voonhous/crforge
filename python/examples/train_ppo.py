@@ -9,6 +9,7 @@ Prerequisites:
 Usage:
   python python/examples/train_ppo.py
   python python/examples/train_ppo.py --timesteps 100000 --save-path models/ppo_crforge
+  python python/examples/train_ppo.py --resume models/ppo_crforge --timesteps 50000
 """
 
 import argparse
@@ -61,6 +62,8 @@ def main():
                         help="Simulation ticks per step")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed")
+    parser.add_argument("--resume", type=str, default=None,
+                        help="Path to a saved model .zip to resume training from")
     parser.add_argument("--eval-episodes", type=int, default=10,
                         help="Number of evaluation episodes after training")
     parser.add_argument("--log-dir", type=str, default="logs/ppo_crforge",
@@ -96,34 +99,39 @@ def main():
         )
     )
 
-    # PPO hyperparameters tuned for CRForge
-    model = PPO(
-        "MlpPolicy",
-        env,
-        # Learning rate: standard for PPO
-        learning_rate=3e-4,
-        # Steps per rollout: 2048 is standard, gives ~2 full games per rollout at ticks_per_step=6
-        n_steps=2048,
-        # Mini-batch size: 64 is a good default
-        batch_size=64,
-        # Epochs per rollout: 10 is standard for PPO
-        n_epochs=10,
-        # Discount factor: high because games are long (~900 steps)
-        gamma=0.999,
-        # GAE lambda: standard value
-        gae_lambda=0.95,
-        # Clip range: standard PPO clip
-        clip_range=0.2,
-        # Entropy bonus: encourages exploration of different card plays
-        ent_coef=0.01,
-        # Value function coefficient: standard
-        vf_coef=0.5,
-        # Max gradient norm: standard
-        max_grad_norm=0.5,
-        seed=args.seed,
-        verbose=1,
-        tensorboard_log=args.log_dir,
-    )
+    if args.resume:
+        # Resume training from a saved model
+        print(f"Resuming training from {args.resume}...")
+        model = PPO.load(args.resume, env=env, tensorboard_log=args.log_dir)
+    else:
+        # PPO hyperparameters tuned for CRForge
+        model = PPO(
+            "MlpPolicy",
+            env,
+            # Learning rate: standard for PPO
+            learning_rate=3e-4,
+            # Steps per rollout: 2048 is standard, gives ~2 full games per rollout at ticks_per_step=6
+            n_steps=2048,
+            # Mini-batch size: 64 is a good default
+            batch_size=64,
+            # Epochs per rollout: 10 is standard for PPO
+            n_epochs=10,
+            # Discount factor: high because games are long (~900 steps)
+            gamma=0.999,
+            # GAE lambda: standard value
+            gae_lambda=0.95,
+            # Clip range: standard PPO clip
+            clip_range=0.2,
+            # Entropy bonus: encourages exploration of different card plays
+            ent_coef=0.01,
+            # Value function coefficient: standard
+            vf_coef=0.5,
+            # Max gradient norm: standard
+            max_grad_norm=0.5,
+            seed=args.seed,
+            verbose=1,
+            tensorboard_log=args.log_dir,
+        )
 
     print(f"\nStarting training for {args.timesteps} timesteps...")
     print(f"TensorBoard logs: {args.log_dir}")
