@@ -40,6 +40,9 @@ public class Card {
    */
   @Builder.Default private final float summonRadius = 0f;
 
+  /** Stagger delay between each unit spawn for multi-unit cards (seconds). Zero = all at once. */
+  @Builder.Default private final float summonDeployDelay = 0f;
+
   /**
    * Resolved spawn template stats. For spawner cards, this holds the TroopStats for the spawned
    * unit (resolved from liveSpawn.spawnCharacter).

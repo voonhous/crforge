@@ -162,10 +162,11 @@ class PlayerDeploymentIntegrationTest {
     engine.queueAction(bluePlayer, action);
 
     // Tick past sync delay + full stagger window + 1 extra to process pending spawns.
-    // Goblins: 4 units, staggerDelay=0.1s, total stagger=0.3s
+    // Goblins: 4 units, summonDeployDelay=0.2s, total stagger=0.6s
+    Card goblinsCard = CardRegistry.get("goblins");
+    float staggerDelay = goblinsCard != null ? goblinsCard.getSummonDeployDelay() : 0.2f;
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
-    int staggerTicks =
-        (int) Math.ceil(DeploymentSystem.STAGGER_DELAY * 3 * GameEngine.TICKS_PER_SECOND);
+    int staggerTicks = (int) Math.ceil(staggerDelay * 3 * GameEngine.TICKS_PER_SECOND);
     engine.tick(syncTicks + staggerTicks + 1);
 
     int newTroopCount =

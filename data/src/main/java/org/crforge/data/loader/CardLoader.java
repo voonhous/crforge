@@ -165,6 +165,9 @@ public class CardLoader {
     // summonRadius for troop deploy formation
     builder.summonRadius(dto.getSummonRadius());
 
+    // Stagger delay for multi-unit deploy
+    builder.summonDeployDelay(dto.getSummonDeployDelay());
+
     // Formation offsets (pre-computed tile-unit positions)
     if (dto.getFormationOffsets() != null && !dto.getFormationOffsets().isEmpty()) {
       List<float[]> offsets =

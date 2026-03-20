@@ -28,9 +28,6 @@ public class DeploymentSystem {
   /** Server synchronization delay before a card's deploy timer starts (seconds). */
   public static final float PLACEMENT_SYNC_DELAY = 1.0f;
 
-  /** Fixed delay between each unit spawn for multi-unit troop cards (seconds). */
-  public static final float STAGGER_DELAY = 0.1f;
-
   private final EntityFactory entityFactory;
 
   // Internal queue to hold requests associated with the player who made them
@@ -248,7 +245,7 @@ public class DeploymentSystem {
 
       // Multi-unit TROOP/HERO cards get staggered spawning
       this.totalUnits = card.getType().isTroopLike() ? card.getTotalDeployCount() : 1;
-      this.staggerDelay = totalUnits > 1 ? STAGGER_DELAY : 0f;
+      this.staggerDelay = card.getSummonDeployDelay();
     }
 
     /** Whether this deployment is a troop-like card (troops and heroes go through stagger path). */

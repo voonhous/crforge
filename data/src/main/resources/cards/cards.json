@@ -24,7 +24,8 @@
         -0.5,
         0.0
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "goblins",
@@ -52,7 +53,8 @@
         0.849,
         -0.849
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.2
   },
   {
     "id": "giant",
@@ -68,7 +70,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 7,
-    "unit": "Pekka"
+    "unit": "Pekka",
+    "evolvedCard": "pekka_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "minions",
@@ -91,7 +95,8 @@
         0.5,
         -0.289
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "balloon",
@@ -107,7 +112,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "unit": "Witch"
+    "unit": "Witch",
+    "evolvedCard": "witch_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "barbarians",
@@ -139,7 +146,8 @@
         -1.141,
         0.371
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "golem",
@@ -250,7 +258,10 @@
         2.5,
         -2.5
       ]
-    ]
+    ],
+    "summonCharacterLevelIndex": 5,
+    "evolvedCard": "skeletonarmy_ev1",
+    "prestigeCount": 3
   },
   {
     "id": "bomber",
@@ -266,7 +277,9 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "unit": "Musketeer"
+    "unit": "Musketeer",
+    "evolvedCard": "musketeer_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "babydragon",
@@ -274,7 +287,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 4,
-    "unit": "BabyDragon"
+    "unit": "BabyDragon",
+    "evolvedCard": "babydragon_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "prince",
@@ -321,7 +336,8 @@
         0.5,
         -0.289
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "giantskeleton",
@@ -373,7 +389,8 @@
         0.953,
         -0.55
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "icewizard",
@@ -424,7 +441,8 @@
         0.606,
         -0.35
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "princess",
@@ -448,7 +466,9 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 9,
-    "unit": "ThreeMusketeer_Rework"
+    "unit": "ThreeMusketeer_Rework",
+    "summonDeployDelay": 0.1,
+    "customDeployTime": 1.0
   },
   {
     "id": "lavahound",
@@ -472,7 +492,8 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 1,
-    "unit": "FireSpirits"
+    "unit": "FireSpirits",
+    "summonDeployDelay": 0.1
   },
   {
     "id": "miner",
@@ -481,7 +502,8 @@
     "rarity": "Legendary",
     "cost": 3,
     "unit": "Miner",
-    "canDeployOnEnemySide": true
+    "canDeployOnEnemySide": true,
+    "touchdownLimitedDeploy": true
   },
   {
     "id": "zapmachine",
@@ -505,7 +527,9 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "unit": "RageBarbarian"
+    "unit": "RageBarbarian",
+    "evolvedCard": "ragebarbarian_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "battleram",
@@ -521,7 +545,9 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 4,
-    "unit": "InfernoDragon"
+    "unit": "InfernoDragon",
+    "evolvedCard": "infernodragon_ev1",
+    "prestigeCount": 3
   },
   {
     "id": "icegolemite",
@@ -545,7 +571,9 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 3,
-    "unit": "BlowdartGoblin"
+    "unit": "BlowdartGoblin",
+    "evolvedCard": "blowdartgoblin_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "goblingang",
@@ -583,7 +611,8 @@
         0.866,
         -0.5
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "electrowizard",
@@ -623,7 +652,8 @@
         -0.7,
         0.0
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "hunter",
@@ -631,7 +661,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 4,
-    "unit": "Hunter"
+    "unit": "Hunter",
+    "evolvedCard": "hunter_ev1",
+    "prestigeCount": 3
   },
   {
     "id": "axeman",
@@ -639,7 +671,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "unit": "AxeMan"
+    "unit": "AxeMan",
+    "evolvedCard": "axeman_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "assassin",
@@ -683,7 +717,11 @@
         7.0,
         0.0
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1,
+    "summonWidth": 14.0,
+    "fullLaneDeploy": true,
+    "deployWTileMargin": 6
   },
   {
     "id": "darkwitch",
@@ -723,7 +761,8 @@
         -0.735,
         1.011
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "ghost",
@@ -731,7 +770,9 @@
     "type": "TROOP",
     "rarity": "Legendary",
     "cost": 3,
-    "unit": "Ghost"
+    "unit": "Ghost",
+    "evolvedCard": "ghost_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "ramrider",
@@ -763,7 +804,8 @@
         0.866,
         -0.5
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "rascals",
@@ -805,7 +847,9 @@
     "rarity": "Legendary",
     "cost": 7,
     "unit": "MegaKnight",
-    "spawnProjectile": "MegaKnightAppear"
+    "spawnProjectile": "MegaKnightAppear",
+    "evolvedCard": "megaknight_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "skeletonballoon",
@@ -813,7 +857,10 @@
     "type": "TROOP",
     "rarity": "Common",
     "cost": 3,
-    "unit": "SkeletonBalloon"
+    "unit": "SkeletonBalloon",
+    "height": 3.0,
+    "evolvedCard": "skeletonballoon_ev1",
+    "prestigeCount": 3
   },
   {
     "id": "dartbarrell",
@@ -821,7 +868,8 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "unit": "DartBarrell"
+    "unit": "DartBarrell",
+    "height": 3.0
   },
   {
     "id": "wallbreakers",
@@ -841,7 +889,8 @@
         -0.75,
         0.0
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "royalhogs",
@@ -869,7 +918,12 @@
         2.0,
         0.0
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1,
+    "summonWidth": 3.5,
+    "deployWTileMargin": 2,
+    "evolvedCard": "royalhogs_ev1",
+    "prestigeCount": 2
   },
   {
     "id": "goblingiant",
@@ -877,7 +931,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 6,
-    "unit": "GoblinGiant"
+    "unit": "GoblinGiant",
+    "evolvedCard": "goblingiant_ev1",
+    "prestigeCount": 3
   },
   {
     "id": "fisherman",
@@ -901,7 +957,9 @@
     "type": "TROOP",
     "rarity": "Epic",
     "cost": 5,
-    "unit": "ElectroDragon"
+    "unit": "ElectroDragon",
+    "evolvedCard": "electrodragon_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "firecracker",
@@ -945,7 +1003,8 @@
         -1.5,
         0.0
       ]
-    ]
+    ],
+    "summonDeployDelay": 0.1
   },
   {
     "id": "witchmother",
@@ -1151,7 +1210,8 @@
       "tetherCrownTowerDamage": 9,
       "tetherWidth": 2.0,
       "tetherHitInterval": 0.5
-    }
+    },
+    "summonWidth": -1.0
   },
   {
     "id": "bossbandit",
@@ -1180,7 +1240,8 @@
     "projectile": "FireballSpell",
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "arrows",
@@ -1195,7 +1256,8 @@
     "projectileWaveInterval": 0.2,
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "rage",
@@ -1206,7 +1268,8 @@
     "radius": 3.0,
     "summonCharacter": "RageBottle",
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "rocket",
@@ -1217,7 +1280,8 @@
     "projectile": "RocketSpell",
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "goblinbarrel",
@@ -1228,7 +1292,10 @@
     "projectile": "GoblinBarrelSpell",
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "touchdownLimitedDeploy": true,
+    "evolvedCard": "goblinbarrel_ev1",
+    "prestigeCount": 3
   },
   {
     "id": "freeze",
@@ -1251,7 +1318,8 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "mirror",
@@ -1286,7 +1354,8 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "zap",
@@ -1309,7 +1378,10 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "evolvedCard": "zap_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "poison",
@@ -1331,7 +1403,8 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "graveyard",
@@ -1418,7 +1491,9 @@
       }
     },
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "touchdownLimitedDeploy": true
   },
   {
     "id": "log",
@@ -1429,7 +1504,9 @@
     "projectile": "LogProjectile",
     "spellAsDeploy": true,
     "onlyEnemies": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "touchdownLimitedDeploy": true
   },
   {
     "id": "tornado",
@@ -1453,7 +1530,8 @@
     "spellAsDeploy": true,
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "clone",
@@ -1473,7 +1551,8 @@
       "ignoreBuildings": true
     },
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "earthquake",
@@ -1497,7 +1576,8 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "barblog",
@@ -1508,7 +1588,9 @@
     "projectile": "BarbLogProjectile",
     "spellAsDeploy": true,
     "onlyEnemies": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "touchdownLimitedDeploy": true
   },
   {
     "id": "heal",
@@ -1528,7 +1610,10 @@
     "projectile": "SnowballSpell",
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "evolvedCard": "snowball_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "royaldelivery",
@@ -1559,7 +1644,8 @@
     },
     "spellAsDeploy": true,
     "onlyEnemies": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "touchdownLimitedDeploy": true
   },
   {
     "id": "darkmagic",
@@ -1600,7 +1686,8 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "goblincurse",
@@ -1639,7 +1726,9 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "touchdownLimitedDeploy": true
   },
   {
     "id": "mergemaiden",
@@ -1691,7 +1780,8 @@
     },
     "onlyEnemies": true,
     "canDeployOnEnemySide": true,
-    "canPlaceOnBuildings": true
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true
   },
   {
     "id": "cannon",
@@ -1779,7 +1869,9 @@
     "type": "TROOP",
     "rarity": "Rare",
     "cost": 4,
-    "unit": "Furnace_rework"
+    "unit": "Furnace_rework",
+    "evolvedCard": "firespirithut_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "barbarianlauncher",
@@ -1805,7 +1897,11 @@
     "cost": 4,
     "unit": "GoblinDrill",
     "summonCharacter": "GoblinDrillDig",
-    "canDeployOnEnemySide": true
+    "canDeployOnEnemySide": true,
+    "touchdownLimitedDeploy": true,
+    "spellAsDeploy": true,
+    "evolvedCard": "goblindrill_ev1",
+    "prestigeCount": 1
   },
   {
     "id": "goblinpartyhut",
@@ -1822,7 +1918,8 @@
     "rarity": "Champion",
     "cost": 3,
     "unit": "DarkElixir_Bottle",
-    "canDeployOnEnemySide": true
+    "canDeployOnEnemySide": true,
+    "spellAsDeploy": true
   },
   {
     "id": "elixirbarrel",
@@ -1871,5 +1968,1223 @@
     "rarity": "",
     "cost": 0,
     "unit": "SkeletonContainerNew"
+  },
+  {
+    "id": "pekka_ev1",
+    "name": "Pekka_EV1",
+    "rarity": "Epic",
+    "cost": 7,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "Pekka_EV1",
+    "baseCard": "pekka"
+  },
+  {
+    "id": "witch_ev1",
+    "name": "Witch_EV1",
+    "rarity": "Epic",
+    "cost": 5,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "Witch_EV1",
+    "baseCard": "witch"
+  },
+  {
+    "id": "skeletonarmy_ev1",
+    "name": "SkeletonArmy_EV1",
+    "rarity": "Epic",
+    "cost": 3,
+    "evolved": true,
+    "prestigeCount": 3,
+    "type": "TROOP",
+    "unit": "SkeletonArmy_EV1_Soldier",
+    "count": 15,
+    "summonRadius": 400.0,
+    "baseCard": "skeletonarmy"
+  },
+  {
+    "id": "musketeer_ev1",
+    "name": "Musketeer_EV1",
+    "rarity": "Rare",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "Musketeer_EV1",
+    "baseCard": "musketeer"
+  },
+  {
+    "id": "babydragon_ev1",
+    "name": "BabyDragon_EV1",
+    "rarity": "Epic",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "BabyDragon_EV1",
+    "baseCard": "babydragon"
+  },
+  {
+    "id": "ragebarbarian_ev1",
+    "name": "RageBarbarian_EV1",
+    "rarity": "Legendary",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "TROOP",
+    "unit": "RageBarbarian_EV1",
+    "baseCard": "ragebarbarian"
+  },
+  {
+    "id": "infernodragon_ev1",
+    "name": "InfernoDragon_EV1",
+    "rarity": "Legendary",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 3,
+    "type": "TROOP",
+    "unit": "InfernoDragon_EV1",
+    "baseCard": "infernodragon"
+  },
+  {
+    "id": "blowdartgoblin_ev1",
+    "name": "BlowdartGoblin_EV1",
+    "rarity": "Rare",
+    "cost": 3,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "BlowdartGoblin_EV1",
+    "baseCard": "blowdartgoblin"
+  },
+  {
+    "id": "hunter_ev1",
+    "name": "Hunter_EV1",
+    "rarity": "Epic",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 3,
+    "type": "TROOP",
+    "unit": "Hunter_EV1",
+    "baseCard": "hunter"
+  },
+  {
+    "id": "axeman_ev1",
+    "name": "AxeMan_EV1",
+    "rarity": "Epic",
+    "cost": 5,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "AxeMan_EV1",
+    "baseCard": "axeman"
+  },
+  {
+    "id": "ghost_ev1",
+    "name": "Ghost_EV1",
+    "rarity": "Legendary",
+    "cost": 3,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "TROOP",
+    "unit": "Ghost_EV1",
+    "baseCard": "ghost"
+  },
+  {
+    "id": "megaknight_ev1",
+    "name": "MegaKnight_EV1",
+    "rarity": "Legendary",
+    "cost": 7,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "MegaKnight_EV1",
+    "spawnProjectile": "MegaKnight_EV1_appear",
+    "baseCard": "megaknight"
+  },
+  {
+    "id": "skeletonballoon_ev1",
+    "name": "SkeletonBalloon_EV1",
+    "rarity": "Common",
+    "cost": 3,
+    "evolved": true,
+    "prestigeCount": 3,
+    "type": "TROOP",
+    "unit": "SkeletonBalloon_EV1",
+    "baseCard": "skeletonballoon"
+  },
+  {
+    "id": "royalhogs_ev1",
+    "name": "RoyalHogs_EV1",
+    "rarity": "Rare",
+    "cost": 5,
+    "evolved": true,
+    "prestigeCount": 2,
+    "type": "TROOP",
+    "unit": "RoyalHog_EV1",
+    "count": 4,
+    "summonRadius": 1.0,
+    "summonDeployDelay": 0.1,
+    "summonWidth": 3.5,
+    "deployWTileMargin": 2,
+    "baseCard": "royalhogs"
+  },
+  {
+    "id": "goblingiant_ev1",
+    "name": "GoblinGiant_EV1",
+    "rarity": "Epic",
+    "cost": 6,
+    "evolved": true,
+    "prestigeCount": 3,
+    "type": "TROOP",
+    "unit": "GoblinGiant_EV1",
+    "baseCard": "goblingiant"
+  },
+  {
+    "id": "electrodragon_ev1",
+    "name": "ElectroDragon_EV1",
+    "rarity": "Epic",
+    "cost": 5,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "TROOP",
+    "unit": "electro_dragon_ev1",
+    "baseCard": "electrodragon"
+  },
+  {
+    "id": "goblinbarrel_ev1",
+    "name": "GoblinBarrel_EV1",
+    "rarity": "Epic",
+    "cost": 3,
+    "evolved": true,
+    "prestigeCount": 3,
+    "type": "SPELL",
+    "canDeployOnEnemySide": true,
+    "onlyEnemies": true,
+    "canPlaceOnBuildings": true,
+    "touchdownLimitedDeploy": true,
+    "baseCard": "goblinbarrel"
+  },
+  {
+    "id": "zap_ev1",
+    "name": "Zap_EV1",
+    "rarity": "Common",
+    "cost": 2,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "SPELL",
+    "radius": 2.5,
+    "canDeployOnEnemySide": true,
+    "onlyEnemies": true,
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "baseCard": "zap"
+  },
+  {
+    "id": "snowball_ev1",
+    "name": "Snowball_EV1",
+    "rarity": "Common",
+    "cost": 2,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "SPELL",
+    "projectile": "SnowballSpell_EV1",
+    "canDeployOnEnemySide": true,
+    "onlyEnemies": true,
+    "canPlaceOnBuildings": true,
+    "canPlaceOnWater": true,
+    "baseCard": "snowball"
+  },
+  {
+    "id": "firespirithut_ev1",
+    "name": "FirespiritHut_EV1",
+    "rarity": "Rare",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "TROOP",
+    "unit": "Furnace_EV1",
+    "baseCard": "firespirithut"
+  },
+  {
+    "id": "goblindrill_ev1",
+    "name": "GoblinDrill_EV1",
+    "rarity": "Epic",
+    "cost": 4,
+    "evolved": true,
+    "prestigeCount": 1,
+    "type": "BUILDING",
+    "unit": "GoblinDrill_EV1",
+    "summonCharacter": "GoblinDrill_EV1_Dig",
+    "canDeployOnEnemySide": true,
+    "touchdownLimitedDeploy": true,
+    "spellAsDeploy": true,
+    "baseCard": "goblindrill"
+  },
+  {
+    "id": "knight_hero",
+    "name": "Knight_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "knight",
+    "type": "TROOP",
+    "unit": "Knight"
+  },
+  {
+    "id": "archer_hero",
+    "name": "Archer_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "archer",
+    "type": "TROOP",
+    "unit": "Archer",
+    "count": 2,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "goblins_hero",
+    "name": "Goblins_hero",
+    "rarity": "Common",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "goblins",
+    "type": "TROOP",
+    "unit": "Goblin_Stab",
+    "count": 4,
+    "summonRadius": 700.0,
+    "summonDeployDelay": 0.2
+  },
+  {
+    "id": "giant_hero",
+    "name": "Giant_hero",
+    "rarity": "Rare",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "giant",
+    "type": "TROOP",
+    "unit": "Giant"
+  },
+  {
+    "id": "pekka_hero",
+    "name": "Pekka_hero",
+    "rarity": "Epic",
+    "cost": 7,
+    "heroForm": true,
+    "baseCard": "pekka",
+    "type": "TROOP",
+    "unit": "Pekka"
+  },
+  {
+    "id": "minions_hero",
+    "name": "Minions_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "minions",
+    "type": "TROOP",
+    "unit": "Minion",
+    "count": 3,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "balloon_hero",
+    "name": "Balloon_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "balloon",
+    "type": "TROOP",
+    "unit": "Balloon"
+  },
+  {
+    "id": "witch_hero",
+    "name": "Witch_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "witch",
+    "type": "TROOP",
+    "unit": "Witch"
+  },
+  {
+    "id": "barbarians_hero",
+    "name": "Barbarians_hero",
+    "rarity": "Common",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "barbarians",
+    "type": "TROOP",
+    "unit": "Barbarian",
+    "count": 5,
+    "summonRadius": 700.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "golem_hero",
+    "name": "Golem_hero",
+    "rarity": "Epic",
+    "cost": 8,
+    "heroForm": true,
+    "baseCard": "golem",
+    "type": "TROOP",
+    "unit": "Golem"
+  },
+  {
+    "id": "skeletons_hero",
+    "name": "Skeletons_hero",
+    "rarity": "Common",
+    "cost": 1,
+    "heroForm": true,
+    "baseCard": "skeletons",
+    "type": "TROOP",
+    "unit": "Skeleton",
+    "count": 3,
+    "summonRadius": 700.0
+  },
+  {
+    "id": "valkyrie_hero",
+    "name": "Valkyrie_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "valkyrie",
+    "type": "TROOP",
+    "unit": "Valkyrie"
+  },
+  {
+    "id": "skeletonarmy_hero",
+    "name": "SkeletonArmy_hero",
+    "rarity": "Epic",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "skeletonarmy",
+    "type": "TROOP",
+    "unit": "Skeleton",
+    "count": 15,
+    "summonCharacterLevelIndex": 5
+  },
+  {
+    "id": "bomber_hero",
+    "name": "Bomber_hero",
+    "rarity": "Common",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "bomber",
+    "type": "TROOP",
+    "unit": "Bomber"
+  },
+  {
+    "id": "musketeer_hero",
+    "name": "Musketeer_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "musketeer",
+    "type": "TROOP",
+    "unit": "Musketeer"
+  },
+  {
+    "id": "babydragon_hero",
+    "name": "BabyDragon_hero",
+    "rarity": "Epic",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "babydragon",
+    "type": "TROOP",
+    "unit": "BabyDragon"
+  },
+  {
+    "id": "prince_hero",
+    "name": "Prince_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "prince",
+    "type": "TROOP",
+    "unit": "Prince"
+  },
+  {
+    "id": "wizard_hero",
+    "name": "Wizard_hero",
+    "rarity": "Rare",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "wizard",
+    "type": "TROOP",
+    "unit": "Wizard"
+  },
+  {
+    "id": "minipekka_hero",
+    "name": "MiniPekka_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "minipekka",
+    "type": "TROOP",
+    "unit": "MiniPekka"
+  },
+  {
+    "id": "speargoblins_hero",
+    "name": "SpearGoblins_hero",
+    "rarity": "Common",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "speargoblins",
+    "type": "TROOP",
+    "unit": "SpearGoblin",
+    "count": 3,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "giantskeleton_hero",
+    "name": "GiantSkeleton_hero",
+    "rarity": "Epic",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "giantskeleton",
+    "type": "TROOP",
+    "unit": "GiantSkeleton"
+  },
+  {
+    "id": "hogrider_hero",
+    "name": "HogRider_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "hogrider",
+    "type": "TROOP",
+    "unit": "HogRider"
+  },
+  {
+    "id": "minionhorde_hero",
+    "name": "MinionHorde_hero",
+    "rarity": "Common",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "minionhorde",
+    "type": "TROOP",
+    "unit": "Minion",
+    "count": 6,
+    "summonRadius": 600.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "royalgiant_hero",
+    "name": "RoyalGiant_hero",
+    "rarity": "Common",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "royalgiant",
+    "type": "TROOP",
+    "unit": "RoyalGiant"
+  },
+  {
+    "id": "skeletonwarriors_hero",
+    "name": "SkeletonWarriors_hero",
+    "rarity": "Epic",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "skeletonwarriors",
+    "type": "TROOP",
+    "unit": "SkeletonWarrior",
+    "count": 3,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "princess_hero",
+    "name": "Princess_hero",
+    "rarity": "Legendary",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "princess",
+    "type": "TROOP",
+    "unit": "Princess"
+  },
+  {
+    "id": "darkprince_hero",
+    "name": "DarkPrince_hero",
+    "rarity": "Epic",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "darkprince",
+    "type": "TROOP",
+    "unit": "DarkPrince"
+  },
+  {
+    "id": "lavahound_hero",
+    "name": "LavaHound_hero",
+    "rarity": "Legendary",
+    "cost": 7,
+    "heroForm": true,
+    "baseCard": "lavahound",
+    "type": "TROOP",
+    "unit": "LavaHound"
+  },
+  {
+    "id": "icespirits_hero",
+    "name": "IceSpirits_hero",
+    "rarity": "Common",
+    "cost": 1,
+    "heroForm": true,
+    "baseCard": "icespirits",
+    "type": "TROOP",
+    "unit": "IceSpirits"
+  },
+  {
+    "id": "firespirits_hero",
+    "name": "FireSpirits_hero",
+    "rarity": "Common",
+    "cost": 1,
+    "heroForm": true,
+    "baseCard": "firespirits",
+    "type": "TROOP",
+    "unit": "FireSpirits",
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "miner_hero",
+    "name": "Miner_hero",
+    "rarity": "Legendary",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "miner",
+    "type": "TROOP",
+    "unit": "Miner",
+    "canDeployOnEnemySide": true,
+    "touchdownLimitedDeploy": true
+  },
+  {
+    "id": "zapmachine_hero",
+    "name": "ZapMachine_hero",
+    "rarity": "Legendary",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "zapmachine",
+    "type": "TROOP",
+    "unit": "ZapMachine"
+  },
+  {
+    "id": "bowler_hero",
+    "name": "Bowler_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "bowler",
+    "type": "TROOP",
+    "unit": "Bowler"
+  },
+  {
+    "id": "ragebarbarian_hero",
+    "name": "RageBarbarian_hero",
+    "rarity": "Legendary",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "ragebarbarian",
+    "type": "TROOP",
+    "unit": "RageBarbarian"
+  },
+  {
+    "id": "battleram_hero",
+    "name": "BattleRam_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "battleram",
+    "type": "TROOP",
+    "unit": "BattleRam"
+  },
+  {
+    "id": "infernodragon_hero",
+    "name": "InfernoDragon_hero",
+    "rarity": "Legendary",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "infernodragon",
+    "type": "TROOP",
+    "unit": "InfernoDragon"
+  },
+  {
+    "id": "icegolemite_hero",
+    "name": "IceGolemite_hero",
+    "rarity": "Rare",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "icegolemite",
+    "type": "TROOP",
+    "unit": "IceGolemite"
+  },
+  {
+    "id": "megaminion_hero",
+    "name": "MegaMinion_hero",
+    "rarity": "Rare",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "megaminion",
+    "type": "TROOP",
+    "unit": "MegaMinion"
+  },
+  {
+    "id": "blowdartgoblin_hero",
+    "name": "BlowdartGoblin_hero",
+    "rarity": "Rare",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "blowdartgoblin",
+    "type": "TROOP",
+    "unit": "BlowdartGoblin"
+  },
+  {
+    "id": "goblingang_hero",
+    "name": "GoblinGang_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "goblingang",
+    "type": "TROOP",
+    "unit": "Goblin_Stab",
+    "count": 3,
+    "secondaryUnit": "SpearGoblin",
+    "secondaryCount": 3,
+    "summonRadius": 1000.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "angrybarbarians_hero",
+    "name": "AngryBarbarians_hero",
+    "rarity": "Common",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "angrybarbarians",
+    "type": "TROOP",
+    "unit": "AngryBarbarian",
+    "count": 2,
+    "summonRadius": 700.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "hunter_hero",
+    "name": "Hunter_hero",
+    "rarity": "Epic",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "hunter",
+    "type": "TROOP",
+    "unit": "Hunter"
+  },
+  {
+    "id": "axeman_hero",
+    "name": "AxeMan_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "axeman",
+    "type": "TROOP",
+    "unit": "AxeMan"
+  },
+  {
+    "id": "assassin_hero",
+    "name": "Assassin_hero",
+    "rarity": "Legendary",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "assassin",
+    "type": "TROOP",
+    "unit": "Assassin"
+  },
+  {
+    "id": "royalrecruits_hero",
+    "name": "RoyalRecruits_hero",
+    "rarity": "Common",
+    "cost": 7,
+    "heroForm": true,
+    "baseCard": "royalrecruits",
+    "type": "TROOP",
+    "unit": "Recruit",
+    "count": 6,
+    "summonRadius": 500.0,
+    "summonDeployDelay": 0.1,
+    "summonWidth": 14.0,
+    "fullLaneDeploy": true,
+    "deployWTileMargin": 6
+  },
+  {
+    "id": "darkwitch_hero",
+    "name": "DarkWitch_hero",
+    "rarity": "Legendary",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "darkwitch",
+    "type": "TROOP",
+    "unit": "DarkWitch"
+  },
+  {
+    "id": "bats_hero",
+    "name": "Bats_hero",
+    "rarity": "Common",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "bats",
+    "type": "TROOP",
+    "unit": "Bat",
+    "count": 5,
+    "summonRadius": 750.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "ghost_hero",
+    "name": "Ghost_hero",
+    "rarity": "Legendary",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "ghost",
+    "type": "TROOP",
+    "unit": "Ghost"
+  },
+  {
+    "id": "ramrider_hero",
+    "name": "RamRider_hero",
+    "rarity": "Legendary",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "ramrider",
+    "type": "TROOP",
+    "unit": "Ram"
+  },
+  {
+    "id": "minisparkys_hero",
+    "name": "MiniSparkys_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "minisparkys",
+    "type": "TROOP",
+    "unit": "MiniZapMachine",
+    "count": 3,
+    "summonRadius": 1000.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "rascals_hero",
+    "name": "Rascals_hero",
+    "rarity": "Common",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "rascals",
+    "type": "TROOP",
+    "unit": "RascalBoy",
+    "secondaryUnit": "RascalGirl",
+    "secondaryCount": 2,
+    "summonRadius": 3000.0
+  },
+  {
+    "id": "movingcannon_hero",
+    "name": "MovingCannon_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "movingcannon",
+    "type": "TROOP",
+    "unit": "MovingCannon"
+  },
+  {
+    "id": "megaknight_hero",
+    "name": "MegaKnight_hero",
+    "rarity": "Legendary",
+    "cost": 7,
+    "heroForm": true,
+    "baseCard": "megaknight",
+    "type": "TROOP",
+    "unit": "MegaKnight"
+  },
+  {
+    "id": "skeletonballoon_hero",
+    "name": "SkeletonBalloon_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "skeletonballoon",
+    "type": "TROOP",
+    "unit": "SkeletonBalloon",
+    "height": 3.0
+  },
+  {
+    "id": "dartbarrell_hero",
+    "name": "DartBarrell_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "dartbarrell",
+    "type": "TROOP",
+    "unit": "DartBarrell",
+    "height": 3.0
+  },
+  {
+    "id": "wallbreakers_hero",
+    "name": "Wallbreakers_hero",
+    "rarity": "Epic",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "wallbreakers",
+    "type": "TROOP",
+    "unit": "Wallbreaker",
+    "count": 2,
+    "summonRadius": 750.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "royalhogs_hero",
+    "name": "RoyalHogs_hero",
+    "rarity": "Rare",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "royalhogs",
+    "type": "TROOP",
+    "unit": "RoyalHog",
+    "count": 4,
+    "summonRadius": 1.0,
+    "summonDeployDelay": 0.1,
+    "summonWidth": 3.5,
+    "deployWTileMargin": 2
+  },
+  {
+    "id": "goblingiant_hero",
+    "name": "GoblinGiant_hero",
+    "rarity": "Epic",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "goblingiant",
+    "type": "TROOP",
+    "unit": "GoblinGiant"
+  },
+  {
+    "id": "fisherman_hero",
+    "name": "Fisherman_hero",
+    "rarity": "Legendary",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "fisherman",
+    "type": "TROOP",
+    "unit": "Fisherman"
+  },
+  {
+    "id": "elitearcher_hero",
+    "name": "EliteArcher_hero",
+    "rarity": "Legendary",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "elitearcher",
+    "type": "TROOP",
+    "unit": "EliteArcher"
+  },
+  {
+    "id": "electrodragon_hero",
+    "name": "ElectroDragon_hero",
+    "rarity": "Epic",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "electrodragon",
+    "type": "TROOP",
+    "unit": "ElectroDragon"
+  },
+  {
+    "id": "firecracker_hero",
+    "name": "Firecracker_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "firecracker",
+    "type": "TROOP",
+    "unit": "Firecracker"
+  },
+  {
+    "id": "elixirgolem_hero",
+    "name": "ElixirGolem_hero",
+    "rarity": "Rare",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "elixirgolem",
+    "type": "TROOP",
+    "unit": "ElixirGolem1"
+  },
+  {
+    "id": "battlehealer_hero",
+    "name": "BattleHealer_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "battlehealer",
+    "type": "TROOP",
+    "unit": "BattleHealer"
+  },
+  {
+    "id": "skeletondragons_hero",
+    "name": "SkeletonDragons_hero",
+    "rarity": "Common",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "skeletondragons",
+    "type": "TROOP",
+    "unit": "SkeletonDragon",
+    "count": 2,
+    "summonRadius": 1500.0,
+    "summonDeployDelay": 0.1
+  },
+  {
+    "id": "witchmother_hero",
+    "name": "WitchMother_hero",
+    "rarity": "Legendary",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "witchmother",
+    "type": "TROOP",
+    "unit": "WitchMother"
+  },
+  {
+    "id": "electrospirit_hero",
+    "name": "ElectroSpirit_hero",
+    "rarity": "Common",
+    "cost": 1,
+    "heroForm": true,
+    "baseCard": "electrospirit",
+    "type": "TROOP",
+    "unit": "ElectroSpirit"
+  },
+  {
+    "id": "electrogiant_hero",
+    "name": "ElectroGiant_hero",
+    "rarity": "Epic",
+    "cost": 7,
+    "heroForm": true,
+    "baseCard": "electrogiant",
+    "type": "TROOP",
+    "unit": "ElectroGiant"
+  },
+  {
+    "id": "phoenix_hero",
+    "name": "Phoenix_hero",
+    "rarity": "Legendary",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "phoenix",
+    "type": "TROOP",
+    "unit": "Phoenix"
+  },
+  {
+    "id": "goblindemolisher_hero",
+    "name": "GoblinDemolisher_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "goblindemolisher",
+    "type": "TROOP",
+    "unit": "GoblinDemolisher"
+  },
+  {
+    "id": "goblinmachine_hero",
+    "name": "GoblinMachine_hero",
+    "rarity": "Legendary",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "goblinmachine",
+    "type": "TROOP",
+    "unit": "GoblinMachine"
+  },
+  {
+    "id": "suspiciousbush_hero",
+    "name": "SuspiciousBush_hero",
+    "rarity": "Rare",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "suspiciousbush",
+    "type": "TROOP",
+    "unit": "SuspiciousBush"
+  },
+  {
+    "id": "giantbuffer_hero",
+    "name": "GiantBuffer_hero",
+    "rarity": "Epic",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "giantbuffer",
+    "type": "TROOP",
+    "unit": "GiantBuffer",
+    "heroAbility": {
+      "name": "giantbuffer_ability",
+      "cooldown": 0.0,
+      "manaCost": 0,
+      "castTime": 0.933,
+      "triggerDelay": 0.05,
+      "keepCurrentTarget": true
+    }
+  },
+  {
+    "id": "berserker_hero",
+    "name": "Berserker_hero",
+    "rarity": "Common",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "berserker",
+    "type": "TROOP",
+    "unit": "Berserker"
+  },
+  {
+    "id": "heal_hero",
+    "name": "Heal_hero",
+    "rarity": "Rare",
+    "cost": 1,
+    "heroForm": true,
+    "baseCard": "heal",
+    "type": "TROOP",
+    "unit": "HealSpirit",
+    "spellAsDeploy": true
+  },
+  {
+    "id": "cannon_hero",
+    "name": "Cannon_hero",
+    "rarity": "Common",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "cannon",
+    "type": "BUILDING",
+    "unit": "Cannon"
+  },
+  {
+    "id": "goblinhut_hero",
+    "name": "GoblinHut_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "goblinhut",
+    "type": "BUILDING",
+    "unit": "GoblinHut_Rework"
+  },
+  {
+    "id": "mortar_hero",
+    "name": "Mortar_hero",
+    "rarity": "Common",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "mortar",
+    "type": "BUILDING",
+    "unit": "Mortar"
+  },
+  {
+    "id": "infernotower_hero",
+    "name": "InfernoTower_hero",
+    "rarity": "Rare",
+    "cost": 5,
+    "heroForm": true,
+    "baseCard": "infernotower",
+    "type": "BUILDING",
+    "unit": "InfernoTower"
+  },
+  {
+    "id": "bombtower_hero",
+    "name": "BombTower_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "bombtower",
+    "type": "BUILDING",
+    "unit": "BombTower"
+  },
+  {
+    "id": "barbarianhut_hero",
+    "name": "BarbarianHut_hero",
+    "rarity": "Rare",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "barbarianhut",
+    "type": "BUILDING",
+    "unit": "BarbarianHut"
+  },
+  {
+    "id": "tesla_hero",
+    "name": "Tesla_hero",
+    "rarity": "Common",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "tesla",
+    "type": "BUILDING",
+    "unit": "Tesla"
+  },
+  {
+    "id": "elixir_collector_hero",
+    "name": "Elixir Collector_hero",
+    "rarity": "Rare",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "elixir_collector",
+    "type": "BUILDING",
+    "unit": "ElixirCollector"
+  },
+  {
+    "id": "xbow_hero",
+    "name": "Xbow_hero",
+    "rarity": "Epic",
+    "cost": 6,
+    "heroForm": true,
+    "baseCard": "xbow",
+    "type": "BUILDING",
+    "unit": "Xbow"
+  },
+  {
+    "id": "tombstone_hero",
+    "name": "Tombstone_hero",
+    "rarity": "Rare",
+    "cost": 3,
+    "heroForm": true,
+    "baseCard": "tombstone",
+    "type": "BUILDING",
+    "unit": "Tombstone"
+  },
+  {
+    "id": "firespirithut_hero",
+    "name": "FirespiritHut_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "firespirithut",
+    "type": "TROOP",
+    "unit": "Furnace_rework"
+  },
+  {
+    "id": "goblincage_hero",
+    "name": "GoblinCage_hero",
+    "rarity": "Rare",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "goblincage",
+    "type": "BUILDING",
+    "unit": "GoblinCage"
+  },
+  {
+    "id": "goblindrill_hero",
+    "name": "GoblinDrill_hero",
+    "rarity": "Epic",
+    "cost": 4,
+    "heroForm": true,
+    "baseCard": "goblindrill",
+    "type": "BUILDING",
+    "unit": "GoblinDrill",
+    "summonCharacter": "GoblinDrillDig",
+    "canDeployOnEnemySide": true,
+    "touchdownLimitedDeploy": true,
+    "spellAsDeploy": true
+  },
+  {
+    "id": "rage_hero",
+    "name": "Rage_hero",
+    "rarity": "Epic",
+    "cost": 2,
+    "heroForm": true,
+    "baseCard": "rage",
+    "type": "BUILDING",
+    "unit": "RageBottle",
+    "canDeployOnEnemySide": true
   }
 ]

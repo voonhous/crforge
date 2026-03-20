@@ -38,6 +38,9 @@ public class CardConfigDTO {
   // Raw CSV summonRadius for troop deploy formation
   private float summonRadius;
 
+  // Stagger delay between each unit spawn for multi-unit cards (seconds)
+  private float summonDeployDelay;
+
   // Pre-computed formation offsets in tile units: [[x1,y1], [x2,y2], ...]
   private List<List<Float>> formationOffsets;
 
