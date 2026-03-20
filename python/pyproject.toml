@@ -16,10 +16,12 @@ dependencies = [
 [project.optional-dependencies]
 train = [
     "stable-baselines3>=2.3.0",
+    "sb3-contrib>=2.3.0",
     "tensorboard>=2.14.0",
 ]
 dev = [
     "stable-baselines3>=2.3.0",
+    "sb3-contrib>=2.3.0",
     "tensorboard>=2.14.0",
     "pytest>=7.0.0",
 ]

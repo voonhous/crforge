@@ -129,20 +129,17 @@ All float32 for SB3 compatibility. Spatial coordinates normalized to [0, 1].
 
 ### Reward Structure
 
-| Source              | Magnitude     | Purpose                           |
-|---------------------|---------------|-----------------------------------|
-| Tower damage dealt  | +0.005/HP     | Incentivize pushing               |
-| Tower damage taken  | -0.008/HP     | Incentivize defense (1.6x weight) |
-| Unit kill           | +0.05/kill    | Reward killing enemy units        |
-| Unit lost           | -0.07/death   | Penalize losing own units (1.4x)  |
-| Unit damage dealt   | +0.001/HP     | Reward damaging enemy units       |
-| Unit damage taken   | -0.0015/HP    | Penalize taking unit damage (1.5x)|
-| Crown earned        | +1.0          | Major milestone                   |
-| Win                 | +5.0          | Terminal reward                   |
-| Loss                | -5.0          | Terminal penalty                  |
-| Elixir waste        | -0.005/step   | Penalize capping at 10            |
-| Time penalty        | -0.0001/step  | Discourage passive play           |
-| Invalid action      | -0.01/step    | Penalize unaffordable plays       |
+| Source         | Magnitude    | Purpose                     |
+|----------------|--------------|-----------------------------|
+| Tower damage   | +0.005/HP    | Incentivize attacking       |
+| Crown earned   | +1.0         | Major milestone             |
+| Win            | +5.0         | Terminal reward             |
+| Loss           | -5.0         | Terminal penalty            |
+| Unit kill      | +0.05/kill   | Reward killing enemy units  |
+| Unit damage    | +0.001/HP    | Reward damaging enemy units |
+| Elixir waste   | -0.005/step  | Penalize capping at 10      |
+| Time penalty   | -0.0001/step | Discourage passive play     |
+| Invalid action | -0.01/step   | Penalize unaffordable plays |
 
 ### Configuration
 

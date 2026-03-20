@@ -72,15 +72,15 @@ def main():
 
     # Check dependencies
     try:
-        from stable_baselines3 import PPO
+        from sb3_contrib import MaskablePPO
         from stable_baselines3.common.evaluation import evaluate_policy
     except ImportError:
-        print("Error: stable-baselines3 not installed.")
+        print("Error: sb3-contrib or stable-baselines3 not installed.")
         print("Install with: pip install -e \"python/[train]\"")
         sys.exit(1)
 
     from crforge_gym import CRForgeEnv
-    from crforge_gym.wrappers import FlattenedObsWrapper
+    from crforge_gym.wrappers import ActionMaskedWrapper, FlattenedObsWrapper
 
     # Check server
     print(f"Checking Java bridge server at {args.endpoint}...")
@@ -90,24 +90,28 @@ def main():
         sys.exit(1)
     print("Server is running.")
 
-    # Create environment with flattened observations for MlpPolicy
-    env = FlattenedObsWrapper(
-        CRForgeEnv(
-            endpoint=args.endpoint,
-            ticks_per_step=args.ticks_per_step,
-            opponent="random",
+    # Create environment with flattened observations and action masking
+    env = ActionMaskedWrapper(
+        FlattenedObsWrapper(
+            CRForgeEnv(
+                endpoint=args.endpoint,
+                ticks_per_step=args.ticks_per_step,
+                opponent="random",
+            )
         )
     )
 
     if args.resume:
         # Resume training from a saved model
         print(f"Resuming training from {args.resume}...")
-        model = PPO.load(args.resume, env=env, tensorboard_log=args.log_dir)
+        model = MaskablePPO.load(args.resume, env=env, tensorboard_log=args.log_dir)
     else:
-        # PPO hyperparameters tuned for CRForge
-        model = PPO(
+        # MaskablePPO with action masking and larger network for 1071-dim observation
+        model = MaskablePPO(
             "MlpPolicy",
             env,
+            # Larger network: default [64,64] is too small for 1071-dim obs
+            policy_kwargs={"net_arch": [256, 256]},
             # Learning rate: standard for PPO
             learning_rate=3e-4,
             # Steps per rollout: 2048 is standard, gives ~2 full games per rollout at ticks_per_step=6

@@ -30,25 +30,27 @@ def main():
     args = parser.parse_args()
 
     try:
-        from stable_baselines3 import PPO
+        from sb3_contrib import MaskablePPO
     except ImportError:
-        print("Error: stable-baselines3 not installed.")
+        print("Error: sb3-contrib not installed.")
         print("Install with: pip install -e \"python/[train]\"")
         sys.exit(1)
 
     from crforge_gym import CRForgeEnv
-    from crforge_gym.wrappers import FlattenedObsWrapper
+    from crforge_gym.wrappers import ActionMaskedWrapper, FlattenedObsWrapper
 
     # Load model
     print(f"Loading model from {args.model}...")
-    model = PPO.load(args.model)
+    model = MaskablePPO.load(args.model)
 
-    # Create environment
-    env = FlattenedObsWrapper(
-        CRForgeEnv(
-            endpoint=args.endpoint,
-            ticks_per_step=args.ticks_per_step,
-            opponent="random",
+    # Create environment with action masking
+    env = ActionMaskedWrapper(
+        FlattenedObsWrapper(
+            CRForgeEnv(
+                endpoint=args.endpoint,
+                ticks_per_step=args.ticks_per_step,
+                opponent="random",
+            )
         )
     )
 
@@ -72,14 +74,14 @@ def main():
         truncated = False
 
         while not (terminated or truncated):
-            action, _ = model.predict(obs, deterministic=True)
+            action_masks = env.action_masks()
+            action, _ = model.predict(obs, deterministic=True, action_masks=action_masks)
             obs, reward, terminated, truncated, info = env.step(action)
             episode_reward += reward
             steps += 1
 
-        # Extract final state from the wrapped env's last raw obs
-        inner_env = env.env
-        last_raw = inner_env._last_obs_raw if hasattr(inner_env, "_last_obs_raw") else {}
+        # Extract final state from the innermost CRForgeEnv's last raw obs
+        last_raw = env._inner_env._last_obs_raw or {}
         blue_crowns = last_raw.get("bluePlayer", {}).get("crowns", 0)
         red_crowns = last_raw.get("redPlayer", {}).get("crowns", 0)
 
