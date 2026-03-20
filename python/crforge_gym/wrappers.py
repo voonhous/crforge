@@ -66,7 +66,7 @@ class ActionMaskedWrapper(gym.Wrapper):
     - action_type: noop always valid; play only if at least one card is affordable
     - hand_index: only affordable cards are unmasked
     - tile_x: all columns valid
-    - tile_y: only own half (y 0-15 for blue)
+    - tile_y: all positions valid (spells need enemy half; Java validates troops)
 
     For MultiDiscrete([2, 4, 18, 32]), the mask is a flat boolean array of
     length 2 + 4 + 18 + 32 = 56.
@@ -119,10 +119,10 @@ class ActionMaskedWrapper(gym.Wrapper):
         action_type_mask = np.array([True, True])  # [noop, play]
         hand_mask = np.array([True, True, True, True])
         tile_x_mask = np.ones(18, dtype=bool)
-        tile_y_mask = np.zeros(32, dtype=bool)
-
-        # Blue player can place on own half (y 0-15)
-        tile_y_mask[:16] = True
+        # All y-positions valid -- spells must target enemy half.
+        # Java-side validation rejects invalid troop placements; the
+        # invalid-action penalty teaches the agent to avoid them.
+        tile_y_mask = np.ones(32, dtype=bool)
 
         if self._last_dict_obs is not None:
             elixir = self._last_dict_obs["elixir"]

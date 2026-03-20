@@ -86,6 +86,125 @@ _ENTITY_TYPE_MAP = {"TROOP": 0, "BUILDING": 1, "TOWER": 2, "PROJECTILE": 3, "SPE
 _MOVEMENT_TYPE_MAP = {"GROUND": 0, "AIR": 1, "BUILDING": 2}
 
 
+def _tower_to_array(tower: dict) -> np.ndarray:
+    """Convert a tower dict to a normalized [hp_fraction, x_norm, y_norm, alive] array."""
+    max_hp = tower.get("maxHp", 1)
+    if max_hp == 0:
+        max_hp = 1
+    return np.array(
+        [
+            tower.get("hp", 0) / max_hp,
+            tower.get("x", 0.0) / ARENA_WIDTH,
+            tower.get("y", 0.0) / ARENA_HEIGHT,
+            1.0 if tower.get("alive", False) else 0.0,
+        ],
+        dtype=np.float32,
+    )
+
+
+def parse_observation(obs_raw: dict) -> dict[str, np.ndarray]:
+    """Convert raw JSON observation to numpy arrays matching the observation space.
+
+    All values are float32. Spatial coordinates are normalized to [0, 1].
+    This is a module-level function so it can be reused by SelfPlayOpponent.
+    """
+    blue = obs_raw.get("bluePlayer", {})
+    red = obs_raw.get("redPlayer", {})
+
+    # Global
+    frame = np.array([obs_raw.get("frame", 0)], dtype=np.float32)
+    game_time = np.array([obs_raw.get("gameTimeSeconds", 0.0)], dtype=np.float32)
+    is_overtime = np.array([1.0 if obs_raw.get("isOvertime", False) else 0.0], dtype=np.float32)
+
+    # Player state (index 0 = blue/controlled, index 1 = red/opponent)
+    elixir = np.array(
+        [blue.get("elixir", 0.0), red.get("elixir", 0.0)], dtype=np.float32
+    )
+    crowns = np.array(
+        [blue.get("crowns", 0), red.get("crowns", 0)], dtype=np.float32
+    )
+
+    # Hand (blue player's hand) -- costs normalized to [0, 1] by dividing by 10
+    hand = blue.get("hand", [])
+    hand_costs = np.zeros(4, dtype=np.float32)
+    hand_types = np.zeros(4, dtype=np.float32)
+    hand_card_ids = np.full(4, -1.0, dtype=np.float32)
+    for i, card in enumerate(hand[:4]):
+        hand_costs[i] = card.get("cost", 0) / 10.0
+        hand_types[i] = float(_CARD_TYPE_MAP.get(card.get("type", "TROOP"), 0))
+        hand_card_ids[i] = float(card.get("cardIndex", -1))
+
+    next_card = blue.get("nextCard")
+    if next_card:
+        next_card_cost = np.array([next_card.get("cost", 0) / 10.0], dtype=np.float32)
+        next_card_type = np.array(
+            [float(_CARD_TYPE_MAP.get(next_card.get("type", "TROOP"), 0))], dtype=np.float32
+        )
+        next_card_id = np.array([float(next_card.get("cardIndex", -1))], dtype=np.float32)
+    else:
+        next_card_cost = np.zeros(1, dtype=np.float32)
+        next_card_type = np.zeros(1, dtype=np.float32)
+        next_card_id = np.full(1, -1.0, dtype=np.float32)
+
+    # Towers: [hp_fraction, x_norm, y_norm, alive]
+    # Order: blue crown, blue princess L, blue princess R, red crown, red princess L, red princess R
+    towers_array = np.zeros((6, 4), dtype=np.float32)
+    blue_towers = blue.get("towers", [])
+    red_towers = red.get("towers", [])
+    for i, tower in enumerate(blue_towers[:3]):
+        towers_array[i] = _tower_to_array(tower)
+    for i, tower in enumerate(red_towers[:3]):
+        towers_array[3 + i] = _tower_to_array(tower)
+
+    # Entities -- spatial coords normalized to [0, 1], with combat state and effects
+    entities_raw = obs_raw.get("entities", [])
+    entities_array = np.zeros((MAX_ENTITIES, ENTITY_FEATURES), dtype=np.float32)
+    num_entities = min(len(entities_raw), MAX_ENTITIES)
+    for i in range(num_entities):
+        e = entities_raw[i]
+        max_hp = e.get("maxHp", 1)
+        if max_hp == 0:
+            max_hp = 1
+        entities_array[i] = [
+            float(_TEAM_MAP.get(e.get("team", "BLUE"), 0)),
+            float(_ENTITY_TYPE_MAP.get(e.get("entityType", "TROOP"), 0)),
+            float(_MOVEMENT_TYPE_MAP.get(e.get("movementType", "GROUND"), 0)),
+            e.get("x", 0.0) / ARENA_WIDTH,
+            e.get("y", 0.0) / ARENA_HEIGHT,
+            e.get("hp", 0) / max_hp,
+            e.get("shield", 0) / max_hp,
+            # Combat state
+            e.get("attackCooldownFraction", 0.0),
+            1.0 if e.get("isAttacking", False) else 0.0,
+            1.0 if e.get("hasTarget", False) else 0.0,
+            # Status effects
+            1.0 if e.get("stunned", False) else 0.0,
+            1.0 if e.get("slowed", False) else 0.0,
+            1.0 if e.get("raged", False) else 0.0,
+            1.0 if e.get("frozen", False) else 0.0,
+            1.0 if e.get("poisoned", False) else 0.0,
+            # Building lifetime
+            e.get("lifetimeFraction", 0.0),
+        ]
+
+    return {
+        "frame": frame,
+        "game_time": game_time,
+        "is_overtime": is_overtime,
+        "elixir": elixir,
+        "crowns": crowns,
+        "hand_costs": hand_costs,
+        "hand_types": hand_types,
+        "hand_card_ids": hand_card_ids,
+        "next_card_cost": next_card_cost,
+        "next_card_type": next_card_type,
+        "next_card_id": next_card_id,
+        "towers": towers_array,
+        "entities": entities_array,
+        "num_entities": np.array([num_entities], dtype=np.float32),
+    }
+
+
 class CRForgeEnv(gym.Env):
     """
     Gymnasium environment for CRForge Clash Royale simulation.
@@ -242,6 +361,8 @@ class CRForgeEnv(gym.Env):
             return self._random_action()
         elif self.opponent == "rule_based":
             return self._rule_based_action()
+        elif hasattr(self.opponent, "act"):
+            return self.opponent.act(self._last_obs_raw)
         elif callable(self.opponent):
             return self.opponent(self._last_obs_raw)
         return None
@@ -273,117 +394,4 @@ class CRForgeEnv(gym.Env):
         return self._rule_based_opponent.act(self._last_obs_raw, player="red")
 
     def _parse_observation(self, obs_raw: dict) -> dict[str, np.ndarray]:
-        """Convert raw JSON observation to numpy arrays matching the observation space.
-
-        All values are float32. Spatial coordinates are normalized to [0, 1].
-        """
-        blue = obs_raw.get("bluePlayer", {})
-        red = obs_raw.get("redPlayer", {})
-
-        # Global
-        frame = np.array([obs_raw.get("frame", 0)], dtype=np.float32)
-        game_time = np.array([obs_raw.get("gameTimeSeconds", 0.0)], dtype=np.float32)
-        is_overtime = np.array([1.0 if obs_raw.get("isOvertime", False) else 0.0], dtype=np.float32)
-
-        # Player state (index 0 = blue/controlled, index 1 = red/opponent)
-        elixir = np.array(
-            [blue.get("elixir", 0.0), red.get("elixir", 0.0)], dtype=np.float32
-        )
-        crowns = np.array(
-            [blue.get("crowns", 0), red.get("crowns", 0)], dtype=np.float32
-        )
-
-        # Hand (blue player's hand) -- costs normalized to [0, 1] by dividing by 10
-        hand = blue.get("hand", [])
-        hand_costs = np.zeros(4, dtype=np.float32)
-        hand_types = np.zeros(4, dtype=np.float32)
-        hand_card_ids = np.full(4, -1.0, dtype=np.float32)
-        for i, card in enumerate(hand[:4]):
-            hand_costs[i] = card.get("cost", 0) / 10.0
-            hand_types[i] = float(_CARD_TYPE_MAP.get(card.get("type", "TROOP"), 0))
-            hand_card_ids[i] = float(card.get("cardIndex", -1))
-
-        next_card = blue.get("nextCard")
-        if next_card:
-            next_card_cost = np.array([next_card.get("cost", 0) / 10.0], dtype=np.float32)
-            next_card_type = np.array(
-                [float(_CARD_TYPE_MAP.get(next_card.get("type", "TROOP"), 0))], dtype=np.float32
-            )
-            next_card_id = np.array([float(next_card.get("cardIndex", -1))], dtype=np.float32)
-        else:
-            next_card_cost = np.zeros(1, dtype=np.float32)
-            next_card_type = np.zeros(1, dtype=np.float32)
-            next_card_id = np.full(1, -1.0, dtype=np.float32)
-
-        # Towers: [hp_fraction, x_norm, y_norm, alive]
-        # Order: blue crown, blue princess L, blue princess R, red crown, red princess L, red princess R
-        towers_array = np.zeros((6, 4), dtype=np.float32)
-        blue_towers = blue.get("towers", [])
-        red_towers = red.get("towers", [])
-        for i, tower in enumerate(blue_towers[:3]):
-            towers_array[i] = self._tower_to_array(tower)
-        for i, tower in enumerate(red_towers[:3]):
-            towers_array[3 + i] = self._tower_to_array(tower)
-
-        # Entities -- spatial coords normalized to [0, 1], with combat state and effects
-        entities_raw = obs_raw.get("entities", [])
-        entities_array = np.zeros((MAX_ENTITIES, ENTITY_FEATURES), dtype=np.float32)
-        num_entities = min(len(entities_raw), MAX_ENTITIES)
-        for i in range(num_entities):
-            e = entities_raw[i]
-            max_hp = e.get("maxHp", 1)
-            if max_hp == 0:
-                max_hp = 1
-            entities_array[i] = [
-                float(_TEAM_MAP.get(e.get("team", "BLUE"), 0)),
-                float(_ENTITY_TYPE_MAP.get(e.get("entityType", "TROOP"), 0)),
-                float(_MOVEMENT_TYPE_MAP.get(e.get("movementType", "GROUND"), 0)),
-                e.get("x", 0.0) / ARENA_WIDTH,
-                e.get("y", 0.0) / ARENA_HEIGHT,
-                e.get("hp", 0) / max_hp,
-                e.get("shield", 0) / max_hp,
-                # A2: Combat state
-                e.get("attackCooldownFraction", 0.0),
-                1.0 if e.get("isAttacking", False) else 0.0,
-                1.0 if e.get("hasTarget", False) else 0.0,
-                # A3: Status effects
-                1.0 if e.get("stunned", False) else 0.0,
-                1.0 if e.get("slowed", False) else 0.0,
-                1.0 if e.get("raged", False) else 0.0,
-                1.0 if e.get("frozen", False) else 0.0,
-                1.0 if e.get("poisoned", False) else 0.0,
-                # A4: Building lifetime
-                e.get("lifetimeFraction", 0.0),
-            ]
-
-        return {
-            "frame": frame,
-            "game_time": game_time,
-            "is_overtime": is_overtime,
-            "elixir": elixir,
-            "crowns": crowns,
-            "hand_costs": hand_costs,
-            "hand_types": hand_types,
-            "hand_card_ids": hand_card_ids,
-            "next_card_cost": next_card_cost,
-            "next_card_type": next_card_type,
-            "next_card_id": next_card_id,
-            "towers": towers_array,
-            "entities": entities_array,
-            "num_entities": np.array([num_entities], dtype=np.float32),
-        }
-
-    @staticmethod
-    def _tower_to_array(tower: dict) -> np.ndarray:
-        max_hp = tower.get("maxHp", 1)
-        if max_hp == 0:
-            max_hp = 1
-        return np.array(
-            [
-                tower.get("hp", 0) / max_hp,
-                tower.get("x", 0.0) / ARENA_WIDTH,
-                tower.get("y", 0.0) / ARENA_HEIGHT,
-                1.0 if tower.get("alive", False) else 0.0,
-            ],
-            dtype=np.float32,
-        )
+        return parse_observation(obs_raw)

@@ -10,9 +10,11 @@ Usage:
   python python/examples/train_ppo.py
   python python/examples/train_ppo.py --timesteps 100000 --save-path models/ppo_crforge
   python python/examples/train_ppo.py --resume models/ppo_crforge --timesteps 50000
+  python python/examples/train_ppo.py --opponent self_play --timesteps 100000
 """
 
 import argparse
+import os
 import sys
 import time
 
@@ -68,11 +70,17 @@ def main():
                         help="Number of evaluation episodes after training")
     parser.add_argument("--log-dir", type=str, default="logs/ppo_crforge",
                         help="TensorBoard log directory")
+    parser.add_argument("--opponent", type=str, default="rule_based",
+                        choices=["random", "rule_based", "self_play"],
+                        help="Opponent type (default: rule_based)")
+    parser.add_argument("--self-play-interval", type=int, default=10000,
+                        help="Timesteps between opponent model updates in self-play mode (default: 10000)")
     args = parser.parse_args()
 
     # Check dependencies
     try:
         from sb3_contrib import MaskablePPO
+        from stable_baselines3.common.callbacks import BaseCallback
         from stable_baselines3.common.evaluation import evaluate_policy
     except ImportError:
         print("Error: sb3-contrib or stable-baselines3 not installed.")
@@ -80,6 +88,7 @@ def main():
         sys.exit(1)
 
     from crforge_gym import CRForgeEnv
+    from crforge_gym.opponents import SelfPlayOpponent
     from crforge_gym.wrappers import ActionMaskedWrapper, FlattenedObsWrapper
 
     # Check server
@@ -90,13 +99,60 @@ def main():
         sys.exit(1)
     print("Server is running.")
 
+    # -- Self-play callback --
+
+    class SelfPlayCallback(BaseCallback):
+        """Periodically snapshot the training model into the SelfPlayOpponent.
+
+        Every `update_interval` timesteps, save the current model to a
+        checkpoint file and reload it into the opponent. The first iteration
+        starts with the initial (random) policy.
+        """
+
+        def __init__(self, opponent: SelfPlayOpponent, update_interval: int,
+                     checkpoint_dir: str = "models", verbose: int = 0):
+            super().__init__(verbose)
+            self.opponent = opponent
+            self.update_interval = update_interval
+            self.checkpoint_dir = checkpoint_dir
+            self._last_update_step = 0
+
+        def _on_training_start(self) -> None:
+            os.makedirs(self.checkpoint_dir, exist_ok=True)
+            # Snapshot the initial (random) policy as the first opponent
+            self._snapshot_model(tag="init")
+
+        def _on_step(self) -> bool:
+            elapsed = self.num_timesteps - self._last_update_step
+            if elapsed >= self.update_interval:
+                self._snapshot_model(tag=f"step_{self.num_timesteps}")
+                self._last_update_step = self.num_timesteps
+            return True
+
+        def _snapshot_model(self, tag: str) -> None:
+            path = os.path.join(self.checkpoint_dir, f"self_play_{tag}")
+            self.model.save(path)
+            loaded = MaskablePPO.load(path)
+            self.opponent.model = loaded
+            if self.verbose > 0:
+                print(f"[SelfPlayCallback] Updated opponent model at step {self.num_timesteps} ({tag})")
+
+    # Determine opponent for env creation
+    if args.opponent == "self_play":
+        # Create a placeholder SelfPlayOpponent; model will be set after model creation
+        self_play_opponent = SelfPlayOpponent(model=None)
+        env_opponent = self_play_opponent
+    else:
+        self_play_opponent = None
+        env_opponent = args.opponent
+
     # Create environment with flattened observations and action masking
     env = ActionMaskedWrapper(
         FlattenedObsWrapper(
             CRForgeEnv(
                 endpoint=args.endpoint,
                 ticks_per_step=args.ticks_per_step,
-                opponent="random",
+                opponent=env_opponent,
             )
         )
     )
@@ -137,12 +193,27 @@ def main():
             tensorboard_log=args.log_dir,
         )
 
+    # Build callback list
+    callbacks = []
+    if args.opponent == "self_play":
+        # Wire the model into the self-play opponent now that it exists
+        self_play_opponent.model = model
+        callbacks.append(SelfPlayCallback(
+            opponent=self_play_opponent,
+            update_interval=args.self_play_interval,
+            checkpoint_dir=os.path.dirname(args.save_path) or "models",
+            verbose=1,
+        ))
+
     print(f"\nStarting training for {args.timesteps} timesteps...")
+    print(f"Opponent: {args.opponent}")
+    if args.opponent == "self_play":
+        print(f"Self-play opponent update interval: {args.self_play_interval} steps")
     print(f"TensorBoard logs: {args.log_dir}")
     print(f"Monitor with: tensorboard --logdir {args.log_dir}\n")
 
     start_time = time.time()
-    model.learn(total_timesteps=args.timesteps)
+    model.learn(total_timesteps=args.timesteps, callback=callbacks if callbacks else None)
     training_time = time.time() - start_time
 
     print(f"\nTraining completed in {training_time:.1f}s")

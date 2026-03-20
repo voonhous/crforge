@@ -2,11 +2,12 @@
 Opponent policies for CRForge environments.
 
 C1: Rule-based opponent that uses heuristics to play cards.
+C2: Self-play opponent that mirrors observations and runs a trained model as red.
 """
 
 import numpy as np
 
-from crforge_gym.env import ARENA_WIDTH, ARENA_HEIGHT
+from crforge_gym.env import ARENA_WIDTH, ARENA_HEIGHT, parse_observation
 
 
 class RuleBasedOpponent:
@@ -179,3 +180,117 @@ class RuleBasedOpponent:
         cx = sum(enemy_x) / len(enemy_x)
         cy = sum(enemy_y) / len(enemy_y)
         return cx, cy
+
+
+# -- Self-play helpers --
+
+# Fixed ordering of observation keys, must match FlattenedObsWrapper._OBS_KEYS
+_OBS_KEYS = [
+    "frame", "game_time", "is_overtime",
+    "elixir", "crowns",
+    "hand_costs", "hand_types", "hand_card_ids",
+    "next_card_cost", "next_card_type", "next_card_id",
+    "towers", "entities", "num_entities",
+]
+
+
+def _mirror_entity(e: dict) -> dict:
+    """Flip an entity's y coordinate and swap its team label."""
+    mirrored = dict(e)
+    mirrored["y"] = ARENA_HEIGHT - e.get("y", 0)
+    team = e.get("team", "BLUE")
+    mirrored["team"] = "RED" if team == "BLUE" else "BLUE"
+    return mirrored
+
+
+def _mirror_tower(t: dict) -> dict:
+    """Flip a tower's y coordinate."""
+    mirrored = dict(t)
+    mirrored["y"] = ARENA_HEIGHT - t.get("y", 0)
+    return mirrored
+
+
+def _flatten_dict_obs(dict_obs: dict[str, np.ndarray]) -> np.ndarray:
+    """Flatten dict observation in the same key order as FlattenedObsWrapper."""
+    parts = [dict_obs[k].astype(np.float32).flatten() for k in _OBS_KEYS]
+    return np.concatenate(parts)
+
+
+class SelfPlayOpponent:
+    """Plays as red using a trained MaskablePPO model.
+
+    Mirrors observations so red sees the game from blue's perspective,
+    runs the model to get an action, and mirrors the action back to
+    red's coordinate space.
+    """
+
+    def __init__(self, model):
+        """Initialize with a MaskablePPO instance (live reference or loaded from file)."""
+        self.model = model
+
+    @staticmethod
+    def mirror_raw_obs(raw_obs: dict) -> dict:
+        """Create a copy of raw_obs with blue/red perspectives swapped and y-flipped."""
+        mirrored = dict(raw_obs)
+
+        blue_player = raw_obs.get("bluePlayer", {})
+        red_player = raw_obs.get("redPlayer", {})
+
+        # Swap players and mirror their tower positions
+        blue_towers = blue_player.get("towers", [])
+        red_towers = red_player.get("towers", [])
+        mirrored["bluePlayer"] = {**red_player, "towers": [_mirror_tower(t) for t in red_towers]}
+        mirrored["redPlayer"] = {**blue_player, "towers": [_mirror_tower(t) for t in blue_towers]}
+
+        # Flip entity y coords and swap team labels
+        mirrored["entities"] = [_mirror_entity(e) for e in raw_obs.get("entities", [])]
+
+        return mirrored
+
+    def act(self, obs_raw: dict) -> dict | None:
+        """Produce a red-side action from the raw observation.
+
+        1. Mirror obs so red looks like blue
+        2. Parse into dict obs (same function env uses)
+        3. Flatten (same order as FlattenedObsWrapper)
+        4. Compute action mask for red
+        5. Predict with model
+        6. Mirror action back: flip tile_y
+        """
+        mirrored = self.mirror_raw_obs(obs_raw)
+        dict_obs = parse_observation(mirrored)
+        flat_obs = _flatten_dict_obs(dict_obs)
+        mask = self._compute_mask(mirrored)
+        action, _ = self.model.predict(flat_obs, action_masks=mask, deterministic=False)
+
+        action_type = int(action[0])
+        if action_type == 0:
+            return None
+
+        hand_idx = int(action[1])
+        tile_x = int(action[2])
+        tile_y = int(action[3])
+
+        # Mirror y back to red's coordinate space
+        actual_y = 31 - tile_y
+
+        return {"handIndex": hand_idx, "x": tile_x + 0.5, "y": actual_y + 0.5}
+
+    def _compute_mask(self, mirrored_obs: dict) -> np.ndarray:
+        """Compute action mask from mirrored (red-as-blue) raw observation."""
+        blue = mirrored_obs.get("bluePlayer", {})  # Actually red's data
+        elixir = blue.get("elixir", 0)
+        hand = blue.get("hand", [])
+
+        action_type_mask = np.array([True, True])
+        hand_mask = np.array([True, True, True, True])
+        tile_x_mask = np.ones(18, dtype=bool)
+        tile_y_mask = np.ones(32, dtype=bool)
+
+        for i in range(4):
+            cost = hand[i].get("cost", 99) if i < len(hand) else 99
+            hand_mask[i] = 0 < cost <= elixir
+        if not np.any(hand_mask):
+            action_type_mask[1] = False
+
+        return np.concatenate([action_type_mask, hand_mask, tile_x_mask, tile_y_mask])
