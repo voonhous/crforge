@@ -302,7 +302,7 @@ class ProjectileHitProcessor {
     if (spawnStats.getSpawnCount() > 1) {
       // Fan scatter: spawn multiple piercing sub-projectiles in a cone
       // (e.g. Firecracker shrapnel)
-      spawnFanProjectiles(projectile.getTeam(), spawnStats, hitX, hitY, dirX, dirY);
+      spawnFanProjectiles(projectile, spawnStats, hitX, hitY, dirX, dirY);
     } else {
       // Single sub-projectile (e.g. Log rolling projectile)
       float range = spawnStats.getProjectileRange() > 0 ? spawnStats.getProjectileRange() : 10f;
@@ -366,15 +366,24 @@ class ProjectileHitProcessor {
    * Firecracker shrapnel).
    */
   private void spawnFanProjectiles(
-      Team team,
+      Projectile parentProjectile,
       ProjectileStats stats,
       float originX,
       float originY,
       float baseDirX,
       float baseDirY) {
+    Team team = parentProjectile.getTeam();
     int count = stats.getSpawnCount();
     float range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : 5f;
     float baseAngle = (float) Math.atan2(baseDirY, baseDirX);
+
+    // Scale shrapnel damage by parent projectile's level/rarity if available
+    int scaledDamage = stats.getDamage();
+    if (parentProjectile.getSpellRarity() != null && parentProjectile.getSpellLevel() > 0) {
+      scaledDamage =
+          LevelScaling.scaleCard(
+              scaledDamage, parentProjectile.getSpellRarity(), parentProjectile.getSpellLevel());
+    }
 
     // 15 degrees between each shrapnel piece (5 pieces = 60-degree cone)
     float spreadRadians = (float) Math.toRadians(15.0);
@@ -396,7 +405,7 @@ class ProjectileHitProcessor {
               originY,
               endX,
               endY,
-              stats.getDamage(),
+              scaledDamage,
               stats.getRadius(),
               stats.getSpeed(),
               stats.getHitEffects());
