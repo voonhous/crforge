@@ -61,10 +61,10 @@ class GoblinCurseSpellTest {
   // Total lifetime (6.0s = 180 ticks)
   private static final int LIFETIME_TICKS = 180;
 
-  // Base damage per tick at default level (scaleCard(14, EPIC, 1) = 14)
+  // Base damage per tick at default level (scaleCard(14, 1) = 14)
   private static final int BASE_DAMAGE_PER_TICK = 14;
 
-  // Base crown tower damage per tick (scaleCard(4, EPIC, 1) = 4)
+  // Base crown tower damage per tick (scaleCard(4, 1) = 4)
   private static final int BASE_CT_DAMAGE_PER_TICK = 4;
 
   @BeforeEach
@@ -422,15 +422,15 @@ class GoblinCurseSpellTest {
     engine.queueAction(bluePlayerL11, action);
     engine.tick(SYNC_DELAY_TICKS + HIT_SPEED_TICKS + 2);
 
-    // Level 11 damage: scaleCard(14, EPIC, 11) -> 10 steps of x1.10 -> 35
-    int expectedDamage = LevelScaling.scaleCard(14, Rarity.EPIC, 11);
+    // Level 11 damage: scaleCard(14, 11) -> 10 steps of x1.10 -> 35
+    int expectedDamage = LevelScaling.scaleCard(14, 11);
     int damageTaken = 5000 - enemy.getHealth().getCurrent();
     assertThat(damageTaken)
         .as("Level 11 damage per tick should be %d", expectedDamage)
         .isEqualTo(expectedDamage);
 
     // Also verify CT damage at level 11
-    int expectedCtDamage = LevelScaling.scaleCard(4, Rarity.EPIC, 11);
+    int expectedCtDamage = LevelScaling.scaleCard(4, 11);
     assertThat(expectedCtDamage).as("CT damage at level 11 should be 10").isEqualTo(10);
   }
 

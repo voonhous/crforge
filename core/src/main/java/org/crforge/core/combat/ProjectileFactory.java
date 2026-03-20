@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.component.Combat;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -80,7 +79,6 @@ class ProjectileFactory {
       // Propagate attacker level for sub-projectile damage scaling (e.g. Firecracker shrapnel)
       if (stats.getSpawnProjectile() != null && projectile.getSource() != null) {
         projectile.setSpellLevel(projectile.getSource().getLevel());
-        projectile.setSpellRarity(Rarity.COMMON);
       }
 
       projectile.setPushback(stats.getPushback());

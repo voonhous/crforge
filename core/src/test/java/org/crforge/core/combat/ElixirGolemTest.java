@@ -8,7 +8,6 @@ import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.DeathSpawnEntry;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -288,7 +287,6 @@ class ElixirGolemTest {
         SpawnerComponent.builder()
             .deathSpawns(stats.getDeathSpawns())
             .manaOnDeathForOpponent(stats.getManaOnDeathForOpponent())
-            .rarity(Rarity.RARE)
             .level(1)
             .build();
 

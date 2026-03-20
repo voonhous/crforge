@@ -482,7 +482,7 @@ class MirrorTest {
     assertThat(troops).hasSize(1);
 
     // The troop's HP should be scaled at level 12 (mirror level + 1), not level 11
-    int expectedHp = LevelScaling.scaleCard(690, Rarity.COMMON, mirrorLevel + 1);
+    int expectedHp = LevelScaling.scaleCard(690, mirrorLevel + 1);
     assertThat(troops.get(0).getHealth().getMax()).isEqualTo(expectedHp);
   }
 }

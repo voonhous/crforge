@@ -44,12 +44,14 @@ public final class LevelScaling {
    * iteratively with floor. All rarities scale uniformly from level 1.
    *
    * @param baseStat base value at level 1
-   * @param rarity card rarity (retained for API stability)
-   * @param level target card level
+   * @param level target card level (must be >= 1)
    * @return scaled stat value
    */
-  public static int scaleCard(int baseStat, Rarity rarity, int level) {
-    int clampedLevel = Math.max(1, Math.min(level, MAX_CARD_LEVEL));
+  public static int scaleCard(int baseStat, int level) {
+    if (level <= 0) {
+      throw new IllegalArgumentException("Card level must be >= 1, got: " + level);
+    }
+    int clampedLevel = Math.min(level, MAX_CARD_LEVEL);
     return applyMultiplier(baseStat, clampedLevel - 1, 1.10);
   }
 

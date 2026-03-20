@@ -10,7 +10,6 @@ import org.crforge.core.card.BuffApplication;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.component.ElixirCollectorComponent;
@@ -117,7 +116,6 @@ public class DeathHandlingSystem {
                     offset.getY(),
                     entity.getTeam(),
                     entry.stats(),
-                    spawner.getRarity(),
                     spawner.getLevel(),
                     entry.deployTime(),
                     parentIsClone,
@@ -128,7 +126,6 @@ public class DeathHandlingSystem {
                 offset,
                 entity.getTeam(),
                 entry.stats(),
-                spawner.getRarity(),
                 spawner.getLevel(),
                 entry.deployTime(),
                 parentIsClone);
@@ -170,7 +167,6 @@ public class DeathHandlingSystem {
               offset,
               entity.getTeam(),
               spawner.getSpawnStats(),
-              spawner.getRarity(),
               spawner.getLevel(),
               0f,
               parentIsClone);
@@ -203,7 +199,6 @@ public class DeathHandlingSystem {
             new Vector2(pending.offsetX, pending.offsetY),
             pending.team,
             pending.stats,
-            pending.rarity,
             pending.level,
             pending.deployTime,
             pending.isClone);
@@ -218,8 +213,7 @@ public class DeathHandlingSystem {
     }
     // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
     // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
-    spawnFactory.doSpawn(
-        victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, Rarity.COMMON, 1, 0f, false);
+    spawnFactory.doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, 1, 0f, false);
   }
 
   /**
@@ -230,9 +224,7 @@ public class DeathHandlingSystem {
   private void spawnDeathAreaEffect(Entity entity, SpawnerComponent spawner) {
     AreaEffectStats stats = spawner.getDeathAreaEffect();
     int scaledDamage =
-        stats.getDamage() > 0
-            ? LevelScaling.scaleCard(stats.getDamage(), spawner.getRarity(), spawner.getLevel())
-            : 0;
+        stats.getDamage() > 0 ? LevelScaling.scaleCard(stats.getDamage(), spawner.getLevel()) : 0;
     int resolvedCtdp = stats.getCrownTowerDamagePercent();
     int buildingDmgPct = 0;
 
@@ -245,7 +237,7 @@ public class DeathHandlingSystem {
       if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
         float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
         int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
-        scaledDamage = LevelScaling.scaleCard(baseDamage, spawner.getRarity(), spawner.getLevel());
+        scaledDamage = LevelScaling.scaleCard(baseDamage, spawner.getLevel());
       }
       if (resolvedCtdp == 0 && buffDef.getCrownTowerDamagePercent() != 0) {
         resolvedCtdp = buffDef.getCrownTowerDamagePercent();
@@ -345,7 +337,6 @@ public class DeathHandlingSystem {
     if (projStats.getSpawnCharacter() != null) {
       projectile.setSpawnCharacterStats(projStats.getSpawnCharacter());
       projectile.setSpawnCharacterCount(projStats.getSpawnCharacterCount());
-      projectile.setSpawnCharacterRarity(spawner.getRarity());
       projectile.setSpawnCharacterLevel(spawner.getLevel());
     }
 
@@ -360,7 +351,6 @@ public class DeathHandlingSystem {
     final float offsetY;
     final Team team;
     final TroopStats stats;
-    final Rarity rarity;
     final int level;
     final float deployTime;
     final boolean isClone;
@@ -373,7 +363,6 @@ public class DeathHandlingSystem {
         float offsetY,
         Team team,
         TroopStats stats,
-        Rarity rarity,
         int level,
         float deployTime,
         boolean isClone,
@@ -384,7 +373,6 @@ public class DeathHandlingSystem {
       this.offsetY = offsetY;
       this.team = team;
       this.stats = stats;
-      this.rarity = rarity;
       this.level = level;
       this.deployTime = deployTime;
       this.isClone = isClone;

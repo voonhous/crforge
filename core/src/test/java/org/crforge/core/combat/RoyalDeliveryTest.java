@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.LevelScaling;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -255,7 +254,7 @@ class RoyalDeliveryTest {
     deployRoyalDelivery(DEPLOY_X, DEPLOY_Y);
     engine.tick(SYNC_DELAY_TICKS + DAMAGE_DELAY_TICKS + 2);
 
-    int expectedDamage = LevelScaling.scaleCard(BASE_DAMAGE, Rarity.COMMON, 11);
+    int expectedDamage = LevelScaling.scaleCard(BASE_DAMAGE, 11);
     assertThat(enemy.getHealth().getCurrent())
         .as("Enemy should take level-scaled damage (%d)", expectedDamage)
         .isEqualTo(5000 - expectedDamage);
@@ -264,7 +263,7 @@ class RoyalDeliveryTest {
     engine.tick(SPAWN_DELAY_TICKS);
 
     Troop recruit = findRecruit();
-    int expectedHp = LevelScaling.scaleCard(214, Rarity.COMMON, 11);
+    int expectedHp = LevelScaling.scaleCard(214, 11);
     assertThat(recruit.getHealth().getMax())
         .as("DeliveryRecruit HP should be level-scaled (%d)", expectedHp)
         .isEqualTo(expectedHp);

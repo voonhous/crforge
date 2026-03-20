@@ -8,7 +8,6 @@ import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 
 /**
@@ -38,9 +37,7 @@ public class SpawnerComponent {
   private int deathSpawnCount;
   private TroopStats spawnStats;
 
-  /** Rarity and level of the parent card, used to scale spawned unit stats. */
-  @Builder.Default private final Rarity rarity = Rarity.COMMON;
-
+  /** Level of the parent card, used to scale spawned unit stats. */
   @Builder.Default private final int level = 1;
 
   /**

@@ -65,7 +65,6 @@ class RageSpellIntegrationTest {
         SpawnerComponent.builder()
             .selfDestruct(true)
             .deathAreaEffect(bottleStats.getDeathAreaEffect())
-            .rarity(rageCard.getRarity())
             .level(1)
             .build();
 
@@ -129,7 +128,6 @@ class RageSpellIntegrationTest {
         SpawnerComponent.builder()
             .selfDestruct(true)
             .deathAreaEffect(bottleStats.getDeathAreaEffect())
-            .rarity(rageCard.getRarity())
             .level(1)
             .build();
 
@@ -183,7 +181,6 @@ class RageSpellIntegrationTest {
         SpawnerComponent.builder()
             .selfDestruct(true)
             .deathAreaEffect(bottleStats.getDeathAreaEffect())
-            .rarity(rageCard.getRarity())
             .level(1)
             .build();
 

@@ -6,7 +6,6 @@ import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
@@ -118,7 +117,7 @@ class PhoenixIntegrationTest {
 
   /** Helper to spawn a Phoenix troop with proper SpawnerComponent wiring. */
   private Troop spawnPhoenix(Team team, float x, float y) {
-    spawnerSystem.spawnUnit(x, y, team, phoenixStats, Rarity.LEGENDARY, 1, 0f);
+    spawnerSystem.spawnUnit(x, y, team, phoenixStats, 1, 0f);
     gameState.processPending();
     return gameState.getEntitiesOfType(Troop.class).stream()
         .filter(t -> t.getName().equals("Phoenix"))

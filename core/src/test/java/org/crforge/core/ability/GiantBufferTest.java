@@ -7,7 +7,6 @@ import org.crforge.core.ability.handler.BuffAllyHandler;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.combat.CombatSystem;
 import org.crforge.core.combat.ProjectileSystem;
@@ -503,12 +502,11 @@ class GiantBufferTest {
   void giantBuffer_levelScaling() {
     // At level 11 with Epic rarity, the scaled damage should match LevelScaling
     int level = 11;
-    int expected = LevelScaling.scaleCard(BASE_ADDED_DAMAGE, Rarity.EPIC, level);
+    int expected = LevelScaling.scaleCard(BASE_ADDED_DAMAGE, level);
 
     AbilityComponent component = new AbilityComponent(createBuffAllyAbility());
     component.setScaledAddedDamage(expected);
-    component.setScaledAddedCrownTowerDamage(
-        LevelScaling.scaleCard(BASE_ADDED_CT_DAMAGE, Rarity.EPIC, level));
+    component.setScaledAddedCrownTowerDamage(LevelScaling.scaleCard(BASE_ADDED_CT_DAMAGE, level));
 
     Troop ally = createMeleeAlly(Team.BLUE, 5, 5);
     ally.setGiantBuff(

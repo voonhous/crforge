@@ -38,13 +38,11 @@ class SpellFactory {
       var summonStats = card.getSummonTemplate();
       if (summonStats.getHealth() <= 0) {
         // Bomb entity (e.g. RageBarbarianBottle): 1 HP, selfDestruct, carries death mechanics
-        Troop summoned =
-            troopFactory.spawnBombSummon(team, summonStats, x, y, level, card.getRarity());
+        Troop summoned = troopFactory.spawnBombSummon(team, summonStats, x, y, level);
         state.spawnEntity(summoned);
       } else {
         Troop summoned =
-            troopFactory.createTroop(
-                team, summonStats, x, y, null, level, card.getRarity(), 0, 1, 0f, null);
+            troopFactory.createTroop(team, summonStats, x, y, null, level, 0, 1, 0f, null);
         state.spawnEntity(summoned);
       }
     }
@@ -62,7 +60,7 @@ class SpellFactory {
     }
 
     // Scale spell damage by card level and rarity
-    int damage = LevelScaling.scaleCard(proj.getDamage(), card.getRarity(), level);
+    int damage = LevelScaling.scaleCard(proj.getDamage(), level);
     float speed = proj.getSpeed();
     float radius = card.getSpellRadius() > 0 ? card.getSpellRadius() : proj.getRadius();
     List<EffectStats> effects = proj.getHitEffects();
@@ -119,7 +117,6 @@ class SpellFactory {
         if (proj.getSpawnCharacter() != null) {
           p.setSpawnCharacterStats(proj.getSpawnCharacter());
           p.setSpawnCharacterCount(proj.getSpawnCharacterCount());
-          p.setSpawnCharacterRarity(card.getRarity());
           p.setSpawnCharacterLevel(level);
           p.setSpawnDeployTime(proj.getSpawnDeployTime());
         }
@@ -127,7 +124,6 @@ class SpellFactory {
         // Wire spawnProjectile for sub-projectile spawning on impact (e.g. Log rolling)
         if (proj.getSpawnProjectile() != null) {
           p.setSpawnProjectile(proj.getSpawnProjectile());
-          p.setSpellRarity(card.getRarity());
           p.setSpellLevel(level);
         }
 
@@ -142,7 +138,7 @@ class SpellFactory {
 
   void fireSpawnProjectile(Team team, Card card, float x, float y, int level) {
     ProjectileStats stats = card.getSpawnProjectile();
-    int damage = LevelScaling.scaleCard(stats.getDamage(), card.getRarity(), level);
+    int damage = LevelScaling.scaleCard(stats.getDamage(), level);
     float startX, startY;
     Tower crownTower = state.getCrownTower(team);
     if (crownTower != null) {

@@ -7,7 +7,6 @@ import org.crforge.core.ability.ReflectAbility;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
@@ -148,10 +147,6 @@ class ProjectileHitProcessor {
   void spawnCharacterOnImpact(Projectile projectile) {
     TroopStats stats = projectile.getSpawnCharacterStats();
     int count = Math.max(1, projectile.getSpawnCharacterCount());
-    Rarity rarity =
-        projectile.getSpawnCharacterRarity() != null
-            ? projectile.getSpawnCharacterRarity()
-            : Rarity.COMMON;
     int level = projectile.getSpawnCharacterLevel() > 0 ? projectile.getSpawnCharacterLevel() : 1;
     float deployTime = projectile.getSpawnDeployTime();
 
@@ -210,7 +205,7 @@ class ProjectileHitProcessor {
         }
       }
 
-      unitSpawner.spawnUnit(spawnX, spawnY, projectile.getTeam(), stats, rarity, level, deployTime);
+      unitSpawner.spawnUnit(spawnX, spawnY, projectile.getTeam(), stats, level, deployTime);
     }
   }
 
@@ -311,10 +306,8 @@ class ProjectileHitProcessor {
 
       // Scale sub-projectile damage by spell level/rarity if available
       int subDamage = spawnStats.getDamage();
-      if (projectile.getSpellRarity() != null && projectile.getSpellLevel() > 0) {
-        subDamage =
-            LevelScaling.scaleCard(
-                subDamage, projectile.getSpellRarity(), projectile.getSpellLevel());
+      if (projectile.getSpellLevel() > 0) {
+        subDamage = LevelScaling.scaleCard(subDamage, projectile.getSpellLevel());
       }
 
       // Use projectileRadius for hit detection if available, otherwise fall back to AOE radius
@@ -351,9 +344,6 @@ class ProjectileHitProcessor {
         spawned.setSpawnCharacterStats(spawnStats.getSpawnCharacter());
         spawned.setSpawnCharacterCount(spawnStats.getSpawnCharacterCount());
         spawned.setSpawnDeployTime(spawnStats.getSpawnDeployTime());
-        if (projectile.getSpellRarity() != null) {
-          spawned.setSpawnCharacterRarity(projectile.getSpellRarity());
-        }
         spawned.setSpawnCharacterLevel(projectile.getSpellLevel());
       }
 
@@ -379,10 +369,8 @@ class ProjectileHitProcessor {
 
     // Scale shrapnel damage by parent projectile's level/rarity if available
     int scaledDamage = stats.getDamage();
-    if (parentProjectile.getSpellRarity() != null && parentProjectile.getSpellLevel() > 0) {
-      scaledDamage =
-          LevelScaling.scaleCard(
-              scaledDamage, parentProjectile.getSpellRarity(), parentProjectile.getSpellLevel());
+    if (parentProjectile.getSpellLevel() > 0) {
+      scaledDamage = LevelScaling.scaleCard(scaledDamage, parentProjectile.getSpellLevel());
     }
 
     // 15 degrees between each shrapnel piece (5 pieces = 60-degree cone)

@@ -4,7 +4,6 @@ import java.util.List;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.CombatAbilityBridge;
 import org.crforge.core.engine.GameState;
@@ -29,8 +28,7 @@ public class AreaEffectSystem {
   /** Callback for spawning units (wired to SpawnerSystem::spawnUnit). */
   @FunctionalInterface
   public interface UnitSpawner {
-    void spawnUnit(
-        float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime);
+    void spawnUnit(float x, float y, Team team, TroopStats stats, int level, float deployTime);
   }
 
   private final GameState gameState;

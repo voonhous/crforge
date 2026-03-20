@@ -35,9 +35,8 @@ class BuildingFactory {
       return;
     }
 
-    int scaledBuildingHp = LevelScaling.scaleCard(unitStats.getHealth(), card.getRarity(), level);
-    int scaledBuildingDamage =
-        LevelScaling.scaleCard(unitStats.getDamage(), card.getRarity(), level);
+    int scaledBuildingHp = LevelScaling.scaleCard(unitStats.getHealth(), level);
+    int scaledBuildingDamage = LevelScaling.scaleCard(unitStats.getDamage(), level);
 
     Combat combat = null;
     if (unitStats.getDamage() > 0) {
@@ -54,12 +53,10 @@ class BuildingFactory {
     if (hasLiveSpawn || hasUnitLevelDeath) {
       LiveSpawnConfig ls = hasLiveSpawn ? unitStats.getLiveSpawn() : null;
       TroopStats spawnStats = card.getSpawnTemplate();
-      int scaledDeathDmg =
-          LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
+      int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), level);
 
       ProjectileStats deathProjStats =
-          EntityScaling.scaleDeathProjectile(
-              unitStats.getDeathSpawnProjectile(), card.getRarity(), level);
+          EntityScaling.scaleDeathProjectile(unitStats.getDeathSpawnProjectile(), level);
 
       SpawnerComponent.SpawnerComponentBuilder spawnerBuilder =
           SpawnerComponent.builder()
@@ -69,7 +66,6 @@ class BuildingFactory {
               .deathAreaEffect(unitStats.getDeathAreaEffect())
               .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
               .deathSpawnProjectile(deathProjStats)
-              .rarity(card.getRarity())
               .level(level);
 
       if (ls != null) {
@@ -104,9 +100,7 @@ class BuildingFactory {
     if (abilityComponent != null
         && abilityComponent.getData() instanceof VariableDamageAbility varDmg) {
       abilityComponent.setScaledVariableDamageStageDamages(
-          varDmg.stages().stream()
-              .map(s -> LevelScaling.scaleCard(s.damage(), card.getRarity(), level))
-              .toList());
+          varDmg.stages().stream().map(s -> LevelScaling.scaleCard(s.damage(), level)).toList());
     }
 
     // Create ElixirCollectorComponent if this building generates elixir
@@ -161,9 +155,7 @@ class BuildingFactory {
     }
 
     // Create the dig troop (single unit, no formation)
-    Troop digTroop =
-        troopFactory.createTroop(
-            team, digStats, x, y, null, level, card.getRarity(), 0, 1, 0f, null);
+    Troop digTroop = troopFactory.createTroop(team, digStats, x, y, null, level, 0, 1, 0f, null);
 
     // Set up tunnel travel from king tower to target
     troopFactory.initializeTunnel(digTroop, x, y);

@@ -15,7 +15,6 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
@@ -83,7 +82,6 @@ class TroopFactory {
                 .formationRadius(ls.spawnRadius())
                 .spawnOnAggro(ls.spawnOnAggro())
                 .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0f)
-                .rarity(card.getRarity())
                 .level(level)
                 .build();
       }
@@ -92,11 +90,9 @@ class TroopFactory {
     // Unit-level death mechanics (e.g. Golem death damage + death spawn, RageBarbarianBottle death
     // area effect)
     if (EntityScaling.hasDeathMechanics(unitStats)) {
-      int scaledDeathDmg =
-          LevelScaling.scaleCard(unitStats.getDeathDamage(), card.getRarity(), level);
+      int scaledDeathDmg = LevelScaling.scaleCard(unitStats.getDeathDamage(), level);
       ProjectileStats deathProjStats =
-          EntityScaling.scaleDeathProjectile(
-              unitStats.getDeathSpawnProjectile(), card.getRarity(), level);
+          EntityScaling.scaleDeathProjectile(unitStats.getDeathSpawnProjectile(), level);
 
       if (spawner == null) {
         // Create a death-only SpawnerComponent
@@ -108,7 +104,6 @@ class TroopFactory {
                 .deathAreaEffect(unitStats.getDeathAreaEffect())
                 .manaOnDeathForOpponent(unitStats.getManaOnDeathForOpponent())
                 .deathSpawnProjectile(deathProjStats)
-                .rarity(card.getRarity())
                 .level(level)
                 .build();
       } else {
@@ -124,17 +119,7 @@ class TroopFactory {
 
     Troop troop =
         createTroop(
-            team,
-            unitStats,
-            x,
-            y,
-            spawner,
-            level,
-            card.getRarity(),
-            idx,
-            totalUnits,
-            summonRadius,
-            formationOffsets);
+            team, unitStats, x, y, spawner, level, idx, totalUnits, summonRadius, formationOffsets);
 
     // Tunnel ability: override spawn position to king tower and set up underground travel
     if (troop.getAbility() != null && troop.getAbility().getData() instanceof TunnelAbility) {
@@ -155,14 +140,12 @@ class TroopFactory {
    * (death area effect, death spawns, death damage, etc.). Mirrors the bomb entity pattern in
    * {@link org.crforge.core.entity.SpawnerSystem#doSpawn}.
    */
-  Troop spawnBombSummon(Team team, TroopStats stats, float x, float y, int level, Rarity rarity) {
+  Troop spawnBombSummon(Team team, TroopStats stats, float x, float y, int level) {
     int scaledDeathDamage =
-        stats.getDeathDamage() > 0
-            ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level)
-            : 0;
+        stats.getDeathDamage() > 0 ? LevelScaling.scaleCard(stats.getDeathDamage(), level) : 0;
 
     ProjectileStats deathProjStats =
-        EntityScaling.scaleDeathProjectile(stats.getDeathSpawnProjectile(), rarity, level);
+        EntityScaling.scaleDeathProjectile(stats.getDeathSpawnProjectile(), level);
 
     SpawnerComponent spawner =
         SpawnerComponent.builder()
@@ -173,7 +156,6 @@ class TroopFactory {
             .deathAreaEffect(stats.getDeathAreaEffect())
             .manaOnDeathForOpponent(stats.getManaOnDeathForOpponent())
             .deathSpawnProjectile(deathProjStats)
-            .rarity(rarity)
             .level(level)
             .selfDestruct(true)
             .build();
@@ -220,14 +202,13 @@ class TroopFactory {
       float offsetX = offset.getX();
       float offsetY = offset.getY();
 
-      int scaledHp = LevelScaling.scaleCard(spawnStats.getHealth(), card.getRarity(), level);
-      int scaledDamage = LevelScaling.scaleCard(spawnStats.getDamage(), card.getRarity(), level);
+      int scaledHp = LevelScaling.scaleCard(spawnStats.getHealth(), level);
+      int scaledDamage = LevelScaling.scaleCard(spawnStats.getDamage(), level);
 
       float initialLoad = spawnStats.isNoPreload() ? 0f : spawnStats.getLoadTime();
 
       List<AttackSequenceHit> scaledAttachSequence =
-          EntityScaling.scaleAttackSequence(
-              spawnStats.getAttackSequence(), card.getRarity(), level);
+          EntityScaling.scaleAttackSequence(spawnStats.getAttackSequence(), level);
 
       Combat combat =
           EntityScaling.buildCombatComponent(spawnStats, scaledDamage, initialLoad)
@@ -240,7 +221,7 @@ class TroopFactory {
 
       int scaledShield =
           spawnStats.getShieldHitpoints() > 0
-              ? LevelScaling.scaleCard(spawnStats.getShieldHitpoints(), card.getRarity(), level)
+              ? LevelScaling.scaleCard(spawnStats.getShieldHitpoints(), level)
               : 0;
 
       AttachedComponent attachedComponent = new AttachedComponent(parent, offsetX, offsetY);
@@ -286,7 +267,6 @@ class TroopFactory {
       float baseY,
       SpawnerComponent spawner,
       int level,
-      Rarity rarity,
       int index,
       int total,
       float summonRadius,
@@ -321,11 +301,11 @@ class TroopFactory {
     // Exception: noPreload units (e.g. Sparky) start with 0 charge.
     float initialLoad = stats.isNoPreload() ? 0f : stats.getLoadTime();
 
-    int scaledHp = LevelScaling.scaleCard(stats.getHealth(), rarity, level);
-    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
+    int scaledHp = LevelScaling.scaleCard(stats.getHealth(), level);
+    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), level);
 
     List<AttackSequenceHit> scaledSequence =
-        EntityScaling.scaleAttackSequence(stats.getAttackSequence(), rarity, level);
+        EntityScaling.scaleAttackSequence(stats.getAttackSequence(), level);
 
     Combat combat =
         EntityScaling.buildCombatComponent(stats, scaledDamage, initialLoad)
@@ -339,7 +319,7 @@ class TroopFactory {
     // Scale shield by level
     int scaledShield =
         stats.getShieldHitpoints() > 0
-            ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level)
+            ? LevelScaling.scaleCard(stats.getShieldHitpoints(), level)
             : 0;
 
     // Create ability component if unit has one
@@ -349,43 +329,38 @@ class TroopFactory {
     // Scale BUFF_ALLY bonus damage by card level
     if (abilityComponent != null
         && abilityComponent.getData() instanceof BuffAllyAbility buffAlly) {
-      abilityComponent.setScaledAddedDamage(
-          LevelScaling.scaleCard(buffAlly.addedDamage(), rarity, level));
+      abilityComponent.setScaledAddedDamage(LevelScaling.scaleCard(buffAlly.addedDamage(), level));
       abilityComponent.setScaledAddedCrownTowerDamage(
-          LevelScaling.scaleCard(buffAlly.addedCrownTowerDamage(), rarity, level));
+          LevelScaling.scaleCard(buffAlly.addedCrownTowerDamage(), level));
     }
 
     // Scale RANGED_ATTACK projectile damage by card level
     if (abilityComponent != null && abilityComponent.getData() instanceof RangedAttackAbility ra) {
       int baseDmg = ra.projectile() != null ? ra.projectile().getDamage() : 0;
-      abilityComponent.setScaledRangedDamage(LevelScaling.scaleCard(baseDmg, rarity, level));
+      abilityComponent.setScaledRangedDamage(LevelScaling.scaleCard(baseDmg, level));
     }
 
     // Scale DASH damage by card level
     if (abilityComponent != null && abilityComponent.getData() instanceof DashAbility dash) {
-      abilityComponent.setScaledDashDamage(
-          LevelScaling.scaleCard(dash.dashDamage(), rarity, level));
+      abilityComponent.setScaledDashDamage(LevelScaling.scaleCard(dash.dashDamage(), level));
     }
 
     // Scale CHARGE damage by card level
     if (abilityComponent != null && abilityComponent.getData() instanceof ChargeAbility charge) {
-      abilityComponent.setScaledChargeDamage(
-          LevelScaling.scaleCard(charge.chargeDamage(), rarity, level));
+      abilityComponent.setScaledChargeDamage(LevelScaling.scaleCard(charge.chargeDamage(), level));
     }
 
     // Scale REFLECT damage by card level
     if (abilityComponent != null && abilityComponent.getData() instanceof ReflectAbility reflect) {
       abilityComponent.setScaledReflectDamage(
-          LevelScaling.scaleCard(reflect.reflectDamage(), rarity, level));
+          LevelScaling.scaleCard(reflect.reflectDamage(), level));
     }
 
     // Scale VARIABLE_DAMAGE stage damages by card level
     if (abilityComponent != null
         && abilityComponent.getData() instanceof VariableDamageAbility varDmg) {
       abilityComponent.setScaledVariableDamageStageDamages(
-          varDmg.stages().stream()
-              .map(s -> LevelScaling.scaleCard(s.damage(), rarity, level))
-              .toList());
+          varDmg.stages().stream().map(s -> LevelScaling.scaleCard(s.damage(), level)).toList());
     }
 
     Movement movement =

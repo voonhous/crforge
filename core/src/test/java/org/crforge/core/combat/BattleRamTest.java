@@ -7,7 +7,6 @@ import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.ChargeAbility;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.DeathSpawnEntry;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
@@ -191,8 +190,7 @@ class BattleRamTest {
     List<DeathSpawnEntry> deathSpawns =
         List.of(new DeathSpawnEntry(BARBARIAN_STATS, 2, 0.6f, 0f, 0f, null, null));
 
-    SpawnerComponent spawner =
-        SpawnerComponent.builder().deathSpawns(deathSpawns).rarity(Rarity.RARE).level(1).build();
+    SpawnerComponent spawner = SpawnerComponent.builder().deathSpawns(deathSpawns).level(1).build();
 
     Combat combat =
         Combat.builder()

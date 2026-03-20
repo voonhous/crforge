@@ -23,8 +23,7 @@ class AreaEffectFactory {
 
   void deployAreaEffect(
       Team team, AreaEffectStats stats, float x, float y, Rarity rarity, int level) {
-    int scaledDamage =
-        stats.getDamage() > 0 ? LevelScaling.scaleCard(stats.getDamage(), rarity, level) : 0;
+    int scaledDamage = stats.getDamage() > 0 ? LevelScaling.scaleCard(stats.getDamage(), level) : 0;
     int resolvedCtdp = stats.getCrownTowerDamagePercent();
     int buildingDmgPct = 0;
 
@@ -39,7 +38,7 @@ class AreaEffectFactory {
       if (scaledDamage == 0 && buffDef.getDamagePerSecond() > 0) {
         float hitSpeed = stats.getHitSpeed() > 0 ? stats.getHitSpeed() : 1.0f;
         int baseDamage = Math.round(buffDef.getDamagePerSecond() * hitSpeed);
-        scaledDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
+        scaledDamage = LevelScaling.scaleCard(baseDamage, level);
       }
 
       // Crown tower damage percent
@@ -62,11 +61,10 @@ class AreaEffectFactory {
         if (bd != null && bd.getDamagePerSecond() > 0) {
           float hitFrequency = bd.getHitFrequency() > 0 ? bd.getHitFrequency() : 1.0f;
           scaledDotDamage =
-              LevelScaling.scaleCard(
-                  Math.round(bd.getDamagePerSecond() * hitFrequency), rarity, level);
+              LevelScaling.scaleCard(Math.round(bd.getDamagePerSecond() * hitFrequency), level);
           if (bd.getCrownTowerDamagePerHit() > 0) {
             scaledCrownTowerDotDamage =
-                LevelScaling.scaleCard(bd.getCrownTowerDamagePerHit(), rarity, level);
+                LevelScaling.scaleCard(bd.getCrownTowerDamagePerHit(), level);
           }
           break;
         }
@@ -78,8 +76,7 @@ class AreaEffectFactory {
       for (BuffApplication buffApp : stats.getBuffApplications()) {
         BuffDefinition bd = BuffRegistry.get(buffApp.buffName());
         if (bd != null && bd.getCrownTowerDamagePerHit() > 0) {
-          scaledCrownTowerDotDamage =
-              LevelScaling.scaleCard(bd.getCrownTowerDamagePerHit(), rarity, level);
+          scaledCrownTowerDotDamage = LevelScaling.scaleCard(bd.getCrownTowerDamagePerHit(), level);
           break;
         }
       }
@@ -100,14 +97,11 @@ class AreaEffectFactory {
               .map(
                   tier -> {
                     // Scale raw DPS as Common L1 base, then convert to per-hit
-                    int scaledDPS =
-                        LevelScaling.scaleCard(
-                            tier.damagePerSecond(), Rarity.COMMON, effectiveLevel);
+                    int scaledDPS = LevelScaling.scaleCard(tier.damagePerSecond(), effectiveLevel);
                     int scaledDamagePerHit = (int) (scaledDPS * tier.hitFrequency());
                     int scaledCtPerHit =
                         tier.crownTowerDamagePerHit() > 0
-                            ? LevelScaling.scaleCard(
-                                tier.crownTowerDamagePerHit(), Rarity.COMMON, effectiveLevel)
+                            ? LevelScaling.scaleCard(tier.crownTowerDamagePerHit(), effectiveLevel)
                             : 0;
                     return new ScaledDamageTier(
                         scaledDamagePerHit, scaledCtPerHit, tier.maxTargets());
@@ -129,7 +123,6 @@ class AreaEffectFactory {
             .scaledDamageTiers(scaledTiers)
             .totalLaserScans(totalLaserScans)
             .remainingLifetime(stats.getLifeDuration())
-            .rarity(rarity)
             .level(level)
             .build();
 

@@ -163,7 +163,7 @@ class LightningTest {
     AreaEffectStats stats = lightning.getAreaEffect();
 
     // Level 11 scaling: 10 upgrade steps from level 1
-    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), Rarity.EPIC, 11);
+    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), 11);
     assertThat(scaledDamage).isGreaterThan(stats.getDamage());
 
     // Verify via LevelScaling's multiplier formula: m starts at 100, floor(m * 1.10) per step

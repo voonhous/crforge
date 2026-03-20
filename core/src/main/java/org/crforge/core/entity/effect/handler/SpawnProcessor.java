@@ -43,7 +43,6 @@ public class SpawnProcessor {
           y,
           effect.getTeam(),
           stats.getSpawnCharacter(),
-          effect.getRarity(),
           effect.getLevel(),
           stats.getSpawnDeployTime());
       effect.setSpawnTriggered(true);
@@ -87,7 +86,6 @@ public class SpawnProcessor {
           spawnY,
           effect.getTeam(),
           spawnChar,
-          effect.getRarity(),
           effect.getLevel(),
           stats.getSpawnDeployTime());
 

@@ -3,7 +3,6 @@ package org.crforge.core.entity;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
@@ -33,7 +32,6 @@ public class SpawnFactory {
       Vector2 offset,
       Team team,
       TroopStats stats,
-      Rarity rarity,
       int level,
       float deathSpawnDeployTime,
       boolean asClone) {
@@ -44,11 +42,11 @@ public class SpawnFactory {
     boolean isBomb = stats.getHealth() <= 0;
     int baseHp = isBomb ? 1 : stats.getHealth();
 
-    int scaledHp = LevelScaling.scaleCard(baseHp, rarity, level);
-    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), rarity, level);
+    int scaledHp = LevelScaling.scaleCard(baseHp, level);
+    int scaledDamage = LevelScaling.scaleCard(stats.getDamage(), level);
     int scaledShield =
         stats.getShieldHitpoints() > 0
-            ? LevelScaling.scaleCard(stats.getShieldHitpoints(), rarity, level)
+            ? LevelScaling.scaleCard(stats.getShieldHitpoints(), level)
             : 0;
 
     // Clone offspring: 1 HP, shield capped to 1
@@ -98,9 +96,7 @@ public class SpawnFactory {
     SpawnerComponent spawner = null;
     if (hasDeathMechanics || isBomb || hasLiveSpawn) {
       int scaledDeathDamage =
-          stats.getDeathDamage() > 0
-              ? LevelScaling.scaleCard(stats.getDeathDamage(), rarity, level)
-              : 0;
+          stats.getDeathDamage() > 0 ? LevelScaling.scaleCard(stats.getDeathDamage(), level) : 0;
 
       // Scale death spawn projectile damage
       ProjectileStats deathProjStats = null;
@@ -109,8 +105,7 @@ public class SpawnFactory {
             stats
                 .getDeathSpawnProjectile()
                 .withDamage(
-                    LevelScaling.scaleCard(
-                        stats.getDeathSpawnProjectile().getDamage(), rarity, level));
+                    LevelScaling.scaleCard(stats.getDeathSpawnProjectile().getDamage(), level));
         // Preserve the resolved spawn character reference
         if (stats.getDeathSpawnProjectile().getSpawnCharacter() != null) {
           deathProjStats =
@@ -128,7 +123,6 @@ public class SpawnFactory {
               .deathAreaEffect(stats.getDeathAreaEffect())
               .manaOnDeathForOpponent(stats.getManaOnDeathForOpponent())
               .deathSpawnProjectile(deathProjStats)
-              .rarity(rarity)
               .level(level)
               .selfDestruct(isBomb);
 

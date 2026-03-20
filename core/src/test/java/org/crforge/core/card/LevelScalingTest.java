@@ -1,6 +1,7 @@
 package org.crforge.core.card;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,75 +17,46 @@ class LevelScalingTest {
 
     @Test
     void levelOneReturnsBaseStatUnchanged() {
-      assertThat(LevelScaling.scaleCard(690, Rarity.COMMON, 1)).isEqualTo(690);
-      assertThat(LevelScaling.scaleCard(100, Rarity.RARE, 1)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(100, Rarity.EPIC, 1)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(100, Rarity.LEGENDARY, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(690, 1)).isEqualTo(690);
+      assertThat(LevelScaling.scaleCard(100, 1)).isEqualTo(100);
     }
 
     @Test
-    void commonMultipliersMatchTable() {
-      // From LEVEL_SCALING.md Common column: multipliers 1.00 → 1.10 → 1.21 → 1.33 → ...
+    void multipliersMatchTable() {
+      // From LEVEL_SCALING.md: multipliers 1.00 -> 1.10 -> 1.21 -> 1.33 -> ...
       int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 1)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 2)).isEqualTo(110);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 3)).isEqualTo(121);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 4)).isEqualTo(133);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 5)).isEqualTo(146);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 6)).isEqualTo(160);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 7)).isEqualTo(176);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 8)).isEqualTo(193);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 9)).isEqualTo(212);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 10)).isEqualTo(233);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 11)).isEqualTo(256);
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, 14)).isEqualTo(339);
-    }
-
-    @Test
-    void rareMultipliersMatchTable() {
-      // All rarities now scale uniformly from level 1
-      int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 1)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 3)).isEqualTo(121);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 11)).isEqualTo(256);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, 14)).isEqualTo(339);
-    }
-
-    @Test
-    void epicMultipliersMatchTable() {
-      int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 1)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 6)).isEqualTo(160);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 11)).isEqualTo(256);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, 14)).isEqualTo(339);
-    }
-
-    @Test
-    void legendaryMultipliersMatchTable() {
-      int base = 100;
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 1)).isEqualTo(100);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 9)).isEqualTo(212);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 11)).isEqualTo(256);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, 14)).isEqualTo(339);
-    }
-
-    @Test
-    void allRaritiesProduceSameResultAtSameLevel() {
-      // Post-unification: rarity no longer affects scaling
-      int base = 100;
-      int level = 11;
-      int expected = 256;
-      assertThat(LevelScaling.scaleCard(base, Rarity.COMMON, level)).isEqualTo(expected);
-      assertThat(LevelScaling.scaleCard(base, Rarity.RARE, level)).isEqualTo(expected);
-      assertThat(LevelScaling.scaleCard(base, Rarity.EPIC, level)).isEqualTo(expected);
-      assertThat(LevelScaling.scaleCard(base, Rarity.LEGENDARY, level)).isEqualTo(expected);
-      assertThat(LevelScaling.scaleCard(base, Rarity.CHAMPION, level)).isEqualTo(expected);
+      assertThat(LevelScaling.scaleCard(base, 1)).isEqualTo(100);
+      assertThat(LevelScaling.scaleCard(base, 2)).isEqualTo(110);
+      assertThat(LevelScaling.scaleCard(base, 3)).isEqualTo(121);
+      assertThat(LevelScaling.scaleCard(base, 4)).isEqualTo(133);
+      assertThat(LevelScaling.scaleCard(base, 5)).isEqualTo(146);
+      assertThat(LevelScaling.scaleCard(base, 6)).isEqualTo(160);
+      assertThat(LevelScaling.scaleCard(base, 7)).isEqualTo(176);
+      assertThat(LevelScaling.scaleCard(base, 8)).isEqualTo(193);
+      assertThat(LevelScaling.scaleCard(base, 9)).isEqualTo(212);
+      assertThat(LevelScaling.scaleCard(base, 10)).isEqualTo(233);
+      assertThat(LevelScaling.scaleCard(base, 11)).isEqualTo(256);
+      assertThat(LevelScaling.scaleCard(base, 14)).isEqualTo(339);
     }
 
     @Test
     void levelAboveMaxIsClamped() {
-      assertThat(LevelScaling.scaleCard(100, Rarity.COMMON, 99))
-          .isEqualTo(LevelScaling.scaleCard(100, Rarity.COMMON, LevelScaling.MAX_CARD_LEVEL));
+      assertThat(LevelScaling.scaleCard(100, 99))
+          .isEqualTo(LevelScaling.scaleCard(100, LevelScaling.MAX_CARD_LEVEL));
+    }
+
+    @Test
+    void levelZero_throwsException() {
+      assertThatThrownBy(() -> LevelScaling.scaleCard(100, 0))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Card level must be >= 1");
+    }
+
+    @Test
+    void negativeLevel_throwsException() {
+      assertThatThrownBy(() -> LevelScaling.scaleCard(100, -5))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Card level must be >= 1");
     }
   }
 

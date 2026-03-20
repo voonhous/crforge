@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.LevelScaling;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
@@ -104,7 +103,7 @@ class FirecrackerScalingTest {
         // Firecracker's base shrapnel damage at level 1
         int baseDamage =
             firecracker.getUnitStats().getProjectile().getSpawnProjectile().getDamage();
-        int expectedScaled = LevelScaling.scaleCard(baseDamage, Rarity.COMMON, TEST_LEVEL);
+        int expectedScaled = LevelScaling.scaleCard(baseDamage, TEST_LEVEL);
 
         // Each shrapnel should deal scaled damage, not base damage
         for (Projectile shrapnel : shrapnelList) {
@@ -169,9 +168,6 @@ class FirecrackerScalingTest {
           assertThat(firework.getSpellLevel())
               .as("Attack projectile with spawnProjectile should carry attacker level")
               .isEqualTo(TEST_LEVEL);
-          assertThat(firework.getSpellRarity())
-              .as("Attack projectile with spawnProjectile should carry rarity")
-              .isNotNull();
         }
         return; // test passed
       }

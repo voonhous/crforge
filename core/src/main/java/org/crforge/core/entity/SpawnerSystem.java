@@ -1,6 +1,5 @@
 package org.crforge.core.entity;
 
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
@@ -28,9 +27,9 @@ public class SpawnerSystem {
    * PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns Goblins).
    */
   public void spawnUnit(
-      float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime) {
+      float x, float y, Team team, TroopStats stats, int level, float deployTime) {
     spawnFactory.doSpawn(
-        new Position(x, y), new Vector2(0, 0), team, stats, rarity, level, deployTime, false);
+        new Position(x, y), new Vector2(0, 0), team, stats, level, deployTime, false);
   }
 
   public void update(float deltaTime) {
@@ -86,7 +85,6 @@ public class SpawnerSystem {
             offset,
             entity.getTeam(),
             spawner.getSpawnStats(),
-            spawner.getRarity(),
             spawner.getLevel(),
             0f,
             parentIsClone);

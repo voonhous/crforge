@@ -6,7 +6,6 @@ import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.LevelScaling;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.engine.EntityTimerSystem;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -157,7 +156,7 @@ class BerserkerTest {
   @Test
   void attackSequence_withLevelScaling() {
     // Simulate level scaling: base 40 damage at level 1, scaled to level 11 Common
-    int scaledDamage = LevelScaling.scaleCard(40, Rarity.COMMON, 11);
+    int scaledDamage = LevelScaling.scaleCard(40, 11);
 
     List<AttackSequenceHit> sequence =
         List.of(

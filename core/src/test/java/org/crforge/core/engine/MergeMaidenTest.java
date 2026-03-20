@@ -282,7 +282,7 @@ class MergeMaidenTest {
     assertThat(troops).hasSize(1);
 
     // Should scale using Legendary rarity at level 11
-    int expectedHp = LevelScaling.scaleCard(466, Rarity.LEGENDARY, level);
+    int expectedHp = LevelScaling.scaleCard(466, level);
     assertThat(troops.get(0).getHealth().getMax()).isEqualTo(expectedHp);
   }
 

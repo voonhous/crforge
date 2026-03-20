@@ -160,7 +160,6 @@ public class CloneApplicator {
               .deathAreaEffect(origSpawner.getDeathAreaEffect())
               .deathSpawnProjectile(origSpawner.getDeathSpawnProjectile())
               .manaOnDeathForOpponent(origSpawner.getManaOnDeathForOpponent())
-              .rarity(origSpawner.getRarity())
               .level(origSpawner.getLevel())
               .selfDestruct(origSpawner.isSelfDestruct());
 

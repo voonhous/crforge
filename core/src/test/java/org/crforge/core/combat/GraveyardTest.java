@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.LevelScaling;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -211,7 +210,7 @@ class GraveyardTest {
     engine.tick(SYNC_DELAY_TICKS + 100);
 
     Troop skeleton = findFirstSkeleton();
-    int expectedHp = LevelScaling.scaleCard(32, Rarity.LEGENDARY, 11);
+    int expectedHp = LevelScaling.scaleCard(32, 11);
     assertThat(skeleton.getHealth().getMax())
         .as("Skeleton HP should be level-scaled (%d)", expectedHp)
         .isEqualTo(expectedHp);

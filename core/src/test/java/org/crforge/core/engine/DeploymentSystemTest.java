@@ -356,7 +356,7 @@ class DeploymentSystemTest {
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
 
     // Damage should be scaled, not raw
-    int expectedDamage = LevelScaling.scaleCard(baseDamage, rarity, level);
+    int expectedDamage = LevelScaling.scaleCard(baseDamage, level);
     assertThat(expectedDamage).isGreaterThan(baseDamage); // Sanity check scaling did something
     assertThat(enemy.getHealth().getCurrent()).isEqualTo(10000 - expectedDamage);
   }

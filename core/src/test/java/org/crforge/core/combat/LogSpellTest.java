@@ -120,7 +120,6 @@ class LogSpellTest {
         new Projectile(
             Team.BLUE, 9f, 14f, 9f, 14.5f, 0, 0f, LOG_PROJECTILE_SPEED, Collections.emptyList());
     stage1.setSpawnProjectile(rollingStats);
-    stage1.setSpellRarity(Rarity.LEGENDARY);
     stage1.setSpellLevel(1);
 
     gameState.spawnProjectile(stage1);

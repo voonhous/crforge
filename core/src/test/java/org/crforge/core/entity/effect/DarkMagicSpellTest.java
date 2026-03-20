@@ -66,16 +66,16 @@ class DarkMagicSpellTest {
   // Total game ticks for all 3 scan periods (3.0s * 30 FPS = 90)
   private static final int TOTAL_ACTIVE_GAME_TICKS = 90;
 
-  // Tier 1 per-hit damage: scaleCard(1330, COMMON, 6) = 2128, * 0.1 = 212
+  // Tier 1 per-hit damage: scaleCard(1330, 6) = 2128, * 0.1 = 212
   private static final int TIER1_DAMAGE_PER_HIT = 212;
 
-  // Tier 2 per-hit: scaleCard(625, COMMON, 6) = 1000, * 0.1 = 100
+  // Tier 2 per-hit: scaleCard(625, 6) = 1000, * 0.1 = 100
   private static final int TIER2_DAMAGE_PER_HIT = 100;
 
-  // Tier 3 per-hit: scaleCard(297, COMMON, 6) = 475, * 0.1 = 47
+  // Tier 3 per-hit: scaleCard(297, 6) = 475, * 0.1 = 47
   private static final int TIER3_DAMAGE_PER_HIT = 47;
 
-  // Crown tower per-hit (tier 1): scaleCard(19, COMMON, 6) = 30
+  // Crown tower per-hit (tier 1): scaleCard(19, 6) = 30
   private static final int TIER1_CT_DAMAGE_PER_HIT = 30;
 
   @BeforeEach

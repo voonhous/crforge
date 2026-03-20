@@ -4,7 +4,6 @@ import java.util.List;
 import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.AttackStateMachine;
 import org.crforge.core.component.Combat;
@@ -45,12 +44,12 @@ class EntityScaling {
   }
 
   /** Scales the damage of a death spawn projectile by card level and preserves spawn character. */
-  static ProjectileStats scaleDeathProjectile(ProjectileStats deathProj, Rarity rarity, int level) {
+  static ProjectileStats scaleDeathProjectile(ProjectileStats deathProj, int level) {
     if (deathProj == null) {
       return null;
     }
     ProjectileStats scaled =
-        deathProj.withDamage(LevelScaling.scaleCard(deathProj.getDamage(), rarity, level));
+        deathProj.withDamage(LevelScaling.scaleCard(deathProj.getDamage(), level));
     if (deathProj.getSpawnCharacter() != null) {
       scaled = scaled.withSpawnCharacter(deathProj.getSpawnCharacter());
     }
@@ -67,10 +66,9 @@ class EntityScaling {
   }
 
   /** Scales all hits in an attack sequence by card level. */
-  static List<AttackSequenceHit> scaleAttackSequence(
-      List<AttackSequenceHit> sequence, Rarity rarity, int level) {
+  static List<AttackSequenceHit> scaleAttackSequence(List<AttackSequenceHit> sequence, int level) {
     return sequence.stream()
-        .map(hit -> new AttackSequenceHit(LevelScaling.scaleCard(hit.damage(), rarity, level)))
+        .map(hit -> new AttackSequenceHit(LevelScaling.scaleCard(hit.damage(), level)))
         .toList();
   }
 

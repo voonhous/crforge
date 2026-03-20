@@ -1,6 +1,5 @@
 package org.crforge.core.combat;
 
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.player.Team;
 
@@ -11,6 +10,5 @@ import org.crforge.core.player.Team;
  */
 @FunctionalInterface
 public interface UnitSpawner {
-  void spawnUnit(
-      float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime);
+  void spawnUnit(float x, float y, Team team, TroopStats stats, int level, float deployTime);
 }

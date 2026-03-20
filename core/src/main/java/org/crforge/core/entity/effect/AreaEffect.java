@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.crforge.core.card.AreaEffectStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.ScaledDamageTier;
 import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -120,9 +119,6 @@ public class AreaEffect extends AbstractEntity {
 
   /** Total number of laser scans across the effect's lifetime. */
   @Builder.Default private final int totalLaserScans = 0;
-
-  /** Rarity of the caster card, used to level-scale the spawned character. */
-  @Builder.Default private final Rarity rarity = Rarity.COMMON;
 
   /** Level of the caster card, used to level-scale the spawned character. */
   @Builder.Default private final int level = 1;

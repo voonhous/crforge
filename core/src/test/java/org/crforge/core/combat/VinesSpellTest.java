@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.LevelScaling;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
 import org.crforge.core.component.Movement;
@@ -432,7 +431,7 @@ class VinesSpellTest {
     // Tick past sync + initial delay + first DOT tick
     engine.tick(SYNC_DELAY_TICKS + INITIAL_DELAY_TICKS + HIT_FREQUENCY_TICKS + 5);
 
-    int expectedDotDamage = LevelScaling.scaleCard(BASE_DOT_DAMAGE_PER_TICK, Rarity.EPIC, 11);
+    int expectedDotDamage = LevelScaling.scaleCard(BASE_DOT_DAMAGE_PER_TICK, 11);
     int damageTaken = 5000 - enemy.getHealth().getCurrent();
 
     assertThat(damageTaken)

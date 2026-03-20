@@ -92,8 +92,7 @@ class AbilityDamageScalingTest {
 
     DashAbility dashData = (DashAbility) ability.getData();
     Card card = Objects.requireNonNull(CardRegistry.get("megaknight"));
-    int expectedScaled =
-        LevelScaling.scaleCard(dashData.dashDamage(), card.getRarity(), TEST_LEVEL);
+    int expectedScaled = LevelScaling.scaleCard(dashData.dashDamage(), TEST_LEVEL);
 
     assertThat(ability.getScaledDashDamage()).isEqualTo(expectedScaled);
     // Scaled should be significantly higher than base level-1 value
@@ -112,8 +111,7 @@ class AbilityDamageScalingTest {
 
     ChargeAbility chargeData = (ChargeAbility) ability.getData();
     Card card = Objects.requireNonNull(CardRegistry.get("prince"));
-    int expectedScaled =
-        LevelScaling.scaleCard(chargeData.chargeDamage(), card.getRarity(), TEST_LEVEL);
+    int expectedScaled = LevelScaling.scaleCard(chargeData.chargeDamage(), TEST_LEVEL);
 
     assertThat(ability.getScaledChargeDamage()).isEqualTo(expectedScaled);
     assertThat(ability.getScaledChargeDamage()).isGreaterThan(chargeData.chargeDamage());
@@ -131,8 +129,7 @@ class AbilityDamageScalingTest {
 
     ReflectAbility reflectData = (ReflectAbility) ability.getData();
     Card card = Objects.requireNonNull(CardRegistry.get("electrogiant"));
-    int expectedScaled =
-        LevelScaling.scaleCard(reflectData.reflectDamage(), card.getRarity(), TEST_LEVEL);
+    int expectedScaled = LevelScaling.scaleCard(reflectData.reflectDamage(), TEST_LEVEL);
 
     assertThat(ability.getScaledReflectDamage()).isEqualTo(expectedScaled);
     assertThat(ability.getScaledReflectDamage()).isGreaterThan(reflectData.reflectDamage());
@@ -157,8 +154,7 @@ class AbilityDamageScalingTest {
 
     Card card = Objects.requireNonNull(CardRegistry.get("infernodragon"));
     for (int i = 0; i < stages.size(); i++) {
-      int expectedScaled =
-          LevelScaling.scaleCard(stages.get(i).damage(), card.getRarity(), TEST_LEVEL);
+      int expectedScaled = LevelScaling.scaleCard(stages.get(i).damage(), TEST_LEVEL);
       assertThat(scaledDamages.get(i)).isEqualTo(expectedScaled);
       assertThat(scaledDamages.get(i)).isGreaterThan(stages.get(i).damage());
     }
@@ -186,8 +182,7 @@ class AbilityDamageScalingTest {
 
     Card card = Objects.requireNonNull(CardRegistry.get("infernotower"));
     for (int i = 0; i < stages.size(); i++) {
-      int expectedScaled =
-          LevelScaling.scaleCard(stages.get(i).damage(), card.getRarity(), TEST_LEVEL);
+      int expectedScaled = LevelScaling.scaleCard(stages.get(i).damage(), TEST_LEVEL);
       assertThat(scaledDamages.get(i)).isEqualTo(expectedScaled);
       assertThat(scaledDamages.get(i)).isGreaterThan(stages.get(i).damage());
     }

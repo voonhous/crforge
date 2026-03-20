@@ -83,8 +83,8 @@ class BarbLogSpellTest {
     AoeDamageService aoeDamageService = new AoeDamageService(gameState, abilityBridge);
     projectileSystem = new ProjectileSystem(gameState, aoeDamageService, abilityBridge);
     projectileSystem.setUnitSpawner(
-        (x, y, team, stats, rarity, level, deployTime) ->
-            spawnedUnits.add(new SpawnRecord(x, y, team, stats, rarity, level, deployTime)));
+        (x, y, team, stats, level, deployTime) ->
+            spawnedUnits.add(new SpawnRecord(x, y, team, stats, level, deployTime)));
     combatSystem = new CombatSystem(gameState, aoeDamageService, projectileSystem, abilityBridge);
     deploymentSystem = new DeploymentSystem(gameState, aoeDamageService);
     Arena arena = new Arena("TestArena");
@@ -107,7 +107,6 @@ class BarbLogSpellTest {
     Projectile stage1 =
         new Projectile(Team.BLUE, 9f, 14f, 9f, 14.5f, 0, 0f, ARC_SPEED, Collections.emptyList());
     stage1.setSpawnProjectile(rollingStats);
-    stage1.setSpellRarity(Rarity.EPIC);
     stage1.setSpellLevel(1);
 
     gameState.spawnProjectile(stage1);
@@ -406,7 +405,6 @@ class BarbLogSpellTest {
     proj.setSpawnCharacterStats(BARBARIAN_STATS);
     proj.setSpawnCharacterCount(1);
     proj.setSpawnDeployTime(1.0f);
-    proj.setSpawnCharacterRarity(Rarity.EPIC);
     proj.setSpawnCharacterLevel(1);
     return proj;
   }
@@ -438,5 +436,5 @@ class BarbLogSpellTest {
 
   /** Record of a unit spawn for test verification. */
   private record SpawnRecord(
-      float x, float y, Team team, TroopStats stats, Rarity rarity, int level, float deployTime) {}
+      float x, float y, Team team, TroopStats stats, int level, float deployTime) {}
 }

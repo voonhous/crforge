@@ -9,7 +9,6 @@ import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
-import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
@@ -62,7 +61,6 @@ public class Projectile {
   // Spawn character on impact (e.g. PhoenixFireball spawns PhoenixEgg)
   @Setter private TroopStats spawnCharacterStats;
   @Setter private int spawnCharacterCount;
-  @Setter private Rarity spawnCharacterRarity;
   @Setter private int spawnCharacterLevel;
   @Setter private float spawnDeployTime;
 
@@ -92,8 +90,7 @@ public class Projectile {
   // Min travel distance before piercing hits register (e.g. Log must roll past deploy point)
   @Setter private float minDistance;
 
-  // Spell level/rarity for sub-projectile damage scaling
-  @Setter private Rarity spellRarity;
+  // Spell level for sub-projectile damage scaling
   @Setter private int spellLevel;
 
   // Volley delay: projectile stays inactive for this many frames before starting to move
