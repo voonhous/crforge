@@ -23,8 +23,8 @@ def main():
                         help="Number of evaluation episodes")
     parser.add_argument("--endpoint", default="tcp://localhost:9876",
                         help="Bridge server endpoint")
-    parser.add_argument("--ticks-per-step", type=int, default=6,
-                        help="Simulation ticks per step")
+    parser.add_argument("--ticks-per-step", type=int, default=15,
+                        help="Simulation ticks per step (default: 15, matches training)")
     parser.add_argument("--seed", type=int, default=None,
                         help="Random seed for reproducibility")
     args = parser.parse_args()
@@ -37,20 +37,20 @@ def main():
         sys.exit(1)
 
     from crforge_gym import CRForgeEnv
-    from crforge_gym.wrappers import ActionMaskedWrapper, FlattenedObsWrapper
+    from crforge_gym.wrappers import ActionMaskedWrapper
 
     # Load model
     print(f"Loading model from {args.model}...")
     model = MaskablePPO.load(args.model)
 
     # Create environment with action masking
+    # binary_obs=True produces flat observations directly (matches training)
     env = ActionMaskedWrapper(
-        FlattenedObsWrapper(
-            CRForgeEnv(
-                endpoint=args.endpoint,
-                ticks_per_step=args.ticks_per_step,
-                opponent="random",
-            )
+        CRForgeEnv(
+            endpoint=args.endpoint,
+            ticks_per_step=args.ticks_per_step,
+            opponent="random",
+            binary_obs=True,
         )
     )
 
@@ -80,10 +80,19 @@ def main():
             episode_reward += reward
             steps += 1
 
-        # Extract final state from the innermost CRForgeEnv's last raw obs
-        last_raw = env._inner_env._last_obs_raw or {}
-        blue_crowns = last_raw.get("bluePlayer", {}).get("crowns", 0)
-        red_crowns = last_raw.get("redPlayer", {}).get("crowns", 0)
+        # Extract final state from the last observation
+        inner = env._inner_env
+        if inner._last_obs_flat is not None:
+            # Binary mode: crowns at indices 5,6; game time at index 1
+            flat = inner._last_obs_flat
+            blue_crowns = int(flat[5])
+            red_crowns = int(flat[6])
+            game_time = float(flat[1])
+        else:
+            last_raw = inner._last_obs_raw or {}
+            blue_crowns = last_raw.get("bluePlayer", {}).get("crowns", 0)
+            red_crowns = last_raw.get("redPlayer", {}).get("crowns", 0)
+            game_time = last_raw.get("gameTimeSeconds", 0)
 
         if blue_crowns > red_crowns:
             outcome = "WIN"
@@ -99,8 +108,6 @@ def main():
         total_steps.append(steps)
         total_crowns_won.append(blue_crowns)
         total_crowns_lost.append(red_crowns)
-
-        game_time = last_raw.get("gameTimeSeconds", 0)
         print(
             f"  Episode {ep + 1:3d}: {outcome:4s} | "
             f"reward={episode_reward:7.3f} | "

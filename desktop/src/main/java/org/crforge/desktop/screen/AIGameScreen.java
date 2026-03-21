@@ -23,6 +23,7 @@ import org.crforge.bridge.dto.ObservationDTO;
 import org.crforge.bridge.dto.RewardDTO;
 import org.crforge.bridge.dto.StepAction;
 import org.crforge.bridge.dto.StepResultDTO;
+import org.crforge.bridge.observation.BinaryObservationEncoder;
 import org.crforge.bridge.observation.ObservationBuilder;
 import org.crforge.bridge.observation.RewardCalculator;
 import org.crforge.core.arena.Arena;
@@ -71,7 +72,7 @@ public class AIGameScreen implements Screen {
 
   /** A pending request from the ZMQ thread waiting for the render thread to process it. */
   private record PendingRequest(
-      String type, JsonNode data, CompletableFuture<String> responseFuture) {}
+      String type, JsonNode data, CompletableFuture<byte[]> responseFuture) {}
 
   private final int port;
   private final ObjectMapper mapper = new ObjectMapper();
@@ -86,6 +87,8 @@ public class AIGameScreen implements Screen {
   private Player bluePlayer;
   private Player redPlayer;
   private RewardCalculator rewardCalculator;
+  private BinaryObservationEncoder binaryEncoder;
+  private boolean binaryObs;
   private InitConfig config;
   private Long seed;
   private long resetCount;
@@ -94,7 +97,7 @@ public class AIGameScreen implements Screen {
   private State state = State.WAITING_FOR_INIT;
   private int ticksRemaining = 0;
   private float accumulator = 0f;
-  private CompletableFuture<String> stepResponseFuture;
+  private CompletableFuture<byte[]> stepResponseFuture;
   private boolean blueActionFailed;
   private boolean redActionFailed;
 
@@ -207,25 +210,24 @@ public class AIGameScreen implements Screen {
                     // Handle close immediately on the ZMQ thread
                     if ("close".equals(type)) {
                       log.info("Client requested close");
-                      String response = buildResponse("close_ok", null);
-                      socket.send(response.getBytes(StandardCharsets.UTF_8), 0);
+                      byte[] response = buildResponseBytes("close_ok", null);
+                      socket.send(response, 0);
                       break;
                     }
 
                     // Hand off to render thread and wait for response
-                    CompletableFuture<String> future = new CompletableFuture<>();
+                    CompletableFuture<byte[]> future = new CompletableFuture<>();
                     PendingRequest request = new PendingRequest(type, msgData, future);
                     pendingRequest.set(request);
 
                     // Block until the render thread produces a response
-                    String response = future.get();
-                    log.debug("Sending: {}", response);
-                    socket.send(response.getBytes(StandardCharsets.UTF_8), 0);
+                    byte[] response = future.get();
+                    socket.send(response, 0);
                   } catch (Exception e) {
                     if (running) {
                       log.error("Error processing message", e);
-                      String errorResponse = buildErrorResponse(e.getMessage());
-                      socket.send(errorResponse.getBytes(StandardCharsets.UTF_8), 0);
+                      byte[] errorResponse = buildErrorBytes(e.getMessage());
+                      socket.send(errorResponse, 0);
                     }
                   }
                 }
@@ -292,12 +294,12 @@ public class AIGameScreen implements Screen {
           log.warn("Unknown message type: {}", request.type());
           request
               .responseFuture()
-              .complete(buildErrorResponse("Unknown message type: " + request.type()));
+              .complete(buildErrorBytes("Unknown message type: " + request.type()));
         }
       }
     } catch (Exception e) {
       log.error("Error dispatching request: {}", request.type(), e);
-      request.responseFuture().complete(buildErrorResponse(e.getMessage()));
+      request.responseFuture().complete(buildErrorBytes(e.getMessage()));
     }
   }
 
@@ -308,44 +310,45 @@ public class AIGameScreen implements Screen {
       // Validate deck card IDs
       for (String id : initConfig.blueDeck()) {
         if (!CardRegistry.exists(id)) {
-          request
-              .responseFuture()
-              .complete(buildErrorResponse("Unknown card ID in blue deck: " + id));
+          request.responseFuture().complete(buildErrorBytes("Unknown card ID in blue deck: " + id));
           return;
         }
       }
       for (String id : initConfig.redDeck()) {
         if (!CardRegistry.exists(id)) {
-          request
-              .responseFuture()
-              .complete(buildErrorResponse("Unknown card ID in red deck: " + id));
+          request.responseFuture().complete(buildErrorBytes("Unknown card ID in red deck: " + id));
           return;
         }
       }
       if (initConfig.blueDeck().size() != 8 || initConfig.redDeck().size() != 8) {
         request
             .responseFuture()
-            .complete(buildErrorResponse("Each deck must contain exactly 8 cards"));
+            .complete(buildErrorBytes("Each deck must contain exactly 8 cards"));
         return;
       }
 
       this.config = initConfig;
       this.seed = initConfig.seed();
       this.resetCount = 0;
+      this.binaryObs = initConfig.isBinaryObs();
+      if (binaryObs) {
+        this.binaryEncoder = new BinaryObservationEncoder();
+      }
 
-      // Respond with available card list
+      // Respond with available card list (always JSON for init)
       Map<String, Object> response = new LinkedHashMap<>();
       response.put("cardIds", CardRegistry.getAllIds());
-      request.responseFuture().complete(buildResponse("init_ok", response));
+      request.responseFuture().complete(buildResponseBytes("init_ok", response));
 
       state = State.WAITING_FOR_COMMAND;
       log.info(
-          "AI session initialized: level={}, ticksPerStep={}",
+          "AI session initialized: level={}, ticksPerStep={}, binaryObs={}",
           config.level(),
-          config.ticksPerStep());
+          config.ticksPerStep(),
+          binaryObs);
     } catch (Exception e) {
       log.error("Error handling init", e);
-      request.responseFuture().complete(buildErrorResponse("Init failed: " + e.getMessage()));
+      request.responseFuture().complete(buildErrorBytes("Init failed: " + e.getMessage()));
     }
   }
 
@@ -395,8 +398,13 @@ public class AIGameScreen implements Screen {
       rewardCalculator.reset(engine.getGameState(), bluePlayer, redPlayer);
 
       // Send observation
-      ObservationDTO observation = ObservationBuilder.build(engine, bluePlayer, redPlayer);
-      request.responseFuture().complete(buildResponse("observation", observation));
+      if (binaryObs) {
+        byte[] obsBytes = binaryEncoder.encodeObservation(engine, bluePlayer, redPlayer);
+        request.responseFuture().complete(obsBytes);
+      } else {
+        ObservationDTO observation = ObservationBuilder.build(engine, bluePlayer, redPlayer);
+        request.responseFuture().complete(buildResponseBytes("observation", observation));
+      }
 
       state = State.WAITING_FOR_COMMAND;
       accumulator = 0f;
@@ -407,7 +415,7 @@ public class AIGameScreen implements Screen {
           seed);
     } catch (Exception e) {
       log.error("Error handling reset", e);
-      request.responseFuture().complete(buildErrorResponse("Reset failed: " + e.getMessage()));
+      request.responseFuture().complete(buildErrorBytes("Reset failed: " + e.getMessage()));
     }
   }
 
@@ -454,47 +462,61 @@ public class AIGameScreen implements Screen {
       state = State.TICKING_STEP;
     } catch (Exception e) {
       log.error("Error handling step", e);
-      request.responseFuture().complete(buildErrorResponse("Step failed: " + e.getMessage()));
+      request.responseFuture().complete(buildErrorBytes("Step failed: " + e.getMessage()));
     }
   }
 
   private void completeStep() {
-    ObservationDTO observation = ObservationBuilder.build(engine, bluePlayer, redPlayer);
-    RewardDTO reward = rewardCalculator.computeReward(engine.getGameState());
-
     boolean terminated = engine.getGameState().isGameOver() || !engine.isRunning();
     boolean truncated = false;
 
-    StepResultDTO result =
-        new StepResultDTO(
-            observation, reward, terminated, truncated, blueActionFailed, redActionFailed);
-
-    stepResponseFuture.complete(buildResponse("step_result", result));
+    if (binaryObs) {
+      RewardDTO reward = rewardCalculator.computeReward(engine.getGameState());
+      byte[] stepBytes =
+          binaryEncoder.encodeStepResult(
+              engine,
+              bluePlayer,
+              redPlayer,
+              reward.blue(),
+              reward.red(),
+              terminated,
+              truncated,
+              blueActionFailed,
+              redActionFailed);
+      stepResponseFuture.complete(stepBytes);
+    } else {
+      ObservationDTO observation = ObservationBuilder.build(engine, bluePlayer, redPlayer);
+      RewardDTO reward = rewardCalculator.computeReward(engine.getGameState());
+      StepResultDTO result =
+          new StepResultDTO(
+              observation, reward, terminated, truncated, blueActionFailed, redActionFailed);
+      stepResponseFuture.complete(buildResponseBytes("step_result", result));
+    }
     stepResponseFuture = null;
     state = State.WAITING_FOR_COMMAND;
   }
 
   // ---- JSON helpers ----
 
-  private String buildResponse(String type, Object payload) {
+  private byte[] buildResponseBytes(String type, Object payload) {
     try {
       ObjectNode response = mapper.createObjectNode();
       response.put("type", type);
       if (payload != null) {
         response.set("data", mapper.valueToTree(payload));
       }
-      return mapper.writeValueAsString(response);
+      return mapper.writeValueAsString(response).getBytes(StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new RuntimeException("Failed to serialize response", e);
     }
   }
 
-  private String buildErrorResponse(String message) {
+  private byte[] buildErrorBytes(String message) {
     try {
       ObjectNode response = mapper.createObjectNode();
       response.put("type", "error");
       response.put("message", message);
-      return mapper.writeValueAsString(response);
+      return mapper.writeValueAsString(response).getBytes(StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new RuntimeException("Failed to serialize error response", e);
     }
