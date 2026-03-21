@@ -232,6 +232,14 @@ public class GameEngine {
     int matchDuration = match.getMatchDurationTicks();
     int overtimeDuration = match.getOvertimeDurationTicks();
 
+    // Double elixir: activates before overtime (e.g. 60s before regular time ends)
+    int doubleOffset = match.getDoubleElixirOffsetTicks();
+    if (doubleOffset > 0
+        && match.getElixirMultiplier() < 2
+        && frame >= matchDuration - doubleOffset) {
+      match.enterDoubleElixir();
+    }
+
     // Regular time ended
     if (frame >= matchDuration && !match.isOvertime()) {
       int blueCrowns = gameState.getCrownCount(Team.BLUE);

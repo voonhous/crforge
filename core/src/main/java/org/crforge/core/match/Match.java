@@ -105,6 +105,14 @@ public abstract class Match {
     applyElixirMultiplier(2);
   }
 
+  /** Called when double elixir activates (before overtime in standard mode). */
+  public void enterDoubleElixir() {
+    if (elixirMultiplier >= 2) {
+      return;
+    }
+    applyElixirMultiplier(2);
+  }
+
   /** Called when match enters triple elixir phase (60s into overtime). */
   public void enterTripleElixir() {
     if (elixirMultiplier >= 3) {
@@ -118,6 +126,14 @@ public abstract class Match {
     for (Player player : getAllPlayers()) {
       player.setElixirMultiplier(multiplier);
     }
+  }
+
+  /**
+   * Returns the offset in ticks before regular time ends at which double elixir activates. Default
+   * is 0 (disabled). Subclasses override for mode-specific timing.
+   */
+  public int getDoubleElixirOffsetTicks() {
+    return 0;
   }
 
   /**
