@@ -326,7 +326,7 @@ class CRForgeEnv(gym.Env):
     - A callable that receives an observation dict and returns an action dict
 
     Args:
-        endpoint: ZMQ endpoint for the bridge server
+        endpoint: ZMQ endpoint for the bridge server (ignored when backend="jpype")
         blue_deck: list of 8 card IDs for the blue player
         red_deck: list of 8 card IDs for the red player
         level: card/tower level (1-15, default 11)
@@ -334,6 +334,7 @@ class CRForgeEnv(gym.Env):
         opponent: opponent policy ("random", "noop", "rule_based", or callable)
         invalid_action_penalty: reward penalty for submitting an action that fails (default -0.01)
         binary_obs: use binary observation protocol (default True, much faster)
+        backend: "zmq" (default) for ZMQ bridge, "jpype" for in-process JVM via JPype
     """
 
     metadata = {"render_modes": []}
@@ -348,6 +349,7 @@ class CRForgeEnv(gym.Env):
         opponent: str | Any = "random",
         invalid_action_penalty: float = INVALID_ACTION_PENALTY,
         binary_obs: bool = True,
+        backend: str = "zmq",
     ):
         super().__init__()
 
@@ -358,11 +360,17 @@ class CRForgeEnv(gym.Env):
         self.ticks_per_step = ticks_per_step
         self.opponent = opponent
         self.invalid_action_penalty = invalid_action_penalty
-        self.binary_obs = binary_obs
+        self.backend = backend
+
+        # JPype backend forces binary observations (no JSON path)
+        if backend == "jpype":
+            self.binary_obs = True
+        else:
+            self.binary_obs = binary_obs
 
         self.action_space = spaces.MultiDiscrete([2, 4, NUM_ZONES])
 
-        if binary_obs:
+        if self.binary_obs:
             # Binary mode: flat observation vector, no wrapper needed
             self.observation_space = spaces.Box(
                 low=-np.inf, high=np.inf, shape=(OBS_SIZE,), dtype=np.float32
@@ -370,7 +378,11 @@ class CRForgeEnv(gym.Env):
         else:
             self.observation_space = _build_observation_space()
 
-        self._client = BridgeClient(endpoint, binary_obs=binary_obs)
+        if backend == "jpype":
+            from crforge_gym.jpype_bridge import InProcessBridge
+            self._client = InProcessBridge()
+        else:
+            self._client = BridgeClient(endpoint, binary_obs=binary_obs)
         self._connected = False
         self._rng = np.random.default_rng()
         # In JSON mode, stores the raw dict observation for opponents/wrappers

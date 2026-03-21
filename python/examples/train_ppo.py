@@ -230,6 +230,8 @@ def main():
                              "When >1, auto-launches Java bridge servers.")
     parser.add_argument("--base-port", type=int, default=9876,
                         help="Base port for auto-launched servers (default: 9876)")
+    parser.add_argument("--jpype", action="store_true",
+                        help="Use in-process JPype backend (no Java server needed)")
     args = parser.parse_args()
 
     # Check dependencies
@@ -250,16 +252,24 @@ def main():
     from crforge_gym.wrappers import ActionMaskedWrapper, EpisodeStatsWrapper, FlattenedObsWrapper
 
     # Validate flags
-    if args.opponent == "self_play" and args.num_envs > 1:
-        print("Error: self-play is not supported with --num-envs > 1.")
+    if args.opponent == "self_play" and args.num_envs > 1 and not args.jpype:
+        print("Error: self-play is not supported with --num-envs > 1 (subprocess mode).")
         print("Self-play requires shared opponent state across envs.")
-        print("Use --num-envs 1 for self-play training.")
+        print("Use --jpype --num-envs N (threaded, single process) or --num-envs 1.")
         sys.exit(1)
 
     # -- Server setup --
 
     server_processes = None
-    if args.num_envs > 1:
+    if args.jpype:
+        # JPype mode: ensure JARs are built, no server processes needed
+        project_root = _find_project_root()
+        if project_root is None:
+            print("Error: Cannot find project root (gradlew not found).")
+            sys.exit(1)
+        _build_bridge_dist(project_root)
+        print("JPype mode: using in-process JVM (no server processes)")
+    elif args.num_envs > 1:
         server_processes = launch_servers(args.base_port, args.num_envs)
     else:
         # Single-env: check manually started server
@@ -393,14 +403,15 @@ def main():
 
     # -- Environment creation --
 
-    def make_env(endpoint: str):
+    def make_env(endpoint: str | None = None, backend: str = "zmq"):
         """Factory that returns a no-arg callable for SubprocVecEnv."""
         def _init():
             env = CRForgeEnv(
-                endpoint=endpoint,
+                endpoint=endpoint or "tcp://localhost:9876",
                 ticks_per_step=args.ticks_per_step,
                 opponent=env_opponent,
                 binary_obs=True,
+                backend=backend,
             )
             env = EpisodeStatsWrapper(env)
             # binary_obs=True already produces flat observations; skip FlattenedObsWrapper
@@ -408,7 +419,16 @@ def main():
             return env
         return _init
 
-    if args.num_envs > 1:
+    if args.jpype:
+        if args.num_envs > 1:
+            from crforge_gym import ThreadedJPypeVecEnv
+            env_fns = [make_env(backend="jpype") for _ in range(args.num_envs)]
+            env = ThreadedJPypeVecEnv(env_fns)
+            eval_endpoint = None
+        else:
+            env = make_env(backend="jpype")()
+            eval_endpoint = None
+    elif args.num_envs > 1:
         env_fns = [
             make_env(f"tcp://localhost:{args.base_port + i}")
             for i in range(args.num_envs)
@@ -461,6 +481,7 @@ def main():
     # -- Training --
 
     print(f"\nStarting training for {args.timesteps} timesteps...")
+    print(f"Backend: {'jpype (in-process JVM)' if args.jpype else 'zmq'}")
     print(f"Parallel envs: {args.num_envs}")
     print(f"Opponent: {args.opponent}")
     if args.opponent == "self_play":
@@ -490,7 +511,10 @@ def main():
     if args.num_envs > 1:
         # Close the vec env and create a single env for evaluation
         env.close()
-        eval_env = make_env(eval_endpoint)()
+        if args.jpype:
+            eval_env = make_env(backend="jpype")()
+        else:
+            eval_env = make_env(eval_endpoint)()
     else:
         eval_env = env
 

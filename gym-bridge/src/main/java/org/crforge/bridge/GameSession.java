@@ -171,6 +171,51 @@ public class GameSession {
         observation, reward, terminated, truncated, blueActionFailed, redActionFailed);
   }
 
+  /**
+   * Lightweight step for in-process (JPype) callers. Skips ObservationBuilder.build() since the
+   * caller reads observations directly via BinaryObservationEncoder.fillAndGetObsBuffer().
+   *
+   * @param blueAction action for the blue player (null = no-op)
+   * @param redAction action for the red player (null = no-op)
+   * @return step result with null observation (caller reads obs separately), reward, and flags
+   */
+  public StepResultDTO stepBinary(StepAction blueAction, StepAction redAction) {
+    // Track elixir before to detect failed actions
+    boolean blueAttempted = blueAction != null && !blueAction.isNoop();
+    boolean redAttempted = redAction != null && !redAction.isNoop();
+    float blueElixirBefore = bluePlayer.getElixir().getCurrent();
+    float redElixirBefore = redPlayer.getElixir().getCurrent();
+
+    // Queue actions if not no-op
+    if (blueAttempted) {
+      PlayerActionDTO action =
+          PlayerActionDTO.play(blueAction.handIndex(), blueAction.x(), blueAction.y());
+      engine.queueAction(bluePlayer, action);
+    }
+    if (redAttempted) {
+      PlayerActionDTO action =
+          PlayerActionDTO.play(redAction.handIndex(), redAction.x(), redAction.y());
+      engine.queueAction(redPlayer, action);
+    }
+
+    // Detect action failure: if elixir didn't decrease, the action was rejected
+    boolean blueActionFailed =
+        blueAttempted && bluePlayer.getElixir().getCurrent() >= blueElixirBefore;
+    boolean redActionFailed = redAttempted && redPlayer.getElixir().getCurrent() >= redElixirBefore;
+
+    // Run simulation for ticksPerStep ticks
+    engine.tick(ticksPerStep);
+
+    // Compute reward only (no DTO observation construction)
+    RewardDTO reward = rewardCalculator.computeReward(engine.getGameState());
+
+    boolean terminated = engine.getGameState().isGameOver() || !engine.isRunning();
+    boolean truncated = false;
+
+    return new StepResultDTO(
+        null, reward, terminated, truncated, blueActionFailed, redActionFailed);
+  }
+
   /** Returns the current observation without stepping. */
   public ObservationDTO observe() {
     return ObservationBuilder.build(engine, bluePlayer, redPlayer);

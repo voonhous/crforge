@@ -147,6 +147,16 @@ public class BinaryObservationEncoder {
     return stepBuf.array().clone();
   }
 
+  /**
+   * Fills the internal float[] from current game state and returns it directly. Intended for
+   * in-process callers (JPype) where no byte serialization is needed -- the caller copies via
+   * np.array().
+   */
+  public float[] fillAndGetObsBuffer(GameEngine engine, Player bluePlayer, Player redPlayer) {
+    fillObsBuffer(engine, bluePlayer, redPlayer);
+    return obs;
+  }
+
   /** Fills the obs float buffer from current game state. Reuses the pre-allocated float array. */
   private void fillObsBuffer(GameEngine engine, Player bluePlayer, Player redPlayer) {
     // Zero out previous values
