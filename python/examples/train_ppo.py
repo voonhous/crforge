@@ -210,8 +210,8 @@ def main():
                         help="Path to save the trained model")
     parser.add_argument("--endpoint", default="tcp://localhost:9876",
                         help="Bridge server endpoint (single-env mode)")
-    parser.add_argument("--ticks-per-step", type=int, default=6,
-                        help="Simulation ticks per step")
+    parser.add_argument("--ticks-per-step", type=int, default=15,
+                        help="Simulation ticks per step (default: 15, ~360 steps/game)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed")
     parser.add_argument("--resume", type=str, default=None,
@@ -221,7 +221,7 @@ def main():
     parser.add_argument("--log-dir", type=str, default="logs/ppo_crforge",
                         help="TensorBoard log directory")
     parser.add_argument("--opponent", type=str, default="rule_based",
-                        choices=["random", "rule_based", "self_play"],
+                        choices=["noop", "random", "rule_based", "self_play"],
                         help="Opponent type (default: rule_based)")
     parser.add_argument("--self-play-interval", type=int, default=10000,
                         help="Timesteps between opponent model updates in self-play (default: 10000)")
@@ -243,9 +243,11 @@ def main():
         print("Install with: pip install -e \"python/[train]\"")
         sys.exit(1)
 
+    from collections import deque
+
     from crforge_gym import CRForgeEnv
     from crforge_gym.opponents import SelfPlayOpponent
-    from crforge_gym.wrappers import ActionMaskedWrapper, FlattenedObsWrapper
+    from crforge_gym.wrappers import ActionMaskedWrapper, EpisodeStatsWrapper, FlattenedObsWrapper
 
     # Validate flags
     if args.opponent == "self_play" and args.num_envs > 1:
@@ -306,6 +308,80 @@ def main():
             if self.verbose > 0:
                 print(f"[SelfPlayCallback] Updated opponent at step {self.num_timesteps} ({tag})")
 
+    # -- Episode logging callback --
+
+    class EpisodeLogCallback(BaseCallback):
+        """Tracks and logs game-level statistics: win rate, episode reward, episode length.
+
+        Collects game outcomes from info["game_outcome"] (set by EpisodeStatsWrapper)
+        and logs rolling averages to TensorBoard and stdout.
+        """
+
+        def __init__(self, total_timesteps: int, window_size: int = 100,
+                     log_interval: int = 50, verbose: int = 1):
+            super().__init__(verbose)
+            self.total_timesteps = total_timesteps
+            self.window_size = window_size
+            self.log_interval = log_interval
+            self._outcomes = deque(maxlen=window_size)
+            self._ep_rewards = deque(maxlen=window_size)
+            self._ep_lengths = deque(maxlen=window_size)
+            self._total_episodes = 0
+            self._last_log_episode = 0
+
+        def _on_step(self) -> bool:
+            # With VecEnv, infos is a list of dicts (one per env)
+            infos = self.locals.get("infos", [])
+            for info in infos:
+                if "episode" in info:
+                    self._total_episodes += 1
+                    self._ep_rewards.append(info["episode"]["r"])
+                    self._ep_lengths.append(info["episode"]["l"])
+                    outcome = info.get("game_outcome", "unknown")
+                    self._outcomes.append(outcome)
+
+                    if self._total_episodes - self._last_log_episode >= self.log_interval:
+                        self._log_stats()
+                        self._last_log_episode = self._total_episodes
+
+            return True
+
+        def _on_training_end(self) -> None:
+            if self._total_episodes > 0:
+                self._log_stats()
+
+        def _log_stats(self):
+            n = len(self._outcomes)
+            if n == 0:
+                return
+
+            wins = sum(1 for o in self._outcomes if o == "win")
+            losses = sum(1 for o in self._outcomes if o == "loss")
+            draws = sum(1 for o in self._outcomes if o == "draw")
+            win_rate = wins / n
+            loss_rate = losses / n
+            draw_rate = draws / n
+            avg_reward = sum(self._ep_rewards) / len(self._ep_rewards)
+            avg_length = sum(self._ep_lengths) / len(self._ep_lengths)
+
+            # Log to TensorBoard
+            self.logger.record("game/win_rate", win_rate)
+            self.logger.record("game/loss_rate", loss_rate)
+            self.logger.record("game/draw_rate", draw_rate)
+            self.logger.record("game/ep_reward_mean", avg_reward)
+            self.logger.record("game/ep_length_mean", avg_length)
+            self.logger.record("game/total_episodes", self._total_episodes)
+
+            if self.verbose > 0:
+                pct = self.num_timesteps / self.total_timesteps * 100 if self.total_timesteps > 0 else 0
+                print(
+                    f"[{self.num_timesteps}/{self.total_timesteps} steps ({pct:.0f}%) | "
+                    f"ep {self._total_episodes}] "
+                    f"win={win_rate:.1%} loss={loss_rate:.1%} draw={draw_rate:.1%} | "
+                    f"reward={avg_reward:.1f} len={avg_length:.0f} "
+                    f"(last {n} games)"
+                )
+
     # -- Opponent setup --
 
     if args.opponent == "self_play":
@@ -324,8 +400,10 @@ def main():
                 endpoint=endpoint,
                 ticks_per_step=args.ticks_per_step,
                 opponent=env_opponent,
+                binary_obs=True,
             )
-            env = FlattenedObsWrapper(env)
+            env = EpisodeStatsWrapper(env)
+            # binary_obs=True already produces flat observations; skip FlattenedObsWrapper
             env = ActionMaskedWrapper(env)
             return env
         return _init
@@ -347,20 +425,20 @@ def main():
 
     if args.resume:
         print(f"Resuming training from {args.resume}...")
-        model = MaskablePPO.load(args.resume, env=env, tensorboard_log=args.log_dir)
+        model = MaskablePPO.load(args.resume, env=env, tensorboard_log=args.log_dir, verbose=1)
     else:
         model = MaskablePPO(
             "MlpPolicy",
             env,
-            policy_kwargs={"net_arch": [256, 256]},
+            policy_kwargs={"net_arch": [512, 256]},
             learning_rate=3e-4,
             n_steps=2048,
-            batch_size=64,
+            batch_size=512,
             n_epochs=10,
-            gamma=0.999,
+            gamma=0.99,
             gae_lambda=0.95,
             clip_range=0.2,
-            ent_coef=0.01,
+            ent_coef=0.005,
             vf_coef=0.5,
             max_grad_norm=0.5,
             seed=args.seed,
@@ -370,7 +448,7 @@ def main():
 
     # -- Callbacks --
 
-    callbacks = []
+    callbacks = [EpisodeLogCallback(total_timesteps=args.timesteps, window_size=100, log_interval=50, verbose=1)]
     if args.opponent == "self_play":
         self_play_opponent.model = model
         callbacks.append(SelfPlayCallback(

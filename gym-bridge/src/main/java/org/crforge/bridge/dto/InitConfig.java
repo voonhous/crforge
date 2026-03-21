@@ -6,7 +6,12 @@ import java.util.List;
 /** Configuration sent by the Python client to initialize a match. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record InitConfig(
-    List<String> blueDeck, List<String> redDeck, int level, int ticksPerStep, Long seed) {
+    List<String> blueDeck,
+    List<String> redDeck,
+    int level,
+    int ticksPerStep,
+    Long seed,
+    Boolean binaryObs) {
   public InitConfig {
     if (level <= 0) {
       level = 11;
@@ -16,8 +21,19 @@ public record InitConfig(
     }
   }
 
-  /** Constructor without seed for backwards compatibility. */
+  /** Constructor without seed/binaryObs for backwards compatibility. */
   public InitConfig(List<String> blueDeck, List<String> redDeck, int level, int ticksPerStep) {
-    this(blueDeck, redDeck, level, ticksPerStep, null);
+    this(blueDeck, redDeck, level, ticksPerStep, null, null);
+  }
+
+  /** Constructor without binaryObs for backwards compatibility. */
+  public InitConfig(
+      List<String> blueDeck, List<String> redDeck, int level, int ticksPerStep, Long seed) {
+    this(blueDeck, redDeck, level, ticksPerStep, seed, null);
+  }
+
+  /** Returns true if binary observation mode is enabled. */
+  public boolean isBinaryObs() {
+    return binaryObs != null && binaryObs;
   }
 }

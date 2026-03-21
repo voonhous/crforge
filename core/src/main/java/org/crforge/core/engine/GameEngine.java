@@ -103,6 +103,23 @@ public class GameEngine {
     }
   }
 
+  /**
+   * Resets the engine for a new match, reusing existing system objects. Clears all entity state,
+   * pending queues, and re-wires the new match. This is faster than creating a new GameEngine
+   * because the 15+ system objects are reused.
+   */
+  public void resetForNewMatch(Match match) {
+    // Clear pending queues in systems that accumulate state
+    deploymentSystem.reset();
+    deathHandlingSystem.clearPending();
+
+    // Wire the new match (recreates physics system, sets arena)
+    setMatch(match);
+
+    // Reset GameState and create towers
+    initMatch();
+  }
+
   /** Initialize a new match. Requires setMatch() to be called first. */
   public void initMatch() {
     if (match == null) {
@@ -261,11 +278,13 @@ public class GameEngine {
   }
 
   private int getTotalTowerHealth(Team team) {
-    return gameState.getEntitiesOfType(Tower.class).stream()
-        .filter(t -> t.getTeam() == team)
-        .filter(Entity::isAlive)
-        .mapToInt(t -> t.getHealth().getCurrent())
-        .sum();
+    int total = 0;
+    for (Tower tower : gameState.getTowers().get(team)) {
+      if (tower.isAlive()) {
+        total += tower.getHealth().getCurrent();
+      }
+    }
+    return total;
   }
 
   private void endGame(Team winner) {

@@ -64,6 +64,11 @@ public class ZmqTransport implements Closeable {
     socket.send(json.getBytes(java.nio.charset.StandardCharsets.UTF_8), 0);
   }
 
+  /** Sends a raw byte array without JSON wrapping. Used for binary observation mode. */
+  public void sendRaw(byte[] data) {
+    socket.send(data, 0);
+  }
+
   /** Sends an error response. */
   public void sendError(String message) throws IOException {
     ObjectNode response = mapper.createObjectNode();

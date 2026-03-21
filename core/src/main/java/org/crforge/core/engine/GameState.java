@@ -3,6 +3,7 @@ package org.crforge.core.engine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import lombok.Setter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
+import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
@@ -31,6 +33,10 @@ public class GameState {
 
   private final Map<Team, List<Tower>> towers;
   private List<Entity> cachedAliveEntities;
+  private List<Entity> cachedBlueAlive;
+  private List<Entity> cachedRedAlive;
+  private List<AreaEffect> cachedAreaEffects;
+  private Map<Long, Entity> entityById;
   @Setter private Arena arena;
   @Setter private DeathHandler deathHandler;
   private int frameCount;
@@ -47,6 +53,10 @@ public class GameState {
     this.towers.put(Team.BLUE, new ArrayList<>());
     this.towers.put(Team.RED, new ArrayList<>());
     this.cachedAliveEntities = Collections.emptyList();
+    this.cachedBlueAlive = Collections.emptyList();
+    this.cachedRedAlive = Collections.emptyList();
+    this.cachedAreaEffects = Collections.emptyList();
+    this.entityById = Collections.emptyMap();
     this.frameCount = 0;
     this.gameOver = false;
     this.winner = null;
@@ -163,21 +173,40 @@ public class GameState {
   }
 
   public List<Entity> getEntitiesByTeam(Team team) {
-    return entities.stream().filter(e -> e.getTeam() == team).toList();
+    return team == Team.BLUE ? cachedBlueAlive : cachedRedAlive;
   }
 
   /**
-   * Rebuilds the cached alive entities list. Call once at the start of each tick, after
-   * processPending(), so all systems share a single snapshot.
+   * Rebuilds all cached entity lists in a single pass through the entities list. Call once at the
+   * start of each tick, after processPending(), so all systems share a single snapshot.
    */
   public void refreshCaches() {
     List<Entity> alive = new ArrayList<>(entities.size());
+    List<Entity> blueAlive = new ArrayList<>();
+    List<Entity> redAlive = new ArrayList<>();
+    List<AreaEffect> areaEffects = new ArrayList<>();
+    Map<Long, Entity> byId = new HashMap<>(entities.size() * 2);
+
     for (Entity e : entities) {
+      byId.put(e.getId(), e);
+      if (e instanceof AreaEffect ae) {
+        areaEffects.add(ae);
+      }
       if (e.isAlive()) {
         alive.add(e);
+        if (e.getTeam() == Team.BLUE) {
+          blueAlive.add(e);
+        } else {
+          redAlive.add(e);
+        }
       }
     }
+
     cachedAliveEntities = alive;
+    cachedBlueAlive = blueAlive;
+    cachedRedAlive = redAlive;
+    cachedAreaEffects = areaEffects;
+    entityById = byId;
   }
 
   public List<Entity> getAliveEntities() {
@@ -188,8 +217,17 @@ public class GameState {
     return entities.stream().filter(Entity::isTargetable).toList();
   }
 
+  @SuppressWarnings("unchecked")
   public <T extends Entity> List<T> getEntitiesOfType(Class<T> type) {
+    if (type == AreaEffect.class) {
+      return (List<T>) cachedAreaEffects;
+    }
     return entities.stream().filter(type::isInstance).map(type::cast).toList();
+  }
+
+  /** Returns the cached list of area effects. Faster than getEntitiesOfType(AreaEffect.class). */
+  public List<AreaEffect> getAreaEffects() {
+    return cachedAreaEffects;
   }
 
   public List<Entity> findEntities(Predicate<Entity> predicate) {
@@ -197,19 +235,37 @@ public class GameState {
   }
 
   public Optional<Entity> getEntityById(long id) {
-    return entities.stream().filter(e -> e.getId() == id).findFirst();
+    Entity e = entityById.get(id);
+    return Optional.ofNullable(e);
   }
 
   public Tower getCrownTower(Team team) {
-    return towers.get(team).stream().filter(Tower::isCrownTower).findFirst().orElse(null);
+    for (Tower tower : towers.get(team)) {
+      if (tower.isCrownTower()) {
+        return tower;
+      }
+    }
+    return null;
   }
 
   public List<Tower> getPrincessTowers(Team team) {
-    return towers.get(team).stream().filter(Tower::isPrincessTower).toList();
+    List<Tower> result = new ArrayList<>(2);
+    for (Tower tower : towers.get(team)) {
+      if (tower.isPrincessTower()) {
+        result.add(tower);
+      }
+    }
+    return result;
   }
 
   public int getTowerCount(Team team) {
-    return (int) towers.get(team).stream().filter(Entity::isAlive).count();
+    int count = 0;
+    for (Tower tower : towers.get(team)) {
+      if (tower.isAlive()) {
+        count++;
+      }
+    }
+    return count;
   }
 
   /**
@@ -234,17 +290,20 @@ public class GameState {
 
   public int getCrownCount(Team team) {
     Team enemy = team.opposite();
-    int crowns = 0;
 
     // Check enemy crown tower
     Tower enemyCrown = getCrownTower(enemy);
     if (enemyCrown != null && !enemyCrown.isAlive()) {
-      crowns = CROWN_TOWER_CROWN_VALUE;
-    } else {
-      // Count destroyed princess towers
-      crowns = (int) getPrincessTowers(enemy).stream().filter(t -> !t.isAlive()).count();
+      return CROWN_TOWER_CROWN_VALUE;
     }
 
+    // Count destroyed princess towers
+    int crowns = 0;
+    for (Tower tower : towers.get(enemy)) {
+      if (tower.isPrincessTower() && !tower.isAlive()) {
+        crowns++;
+      }
+    }
     return crowns;
   }
 
@@ -257,6 +316,10 @@ public class GameState {
     towers.get(Team.RED).clear();
     aoeDamageEvents.clear();
     cachedAliveEntities = Collections.emptyList();
+    cachedBlueAlive = Collections.emptyList();
+    cachedRedAlive = Collections.emptyList();
+    cachedAreaEffects = Collections.emptyList();
+    entityById = Collections.emptyMap();
     frameCount = 0;
     gameOver = false;
     winner = null;

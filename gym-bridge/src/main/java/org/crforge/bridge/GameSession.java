@@ -62,7 +62,8 @@ public class GameSession {
 
   /**
    * Resets the match with an optional seed override. If seedOverride is non-null, it replaces the
-   * session seed for this and future resets.
+   * session seed for this and future resets. On subsequent resets, reuses the existing GameEngine
+   * instance to avoid recreating 15+ system objects.
    */
   public void reset(Long seedOverride) {
     if (config == null) {
@@ -72,8 +73,6 @@ public class GameSession {
     if (seedOverride != null) {
       this.seed = seedOverride;
     }
-
-    this.engine = new GameEngine();
 
     // Build decks from card IDs
     List<Card> blueCards = config.blueDeck().stream().map(CardRegistry::get).toList();
@@ -106,8 +105,15 @@ public class GameSession {
     match.addPlayer(bluePlayer);
     match.addPlayer(redPlayer);
 
-    engine.setMatch(match);
-    engine.initMatch();
+    if (engine == null) {
+      // First reset: create a new engine
+      engine = new GameEngine();
+      engine.setMatch(match);
+      engine.initMatch();
+    } else {
+      // Subsequent resets: reuse the engine, just reset match state
+      engine.resetForNewMatch(match);
+    }
 
     rewardCalculator.reset(engine.getGameState(), bluePlayer, redPlayer);
 

@@ -2,14 +2,28 @@
 Gymnasium environment for CRForge.
 
 Action space:
-  MultiDiscrete([2, 4, 18, 32])
+  MultiDiscrete([2, 4, 10])
   - action_type: 0 = no-op, 1 = play card
   - hand_index: 0-3 (which card slot)
-  - tile_x: 0-17 (arena column, converted to center of tile)
-  - tile_y: 0-31 (arena row, converted to center of tile)
+  - zone: 0-9 (strategic placement zone)
+
+Placement zones (blue's perspective):
+  Own half (troops/buildings):
+    0: LEFT_BRIDGE   (5.5, 14.5)  - left lane, immediate pressure
+    1: RIGHT_BRIDGE  (12.5, 14.5) - right lane, immediate pressure
+    2: LEFT_BACK     (5.5, 4.5)   - left lane, slow push from back
+    3: RIGHT_BACK    (12.5, 4.5)  - right lane, slow push from back
+    4: CENTER_BACK   (9.0, 5.5)   - behind king tower, splits both lanes
+    5: LEFT_DEFENSE  (7.5, 10.5)  - left side reactive defense
+    6: RIGHT_DEFENSE (10.5, 10.5) - right side reactive defense
+  Enemy half (spells only):
+    7: SPELL_LEFT    (5.5, 22.5)  - spell on enemy left lane
+    8: SPELL_RIGHT   (12.5, 22.5) - spell on enemy right lane
+    9: SPELL_CENTER  (9.0, 20.5)  - spell on enemy center
 
 Observation space:
-  Dict with structured game state arrays (all float32 for SB3 compatibility).
+  Binary mode (default): flat Box(shape=(1079,)) float32 vector.
+  JSON mode: Dict with structured game state arrays (all float32 for SB3 compatibility).
 
 Default ticks_per_step=6 gives ~5 decisions/second (~900 steps per 3-min game).
 Use ticks_per_step=1 for fine-grained control (30 decisions/sec, ~5400 steps/game).
@@ -42,6 +56,48 @@ INVALID_ACTION_PENALTY = -0.01
 
 # Max card index value (upper bound for observation space, can grow with new cards)
 MAX_CARD_INDEX = 200
+
+# Total size of the flat observation vector
+OBS_SIZE = 1079
+
+# Strategic placement zones: (x, y) in arena coordinates.
+# Zones 0-6 are on blue's own half (troops/buildings).
+# Zones 7-9 are on the enemy half (spells only).
+PLACEMENT_ZONES = [
+    (5.5, 14.5),   # 0: LEFT_BRIDGE
+    (12.5, 14.5),  # 1: RIGHT_BRIDGE
+    (5.5, 4.5),    # 2: LEFT_BACK
+    (12.5, 4.5),   # 3: RIGHT_BACK
+    (9.0, 5.5),    # 4: CENTER_BACK
+    (7.5, 10.5),   # 5: LEFT_DEFENSE
+    (10.5, 10.5),  # 6: RIGHT_DEFENSE
+    (5.5, 22.5),   # 7: SPELL_LEFT
+    (12.5, 22.5),  # 8: SPELL_RIGHT
+    (9.0, 20.5),   # 9: SPELL_CENTER
+]
+NUM_ZONES = len(PLACEMENT_ZONES)
+# Zones on own half (valid for troops/buildings/spells)
+NUM_OWN_HALF_ZONES = 7
+
+# Lane boundary: x < LANE_SPLIT is left lane, x >= LANE_SPLIT is right lane
+LANE_SPLIT = 9.0
+
+# Number of lane summary features
+# [left_enemy_pressure, right_enemy_pressure, left_enemy_front_y, right_enemy_front_y,
+#  left_friendly_pressure, right_friendly_pressure, elixir_advantage, troop_count_advantage]
+LANE_SUMMARY_FEATURES = 8
+
+# Max total HP for normalizing lane pressure (approximate -- a big push is ~5000 HP)
+_MAX_LANE_HP = 5000.0
+
+# --- Flat observation index constants ---
+# These match the binary encoding layout from BinaryObservationEncoder.java.
+# Used by ActionMaskedWrapper and opponents to extract values directly from the flat array.
+IDX_BLUE_ELIXIR = 3
+IDX_HAND_COSTS_START = 7
+IDX_HAND_COSTS_END = 11
+IDX_HAND_TYPES_START = 11
+IDX_HAND_TYPES_END = 15
 
 
 def _build_observation_space() -> spaces.Dict:
@@ -76,6 +132,9 @@ def _build_observation_space() -> spaces.Dict:
             #   stunned, slowed, raged, frozen, poisoned, lifetime_fraction
             "entities": spaces.Box(low=0.0, high=5.0, shape=(MAX_ENTITIES, ENTITY_FEATURES), dtype=np.float32),
             "num_entities": spaces.Box(low=0.0, high=float(MAX_ENTITIES), shape=(1,), dtype=np.float32),
+            # Pre-computed lane summary: aggregated spatial features the MLP can
+            # use directly for reactive placement decisions.
+            "lane_summary": spaces.Box(low=-1.0, high=1.0, shape=(LANE_SUMMARY_FEATURES,), dtype=np.float32),
         }
     )
 
@@ -187,6 +246,56 @@ def parse_observation(obs_raw: dict) -> dict[str, np.ndarray]:
             e.get("lifetimeFraction", 0.0),
         ]
 
+    # Lane summary: pre-computed spatial features for reactive play.
+    # The raw entity list is in arbitrary order, making it very hard for an MLP
+    # to extract "enemy is pushing left lane." These features make it explicit.
+    left_enemy_hp = 0.0
+    right_enemy_hp = 0.0
+    left_friendly_hp = 0.0
+    right_friendly_hp = 0.0
+    left_enemy_front_y = ARENA_HEIGHT  # closest to blue base = lowest y
+    right_enemy_front_y = ARENA_HEIGHT
+    friendly_count = 0
+    enemy_count = 0
+
+    for e in entities_raw:
+        if e.get("entityType") == "TOWER":
+            continue
+        team = e.get("team", "BLUE")
+        x = e.get("x", 0.0)
+        y = e.get("y", 0.0)
+        hp = e.get("hp", 0)
+        is_left = x < LANE_SPLIT
+
+        if team == "RED":  # enemy from blue's perspective
+            enemy_count += 1
+            if is_left:
+                left_enemy_hp += hp
+                left_enemy_front_y = min(left_enemy_front_y, y)
+            else:
+                right_enemy_hp += hp
+                right_enemy_front_y = min(right_enemy_front_y, y)
+        else:
+            friendly_count += 1
+            if is_left:
+                left_friendly_hp += hp
+            else:
+                right_friendly_hp += hp
+
+    blue_elixir = blue.get("elixir", 0.0)
+    red_elixir = red.get("elixir", 0.0)
+
+    lane_summary = np.array([
+        min(left_enemy_hp / _MAX_LANE_HP, 1.0),
+        min(right_enemy_hp / _MAX_LANE_HP, 1.0),
+        1.0 - left_enemy_front_y / ARENA_HEIGHT,   # 0 = no enemy, 1 = at blue base
+        1.0 - right_enemy_front_y / ARENA_HEIGHT,
+        min(left_friendly_hp / _MAX_LANE_HP, 1.0),
+        min(right_friendly_hp / _MAX_LANE_HP, 1.0),
+        (blue_elixir - red_elixir) / 10.0,         # [-1, 1] elixir advantage
+        (friendly_count - enemy_count) / MAX_ENTITIES,  # troop count advantage
+    ], dtype=np.float32)
+
     return {
         "frame": frame,
         "game_time": game_time,
@@ -202,6 +311,7 @@ def parse_observation(obs_raw: dict) -> dict[str, np.ndarray]:
         "towers": towers_array,
         "entities": entities_array,
         "num_entities": np.array([num_entities], dtype=np.float32),
+        "lane_summary": lane_summary,
     }
 
 
@@ -223,6 +333,7 @@ class CRForgeEnv(gym.Env):
         ticks_per_step: how many simulation ticks per env.step() call (default 6 = ~5 decisions/sec)
         opponent: opponent policy ("random", "noop", "rule_based", or callable)
         invalid_action_penalty: reward penalty for submitting an action that fails (default -0.01)
+        binary_obs: use binary observation protocol (default True, much faster)
     """
 
     metadata = {"render_modes": []}
@@ -236,6 +347,7 @@ class CRForgeEnv(gym.Env):
         ticks_per_step: int = 6,
         opponent: str | Any = "random",
         invalid_action_penalty: float = INVALID_ACTION_PENALTY,
+        binary_obs: bool = True,
     ):
         super().__init__()
 
@@ -246,14 +358,25 @@ class CRForgeEnv(gym.Env):
         self.ticks_per_step = ticks_per_step
         self.opponent = opponent
         self.invalid_action_penalty = invalid_action_penalty
+        self.binary_obs = binary_obs
 
-        self.action_space = spaces.MultiDiscrete([2, 4, ARENA_WIDTH, ARENA_HEIGHT])
-        self.observation_space = _build_observation_space()
+        self.action_space = spaces.MultiDiscrete([2, 4, NUM_ZONES])
 
-        self._client = BridgeClient(endpoint)
+        if binary_obs:
+            # Binary mode: flat observation vector, no wrapper needed
+            self.observation_space = spaces.Box(
+                low=-np.inf, high=np.inf, shape=(OBS_SIZE,), dtype=np.float32
+            )
+        else:
+            self.observation_space = _build_observation_space()
+
+        self._client = BridgeClient(endpoint, binary_obs=binary_obs)
         self._connected = False
         self._rng = np.random.default_rng()
+        # In JSON mode, stores the raw dict observation for opponents/wrappers
         self._last_obs_raw = None
+        # In binary mode, stores the flat float32 array
+        self._last_obs_flat = None
         self._init_seed = None
 
         # Lazily initialized rule-based opponent
@@ -282,7 +405,7 @@ class CRForgeEnv(gym.Env):
         *,
         seed: int | None = None,
         options: dict | None = None,
-    ) -> tuple[dict[str, np.ndarray], dict]:
+    ) -> tuple[np.ndarray | dict[str, np.ndarray], dict]:
         super().reset(seed=seed)
         self._rng = np.random.default_rng(seed)
 
@@ -291,46 +414,71 @@ class CRForgeEnv(gym.Env):
             self._init_seed = seed
 
         self._ensure_connected()
-        obs_raw = self._client.reset(seed=seed)
-        self._last_obs_raw = obs_raw
-        return self._parse_observation(obs_raw), {}
+        result = self._client.reset(seed=seed)
+
+        if self.binary_obs:
+            self._last_obs_flat = result
+            self._last_obs_raw = None
+            return result, {}
+        else:
+            self._last_obs_raw = result
+            self._last_obs_flat = None
+            return self._parse_observation(result), {}
 
     def step(
         self, action: np.ndarray
-    ) -> tuple[dict[str, np.ndarray], float, bool, bool, dict]:
+    ) -> tuple[np.ndarray | dict[str, np.ndarray], float, bool, bool, dict]:
         # Decode action
         blue_action = self._decode_action(action)
 
         # Get opponent action
         red_action = self._get_opponent_action()
 
-        # Step the simulation
-        result = self._client.step(
-            blue_action=blue_action,
-            red_action=red_action,
-        )
+        if self.binary_obs:
+            (obs, blue_reward, _red_reward, terminated, truncated,
+             blue_action_failed, _red_action_failed) = self._client.step(
+                blue_action=blue_action,
+                red_action=red_action,
+            )
+            self._last_obs_flat = obs
+            self._last_obs_raw = None
 
-        obs_raw = result.get("observation", {})
-        reward_data = result.get("reward", {})
-        terminated = result.get("terminated", False)
-        truncated = result.get("truncated", False)
+            reward = blue_reward
+            if blue_action_failed:
+                reward += self.invalid_action_penalty
 
-        self._last_obs_raw = obs_raw
-        obs = self._parse_observation(obs_raw)
+            info = {}
+            if blue_action_failed:
+                info["action_failed"] = True
 
-        # Blue player's reward
-        reward = float(reward_data.get("blue", 0.0))
+            return obs, reward, terminated, truncated, info
+        else:
+            # JSON mode (original path)
+            result = self._client.step(
+                blue_action=blue_action,
+                red_action=red_action,
+            )
 
-        # Apply invalid action penalty if the action was rejected
-        blue_action_failed = result.get("blueActionFailed", False)
-        if blue_action_failed:
-            reward += self.invalid_action_penalty
+            obs_raw = result.get("observation", {})
+            reward_data = result.get("reward", {})
+            terminated = result.get("terminated", False)
+            truncated = result.get("truncated", False)
 
-        info = {}
-        if blue_action_failed:
-            info["action_failed"] = True
+            self._last_obs_raw = obs_raw
+            self._last_obs_flat = None
+            obs = self._parse_observation(obs_raw)
 
-        return obs, reward, terminated, truncated, info
+            reward = float(reward_data.get("blue", 0.0))
+
+            blue_action_failed = result.get("blueActionFailed", False)
+            if blue_action_failed:
+                reward += self.invalid_action_penalty
+
+            info = {}
+            if blue_action_failed:
+                info["action_failed"] = True
+
+            return obs, reward, terminated, truncated, info
 
     def close(self) -> None:
         if self._connected:
@@ -344,12 +492,8 @@ class CRForgeEnv(gym.Env):
             return None  # no-op
 
         hand_index = int(action[1])
-        tile_x = int(action[2])
-        tile_y = int(action[3])
-
-        # Convert tile coordinates to center-of-tile (logic coords)
-        x = tile_x + 0.5
-        y = tile_y + 0.5
+        zone = int(action[2])
+        x, y = PLACEMENT_ZONES[zone]
 
         return {"handIndex": hand_index, "x": x, "y": y}
 
@@ -362,7 +506,7 @@ class CRForgeEnv(gym.Env):
         elif self.opponent == "rule_based":
             return self._rule_based_action()
         elif hasattr(self.opponent, "act"):
-            return self.opponent.act(self._last_obs_raw)
+            return self.opponent.act(self._last_obs_raw, obs_flat=self._last_obs_flat)
         elif callable(self.opponent):
             return self.opponent(self._last_obs_raw)
         return None

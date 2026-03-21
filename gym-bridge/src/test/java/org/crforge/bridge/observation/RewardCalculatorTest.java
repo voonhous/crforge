@@ -25,7 +25,13 @@ import org.junit.jupiter.api.Test;
 class RewardCalculatorTest {
 
   // The time penalty applied every step
-  private static final float TIME_PENALTY = -0.0001f;
+  private static final float TIME_PENALTY = -0.001f;
+
+  // Reward constants matching RewardCalculator
+  private static final float TOWER_DAMAGE_REWARD = 0.005f;
+  private static final float CROWN_REWARD = 10.0f;
+  private static final float WIN_REWARD = 30.0f;
+  private static final float DRAW_PENALTY = -10.0f;
 
   private GameEngine engine;
   private GameState state;
@@ -82,7 +88,9 @@ class RewardCalculatorTest {
     princessTower.getHealth().takeDamage(damageToDeal);
 
     RewardDTO reward = calculator.computeReward(state);
-    // Blue damaged red -> tower damage reward outweighs time penalty
+    // Blue damaged red -> tower damage reward (100 * 0.005 = 0.5) outweighs time penalty
+    float expected = damageToDeal * TOWER_DAMAGE_REWARD + TIME_PENALTY;
+    assertThat(reward.blue()).isCloseTo(expected, offset(1e-6f));
     assertThat(reward.blue()).isGreaterThan(0f);
     assertThat(reward.red()).isLessThan(0f);
   }
@@ -140,13 +148,13 @@ class RewardCalculatorTest {
   }
 
   @Test
-  void unitKillYieldsPositiveReward() {
+  void unitKillYieldsNoReward() {
     // Spawn a red troop and take snapshot
     Troop redTroop = createTestTroop(Team.RED, 9, 20, 50);
     state.spawnEntity(redTroop);
     state.processPending();
 
-    // Reset calculator to capture the new entity count
+    // Reset calculator to capture new state
     calculator.reset(state, bluePlayer, redPlayer);
 
     // Kill the red troop
@@ -154,26 +162,49 @@ class RewardCalculatorTest {
     state.processDeaths();
 
     RewardDTO reward = calculator.computeReward(state);
-    // Blue killed a red unit -> positive reward (beyond just time penalty)
-    assertThat(reward.blue()).isGreaterThan(0f);
-    assertThat(reward.red()).isLessThan(TIME_PENALTY);
+    // Unit kills give no reward now -- only time penalty remains
+    assertThat(reward.blue()).isCloseTo(TIME_PENALTY, offset(1e-6f));
+    assertThat(reward.red()).isCloseTo(TIME_PENALTY, offset(1e-6f));
   }
 
   @Test
-  void unitDamageYieldsPositiveReward() {
-    // Spawn a red troop
-    Troop redTroop = createTestTroop(Team.RED, 9, 20, 200);
-    state.spawnEntity(redTroop);
-    state.processPending();
+  void winRewardDominatesShaping() {
+    // Simulate chip damage of 2000 HP to red towers (typical game)
+    Tower redTower =
+        state.getTowers().get(Team.RED).stream()
+            .filter(Tower::isPrincessTower)
+            .findFirst()
+            .orElseThrow();
+    redTower.getHealth().takeDamage(2000);
 
-    calculator.reset(state, bluePlayer, redPlayer);
+    RewardDTO shapingReward = calculator.computeReward(state);
+    float totalShaping = shapingReward.blue();
 
-    // Damage but don't kill the red troop
-    redTroop.getHealth().takeDamage(100);
+    // Shaping from 2000 damage = 2000 * 0.005 = 10.0, minus time penalty
+    assertThat(totalShaping).isCloseTo(2000 * TOWER_DAMAGE_REWARD + TIME_PENALTY, offset(1e-4f));
 
-    RewardDTO reward = calculator.computeReward(state);
-    // Blue dealt unit damage to red -> positive reward
-    assertThat(reward.blue()).isGreaterThan(0f);
+    // WIN_REWARD + CROWN_REWARD = 30 + 10 = 40, which is >> shaping
+    assertThat(WIN_REWARD + CROWN_REWARD).isGreaterThan(totalShaping);
+  }
+
+  @Test
+  void drawIsNegativeEvenWithChipDamage() {
+    // Simulate a draw where blue dealt 2000 net chip damage to red towers
+    Tower redTower =
+        state.getTowers().get(Team.RED).stream()
+            .filter(Tower::isPrincessTower)
+            .findFirst()
+            .orElseThrow();
+    redTower.getHealth().takeDamage(2000);
+
+    // Compute the shaping reward from chip damage
+    RewardDTO shapingReward = calculator.computeReward(state);
+    float chipShaping = shapingReward.blue(); // 2000 * 0.005 - 0.001 = ~9.999
+
+    // Now simulate game over as a draw. The draw penalty (-10.0) should make total negative.
+    // Total episode reward = chipShaping + DRAW_PENALTY + some more time penalties
+    float totalEpisode = chipShaping + DRAW_PENALTY;
+    assertThat(totalEpisode).isLessThan(0f);
   }
 
   private Troop createTestTroop(Team team, float x, float y, int hp) {

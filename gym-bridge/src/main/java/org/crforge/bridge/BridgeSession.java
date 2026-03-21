@@ -7,8 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.crforge.bridge.dto.InitConfig;
 import org.crforge.bridge.dto.ObservationDTO;
+import org.crforge.bridge.dto.RewardDTO;
 import org.crforge.bridge.dto.StepAction;
 import org.crforge.bridge.dto.StepResultDTO;
+import org.crforge.bridge.observation.BinaryObservationEncoder;
 import org.crforge.bridge.protocol.ZmqTransport;
 import org.crforge.data.card.CardRegistry;
 import org.slf4j.Logger;
@@ -16,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Handles the protocol dispatch loop for a single connected client. Receives JSON messages over
- * ZMQ, dispatches to GameSession, sends responses.
+ * ZMQ, dispatches to GameSession, sends responses. Supports both JSON and binary observation modes.
  */
 public class BridgeSession {
 
@@ -25,11 +27,16 @@ public class BridgeSession {
   private final ZmqTransport transport;
   private final GameSession gameSession;
   private final ObjectMapper mapper;
+  private final BinaryObservationEncoder binaryEncoder;
+
+  private boolean binaryObs;
 
   public BridgeSession(ZmqTransport transport) {
     this.transport = transport;
     this.gameSession = new GameSession();
     this.mapper = transport.getMapper();
+    this.binaryEncoder = new BinaryObservationEncoder();
+    this.binaryObs = false;
   }
 
   /** Runs the protocol loop until a "close" message or error. */
@@ -89,6 +96,9 @@ public class BridgeSession {
         return;
       }
 
+      // Store binary mode setting
+      this.binaryObs = config.isBinaryObs();
+
       gameSession.init(config);
 
       // Respond with available card list
@@ -108,8 +118,16 @@ public class BridgeSession {
         seedOverride = data.get("seed").asLong();
       }
       gameSession.reset(seedOverride);
-      ObservationDTO observation = gameSession.observe();
-      transport.send("observation", observation);
+
+      if (binaryObs) {
+        byte[] obsBytes =
+            binaryEncoder.encodeObservation(
+                gameSession.getEngine(), gameSession.getBluePlayer(), gameSession.getRedPlayer());
+        transport.sendRaw(obsBytes);
+      } else {
+        ObservationDTO observation = gameSession.observe();
+        transport.send("observation", observation);
+      }
     } catch (Exception e) {
       log.error("Error handling reset", e);
       transport.sendError("Reset failed: " + e.getMessage());
@@ -129,8 +147,26 @@ public class BridgeSession {
         redAction = mapper.treeToValue(data.get("redAction"), StepAction.class);
       }
 
-      StepResultDTO result = gameSession.step(blueAction, redAction);
-      transport.send("step_result", result);
+      if (binaryObs) {
+        StepResultDTO result = gameSession.step(blueAction, redAction);
+        RewardDTO reward = result.reward();
+
+        byte[] bytes =
+            binaryEncoder.encodeStepResult(
+                gameSession.getEngine(),
+                gameSession.getBluePlayer(),
+                gameSession.getRedPlayer(),
+                reward.blue(),
+                reward.red(),
+                result.terminated(),
+                result.truncated(),
+                result.blueActionFailed(),
+                result.redActionFailed());
+        transport.sendRaw(bytes);
+      } else {
+        StepResultDTO result = gameSession.step(blueAction, redAction);
+        transport.send("step_result", result);
+      }
     } catch (Exception e) {
       log.error("Error handling step", e);
       transport.sendError("Step failed: " + e.getMessage());

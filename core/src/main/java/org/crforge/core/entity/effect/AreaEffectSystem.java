@@ -57,7 +57,7 @@ public class AreaEffectSystem {
 
   /** Update all active area effects. Should be called once per tick. */
   public void update(float deltaTime) {
-    List<AreaEffect> effects = gameState.getEntitiesOfType(AreaEffect.class);
+    List<AreaEffect> effects = gameState.getAreaEffects();
     for (AreaEffect effect : effects) {
       if (!effect.isAlive()) {
         handleControlsBuffCleanup(effect);

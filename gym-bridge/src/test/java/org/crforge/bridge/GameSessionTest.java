@@ -85,6 +85,53 @@ class GameSessionTest {
   }
 
   @Test
+  void multipleResetsReuseEngineWithCleanState() {
+    InitConfig config = new InitConfig(TEST_DECK, TEST_DECK, 11, 30);
+    session.init(config);
+
+    // Advance significantly and deploy a card
+    StepAction blueAction = new StepAction(0, 9.0f, 5.0f);
+    session.step(blueAction, null);
+    session.step(null, null);
+    session.step(null, null);
+
+    assertThat(session.observe().frame()).isGreaterThan(0);
+
+    // Reset and verify clean state
+    session.reset();
+    ObservationDTO obs = session.observe();
+    assertThat(obs.frame()).isZero();
+    assertThat(obs.bluePlayer().elixir()).isEqualTo(5.0f);
+    assertThat(obs.entities()).hasSize(6); // only 6 towers, no leftover entities
+
+    // Reset again to verify repeated resets work
+    session.step(null, null);
+    session.reset();
+    obs = session.observe();
+    assertThat(obs.frame()).isZero();
+    assertThat(obs.entities()).hasSize(6);
+  }
+
+  @Test
+  void deterministicSeedProducesSameResultsAcrossResets() {
+    InitConfig config = new InitConfig(TEST_DECK, TEST_DECK, 11, 30, 42L);
+    session.init(config);
+
+    // Run 2 steps and capture observation
+    session.step(null, null);
+    StepResultDTO result1 = session.step(null, null);
+    float elixir1 = result1.observation().bluePlayer().elixir();
+
+    // Reset with same seed and run same steps
+    session.reset(42L);
+    session.step(null, null);
+    StepResultDTO result2 = session.step(null, null);
+    float elixir2 = result2.observation().bluePlayer().elixir();
+
+    assertThat(elixir2).isEqualTo(elixir1);
+  }
+
+  @Test
   void noopActionsDoNotAffectElixir() {
     InitConfig config = new InitConfig(TEST_DECK, TEST_DECK, 11, 1);
     session.init(config);

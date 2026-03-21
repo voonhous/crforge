@@ -59,6 +59,11 @@ public class DeathHandlingSystem {
     this.spawnFactory = spawnFactory;
   }
 
+  /** Clears any pending delayed death spawns. Called on match reset. */
+  public void clearPending() {
+    pendingDeathSpawns.clear();
+  }
+
   /** Called by GameState.processDeaths() via the registered death handler callback. */
   public void onDeath(Entity entity) {
     // Handle manaOnDeath for elixir collector buildings (grants elixir to owner on death)
