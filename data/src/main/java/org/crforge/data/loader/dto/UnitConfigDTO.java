@@ -39,6 +39,7 @@ public class UnitConfigDTO {
   // Targeting and combat modifiers
   private boolean targetOnlyBuildings;
   private float minimumRange;
+  private String targetSelectAlgorithm;
   private int crownTowerDamagePercent;
   private boolean ignorePushback;
 

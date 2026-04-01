@@ -35,6 +35,7 @@ import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.combat.TargetSelectAlgorithm;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.data.loader.dto.AbilityConfigDTO;
@@ -213,7 +214,9 @@ public class UnitLoader {
             .manaCollectAmount(dto.getManaCollectAmount())
             .manaGenerateTime(dto.getManaGenerateTime())
             // Buff immunity
-            .ignoreBuff(dto.getIgnoreBuff() != null ? dto.getIgnoreBuff() : List.of());
+            .ignoreBuff(dto.getIgnoreBuff() != null ? dto.getIgnoreBuff() : List.of())
+            // Target selection algorithm
+            .targetSelectAlgorithm(parseTargetSelectAlgorithm(dto.getTargetSelectAlgorithm()));
 
     // Resolve projectile reference
     if (dto.getProjectile() != null && projectileMap != null) {
@@ -486,5 +489,19 @@ public class UnitLoader {
             targetType);
       }
     };
+  }
+
+  /**
+   * Parses a target selection algorithm string with fallback to NEAREST for null/unknown values.
+   */
+  private static TargetSelectAlgorithm parseTargetSelectAlgorithm(String value) {
+    if (value == null || value.isEmpty()) {
+      return TargetSelectAlgorithm.NEAREST;
+    }
+    try {
+      return TargetSelectAlgorithm.valueOf(value);
+    } catch (IllegalArgumentException e) {
+      return TargetSelectAlgorithm.NEAREST;
+    }
   }
 }

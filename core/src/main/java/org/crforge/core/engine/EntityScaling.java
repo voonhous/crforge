@@ -40,7 +40,8 @@ class EntityScaling {
         .kamikaze(stats.isKamikaze())
         .attackDashTime(stats.getAttackDashTime())
         .attackPushBack(stats.getAttackPushBack())
-        .areaEffectOnHit(stats.getAreaEffectOnHit());
+        .areaEffectOnHit(stats.getAreaEffectOnHit())
+        .targetSelectAlgorithm(stats.getTargetSelectAlgorithm());
   }
 
   /** Scales the damage of a death spawn projectile by card level and preserves spawn character. */

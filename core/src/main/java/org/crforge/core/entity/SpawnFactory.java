@@ -74,6 +74,7 @@ public class SpawnFactory {
               .attackDashTime(stats.getAttackDashTime())
               .targetOnlyTroops(stats.isTargetOnlyTroops())
               .ignoreTargetsWithBuff(stats.getIgnoreTargetsWithBuff())
+              .targetSelectAlgorithm(stats.getTargetSelectAlgorithm())
               .build();
     }
 

@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import org.crforge.core.ability.AbilityData;
+import org.crforge.core.combat.TargetSelectAlgorithm;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 
@@ -99,6 +100,10 @@ public class TroopStats {
   @Builder.Default private final boolean targetOnlyBuildings = false;
   @Builder.Default private final boolean targetOnlyTroops = false;
   @Builder.Default private final float minimumRange = 0f;
+
+  @Builder.Default
+  private final TargetSelectAlgorithm targetSelectAlgorithm = TargetSelectAlgorithm.NEAREST;
+
   @Builder.Default private final int crownTowerDamagePercent = 0;
   @Builder.Default private final boolean ignorePushback = false;
 

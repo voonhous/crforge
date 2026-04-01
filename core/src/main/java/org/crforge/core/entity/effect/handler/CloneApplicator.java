@@ -125,6 +125,7 @@ public class CloneApplicator {
               .minimumRange(originalCombat.getMinimumRange())
               .crownTowerDamagePercent(originalCombat.getCrownTowerDamagePercent())
               .ignoreTargetsWithBuff(originalCombat.getIgnoreTargetsWithBuff())
+              .targetSelectAlgorithm(originalCombat.getTargetSelectAlgorithm())
               .build();
     }
 

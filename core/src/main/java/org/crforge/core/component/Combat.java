@@ -11,6 +11,7 @@ import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.combat.TargetSelectAlgorithm;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.TargetType;
 
@@ -62,6 +63,10 @@ public class Combat {
   @Builder.Default private final boolean targetOnlyBuildings = false;
   @Builder.Default private final boolean targetOnlyTroops = false;
   @Builder.Default private final float minimumRange = 0f;
+
+  @Builder.Default
+  private final TargetSelectAlgorithm targetSelectAlgorithm = TargetSelectAlgorithm.NEAREST;
+
   @Builder.Default private final int crownTowerDamagePercent = 0;
 
   // Ignore targets that already have this buff applied (e.g. Ram Rider skips bola'd targets)
