@@ -33,4 +33,4 @@ gdx-backend-lwjgl3 = { module = "com.badlogicgames.gdx:gdx-backend-lwjgl3", vers
 gdx-freetype = { module = "com.badlogicgames.gdx:gdx-freetype", version.ref = "gdx" }
 
 [plugins]
-spotless = { id = "com.diffplug.spotless", version = "8.3.0" }
+spotless = { id = "com.diffplug.spotless", version = "8.4.0" }
