@@ -36,14 +36,14 @@ class BarbarianHutTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 10f;
 
-  // 1.0s placement sync delay = 30 ticks
-  private static final int SYNC_DELAY_TICKS = 30;
-  // 1.0s building deploy time = 30 ticks
-  private static final int DEPLOY_TICKS = 30;
-  // 0.5s interval between units in a wave = 16 ticks (float 0.5/deltaTime rounds up)
-  private static final int SPAWN_INTERVAL_TICKS = 16;
-  // 14.0s pause between waves = 420 ticks
-  private static final int WAVE_PAUSE_TICKS = 420;
+  // 1.0s placement sync delay
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 1.0s building deploy time
+  private static final int DEPLOY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 0.5s interval between units in a wave (+1 for float rounding overshoot)
+  private static final int SPAWN_INTERVAL_TICKS = (int) (0.5f * GameEngine.TICKS_PER_SECOND) + 1;
+  // 14.0s pause between waves
+  private static final int WAVE_PAUSE_TICKS = 14 * GameEngine.TICKS_PER_SECOND;
 
   @BeforeEach
   void setUp() {

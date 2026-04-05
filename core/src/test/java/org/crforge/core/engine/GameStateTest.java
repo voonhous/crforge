@@ -209,7 +209,7 @@ class GameStateTest {
     gameState.incrementFrame();
 
     assertThat(gameState.getFrameCount()).isEqualTo(3);
-    assertThat(gameState.getGameTimeSeconds()).isEqualTo(0.1f);
+    assertThat(gameState.getGameTimeSeconds()).isEqualTo(0.15f);
   }
 
   @Test

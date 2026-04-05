@@ -284,7 +284,7 @@ class LogSpellTest {
   @Test
   void rollingProjectile_minDistance_preventsEarlyHits() {
     // Place enemy very close to the start -- within minDistance
-    Troop closeEnemy = createGroundTroop(Team.RED, 9f, 15.5f);
+    Troop closeEnemy = createGroundTroop(Team.RED, 9f, 15.4f);
 
     gameState.spawnEntity(closeEnemy);
     gameState.processPending();

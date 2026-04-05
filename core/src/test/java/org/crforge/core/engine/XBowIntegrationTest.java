@@ -124,7 +124,7 @@ class XBowIntegrationTest {
             .build();
 
     // Tick enough for first attack (targeting + first attack cooldown of 0.3s)
-    sim.tick(15);
+    sim.tickSeconds(0.5f);
 
     // At least one projectile should have been spawned (projectiles live in a separate list)
     assertThat(sim.gameState().getProjectiles())

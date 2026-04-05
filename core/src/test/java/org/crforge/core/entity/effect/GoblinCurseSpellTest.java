@@ -52,14 +52,14 @@ class GoblinCurseSpellTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 18f;
 
-  // Placement sync delay (1.0s = 30 ticks)
-  private static final int SYNC_DELAY_TICKS = 30;
+  // Placement sync delay (1.0s)
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // Hit speed interval (1.0s = 30 ticks)
-  private static final int HIT_SPEED_TICKS = 30;
+  // Hit speed interval (1.0s)
+  private static final int HIT_SPEED_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // Total lifetime (6.0s = 180 ticks)
-  private static final int LIFETIME_TICKS = 180;
+  // Total lifetime (6.0s)
+  private static final int LIFETIME_TICKS = 6 * GameEngine.TICKS_PER_SECOND;
 
   // Base damage per tick at default level (scaleCard(14, 1) = 14)
   private static final int BASE_DAMAGE_PER_TICK = 14;

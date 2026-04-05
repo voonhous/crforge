@@ -91,13 +91,13 @@ class SimHarnessAbilityTest {
     sim.tick();
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
-    // Wait for load time (1.3s = ~40 ticks)
-    sim.tick(40);
+    // Wait for load time (1.3s) + buffer
+    sim.tickSeconds(1.4f);
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.PULLING);
 
     // Pull target toward fisherman
     float initialTargetX = target.getPosition().getX();
-    sim.tick(30);
+    sim.tickSeconds(1.0f);
     assertThat(target.getPosition().getX()).isLessThan(initialTargetX);
   }
 
@@ -135,7 +135,7 @@ class SimHarnessAbilityTest {
     float startY = fisher.getPosition().getY();
 
     // Run for 10 seconds with ALL systems (including StatusEffectSystem and Physics)
-    sim.tick(300);
+    sim.tickSeconds(10.0f);
 
     // Should still be winding up (hookLoadTime=9999)
     assertThat(fisher.getAbility().getHookState())
@@ -178,7 +178,7 @@ class SimHarnessAbilityTest {
     fisher.getCombat().setCurrentTarget(sim.building("Cannon"));
 
     // Trigger hook + wind up past 1.3s
-    sim.tick(42);
+    sim.tickSeconds(1.4f);
 
     // Should skip PULLING and go straight to DRAGGING_SELF for buildings
     assertThat(fisher.getAbility().getHookState())
@@ -189,7 +189,7 @@ class SimHarnessAbilityTest {
 
     // Fisherman should be moving toward the building
     float fisherXBefore = fisher.getPosition().getX();
-    sim.tick(10);
+    sim.tickSeconds(0.33f);
     assertThat(fisher.getPosition().getX()).isGreaterThan(fisherXBefore);
   }
 
@@ -215,9 +215,9 @@ class SimHarnessAbilityTest {
 
     Troop bandit = sim.troop("Bandit");
 
-    // Burn through initial cooldown (0.8s = 24 ticks) then trigger dash.
+    // Burn through initial cooldown (0.8s) then trigger dash.
     // Target placed far enough so Bandit stays in [3.5, 6.0] window after walking during cooldown.
-    sim.tick(25);
+    sim.tickSeconds(0.9f);
     assertThat(bandit.getAbility().getDashState()).isEqualTo(AbilityComponent.DashState.DASHING);
 
     // Combat should be disabled during dash, even with StatusEffectSystem running
@@ -226,7 +226,7 @@ class SimHarnessAbilityTest {
         .isTrue();
 
     // Run a few more ticks while dashing -- combat should stay disabled
-    sim.tick(5);
+    sim.tickSeconds(0.17f);
     assertThat(bandit.getCombat().isCombatDisabled())
         .as("Combat should still be disabled mid-dash")
         .isTrue();
@@ -257,7 +257,7 @@ class SimHarnessAbilityTest {
     prince.getCombat().setCurrentTarget(sim.troop("Target"));
 
     // Build up charge (2.6s)
-    sim.tick(78);
+    sim.tickSeconds(2.6f);
     assertThat(prince.getAbility().isCharged()).isTrue();
 
     // Charge sets ABILITY_CHARGE speed multiplier to 2.0

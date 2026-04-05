@@ -43,14 +43,14 @@ class GoblinHutTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 10f;
 
-  // 1.0s placement sync delay = 30 ticks
-  private static final int SYNC_DELAY_TICKS = 30;
-  // 1.0s building deploy time = 30 ticks
-  private static final int DEPLOY_TICKS = 30;
-  // 1.0s spawn start time = 30 ticks
-  private static final int SPAWN_START_TICKS = 30;
-  // 2.1s spawn pause time = 63 ticks
-  private static final int SPAWN_PAUSE_TICKS = 63;
+  // 1.0s placement sync delay
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 1.0s building deploy time
+  private static final int DEPLOY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 1.0s spawn start time
+  private static final int SPAWN_START_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 2.1s spawn pause time
+  private static final int SPAWN_PAUSE_TICKS = (int) (2.1f * GameEngine.TICKS_PER_SECOND);
 
   @BeforeEach
   void setUp() {

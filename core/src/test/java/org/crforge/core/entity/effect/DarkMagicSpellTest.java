@@ -51,20 +51,20 @@ class DarkMagicSpellTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 18f;
 
-  // Placement sync delay (1.0s = 30 ticks)
-  private static final int SYNC_DELAY_TICKS = 30;
+  // Placement sync delay (1.0s)
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // First hit delay (1.0s = 30 ticks)
-  private static final int FIRST_HIT_DELAY_TICKS = 30;
+  // First hit delay (1.0s)
+  private static final int FIRST_HIT_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
 
   // Number of scans over the lifetime (at t=1.0, 2.0, 3.0)
   private static final int TOTAL_SCANS = 3;
 
-  // Game ticks per scan (1.0s * 30 FPS = 30)
-  private static final int GAME_TICKS_PER_SCAN = 30;
+  // Game ticks per scan (1.0s)
+  private static final int GAME_TICKS_PER_SCAN = GameEngine.TICKS_PER_SECOND;
 
-  // Total game ticks for all 3 scan periods (3.0s * 30 FPS = 90)
-  private static final int TOTAL_ACTIVE_GAME_TICKS = 90;
+  // Total game ticks for all 3 scan periods (3.0s)
+  private static final int TOTAL_ACTIVE_GAME_TICKS = 3 * GameEngine.TICKS_PER_SECOND;
 
   // Tier 1 per-hit damage: scaleCard(1330, 6) = 2128, * 0.1 = 212
   private static final int TIER1_DAMAGE_PER_HIT = 212;
@@ -127,8 +127,8 @@ class DarkMagicSpellTest {
 
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
 
-    // Tick 29 frames (0.967s) -- still within the 1.0s first-hit delay
-    engine.tick(SYNC_DELAY_TICKS + 29);
+    // Tick to just before first-hit delay expires -- still within the 1.0s first-hit delay
+    engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS - 1);
 
     assertThat(enemy.getHealth().getCurrent())
         .as("No damage should be dealt before first hit delay expires")
@@ -334,15 +334,15 @@ class DarkMagicSpellTest {
 
     deployDarkMagic(DEPLOY_X, DEPLOY_Y);
 
-    // Tick past sync delay + first hit delay + some buffer into the scan period (15 ticks = 0.5s).
+    // Tick past sync delay + first hit delay + some buffer into the scan period (~0.5s).
     // The first scan has already fired at the delay boundary; we're now between scan 1 and scan 2.
-    engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + 15);
+    engine.tick(SYNC_DELAY_TICKS + FIRST_HIT_DELAY_TICKS + GAME_TICKS_PER_SCAN / 2);
 
     // Spawn a new enemy mid-scan period (scan accumulator ~0.5, second scan at 1.0)
     Troop newcomer = spawnEnemyAt(DEPLOY_X + 0.5f, DEPLOY_Y, 50000, "Newcomer");
 
-    // Tick a few more ticks (5) -- still before the second scan boundary (scan acc ~0.67)
-    engine.tick(5);
+    // Tick a few more ticks -- still before the second scan boundary (scan acc ~0.67)
+    engine.tick(GAME_TICKS_PER_SCAN / 6);
 
     int newcomerDamageAfterFirstScan = 50000 - newcomer.getHealth().getCurrent();
     assertThat(newcomerDamageAfterFirstScan)

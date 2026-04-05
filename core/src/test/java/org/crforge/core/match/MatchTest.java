@@ -8,6 +8,7 @@ import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
+import org.crforge.core.engine.GameEngine;
 import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
@@ -205,8 +206,8 @@ class MatchTest {
   @Test
   void standard1v1_shouldHaveCorrectDurations() {
     assertThat(match.getMaxPlayersPerTeam()).isEqualTo(1);
-    assertThat(match.getMatchDurationTicks()).isEqualTo(180 * 30); // 3 minutes
-    assertThat(match.getOvertimeDurationTicks()).isEqualTo(120 * 30); // 2 minutes
+    assertThat(match.getMatchDurationTicks()).isEqualTo(180 * GameEngine.TICKS_PER_SECOND);
+    assertThat(match.getOvertimeDurationTicks()).isEqualTo(120 * GameEngine.TICKS_PER_SECOND);
     assertThat(match.getGameMode()).isEqualTo(GameMode.STANDARD_1V1);
   }
 }

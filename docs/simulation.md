@@ -2,10 +2,10 @@
 
 > Part of the [Architecture Reference](architecture.md).
 
-crforge runs a deterministic tick-based simulation at 30 FPS.
+crforge runs a deterministic tick-based simulation at 20 TPS (50 ms per tick).
 
-- `GameEngine.TICKS_PER_SECOND = 30`, `DELTA_TIME = 1/30f`
-- All durations measured in frames; convert via `frames / 30` for seconds
+- `GameEngine.TICKS_PER_SECOND = 20`, `DELTA_TIME = 1/20f`
+- JSON card data durations are in seconds; systems integrate against `DELTA_TIME`
 - Deterministic for RL/AI training -- no wall-clock dependencies
 
 ---

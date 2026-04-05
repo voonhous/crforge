@@ -57,13 +57,13 @@ class GoblinMachineTest {
   // edge = 4.25 - 0.75 - 0.5 = 3.0
   private static final float ROCKET_RANGE_OFFSET = 4.25f;
 
-  // Enough ticks for the rocket to fire AND travel to the target (107 ticks + margin)
-  private static final int ROCKET_HIT_TICKS = 120;
+  // Enough ticks for the rocket to fire AND travel to the target (~3.57s + margin)
+  private static final int ROCKET_HIT_TICKS = 4 * GameEngine.TICKS_PER_SECOND;
 
-  // 1.0s placement sync delay = 30 ticks
-  private static final int SYNC_DELAY_TICKS = 30;
-  // 1.0s deploy time = 30 ticks
-  private static final int DEPLOY_TICKS = 30;
+  // 1.0s placement sync delay
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 1.0s deploy time
+  private static final int DEPLOY_TICKS = GameEngine.TICKS_PER_SECOND;
 
   @BeforeEach
   void setUp() {
@@ -315,16 +315,16 @@ class GoblinMachineTest {
     assertThat(hpAfterFirst).as("First rocket hit").isLessThan(10000);
     int firstRocketDamage = 10000 - hpAfterFirst;
 
-    // Tick 1 second (30 ticks) -- deep in cooldown (2.5s), no second rocket yet
-    engine.tick(30);
+    // Tick 1 second -- deep in cooldown (2.5s), no second rocket yet
+    engine.tick(GameEngine.TICKS_PER_SECOND);
     int hpAfterCooldownWait = airEnemy.getHealth().getCurrent();
     assertThat(hpAfterCooldownWait)
         .as("No additional rocket damage during cooldown")
         .isEqualTo(hpAfterFirst);
 
     // Wait for second cycle: cooldown(2.5) + loadTime(1.5) + attackDelay(1.0) + travel(~1.0)
-    // = 6.0s = 180 ticks. Already 1s past first hit, so need ~150 more ticks.
-    engine.tick(180);
+    // = 6.0s. Already 1s past first hit, so need ~5s more.
+    engine.tick(6 * GameEngine.TICKS_PER_SECOND);
 
     int hpAfterSecond = airEnemy.getHealth().getCurrent();
     assertThat(hpAfterSecond)

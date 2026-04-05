@@ -43,17 +43,17 @@ class VinesSpellTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 14f;
 
-  // Placement sync delay (1.0s = 30 ticks)
-  private static final int SYNC_DELAY_TICKS = 30;
+  // Placement sync delay (1.0s)
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // Initial delay before first target selection (0.4s = 12 ticks)
-  private static final int INITIAL_DELAY_TICKS = 12;
+  // Initial delay before first target selection (0.4s)
+  private static final int INITIAL_DELAY_TICKS = (int) (0.4f * GameEngine.TICKS_PER_SECOND);
 
-  // Buff hit frequency (1.0s = 30 ticks)
-  private static final int HIT_FREQUENCY_TICKS = 30;
+  // Buff hit frequency (1.0s)
+  private static final int HIT_FREQUENCY_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // Buff duration (2.0s = 60 ticks)
-  private static final int BUFF_DURATION_TICKS = 60;
+  // Buff duration (2.0s)
+  private static final int BUFF_DURATION_TICKS = 2 * GameEngine.TICKS_PER_SECOND;
 
   // Base DPS = 60, hit frequency = 1.0s, so base damage per tick = 60
   private static final int BASE_DOT_DAMAGE_PER_TICK = 60;

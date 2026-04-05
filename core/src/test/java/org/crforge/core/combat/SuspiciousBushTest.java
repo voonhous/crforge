@@ -38,10 +38,15 @@ class SuspiciousBushTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 14f;
 
-  // 1.0s deploy time = 30 ticks
-  private static final int DEPLOY_TICKS = 30;
-  // Sync delay for card deployment = 30 ticks
-  private static final int SYNC_DELAY_TICKS = 30;
+  // 1.0s deploy time
+  private static final int DEPLOY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 1.0s placement sync delay
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+
+  private static int ticksFor(float seconds) {
+    // +1 to overshoot the float threshold after accumulator compares
+    return (int) Math.ceil(seconds * GameEngine.TICKS_PER_SECOND) + 1;
+  }
 
   @BeforeEach
   void setUp() {
@@ -231,8 +236,8 @@ class SuspiciousBushTest {
     float deathY = bush.getPosition().getY();
 
     bush.getHealth().takeDamage(bush.getHealth().getCurrent());
-    // 1 tick for death + 22 ticks for max delay + processPending
-    engine.tick(23);
+    // 1 tick for death + max delay (0.675s) + processPending
+    engine.tick(1 + ticksFor(0.675f));
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -270,15 +275,14 @@ class SuspiciousBushTest {
     // 1 tick for death processing (onDeath queues pending spawns)
     engine.tick(1);
 
-    // 0.625s delay needs ceil(0.625*30) = 19 decrements + 1 for processPending = 20 ticks
-    engine.tick(20);
+    // 0.625s delay
+    engine.tick(ticksFor(0.625f));
     assertThat(countBushGoblins())
         .as("After 0.625s delay, the faster goblin should have spawned")
         .isEqualTo(1);
 
-    // 0.675s delay needs ceil(0.675*30) = 21 decrements + 1 for processPending = 22 total
-    // from death. We've done 21, need 2 more (1 decrement + 1 processPending).
-    engine.tick(2);
+    // 0.675s delay -- need to advance the remaining 0.05s
+    engine.tick(ticksFor(0.675f) - ticksFor(0.625f));
     assertThat(countBushGoblins())
         .as("After 0.675s delay, both goblins should have spawned")
         .isEqualTo(2);
@@ -292,8 +296,8 @@ class SuspiciousBushTest {
     Troop bush = findBush();
     bush.getHealth().takeDamage(bush.getHealth().getCurrent());
 
-    // 1 tick death + 22 ticks for max delay + processPending
-    engine.tick(23);
+    // 1 tick death + max delay (0.675s) + processPending
+    engine.tick(1 + ticksFor(0.675f));
 
     List<Troop> goblins =
         engine.getGameState().getEntitiesOfType(Troop.class).stream()
@@ -301,7 +305,7 @@ class SuspiciousBushTest {
             .toList();
     assertThat(goblins).as("BushGoblins should exist").hasSize(2);
 
-    // Each goblin should still be deploying (deployDelay=0.4s = 12 ticks, only ~2 updates so far)
+    // Each goblin should still be deploying (deployDelay=0.4s, only a few updates so far)
     for (Troop goblin : goblins) {
       assertThat(goblin.isDeploying())
           .as("BushGoblin should be in deploy phase (0.4s deploy delay)")
@@ -320,8 +324,8 @@ class SuspiciousBushTest {
     // Kill bush with direct damage (simulating area damage hit)
     bush.getHealth().takeDamage(bush.getHealth().getCurrent());
 
-    // 1 tick death + 22 ticks for max delay + processPending
-    engine.tick(23);
+    // 1 tick death + max delay (0.675s) + processPending
+    engine.tick(1 + ticksFor(0.675f));
 
     assertThat(countBushGoblins())
         .as("Goblins should spawn even when killed by area damage")

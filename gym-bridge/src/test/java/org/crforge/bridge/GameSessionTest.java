@@ -38,13 +38,13 @@ class GameSessionTest {
 
   @Test
   void stepAdvancesSimulation() {
-    InitConfig config = new InitConfig(TEST_DECK, TEST_DECK, 11, 30);
+    InitConfig config = new InitConfig(TEST_DECK, TEST_DECK, 11, 20);
     session.init(config);
 
     // Step with no actions
     StepResultDTO result = session.step(null, null);
 
-    assertThat(result.observation().frame()).isEqualTo(30);
+    assertThat(result.observation().frame()).isEqualTo(20);
     assertThat(result.observation().gameTimeSeconds())
         .isCloseTo(1.0f, org.assertj.core.data.Offset.offset(0.01f));
     assertThat(result.terminated()).isFalse();
@@ -146,8 +146,8 @@ class GameSessionTest {
 
     // Elixir should only change by regen, not by spending
     float afterElixir = result.observation().bluePlayer().elixir();
-    // 1 tick of regen at rate 1/2.8 per second, dt=1/30
-    float expectedRegen = (1.0f / 2.8f) * (1.0f / 30.0f);
+    // 1 tick of regen at rate 1/2.8 per second, dt=1/20
+    float expectedRegen = (1.0f / 2.8f) * (1.0f / 20.0f);
     assertThat(afterElixir)
         .isCloseTo(initialBlueElixir + expectedRegen, org.assertj.core.data.Offset.offset(0.01f));
   }

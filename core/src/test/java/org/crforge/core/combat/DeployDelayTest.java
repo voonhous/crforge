@@ -38,8 +38,12 @@ class DeployDelayTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 7f;
 
-  // Placement sync delay (1.0s = 30 ticks) before the troop entity appears
-  private static final int SYNC_DELAY_TICKS = 30;
+  // Placement sync delay (1.0s) before the troop entity appears
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+
+  private static int ticksFor(float seconds) {
+    return (int) (seconds * GameEngine.TICKS_PER_SECOND);
+  }
 
   @BeforeEach
   void setUp() {
@@ -88,29 +92,23 @@ class DeployDelayTest {
     engine.tick(SYNC_DELAY_TICKS + 2);
 
     Troop archer = findTroopByName("Archer");
-    float expectedDeployTime = ARCHER.getUnitStats().getDeployTime();
-    float expectedDeployDelay = ARCHER.getUnitStats().getDeployDelay();
 
     // The initial deployTimer should be deployTime + deployDelay
-    // After the sync delay + 2 ticks, some time has passed on the deploy timer.
-    // Instead, check that the troop is still deploying at the time when it would have
-    // been done without deployDelay, but isn't done yet.
-    // deployTime is 1.0s, deployDelay is 0.4s, total = 1.4s = 42 ticks
-    // At tick 30 (sync) the troop spawns. At tick 30+30=60 (1.0s after spawn) it would
-    // normally be done deploying. But with deployDelay it needs 42 ticks = until tick 72.
+    // deployTime is 1.0s, deployDelay is 0.4s, total = 1.4s
+    // At tick SYNC_DELAY the troop spawns. At 1.0s after spawn it would
+    // normally be done deploying. But with deployDelay it needs 1.4s.
 
     // Tick until 1.0s after spawn (would be done without deployDelay)
-    int ticksFor1s = 30;
-    // We already ticked 2, so tick more to reach 30 ticks after spawn
-    engine.tick(ticksFor1s - 2);
-    // Now at tick 62 total. Troop should still be deploying (needs 42 ticks = until tick 72)
+    // We already ticked 2, so tick more to reach 1.0s (ticksFor(1.0f)) after spawn
+    engine.tick(ticksFor(1.0f) - 2);
+    // Troop should still be deploying (needs 1.4s)
     assertThat(archer.isDeploying())
         .as("Archer should still be deploying at 1.0s after spawn (deployDelay not yet elapsed)")
         .isTrue();
 
-    // Tick past the full deploy period (42 ticks after spawn = tick 72)
-    engine.tick(15);
-    // Now at tick 77 total. Troop should be done deploying.
+    // Tick past the full deploy period (1.4s after spawn)
+    engine.tick(ticksFor(0.5f));
+    // Troop should be done deploying.
     assertThat(archer.isDeploying())
         .as("Archer should be done deploying after 1.4s (deployTime + deployDelay)")
         .isFalse();
@@ -150,10 +148,10 @@ class DeployDelayTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError("No Knight found"));
 
-    // Knight has deployTime=1.0 and no deployDelay. After 1.0s (30 ticks) it should be done.
-    // Already 2 ticks into deploy, so tick 28 more.
-    knightEngine.tick(28);
-    // Now at 30 ticks after spawn
+    // Knight has deployTime=1.0 and no deployDelay. After 1.0s it should be done.
+    // Already 2 ticks into deploy, so tick more to reach 1.0s total.
+    knightEngine.tick(ticksFor(1.0f) - 2);
+    // Now at 1.0s after spawn
     assertThat(knight.isDeploying())
         .as("Knight should be done deploying at exactly 1.0s (no deployDelay)")
         .isFalse();
@@ -168,10 +166,10 @@ class DeployDelayTest {
 
     Troop archer = findTroopByName("Archer");
 
-    // At 1.0s after spawn (30 ticks), archer should still be deploying due to deployDelay.
-    // Without deployDelay, deployTimer=1.0 would be done after 30 ticks.
-    // With deployDelay=0.4, deployTimer=1.4 so it needs 42 ticks.
-    engine.tick(28); // total 30 ticks after spawn
+    // At 1.0s after spawn, archer should still be deploying due to deployDelay.
+    // Without deployDelay, deployTimer=1.0 would be done after 1.0s.
+    // With deployDelay=0.4, deployTimer=1.4 so it needs 1.4s.
+    engine.tick(ticksFor(1.0f) - 2); // total 1.0s after spawn
     assertThat(archer.isDeploying())
         .as("Archer should still be deploying at 1.0s (in deployDelay phase)")
         .isTrue();
@@ -179,8 +177,8 @@ class DeployDelayTest {
         .as("Archer should not have taken damage while deploying")
         .isEqualTo(archer.getHealth().getMax());
 
-    // After full deploy (1.4s = 42 ticks after spawn), archer should be active
-    engine.tick(14); // total 44 ticks after spawn
+    // After full deploy (1.4s after spawn), archer should be active
+    engine.tick(ticksFor(0.467f)); // total ~1.47s after spawn
     assertThat(archer.isDeploying()).as("Archer should be done deploying after 1.4s").isFalse();
   }
 

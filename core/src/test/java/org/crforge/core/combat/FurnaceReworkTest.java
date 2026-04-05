@@ -37,10 +37,14 @@ class FurnaceReworkTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 10f;
 
-  // 1.0s placement sync delay = 30 ticks
-  private static final int SYNC_DELAY_TICKS = 30;
-  // 1.0s building deploy time = 30 ticks
-  private static final int DEPLOY_TICKS = 30;
+  // 1.0s placement sync delay
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+  // 1.0s building deploy time
+  private static final int DEPLOY_TICKS = GameEngine.TICKS_PER_SECOND;
+
+  private static int ticksFor(float seconds) {
+    return (int) (seconds * GameEngine.TICKS_PER_SECOND);
+  }
 
   @BeforeEach
   void setUp() {
@@ -126,7 +130,7 @@ class FurnaceReworkTest {
     float initialY = furnace.getPosition().getY();
 
     // Tick enough for movement to occur (blue walks toward red = +Y)
-    engine.tick(60);
+    engine.tick(ticksFor(2.0f));
 
     float movedY = furnace.getPosition().getY();
     assertThat(movedY)
@@ -165,12 +169,12 @@ class FurnaceReworkTest {
     engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2);
     assertThat(countFireSpirits()).as("No FireSpirits right after deploy").isEqualTo(0);
 
-    // spawnStartTime = 1.95s = ~59 ticks. Tick just before.
-    engine.tick(55);
+    // spawnStartTime = 1.95s. Tick just before.
+    engine.tick(ticksFor(1.83f));
     assertThat(countFireSpirits()).as("No FireSpirits before start time").isEqualTo(0);
 
-    // Tick past start time (need 1-2 extra ticks for processing)
-    engine.tick(10);
+    // Tick past start time (need extra ticks for processing)
+    engine.tick(ticksFor(0.33f) + 2);
     assertThat(countFireSpirits()).as("1 FireSpirit after start time").isEqualTo(1);
   }
 
@@ -178,16 +182,16 @@ class FurnaceReworkTest {
   void furnaceSpawnsFireSpiritPeriodically() {
     deployFurnace(DEPLOY_X, DEPLOY_Y);
 
-    // Tick past sync + deploy + spawn start time (1.95s ~= 59 ticks) + buffer
-    engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2 + 65);
+    // Tick past sync + deploy + spawn start time (1.95s) + buffer
+    engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2 + ticksFor(2.17f));
     assertThat(countFireSpirits()).as("1st FireSpirit spawned").isEqualTo(1);
 
-    // spawnPauseTime = 7.0s = 210 ticks between waves. Tick just before.
-    engine.tick(200);
+    // spawnPauseTime = 7.0s between waves. Tick just before.
+    engine.tick(ticksFor(6.67f));
     assertThat(countFireSpirits()).as("Still only 1 FireSpirit before next wave").isEqualTo(1);
 
     // Tick past the pause
-    engine.tick(15);
+    engine.tick(ticksFor(0.5f));
     assertThat(countFireSpirits()).as("2nd FireSpirit after 7s pause").isEqualTo(2);
   }
 

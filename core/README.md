@@ -152,9 +152,9 @@ org.crforge.core/
 
 ## Simulation Details
 
-- **Tick rate**: 30 FPS (constant `DELTA_TIME = 1/30`)
+- **Tick rate**: 20 TPS / 50 ms per tick (constant `DELTA_TIME = 1/20`)
 - **Deterministic**: Same inputs = same outputs (critical for RL)
-- **Frame-based timing**: All durations in ticks, convert via `ticks / 30`
+- **Seconds-based timing**: JSON card data is in seconds; systems integrate against `DELTA_TIME`
 
 ## Building & Testing
 

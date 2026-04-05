@@ -30,6 +30,13 @@ import org.junit.jupiter.api.Test;
  */
 class GoblinDrillTest {
 
+  // Placement sync delay (1.0s)
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+
+  private static int ticksFor(float seconds) {
+    return (int) (seconds * GameEngine.TICKS_PER_SECOND);
+  }
+
   private GameEngine engine;
   private Standard1v1Match match;
   private Player blue;
@@ -93,8 +100,8 @@ class GoblinDrillTest {
   void goblinDrill_spawnsDigUnit_atKingTower() {
     deployGoblinDrill(blue, 9.0f, 25.0f);
 
-    // Tick past sync delay (1.0s = 30 ticks) + 1 to process pending
-    engine.tick(32);
+    // Tick past sync delay (1.0s) + 2 to process pending
+    engine.tick(SYNC_DELAY_TICKS + 2);
 
     List<Troop> digTroops = findTroopsByName("GoblinDrillDig");
     assertThat(digTroops).hasSize(1);
@@ -131,8 +138,8 @@ class GoblinDrillTest {
     Troop digTroop = digTroops.get(0);
     float startY = digTroop.getPosition().getY();
 
-    // Tick 10 more frames for the dig troop to move
-    engine.tick(10);
+    // Tick ~0.33s more for the dig troop to move
+    engine.tick(ticksFor(0.33f) + 1);
 
     assertThat(digTroop.getPosition().getY())
         .as("Dig troop should move toward target (y=25)")
@@ -145,8 +152,8 @@ class GoblinDrillTest {
 
     // Tick enough for sync delay + tunnel travel. GoblinDrillDig speed = 300/60 = 5 tiles/sec.
     // Distance from king tower (9,3) to (9,25) is ~22 tiles. Via dogleg waypoint ~30 tiles.
-    // At 5 t/s -> ~6s -> 180 ticks. Add sync delay 30 ticks + buffer.
-    engine.tick(250);
+    // At 5 t/s -> ~6s. Add sync delay 1.0s + buffer.
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(7.33f));
 
     // Dig troop should be dead/gone (it gets killed on morph)
     List<Troop> digTroops = findTroopsByName("GoblinDrillDig");
@@ -182,7 +189,7 @@ class GoblinDrillTest {
     deployGoblinDrill(blue, 9.0f, 25.0f);
 
     // Run until building morphs + area effect processes
-    engine.tick(260);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(7.67f));
 
     // Enemy should have taken damage from GoblinDrillDamage
     assertThat(enemy.getHealth().getCurrent())
@@ -211,7 +218,7 @@ class GoblinDrillTest {
     deployGoblinDrill(blue, 9.0f, 25.0f);
 
     // Run until building morphs + area effect processes + a few physics ticks for knockback
-    engine.tick(265);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(7.83f));
 
     // Enemy should have been knocked back (pushed away from the emergence center)
     float endX = enemy.getPosition().getX();
@@ -225,11 +232,11 @@ class GoblinDrillTest {
     // Deploy on own side to avoid tower fire killing Goblins
     deployGoblinDrill(blue, 9.0f, 10.0f);
 
-    // Tunnel travel: ~7 tiles at 5 t/s -> ~1.4s -> ~42 ticks
-    // Sync delay: 30 ticks + tunnel: ~42 ticks + building deploy: ~30 ticks = ~102 ticks
+    // Tunnel travel: ~7 tiles at 5 t/s -> ~1.4s
+    // Sync delay: 1.0s + tunnel: ~1.4s + building deploy: ~1.0s = ~3.4s
     // Then live spawn at 1s, 4s, 7s (spawnStartTime=1.0, spawnPauseTime=3.0)
-    // Run 102 + 8*30 = ~342 ticks to get past the 7s spawn
-    engine.tick(380);
+    // Run 3.4s + 8s = ~11.4s, use 12.67s to get past the 7s spawn
+    engine.tick(ticksFor(12.67f));
 
     List<Troop> goblins = findTroopsByName("Goblin");
     // Should have at least 2 Goblins from live spawns (1s and 4s)
@@ -243,8 +250,8 @@ class GoblinDrillTest {
     // Deploy on own side to avoid tower fire killing Goblins
     deployGoblinDrill(blue, 9.0f, 10.0f);
 
-    // Tunnel: ~42 ticks + sync: 30 ticks + deploy: ~30 ticks + lifetime: 300 ticks + buffer
-    engine.tick(450);
+    // Tunnel: ~1.4s + sync: 1.0s + deploy: ~1.0s + lifetime: 10s + buffer
+    engine.tick(ticksFor(15.0f));
 
     // Building should be dead (lifetime expired after 10s)
     List<Building> buildings = findBuildingsByName("GoblinDrill");
@@ -264,17 +271,17 @@ class GoblinDrillTest {
     deployGoblinDrill(blue, 9.0f, 10.0f);
 
     // Phase 1: After sync delay, dig troop should exist
-    engine.tick(32);
+    engine.tick(SYNC_DELAY_TICKS + 2);
     assertThat(findTroopsByName("GoblinDrillDig")).hasSize(1);
     assertThat(findBuildingsByName("GoblinDrill")).isEmpty();
 
-    // Phase 2: After tunnel travel (~42 ticks from king tower to y=10), building should exist
-    engine.tick(50);
+    // Phase 2: After tunnel travel (~1.4s from king tower to y=10), building should exist
+    engine.tick(ticksFor(1.67f));
     assertThat(findTroopsByName("GoblinDrillDig")).isEmpty();
     assertThat(findBuildingsByName("GoblinDrill")).hasSize(1);
 
-    // Phase 3: After building lifetime (10s=300 ticks) + buffer, Goblins should exist
-    engine.tick(380);
+    // Phase 3: After building lifetime (10s) + buffer, Goblins should exist
+    engine.tick(ticksFor(12.67f));
     List<Troop> goblins = findTroopsByName("Goblin");
     assertThat(goblins.size())
         .as("Full lifecycle should produce multiple Goblins from live + death spawns")

@@ -110,12 +110,12 @@ class ElixirCollectionSystemTest {
     // Record elixir after deploy (accounts for natural regen and elixir spent on deploy)
     float elixirAfterDeploy = bluePlayer.getElixir().getCurrent();
 
-    // Run 13 seconds (390 ticks) for one collection cycle
+    // Run 13 seconds for one collection cycle
     // Disable natural regen by setting elixir to 0 and tracking gain
     bluePlayer.getElixir().spend((int) bluePlayer.getElixir().getCurrent());
     float elixirBeforeCollection = bluePlayer.getElixir().getCurrent();
 
-    engine.tick(390);
+    engine.runSeconds(13.0f);
 
     float elixirAfterCollection = bluePlayer.getElixir().getCurrent();
     // Natural regen adds some elixir too, so we check that at least 1 extra came from collector

@@ -40,8 +40,12 @@ class GraveyardTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 14f;
 
-  // Placement sync delay (1.0s = 30 ticks)
-  private static final int SYNC_DELAY_TICKS = 30;
+  // Placement sync delay (1.0s)
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
+
+  private static int ticksFor(float seconds) {
+    return (int) (seconds * GameEngine.TICKS_PER_SECOND);
+  }
 
   @BeforeEach
   void setUp() {
@@ -97,8 +101,8 @@ class GraveyardTest {
     Troop enemy = spawnEnemyAt(DEPLOY_X, DEPLOY_Y, 1000);
 
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
-    // Tick just before the first skeleton spawns (2.2s = 66 ticks) so skeletons cannot attack
-    engine.tick(SYNC_DELAY_TICKS + 60);
+    // Tick just before the first skeleton spawns (2.2s) so skeletons cannot attack
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(2.0f));
 
     assertThat(enemy.getHealth().getCurrent())
         .as(
@@ -110,8 +114,8 @@ class GraveyardTest {
   void noSkeletonsBeforeFirstSpawnDelay() {
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
 
-    // First skeleton spawns at 2.2s after AE creation. Tick sync delay + just under 2.2s (65 ticks)
-    engine.tick(SYNC_DELAY_TICKS + 65);
+    // First skeleton spawns at 2.2s after AE creation. Tick to just under 2.2s
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(2.2f) - 1);
 
     long skeletonCount = countSkeletons();
     assertThat(skeletonCount).as("No skeletons should spawn before 2.2s").isEqualTo(0);
@@ -121,8 +125,8 @@ class GraveyardTest {
   void firstSkeletonSpawnsOnTime() {
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
 
-    // First skeleton at 2.2s = 66 ticks. Add a couple extra for processing.
-    engine.tick(SYNC_DELAY_TICKS + 68);
+    // First skeleton at 2.2s. Add a couple extra for processing.
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(2.2f) + 2);
 
     long skeletonCount = countSkeletons();
     assertThat(skeletonCount).as("1 skeleton should spawn after 2.2s").isEqualTo(1);
@@ -132,8 +136,8 @@ class GraveyardTest {
   void all13SkeletonsSpawnByEnd() {
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
 
-    // Last skeleton at 8.7s = 261 ticks. Add extra buffer.
-    engine.tick(SYNC_DELAY_TICKS + 270);
+    // Last skeleton at 8.7s. Add extra buffer.
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(9.0f));
 
     long skeletonCount = countSkeletons();
     assertThat(skeletonCount).as("All 13 skeletons should have spawned by 8.7s").isEqualTo(13);
@@ -143,12 +147,12 @@ class GraveyardTest {
   void spawnTimingProgression() {
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
 
-    // After 4.0s = 120 ticks: entries with delay <= 4.0s are 2.2, 2.7, 3.3, 3.8 = 4 skeletons
-    engine.tick(SYNC_DELAY_TICKS + 122);
+    // After 4.0s: entries with delay <= 4.0s are 2.2, 2.7, 3.3, 3.8 = 4 skeletons
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(4.0f) + 2);
     assertThat(countSkeletons()).as("4 skeletons should spawn by 4.0s").isEqualTo(4);
 
-    // After 6.0s = 180 ticks: entries with delay <= 6.0s are indices 0-7 = 8 skeletons
-    engine.tick(60);
+    // After 6.0s: entries with delay <= 6.0s are indices 0-7 = 8 skeletons
+    engine.runSeconds(2.0f);
     assertThat(countSkeletons()).as("8 skeletons should spawn by 6.0s").isEqualTo(8);
   }
 
@@ -157,7 +161,7 @@ class GraveyardTest {
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
 
     // Wait for first skeleton to finish deploying
-    engine.tick(SYNC_DELAY_TICKS + 100);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(3.3f) + 2);
 
     Troop skeleton = findFirstSkeleton();
     assertThat(skeleton.getHealth().getMax()).as("Skeleton HP").isEqualTo(32);
@@ -171,7 +175,7 @@ class GraveyardTest {
     deployGraveyard(leftX, DEPLOY_Y);
 
     // Wait for first skeleton to spawn (delay=2.2s, relativeX=0, relativeY=-3.5)
-    engine.tick(SYNC_DELAY_TICKS + 68);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(2.2f) + 2);
 
     Troop skeleton = findFirstSkeleton();
     // BLUE team: yMirror=+1, left side: xMirror=+1
@@ -189,7 +193,7 @@ class GraveyardTest {
     deployGraveyard(rightX, DEPLOY_Y);
 
     // Wait for second skeleton (delay=2.7s, relativeX=-3.5, relativeY=0)
-    engine.tick(SYNC_DELAY_TICKS + 83);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(2.7f) + 2);
 
     List<Troop> skeletons = findAllSkeletons();
     assertThat(skeletons)
@@ -207,7 +211,7 @@ class GraveyardTest {
     bluePlayer.getLevelConfig().withCardLevel(GRAVEYARD.getId(), 11);
 
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
-    engine.tick(SYNC_DELAY_TICKS + 100);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(3.3f) + 2);
 
     Troop skeleton = findFirstSkeleton();
     int expectedHp = LevelScaling.scaleCard(32, 11);
@@ -227,7 +231,7 @@ class GraveyardTest {
     deployGraveyard(DEPLOY_X, 20f);
 
     // Tick well past all spawn delays
-    engine.tick(SYNC_DELAY_TICKS + 270);
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(9.0f));
 
     long totalSkeletons = countSkeletons();
     assertThat(totalSkeletons).as("Two graveyards should produce 26 total skeletons").isEqualTo(26);
@@ -237,8 +241,8 @@ class GraveyardTest {
   void areaEffectDiesAfterAllSpawns() {
     deployGraveyard(DEPLOY_X, DEPLOY_Y);
 
-    // Tick past all spawns and lifetime (9s = 270 ticks + sync + buffer)
-    engine.tick(SYNC_DELAY_TICKS + 280);
+    // Tick past all spawns and lifetime (9s + sync + buffer)
+    engine.tick(SYNC_DELAY_TICKS + ticksFor(9.5f));
 
     List<AreaEffect> effects = engine.getGameState().getEntitiesOfType(AreaEffect.class);
     boolean anyAliveGraveyard =

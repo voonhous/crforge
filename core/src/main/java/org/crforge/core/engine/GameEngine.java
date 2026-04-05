@@ -27,7 +27,7 @@ import org.crforge.core.player.dto.PlayerActionDTO;
 @Getter
 public class GameEngine {
 
-  public static final int TICKS_PER_SECOND = 30;
+  public static final int TICKS_PER_SECOND = 20;
   public static final float DELTA_TIME = 1.0f / TICKS_PER_SECOND;
 
   private final GameState gameState;

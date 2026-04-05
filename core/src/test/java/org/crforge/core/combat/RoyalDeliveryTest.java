@@ -43,14 +43,14 @@ class RoyalDeliveryTest {
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 14f;
 
-  // Placement sync delay (1.0s = 30 ticks) before the area effect entity appears
-  private static final int SYNC_DELAY_TICKS = 30;
+  // Placement sync delay (1.0s) before the area effect entity appears
+  private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // Area effect hitSpeed is 2.0s = 60 ticks (damage fires at tick 60 after AE creation)
-  private static final int DAMAGE_DELAY_TICKS = 60;
+  // Area effect hitSpeed is 2.0s (damage fires at this delay after AE creation)
+  private static final int DAMAGE_DELAY_TICKS = 2 * GameEngine.TICKS_PER_SECOND;
 
-  // Spawn fires at 2.05s = ~62 ticks after AE creation
-  private static final int SPAWN_DELAY_TICKS = 62;
+  // Spawn fires at 2.05s after AE creation
+  private static final int SPAWN_DELAY_TICKS = (int) (2.05f * GameEngine.TICKS_PER_SECOND) + 1;
 
   @BeforeEach
   void setUp() {

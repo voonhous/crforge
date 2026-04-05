@@ -426,8 +426,8 @@ class MinerTunnelTest {
     engine.queueAction(blue, PlayerActionDTO.builder().handIndex(0).x(9.0f).y(26.5f).build());
 
     // Run enough ticks for tunnel travel + deploy animation + first attack:
-    // ~30 ticks sync delay + ~75 ticks tunnel + 30 ticks deploy + 20 ticks first attack = ~155
-    engine.tick(180);
+    // ~1.0s sync delay + ~2.5s tunnel + 1.0s deploy + 0.67s first attack = ~5.2s
+    engine.runSeconds(6.0f);
 
     // Find the deployed Miner
     Troop miner =

@@ -27,9 +27,9 @@ class GameEngineTest {
   }
 
   @Test
-  void constants_shouldBe30FPS() {
-    assertThat(GameEngine.TICKS_PER_SECOND).isEqualTo(30);
-    assertThat(GameEngine.DELTA_TIME).isEqualTo(1.0f / 30f);
+  void constants_shouldBe20TPS() {
+    assertThat(GameEngine.TICKS_PER_SECOND).isEqualTo(20);
+    assertThat(GameEngine.DELTA_TIME).isEqualTo(1.0f / 20f);
   }
 
   @Test
@@ -70,7 +70,7 @@ class GameEngineTest {
   void tick_shouldAdvanceGameTime() {
     engine.initMatch();
 
-    engine.tick(30);
+    engine.runSeconds(1f);
 
     assertThat(engine.getGameTimeSeconds()).isEqualTo(1.0f);
   }
@@ -81,7 +81,7 @@ class GameEngineTest {
 
     engine.runSeconds(2.0f);
 
-    assertThat(engine.getGameState().getFrameCount()).isEqualTo(60);
+    assertThat(engine.getGameState().getFrameCount()).isEqualTo(2 * GameEngine.TICKS_PER_SECOND);
   }
 
   @Test

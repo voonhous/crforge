@@ -101,10 +101,10 @@ class ObservationBuilderTest {
 
   @Test
   void buildAfterTicksShowsTimeProgression() {
-    engine.tick(30); // 1 second
+    engine.runSeconds(1f);
 
     ObservationDTO obs = ObservationBuilder.build(engine, bluePlayer, redPlayer);
-    assertThat(obs.frame()).isEqualTo(30);
+    assertThat(obs.frame()).isEqualTo(GameEngine.TICKS_PER_SECOND);
     assertThat(obs.gameTimeSeconds()).isCloseTo(1.0f, org.assertj.core.data.Offset.offset(0.01f));
   }
 
