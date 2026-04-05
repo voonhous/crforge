@@ -13,6 +13,7 @@ import org.crforge.core.combat.TargetingSystem;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.StatusEffectSystem;
 import org.crforge.core.engine.EntityTimerSystem;
+import org.crforge.core.engine.GameEngine;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.DeathHandlingSystem;
 import org.crforge.core.entity.SpawnFactory;
@@ -39,13 +40,13 @@ import org.crforge.core.physics.PhysicsSystem;
  *     .deployed()
  *     .build();
  *
- * sim.tick(60);
+ * sim.tickSeconds(2f);
  * Troop knight = sim.troop("Knight");
  * </pre>
  */
 public class SimHarness {
 
-  private static final float DT = 1.0f / 30;
+  private static final float DT = GameEngine.DELTA_TIME;
 
   private final GameState gameState;
   private final EnumSet<SimSystems> enabledSystems;
@@ -227,9 +228,9 @@ public class SimHarness {
     }
   }
 
-  /** Run for the given number of seconds (converted to ticks at 30fps). */
+  /** Run for the given number of seconds (converted to ticks at the engine's tick rate). */
   public void tickSeconds(float seconds) {
-    tick((int) (seconds * 30));
+    tick((int) (seconds * GameEngine.TICKS_PER_SECOND));
   }
 
   // -- Entity retrieval --
@@ -302,7 +303,7 @@ public class SimHarness {
     return areaEffectSystem;
   }
 
-  /** Returns the delta time constant (1/30). */
+  /** Returns the delta time constant (GameEngine.DELTA_TIME). */
   public static float dt() {
     return DT;
   }

@@ -313,13 +313,13 @@ class GoblinDemolisherTest {
         .setCombatDisabled(org.crforge.core.component.ModifierSource.ABILITY_TUNNEL, true);
 
     // Run 18 seconds -- should still be alive (lifeTimer ticks down during update)
-    engine.tick(18 * 30);
+    engine.runSeconds(18f);
     Troop stillAlive = findKamikazeTroop();
     assertThat(stillAlive).as("Kamikaze alive at ~18s").isNotNull();
     assertThat(stillAlive.isAlive()).as("Still alive").isTrue();
 
     // Run past 20 seconds total (2 more seconds + buffer to ensure lifetime expires)
-    engine.tick(3 * 30);
+    engine.runSeconds(3f);
 
     // Should be dead from lifetime expiry
     Troop expired = findKamikazeTroop();

@@ -582,7 +582,7 @@ class HidingAbilityTest {
     assertThat(tesla.getAbility().getHidingState()).isEqualTo(AbilityComponent.HidingState.UP);
 
     // Now combat is enabled, load time should be accumulating
-    sim.tick(30); // 1 second
+    sim.tickSeconds(1f);
 
     assertThat(tesla.getCombat().getAccumulatedLoadTime()).isGreaterThan(0f);
   }
