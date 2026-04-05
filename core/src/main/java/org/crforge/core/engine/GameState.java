@@ -169,7 +169,7 @@ public class GameState {
   }
 
   public float getGameTimeSeconds() {
-    return frameCount / 30f;
+    return frameCount / (float) GameEngine.TICKS_PER_SECOND;
   }
 
   public List<Entity> getEntitiesByTeam(Team team) {
