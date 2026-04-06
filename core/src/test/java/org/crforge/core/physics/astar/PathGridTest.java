@@ -2,8 +2,15 @@ package org.crforge.core.physics.astar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.crforge.core.arena.Arena;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
+import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Building;
+import org.crforge.core.player.Team;
 import org.junit.jupiter.api.Test;
 
 class PathGridTest {
@@ -92,5 +99,86 @@ class PathGridTest {
 
     assertThat(grid.isPassable(2, 2)).isTrue();
     assertThat(grid.isPassable(3, 3)).isFalse();
+  }
+
+  @Test
+  void applyBuildingOcclusions_blocksTilesUnderBuilding() {
+    PathGrid grid = new PathGrid(18, 32);
+    Arena arena = Arena.standard();
+    grid.buildFromArena(arena, MovementType.GROUND);
+
+    // Place a building at (9, 10) with collisionRadius 1.0
+    Building building =
+        Building.builder()
+            .name("InfernoTower")
+            .team(Team.BLUE)
+            .position(new Position(9.5f, 10.5f))
+            .health(new Health(1000))
+            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .build();
+
+    // Verify the building has the expected collision radius
+    assertThat(building.getCollisionRadius()).as("Building collision radius").isEqualTo(1.0f);
+    assertThat(building.isAlive()).as("Building is alive").isTrue();
+
+    // Before: tiles around (9,10) are passable ground
+    assertThat(grid.isPassable(9, 10)).isTrue();
+
+    grid.applyBuildingOcclusions(List.of((Entity) building));
+
+    // After: tiles within radius 1.0 of (9.5, 10.5) should be blocked
+    // Tile (9,10) center is (9.5, 10.5) -- distance 0.0 from building center
+    assertThat(grid.getCost(9, 10)).isEqualTo(CostTable.BUILDING_COST);
+    // Tile (10,10) center is (10.5, 10.5) -- distance 1.0 from building center (on boundary)
+    assertThat(grid.getCost(10, 10)).isEqualTo(CostTable.BUILDING_COST);
+    // Tile (9,11) center is (9.5, 11.5) -- distance 1.0 from building center (on boundary)
+    assertThat(grid.getCost(9, 11)).isEqualTo(CostTable.BUILDING_COST);
+
+    // Tiles outside the radius should remain passable (>1.0 distance)
+    // (7, 10) center is (7.5, 10.5) -- distance 2.0 from building center
+    assertThat(grid.getCost(7, 10)).isEqualTo(CostTable.DEFAULT_COST);
+  }
+
+  @Test
+  void applyBuildingOcclusions_ignoresDeadBuildings() {
+    PathGrid grid = new PathGrid(18, 32);
+    Arena arena = Arena.standard();
+    grid.buildFromArena(arena, MovementType.GROUND);
+
+    Building building =
+        Building.builder()
+            .name("Tesla")
+            .team(Team.BLUE)
+            .position(new Position(5.5f, 8.5f))
+            .health(new Health(500))
+            .movement(new Movement(0f, 0f, 0.8f, 0.8f, MovementType.BUILDING))
+            .build();
+    // Kill it
+    building.getHealth().takeDamage(500);
+
+    grid.applyBuildingOcclusions(List.of(building));
+
+    // Dead building should not block tiles
+    assertThat(grid.getCost(5, 8)).isEqualTo(CostTable.DEFAULT_COST);
+  }
+
+  @Test
+  void applyBuildingOcclusions_ignoresNonBuildingEntities() {
+    PathGrid grid = new PathGrid(18, 32);
+    Arena arena = Arena.standard();
+    grid.buildFromArena(arena, MovementType.GROUND);
+
+    org.crforge.core.entity.unit.Troop troop =
+        org.crforge.core.entity.unit.Troop.builder()
+            .name("Knight")
+            .team(Team.BLUE)
+            .position(new Position(5.5f, 8.5f))
+            .health(new Health(500))
+            .build();
+
+    grid.applyBuildingOcclusions(List.<Entity>of(troop));
+
+    // Troop should not block any tiles
+    assertThat(grid.getCost(5, 8)).isEqualTo(CostTable.DEFAULT_COST);
   }
 }

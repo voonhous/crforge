@@ -68,8 +68,11 @@ public class AStarPathfinder implements Pathfinder {
     // Check path cache
     CachedPath cached = pathCache.get(entityId, goalTileX, goalTileY);
     if (cached == null) {
-      // Build cost grid from current arena state
+      // Build cost grid from current arena state + building positions
       grid.buildFromArena(arena, moveType);
+      if (gameState != null) {
+        grid.applyBuildingOcclusions(gameState.getAliveEntities());
+      }
 
       // Run A*
       List<int[]> waypoints = search.findPath(grid, startTileX, startTileY, goalTileX, goalTileY);

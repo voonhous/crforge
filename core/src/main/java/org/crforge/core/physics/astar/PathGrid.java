@@ -1,8 +1,11 @@
 package org.crforge.core.physics.astar;
 
+import java.util.Collection;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
+import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.entity.structure.Building;
 
 /**
  * 18x32 integer cost grid for A* pathfinding.
@@ -73,6 +76,48 @@ public class PathGrid {
 
   public int getHeight() {
     return height;
+  }
+
+  /**
+   * Overlays building collision radii onto the cost grid.
+   *
+   * <p>Player-placed buildings (Inferno Tower, Tesla, Cannon, etc.) are not part of the static
+   * Arena tile grid, so they need to be overlaid dynamically. Towers are already baked into the
+   * Arena as TileType.TOWER, but this is idempotent for them (same cost).
+   *
+   * <p>Each building's collision radius determines which tiles it blocks. All tiles whose centers
+   * fall within the radius are set to BUILDING_COST.
+   */
+  public void applyBuildingOcclusions(Collection<Entity> entities) {
+    for (Entity entity : entities) {
+      if (!(entity instanceof Building building) || !building.isAlive()) {
+        continue;
+      }
+      float cx = building.getPosition().getX();
+      float cy = building.getPosition().getY();
+      float radius = building.getCollisionRadius();
+      if (radius <= 0f) {
+        continue;
+      }
+
+      // Scan tiles in the bounding box of the collision circle
+      int minX = Math.max(0, (int) (cx - radius));
+      int maxX = Math.min(width - 1, (int) (cx + radius));
+      int minY = Math.max(0, (int) (cy - radius));
+      int maxY = Math.min(height - 1, (int) (cy + radius));
+
+      float radiusSq = radius * radius;
+      for (int ty = minY; ty <= maxY; ty++) {
+        for (int tx = minX; tx <= maxX; tx++) {
+          // Tile center is at (tx + 0.5, ty + 0.5)
+          float dx = (tx + 0.5f) - cx;
+          float dy = (ty + 0.5f) - cy;
+          if (dx * dx + dy * dy <= radiusSq) {
+            setCost(tx, ty, CostTable.BUILDING_COST);
+          }
+        }
+      }
+    }
   }
 
   private static int tileCostFor(TileType type, MovementType moveType) {
