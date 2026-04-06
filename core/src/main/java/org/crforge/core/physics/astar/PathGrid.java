@@ -40,10 +40,37 @@ public class PathGrid {
    * @param moveType GROUND units treat river as blocked; AIR units treat it as WATER_COST
    */
   public void buildFromArena(Arena arena, MovementType moveType) {
+    buildFromArena(arena, moveType, false, false);
+  }
+
+  /**
+   * Builds static tile costs with optional lane preference.
+   *
+   * <p>When lane preference is enabled (per spec: LOGIC_XPOS_BASED_TOWER_TARGETING = TRUE), bridge
+   * tiles on the entity's preferred side get MATCHING_ROAD_COST instead of ROAD_COST. Since both
+   * values happen to be 5 in the current game data, this has no cost difference yet, but the
+   * mechanism is in place for potential future tuning.
+   *
+   * @param arena the game arena
+   * @param moveType GROUND units treat river as blocked; AIR units treat it as WATER_COST
+   * @param lanePreference whether to apply lane-based cost preference
+   * @param preferLeftLane true if the entity prefers the left lane (deployed on left side)
+   */
+  public void buildFromArena(
+      Arena arena, MovementType moveType, boolean lanePreference, boolean preferLeftLane) {
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         TileType type = arena.getTile(x, y).type();
-        costs[y * width + x] = tileCostFor(type, moveType);
+        int cost = tileCostFor(type, moveType);
+
+        // Apply lane preference: matching-lane bridge gets MATCHING_ROAD_COST
+        if (lanePreference && type == TileType.BRIDGE) {
+          boolean isLeftBridge = x < arena.WIDTH / 2;
+          if (isLeftBridge == preferLeftLane) {
+            cost = CostTable.MATCHING_ROAD_COST;
+          }
+        }
+        costs[y * width + x] = cost;
       }
     }
   }

@@ -68,8 +68,9 @@ public class AStarPathfinder implements Pathfinder {
     // Check path cache
     CachedPath cached = pathCache.get(entityId, goalTileX, goalTileY);
     if (cached == null) {
-      // Build cost grid from current arena state + building positions + friendly occlusions
-      grid.buildFromArena(arena, moveType);
+      // Build cost grid with lane preference based on entity's deploy-side position
+      boolean preferLeftLane = entity.getPosition().getX() < arena.WIDTH / 2f;
+      grid.buildFromArena(arena, moveType, true, preferLeftLane);
       if (gameState != null) {
         grid.applyBuildingOcclusions(gameState.getAliveEntities());
         grid.applyFriendlyOcclusions(gameState.getAliveEntities(), entity.getTeam(), entityId);

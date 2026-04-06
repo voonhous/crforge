@@ -102,6 +102,34 @@ class PathGridTest {
   }
 
   @Test
+  void lanePreference_matchingBridgeGetsMatchingRoadCost() {
+    Arena arena = Arena.standard();
+    PathGrid grid = new PathGrid();
+
+    // Left-lane preference: left bridge should get MATCHING_ROAD_COST
+    grid.buildFromArena(arena, MovementType.GROUND, true, true);
+
+    // Left bridge tile (x=3, y=15) -- matching lane
+    assertThat(grid.getCost(3, 15)).isEqualTo(CostTable.MATCHING_ROAD_COST);
+    // Right bridge tile (x=13, y=15) -- non-matching, stays ROAD_COST
+    assertThat(grid.getCost(13, 15)).isEqualTo(CostTable.ROAD_COST);
+  }
+
+  @Test
+  void lanePreference_rightLane() {
+    Arena arena = Arena.standard();
+    PathGrid grid = new PathGrid();
+
+    // Right-lane preference: right bridge should get MATCHING_ROAD_COST
+    grid.buildFromArena(arena, MovementType.GROUND, true, false);
+
+    // Right bridge (x=13) -- matching
+    assertThat(grid.getCost(13, 15)).isEqualTo(CostTable.MATCHING_ROAD_COST);
+    // Left bridge (x=3) -- non-matching
+    assertThat(grid.getCost(3, 15)).isEqualTo(CostTable.ROAD_COST);
+  }
+
+  @Test
   void applyBuildingOcclusions_blocksTilesUnderBuilding() {
     PathGrid grid = new PathGrid(18, 32);
     Arena arena = Arena.standard();
