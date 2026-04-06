@@ -93,10 +93,11 @@ public class AStarPathfinder implements Pathfinder {
       pathCache.put(entityId, cached);
     }
 
-    // Follow waypoints
+    // Follow waypoints and track steps for forced re-path
     int wpIndex = pathCache.getWaypointIndex(entityId);
     wpIndex = WaypointFollower.advanceWaypoints(startPos, cached.waypoints(), wpIndex);
     pathCache.setWaypointIndex(entityId, wpIndex);
+    pathCache.incrementSteps(entityId);
 
     return WaypointFollower.getAngleToNextWaypoint(startPos, cached.waypoints(), wpIndex);
   }
