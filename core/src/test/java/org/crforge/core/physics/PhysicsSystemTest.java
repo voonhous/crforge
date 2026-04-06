@@ -28,7 +28,7 @@ class PhysicsSystemTest {
     arena = new Arena("Test Arena");
     pathfinder = mock(Pathfinder.class);
     // Mock pathfinder to return 0 angle (Move right) by default
-    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any()))
+    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any(), any()))
         .thenReturn(0f);
 
     physicsSystem = new PhysicsSystem(arena, pathfinder);

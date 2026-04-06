@@ -40,7 +40,7 @@ class SlidingPhysicsTest {
     Troop troop = createTroop("Troop", 9f, 9f);
 
     // Set troop intent to move North-East (45 degrees) into the building
-    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any()))
+    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any(), any()))
         .thenReturn((float) Math.toRadians(45));
 
     List<Entity> entities = List.of(building, troop);
@@ -61,7 +61,7 @@ class SlidingPhysicsTest {
     float moveAngle = (float) Math.toRadians(80);
     troop.getPosition().setRotation(moveAngle);
 
-    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any()))
+    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any(), any()))
         .thenReturn(moveAngle);
 
     List<Entity> entities = List.of(building, troop);

@@ -165,7 +165,7 @@ public class PhysicsSystem {
 
     float angle =
         pathfinder.getNextMovementAngle(
-            pos, pathfindType, targetPos.getX(), targetPos.getY(), arena);
+            pos, pathfindType, targetPos.getX(), targetPos.getY(), arena, troop);
 
     applyVelocity(troop, angle, deltaTime);
   }
@@ -225,7 +225,8 @@ public class PhysicsSystem {
             ? MovementType.AIR
             : troop.getMovementType();
 
-    float angle = pathfinder.getNextMovementAngle(pos, pathfindType, targetX, targetY, arena);
+    float angle =
+        pathfinder.getNextMovementAngle(pos, pathfindType, targetX, targetY, arena, troop);
 
     applyVelocity(troop, angle, deltaTime);
   }

@@ -24,6 +24,7 @@ import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.physics.Pathfinder;
 import org.crforge.core.physics.PhysicsSystem;
 
 /**
@@ -95,8 +96,15 @@ public class SimHarness {
         enabledSystems.contains(SimSystems.ABILITY) ? new AbilitySystem(gameState) : null;
 
     Arena arena = new Arena("Test Arena");
-    this.physicsSystem =
-        enabledSystems.contains(SimSystems.PHYSICS) ? new PhysicsSystem(arena) : null;
+    if (enabledSystems.contains(SimSystems.PHYSICS)) {
+      Pathfinder pf =
+          builder.useAStar
+              ? new org.crforge.core.physics.astar.AStarPathfinder(gameState)
+              : new org.crforge.core.physics.BasePathfinder();
+      this.physicsSystem = new PhysicsSystem(arena, pf);
+    } else {
+      this.physicsSystem = null;
+    }
 
     SpawnFactory spawnFactory = new SpawnFactory(gameState);
     this.spawnerSystem =
@@ -316,6 +324,7 @@ public class SimHarness {
     private final List<Entity> entities = new ArrayList<>();
     private final EnumSet<SimSystems> enabledSystems = EnumSet.noneOf(SimSystems.class);
     private boolean deployed = false;
+    private boolean useAStar = false;
 
     /** Enable all systems (recommended default). */
     public Builder withAllSystems() {
@@ -346,6 +355,12 @@ public class SimHarness {
     /** Spawn a pre-built entity directly. */
     public Builder spawn(Entity entity) {
       entities.add(entity);
+      return this;
+    }
+
+    /** Use the A* pathfinder instead of the default BasePathfinder. Requires PHYSICS system. */
+    public Builder withAStarPathfinding() {
+      this.useAStar = true;
       return this;
     }
 
