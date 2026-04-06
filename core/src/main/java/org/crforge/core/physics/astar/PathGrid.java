@@ -6,6 +6,8 @@ import org.crforge.core.arena.TileType;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Building;
+import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.player.Team;
 
 /**
  * 18x32 integer cost grid for A* pathfinding.
@@ -116,6 +118,37 @@ public class PathGrid {
             setCost(tx, ty, CostTable.BUILDING_COST);
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Overlays friendly troop occlusions onto the cost grid.
+   *
+   * <p>Per the game spec (PATHFINDING_FRIENDLYONLY_OCCLUSIONS = TRUE), only units on the SAME team
+   * as the pathfinding entity increase tile cost. Enemy units do not block pathing.
+   *
+   * <p>Occluded tiles get an elevated cost (BUILDING_COST) rather than being fully blocked, so A*
+   * will still route through a friendly cluster if no better path exists, but will prefer going
+   * around.
+   *
+   * @param entities all alive entities
+   * @param selfTeam the team of the entity being pathfound
+   * @param selfId the entity's own ID (excluded from occlusion)
+   */
+  public void applyFriendlyOcclusions(Collection<Entity> entities, Team selfTeam, long selfId) {
+    for (Entity entity : entities) {
+      if (!(entity instanceof Troop troop) || !troop.isAlive()) {
+        continue;
+      }
+      if (troop.getTeam() != selfTeam || troop.getId() == selfId) {
+        continue;
+      }
+      // Mark the tile the troop occupies
+      int tx = (int) troop.getPosition().getX();
+      int ty = (int) troop.getPosition().getY();
+      if (isInBounds(tx, ty) && costs[ty * width + tx] < CostTable.BUILDING_COST) {
+        costs[ty * width + tx] = CostTable.BUILDING_COST;
       }
     }
   }

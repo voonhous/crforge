@@ -163,6 +163,71 @@ class PathGridTest {
   }
 
   @Test
+  void applyFriendlyOcclusions_blocksFriendlyTroopTiles() {
+    PathGrid grid = new PathGrid(10, 10);
+    for (int y = 0; y < 10; y++)
+      for (int x = 0; x < 10; x++) grid.setCost(x, y, CostTable.DEFAULT_COST);
+
+    org.crforge.core.entity.unit.Troop friendly =
+        org.crforge.core.entity.unit.Troop.builder()
+            .name("Friendly")
+            .team(Team.BLUE)
+            .position(new Position(5.5f, 5.5f))
+            .health(new Health(100))
+            .build();
+    friendly.onSpawn(); // set spawned=true
+
+    grid.applyFriendlyOcclusions(List.of((Entity) friendly), Team.BLUE, 999);
+
+    // Friendly troop at tile (5,5) should raise cost
+    assertThat(grid.getCost(5, 5)).isEqualTo(CostTable.BUILDING_COST);
+    // Adjacent tiles unchanged
+    assertThat(grid.getCost(4, 5)).isEqualTo(CostTable.DEFAULT_COST);
+  }
+
+  @Test
+  void applyFriendlyOcclusions_ignoresEnemies() {
+    PathGrid grid = new PathGrid(10, 10);
+    for (int y = 0; y < 10; y++)
+      for (int x = 0; x < 10; x++) grid.setCost(x, y, CostTable.DEFAULT_COST);
+
+    org.crforge.core.entity.unit.Troop enemy =
+        org.crforge.core.entity.unit.Troop.builder()
+            .name("Enemy")
+            .team(Team.RED)
+            .position(new Position(5.5f, 5.5f))
+            .health(new Health(100))
+            .build();
+    enemy.onSpawn();
+
+    // Pathfinding for BLUE team: RED troops should NOT occlude
+    grid.applyFriendlyOcclusions(List.of((Entity) enemy), Team.BLUE, 999);
+
+    assertThat(grid.getCost(5, 5)).isEqualTo(CostTable.DEFAULT_COST);
+  }
+
+  @Test
+  void applyFriendlyOcclusions_excludesSelf() {
+    PathGrid grid = new PathGrid(10, 10);
+    for (int y = 0; y < 10; y++)
+      for (int x = 0; x < 10; x++) grid.setCost(x, y, CostTable.DEFAULT_COST);
+
+    org.crforge.core.entity.unit.Troop self =
+        org.crforge.core.entity.unit.Troop.builder()
+            .name("Self")
+            .team(Team.BLUE)
+            .position(new Position(5.5f, 5.5f))
+            .health(new Health(100))
+            .build();
+    self.onSpawn();
+
+    // The entity should not be occluded by itself
+    grid.applyFriendlyOcclusions(List.of((Entity) self), Team.BLUE, self.getId());
+
+    assertThat(grid.getCost(5, 5)).isEqualTo(CostTable.DEFAULT_COST);
+  }
+
+  @Test
   void applyBuildingOcclusions_ignoresNonBuildingEntities() {
     PathGrid grid = new PathGrid(18, 32);
     Arena arena = Arena.standard();
