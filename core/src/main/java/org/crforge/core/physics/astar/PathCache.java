@@ -19,9 +19,15 @@ public class PathCache {
    * Returns the cached path for the given entity if the target is still within epsilon of the
    * cached target. Returns null if no valid cached path exists.
    */
-  public CachedPath get(long entityId, int currentTargetX, int currentTargetY) {
+  /**
+   * Returns the cached path if it is still valid for the given target position and arena state.
+   *
+   * @param currentBuildingCount current number of alive buildings (for staleness detection)
+   */
+  public CachedPath get(
+      long entityId, int currentTargetX, int currentTargetY, int currentBuildingCount) {
     CachedPath cached = cache.get(entityId);
-    if (cached != null && cached.isValidFor(currentTargetX, currentTargetY)) {
+    if (cached != null && cached.isValidFor(currentTargetX, currentTargetY, currentBuildingCount)) {
       return cached;
     }
     return null;

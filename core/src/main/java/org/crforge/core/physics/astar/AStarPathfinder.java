@@ -1,5 +1,6 @@
 package org.crforge.core.physics.astar;
 
+import java.util.Collection;
 import java.util.List;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.Position;
@@ -65,8 +66,11 @@ public class AStarPathfinder implements Pathfinder {
 
     long entityId = entity.getId();
 
+    // Count alive buildings for cache invalidation (detects building placement/destruction)
+    int buildingCount = countAliveBuildings();
+
     // Check path cache
-    CachedPath cached = pathCache.get(entityId, goalTileX, goalTileY);
+    CachedPath cached = pathCache.get(entityId, goalTileX, goalTileY, buildingCount);
     if (cached == null) {
       // Build cost grid with lane preference based on entity's deploy-side position
       boolean preferLeftLane = entity.getPosition().getX() < arena.WIDTH / 2f;
@@ -84,7 +88,8 @@ public class AStarPathfinder implements Pathfinder {
         return (float) Math.atan2(targetY - startPos.getY(), targetX - startPos.getX());
       }
 
-      cached = new CachedPath(waypoints, goalTileX, goalTileY, startTileX, startTileY);
+      cached =
+          new CachedPath(waypoints, goalTileX, goalTileY, startTileX, startTileY, buildingCount);
       pathCache.put(entityId, cached);
     }
 
@@ -99,6 +104,20 @@ public class AStarPathfinder implements Pathfinder {
   /** Clears all cached paths (call on match reset). */
   public void clearCache() {
     pathCache.clear();
+  }
+
+  private int countAliveBuildings() {
+    if (gameState == null) {
+      return 0;
+    }
+    int count = 0;
+    Collection<Entity> entities = gameState.getAliveEntities();
+    for (Entity e : entities) {
+      if (e instanceof org.crforge.core.entity.structure.Building && e.isAlive()) {
+        count++;
+      }
+    }
+    return count;
   }
 
   private static int toTile(float worldCoord, int gridSize) {
