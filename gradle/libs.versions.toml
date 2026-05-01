@@ -1,6 +1,6 @@
 [versions]
 # Core dependencies
-jackson = "2.21.2"
+jackson = "2.21.3"
 lombok = "1.18.44"
 slf4j = "2.0.17"
 jeromq = "0.6.0"
