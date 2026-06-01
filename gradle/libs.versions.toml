@@ -11,7 +11,7 @@ assertj = "3.27.7"
 mockito = "5.23.0"
 
 # LibGDX
-gdx = "1.14.0"
+gdx = "1.14.1"
 
 [libraries]
 # Core
