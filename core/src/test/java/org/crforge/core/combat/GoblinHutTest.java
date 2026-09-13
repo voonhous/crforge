@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -298,16 +299,17 @@ class GoblinHutTest {
     // Goblin should be offset to the right of the building center (toward the enemy)
     assertThat(goblin.getPosition().getX())
         .as("Goblin X should be right of building center")
-        .isGreaterThan(DEPLOY_X);
+        .isGreaterThan(tiles(DEPLOY_X));
     assertThat(goblin.getPosition().getY())
         .as("Goblin Y should be roughly at building Y")
-        .isCloseTo(DEPLOY_Y, within(0.5f));
+        .isCloseTo(tiles(DEPLOY_Y), within(tiles(0.5)));
   }
 
   // -- Helpers --
 
   private void deployGoblinHut(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    // Helper coordinates are tiles; the engine action takes game units
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(tiles(x)).y(tiles(y)).build();
     engine.queueAction(bluePlayer, action);
   }
 
@@ -316,14 +318,14 @@ class GoblinHutTest {
         Troop.builder()
             .name("TestEnemy")
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(50)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())

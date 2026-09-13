@@ -13,14 +13,15 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 public class TargetingSystem {
 
   // How far beyond sight range a target remains valid before being dropped
   private static final float TARGET_RETENTION_RANGE_MULTIPLIER = 1.5f;
 
-  // Radius used by CROWDEST algorithm to count nearby enemies around each candidate
-  private static final float CROWDEST_NEIGHBOR_RADIUS = 2.0f;
+  // Radius used by CROWDEST algorithm to count nearby enemies around each candidate (2 tiles)
+  private static final int CROWDEST_NEIGHBOR_RADIUS = 2 * GameUnits.UNITS_PER_TILE;
 
   private final Random rng;
 
@@ -135,19 +136,17 @@ public class TargetingSystem {
       if (!canTarget(combat, e)) {
         continue;
       }
-      float distSq = getDistanceSq(attacker, e);
+      long distSq = getDistanceSq(attacker, e);
       // Skip candidates within the minimum range blind spot (e.g. Mortar)
       if (combat.getMinimumRange() > 0) {
-        float effectiveMinRange =
-            combat.getMinimumRange() + attacker.getCollisionRadius() + e.getCollisionRadius();
-        if (distSq < effectiveMinRange * effectiveMinRange) {
+        long effectiveMinRange = edgeRange(combat.getMinimumRange(), attacker, e);
+        if (GameUnits.insideRadius(distSq, effectiveMinRange)) {
           continue;
         }
       }
       // Use edge-to-edge distance for sight range, matching how CombatSystem checks attack range
-      float effectiveSightRange =
-          combat.getSightRange() + attacker.getCollisionRadius() + e.getCollisionRadius();
-      if (distSq <= effectiveSightRange * effectiveSightRange) {
+      long effectiveSightRange = edgeRange(combat.getSightRange(), attacker, e);
+      if (GameUnits.withinRadius(distSq, effectiveSightRange)) {
         candidates.add(e);
       }
     }
@@ -158,9 +157,9 @@ public class TargetingSystem {
 
   private Entity selectNearest(Entity attacker, List<Entity> candidates) {
     Entity best = null;
-    float bestDistSq = Float.MAX_VALUE;
+    long bestDistSq = Long.MAX_VALUE;
     for (Entity e : candidates) {
-      float distSq = getDistanceSq(attacker, e);
+      long distSq = getDistanceSq(attacker, e);
       if (distSq < bestDistSq) {
         bestDistSq = distSq;
         best = e;
@@ -171,9 +170,9 @@ public class TargetingSystem {
 
   private Entity selectFarthest(Entity attacker, List<Entity> candidates) {
     Entity best = null;
-    float bestDistSq = -1f;
+    long bestDistSq = -1L;
     for (Entity e : candidates) {
-      float distSq = getDistanceSq(attacker, e);
+      long distSq = getDistanceSq(attacker, e);
       if (distSq > bestDistSq) {
         bestDistSq = distSq;
         best = e;
@@ -229,18 +228,19 @@ public class TargetingSystem {
   private Entity selectCrowdest(Entity attacker, List<Entity> candidates) {
     Entity best = null;
     int bestCount = -1;
-    float bestDistSq = Float.MAX_VALUE;
-    float radiusSq = CROWDEST_NEIGHBOR_RADIUS * CROWDEST_NEIGHBOR_RADIUS;
+    long bestDistSq = Long.MAX_VALUE;
 
     for (Entity e : candidates) {
       int count = 0;
       for (Entity other : candidates) {
-        if (other != e && e.getPosition().distanceToSquared(other.getPosition()) <= radiusSq) {
+        if (other != e
+            && GameUnits.withinRadius(
+                e.getPosition().distanceSquaredTo(other.getPosition()), CROWDEST_NEIGHBOR_RADIUS)) {
           count++;
         }
       }
       // Tie-break by distance to attacker (closer wins)
-      float distSq = getDistanceSq(attacker, e);
+      long distSq = getDistanceSq(attacker, e);
       if (count > bestCount || (count == bestCount && distSq < bestDistSq)) {
         bestCount = count;
         bestDistSq = distSq;
@@ -256,13 +256,12 @@ public class TargetingSystem {
    */
   private Entity selectFarthestInRange(Entity attacker, Combat combat, List<Entity> candidates) {
     Entity best = null;
-    float bestDistSq = -1f;
+    long bestDistSq = -1L;
 
     for (Entity e : candidates) {
-      float distSq = getDistanceSq(attacker, e);
-      float effectiveRange =
-          combat.getRange() + attacker.getCollisionRadius() + e.getCollisionRadius();
-      if (distSq <= effectiveRange * effectiveRange && distSq > bestDistSq) {
+      long distSq = getDistanceSq(attacker, e);
+      long effectiveRange = edgeRange(combat.getRange(), attacker, e);
+      if (GameUnits.withinRadius(distSq, effectiveRange) && distSq > bestDistSq) {
         bestDistSq = distSq;
         best = e;
       }
@@ -280,21 +279,22 @@ public class TargetingSystem {
       return false;
     }
 
-    // Check if target is still in range (with leeway), using squared distance to avoid sqrt
-    float retentionRange =
-        combat.getSightRange() * TARGET_RETENTION_RANGE_MULTIPLIER
-            + attacker.getCollisionRadius()
-            + target.getCollisionRadius();
-    float distanceSq = getDistanceSq(attacker, target);
-    if (distanceSq > retentionRange * retentionRange) {
+    // Check if target is still in range (with leeway), using squared distance to avoid sqrt.
+    // The retention range is sightRange * 1.5 rounded to the nearest game unit.
+    long retentionRange =
+        edgeRange(
+            GameUnits.round(combat.getSightRange() * (double) TARGET_RETENTION_RANGE_MULTIPLIER),
+            attacker,
+            target);
+    long distanceSq = getDistanceSq(attacker, target);
+    if (!GameUnits.withinRadius(distanceSq, retentionRange)) {
       return false;
     }
 
     // Drop target that entered the minimum range blind spot (e.g. Mortar)
     if (combat.getMinimumRange() > 0) {
-      float effectiveMinRange =
-          combat.getMinimumRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
-      if (distanceSq < effectiveMinRange * effectiveMinRange) {
+      long effectiveMinRange = edgeRange(combat.getMinimumRange(), attacker, target);
+      if (GameUnits.insideRadius(distanceSq, effectiveMinRange)) {
         return false;
       }
     }
@@ -350,11 +350,15 @@ public class TargetingSystem {
     };
   }
 
-  private float getDistance(Entity a, Entity b) {
-    return a.getPosition().distanceTo(b.getPosition());
+  private long getDistanceSq(Entity a, Entity b) {
+    return a.getPosition().distanceSquaredTo(b.getPosition());
   }
 
-  private float getDistanceSq(Entity a, Entity b) {
-    return a.getPosition().distanceToSquared(b.getPosition());
+  /**
+   * Converts an edge-to-edge range into a center-to-center range in game units by adding both
+   * collision radii.
+   */
+  private static long edgeRange(int range, Entity attacker, Entity target) {
+    return (long) range + attacker.getCollisionRadius() + target.getCollisionRadius();
   }
 }

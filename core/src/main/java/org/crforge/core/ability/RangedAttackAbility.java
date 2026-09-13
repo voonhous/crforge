@@ -9,8 +9,9 @@ import org.crforge.core.entity.base.TargetType;
  * primary CombatSystem attack. This enables dual-attack units (e.g. melee punch + ranged rocket).
  *
  * @param projectile the projectile stats to fire (resolved from projectiles.json)
- * @param range maximum range for the ranged attack (edge-to-edge, in tiles)
- * @param minimumRange minimum range -- targets closer than this are ignored (dead zone)
+ * @param range maximum range for the ranged attack (edge-to-edge, in game units)
+ * @param minimumRange minimum range in game units -- targets closer than this are ignored (dead
+ *     zone)
  * @param loadTime wind-up time before the attack can fire (seconds)
  * @param attackDelay delay between wind-up completion and projectile firing (seconds)
  * @param attackCooldown cooldown between attack cycles (seconds)
@@ -18,8 +19,8 @@ import org.crforge.core.entity.base.TargetType;
  */
 public record RangedAttackAbility(
     ProjectileStats projectile,
-    float range,
-    float minimumRange,
+    int range,
+    int minimumRange,
     float loadTime,
     float attackDelay,
     float attackCooldown,

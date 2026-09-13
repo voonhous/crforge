@@ -5,7 +5,7 @@ import static org.crforge.desktop.render.RenderConstants.CIRCLE_SEGMENTS;
 import static org.crforge.desktop.render.RenderConstants.COLOR_AREA_EFFECT;
 import static org.crforge.desktop.render.RenderConstants.COLOR_LASER_BALL;
 import static org.crforge.desktop.render.RenderConstants.COLOR_RED_ENTITY;
-import static org.crforge.desktop.render.RenderConstants.TILE_PIXELS;
+import static org.crforge.desktop.render.RenderConstants.unitsToPixels;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
@@ -51,9 +51,9 @@ public class AreaEffectOverlayRenderer {
       }
 
       AreaEffectStats stats = effect.getStats();
-      float x = effect.getPosition().getX() * TILE_PIXELS;
-      float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = stats.getRadius() * TILE_PIXELS;
+      float x = unitsToPixels(effect.getPosition().getX());
+      float y = unitsToPixels(effect.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(stats.getRadius());
 
       // Alpha fades based on remaining lifetime
       float lifeFraction =
@@ -77,9 +77,9 @@ public class AreaEffectOverlayRenderer {
       }
 
       AreaEffectStats stats = effect.getStats();
-      float x = effect.getPosition().getX() * TILE_PIXELS;
-      float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = stats.getRadius() * TILE_PIXELS;
+      float x = unitsToPixels(effect.getPosition().getX());
+      float y = unitsToPixels(effect.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(stats.getRadius());
 
       Color baseColor = getAreaEffectColor(stats);
       ctx.getShapeRenderer().setColor(baseColor.r, baseColor.g, baseColor.b, 0.6f);
@@ -118,8 +118,8 @@ public class AreaEffectOverlayRenderer {
             Optional<Entity> targetOpt = state.getEntityById(targetId);
             if (targetOpt.isPresent()) {
               Entity target = targetOpt.get();
-              float tx = target.getPosition().getX() * TILE_PIXELS;
-              float ty = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+              float tx = unitsToPixels(target.getPosition().getX());
+              float ty = unitsToPixels(target.getPosition().getY()) + BOTTOM_UI_HEIGHT;
               ctx.getShapeRenderer().circle(tx, ty, 4f, CIRCLE_SEGMENTS);
             }
           }
@@ -135,9 +135,9 @@ public class AreaEffectOverlayRenderer {
         continue;
       }
       if (effect.isLaserActive()) {
-        float x = effect.getPosition().getX() * TILE_PIXELS;
-        float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-        float radius = effect.getStats().getRadius() * TILE_PIXELS;
+        float x = unitsToPixels(effect.getPosition().getX());
+        float y = unitsToPixels(effect.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+        float radius = unitsToPixels(effect.getStats().getRadius());
 
         // Pulse ring: expands and fades between scans
         float scanInterval = effect.getStats().getScanInterval();
@@ -161,9 +161,9 @@ public class AreaEffectOverlayRenderer {
         continue;
       }
 
-      float x = effect.getPosition().getX() * TILE_PIXELS;
-      float y = effect.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = effect.getStats().getRadius() * TILE_PIXELS;
+      float x = unitsToPixels(effect.getPosition().getX());
+      float y = unitsToPixels(effect.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(effect.getStats().getRadius());
 
       // Scan progress text above the AOE circle: "N/M"
       String scanText = effect.getLaserScanCount() + "/" + effect.getTotalLaserScans();

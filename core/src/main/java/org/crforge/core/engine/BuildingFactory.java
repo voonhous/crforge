@@ -29,7 +29,7 @@ class BuildingFactory {
     this.troopFactory = troopFactory;
   }
 
-  void spawnBuilding(Team team, Card card, float x, float y, int level) {
+  void spawnBuilding(Team team, Card card, int x, int y, int level) {
     TroopStats unitStats = card.getUnitStats();
     if (unitStats == null) {
       return;
@@ -81,7 +81,7 @@ class BuildingFactory {
             .spawnLimit(ls.spawnLimit())
             .destroyAtLimit(ls.destroyAtLimit())
             .spawnOnAggro(ls.spawnOnAggro())
-            .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0f);
+            .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0);
 
         // Derive deathSpawnCount from first death spawn entry
         if (unitStats.getDeathSpawns() != null && !unitStats.getDeathSpawns().isEmpty()) {
@@ -148,7 +148,7 @@ class BuildingFactory {
    * GoblinDrill -> GoblinDrillDig). The dig troop tunnels from the king tower to the target, then
    * morphs into the building on arrival.
    */
-  void spawnTunnelBuilding(Team team, Card card, float x, float y, int level) {
+  void spawnTunnelBuilding(Team team, Card card, int x, int y, int level) {
     TroopStats digStats = card.getTunnelDigUnit();
     if (digStats == null) {
       return;

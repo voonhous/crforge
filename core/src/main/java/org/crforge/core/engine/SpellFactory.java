@@ -10,11 +10,16 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /** Creates spell effects: summon characters, area effects, and projectile-based spells. */
 class SpellFactory {
 
-  static final float SPELL_TRAVEL_DISTANCE = 10f;
+  // Fallback spell travel distance when the crown tower is gone (10 tiles, in game units)
+  static final int SPELL_TRAVEL_DISTANCE = 10 * GameUnits.UNITS_PER_TILE;
+
+  // Forward travel of a spellAsDeploy projectile without minDistance (3 tiles, in game units)
+  static final int DEFAULT_DEPLOY_SPELL_FORWARD = 3 * GameUnits.UNITS_PER_TILE;
 
   private final GameState state;
   private final AoeDamageService aoeDamageService;
@@ -32,7 +37,7 @@ class SpellFactory {
     this.areaEffectFactory = areaEffectFactory;
   }
 
-  void castSpell(Team team, Card card, float x, float y, int level) {
+  void castSpell(Team team, Card card, int x, int y, int level) {
     // Summon character spells (Rage -> RageBarbarianBottle, Heal -> HealSpirit)
     if (card.getSummonTemplate() != null) {
       var summonStats = card.getSummonTemplate();
@@ -62,19 +67,25 @@ class SpellFactory {
     // Scale spell damage by card level and rarity
     int damage = LevelScaling.scaleCard(proj.getDamage(), level);
     float speed = proj.getSpeed();
-    float radius = card.getSpellRadius() > 0 ? card.getSpellRadius() : proj.getRadius();
+    int radius = card.getSpellRadius() > 0 ? card.getSpellRadius() : proj.getRadius();
     List<EffectStats> effects = proj.getHitEffects();
 
     if (speed > 0) {
       // Traveling spell -- may be a multi-wave spell (e.g. Arrows fires 3 staggered projectiles)
-      float startX, startY, destX, destY;
+      int startX, startY, destX, destY;
 
       if (card.isSpellAsDeploy()) {
         // spellAsDeploy: projectile starts at deploy point, travels forward
         startX = x;
         startY = y;
         destX = x;
-        float forward = proj.getMinDistance() > 0 ? proj.getMinDistance() / 1000f : 3.0f;
+        // Preserved legacy arithmetic: minDistance is loaded in tiles and was divided by 1000 again
+        // here, so a minDistance of 3 tiles moves the deploy projectile 0.003 tiles (3 game units)
+        // before its rolling sub-projectile spawns. Kept unchanged by the unit migration.
+        int forward =
+            proj.getMinDistance() > 0
+                ? GameUnits.round(proj.getMinDistance() / (double) GameUnits.UNITS_PER_TILE)
+                : DEFAULT_DEPLOY_SPELL_FORWARD;
         destY = (team == Team.BLUE) ? y + forward : y - forward;
       } else {
         // Standard: projectile flies from the player's crown tower to the target
@@ -136,10 +147,10 @@ class SpellFactory {
     }
   }
 
-  void fireSpawnProjectile(Team team, Card card, float x, float y, int level) {
+  void fireSpawnProjectile(Team team, Card card, int x, int y, int level) {
     ProjectileStats stats = card.getSpawnProjectile();
     int damage = LevelScaling.scaleCard(stats.getDamage(), level);
-    float startX, startY;
+    int startX, startY;
     Tower crownTower = state.getCrownTower(team);
     if (crownTower != null) {
       startX = crownTower.getPosition().getX();

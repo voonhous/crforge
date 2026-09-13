@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,9 +67,9 @@ class FirecrackerScalingTest {
     engine.initMatch();
 
     // Deploy Firecracker for blue near the center
-    engine.queueAction(bluePlayer, PlayerActionDTO.play(0, 9f, 14f));
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(0, tiles(9), tiles(14)));
     // Deploy Giant for red slightly ahead so Firecracker attacks it
-    engine.queueAction(redPlayer, PlayerActionDTO.play(0, 9f, 18f));
+    engine.queueAction(redPlayer, PlayerActionDTO.play(0, tiles(9), tiles(18)));
 
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
     engine.tick(syncTicks + 1);
@@ -146,8 +147,8 @@ class FirecrackerScalingTest {
     engine.setMatch(match);
     engine.initMatch();
 
-    engine.queueAction(bluePlayer, PlayerActionDTO.play(0, 9f, 14f));
-    engine.queueAction(redPlayer, PlayerActionDTO.play(0, 9f, 18f));
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(0, tiles(9), tiles(14)));
+    engine.queueAction(redPlayer, PlayerActionDTO.play(0, tiles(9), tiles(18)));
 
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
     engine.tick(syncTicks + 1);

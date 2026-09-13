@@ -8,6 +8,7 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Synchronizes attached units with their parent entities. Handles position syncing, parent death
@@ -42,11 +43,13 @@ public class AttachedUnitSystem {
       Entity parent = attached.getParent();
 
       // Position sync: apply offset relative to parent center, rotated by parent's facing angle
-      float parentAngle = parent.getPosition().getRotation();
-      float cos = (float) Math.cos(parentAngle);
-      float sin = (float) Math.sin(parentAngle);
-      float rotatedX = attached.getOffsetX() * cos - attached.getOffsetY() * sin;
-      float rotatedY = attached.getOffsetX() * sin + attached.getOffsetY() * cos;
+      // The rotated offset is recomputed from the parent every tick, so rounding it to whole game
+      // units does not accumulate error.
+      double parentAngle = parent.getPosition().getRotation();
+      double cos = Math.cos(parentAngle);
+      double sin = Math.sin(parentAngle);
+      int rotatedX = GameUnits.round(attached.getOffsetX() * cos - attached.getOffsetY() * sin);
+      int rotatedY = GameUnits.round(attached.getOffsetX() * sin + attached.getOffsetY() * cos);
 
       troop
           .getPosition()

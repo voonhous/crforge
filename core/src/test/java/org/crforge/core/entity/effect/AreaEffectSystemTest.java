@@ -1,6 +1,7 @@
 package org.crforge.core.entity.effect;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.AreaEffectStats;
@@ -36,7 +37,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Zap")
-            .radius(2.5f)
+            .radius(tiles(2.5))
             .lifeDuration(0.001f)
             .hitsGround(true)
             .hitsAir(true)
@@ -48,7 +49,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Zap")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(75)
             .remainingLifetime(0.001f)
@@ -59,7 +60,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("NearEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -69,7 +70,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("FarEnemy")
             .team(Team.RED)
-            .position(new Position(20, 20))
+            .position(new Position(tiles(20), tiles(20)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -79,7 +80,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Friendly")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -108,7 +109,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Zap")
-            .radius(2.5f)
+            .radius(tiles(2.5))
             .lifeDuration(0.001f)
             .hitsGround(true)
             .hitsAir(true)
@@ -121,7 +122,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Zap")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(75)
             .remainingLifetime(0.001f)
@@ -131,7 +132,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Enemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -156,7 +157,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Poison")
-            .radius(3.5f)
+            .radius(tiles(3.5))
             .lifeDuration(3.0f)
             .hitsGround(true)
             .hitsAir(true)
@@ -169,7 +170,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Poison")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(50)
             .remainingLifetime(3.0f)
@@ -179,7 +180,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Enemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -208,7 +209,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Earthquake")
-            .radius(3.5f)
+            .radius(tiles(3.5))
             .lifeDuration(0.001f)
             .hitsGround(true)
             .hitsAir(false)
@@ -220,7 +221,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Earthquake")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(100)
             .remainingLifetime(0.001f)
@@ -230,9 +231,9 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("GroundEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 5.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
 
@@ -240,9 +241,9 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("AirEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(tiles(1.0), 5.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .deployTime(0f)
             .build();
 
@@ -264,7 +265,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Poison")
-            .radius(3.5f)
+            .radius(tiles(3.5))
             .lifeDuration(1.0f)
             .hitsGround(true)
             .hitsAir(true)
@@ -277,7 +278,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Poison")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(50)
             .remainingLifetime(1.0f)
@@ -287,7 +288,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Enemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -321,7 +322,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Zap")
-            .radius(2.5f)
+            .radius(tiles(2.5))
             .lifeDuration(0.001f)
             .hitsGround(true)
             .hitsAir(true)
@@ -334,7 +335,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Zap")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(75)
             .remainingLifetime(0.001f)
@@ -344,7 +345,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Enemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -372,7 +373,7 @@ class AreaEffectSystemTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Freeze")
-            .radius(3.0f)
+            .radius(tiles(3.0))
             .lifeDuration(0.001f)
             .hitsGround(true)
             .hitsAir(true)
@@ -386,7 +387,7 @@ class AreaEffectSystemTest {
         AreaEffect.builder()
             .name("Freeze")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(58)
             .remainingLifetime(0.001f)
@@ -396,7 +397,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Enemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -421,7 +422,7 @@ class AreaEffectSystemTest {
   private AreaEffectStats lightningStats() {
     return AreaEffectStats.builder()
         .name("Lightning")
-        .radius(3.5f)
+        .radius(tiles(3.5))
         .lifeDuration(1.5f)
         .hitsGround(true)
         .hitsAir(true)
@@ -439,7 +440,7 @@ class AreaEffectSystemTest {
     return AreaEffect.builder()
         .name("Lightning")
         .team(Team.BLUE)
-        .position(new Position(10, 10))
+        .position(new Position(tiles(10), tiles(10)))
         .stats(stats)
         .scaledDamage(413)
         .remainingLifetime(1.5f)
@@ -451,7 +452,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
             .deployTime(0f)
             .build();
@@ -563,7 +564,7 @@ class AreaEffectSystemTest {
         Troop.builder()
             .name("Shielded")
             .team(Team.RED)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(200, 500))
             .deployTime(0f)
             .build();
@@ -592,7 +593,7 @@ class AreaEffectSystemTest {
     AreaEffect effect = createLightningEffect();
 
     // Crown tower with high HP (should be the biggest target)
-    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     tower.setDeployTimer(0);
 
     gameState.spawnEntity(effect);

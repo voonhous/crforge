@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ class BuildingPlacementIntegrationTest {
 
     // Create a 3x3 building card (Radius 1.5)
     TroopStats buildingStats =
-        TroopStats.builder().name("Big Building").collisionRadius(1.5f).build();
+        TroopStats.builder().name("Big Building").collisionRadius(tiles(1.5)).build();
 
     buildingCard =
         Card.builder()
@@ -61,7 +62,7 @@ class BuildingPlacementIntegrationTest {
     // X range: 2.0 to 5.0. Y range: 5.0 to 8.0.
     // Overlaps tower heavily.
 
-    PlayerActionDTO action = PlayerActionDTO.play(0, 3.5f, 6.5f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 3.5f, 6.5f);
 
     boolean valid = match.validateAction(bluePlayer, action);
 
@@ -75,7 +76,7 @@ class BuildingPlacementIntegrationTest {
     // Center at 5.0. Radius 1.5. X Range: 3.5 to 6.5.
     // Overlaps tile 3 (X=3.5).
 
-    PlayerActionDTO action = PlayerActionDTO.play(0, 5.0f, 6.5f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 5.0f, 6.5f);
 
     boolean valid = match.validateAction(bluePlayer, action);
 
@@ -89,7 +90,7 @@ class BuildingPlacementIntegrationTest {
     // Building Radius 1.5. Min X should be >= 5.0.
     // So X center - 1.5 >= 5.0 => X center >= 6.5.
 
-    PlayerActionDTO action = PlayerActionDTO.play(0, 6.5f, 6.5f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 6.5f, 6.5f);
 
     boolean valid = match.validateAction(bluePlayer, action);
 
@@ -102,7 +103,7 @@ class BuildingPlacementIntegrationTest {
     // Try to place near river.
     // Center Y=14. Radius 1.5. Max Y = 15.5. Overlaps Y=15 (River).
 
-    PlayerActionDTO action = PlayerActionDTO.play(0, 10.5f, 14.0f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 10.5f, 14.0f);
 
     boolean valid = match.validateAction(bluePlayer, action);
 
@@ -115,7 +116,7 @@ class BuildingPlacementIntegrationTest {
     // Max Y must be < 15.0.
     // Center Y + 1.5 < 15.0 => Center Y < 13.5.
 
-    PlayerActionDTO action = PlayerActionDTO.play(0, 10.5f, 13.4f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 10.5f, 13.4f);
 
     boolean valid = match.validateAction(bluePlayer, action);
 

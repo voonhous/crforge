@@ -15,6 +15,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Clones all eligible friendly troops within the area effect radius. Each clone is an exact copy of
@@ -24,6 +25,9 @@ import org.crforge.core.player.Team;
  * clone, which spawns at the original's pre-displacement position.
  */
 public class CloneApplicator {
+
+  // Forward displacement of the original troop when cloned (half a tile, in game units)
+  private static final int CLONE_DISPLACEMENT = GameUnits.HALF_TILE;
 
   private final AreaEffectContext ctx;
   private final GameState gameState;
@@ -36,8 +40,8 @@ public class CloneApplicator {
   public void applyClone(AreaEffect effect) {
     AreaEffectStats stats = effect.getStats();
     Team friendlyTeam = effect.getTeam();
-    float centerX = effect.getPosition().getX();
-    float centerY = effect.getPosition().getY();
+    int centerX = effect.getPosition().getX();
+    int centerY = effect.getPosition().getY();
 
     // Collect eligible troops first to avoid concurrent modification
     List<Troop> eligibleTroops = new ArrayList<>();
@@ -64,20 +68,19 @@ public class CloneApplicator {
         continue;
       }
 
-      float distanceSq = entity.getPosition().distanceToSquared(centerX, centerY);
-      float effectiveRadius = stats.getRadius() + entity.getCollisionRadius();
-      if (distanceSq <= effectiveRadius * effectiveRadius) {
+      long distanceSq = entity.getPosition().distanceSquaredTo(centerX, centerY);
+      long effectiveRadius = (long) stats.getRadius() + entity.getCollisionRadius();
+      if (GameUnits.withinRadius(distanceSq, effectiveRadius)) {
         eligibleTroops.add(troop);
       }
     }
 
     // Clone each eligible troop
     for (Troop original : eligibleTroops) {
-      float origX = original.getPosition().getX();
-      float origY = original.getPosition().getY();
-
-      // Displace original slightly forward (toward enemy side)
-      float displaceDy = (friendlyTeam == Team.BLUE) ? 0.5f : -0.5f;
+      int origX = original.getPosition().getX();
+      int origY = original.getPosition().getY();
+      // Displace original slightly forward (toward enemy side) by half a tile
+      int displaceDy = (friendlyTeam == Team.BLUE) ? CLONE_DISPLACEMENT : -CLONE_DISPLACEMENT;
       original.getPosition().add(0, displaceDy);
 
       // Create clone at original's pre-displacement position
@@ -91,7 +94,7 @@ public class CloneApplicator {
    * shield capped to 1, no inherited buffs, and instant deploy. Combat stats (damage, range, etc.)
    * are preserved from the original. The clone flag is set to prevent re-cloning.
    */
-  private Troop cloneTroop(Troop original, float x, float y) {
+  private Troop cloneTroop(Troop original, int x, int y) {
     // Clone gets 1 HP, shield = 1 if original type has shield
     int cloneShield = original.getHealth().getShieldMax() > 0 ? 1 : 0;
 

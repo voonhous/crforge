@@ -1,6 +1,7 @@
 package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.handler.VariableDamageHandler;
@@ -133,7 +134,8 @@ class InfernoTowerTest {
             .duration(0.5f)
             .applyAfterDamage(true)
             .build();
-    sim.aoeDamageService().applySpellDamage(Team.RED, 9f, 10f, 75, 2.5f, List.of(stunEffect));
+    sim.aoeDamageService()
+        .applySpellDamage(Team.RED, tiles(9), tiles(10), 75, tiles(2.5), List.of(stunEffect));
 
     // Tower should have taken Zap damage
     assertThat(tower.getHealth().getCurrent()).isLessThan(initialHp);
@@ -242,7 +244,7 @@ class InfernoTowerTest {
     AreaEffectStats freezeStats =
         AreaEffectStats.builder()
             .name("Freeze")
-            .radius(3.0f)
+            .radius(tiles(3.0f))
             .lifeDuration(0.1f)
             .buffApplication(BuffApplication.of("Freeze", 4.0f))
             .damage(0)
@@ -252,7 +254,7 @@ class InfernoTowerTest {
         AreaEffect.builder()
             .name("Freeze")
             .team(Team.RED)
-            .position(new Position(9, 10))
+            .position(new Position(tiles(9), tiles(10)))
             .health(new Health(1))
             .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
             .stats(freezeStats)
@@ -289,8 +291,8 @@ class InfernoTowerTest {
     Combat combat =
         Combat.builder()
             .damage(STAGE_0_DAMAGE)
-            .range(6.0f)
-            .sightRange(9.5f)
+            .range(tiles(6.0f))
+            .sightRange(tiles(9.5f))
             .attackCooldown(0.4f)
             .loadTime(0.4f)
             .attackState(AttackStateMachine.withLoad(0.4f))

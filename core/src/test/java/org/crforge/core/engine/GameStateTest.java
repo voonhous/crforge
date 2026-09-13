@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.arena.Arena;
 import org.crforge.core.arena.TileType;
@@ -117,8 +118,10 @@ class GameStateTest {
 
   @Test
   void getTowerCount_shouldCountAliveTowers() {
-    Tower tower1 = Tower.createPrincessTower(Team.BLUE, 5, 5, LevelScaling.DEFAULT_TOWER_LEVEL);
-    Tower tower2 = Tower.createPrincessTower(Team.BLUE, 10, 5, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower tower1 =
+        Tower.createPrincessTower(Team.BLUE, tiles(5), tiles(5), LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower tower2 =
+        Tower.createPrincessTower(Team.BLUE, tiles(10), tiles(5), LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(tower1);
     gameState.spawnEntity(tower2);
@@ -135,9 +138,10 @@ class GameStateTest {
   @Test
   void princessTowerDeath_shouldActivateKingTower() {
     // Setup: King Tower (inactive) + Princess Tower (active)
-    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower kingTower =
+        Tower.createCrownTower(Team.BLUE, tiles(9), tiles(3), LevelScaling.DEFAULT_TOWER_LEVEL);
     Tower princessTower =
-        Tower.createPrincessTower(Team.BLUE, 5, 6, LevelScaling.DEFAULT_TOWER_LEVEL);
+        Tower.createPrincessTower(Team.BLUE, tiles(5), tiles(6), LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(kingTower);
     gameState.spawnEntity(princessTower);
@@ -160,7 +164,8 @@ class GameStateTest {
   @Test
   void kingTower_shouldActivateWhenDamaged() {
     // Setup: King Tower (inactive)
-    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower kingTower =
+        Tower.createCrownTower(Team.BLUE, tiles(9), tiles(3), LevelScaling.DEFAULT_TOWER_LEVEL);
     gameState.spawnEntity(kingTower);
     gameState.processPending();
 
@@ -180,7 +185,8 @@ class GameStateTest {
   @Test
   void kingTower_shouldHaveActivationDelay() {
     // Setup: King Tower (inactive)
-    Tower kingTower = Tower.createCrownTower(Team.BLUE, 9, 3, LevelScaling.DEFAULT_TOWER_LEVEL);
+    Tower kingTower =
+        Tower.createCrownTower(Team.BLUE, tiles(9), tiles(3), LevelScaling.DEFAULT_TOWER_LEVEL);
     gameState.spawnEntity(kingTower);
     gameState.processPending();
 
@@ -219,14 +225,15 @@ class GameStateTest {
 
     // Blue left princess tower at standard position (3.5, 6.5)
     Tower princessTower =
-        Tower.createPrincessTower(Team.BLUE, 3.5f, 6.5f, LevelScaling.DEFAULT_TOWER_LEVEL);
+        Tower.createPrincessTower(
+            Team.BLUE, tiles(3.5), tiles(6.5), LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(princessTower);
     gameState.processPending();
 
     // Tiles should be TOWER before destruction
     assertThat(arena.getTile(3, 6).type()).isEqualTo(TileType.TOWER);
-    assertThat(arena.isValidPlacement(3.5f, 6.5f, Team.BLUE)).isFalse();
+    assertThat(arena.isValidPlacement(tiles(3.5), tiles(6.5), Team.BLUE)).isFalse();
 
     // Destroy the princess tower
     princessTower.getHealth().takeDamage(100000);
@@ -234,7 +241,7 @@ class GameStateTest {
 
     // Tiles should now be BLUE_ZONE, enabling placement
     assertThat(arena.getTile(3, 6).type()).isEqualTo(TileType.BLUE_ZONE);
-    assertThat(arena.isValidPlacement(3.5f, 6.5f, Team.BLUE))
+    assertThat(arena.isValidPlacement(tiles(3.5), tiles(6.5), Team.BLUE))
         .as("Should be able to place on destroyed princess tower footprint")
         .isTrue();
   }
@@ -246,13 +253,14 @@ class GameStateTest {
 
     // Red left princess tower at standard position (3.5, 25.5)
     Tower princessTower =
-        Tower.createPrincessTower(Team.RED, 3.5f, 25.5f, LevelScaling.DEFAULT_TOWER_LEVEL);
+        Tower.createPrincessTower(
+            Team.RED, tiles(3.5), tiles(25.5), LevelScaling.DEFAULT_TOWER_LEVEL);
 
     gameState.spawnEntity(princessTower);
     gameState.processPending();
 
     // Blue cannot deploy in Red territory before tower destruction
-    assertThat(arena.isValidPlacement(4.5f, 18.5f, Team.BLUE))
+    assertThat(arena.isValidPlacement(tiles(4.5), tiles(18.5), Team.BLUE))
         .as("Blue should not deploy in Red territory before pocket opens")
         .isFalse();
 
@@ -261,12 +269,12 @@ class GameStateTest {
     gameState.processDeaths();
 
     // Blue should now be able to deploy in the left pocket (x[0-8], y[17-20])
-    assertThat(arena.isValidPlacement(4.5f, 18.5f, Team.BLUE))
+    assertThat(arena.isValidPlacement(tiles(4.5), tiles(18.5), Team.BLUE))
         .as("Blue should deploy in pocket after destroying Red's left princess tower")
         .isTrue();
 
     // Right lane should still be blocked for Blue
-    assertThat(arena.isValidPlacement(14.5f, 18.5f, Team.BLUE))
+    assertThat(arena.isValidPlacement(tiles(14.5), tiles(18.5), Team.BLUE))
         .as("Right lane pocket should not open from left tower destruction")
         .isFalse();
   }

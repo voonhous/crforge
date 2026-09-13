@@ -6,6 +6,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Applies knockback displacement from projectile impacts. Handles both radial knockback (AOE
@@ -30,10 +31,9 @@ class KnockbackHelper {
    * ignorePushback are immune.
    */
   void applyKnockback(Projectile projectile) {
-    float pushback = projectile.getPushback();
-
-    // Determine impact center
-    float centerX, centerY;
+    int pushback = projectile.getPushback();
+    // Determine impact center (game units)
+    int centerX, centerY;
     if (projectile.isPositionTargeted()) {
       centerX = projectile.getTargetX();
       centerY = projectile.getTargetY();
@@ -44,7 +44,7 @@ class KnockbackHelper {
       return;
     }
 
-    float radius = projectile.getAoeRadius();
+    int radius = projectile.getAoeRadius();
     Team projectileTeam = projectile.getTeam();
     Team enemyTeam = projectileTeam.opposite();
 
@@ -63,9 +63,9 @@ class KnockbackHelper {
 
       // AOE: check radius. Non-AOE (pushbackAll=false): only the direct target.
       if (radius > 0 || projectile.isPushbackAll()) {
-        float distSq = entity.getPosition().distanceToSquared(centerX, centerY);
-        float effectiveRadius = radius + entity.getCollisionRadius();
-        if (radius > 0 && distSq > effectiveRadius * effectiveRadius) {
+        long distSq = entity.getPosition().distanceSquaredTo(centerX, centerY);
+        long effectiveRadius = (long) radius + entity.getCollisionRadius();
+        if (radius > 0 && !GameUnits.withinRadius(distSq, effectiveRadius)) {
           continue;
         }
       } else if (projectile.getTarget() != entity) {
@@ -75,9 +75,10 @@ class KnockbackHelper {
       // Direction from impact center to entity
       float dx = entity.getPosition().getX() - centerX;
       float dy = entity.getPosition().getY() - centerY;
-      float dist = (float) Math.sqrt(dx * dx + dy * dy);
-      float dirX = dist > 0.001f ? dx / dist : 0f;
-      float dirY = dist > 0.001f ? dy / dist : 1f;
+      float dist = entity.getPosition().distance(centerX, centerY);
+      // Coincident with the impact center: push along +Y (integer positions: dist is 0 or >= 1)
+      float dirX = dist > 0f ? dx / dist : 0f;
+      float dirY = dist > 0f ? dy / dist : 1f;
 
       movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
     }

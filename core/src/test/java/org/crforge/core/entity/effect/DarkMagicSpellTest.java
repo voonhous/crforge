@@ -1,6 +1,7 @@
 package org.crforge.core.entity.effect;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
@@ -247,7 +248,7 @@ class DarkMagicSpellTest {
                     e.getTeam() == Team.RED
                         && e instanceof Tower
                         && e.getName().contains("Princess")
-                        && e.getPosition().distanceTo(new Position(towerX, towerY)) < 2f)
+                        && e.getPosition().distance(tiles(towerX), tiles(towerY)) < tiles(2))
             .findFirst();
 
     if (redTower.isEmpty()) {
@@ -281,14 +282,14 @@ class DarkMagicSpellTest {
         Troop.builder()
             .name("AirEnemy")
             .team(Team.RED)
-            .position(new Position(DEPLOY_X + 0.5f, DEPLOY_Y))
+            .position(new Position(tiles(DEPLOY_X + 0.5f), tiles(DEPLOY_Y)))
             .health(new Health(50000))
-            .movement(new Movement(0f, 4.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(0, 4.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.ALL)
                     .build())
@@ -360,24 +361,26 @@ class DarkMagicSpellTest {
 
   // -- Helpers --
 
+  /** Deploys the spell at a tile-space position. */
   private void deployDarkMagic(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, x, y);
     engine.queueAction(bluePlayer, action);
   }
 
+  /** Spawns a stationary enemy at a tile-space position. */
   private Troop spawnEnemyAt(float x, float y, int hp, String name) {
     Troop enemy =
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())

@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.Card;
@@ -10,6 +11,7 @@ import org.crforge.core.card.Rarity;
 import org.crforge.core.component.Position;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.effect.AreaEffect;
+import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.crforge.core.testing.SimHarness;
@@ -31,7 +33,7 @@ class LightningTest {
     AreaEffectStats ae = card.getAreaEffect();
     assertThat(ae).isNotNull();
     assertThat(ae.getName()).isEqualTo("Lightning");
-    assertThat(ae.getRadius()).isEqualTo(3.5f);
+    assertThat(ae.getRadius()).isEqualTo(tiles(3.5));
     assertThat(ae.isHitBiggestTargets()).isTrue();
     assertThat(ae.getDamage()).isEqualTo(413);
     assertThat(ae.getHitSpeed()).isEqualTo(0.46f);
@@ -64,7 +66,7 @@ class LightningTest {
         AreaEffect.builder()
             .name(stats.getName())
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(scaledDamage)
             .remainingLifetime(stats.getLifeDuration())
@@ -102,7 +104,7 @@ class LightningTest {
         AreaEffect.builder()
             .name(stats.getName())
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(stats.getDamage())
             .remainingLifetime(stats.getLifeDuration())
@@ -125,8 +127,7 @@ class LightningTest {
     SimHarness sim = SimHarness.create().withAllSystems().deployed().build();
 
     // Manually spawn a princess tower within Lightning range
-    org.crforge.core.entity.structure.Tower tower =
-        org.crforge.core.entity.structure.Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     tower.setDeployTimer(0); // make targetable
     sim.gameState().spawnEntity(tower);
     sim.gameState().processPending();
@@ -140,7 +141,7 @@ class LightningTest {
         AreaEffect.builder()
             .name(stats.getName())
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(stats.getDamage())
             .remainingLifetime(stats.getLifeDuration())

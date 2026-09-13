@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -216,7 +217,8 @@ class BarbarianHutTest {
   // -- Helpers --
 
   private void deployBarbarianHut(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    // Helper coordinates are tiles; the engine action takes game units
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(tiles(x)).y(tiles(y)).build();
     engine.queueAction(bluePlayer, action);
   }
 

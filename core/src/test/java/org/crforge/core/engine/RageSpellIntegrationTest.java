@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
@@ -8,7 +9,10 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
+import org.crforge.core.component.Health;
 import org.crforge.core.component.ModifierSource;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.effect.StatusEffectType;
@@ -72,11 +76,9 @@ class RageSpellIntegrationTest {
         Troop.builder()
             .name(bottleStats.getName())
             .team(Team.BLUE)
-            .position(new org.crforge.core.component.Position(9, 10))
-            .health(new org.crforge.core.component.Health(1))
-            .movement(
-                new org.crforge.core.component.Movement(
-                    0, 0, 1.0f, 1.0f, bottleStats.getMovementType()))
+            .position(new Position(tiles(9), tiles(10)))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), bottleStats.getMovementType()))
             .deployTime(bottleStats.getDeployTime())
             .deployTimer(bottleStats.getDeployTime())
             .spawner(spawner)
@@ -135,11 +137,9 @@ class RageSpellIntegrationTest {
         Troop.builder()
             .name(bottleStats.getName())
             .team(Team.BLUE)
-            .position(new org.crforge.core.component.Position(9, 10))
-            .health(new org.crforge.core.component.Health(1))
-            .movement(
-                new org.crforge.core.component.Movement(
-                    0, 0, 1.0f, 1.0f, bottleStats.getMovementType()))
+            .position(new Position(tiles(9), tiles(10)))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), bottleStats.getMovementType()))
             .deployTime(bottleStats.getDeployTime())
             .deployTimer(bottleStats.getDeployTime())
             .spawner(spawner)
@@ -188,11 +188,9 @@ class RageSpellIntegrationTest {
         Troop.builder()
             .name(bottleStats.getName())
             .team(Team.BLUE)
-            .position(new org.crforge.core.component.Position(9, 10))
-            .health(new org.crforge.core.component.Health(1))
-            .movement(
-                new org.crforge.core.component.Movement(
-                    0, 0, 1.0f, 1.0f, bottleStats.getMovementType()))
+            .position(new Position(tiles(9), tiles(10)))
+            .health(new Health(1))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), bottleStats.getMovementType()))
             .deployTime(bottleStats.getDeployTime())
             .deployTimer(bottleStats.getDeployTime())
             .spawner(spawner)

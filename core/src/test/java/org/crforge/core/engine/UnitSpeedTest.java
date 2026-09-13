@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
@@ -46,8 +47,8 @@ class UnitSpeedTest {
     TroopStats stats = card.getUnitStats();
 
     // Spawn at (3.5, 5.0) -> moving straight up towards bridge
-    float startX = 3.5f;
-    float startY = 5.0f;
+    int startX = tiles(3.5);
+    int startY = tiles(5.0);
 
     Troop unit =
         Troop.builder()
@@ -86,11 +87,12 @@ class UnitSpeedTest {
 
     Position finalPos = unit.getPosition();
 
-    // Calculate distance moved
-    float distance = initialPos.distanceTo(finalPos);
-    float expectedDistance = expectedSpeedTilesPerSec * runTime;
+    // Calculate distance moved (game units). Fractional per-tick steps (33.3 units at 30 fps)
+    // accumulate through the position's fixed-point carry, so no distance is lost to truncation.
+    float distance = initialPos.distance(finalPos);
+    float expectedDistance = tiles(expectedSpeedTilesPerSec * runTime);
 
-    // Verify speed matches expected
-    assertThat(distance).isCloseTo(expectedDistance, within(0.05f));
+    // Verify speed matches expected (tolerance 0.05 tiles)
+    assertThat(distance).isCloseTo(expectedDistance, within((float) tiles(0.05)));
   }
 }

@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Health;
@@ -32,7 +33,7 @@ class SpawnerDeathIntegrationTest {
   void tombstoneShouldSpawnSkeletonsOnDeath() {
     // 1. Create Tombstone with death spawn
     TroopStats skeletonStats =
-        TroopStats.builder().name("Skeleton").health(67).damage(67).speed(1.0f).build();
+        TroopStats.builder().name("Skeleton").health(67).damage(67).speed(tiles(1.0)).build();
 
     // Set a high spawnPauseTime and initialize currentTimer
     // so it doesn't cause a wave spawn immediately
@@ -48,9 +49,9 @@ class SpawnerDeathIntegrationTest {
         Building.builder()
             .name("Tombstone")
             .team(Team.BLUE)
-            .position(new Position(10f, 10f))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(200))
-            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0f, 0f, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(30f)
             .spawner(spawner)
             .build();
@@ -85,9 +86,9 @@ class SpawnerDeathIntegrationTest {
         Building.builder()
             .name("Cannon")
             .team(Team.BLUE)
-            .position(new Position(10f, 10f))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(200))
-            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0f, 0f, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(1.0f) // 1 second lifetime
             .deployTime(0f)
             .build();

@@ -1,5 +1,7 @@
 package org.crforge.core.testing;
 
+import static org.crforge.core.util.GameUnits.tiles;
+
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -10,7 +12,10 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.player.Team;
 
-/** Fluent factory for creating test buildings with sensible defaults. */
+/**
+ * Fluent factory for creating test buildings with sensible defaults. Position and radius setters
+ * take tiles for readability; {@link #build()} converts them to integer game units.
+ */
 public class BuildingTemplate {
 
   private String name;
@@ -40,6 +45,7 @@ public class BuildingTemplate {
 
   // -- Chainable setters --
 
+  /** Position in tiles. */
   public BuildingTemplate at(float x, float y) {
     this.x = x;
     this.y = y;
@@ -61,6 +67,7 @@ public class BuildingTemplate {
     return this;
   }
 
+  /** Collision radius in tiles. */
   public BuildingTemplate collisionRadius(float r) {
     this.collisionRadius = r;
     return this;
@@ -88,9 +95,10 @@ public class BuildingTemplate {
     return Building.builder()
         .name(name)
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(0, 0, collisionRadius, visualRadius, MovementType.BUILDING))
+        .movement(
+            new Movement(0, 0, tiles(collisionRadius), tiles(visualRadius), MovementType.BUILDING))
         .lifetime(lifetime)
         .remainingLifetime(lifetime)
         .deployTime(deployTime)

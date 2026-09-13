@@ -2,6 +2,7 @@ package org.crforge.core.physics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
@@ -23,13 +24,14 @@ class RiverJumpTest {
   private PhysicsSystem physicsSystem;
   private Arena arena;
 
-  // River zone: Y in [15.0, 17.0]
-  // Left bridge: X in [2, 5), Right bridge: X in [13, 16)
-  // Non-bridge X for testing: 9.0 (center of arena, not on any bridge)
-  private static final float NON_BRIDGE_X = 9.0f;
-  private static final float RIVER_CENTER_Y = 16.0f;
-  private static final float BELOW_RIVER_Y = 14.0f;
-  private static final float ABOVE_RIVER_Y = 18.0f;
+  // River zone: Y in [15, 17] tiles
+  // Left bridge: X in [2, 5) tiles, Right bridge: X in [13, 16) tiles
+  // Non-bridge X for testing: 9 tiles (center of arena, not on any bridge)
+  // Constants below are game units.
+  private static final int NON_BRIDGE_X = tiles(9.0);
+  private static final int RIVER_CENTER_Y = tiles(16.0);
+  private static final int BELOW_RIVER_Y = tiles(14.0);
+  private static final int ABOVE_RIVER_Y = tiles(18.0);
 
   @BeforeEach
   void setUp() {
@@ -83,7 +85,8 @@ class RiverJumpTest {
 
     assertThat(troop.isJumping()).isTrue();
     float expectedSpeed = baseSpeed * (4f / 3f);
-    assertThat(troop.getMovement().getEffectiveSpeed()).isCloseTo(expectedSpeed, within(0.001f));
+    // Speeds are game units per second
+    assertThat(troop.getMovement().getEffectiveSpeed()).isCloseTo(expectedSpeed, within(1f));
   }
 
   @Test
@@ -100,13 +103,13 @@ class RiverJumpTest {
     physicsSystem.update(List.of(troop), 1f / 30f);
 
     assertThat(troop.isJumping()).isFalse();
-    assertThat(troop.getMovement().getEffectiveSpeed()).isCloseTo(baseSpeed, within(0.001f));
+    assertThat(troop.getMovement().getEffectiveSpeed()).isCloseTo(baseSpeed, within(1f));
   }
 
   @Test
   void jumpEnabled_usesBridgeWhenAligned() {
     // Place jump-enabled troop on a bridge X position in the river zone
-    float bridgeCenterX = Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH / 2f;
+    int bridgeCenterX = Arena.LEFT_BRIDGE_CENTER_X;
     Troop troop = createJumpTroop("HogRider", bridgeCenterX, RIVER_CENTER_Y);
 
     physicsSystem.update(List.of(troop), 1f / 30f);
@@ -147,11 +150,11 @@ class RiverJumpTest {
     // Place a jump-enabled troop south of river at center X (not on any bridge)
     // with a target north of the river at the same X.
     // The troop should move straight north (no X drift toward bridges).
-    Troop troop = createJumpTroop("HogRider", NON_BRIDGE_X, 14.0f);
-    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    Troop troop = createJumpTroop("HogRider", NON_BRIDGE_X, tiles(14.0));
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, tiles(20.0));
     troop.getCombat().setCurrentTarget(target);
 
-    float startX = troop.getPosition().getX();
+    int startX = troop.getPosition().getX();
 
     // Run several ticks
     for (int i = 0; i < 30; i++) {
@@ -159,17 +162,17 @@ class RiverJumpTest {
     }
 
     // X should not drift toward a bridge -- stays at the same X (within a small tolerance)
-    assertThat(troop.getPosition().getX()).isCloseTo(startX, within(0.1f));
+    assertThat(troop.getPosition().getX()).isCloseTo(startX, within(tiles(0.1)));
     // Y should have moved north (increased)
-    assertThat(troop.getPosition().getY()).isGreaterThan(14.0f);
+    assertThat(troop.getPosition().getY()).isGreaterThan(tiles(14.0));
   }
 
   @Test
   void jumpEnabled_entersJumpingStateViaStraightPath() {
     // Place a jump-enabled troop just south of river zone with a target north of river.
     // After enough ticks, it should enter the river zone at non-bridge X and start jumping.
-    Troop troop = createJumpTroop("HogRider", NON_BRIDGE_X, 14.5f);
-    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    Troop troop = createJumpTroop("HogRider", NON_BRIDGE_X, tiles(14.5));
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, tiles(20.0));
     troop.getCombat().setCurrentTarget(target);
 
     boolean jumped = false;
@@ -190,27 +193,27 @@ class RiverJumpTest {
   void normalTroop_routesToBridge_notStraightAcross() {
     // Same setup as above but with a normal (non-jump) troop.
     // It should drift in X toward the nearest bridge instead of going straight.
-    Troop troop = createNormalTroop("Knight", NON_BRIDGE_X, 14.0f);
-    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    Troop troop = createNormalTroop("Knight", NON_BRIDGE_X, tiles(14.0));
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, tiles(20.0));
     troop.getCombat().setCurrentTarget(target);
 
-    float startX = troop.getPosition().getX();
+    int startX = troop.getPosition().getX();
 
     for (int i = 0; i < 30; i++) {
       physicsSystem.update(List.of(troop, target), 1f / 30f);
     }
 
     // Normal troop should have drifted in X toward the nearest bridge
-    float endX = troop.getPosition().getX();
+    int endX = troop.getPosition().getX();
     assertThat(Math.abs(endX - startX))
         .as("Normal troop should drift toward bridge")
-        .isGreaterThan(0.1f);
+        .isGreaterThan(tiles(0.1));
   }
 
   // -- Helpers --
 
-  private Troop createJumpTroop(String name, float x, float y) {
-    Movement movement = new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+  private Troop createJumpTroop(String name, int x, int y) {
+    Movement movement = new Movement(tiles(5.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND);
     movement.setJumpEnabled(true);
 
     Troop troop =
@@ -225,13 +228,13 @@ class RiverJumpTest {
     return troop;
   }
 
-  private Troop createNormalTroop(String name, float x, float y) {
+  private Troop createNormalTroop(String name, int x, int y) {
     Troop troop =
         Troop.builder()
             .name(name)
             .team(Team.BLUE)
             .position(new Position(x, y))
-            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(5.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
     troop.onSpawn();

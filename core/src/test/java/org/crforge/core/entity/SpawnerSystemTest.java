@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,7 +42,8 @@ class SpawnerSystemTest {
     spawnerSystem = new SpawnerSystem(gameState, spawnFactory);
     deathHandlingSystem = new DeathHandlingSystem(gameState, null, spawnFactory);
 
-    skeletonStats = TroopStats.builder().name("Skeleton").health(67).damage(67).speed(1.2f).build();
+    skeletonStats =
+        TroopStats.builder().name("Skeleton").health(67).damage(67).speed(tiles(1.2)).build();
 
     // With new logic, single-unit waves use spawnPauseTime for the delay between spawns.
     // We set spawnPauseTime to 3.0 so it waits 3s, spawns, then waits 3s again.
@@ -60,9 +62,9 @@ class SpawnerSystemTest {
         Building.builder()
             .name("Tombstone")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(100))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(40f)
             .spawner(spawnerComponent)
             .build();
@@ -85,8 +87,8 @@ class SpawnerSystemTest {
     Entity spawned = gameState.getPendingSpawns().get(0);
     assertThat(spawned.getName()).isEqualTo("Skeleton");
     // Spread might slightly offset position
-    assertThat(spawned.getPosition().getX()).isBetween(9.0f, 11.0f);
-    assertThat(spawned.getPosition().getY()).isBetween(9.0f, 11.0f);
+    assertThat(spawned.getPosition().getX()).isBetween(tiles(9.0), tiles(11.0));
+    assertThat(spawned.getPosition().getY()).isBetween(tiles(9.0), tiles(11.0));
 
     gameState.processPending();
 
@@ -121,13 +123,13 @@ class SpawnerSystemTest {
 
     // Create a unit with death damage (like Ice Golem)
     SpawnerComponent deathDmgSpawner =
-        SpawnerComponent.builder().deathDamage(100).deathDamageRadius(2.5f).build();
+        SpawnerComponent.builder().deathDamage(100).deathDamageRadius(tiles(2.5)).build();
 
     Troop iceGolem =
         Troop.builder()
             .name("IceGolem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(deathDmgSpawner)
@@ -138,7 +140,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("NearEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -148,7 +150,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("FarEnemy")
             .team(Team.RED)
-            .position(new Position(20, 20))
+            .position(new Position(tiles(20), tiles(20)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -176,19 +178,19 @@ class SpawnerSystemTest {
             .name("Golemite")
             .health(394)
             .damage(26)
-            .speed(0.75f)
+            .speed(tiles(0.75))
             .mass(5.0f)
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
             .build();
 
     List<DeathSpawnEntry> deathSpawns =
-        List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f, 0f, null, null));
+        List.of(new DeathSpawnEntry(golemiteStats, 2, tiles(1.5), 0f, 0f, null, null));
 
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
             .deathDamage(88)
-            .deathDamageRadius(2.0f)
+            .deathDamageRadius(tiles(2.0))
             .deathSpawns(deathSpawns)
             .build();
 
@@ -196,7 +198,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("Golem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(golemSpawner)
@@ -239,7 +241,8 @@ class SpawnerSystemTest {
 
     SpawnerComponent deathOnlySpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f, 0f, null, null)))
+            .deathSpawns(
+                List.of(new DeathSpawnEntry(golemiteStats, 2, tiles(1.5), 0f, 0f, null, null)))
             .build();
 
     // hasLiveSpawn should be false since spawnPauseTime and spawnInterval are both 0
@@ -249,7 +252,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("Golem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(2000))
             .deployTime(0f)
             .spawner(deathOnlySpawner)
@@ -316,9 +319,9 @@ class SpawnerSystemTest {
         Building.builder()
             .name("GoblinHut")
             .team(Team.RED)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(200))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(60f)
             .spawner(spawner)
             .build();
@@ -371,9 +374,9 @@ class SpawnerSystemTest {
         Building.builder()
             .name("Tombstone")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(100))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(40f)
             .spawner(spawner)
             .build();
@@ -420,20 +423,20 @@ class SpawnerSystemTest {
             .health(0)
             .deployTime(3.0f)
             .deathDamage(100)
-            .deathDamageRadius(2.0f)
+            .deathDamageRadius(tiles(2.0))
             .build();
 
     // Parent entity (Balloon) that death-spawns the bomb
     SpawnerComponent balloonSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f, 0f, 0f, null, null)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0, 0f, 0f, null, null)))
             .build();
 
     Troop balloon =
         Troop.builder()
             .name("Balloon")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(balloonSpawner)
@@ -444,7 +447,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("NearEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -454,7 +457,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("FarEnemy")
             .team(Team.RED)
-            .position(new Position(20, 20))
+            .position(new Position(tiles(20), tiles(20)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -531,8 +534,8 @@ class SpawnerSystemTest {
             .health(394)
             .damage(26)
             .deathDamage(50)
-            .deathDamageRadius(1.5f)
-            .speed(0.75f)
+            .deathDamageRadius(tiles(1.5))
+            .speed(tiles(0.75))
             .mass(5.0f)
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
@@ -541,14 +544,15 @@ class SpawnerSystemTest {
     // Parent Golem that death-spawns Golemites
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(golemiteStats, 2, 1.5f, 0f, 0f, null, null)))
+            .deathSpawns(
+                List.of(new DeathSpawnEntry(golemiteStats, 2, tiles(1.5), 0f, 0f, null, null)))
             .build();
 
     Troop golem =
         Troop.builder()
             .name("Golem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(golemSpawner)
@@ -559,7 +563,7 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("NearEnemy")
             .team(Team.RED)
-            .position(new Position(10.5f, 10))
+            .position(new Position(tiles(10.5), tiles(10)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -608,9 +612,9 @@ class SpawnerSystemTest {
         Building.builder()
             .name("TestWitch")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(100))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(40f)
             .spawner(spawner)
             .build();
@@ -654,15 +658,15 @@ class SpawnerSystemTest {
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
             .deathDamage(259)
-            .deathDamageRadius(2.0f)
-            .deathPushback(1.8f)
+            .deathDamageRadius(tiles(2.0))
+            .deathPushback(tiles(1.8))
             .build();
 
     Troop golem =
         Troop.builder()
             .name("Golem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(golemSpawner)
@@ -673,9 +677,9 @@ class SpawnerSystemTest {
         Troop.builder()
             .name("NearEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
 
@@ -705,29 +709,30 @@ class SpawnerSystemTest {
     SpawnerComponent golemSpawner =
         SpawnerComponent.builder()
             .deathDamage(259)
-            .deathDamageRadius(2.0f)
-            .deathPushback(1.8f)
+            .deathDamageRadius(tiles(2.0))
+            .deathPushback(tiles(1.8))
             .build();
 
     Troop golem =
         Troop.builder()
             .name("Golem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(golemSpawner)
             .build();
 
     // Enemy with ignorePushback -- should take damage but NOT be knocked back
-    Movement immuneMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    Movement immuneMovement =
+        new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND);
     immuneMovement.setIgnorePushback(true);
 
     Troop immune =
         Troop.builder()
             .name("ImmuneEnemy")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
             .movement(immuneMovement)
             .deployTime(0f)
@@ -760,7 +765,7 @@ class SpawnerSystemTest {
             .name("GoblinBrawler")
             .health(500)
             .damage(120)
-            .speed(1.0f)
+            .speed(tiles(1.0))
             .mass(1.0f)
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
@@ -768,7 +773,7 @@ class SpawnerSystemTest {
 
     // Death spawn entry with 0.5s deploy time
     List<DeathSpawnEntry> deathSpawns =
-        List.of(new DeathSpawnEntry(brawlerStats, 1, 0f, 0.5f, 0f, null, null));
+        List.of(new DeathSpawnEntry(brawlerStats, 1, 0, 0.5f, 0f, null, null));
 
     SpawnerComponent cageSpawner = SpawnerComponent.builder().deathSpawns(deathSpawns).build();
 
@@ -776,9 +781,9 @@ class SpawnerSystemTest {
         Building.builder()
             .name("GoblinCage")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .lifetime(30f)
             .spawner(cageSpawner)
             .build();

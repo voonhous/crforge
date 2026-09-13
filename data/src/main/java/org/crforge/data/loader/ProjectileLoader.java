@@ -1,5 +1,7 @@
 package org.crforge.data.loader;
 
+import static org.crforge.core.util.GameUnits.tiles;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +14,7 @@ import java.util.Map;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.effect.StatusEffectType;
+import org.crforge.core.util.GameUnits;
 import org.crforge.data.loader.dto.ProjectileConfigDTO;
 
 /**
@@ -22,7 +25,6 @@ public class ProjectileLoader {
 
   private static final ObjectMapper mapper =
       new ObjectMapper().configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
-  private static final float SPEED_BASE = 60.0f;
 
   /**
    * Loads all projectile definitions from the given input stream. Two-pass loading: first parse all
@@ -66,7 +68,9 @@ public class ProjectileLoader {
    */
   static ProjectileStats convertProjectile(
       ProjectileConfigDTO dto, Map<String, ProjectileStats> projectileMap) {
-    float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
+    // Unit boundary: projectiles.json stores radii and ranges in tiles, speed as a raw value (60 =
+    // one tile per second) and pushback as raw game units. Converted to game units once here.
+    float effectiveSpeed = GameUnits.rawSpeedToUnitsPerSecond(dto.getSpeed());
 
     // Merge targetBuff into hitEffects as a post-damage effect
     List<EffectStats> hitEffects = new ArrayList<>();
@@ -86,25 +90,25 @@ public class ProjectileLoader {
             .name(dto.getName())
             .damage(dto.getDamage())
             .speed(effectiveSpeed)
-            .radius(dto.getRadius())
-            .radiusY(dto.getRadiusY())
+            .radius(tiles(dto.getRadius()))
+            .radiusY(tiles(dto.getRadiusY()))
             .homing(dto.getHoming() != null ? dto.getHoming() : true)
             .hitEffects(hitEffects)
             .aoeToAir(dto.isAoeToAir())
             .aoeToGround(dto.isAoeToGround())
-            .chainedHitRadius(dto.getChainedHitRadius())
+            .chainedHitRadius(tiles(dto.getChainedHitRadius()))
             .chainedHitCount(dto.getChainedHitCount())
-            .projectileRange(dto.getProjectileRange())
+            .projectileRange(tiles(dto.getProjectileRange()))
             .scatter(dto.getScatter())
             // Own spawnCount/spawnRadius (e.g. FirecrackerExplosion has these directly)
             .spawnCount(dto.getSpawnCount())
-            .spawnRadius(dto.getSpawnRadius())
+            .spawnRadius(tiles(dto.getSpawnRadius()))
             .returning(dto.isPingpong() || dto.isReturning())
             .pingpongMovingShooter(dto.getPingpongMovingShooter())
-            .pushback(dto.getPushback() / 1000f)
+            .pushback(dto.getPushback())
             .pushbackAll(dto.isPushbackAll())
-            .projectileRadius(dto.getProjectileRadius())
-            .minDistance(dto.getMinDistance())
+            .projectileRadius(tiles(dto.getProjectileRadius()))
+            .minDistance(tiles(dto.getMinDistance()))
             .checkCollisions(dto.isCheckCollisions())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
             .spawnAreaEffect(CardLoader.convertAreaEffect(dto.getSpawnAreaEffect(), null));

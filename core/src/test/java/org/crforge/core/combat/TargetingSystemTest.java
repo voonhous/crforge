@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.TroopStats;
@@ -30,15 +31,16 @@ class TargetingSystemTest {
     AbstractEntity.resetIdCounter();
   }
 
+  /** Creates a deployed troop at tile coordinates (x, y). */
   private Troop createDeployedTroop(String name, Team team, float x, float y) {
     Troop troop =
         Troop.builder()
             .name(name)
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .deployTime(0)
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().sightRange(5.5f).range(1.0f).build())
+            .movement(new Movement(0, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(Combat.builder().sightRange(tiles(5.5)).range(tiles(1.0)).build())
             .build();
     troop.onSpawn();
     return troop;
@@ -85,10 +87,10 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Ground Attacker")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().sightRange(5.5f).targetType(TargetType.GROUND).build())
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(Combat.builder().sightRange(tiles(5.5)).targetType(TargetType.GROUND).build())
             .build();
     groundAttacker.onSpawn();
 
@@ -96,9 +98,9 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Air Enemy")
             .team(Team.RED)
-            .position(new Position(12, 10))
+            .position(new Position(tiles(12), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.AIR))
             .build();
     airEnemy.onSpawn();
 
@@ -114,10 +116,10 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Air Attacker")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.AIR))
-            .combat(Combat.builder().sightRange(5.5f).targetType(TargetType.AIR).build())
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.AIR))
+            .combat(Combat.builder().sightRange(tiles(5.5)).targetType(TargetType.AIR).build())
             .build();
     airAttacker.onSpawn();
 
@@ -125,9 +127,9 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Air Enemy")
             .team(Team.RED)
-            .position(new Position(12, 10))
+            .position(new Position(tiles(12), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.AIR))
             .build();
     airEnemy.onSpawn();
 
@@ -188,12 +190,12 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(5.5f)
+                    .sightRange(tiles(5.5))
                     .targetType(knightStats.getTargetType()) // Use actual stat
                     .build())
             .build();
@@ -203,10 +205,11 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Baby Dragon")
             .team(Team.RED)
-            .position(new Position(12, 10))
+            .position(new Position(tiles(12), tiles(10)))
             .deployTime(0)
             .movement(
-                new Movement(0, 0, 0.5f, 0.5f, dragonStats.getMovementType())) // Use actual stat
+                new Movement(
+                    0, 0, tiles(0.5), tiles(0.5), dragonStats.getMovementType())) // Use actual stat
             .build();
     dragon.onSpawn();
 
@@ -223,12 +226,12 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Giant")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(5.5f)
+                    .sightRange(tiles(5.5))
                     .targetType(TargetType.GROUND)
                     .targetOnlyBuildings(true)
                     .build())
@@ -250,19 +253,19 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Giant")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(9.0f)
+                    .sightRange(tiles(9.0))
                     .targetType(TargetType.GROUND)
                     .targetOnlyBuildings(true)
                     .build())
             .build();
     giant.onSpawn();
 
-    Tower tower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(14), tiles(10), 1);
     tower.onSpawn();
 
     List<Entity> entities = List.of(giant, tower);
@@ -295,12 +298,12 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Giant")
             .team(Team.BLUE)
-            .position(new Position(5, 10))
+            .position(new Position(tiles(5), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(15.0f)
+                    .sightRange(tiles(15.0))
                     .targetType(TargetType.GROUND)
                     .targetOnlyBuildings(true)
                     .build())
@@ -310,7 +313,7 @@ class TargetingSystemTest {
     // A troop that is closer should be ignored
     Troop enemyKnight = createDeployedTroop("Knight", Team.RED, 6, 10);
 
-    Tower farTower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    Tower farTower = Tower.createPrincessTower(Team.RED, tiles(14), tiles(10), 1);
     farTower.onSpawn();
 
     List<Entity> entities = List.of(giant, enemyKnight, farTower);
@@ -329,12 +332,12 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Giant")
             .team(Team.BLUE)
-            .position(new Position(5, 10))
+            .position(new Position(tiles(5), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(15.0f)
+                    .sightRange(tiles(15.0))
                     .targetType(TargetType.GROUND)
                     .targetOnlyBuildings(true)
                     .build())
@@ -342,7 +345,7 @@ class TargetingSystemTest {
     giant.onSpawn();
 
     // Far tower is the only building initially
-    Tower farTower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    Tower farTower = Tower.createPrincessTower(Team.RED, tiles(14), tiles(10), 1);
     farTower.onSpawn();
 
     List<Entity> entities = new java.util.ArrayList<>(List.of(giant, farTower));
@@ -356,9 +359,9 @@ class TargetingSystemTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(8, 10))
+            .position(new Position(tiles(8), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -379,19 +382,19 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Giant")
             .team(Team.BLUE)
-            .position(new Position(5, 10))
+            .position(new Position(tiles(5), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(15.0f)
+                    .sightRange(tiles(15.0))
                     .targetType(TargetType.GROUND)
                     .targetOnlyBuildings(true)
                     .build())
             .build();
     giant.onSpawn();
 
-    Tower tower = Tower.createPrincessTower(Team.RED, 14, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(14), tiles(10), 1);
     tower.onSpawn();
 
     List<Entity> entities = List.of(giant, tower);
@@ -423,14 +426,14 @@ class TargetingSystemTest {
         Building.builder()
             .name("Mortar")
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(11.5f)
-                    .range(11.5f)
-                    .minimumRange(3.5f)
+                    .sightRange(tiles(11.5))
+                    .range(tiles(11.5))
+                    .minimumRange(tiles(3.5))
                     .targetType(TargetType.GROUND)
                     .build())
             .deployTime(0f)
@@ -563,7 +566,7 @@ class TargetingSystemTest {
         .isEqualTo(enemy);
 
     // Enemy moves inside the blind spot
-    enemy.getPosition().set(9, 18);
+    enemy.getPosition().set(tiles(9), tiles(18));
     targetingSystem.updateTargets(entities);
 
     assertThat(mortar.getCombat().getCurrentTarget())
@@ -583,13 +586,13 @@ class TargetingSystemTest {
         Troop.builder()
             .name(name)
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .deployTime(0)
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(15.0f)
-                    .range(1.0f)
+                    .sightRange(tiles(15.0))
+                    .range(tiles(1.0))
                     .targetSelectAlgorithm(algorithm)
                     .build())
             .build();
@@ -606,11 +609,11 @@ class TargetingSystemTest {
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .deployTime(0)
             .health(new Health(hp))
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().damage(damage).sightRange(5.5f).build())
+            .movement(new Movement(0, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(Combat.builder().damage(damage).sightRange(tiles(5.5)).build())
             .build();
     troop.onSpawn();
     return troop;
@@ -653,13 +656,13 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Attacker")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(5.5f)
-                    .range(1.0f)
+                    .sightRange(tiles(5.5))
+                    .range(tiles(1.0))
                     .targetSelectAlgorithm(TargetSelectAlgorithm.FARTHEST)
                     .build())
             .build();
@@ -786,12 +789,12 @@ class TargetingSystemTest {
         Troop.builder()
             .name("Giant")
             .team(Team.BLUE)
-            .position(new Position(5, 10))
+            .position(new Position(tiles(5), tiles(10)))
             .deployTime(0)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
-                    .sightRange(15.0f)
+                    .sightRange(tiles(15.0))
                     .targetType(TargetType.GROUND)
                     .targetOnlyBuildings(true)
                     .targetSelectAlgorithm(TargetSelectAlgorithm.FARTHEST)
@@ -799,9 +802,9 @@ class TargetingSystemTest {
             .build();
     giant.onSpawn();
 
-    Tower nearTower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower nearTower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     nearTower.onSpawn();
-    Tower farTower = Tower.createPrincessTower(Team.RED, 16, 10, 1);
+    Tower farTower = Tower.createPrincessTower(Team.RED, tiles(16), tiles(10), 1);
     farTower.onSpawn();
 
     java.util.List<Entity> entities =
@@ -818,9 +821,9 @@ class TargetingSystemTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(8, 10))
+            .position(new Position(tiles(8), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .deployTime(0f)
             .deployTimer(0f)
             .build();

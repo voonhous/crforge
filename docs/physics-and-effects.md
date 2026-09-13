@@ -39,7 +39,7 @@ For each movable entity (not BUILDING):
 
 For troops with `jumpEnabled=true` (HogRider, Prince, DarkPrince, Ram, RoyalHog):
 
-- Entering river zone (Y 15-17) outside bridge tiles activates jump
+- Entering river zone (Y 15-17 tiles, 15000-17000 game units) outside bridge tiles activates jump
 - `JUMP_SPEED_MULTIPLIER = 4/3` applied via `ModifierSource.ABILITY_JUMP`
 - Exiting river zone or entering bridge deactivates jump
 - Jumping troops use AIR pathfinding (straight line over river)
@@ -47,8 +47,8 @@ For troops with `jumpEnabled=true` (HogRider, Prince, DarkPrince, Ram, RoyalHog)
 ### Knockback
 
 - `KNOCKBACK_DURATION = 0.5f` seconds (15 frames)
-- `Movement.startKnockback(dirX, dirY, distance, duration, maxTime)`
-- Knockback speed = `distance / maxTime` tiles/second
+- `Movement.startKnockback(dirX, dirY, distance, duration, maxTime)` with `distance` in game units
+- Knockback speed = `distance / maxTime` game units/second
 - Overrides pathfinding; knocked-back entities skip collision resolution
 - Immune: buildings, entities with `ignorePushback=true`
 
@@ -56,7 +56,10 @@ For troops with `jumpEnabled=true` (HogRider, Prince, DarkPrince, Ram, RoyalHog)
 
 Circle-circle collision detection using `collisionRadius`:
 
-- Quick squared-distance check first for early rejection
+- Exact integer squared-distance check first (touching circles, where distance equals the sum of
+  radii, do not collide)
+- Pushes are fractional game units applied with `Position.move()`, so sub-unit separations
+  accumulate instead of being rounded away
 - Push ratios based on mass: `ratioA = massB / (massA + massB)`
 - Buildings have mass 0 (infinite mass, immovable)
 - Air units collide only with other air units
@@ -78,7 +81,9 @@ When a troop collides with a building:
 
 ### Bounds Enforcement
 
-Every frame: clamp position within `[collisionRadius, dimension - collisionRadius]`.
+Every frame: clamp position within `[collisionRadius, dimension - collisionRadius]` in game units.
+Only an out-of-bounds axis is modified, so an entity sliding along a wall keeps its fractional
+movement on the other axis.
 
 **Key files:**
 

@@ -34,7 +34,6 @@ import org.crforge.core.player.Deck;
 import org.crforge.core.player.LevelConfig;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
-import org.crforge.core.player.dto.PlayerActionDTO;
 import org.crforge.data.card.CardRegistry;
 import org.crforge.desktop.render.DebugRenderer;
 import org.crforge.desktop.render.RenderConstants;
@@ -440,15 +439,13 @@ public class AIGameScreen implements Screen {
       float redElixirBefore = redPlayer.getElixir().getCurrent();
 
       // Queue actions
+      // External agent actions are in tiles; StepAction converts them to game units (the same
+      // boundary adapter GameSession uses)
       if (blueAttempted) {
-        PlayerActionDTO action =
-            PlayerActionDTO.play(blueAction.handIndex(), blueAction.x(), blueAction.y());
-        engine.queueAction(bluePlayer, action);
+        engine.queueAction(bluePlayer, blueAction.toPlayerAction());
       }
       if (redAttempted) {
-        PlayerActionDTO action =
-            PlayerActionDTO.play(redAction.handIndex(), redAction.x(), redAction.y());
-        engine.queueAction(redPlayer, action);
+        engine.queueAction(redPlayer, redAction.toPlayerAction());
       }
 
       // Detect action failure

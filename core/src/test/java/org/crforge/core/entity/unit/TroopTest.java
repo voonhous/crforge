@@ -2,6 +2,7 @@ package org.crforge.core.entity.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -34,22 +35,22 @@ class TroopTest {
 
   @Test
   void builder_shouldAllowCustomization() {
-    Combat combat = Combat.builder().damage(100).range(1.5f).build();
+    Combat combat = Combat.builder().damage(100).range(tiles(1.5)).build();
 
     Troop troop =
         Troop.builder()
             .name("Knight")
             .team(Team.RED)
-            .position(new Position(10, 20))
+            .position(new Position(tiles(10), tiles(20)))
             .health(new Health(1000))
-            .movement(new Movement(1.5f, 2.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.5), 2.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(combat)
             .build();
 
     assertThat(troop.getName()).isEqualTo("Knight");
     assertThat(troop.getTeam()).isEqualTo(Team.RED);
-    assertThat(troop.getPosition().getX()).isEqualTo(10);
-    assertThat(troop.getPosition().getY()).isEqualTo(20);
+    assertThat(troop.getPosition().getX()).isEqualTo(tiles(10));
+    assertThat(troop.getPosition().getY()).isEqualTo(tiles(20));
     assertThat(troop.getHealth().getMax()).isEqualTo(1000);
     assertThat(troop.getCombat().getDamage()).isEqualTo(100);
   }
@@ -104,13 +105,14 @@ class TroopTest {
   void troop_shouldCalculateDistanceToTarget() {
     Troop attacker = Troop.builder().position(new Position(0, 0)).build();
 
-    Troop target = Troop.builder().position(new Position(3, 4)).build();
+    Troop target = Troop.builder().position(new Position(tiles(3), tiles(4))).build();
     target.onSpawn();
     target.update(2.0f);
 
     attacker.getCombat().setCurrentTarget(target);
 
-    assertThat(attacker.getDistanceToTarget()).isEqualTo(5.0f, within(0.01f));
+    // Center-to-center distance in game units (a 3-4-5 triangle in tiles)
+    assertThat(attacker.getDistanceToTarget()).isEqualTo(tiles(5), within(1f));
   }
 
   @Test

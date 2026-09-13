@@ -14,6 +14,7 @@ import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.combat.TargetSelectAlgorithm;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.util.GameUnits;
 
 @Getter
 @Builder
@@ -22,14 +23,16 @@ public class Combat {
   // -- Config fields (static for the lifetime of this component) --
 
   @Builder.Default private final int damage = 0;
-  @Builder.Default private final float range = 1.0f;
-  @Builder.Default private final float sightRange = 5.5f;
+  // Attack and sight ranges in game units (edge-to-edge: collision radii are added at check time)
+  @Builder.Default private final int range = 1000;
+  @Builder.Default private final int sightRange = 5500;
   @Builder.Default private final float attackCooldown = 1.0f; // "Hit Speed"
 
   @Builder.Default
   private final float loadTime = 0f; // Hidden stat: charges up to reduce first hit delay
 
-  @Builder.Default private final float aoeRadius = 0;
+  // Splash radius in game units
+  @Builder.Default private final int aoeRadius = 0;
   @Builder.Default private final TargetType targetType = TargetType.ALL;
 
   @Builder.Default private final List<EffectStats> hitEffects = new ArrayList<>();
@@ -50,8 +53,8 @@ public class Combat {
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   @Builder.Default private final float attackDashTime = 0f;
 
-  // Attack pushback: self-knockback when firing (e.g. Firecracker recoils backward)
-  @Builder.Default private final float attackPushBack = 0f;
+  // Attack pushback: self-knockback distance in game units when firing (e.g. Firecracker recoils)
+  @Builder.Default private final int attackPushBack = 0;
 
   // Attack sequence: per-hit damage values for units with multi-hit combos (e.g. Berserker)
   @Builder.Default private final List<AttackSequenceHit> attackSequence = List.of();
@@ -62,7 +65,8 @@ public class Combat {
   // Targeting and combat modifiers
   @Builder.Default private final boolean targetOnlyBuildings = false;
   @Builder.Default private final boolean targetOnlyTroops = false;
-  @Builder.Default private final float minimumRange = 0f;
+  // Minimum attack range in game units
+  @Builder.Default private final int minimumRange = 0;
 
   @Builder.Default
   private final TargetSelectAlgorithm targetSelectAlgorithm = TargetSelectAlgorithm.NEAREST;
@@ -96,10 +100,11 @@ public class Combat {
   private final EnumMap<ModifierSource, Float> attackSpeedMultipliers =
       new EnumMap<>(ModifierSource.class);
 
-  // Units with range >= this threshold use projectile attacks instead of melee
-  private static final float RANGED_THRESHOLD = 2.0f;
+  // Units with range >= this threshold (two tiles, in game units) use projectile attacks instead of
+  // melee
+  public static final int RANGED_THRESHOLD = 2 * GameUnits.UNITS_PER_TILE;
 
-  /** Returns true if the unit is considered ranged (Range >= 2.0 tiles). */
+  /** Returns true if the unit is considered ranged (Range >= 2 tiles). */
   public boolean isRanged() {
     return range >= RANGED_THRESHOLD;
   }

@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Map;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -40,10 +42,10 @@ class HealSpiritTest {
   private Map<String, BuffDefinition> savedBuffs;
 
   private static final int HEAL_SPIRIT_DAMAGE = 43;
-  private static final float PROJECTILE_SPEED = 400f / 60f; // ~6.67 t/s
-  private static final float AOE_RADIUS = 1.5f;
+  private static final float PROJECTILE_SPEED = rawSpeedToUnitsPerSecond(400f); // ~6.67 t/s
+  private static final int AOE_RADIUS = tiles(1.5);
   private static final int HEAL_AMOUNT = 157;
-  private static final float HEAL_AREA_RADIUS = 2.5f;
+  private static final int HEAL_AREA_RADIUS = tiles(2.5);
 
   @BeforeEach
   void setUp() {
@@ -228,8 +230,8 @@ class HealSpiritTest {
     Combat combat =
         Combat.builder()
             .damage(HEAL_SPIRIT_DAMAGE)
-            .range(2.5f)
-            .sightRange(5.5f)
+            .range(tiles(2.5))
+            .sightRange(tiles(5.5))
             .attackCooldown(0.3f)
             .loadTime(0.1f)
             .kamikaze(true)
@@ -240,9 +242,9 @@ class HealSpiritTest {
     return Troop.builder()
         .name("HealSpirit")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(90))
-        .movement(new Movement(2.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(2.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .combat(combat)
         .build();
@@ -252,9 +254,9 @@ class HealSpiritTest {
     return Troop.builder()
         .name("Troop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(1.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .build();
   }

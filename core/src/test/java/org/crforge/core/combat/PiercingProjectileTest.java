@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Collections;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -58,7 +59,7 @@ class PiercingProjectileTest {
 
     assertThat(boulder.isActive()).isFalse();
     // Should have deactivated after traveling ~7.5 tiles
-    assertThat(boulder.getPosition().getY()).isGreaterThan(17f);
+    assertThat(boulder.getPosition().getY()).isGreaterThan(tiles(17));
   }
 
   @Test
@@ -137,7 +138,7 @@ class PiercingProjectileTest {
     assertThat(enemy.getMovement().isKnockedBack()).isTrue();
 
     // Record Y before physics tick
-    float yBefore = enemy.getPosition().getY();
+    int yBefore = enemy.getPosition().getY();
 
     // Tick physics to apply knockback displacement
     physicsSystem.update(gameState.getAliveEntities(), deltaTime);
@@ -177,9 +178,9 @@ class PiercingProjectileTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(9f, 12f))
+            .position(new Position(tiles(9), tiles(12)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(1.0f)
@@ -232,7 +233,8 @@ class PiercingProjectileTest {
 
   /**
    * Creates a piercing projectile simulating a Bowler boulder. Speed: 2.833 tiles/sec, damage: 113,
-   * aoeRadius: 1.8, pushback: 1.0 tile, aoeToGround: true, aoeToAir: false.
+   * aoeRadius: 1.8, pushback: 1.0 tile, aoeToGround: true, aoeToAir: false. Start position and
+   * range are in tiles; the direction is a unit vector.
    */
   private Projectile createPiercingBoulder(
       Team team, float startX, float startY, float dirX, float dirY, float range) {
@@ -241,14 +243,14 @@ class PiercingProjectileTest {
         Troop.builder()
             .name("Bowler")
             .team(team)
-            .position(new Position(startX, startY))
+            .position(new Position(tiles(startX), tiles(startY)))
             .health(new Health(1000))
-            .movement(new Movement(0.7f, 0.7f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(0.7), 0.7f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(113)
-                    .range(5.0f)
-                    .sightRange(5.5f)
+                    .range(tiles(5.0))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(2.5f)
                     .build())
             .deployTime(1.0f)
@@ -256,30 +258,46 @@ class PiercingProjectileTest {
             .build();
 
     // Create a position-targeted projectile so we don't need a real target entity
-    float targetX = startX + dirX * range;
-    float targetY = startY + dirY * range;
+    int targetX = tiles(startX + dirX * range);
+    int targetY = tiles(startY + dirY * range);
     Projectile proj =
         new Projectile(
-            team, startX, startY, targetX, targetY, 113, 1.8f, 2.833f, Collections.emptyList());
-    proj.setPushback(1.0f);
-    proj.configurePiercing(dirX, dirY, range, true, false);
+            team,
+            tiles(startX),
+            tiles(startY),
+            targetX,
+            targetY,
+            113,
+            tiles(1.8),
+            tiles(2.833),
+            Collections.emptyList());
+    proj.setPushback(tiles(1.0));
+    proj.configurePiercing(dirX, dirY, tiles(range), true, false);
     return proj;
   }
 
-  /** Creates a troop with the given movement type for piercing projectile testing. */
+  /**
+   * Creates a troop at tile coordinates with the given movement type for piercing projectile
+   * testing.
+   */
   private Troop createTroop(
       Team team, float x, float y, boolean ignorePushback, MovementType movementType) {
-    Movement movement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, movementType);
+    Movement movement = new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), movementType);
     movement.setIgnorePushback(ignorePushback);
 
     return Troop.builder()
         .name("TestTroop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
         .movement(movement)
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

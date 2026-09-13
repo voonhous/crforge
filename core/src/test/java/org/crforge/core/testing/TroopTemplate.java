@@ -1,5 +1,7 @@
 package org.crforge.core.testing;
 
+import static org.crforge.core.util.GameUnits.tiles;
+
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.AbilityData;
@@ -16,6 +18,9 @@ import org.crforge.core.player.Team;
 /**
  * Fluent factory for creating test troops with sensible defaults. Avoids boilerplate builder code
  * in test methods.
+ *
+ * <p>For readability, spatial setters take tiles ({@link #at}, {@link #range}, radii) and tiles per
+ * second ({@link #speed}); {@link #build()} converts them to the simulation's integer game units.
  */
 public class TroopTemplate {
 
@@ -70,6 +75,7 @@ public class TroopTemplate {
 
   // -- Chainable setters --
 
+  /** Position in tiles. */
   public TroopTemplate at(float x, float y) {
     this.x = x;
     this.y = y;
@@ -86,11 +92,13 @@ public class TroopTemplate {
     return this;
   }
 
+  /** Attack range in tiles. */
   public TroopTemplate range(float range) {
     this.range = range;
     return this;
   }
 
+  /** Sight range in tiles. */
   public TroopTemplate sightRange(float sightRange) {
     this.sightRange = sightRange;
     return this;
@@ -106,6 +114,7 @@ public class TroopTemplate {
     return this;
   }
 
+  /** Movement speed in tiles per second. */
   public TroopTemplate speed(float speed) {
     this.speed = speed;
     return this;
@@ -116,11 +125,13 @@ public class TroopTemplate {
     return this;
   }
 
+  /** Collision radius in tiles. */
   public TroopTemplate collisionRadius(float r) {
     this.collisionRadius = r;
     return this;
   }
 
+  /** Visual radius in tiles. */
   public TroopTemplate visualRadius(float r) {
     this.visualRadius = r;
     return this;
@@ -141,6 +152,7 @@ public class TroopTemplate {
     return this;
   }
 
+  /** Splash radius in tiles. */
   public TroopTemplate aoeRadius(float r) {
     this.aoeRadius = r;
     return this;
@@ -171,17 +183,19 @@ public class TroopTemplate {
     return Troop.builder()
         .name(name)
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(speed, mass, collisionRadius, visualRadius, movementType))
+        .movement(
+            new Movement(
+                tiles(speed), mass, tiles(collisionRadius), tiles(visualRadius), movementType))
         .combat(
             Combat.builder()
                 .damage(damage)
-                .range(range)
-                .sightRange(sightRange)
+                .range(tiles(range))
+                .sightRange(tiles(sightRange))
                 .attackCooldown(attackCooldown)
                 .loadTime(loadTime)
-                .aoeRadius(aoeRadius)
+                .aoeRadius(tiles(aoeRadius))
                 .targetType(targetType)
                 .targetOnlyBuildings(targetOnlyBuildings)
                 .attackSequence(attackSequence)

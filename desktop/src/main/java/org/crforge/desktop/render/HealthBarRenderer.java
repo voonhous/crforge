@@ -24,9 +24,9 @@ public class HealthBarRenderer {
       Health health = entity.getHealth();
       float healthPercent = (float) health.getCurrent() / health.getMax();
 
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(entity.getVisualRadius());
 
       float barWidth = barWidth(entity, drawHpNumbers);
       float barY = y + radius + HEALTH_BAR_Y_OFFSET;
@@ -76,7 +76,7 @@ public class HealthBarRenderer {
    * the HP text at full font size.
    */
   float barWidth(Entity entity, boolean drawHpNumbers) {
-    float radius = entity.getVisualRadius() * TILE_PIXELS;
+    float radius = unitsToPixels(entity.getVisualRadius());
     float base = Math.max(radius * 2, HEALTH_BAR_MIN_WIDTH);
 
     if (!drawHpNumbers) {

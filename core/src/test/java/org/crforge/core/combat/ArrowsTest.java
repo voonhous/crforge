@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Collections;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -32,8 +34,8 @@ class ArrowsTest {
 
   // ArrowsSpell stats from projectiles.json (level-1 base values)
   private static final int DAMAGE_PER_VOLLEY = 48;
-  private static final float AOE_RADIUS = 1.4f;
-  private static final float SPEED = 1100f / 60f; // Raw CSV speed / SPEED_BASE
+  private static final int AOE_RADIUS = tiles(1.4);
+  private static final float SPEED = rawSpeedToUnitsPerSecond(1100f); // Raw data speed
   private static final int CROWN_TOWER_DAMAGE_PCT = -75;
   private static final int PROJECTILE_WAVES = 3;
   private static final int WAVE_DELAY_FRAMES = 6; // 0.2s * 30fps
@@ -139,7 +141,7 @@ class ArrowsTest {
   @Test
   void volley_crownTowerReduction() {
     // Create a princess tower at the target location
-    Tower tower = Tower.createPrincessTower(Team.RED, 9f, 20f, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(9), tiles(20), 1);
     int initialHp = tower.getHealth().getMax();
     gameState.spawnEntity(tower);
     gameState.processPending();
@@ -186,7 +188,7 @@ class ArrowsTest {
       if (!firstHitDealt && target.getHealth().getCurrent() < hpBefore) {
         firstHitDealt = true;
         // Move target far away from the AOE zone
-        target.getPosition().set(0f, 0f);
+        target.getPosition().set(0, 0);
       }
 
       if (gameState.getProjectiles().isEmpty()) {
@@ -205,11 +207,20 @@ class ArrowsTest {
   void delayFrames_projectileDoesNotMoveUntilDelayExpires() {
     // Create a single projectile with delayFrames set
     Projectile p =
-        new Projectile(Team.BLUE, 9f, 10f, 9f, 20f, 100, 2.0f, SPEED, Collections.emptyList());
+        new Projectile(
+            Team.BLUE,
+            tiles(9),
+            tiles(10),
+            tiles(9),
+            tiles(20),
+            100,
+            tiles(2.0),
+            SPEED,
+            Collections.emptyList());
     p.setDelayFrames(6);
 
-    float startX = p.getPosition().getX();
-    float startY = p.getPosition().getY();
+    int startX = p.getPosition().getX();
+    int startY = p.getPosition().getY();
 
     // Tick for 5 frames -- projectile should not move
     for (int i = 0; i < 5; i++) {
@@ -243,10 +254,10 @@ class ArrowsTest {
       Projectile p =
           new Projectile(
               team,
-              targetX,
-              startY,
-              targetX,
-              targetY,
+              tiles(targetX),
+              tiles(startY),
+              tiles(targetX),
+              tiles(targetY),
               DAMAGE_PER_VOLLEY,
               AOE_RADIUS,
               SPEED,
@@ -263,14 +274,14 @@ class ArrowsTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(0)
-                .range(1.0f)
-                .sightRange(5.0f)
+                .range(tiles(1.0))
+                .sightRange(tiles(5.0))
                 .attackCooldown(1.0f)
                 .targetType(TargetType.GROUND)
                 .build())

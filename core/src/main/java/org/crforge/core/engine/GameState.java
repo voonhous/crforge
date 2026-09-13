@@ -78,11 +78,12 @@ public class GameState {
     projectiles.remove(projectile);
   }
 
-  /** Process pending spawns and removals. Called at start of each tick. */
-  public void recordAoeDamage(float centerX, float centerY, float radius, Team sourceTeam) {
+  /** Records an AOE damage burst (game-unit center and radius) for visualization. */
+  public void recordAoeDamage(int centerX, int centerY, int radius, Team sourceTeam) {
     aoeDamageEvents.add(new AoeDamageEvent(centerX, centerY, radius, sourceTeam));
   }
 
+  /** Process pending spawns and removals. Called at start of each tick. */
   public void processPending() {
     // Clear AOE damage events from previous tick
     aoeDamageEvents.clear();
@@ -140,7 +141,7 @@ public class GameState {
                 tower.getPosition().getX(), tower.getPosition().getY(), tower.getTeam());
             // Open pocket deploy zone for the opposing team in the destroyed tower's lane
             Team attackingTeam = tower.getTeam().opposite();
-            boolean leftLane = tower.getPosition().getX() < Arena.WIDTH / 2.0f;
+            boolean leftLane = tower.getPosition().getX() < Arena.WIDTH_UNITS / 2;
             arena.openPocketZone(attackingTeam, leftLane);
           }
         }
@@ -273,10 +274,10 @@ public class GameState {
    *
    * @param team the team whose princess tower to check
    * @param leftLane true for left lane, false for right lane
-   * @param centerX arena center X for lane determination
+   * @param centerX arena center X in game units for lane determination
    * @return true if a matching princess tower is alive
    */
-  public boolean isPrincessTowerAlive(Team team, boolean leftLane, float centerX) {
+  public boolean isPrincessTowerAlive(Team team, boolean leftLane, int centerX) {
     for (Tower tower : towers.get(team)) {
       if (tower.isPrincessTower() && tower.isAlive()) {
         boolean towerIsLeft = tower.getPosition().getX() < centerX;

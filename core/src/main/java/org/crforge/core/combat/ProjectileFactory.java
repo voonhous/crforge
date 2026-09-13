@@ -8,12 +8,23 @@ import org.crforge.core.component.Combat;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Creates projectiles for ranged attacks and scatter (shotgun) patterns. Handles stat resolution,
  * piercing/returning configuration, and advanced projectile features.
  */
 class ProjectileFactory {
+
+  // Projectile ranges below one tile are sentinel values (e.g. 0.001 tiles = 1 game unit for
+  // WallbreakerProjectile), not real piercing travel distances
+  private static final int MIN_PIERCING_RANGE = GameUnits.UNITS_PER_TILE;
+
+  // Scatter pellets spawn this far ahead of the attacker (0.65 tiles)
+  private static final int SCATTER_START_OFFSET = 650;
+
+  // Scatter pellet range when the projectile has no projectileRange (6.5 tiles)
+  private static final int DEFAULT_SCATTER_RANGE = 6500;
 
   private final GameState gameState;
 
@@ -29,13 +40,13 @@ class ProjectileFactory {
     ProjectileStats stats = combat.getProjectileStats();
 
     float speed = (stats != null) ? stats.getSpeed() : 0;
-    float aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
+    int aoeRadius = (stats != null) ? stats.getRadius() : combat.getAoeRadius();
     // For piercing projectiles, use projectileRadius for hit detection if available
-    // (e.g. Bowler projectileRadius=1.0 vs AOE radius=1.8)
+    // (e.g. Bowler projectileRadius=1000 vs AOE radius=1800 game units)
     if (stats != null
         && stats.getProjectileRadius() > 0
         && !stats.isHoming()
-        && stats.getProjectileRange() >= 1.0f) {
+        && stats.getProjectileRange() >= MIN_PIERCING_RANGE) {
       aoeRadius = stats.getProjectileRadius();
     }
     List<EffectStats> effects =
@@ -87,24 +98,24 @@ class ProjectileFactory {
 
       // Returning projectiles (e.g. Executioner axe) are piercing: they travel out, reverse,
       // and return to the source. Configure piercing + returning.
-      if (stats.isReturning() && stats.getProjectileRange() >= 1.0f) {
+      if (stats.isReturning() && stats.getProjectileRange() >= MIN_PIERCING_RANGE) {
         float dx = target.getPosition().getX() - attacker.getPosition().getX();
         float dy = target.getPosition().getY() - attacker.getPosition().getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-        float dirX = dist > 0.001f ? dx / dist : 0f;
-        float dirY = dist > 0.001f ? dy / dist : 1f;
+        float dist = attacker.getPosition().distance(target.getPosition());
+        float dirX = dist > 0f ? dx / dist : 0f;
+        float dirY = dist > 0f ? dy / dist : 1f;
         projectile.configurePiercing(
             dirX, dirY, stats.getProjectileRange(), stats.isAoeToGround(), stats.isAoeToAir());
         projectile.configureReturning(attacker);
-      } else if (!stats.isHoming() && stats.getProjectileRange() >= 1.0f) {
+      } else if (!stats.isHoming() && stats.getProjectileRange() >= MIN_PIERCING_RANGE) {
         // Non-homing projectiles with meaningful projectileRange travel in a line,
         // hitting all entities along their path (e.g. Bowler boulder, Magic Archer arrow).
-        // Threshold >= 1.0 excludes sentinel values like 0.001 (WallbreakerProjectile).
+        // Threshold of one tile excludes sentinel values like 1 unit (WallbreakerProjectile).
         float dx = target.getPosition().getX() - attacker.getPosition().getX();
         float dy = target.getPosition().getY() - attacker.getPosition().getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-        float dirX = dist > 0.001f ? dx / dist : 0f;
-        float dirY = dist > 0.001f ? dy / dist : 1f;
+        float dist = attacker.getPosition().distance(target.getPosition());
+        float dirX = dist > 0f ? dx / dist : 0f;
+        float dirY = dist > 0f ? dy / dist : 1f;
         projectile.configurePiercing(
             dirX, dirY, stats.getProjectileRange(), stats.isAoeToGround(), stats.isAoeToAir());
       } else if (!stats.isHoming()) {
@@ -124,10 +135,10 @@ class ProjectileFactory {
     ProjectileStats stats = combat.getProjectileStats();
     int count = combat.getMultipleProjectiles();
 
-    float attackerX = attacker.getPosition().getX();
-    float attackerY = attacker.getPosition().getY();
-    float targetX = target.getPosition().getX();
-    float targetY = target.getPosition().getY();
+    int attackerX = attacker.getPosition().getX();
+    int attackerY = attacker.getPosition().getY();
+    int targetX = target.getPosition().getX();
+    int targetY = target.getPosition().getY();
 
     // Base angle toward the target
     float baseAngle = (float) Math.atan2(targetY - attackerY, targetX - attackerX);
@@ -136,12 +147,10 @@ class ProjectileFactory {
     float spreadDegrees = 10f;
     float spreadRadians = (float) Math.toRadians(spreadDegrees);
 
-    // Start position: 0.65 tiles ahead of attacker in the base direction
-    float startOffsetDist = 0.65f;
-    float startX = attackerX + startOffsetDist * (float) Math.cos(baseAngle);
-    float startY = attackerY + startOffsetDist * (float) Math.sin(baseAngle);
-
-    float range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : 6.5f;
+    // Start position: 0.65 tiles ahead of attacker in the base direction (rounded to game units)
+    int startX = attackerX + GameUnits.round(SCATTER_START_OFFSET * Math.cos(baseAngle));
+    int startY = attackerY + GameUnits.round(SCATTER_START_OFFSET * Math.sin(baseAngle));
+    int range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : DEFAULT_SCATTER_RANGE;
 
     List<EffectStats> effects = new ArrayList<>(stats.getHitEffects());
 
@@ -154,9 +163,9 @@ class ProjectileFactory {
       float dirX = (float) Math.cos(pelletAngle);
       float dirY = (float) Math.sin(pelletAngle);
 
-      // End position: range tiles from start in the pellet direction
-      float endX = startX + range * dirX;
-      float endY = startY + range * dirY;
+      // End position: range game units from start in the pellet direction
+      int endX = startX + GameUnits.round(range * (double) dirX);
+      int endY = startY + GameUnits.round(range * (double) dirY);
 
       Projectile pellet =
           new Projectile(

@@ -17,7 +17,10 @@ import lombok.With;
 public class AreaEffectStats {
 
   private final String name;
-  @Builder.Default private final float radius = 0f;
+
+  /** Effect radius in game units. */
+  @Builder.Default private final int radius = 0;
+
   @Builder.Default private final float lifeDuration = 0f;
   @Builder.Default private final boolean hitsGround = true;
   @Builder.Default private final boolean hitsAir = true;
@@ -38,8 +41,8 @@ public class AreaEffectStats {
   /** Damage modifier for crown towers (e.g. -70 means 30% damage). Zero if none. */
   @Builder.Default private final int crownTowerDamagePercent = 0;
 
-  /** Knockback strength applied to enemies on hit (e.g. GoblinDrillDamage). Zero if none. */
-  @Builder.Default private final float pushback = 0f;
+  /** Knockback distance in game units applied to enemies on hit (e.g. GoblinDrillDamage). */
+  @Builder.Default private final int pushback = 0;
 
   /** If true, each tick targets the single highest-HP enemy not yet hit (e.g. Lightning). */
   @Builder.Default private final boolean hitBiggestTargets = false;
@@ -135,7 +138,7 @@ public class AreaEffectStats {
    * internal game engine trigger -- it has zero radius and/or cannot hit anything.
    */
   public boolean isDummy() {
-    return radius == 0f
+    return radius == 0
         || (!hitsGround
             && !hitsAir
             && targetCount <= 0

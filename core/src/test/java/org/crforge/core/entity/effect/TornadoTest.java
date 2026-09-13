@@ -2,6 +2,7 @@ package org.crforge.core.entity.effect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import java.util.Map;
@@ -72,7 +73,7 @@ class TornadoTest {
   private AreaEffectStats tornadoStats() {
     return AreaEffectStats.builder()
         .name("Tornado")
-        .radius(5.5f)
+        .radius(tiles(5.5))
         .lifeDuration(1.05f)
         .hitsGround(true)
         .hitsAir(true)
@@ -83,27 +84,29 @@ class TornadoTest {
         .build();
   }
 
+  /** Creates a blue tornado centered at a tile-space position. */
   private AreaEffect createTornado(float x, float y) {
     AreaEffectStats stats = tornadoStats();
     return AreaEffect.builder()
         .name("Tornado")
         .team(Team.BLUE)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .stats(stats)
         .scaledDamage(0) // Tornado damage comes from buff DPS, not direct damage
         .remainingLifetime(stats.getLifeDuration())
         .build();
   }
 
+  /** Creates a troop at a tile-space position. */
   private Troop createTroop(
       String name, Team team, float x, float y, int hp, float mass, MovementType movementType) {
     Troop troop =
         Troop.builder()
             .name(name)
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(1.0f, mass, 0.5f, 0.5f, movementType))
+            .movement(new Movement(tiles(1.0), mass, tiles(0.5), tiles(0.5), movementType))
             .deployTime(0f)
             .build();
     troop.setDeployTimer(0); // Make targetable
@@ -128,16 +131,16 @@ class TornadoTest {
     gameState.spawnEntity(giant);
     gameState.processPending();
 
-    float hogStartX = hogRider.getPosition().getX();
-    float giantStartX = giant.getPosition().getX();
+    int hogStartX = hogRider.getPosition().getX();
+    int giantStartX = giant.getPosition().getX();
 
     // Run several ticks of pull
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
     }
 
-    float hogDisplacement = hogStartX - hogRider.getPosition().getX();
-    float giantDisplacement = giantStartX - giant.getPosition().getX();
+    int hogDisplacement = hogStartX - hogRider.getPosition().getX();
+    int giantDisplacement = giantStartX - giant.getPosition().getX();
 
     assertThat(hogDisplacement).isGreaterThan(0); // Both pulled toward center
     assertThat(giantDisplacement).isGreaterThan(0);
@@ -153,7 +156,7 @@ class TornadoTest {
     gameState.spawnEntity(troop);
     gameState.processPending();
 
-    float startX = troop.getPosition().getX();
+    int startX = troop.getPosition().getX();
 
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
@@ -172,7 +175,7 @@ class TornadoTest {
     gameState.spawnEntity(airTroop);
     gameState.processPending();
 
-    float startX = airTroop.getPosition().getX();
+    int startX = airTroop.getPosition().getX();
 
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
@@ -189,9 +192,9 @@ class TornadoTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(13, 10))
+            .position(new Position(tiles(13), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(0, 10, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 10, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .combat(null)
             .deployTime(0f)
             .build();
@@ -201,7 +204,7 @@ class TornadoTest {
     gameState.spawnEntity(building);
     gameState.processPending();
 
-    float startX = building.getPosition().getX();
+    int startX = building.getPosition().getX();
 
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
@@ -220,7 +223,7 @@ class TornadoTest {
     gameState.spawnEntity(friendly);
     gameState.processPending();
 
-    float startX = friendly.getPosition().getX();
+    int startX = friendly.getPosition().getX();
 
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
@@ -239,7 +242,7 @@ class TornadoTest {
     gameState.spawnEntity(farTroop);
     gameState.processPending();
 
-    float startX = farTroop.getPosition().getX();
+    int startX = farTroop.getPosition().getX();
 
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
@@ -261,8 +264,8 @@ class TornadoTest {
     areaEffectSystem.update(DT);
 
     // Should not overshoot past center
-    assertThat(troop.getPosition().getX()).isGreaterThanOrEqualTo(10.0f);
-    assertThat(troop.getPosition().getX()).isCloseTo(10.0f, within(0.02f));
+    assertThat(troop.getPosition().getX()).isGreaterThanOrEqualTo(tiles(10.0));
+    assertThat(troop.getPosition().getX()).isCloseTo(tiles(10.0), within(tiles(0.02)));
   }
 
   @Test
@@ -277,7 +280,7 @@ class TornadoTest {
     gameState.spawnEntity(troop);
     gameState.processPending();
 
-    float startX = troop.getPosition().getX();
+    int startX = troop.getPosition().getX();
 
     for (int i = 0; i < 10; i++) {
       areaEffectSystem.update(DT);
@@ -299,7 +302,7 @@ class TornadoTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Tornado")
-            .radius(5.5f)
+            .radius(tiles(5.5))
             .lifeDuration(1.05f)
             .hitsGround(true)
             .hitsAir(true)
@@ -314,7 +317,7 @@ class TornadoTest {
         AreaEffect.builder()
             .name("Tornado")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(3)
             .remainingLifetime(1.05f)
@@ -340,7 +343,7 @@ class TornadoTest {
     AreaEffectStats stats =
         AreaEffectStats.builder()
             .name("Tornado")
-            .radius(5.5f)
+            .radius(tiles(5.5))
             .lifeDuration(1.05f)
             .hitsGround(true)
             .hitsAir(true)
@@ -356,13 +359,13 @@ class TornadoTest {
         AreaEffect.builder()
             .name("Tornado")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(100)
             .remainingLifetime(1.05f)
             .build();
 
-    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     tower.setDeployTimer(0);
 
     gameState.spawnEntity(effect);
@@ -434,9 +437,9 @@ class TornadoTest {
         Troop.builder()
             .name("Prince")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(1000))
-            .movement(new Movement(1.0f, 6.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 6.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .ability(chargeAbility)
             .build();
@@ -467,15 +470,15 @@ class TornadoTest {
     AbilityComponent variableAbility = new AbilityComponent(varDmgData);
     variableAbility.setCurrentStage(2); // Simulate being at stage 3
 
-    Combat combat = Combat.builder().damage(30).range(4.0f).attackCooldown(0.4f).build();
+    Combat combat = Combat.builder().damage(30).range(tiles(4.0)).attackCooldown(0.4f).build();
 
     Troop infernoDragon =
         Troop.builder()
             .name("InfernoDragon")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(1000))
-            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(tiles(1.0), 5.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .deployTime(0f)
             .ability(variableAbility)
             .combat(combat)
@@ -525,8 +528,8 @@ class TornadoTest {
       singleSystem.update(DT);
     }
 
-    float doubleDisplacement = 13.0f - troop.getPosition().getX();
-    float singleDisplacement = 13.0f - singleRefTroop.getPosition().getX();
+    int doubleDisplacement = tiles(13.0) - troop.getPosition().getX();
+    int singleDisplacement = tiles(13.0) - singleRefTroop.getPosition().getX();
 
     assertThat(doubleDisplacement).isGreaterThan(singleDisplacement);
   }

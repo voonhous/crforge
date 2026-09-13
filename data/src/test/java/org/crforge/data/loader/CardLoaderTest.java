@@ -2,6 +2,7 @@ package org.crforge.data.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -56,7 +57,7 @@ class CardLoaderTest {
             .name("Knight")
             .health(1452)
             .damage(167)
-            .speed(1.0f)
+            .speed(1000f)
             .movementType(MovementType.GROUND)
             .targetType(TargetType.GROUND)
             .build();
@@ -205,7 +206,7 @@ class CardLoaderTest {
             .health(207)
             .lifeTime(30.0f)
             .movementType(MovementType.GROUND)
-            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f, false))
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0, false))
             .build();
 
     String json =
@@ -241,8 +242,8 @@ class CardLoaderTest {
         ProjectileStats.builder()
             .name("FireballSpell")
             .damage(325)
-            .speed(6.67f)
-            .radius(2.5f)
+            .speed(6670f)
+            .radius(tiles(2.5))
             .build();
 
     String json =
@@ -299,7 +300,7 @@ class CardLoaderTest {
     Card card = cards.get(0);
     assertThat(card.getAreaEffect()).isNotNull();
     AreaEffectStats ae = card.getAreaEffect();
-    assertThat(ae.getRadius()).isCloseTo(2.5f, within(0.01f));
+    assertThat(ae.getRadius()).isEqualTo(tiles(2.5));
     assertThat(ae.getDamage()).isEqualTo(75);
     assertThat(ae.getBuff()).isEqualTo("ZapFreeze");
     assertThat(ae.getBuffDuration()).isCloseTo(0.5f, within(0.01f));
@@ -410,10 +411,9 @@ class CardLoaderTest {
     Card card = cards.get(0);
     assertThat(card.getFormationOffsets()).isNotNull();
     assertThat(card.getFormationOffsets()).hasSize(2);
-    assertThat(card.getFormationOffsets().get(0)[0]).isCloseTo(0.5f, within(0.001f));
-    assertThat(card.getFormationOffsets().get(0)[1]).isCloseTo(0.0f, within(0.001f));
-    assertThat(card.getFormationOffsets().get(1)[0]).isCloseTo(-0.5f, within(0.001f));
-    assertThat(card.getFormationOffsets().get(1)[1]).isCloseTo(0.0f, within(0.001f));
+    // Tile offsets from JSON are converted to game units exactly once at load time
+    assertThat(card.getFormationOffsets().get(0)).containsExactly(tiles(0.5), 0);
+    assertThat(card.getFormationOffsets().get(1)).containsExactly(tiles(-0.5), 0);
   }
 
   @Test
@@ -582,7 +582,7 @@ class CardLoaderTest {
 
     AreaEffectStats ae = card.getAreaEffect();
     assertThat(ae).isNotNull();
-    assertThat(ae.getRadius()).isCloseTo(3.5f, within(0.01f));
+    assertThat(ae.getRadius()).isEqualTo(tiles(3.5));
     assertThat(ae.getLifeDuration()).isCloseTo(3.0f, within(0.01f));
     assertThat(ae.isHitsGround()).isTrue();
     assertThat(ae.isHitsAir()).isFalse();
@@ -828,7 +828,7 @@ class CardLoaderTest {
       // Deploy effect should come from GoblinDrill's spawnAreaEffect (GoblinDrillDamage)
       assertThat(goblinDrill.getDeployEffect()).isNotNull();
       assertThat(goblinDrill.getDeployEffect().getName()).isEqualTo("GoblinDrillDamage");
-      assertThat(goblinDrill.getDeployEffect().getPushback()).isGreaterThan(0f);
+      assertThat(goblinDrill.getDeployEffect().getPushback()).isGreaterThan(0);
 
       // Live spawn: Goblin
       assertThat(goblinDrill.getSpawnTemplate()).isNotNull();
@@ -898,10 +898,10 @@ class CardLoaderTest {
     List<SpawnSequenceEntry> seq = ae.getSpawnSequence();
     assertThat(seq).hasSize(3);
     assertThat(seq.get(0).spawnDelay()).isEqualTo(2.2f);
-    assertThat(seq.get(0).relativeX()).isEqualTo(0.0f);
-    assertThat(seq.get(0).relativeY()).isEqualTo(-3.5f);
+    assertThat(seq.get(0).relativeX()).isEqualTo(0);
+    assertThat(seq.get(0).relativeY()).isEqualTo(tiles(-3.5));
     assertThat(seq.get(1).spawnDelay()).isEqualTo(2.7f);
-    assertThat(seq.get(1).relativeX()).isEqualTo(-3.5f);
+    assertThat(seq.get(1).relativeX()).isEqualTo(tiles(-3.5));
     assertThat(seq.get(2).spawnDelay()).isEqualTo(3.3f);
 
     // isDummy should return false even though hitsGround/hitsAir are both false
@@ -949,7 +949,7 @@ class CardLoaderTest {
     AreaEffectStats ae = card.getAreaEffect();
     assertThat(ae).isNotNull();
     assertThat(ae.getName()).isEqualTo("Vines_AeO");
-    assertThat(ae.getRadius()).isCloseTo(2.5f, within(0.01f));
+    assertThat(ae.getRadius()).isEqualTo(tiles(2.5));
     assertThat(ae.getLifeDuration()).isCloseTo(2.0f, within(0.01f));
     assertThat(ae.isHitsGround()).isFalse();
     assertThat(ae.isHitsAir()).isFalse();

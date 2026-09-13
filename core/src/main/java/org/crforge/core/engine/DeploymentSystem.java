@@ -143,7 +143,7 @@ public class DeploymentSystem {
    * spawns the building card at the target location. Also fires the building's deploy area effect
    * (e.g. GoblinDrillDamage).
    */
-  public void handleTunnelMorph(Troop digTroop, float targetX, float targetY) {
+  public void handleTunnelMorph(Troop digTroop, int targetX, int targetY) {
     Card card = digTroop.getMorphCard();
     int level = digTroop.getMorphLevel();
     Team team = digTroop.getTeam();
@@ -221,8 +221,9 @@ public class DeploymentSystem {
 
     final Team team;
     final Card card;
-    final float x;
-    final float y;
+    // Deploy position in game units
+    final int x;
+    final int y;
     final int level;
     float remainingDelay;
 
@@ -235,7 +236,7 @@ public class DeploymentSystem {
     boolean deployEffectFired;
     boolean spawnProjectileFired;
 
-    PendingDeployment(Team team, Card card, float x, float y, int level, float remainingDelay) {
+    PendingDeployment(Team team, Card card, int x, int y, int level, float remainingDelay) {
       this.team = team;
       this.card = card;
       this.x = x;

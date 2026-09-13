@@ -18,6 +18,7 @@ import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 @Getter
 @SuperBuilder
@@ -36,7 +37,8 @@ public abstract class AbstractEntity implements Entity {
   @Builder.Default protected final Health health = new Health(100);
 
   @Builder.Default
-  protected final Movement movement = new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND);
+  protected final Movement movement =
+      new Movement(0f, 0f, GameUnits.HALF_TILE, GameUnits.HALF_TILE, MovementType.GROUND);
 
   @Builder.Default protected final SpawnerComponent spawner = null;
 
@@ -56,12 +58,12 @@ public abstract class AbstractEntity implements Entity {
   }
 
   @Override
-  public float getCollisionRadius() {
+  public int getCollisionRadius() {
     return movement.getCollisionRadius();
   }
 
   @Override
-  public float getVisualRadius() {
+  public int getVisualRadius() {
     return movement.getVisualRadius();
   }
 

@@ -16,6 +16,7 @@ import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Hand;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 import org.crforge.data.card.CardRegistry;
 
 /**
@@ -45,7 +46,8 @@ import org.crforge.data.card.CardRegistry;
  */
 public class BinaryObservationEncoder {
 
-  // Arena dimensions for normalization
+  // Arena dimensions in tiles for normalization. Entity positions are converted from game units to
+  // tiles before normalizing, so the encoded observation layout is unchanged.
   private static final float ARENA_WIDTH = 18f;
   private static final float ARENA_HEIGHT = 32f;
 
@@ -255,9 +257,9 @@ public class BinaryObservationEncoder {
       // Movement type
       obs[base + 2] = movementTypeToFloat(e.getMovementType());
 
-      // Position normalized
-      float ex = e.getPosition().getX();
-      float ey = e.getPosition().getY();
+      // Position normalized (game units -> tiles -> [0, 1])
+      float ex = GameUnits.toTiles(e.getPosition().getX());
+      float ey = GameUnits.toTiles(e.getPosition().getY());
       obs[base + 3] = ex / ARENA_WIDTH;
       obs[base + 4] = ey / ARENA_HEIGHT;
 
@@ -335,8 +337,8 @@ public class BinaryObservationEncoder {
     for (int i = numEntities; i < alive.size(); i++) {
       Entity e = alive.get(i);
       if (e.getEntityType() != EntityType.TOWER) {
-        float ex = e.getPosition().getX();
-        float ey = e.getPosition().getY();
+        float ex = GameUnits.toTiles(e.getPosition().getX());
+        float ey = GameUnits.toTiles(e.getPosition().getY());
         int hp = e.getHealth().getCurrent();
         boolean isLeft = ex < LANE_SPLIT;
 
@@ -389,8 +391,8 @@ public class BinaryObservationEncoder {
         maxHp = 1;
       }
       obs[idx++] = (float) tower.getHealth().getCurrent() / maxHp;
-      obs[idx++] = tower.getPosition().getX() / ARENA_WIDTH;
-      obs[idx++] = tower.getPosition().getY() / ARENA_HEIGHT;
+      obs[idx++] = GameUnits.toTiles(tower.getPosition().getX()) / ARENA_WIDTH;
+      obs[idx++] = GameUnits.toTiles(tower.getPosition().getY()) / ARENA_HEIGHT;
       obs[idx++] = tower.isAlive() ? 1f : 0f;
     }
     // Zero-pad if fewer than 3 towers

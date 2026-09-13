@@ -7,7 +7,7 @@ import org.crforge.core.effect.StatusEffectType;
  * radius, counter-damage and an optional debuff are applied to the attacker.
  *
  * @param reflectDamage damage reflected back to the attacker
- * @param reflectRadius radius within which reflect triggers
+ * @param reflectRadius radius within which reflect triggers, in game units
  * @param reflectBuff status effect applied to the attacker (e.g. STUN)
  * @param reflectBuffDuration duration of the reflected status effect
  * @param reflectCrownTowerDamagePercent percentage of reflect damage dealt to crown towers
@@ -15,7 +15,7 @@ import org.crforge.core.effect.StatusEffectType;
  */
 public record ReflectAbility(
     int reflectDamage,
-    float reflectRadius,
+    int reflectRadius,
     StatusEffectType reflectBuff,
     float reflectBuffDuration,
     int reflectCrownTowerDamagePercent,

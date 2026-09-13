@@ -55,16 +55,16 @@ public class DamageNumberRenderer {
         // Check for HP damage
         int hpLost = prev.hp - currentHp;
         if (hpLost > 0) {
-          float worldX = entity.getPosition().getX() * TILE_PIXELS;
-          float worldY = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+          float worldX = unitsToPixels(entity.getPosition().getX());
+          float worldY = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
           activePopups.add(new DamagePopup(worldX, worldY, hpLost, false));
         }
 
         // Check for shield damage (shield decreased but HP unchanged)
         int shieldLost = prev.shield - currentShield;
         if (shieldLost > 0 && hpLost == 0) {
-          float worldX = entity.getPosition().getX() * TILE_PIXELS;
-          float worldY = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+          float worldX = unitsToPixels(entity.getPosition().getX());
+          float worldY = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
           activePopups.add(new DamagePopup(worldX, worldY, shieldLost, true));
         }
       }

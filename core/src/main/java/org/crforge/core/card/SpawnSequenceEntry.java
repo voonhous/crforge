@@ -5,7 +5,7 @@ package org.crforge.core.card;
  * the area effect center. Used by Graveyard to define its 13-skeleton spawn pattern.
  *
  * @param spawnDelay delay in seconds from area effect creation before this spawn fires
- * @param relativeX X offset in tiles relative to the area effect center
- * @param relativeY Y offset in tiles relative to the area effect center
+ * @param relativeX X offset in game units relative to the area effect center
+ * @param relativeY Y offset in game units relative to the area effect center
  */
-public record SpawnSequenceEntry(float spawnDelay, float relativeX, float relativeY) {}
+public record SpawnSequenceEntry(float spawnDelay, int relativeX, int relativeY) {}

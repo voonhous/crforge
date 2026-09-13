@@ -28,7 +28,8 @@ public class AreaEffectSystem {
   /** Callback for spawning units (wired to SpawnerSystem::spawnUnit). */
   @FunctionalInterface
   public interface UnitSpawner {
-    void spawnUnit(float x, float y, Team team, TroopStats stats, int level, float deployTime);
+    /** Spawns a unit at game-unit coordinates (x, y). */
+    void spawnUnit(int x, int y, Team team, TroopStats stats, int level, float deployTime);
   }
 
   private final GameState gameState;

@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -180,10 +181,10 @@ class GraveyardTest {
     Troop skeleton = findFirstSkeleton();
     // BLUE team: yMirror=+1, left side: xMirror=+1
     // First entry: relativeX=0, relativeY=-3.5 -> spawnY = 14 + (-3.5)*1 = 10.5
-    assertThat(skeleton.getPosition().getX()).as("Skeleton X on left side").isEqualTo(leftX);
+    assertThat(skeleton.getPosition().getX()).as("Skeleton X on left side").isEqualTo(tiles(leftX));
     assertThat(skeleton.getPosition().getY())
         .as("Skeleton Y on left side")
-        .isEqualTo(DEPLOY_Y - 3.5f);
+        .isEqualTo(tiles(DEPLOY_Y - 3.5f));
   }
 
   @Test
@@ -203,7 +204,7 @@ class GraveyardTest {
     Troop second = skeletons.get(1);
     assertThat(second.getPosition().getX())
         .as("X offset should be negated on right side")
-        .isEqualTo(16.5f);
+        .isEqualTo(tiles(16.5));
   }
 
   @Test
@@ -254,8 +255,9 @@ class GraveyardTest {
 
   // -- Helpers --
 
+  /** Deploys the graveyard at a tile-space position. */
   private void deployGraveyard(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, x, y);
     engine.queueAction(bluePlayer, action);
   }
 
@@ -264,14 +266,14 @@ class GraveyardTest {
         Troop.builder()
             .name("Victim")
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())

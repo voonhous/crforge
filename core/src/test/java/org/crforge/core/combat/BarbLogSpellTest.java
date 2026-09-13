@@ -1,6 +1,9 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,18 +47,19 @@ class BarbLogSpellTest {
   // Track units spawned by projectile system
   private List<SpawnRecord> spawnedUnits;
 
-  // BarbLog projectile stats (matching real data at level 1)
+  // BarbLog projectile stats (matching real data at level 1). Spatial values are game units;
+  // speeds are game units per second.
   private static final int ARC_DAMAGE = 0; // Stage 1 does no damage
-  private static final float ARC_SPEED = 360f / 60f; // Scaled from raw speed
-  private static final float ARC_MIN_DISTANCE = 3.0f;
-  private static final float ARC_RADIUS = 1.3f;
+  private static final float ARC_SPEED = rawSpeedToUnitsPerSecond(360f);
+  private static final int ARC_MIN_DISTANCE = tiles(3.0);
+  private static final int ARC_RADIUS = tiles(1.3);
 
   private static final int ROLLING_BASE_DAMAGE = 91; // BarbLogProjectileRolling base damage
-  private static final float ROLLING_SPEED = 200f / 60f;
-  private static final float ROLLING_PROJECTILE_RADIUS = 1.3f;
-  private static final float ROLLING_RANGE = 4.5f; // projectileRange
-  private static final float ROLLING_MIN_DISTANCE = 2.5f;
-  private static final float ROLLING_PUSHBACK = 0f; // BarbLog has no pushback
+  private static final float ROLLING_SPEED = rawSpeedToUnitsPerSecond(200f);
+  private static final int ROLLING_PROJECTILE_RADIUS = tiles(1.3);
+  private static final int ROLLING_RANGE = tiles(4.5); // projectileRange
+  private static final int ROLLING_MIN_DISTANCE = tiles(2.5);
+  private static final int ROLLING_PUSHBACK = 0; // BarbLog has no pushback
   private static final int ROLLING_CTDP = 0; // No crown tower damage reduction
 
   // Barbarian stats for spawn verification
@@ -65,10 +69,10 @@ class BarbLogSpellTest {
           .health(670)
           .damage(120)
           .attackCooldown(1.4f)
-          .range(0.7f)
-          .sightRange(5.5f)
-          .speed(1.0f)
-          .collisionRadius(0.25f)
+          .range(tiles(0.7))
+          .sightRange(tiles(5.5))
+          .speed(tiles(1.0))
+          .collisionRadius(tiles(0.25))
           .mass(8f)
           .movementType(MovementType.GROUND)
           .build();
@@ -105,7 +109,16 @@ class BarbLogSpellTest {
 
     // Fire stage 1 from (9, 14) to (9, 14.5) -- short distance
     Projectile stage1 =
-        new Projectile(Team.BLUE, 9f, 14f, 9f, 14.5f, 0, 0f, ARC_SPEED, Collections.emptyList());
+        new Projectile(
+            Team.BLUE,
+            tiles(9),
+            tiles(14),
+            tiles(9),
+            tiles(14.5),
+            0,
+            0,
+            ARC_SPEED,
+            Collections.emptyList());
     stage1.setSpawnProjectile(rollingStats);
     stage1.setSpellLevel(1);
 
@@ -267,8 +280,8 @@ class BarbLogSpellTest {
     assertThat(spawn.stats.getName()).isEqualTo("Barbarian");
     assertThat(spawn.team).isEqualTo(Team.BLUE);
 
-    // Barbarian should spawn near the end of the roll path (9, 15 + 4.5 = 19.5)
-    assertThat(spawn.y).isCloseTo(19.5f, org.assertj.core.data.Offset.offset(0.5f));
+    // Barbarian should spawn near the end of the roll path (9, 15 + 4.5 = 19.5 tiles)
+    assertThat(spawn.y).isCloseTo(tiles(19.5), within(tiles(0.5)));
   }
 
   @Test
@@ -289,18 +302,19 @@ class BarbLogSpellTest {
 
   @Test
   void spellAsDeploy_projectileStartsAtDeployLocation() {
-    // Deploy BarbLog at (9, 14) for blue team
-    float deployX = 9f;
-    float deployY = 14f;
+    // Deploy BarbLog at (9, 14) tiles for blue team
+    int deployX = tiles(9);
+    int deployY = tiles(14);
 
     Card barbLogCard = createBarbLogCard();
     ProjectileStats proj = barbLogCard.getProjectile();
 
-    // Simulate what DeploymentSystem.castSpell does for spellAsDeploy
-    float startX = deployX;
-    float startY = deployY;
-    float forward = proj.getMinDistance() > 0 ? proj.getMinDistance() / 1000f : 3.0f;
-    float destY = startY + forward; // Blue team goes forward (positive Y)
+    // Simulate what SpellFactory.castSpell does for spellAsDeploy (including its legacy
+    // minDistance / 1000 forward travel)
+    int startX = deployX;
+    int startY = deployY;
+    int forward = proj.getMinDistance() > 0 ? Math.round(proj.getMinDistance() / 1000f) : tiles(3);
+    int destY = startY + forward; // Blue team goes forward (positive Y)
 
     Projectile p =
         new Projectile(
@@ -332,7 +346,7 @@ class BarbLogSpellTest {
             .speed(ARC_SPEED)
             .radius(ARC_RADIUS)
             .spawnProjectile(rollingStats)
-            .minDistance(ARC_MIN_DISTANCE * 1000f) // raw CSV units
+            .minDistance(ARC_MIN_DISTANCE) // game units, as loaded from data
             .build();
 
     return Card.builder()
@@ -352,7 +366,7 @@ class BarbLogSpellTest {
         .name("BarbLogProjectileRolling")
         .damage(ROLLING_BASE_DAMAGE)
         .speed(ROLLING_SPEED)
-        .radius(0f)
+        .radius(0)
         .projectileRadius(ROLLING_PROJECTILE_RADIUS)
         .projectileRange(ROLLING_RANGE)
         .aoeToGround(true)
@@ -368,18 +382,21 @@ class BarbLogSpellTest {
 
   /**
    * Creates a rolling piercing projectile traveling in the given direction. Simulates the
-   * BarbLogProjectileRolling sub-projectile after stage 1 impact.
+   * BarbLogProjectileRolling sub-projectile after stage 1 impact. Start position is in tiles; the
+   * direction is a unit vector.
    */
   private Projectile createRollingProjectile(
       Team team, float startX, float startY, float dirX, float dirY) {
-    float targetX = startX + dirX * ROLLING_RANGE;
-    float targetY = startY + dirY * ROLLING_RANGE;
+    int startXUnits = tiles(startX);
+    int startYUnits = tiles(startY);
+    int targetX = startXUnits + Math.round(dirX * ROLLING_RANGE);
+    int targetY = startYUnits + Math.round(dirY * ROLLING_RANGE);
 
     Projectile proj =
         new Projectile(
             team,
-            startX,
-            startY,
+            startXUnits,
+            startYUnits,
             targetX,
             targetY,
             ROLLING_BASE_DAMAGE,
@@ -413,15 +430,21 @@ class BarbLogSpellTest {
     return createTroop(team, x, y, MovementType.GROUND);
   }
 
+  /** Creates a troop at tile coordinates. */
   private Troop createTroop(Team team, float x, float y, MovementType movementType) {
     return Troop.builder()
         .name("TestTroop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
-        .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, movementType))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), movementType))
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();
@@ -434,7 +457,7 @@ class BarbLogSpellTest {
     }
   }
 
-  /** Record of a unit spawn for test verification. */
+  /** Record of a unit spawn (game-unit coordinates) for test verification. */
   private record SpawnRecord(
-      float x, float y, Team team, TroopStats stats, int level, float deployTime) {}
+      int x, int y, Team team, TroopStats stats, int level, float deployTime) {}
 }

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import org.crforge.core.ability.AbilityData;
 import org.crforge.core.combat.TargetSelectAlgorithm;
+import org.crforge.core.component.Combat;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 
@@ -19,21 +20,24 @@ public class TroopStats {
   private final String name;
   @Builder.Default private final int health = 100;
   @Builder.Default private final int damage = 50;
-  @Builder.Default private final float speed = 1.0f;
+  // Movement speed in game units per second (1,000 = one tile per second)
+  @Builder.Default private final float speed = 1000f;
+
   @Builder.Default private final float mass = 1.0f;
 
-  @Builder.Default private final float collisionRadius = 0.5f;
-  @Builder.Default private final float visualRadius = 0.5f;
+  // Spatial stats are in integer game units (1,000 per tile)
+  @Builder.Default private final int collisionRadius = 500;
+  @Builder.Default private final int visualRadius = 500;
 
-  @Builder.Default private final float range = 1.0f;
-  @Builder.Default private final float sightRange = 5.5f;
+  @Builder.Default private final int range = 1000;
+  @Builder.Default private final int sightRange = 5500;
   @Builder.Default private final float attackCooldown = 1.0f;
   @Builder.Default private final float loadTime = 0f;
 
   @Builder.Default
   private final boolean noPreload = false; // Sparky exception: does not enter preloaded
 
-  @Builder.Default private final float aoeRadius = 0f;
+  @Builder.Default private final int aoeRadius = 0;
   @Builder.Default private final MovementType movementType = MovementType.GROUND;
   @Builder.Default private final TargetType targetType = TargetType.ALL;
   @Builder.Default private final float deployTime = DEFAULT_DEPLOY_TIME;
@@ -53,8 +57,9 @@ public class TroopStats {
 
   // Death mechanics
   @Builder.Default private final int deathDamage = 0;
-  @Builder.Default private final float deathDamageRadius = 0f;
-  @Builder.Default private final float deathPushback = 0f;
+  // Death damage radius and pushback distance in game units
+  @Builder.Default private final int deathDamageRadius = 0;
+  @Builder.Default private final int deathPushback = 0;
   @Builder.Default private final List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
   // Elixir granted to opponent on death (in milli-elixir, e.g. 1000 = 1.0 elixir)
@@ -99,7 +104,8 @@ public class TroopStats {
   // Targeting and combat modifiers
   @Builder.Default private final boolean targetOnlyBuildings = false;
   @Builder.Default private final boolean targetOnlyTroops = false;
-  @Builder.Default private final float minimumRange = 0f;
+  // Minimum attack range in game units
+  @Builder.Default private final int minimumRange = 0;
 
   @Builder.Default
   private final TargetSelectAlgorithm targetSelectAlgorithm = TargetSelectAlgorithm.NEAREST;
@@ -119,7 +125,8 @@ public class TroopStats {
   // Hovering: unit ignores river tile restrictions for pathfinding but stays GROUND and targetable
   @Builder.Default private final boolean hovering = false;
 
-  // Underground tunnel travel speed in tiles/sec (converted from spawnPathfindSpeed / 60)
+  // Underground tunnel travel speed in game units per second (converted from raw
+  // spawnPathfindSpeed, where 60 = one tile per second)
   @Builder.Default private final float spawnPathfindSpeed = 0f;
 
   // Resolved morph target: the unit this dig troop transforms into on arrival
@@ -133,8 +140,8 @@ public class TroopStats {
   // Attack dash: short lunge toward target when attack starts (e.g. Bat)
   @Builder.Default private final float attackDashTime = 0f;
 
-  // Attack pushback: self-knockback when firing (e.g. Firecracker recoils backward)
-  @Builder.Default private final float attackPushBack = 0f;
+  // Attack pushback: self-knockback distance in game units when firing (e.g. Firecracker recoils)
+  @Builder.Default private final int attackPushBack = 0;
 
   // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
   @Builder.Default private final List<AttackSequenceHit> attackSequence = List.of();
@@ -142,7 +149,8 @@ public class TroopStats {
   // Buff names this unit is immune to (e.g. Golem ignores VoodooCurse)
   @Builder.Default private final List<String> ignoreBuff = List.of();
 
+  /** Returns true if the unit is considered ranged (range of at least two tiles). */
   public boolean isRanged() {
-    return range >= 2.0f;
+    return range >= Combat.RANGED_THRESHOLD;
   }
 }

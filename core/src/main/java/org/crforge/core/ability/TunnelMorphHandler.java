@@ -9,5 +9,6 @@ import org.crforge.core.entity.unit.Troop;
  */
 @FunctionalInterface
 public interface TunnelMorphHandler {
-  void onTunnelMorph(Troop digTroop, float targetX, float targetY);
+  /** Called with the tunnel target in game units. */
+  void onTunnelMorph(Troop digTroop, int targetX, int targetY);
 }

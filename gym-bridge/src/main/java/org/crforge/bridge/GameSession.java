@@ -142,13 +142,11 @@ public class GameSession {
 
     // Queue actions if not no-op
     if (blueAttempted) {
-      PlayerActionDTO action =
-          PlayerActionDTO.play(blueAction.handIndex(), blueAction.x(), blueAction.y());
+      PlayerActionDTO action = blueAction.toPlayerAction();
       engine.queueAction(bluePlayer, action);
     }
     if (redAttempted) {
-      PlayerActionDTO action =
-          PlayerActionDTO.play(redAction.handIndex(), redAction.x(), redAction.y());
+      PlayerActionDTO action = redAction.toPlayerAction();
       engine.queueAction(redPlayer, action);
     }
 
@@ -188,13 +186,11 @@ public class GameSession {
 
     // Queue actions if not no-op
     if (blueAttempted) {
-      PlayerActionDTO action =
-          PlayerActionDTO.play(blueAction.handIndex(), blueAction.x(), blueAction.y());
+      PlayerActionDTO action = blueAction.toPlayerAction();
       engine.queueAction(bluePlayer, action);
     }
     if (redAttempted) {
-      PlayerActionDTO action =
-          PlayerActionDTO.play(redAction.handIndex(), redAction.x(), redAction.y());
+      PlayerActionDTO action = redAction.toPlayerAction();
       engine.queueAction(redPlayer, action);
     }
 

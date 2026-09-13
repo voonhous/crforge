@@ -7,6 +7,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Applies continuous pull toward the effect center for Tornado-like effects. Runs every game tick
@@ -15,6 +16,9 @@ import org.crforge.core.player.Team;
  * <p>Stunned/frozen entities skip pull (stagger effect). Buildings cannot be pulled.
  */
 public class PullProcessor {
+
+  // Entities closer than this to the center are not pulled (0.01 tiles, in game units)
+  private static final float CENTER_EPSILON = 10f;
 
   private final AreaEffectContext ctx;
 
@@ -31,8 +35,8 @@ public class PullProcessor {
 
     float attractPercentage = buffDef.getAttractPercentage();
     Team enemyTeam = effect.getTeam().opposite();
-    float centerX = effect.getPosition().getX();
-    float centerY = effect.getPosition().getY();
+    int centerX = effect.getPosition().getX();
+    int centerY = effect.getPosition().getY();
 
     for (Entity target : ctx.getGameState().getAliveEntities()) {
       if (target.getTeam() != enemyTeam) {
@@ -49,9 +53,9 @@ public class PullProcessor {
         continue;
       }
 
-      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
-      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
-      if (distanceSq > effectiveRadius * effectiveRadius) {
+      long distanceSq = target.getPosition().distanceSquaredTo(centerX, centerY);
+      long effectiveRadius = (long) stats.getRadius() + target.getCollisionRadius();
+      if (!GameUnits.withinRadius(distanceSq, effectiveRadius)) {
         continue;
       }
 
@@ -61,16 +65,15 @@ public class PullProcessor {
       }
 
       float distance = (float) Math.sqrt(distanceSq);
-      if (distance < 0.01f) {
+      if (distance < CENTER_EPSILON) {
         continue; // Already at center
       }
-
-      // Pull speed: attractPercentage / (30.0 * mass) tiles/sec
+      // Pull speed: attractPercentage / (30.0 * mass) tiles/sec, converted to game units/sec
       float mass = target.getMovement() != null ? target.getMovement().getMass() : 6.0f;
       if (mass <= 0) {
         mass = 6.0f; // Fallback to Knight mass
       }
-      float pullSpeed = attractPercentage / (30.0f * mass);
+      float pullSpeed = attractPercentage / (30.0f * mass) * GameUnits.UNITS_PER_TILE;
 
       // Direction toward center
       float dx = centerX - target.getPosition().getX();
@@ -80,7 +83,7 @@ public class PullProcessor {
 
       // Displacement this tick, capped to prevent overshooting center
       float displacement = Math.min(pullSpeed * deltaTime, distance);
-      target.getPosition().add(ndx * displacement, ndy * displacement);
+      target.getPosition().move(ndx * displacement, ndy * displacement);
     }
   }
 }

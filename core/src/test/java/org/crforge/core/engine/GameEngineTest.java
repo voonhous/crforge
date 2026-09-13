@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -89,7 +90,11 @@ class GameEngineTest {
     engine.initMatch();
 
     Troop knight =
-        Troop.builder().name("Knight").team(Team.BLUE).position(new Position(9, 15)).build();
+        Troop.builder()
+            .name("Knight")
+            .team(Team.BLUE)
+            .position(new Position(tiles(9), tiles(15)))
+            .build();
 
     engine.spawn(knight);
     engine.tick(); // Process pending spawns
@@ -105,14 +110,14 @@ class GameEngineTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(9, 10))
-            .movement(new Movement(2.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .position(new Position(tiles(9), tiles(10)))
+            .movement(new Movement(tiles(2.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0)
-            .combat(Combat.builder().sightRange(20f).build())
+            .combat(Combat.builder().sightRange(tiles(20)).build())
             .build();
 
     engine.spawn(knight);
-    float initialY = knight.getPosition().getY();
+    int initialY = knight.getPosition().getY();
 
     // Run for 1 second
     engine.runSeconds(1.0f);
@@ -154,14 +159,14 @@ class GameEngineTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(9, 26)) // Near red tower
+            .position(new Position(tiles(9), tiles(26))) // Near red tower
             .health(new Health(1000))
             .deployTime(0)
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.5f)
-                    .sightRange(10f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(10))
                     .attackCooldown(1.0f)
                     .build())
             .build();

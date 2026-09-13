@@ -28,7 +28,7 @@ class EntityFactory {
    * Spawns a non-troop card (building or spell). Troop cards are handled directly by the stagger
    * loop in {@link DeploymentSystem#update(float)}.
    */
-  void spawnCard(Team team, Card card, float x, float y, int level) {
+  void spawnCard(Team team, Card card, int x, int y, int level) {
     switch (card.getType()) {
       case BUILDING -> buildingFactory.spawnBuilding(team, card, x, y, level);
       case SPELL -> spellFactory.castSpell(team, card, x, y, level);
@@ -36,20 +36,19 @@ class EntityFactory {
     }
   }
 
-  void spawnSingleTroop(Team team, Card card, float x, float y, int level, int idx) {
+  void spawnSingleTroop(Team team, Card card, int x, int y, int level, int idx) {
     troopFactory.spawnSingleTroop(team, card, x, y, level, idx);
   }
 
-  void deployAreaEffect(
-      Team team, AreaEffectStats stats, float x, float y, Rarity rarity, int level) {
+  void deployAreaEffect(Team team, AreaEffectStats stats, int x, int y, Rarity rarity, int level) {
     areaEffectFactory.deployAreaEffect(team, stats, x, y, rarity, level);
   }
 
-  void fireSpawnProjectile(Team team, Card card, float x, float y, int level) {
+  void fireSpawnProjectile(Team team, Card card, int x, int y, int level) {
     spellFactory.fireSpawnProjectile(team, card, x, y, level);
   }
 
-  void spawnTunnelBuilding(Team team, Card card, float x, float y, int level) {
+  void spawnTunnelBuilding(Team team, Card card, int x, int y, int level) {
     buildingFactory.spawnTunnelBuilding(team, card, x, y, level);
   }
 }

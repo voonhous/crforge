@@ -251,7 +251,8 @@ public class DebugGameScreen implements Screen {
       float playX = hoverTileX + 0.5f;
       float playY = hoverTileY + 0.5f;
 
-      PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, playX, playY);
+      // playX/playY are tile-center coordinates; the action is built in game units
+      PlayerActionDTO action = PlayerActionDTO.playAtTiles(selectedHandIndex, playX, playY);
 
       // Pre-validate: check placement and elixir before queuing
       Card card = selectedPlayer.getHand().getCard(selectedHandIndex);

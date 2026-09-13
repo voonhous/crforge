@@ -7,11 +7,29 @@ package org.crforge.core.util;
  * <p>Given N units to place around a center point: - N == 1: offset is (0, 0) - N > 1: units are
  * placed in a circle with radius = spawnRadius. Even N starts at angle 0, odd N starts at pi/2
  * (first unit at top).
+ *
+ * <p>This is the simulator's legacy layout, not a port of the native formation helper. Offsets are
+ * integer game units rounded to the nearest unit, which reproduces the previous tile offsets that
+ * were rounded to three decimal places (one thousandth of a tile is one game unit).
  */
 public final class FormationLayout {
 
-  /** Scale factor to convert raw CSV summonRadius values to tile units. */
-  public static final float TILE_SCALE = 355.0f;
+  /**
+   * Empirical divisor that the legacy circular deploy fallback applies to a card's raw summonRadius
+   * to obtain a radius in tiles (e.g. Barbarians' raw 700 becomes about 1.97 tiles).
+   *
+   * <p>This is NOT the coordinate scale: raw spatial data uses 1,000 game units per tile (see
+   * {@link GameUnits#UNITS_PER_TILE}), and replacing this divisor with 1,000 is not known to
+   * reproduce the native formation algorithm. It is kept only so the fallback's physical layout is
+   * unchanged by the integer-unit migration. Cards with explicit formation offsets do not use it.
+   */
+  public static final float LEGACY_SUMMON_RADIUS_DIVISOR = 355.0f;
+
+  /** A formation offset in integer game units. */
+  public record Offset(int x, int y) {
+
+    public static final Offset ZERO = new Offset(0, 0);
+  }
 
   private FormationLayout() {
     // Utility class
@@ -22,44 +40,42 @@ public final class FormationLayout {
    *
    * @param index zero-based index of the unit being placed
    * @param total total number of units in the formation
-   * @param spawnRadius radius from center at which units are placed (in tile units)
+   * @param spawnRadius radius from center at which units are placed (in game units)
    * @param collisionRadius collision radius of the unit being placed (unused, reserved)
-   * @return offset vector (relative to deploy center), rounded to 3 decimal places
+   * @return offset relative to deploy center, rounded to the nearest game unit
    */
-  public static Vector2 calculateOffset(
-      int index, int total, float spawnRadius, float collisionRadius) {
-    if (total <= 1) {
-      return new Vector2(0, 0);
-    }
-
-    float r = spawnRadius;
-    float startAngle = (total % 2 == 0) ? 0f : (float) (Math.PI / 2.0);
-    float step = (float) (2.0 * Math.PI / total);
-    float angle = startAngle + index * step;
-
-    float x = round3(r * (float) Math.cos(angle));
-    float y = round3(r * (float) Math.sin(angle));
-
-    return new Vector2(x, y);
+  public static Offset calculateOffset(int index, int total, int spawnRadius, int collisionRadius) {
+    return offsetForRadius(index, total, spawnRadius);
   }
 
   /**
-   * Convenience method for troop deploy offsets. Divides the raw summonRadius by TILE_SCALE to
-   * convert from CSV units to tile units before calculating.
+   * Convenience method for troop deploy offsets. Converts the raw summonRadius with the legacy
+   * {@link #LEGACY_SUMMON_RADIUS_DIVISOR} (raw / 355 tiles, i.e. raw * 1000 / 355 game units)
+   * before calculating.
    *
    * @param index zero-based index of the unit being placed
    * @param total total number of units in the formation
-   * @param summonRadius raw CSV summonRadius value (not yet in tile units)
-   * @param collisionRadius collision radius of the unit being placed
-   * @return offset vector (relative to deploy center), rounded to 3 decimal places
+   * @param summonRadius raw summonRadius data value (not game units)
+   * @param collisionRadius collision radius of the unit being placed, in game units
+   * @return offset relative to deploy center, rounded to the nearest game unit
    */
-  public static Vector2 calculateDeployOffset(
-      int index, int total, float summonRadius, float collisionRadius) {
-    return calculateOffset(index, total, summonRadius / TILE_SCALE, collisionRadius);
+  public static Offset calculateDeployOffset(
+      int index, int total, float summonRadius, int collisionRadius) {
+    double radiusUnits =
+        (double) summonRadius / LEGACY_SUMMON_RADIUS_DIVISOR * GameUnits.UNITS_PER_TILE;
+    return offsetForRadius(index, total, radiusUnits);
   }
 
-  /** Rounds a float to 3 decimal places. */
-  private static float round3(float value) {
-    return Math.round(value * 1000f) / 1000f;
+  private static Offset offsetForRadius(int index, int total, double radius) {
+    if (total <= 1) {
+      return Offset.ZERO;
+    }
+
+    double startAngle = (total % 2 == 0) ? 0.0 : Math.PI / 2.0;
+    double step = 2.0 * Math.PI / total;
+    double angle = startAngle + index * step;
+
+    return new Offset(
+        GameUnits.round(radius * Math.cos(angle)), GameUnits.round(radius * Math.sin(angle)));
   }
 }

@@ -1,6 +1,7 @@
 package org.crforge.core.entity.effect.handler;
 
 import java.util.List;
+import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.SpawnSequenceEntry;
 import org.crforge.core.card.TroopStats;
@@ -36,8 +37,8 @@ public class SpawnProcessor {
 
     effect.setSpawnDelayAccumulator(effect.getSpawnDelayAccumulator() + deltaTime);
     if (effect.getSpawnDelayAccumulator() >= stats.getSpawnInitialDelay()) {
-      float x = effect.getPosition().getX();
-      float y = effect.getPosition().getY();
+      int x = effect.getPosition().getX();
+      int y = effect.getPosition().getY();
       unitSpawner.spawnUnit(
           x,
           y,
@@ -64,13 +65,12 @@ public class SpawnProcessor {
 
     effect.setSpawnDelayAccumulator(effect.getSpawnDelayAccumulator() + deltaTime);
     float elapsed = effect.getSpawnDelayAccumulator();
-    float centerX = effect.getPosition().getX();
-    float centerY = effect.getPosition().getY();
-
-    // Mirror X on right half of arena (width=18, midpoint=9)
-    float xMirror = centerX > 9f ? -1f : 1f;
+    int centerX = effect.getPosition().getX();
+    int centerY = effect.getPosition().getY();
+    // Mirror X on right half of arena (width=18 tiles, midpoint=9,000 game units)
+    int xMirror = centerX > Arena.WIDTH_UNITS / 2 ? -1 : 1;
     // BLUE forward = +Y, RED forward = -Y
-    float yMirror = effect.getTeam() == Team.BLUE ? 1f : -1f;
+    int yMirror = effect.getTeam() == Team.BLUE ? 1 : -1;
 
     while (effect.getNextSpawnIndex() < sequence.size()) {
       SpawnSequenceEntry entry = sequence.get(effect.getNextSpawnIndex());
@@ -78,8 +78,8 @@ public class SpawnProcessor {
         break;
       }
 
-      float spawnX = centerX + entry.relativeX() * xMirror;
-      float spawnY = centerY + entry.relativeY() * yMirror;
+      int spawnX = centerX + entry.relativeX() * xMirror;
+      int spawnY = centerY + entry.relativeY() * yMirror;
 
       unitSpawner.spawnUnit(
           spawnX,

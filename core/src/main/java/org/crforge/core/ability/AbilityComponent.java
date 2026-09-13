@@ -33,8 +33,9 @@ public class AbilityComponent {
   private DashState dashState = DashState.IDLE;
   private float dashTimer = 0f;
   private float dashCooldownTimer = 0f;
-  private float dashTargetX = 0f;
-  private float dashTargetY = 0f;
+  // Dash landing point in game units and dash speed in game units per second
+  private int dashTargetX = 0;
+  private int dashTargetY = 0;
   private float dashSpeed = 0f;
   // True once a target entered the acquisition range [minRange, maxRange].
   // While acquired, the target stays valid as long as it is within maxRange.
@@ -49,10 +50,11 @@ public class AbilityComponent {
 
   // TUNNEL state (Miner underground travel)
   private TunnelState tunnelState = TunnelState.INACTIVE;
-  private float tunnelTargetX = 0f;
-  private float tunnelTargetY = 0f;
-  private float tunnelWaypointX = 0f;
-  private float tunnelWaypointY = 0f;
+  // Tunnel destination and river-crossing waypoint in game units
+  private int tunnelTargetX = 0;
+  private int tunnelTargetY = 0;
+  private int tunnelWaypointX = 0;
+  private int tunnelWaypointY = 0;
   private boolean tunnelUsingWaypoint = false;
 
   // STEALTH state (Royal Ghost)

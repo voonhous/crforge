@@ -2,6 +2,7 @@ package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +37,7 @@ import org.crforge.core.player.Deck;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.core.util.GameUnits;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,7 +54,8 @@ class MinerTunnelTest {
 
   private static final float DT = 1.0f / 30;
   // Miner's spawnPathfindSpeed=650 in units.json, converted to tiles/sec: 650/60 ~= 10.833
-  private static final float TUNNEL_SPEED = 650f / 60f;
+  // Raw spawnPathfindSpeed 650 (60 = one tile per second), in game units per second
+  private static final float TUNNEL_SPEED = GameUnits.rawSpeedToUnitsPerSecond(650f);
 
   @BeforeEach
   void setUp() {
@@ -80,11 +83,11 @@ class MinerTunnelTest {
         .name("Miner")
         .health(473)
         .damage(76)
-        .speed(90f / 60f) // 1.5 tiles/sec
+        .speed(GameUnits.rawSpeedToUnitsPerSecond(90f)) // 1.5 tiles/sec
         .mass(6.0f)
-        .collisionRadius(0.5f)
-        .range(1.2f)
-        .sightRange(5.5f)
+        .collisionRadius(tiles(0.5))
+        .range(tiles(1.2))
+        .sightRange(tiles(5.5))
         .attackCooldown(1.3f)
         .loadTime(0.8f)
         .deployTime(1.0f)
@@ -111,8 +114,9 @@ class MinerTunnelTest {
     return new Player(team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false);
   }
 
+  /** Creates a play action at tile coordinates (converted to game units). */
   private PlayerActionDTO playAt(float x, float y) {
-    return PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    return PlayerActionDTO.playAtTiles(0, x, y);
   }
 
   /** Deploys a card by queuing, then ticking past the sync delay. */
@@ -182,8 +186,8 @@ class MinerTunnelTest {
     Troop miner = (Troop) troops.get(0);
 
     // Should start at blue king tower (9.0, 3.0), not at deploy target (9.0, 25.0)
-    assertThat(miner.getPosition().getX()).isCloseTo(9.0f, within(0.5f));
-    assertThat(miner.getPosition().getY()).isCloseTo(3.0f, within(0.5f));
+    assertThat(miner.getPosition().getX()).isCloseTo(tiles(9.0), within(tiles(0.5)));
+    assertThat(miner.getPosition().getY()).isCloseTo(tiles(3.0), within(tiles(0.5)));
   }
 
   @Test
@@ -222,7 +226,7 @@ class MinerTunnelTest {
     deployCard(blue, 9.0f, 10.0f);
 
     Troop miner = (Troop) gameState.getAliveEntities().get(0);
-    float startY = miner.getPosition().getY();
+    int startY = miner.getPosition().getY();
 
     // Run several ticks of ability system
     for (int i = 0; i < 10; i++) {
@@ -255,8 +259,8 @@ class MinerTunnelTest {
     assertThat(ability.getTunnelState()).isEqualTo(AbilityComponent.TunnelState.EMERGED);
 
     // Should be at target position
-    assertThat(miner.getPosition().getX()).isCloseTo(9.0f, within(0.1f));
-    assertThat(miner.getPosition().getY()).isCloseTo(7.0f, within(0.1f));
+    assertThat(miner.getPosition().getX()).isCloseTo(tiles(9.0), within(tiles(0.1)));
+    assertThat(miner.getPosition().getY()).isCloseTo(tiles(7.0), within(tiles(0.1)));
 
     // Should be in deploy animation (targetable but cannot attack yet)
     assertThat(miner.isDeploying()).isTrue();
@@ -276,9 +280,9 @@ class MinerTunnelTest {
     // Should have a waypoint set (near bridge for river crossing)
     assertThat(ability.isTunnelUsingWaypoint()).isTrue();
     // Target is x=14 (right side), so waypoint should be at x=13.9
-    assertThat(ability.getTunnelWaypointX()).isCloseTo(13.9f, within(0.1f));
+    assertThat(ability.getTunnelWaypointX()).isCloseTo(tiles(13.9), within(tiles(0.1)));
     // Blue crossing river, waypoint at y=15
-    assertThat(ability.getTunnelWaypointY()).isCloseTo(15.0f, within(0.1f));
+    assertThat(ability.getTunnelWaypointY()).isCloseTo(tiles(15.0), within(tiles(0.1)));
 
     // Run until waypoint is reached (distance ~12 tiles, speed ~10.8 -> ~1.1s -> ~34 ticks)
     for (int i = 0; i < 50; i++) {
@@ -304,23 +308,24 @@ class MinerTunnelTest {
         Troop.builder()
             .name("Blocker")
             .team(Team.RED)
-            .position(new Position(9.0f, 5.0f))
+            .position(new Position(tiles(9.0), tiles(5.0)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 5f, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().damage(100).range(1.0f).targetType(TargetType.ALL).build())
+            .movement(new Movement(0f, 5f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(
+                Combat.builder().damage(100).range(tiles(1.0)).targetType(TargetType.ALL).build())
             .deployTime(0f)
             .deployTimer(0f)
             .build();
     gameState.spawnEntity(blocker);
     gameState.processPending();
 
-    float blockerYBefore = blocker.getPosition().getY();
+    int blockerYBefore = blocker.getPosition().getY();
 
     // Run physics -- tunneling miner should not collide with blocker
     physicsSystem.update(gameState.getAliveEntities(), DT);
 
     // Blocker position should not have been pushed
-    assertThat(blocker.getPosition().getY()).isCloseTo(blockerYBefore, within(0.01f));
+    assertThat(blocker.getPosition().getY()).isCloseTo(blockerYBefore, within(tiles(0.01)));
   }
 
   @Test
@@ -354,10 +359,11 @@ class MinerTunnelTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(9.0f, 8.0f))
+            .position(new Position(tiles(9.0), tiles(8.0)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 5f, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().damage(100).range(1.0f).targetType(TargetType.ALL).build())
+            .movement(new Movement(0f, 5f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(
+                Combat.builder().damage(100).range(tiles(1.0)).targetType(TargetType.ALL).build())
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -379,8 +385,8 @@ class MinerTunnelTest {
     Troop miner = (Troop) gameState.getAliveEntities().get(0);
     assertThat(miner.isTunneling()).isTrue();
 
-    float xBefore = miner.getPosition().getX();
-    float yBefore = miner.getPosition().getY();
+    int xBefore = miner.getPosition().getX();
+    int yBefore = miner.getPosition().getY();
 
     // PhysicsSystem should not move tunneling troops
     physicsSystem.update(gameState.getAliveEntities(), DT);
@@ -423,7 +429,7 @@ class MinerTunnelTest {
 
     // Deploy Miner at (9.0, 26.5) -- near Red Crown Tower at (9.0, 29.0)
     // Tile (9, 26) is RED_ZONE, valid for Miner's canDeployOnEnemySide
-    engine.queueAction(blue, PlayerActionDTO.builder().handIndex(0).x(9.0f).y(26.5f).build());
+    engine.queueAction(blue, PlayerActionDTO.playAtTiles(0, 9.0f, 26.5f));
 
     // Run enough ticks for tunnel travel + deploy animation + first attack:
     // ~1.0s sync delay + ~2.5s tunnel + 1.0s deploy + 0.67s first attack = ~5.2s
@@ -453,8 +459,8 @@ class MinerTunnelTest {
         .as(
             "Miner should target Crown Tower (dist ~2.5) not %s at (%.1f, %.1f)",
             targetTower.isPrincessTower() ? "Princess Tower" : targetTower.getName(),
-            targetTower.getPosition().getX(),
-            targetTower.getPosition().getY())
+            GameUnits.toTiles(targetTower.getPosition().getX()),
+            GameUnits.toTiles(targetTower.getPosition().getY()))
         .isTrue();
 
     // Crown Tower should have taken damage (proving the Miner attacked it)

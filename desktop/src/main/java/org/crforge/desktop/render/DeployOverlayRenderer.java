@@ -5,7 +5,7 @@ import static org.crforge.desktop.render.RenderConstants.CIRCLE_SEGMENTS;
 import static org.crforge.desktop.render.RenderConstants.COLOR_BLUE_GHOST;
 import static org.crforge.desktop.render.RenderConstants.COLOR_DEPLOY_TIMER;
 import static org.crforge.desktop.render.RenderConstants.COLOR_RED_GHOST;
-import static org.crforge.desktop.render.RenderConstants.TILE_PIXELS;
+import static org.crforge.desktop.render.RenderConstants.unitsToPixels;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
@@ -26,7 +26,8 @@ import org.crforge.core.player.Team;
  */
 public class DeployOverlayRenderer {
 
-  private static final float DEFAULT_GHOST_RADIUS = 0.8f;
+  // Fallback ghost radius in game units (0.8 tiles)
+  private static final float DEFAULT_GHOST_RADIUS = 800f;
 
   private final RenderContext ctx;
 
@@ -70,9 +71,9 @@ public class DeployOverlayRenderer {
       }
 
       float progress = deployTime > 0 ? deployTimer / deployTime : 0f;
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(entity.getVisualRadius());
 
       // Arc starts at 90 degrees (top) and sweeps clockwise by progress * 360
       ctx.getShapeRenderer().arc(x, y, radius, 90, progress * 360, CIRCLE_SEGMENTS);
@@ -91,7 +92,7 @@ public class DeployOverlayRenderer {
       return;
     }
 
-    float defaultGhostRadius = TILE_PIXELS * DEFAULT_GHOST_RADIUS;
+    float defaultGhostRadius = unitsToPixels(DEFAULT_GHOST_RADIUS);
 
     // Pass 1: Filled ghost circles + radial countdown
     Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -99,8 +100,8 @@ public class DeployOverlayRenderer {
 
     for (PendingDeployment pending : pendingDeployments) {
       Color ghostColor = pending.getTeam() == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
-      float centerX = pending.getX() * TILE_PIXELS;
-      float centerY = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float centerX = unitsToPixels(pending.getX());
+      float centerY = unitsToPixels(pending.getY()) + BOTTOM_UI_HEIGHT;
 
       // Compute radial countdown progress
       float progress;
@@ -116,9 +117,9 @@ public class DeployOverlayRenderer {
       List<float[]> ghostPositions = getGhostPositions(pending);
 
       for (float[] pos : ghostPositions) {
-        float gx = centerX + pos[0] * TILE_PIXELS;
-        float gy = centerY + pos[1] * TILE_PIXELS;
-        float radius = pos[2] * TILE_PIXELS;
+        float gx = centerX + unitsToPixels(pos[0]);
+        float gy = centerY + unitsToPixels(pos[1]);
+        float radius = unitsToPixels(pos[2]);
 
         // Ghost fill
         ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.3f);
@@ -139,15 +140,15 @@ public class DeployOverlayRenderer {
 
     for (PendingDeployment pending : pendingDeployments) {
       Color ghostColor = pending.getTeam() == Team.BLUE ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
-      float centerX = pending.getX() * TILE_PIXELS;
-      float centerY = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float centerX = unitsToPixels(pending.getX());
+      float centerY = unitsToPixels(pending.getY()) + BOTTOM_UI_HEIGHT;
 
       List<float[]> ghostPositions = getGhostPositions(pending);
 
       for (float[] pos : ghostPositions) {
-        float gx = centerX + pos[0] * TILE_PIXELS;
-        float gy = centerY + pos[1] * TILE_PIXELS;
-        float radius = pos[2] * TILE_PIXELS;
+        float gx = centerX + unitsToPixels(pos[0]);
+        float gy = centerY + unitsToPixels(pos[1]);
+        float radius = unitsToPixels(pos[2]);
 
         ctx.getShapeRenderer().setColor(ghostColor.r, ghostColor.g, ghostColor.b, 0.7f);
         ctx.getShapeRenderer().circle(gx, gy, radius, CIRCLE_SEGMENTS);
@@ -160,8 +161,8 @@ public class DeployOverlayRenderer {
     ctx.getSpriteBatch().begin();
 
     for (PendingDeployment pending : pendingDeployments) {
-      float x = pending.getX() * TILE_PIXELS;
-      float y = pending.getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float x = unitsToPixels(pending.getX());
+      float y = unitsToPixels(pending.getY()) + BOTTOM_UI_HEIGHT;
 
       String name = pending.getCard().getName();
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), name);

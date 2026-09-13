@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Objects;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -53,10 +55,10 @@ class FirecrackerIntegrationTest {
     assertThat(unit).isNotNull();
     assertThat(unit.getName()).isEqualTo("Firecracker");
     assertThat(unit.getHealth()).isEqualTo(119);
-    assertThat(unit.getRange()).isEqualTo(6.0f);
+    assertThat(unit.getRange()).isEqualTo(tiles(6.0));
     assertThat(unit.getAttackCooldown()).isEqualTo(3.0f);
     assertThat(unit.getMovementType()).isEqualTo(MovementType.GROUND);
-    assertThat(unit.getAttackPushBack()).isEqualTo(1.0f);
+    assertThat(unit.getAttackPushBack()).isEqualTo(tiles(1.0));
 
     // Main projectile -> spawnProjectile chain
     ProjectileStats proj = Objects.requireNonNull(unit.getProjectile());
@@ -67,8 +69,8 @@ class FirecrackerIntegrationTest {
     assertThat(explosion.getName()).isEqualTo("FirecrackerExplosion");
     assertThat(explosion.getDamage()).isEqualTo(25);
     assertThat(explosion.getSpawnCount()).isEqualTo(5);
-    assertThat(explosion.getProjectileRange()).isEqualTo(5.0f);
-    assertThat(explosion.getRadius()).isEqualTo(0.4f);
+    assertThat(explosion.getProjectileRange()).isEqualTo(tiles(5.0));
+    assertThat(explosion.getRadius()).isEqualTo(tiles(0.4));
     assertThat(explosion.isAoeToGround()).isTrue();
     assertThat(explosion.isAoeToAir()).isTrue();
   }
@@ -85,7 +87,7 @@ class FirecrackerIntegrationTest {
     firecracker.setDeployTimer(0);
     target.setDeployTimer(0);
 
-    float initialY = firecracker.getPosition().getY();
+    int initialY = firecracker.getPosition().getY();
 
     // Trigger attack
     firecracker.getCombat().setCurrentTarget(target);
@@ -185,7 +187,7 @@ class FirecrackerIntegrationTest {
 
   /**
    * Creates a Firecracker troop matching the JSON data. HP=119, range=6.0, attackCooldown=3.0,
-   * attackPushBack=1.0f. Main projectile: FirecrackerProjectile (non-homing, spawnProjectile ->
+   * attackPushBack=1 tile. Main projectile: FirecrackerProjectile (non-homing, spawnProjectile ->
    * FirecrackerExplosion with spawnCount=5).
    */
   private Troop createFirecracker(Team team, float x, float y) {
@@ -193,21 +195,21 @@ class FirecrackerIntegrationTest {
         ProjectileStats.builder()
             .name("FirecrackerExplosion")
             .damage(25)
-            .speed(550f / 60f)
-            .radius(0.4f)
+            .speed(rawSpeedToUnitsPerSecond(550f))
+            .radius(tiles(0.4))
             .homing(false)
             .aoeToGround(true)
             .aoeToAir(true)
-            .projectileRange(5.0f)
+            .projectileRange(tiles(5.0))
             .spawnCount(5)
-            .spawnRadius(0.08f)
+            .spawnRadius(tiles(0.08))
             .build();
 
     ProjectileStats mainProjectileStats =
         ProjectileStats.builder()
             .name("FirecrackerProjectile")
             .damage(0)
-            .speed(400f / 60f)
+            .speed(rawSpeedToUnitsPerSecond(400f))
             .homing(false)
             .aoeToGround(true)
             .aoeToAir(true)
@@ -218,19 +220,21 @@ class FirecrackerIntegrationTest {
     return Troop.builder()
         .name("Firecracker")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(119))
-        .movement(new Movement(90f / 60f, 6f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(
+            new Movement(
+                rawSpeedToUnitsPerSecond(90f), 6f, tiles(0.5), tiles(0.5), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(0)
-                .range(6.0f)
-                .sightRange(8.0f)
+                .range(tiles(6.0))
+                .sightRange(tiles(8.0))
                 .attackCooldown(3.0f)
                 .loadTime(2.35f)
                 .attackState(AttackStateMachine.withLoad(2.35f))
                 .projectileStats(mainProjectileStats)
-                .attackPushBack(1.0f)
+                .attackPushBack(tiles(1.0))
                 .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
@@ -242,11 +246,16 @@ class FirecrackerIntegrationTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
-        .movement(new Movement(0f, 0f, 0.5f, 0.5f, movementType))
+        .movement(new Movement(0f, 0f, tiles(0.5), tiles(0.5), movementType))
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

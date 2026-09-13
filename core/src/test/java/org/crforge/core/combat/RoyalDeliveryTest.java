@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -39,7 +40,7 @@ class RoyalDeliveryTest {
   private static final Card ROYAL_DELIVERY = CardRegistry.get("royaldelivery");
   private static final int BASE_DAMAGE = 171;
 
-  // Deploy at y=14 to avoid tower aggro (towers are at y=3-6, range ~7.5 tiles)
+  // Deploy at y=14 tiles to avoid tower aggro (towers are at y=3-6, range ~7.5 tiles)
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 14f;
 
@@ -149,9 +150,9 @@ class RoyalDeliveryTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(DEPLOY_X, DEPLOY_Y))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -175,14 +176,14 @@ class RoyalDeliveryTest {
         Troop.builder()
             .name("AirEnemy")
             .team(Team.RED)
-            .position(new Position(DEPLOY_X, DEPLOY_Y + 0.1f))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y + 0.1f)))
             .health(new Health(1000))
-            .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())
@@ -209,14 +210,14 @@ class RoyalDeliveryTest {
         Troop.builder()
             .name("FriendlyKnight")
             .team(Team.BLUE)
-            .position(new Position(DEPLOY_X, DEPLOY_Y))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())
@@ -271,28 +272,29 @@ class RoyalDeliveryTest {
 
   // -- Helpers --
 
+  /** Deploys Royal Delivery at tile coordinates. */
   private void deployRoyalDelivery(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, x, y);
     engine.queueAction(bluePlayer, action);
   }
 
   /**
-   * Spawns a deployed (deploy timer=0) enemy troop at the given position. Speed is 0 to prevent
-   * walking away from the area effect.
+   * Spawns a deployed (deploy timer=0) enemy troop at the given tile position. Speed is 0 to
+   * prevent walking away from the area effect.
    */
   private Troop spawnEnemyAt(float x, float y, int hp) {
     Troop enemy =
         Troop.builder()
             .name("Victim")
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())

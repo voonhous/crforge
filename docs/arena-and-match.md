@@ -6,9 +6,11 @@
 
 ## Arena and Placement
 
-The arena is an 18x32 tile grid. Each tile is 1.0 world unit.
+The arena is an 18x32 tile grid. Simulation coordinates are integer game units with 1,000 units
+per tile, so the arena spans 18,000 by 32,000 game units (see "Coordinate System" below).
 
-- `Arena.WIDTH = 18`, `Arena.HEIGHT = 32`, `Arena.TILE_SIZE = 1.0f`
+- `Arena.WIDTH = 18`, `Arena.HEIGHT = 32` (tile counts); `Arena.WIDTH_UNITS = 18000`,
+  `Arena.HEIGHT_UNITS = 32000` (game units)
 - River at center: `Arena.RIVER_Y = 16` (rows Y=15 and Y=16 are river)
 - Two bridges: left at X=[2,5), right at X=[13,16), each `BRIDGE_WIDTH = 3` tiles
 
@@ -24,7 +26,29 @@ The arena is an 18x32 tile grid. Each tile is 1.0 world unit.
 | TOWER     | yes      | no              | Tower footprints                               |
 | BANNED    | no       | no              | Edges behind king towers (Y=0/31, X<6 or X>11) |
 
+### Coordinate System
+
+`org.crforge.core.util.GameUnits` defines the units and all boundary conversions:
+
+- Positions, radii, ranges, formation offsets and pushback distances are `int` game units
+  (`GameUnits.UNITS_PER_TILE = 1000`). One thousand units per tile is the community-decoded data
+  convention; it is not by itself a claim of native simulation parity.
+- Grid indices and tile counts stay in tiles; time stays in seconds; angles, percentages and
+  multipliers are dimensionless.
+- `GameUnits.tiles(x)` converts tiles to units (nearest unit), `GameUnits.toTiles(u)` converts back,
+  and `GameUnits.tileIndex(u)` uses floor division, so negative coordinates are outside the grid.
+- Squared distances use `long` arithmetic and range checks compare them exactly
+  (`GameUnits.withinRadius` is inclusive at the boundary).
+- Speeds are `float` game units per second (raw data speed 60 = 1,000 units/s). Per-tick steps are
+  usually fractional, so `Position.move()` integrates them through a 1/65536-unit fixed-point
+  carry and reports the nearest whole unit. `Position.set()` discards the carry; `add()` and
+  per-axis `clamp()` keep it.
+- External interfaces stay in tiles: the Python bridge (`StepAction`, observation DTOs, binary
+  observations) and the desktop visualizer convert at their boundaries.
+
 ### Tower Positions
+
+Centers below are in tiles; in game units multiply by 1,000 (e.g. Blue crown at (9000, 3000)).
 
 | Tower             | Center       | Footprint                 |
 |-------------------|--------------|---------------------------|
@@ -37,8 +61,10 @@ The arena is an 18x32 tile grid. Each tile is 1.0 world unit.
 
 ### Placement Validation
 
-- `Arena.isValidPlacement(x, y, team)` -- single-tile center-point check; must be in own zone
-- `Arena.isValidBuildingPlacement(x, y, radius, team)` -- validates entire footprint bounding box
+- `Arena.isValidPlacement(x, y, team)` -- single-tile center-point check in game units; must be in
+  own zone
+- `Arena.isValidBuildingPlacement(x, y, radius, team)` -- validates the entire footprint bounding
+  box in game units (edges exactly on a tile boundary do not cover the neighboring tile)
 - `Match.validateAction()` performs card-specific rules:
     - Spells with `spellAsDeploy=true`: must be in own zone
     - Spells without `spellAsDeploy`: can target anywhere (unless restricted by

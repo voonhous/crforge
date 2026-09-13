@@ -35,8 +35,10 @@ public class Card {
   private final AreaEffectStats deployEffect;
 
   /**
-   * Raw CSV summonRadius for troop deploy formation (divide by TILE_SCALE at deploy time). When 0,
-   * uses default circular formation layout.
+   * Raw summonRadius data value for the legacy circular troop deploy formation, used only when no
+   * explicit formation offsets exist. It stays in raw form and is converted by {@link
+   * org.crforge.core.util.FormationLayout#calculateDeployOffset}, which applies an empirical legacy
+   * divisor rather than the 1,000 units per tile coordinate scale. When 0, no circular fallback.
    */
   @Builder.Default private final float summonRadius = 0f;
 
@@ -66,10 +68,10 @@ public class Card {
   private final ProjectileStats spawnProjectile;
 
   /**
-   * Pre-computed formation offsets in tile units. Each float[] is [x, y]. Null = use circular
-   * algorithm.
+   * Pre-computed formation offsets in integer game units, authored for the blue side (red negates
+   * both axes). Each int[] is [x, y]. Null = use circular algorithm.
    */
-  private final List<float[]> formationOffsets;
+  private final List<int[]> formationOffsets;
 
   /**
    * Secondary unit type for dual-unit cards (e.g., SpearGoblin in GoblinGang). Null for single-unit
@@ -85,8 +87,8 @@ public class Card {
    */
   @Builder.Default private final boolean canDeployOnEnemySide = false;
 
-  /** Spell placement/targeting radius in tile units (distinct from projectile AOE hit radius). */
-  @Builder.Default private final float spellRadius = 0f;
+  /** Spell placement/targeting radius in game units (distinct from projectile AOE hit radius). */
+  @Builder.Default private final int spellRadius = 0;
 
   /** Number of projectiles per wave (cosmetic for simulation; stored for future visual use). */
   @Builder.Default private final int multipleProjectiles = 0;

@@ -2,6 +2,7 @@ package org.crforge.core.physics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
@@ -23,8 +24,9 @@ class HoveringTest {
   private PhysicsSystem physicsSystem;
   private Arena arena;
 
-  private static final float NON_BRIDGE_X = 9.0f;
-  private static final float RIVER_CENTER_Y = 16.0f;
+  // Game-unit coordinates: X = 9 tiles (not on a bridge), river center Y = 16 tiles
+  private static final int NON_BRIDGE_X = tiles(9.0);
+  private static final int RIVER_CENTER_Y = tiles(16.0);
 
   @BeforeEach
   void setUp() {
@@ -36,20 +38,20 @@ class HoveringTest {
   void hovering_pathsStraightAcrossRiver() {
     // Hovering troop south of river at center X with a target north of the river.
     // Should move straight north without drifting toward a bridge.
-    Troop troop = createHoveringTroop("BattleHealer", NON_BRIDGE_X, 14.0f);
-    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    Troop troop = createHoveringTroop("BattleHealer", NON_BRIDGE_X, tiles(14.0));
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, tiles(20.0));
     troop.getCombat().setCurrentTarget(target);
 
-    float startX = troop.getPosition().getX();
+    int startX = troop.getPosition().getX();
 
     for (int i = 0; i < 30; i++) {
       physicsSystem.update(List.of(troop, target), 1f / 30f);
     }
 
     // X should not drift toward a bridge
-    assertThat(troop.getPosition().getX()).isCloseTo(startX, within(0.1f));
+    assertThat(troop.getPosition().getX()).isCloseTo(startX, within(tiles(0.1)));
     // Y should have moved north
-    assertThat(troop.getPosition().getY()).isGreaterThan(14.0f);
+    assertThat(troop.getPosition().getY()).isGreaterThan(tiles(14.0));
   }
 
   @Test
@@ -82,33 +84,34 @@ class HoveringTest {
 
     physicsSystem.update(List.of(troop), 1f / 30f);
 
-    assertThat(troop.getMovement().getEffectiveSpeed()).isCloseTo(baseSpeed, within(0.001f));
+    // Speeds are game units per second
+    assertThat(troop.getMovement().getEffectiveSpeed()).isCloseTo(baseSpeed, within(1f));
   }
 
   @Test
   void normalTroop_stillRoutesToBridge() {
     // Sanity check: a normal (non-hovering, non-jumping) troop should still route to a bridge
-    Troop troop = createNormalTroop("Knight", NON_BRIDGE_X, 14.0f);
-    Troop target = createNormalTroop("Target", NON_BRIDGE_X, 20.0f);
+    Troop troop = createNormalTroop("Knight", NON_BRIDGE_X, tiles(14.0));
+    Troop target = createNormalTroop("Target", NON_BRIDGE_X, tiles(20.0));
     troop.getCombat().setCurrentTarget(target);
 
-    float startX = troop.getPosition().getX();
+    int startX = troop.getPosition().getX();
 
     for (int i = 0; i < 30; i++) {
       physicsSystem.update(List.of(troop, target), 1f / 30f);
     }
 
     // Normal troop should have drifted in X toward the nearest bridge
-    float endX = troop.getPosition().getX();
+    int endX = troop.getPosition().getX();
     assertThat(Math.abs(endX - startX))
         .as("Normal troop should drift toward bridge")
-        .isGreaterThan(0.1f);
+        .isGreaterThan(tiles(0.1));
   }
 
   // -- Helpers --
 
-  private Troop createHoveringTroop(String name, float x, float y) {
-    Movement movement = new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+  private Troop createHoveringTroop(String name, int x, int y) {
+    Movement movement = new Movement(tiles(5.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND);
     movement.setHovering(true);
 
     Troop troop =
@@ -123,13 +126,13 @@ class HoveringTest {
     return troop;
   }
 
-  private Troop createNormalTroop(String name, float x, float y) {
+  private Troop createNormalTroop(String name, int x, int y) {
     Troop troop =
         Troop.builder()
             .name(name)
             .team(Team.BLUE)
             .position(new Position(x, y))
-            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(5.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
     troop.onSpawn();

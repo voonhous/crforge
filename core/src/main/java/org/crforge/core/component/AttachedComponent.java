@@ -16,11 +16,11 @@ public class AttachedComponent {
   /** The parent entity this unit is attached to. */
   private final Entity parent;
 
-  /** Local X offset relative to the parent's center. */
-  private final float offsetX;
+  /** Local X offset relative to the parent's center, in game units. */
+  private final int offsetX;
 
-  /** Local Y offset relative to the parent's center. */
-  private final float offsetY;
+  /** Local Y offset relative to the parent's center, in game units. */
+  private final int offsetY;
 
   /** Returns true if the parent entity is still alive. */
   public boolean isParentAlive() {

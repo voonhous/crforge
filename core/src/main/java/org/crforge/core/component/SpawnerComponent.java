@@ -41,10 +41,10 @@ public class SpawnerComponent {
   @Builder.Default private final int level = 1;
 
   /**
-   * Formation radius for live spawn placement (in tile units). Used by SpawnerSystem to arrange
+   * Formation radius for live spawn placement (in game units). Used by SpawnerSystem to arrange
    * spawned units in a circle.
    */
-  @Builder.Default private float formationRadius = 0f;
+  @Builder.Default private int formationRadius = 0;
 
   /**
    * When true, SpawnerSystem kills the entity as soon as it finishes deploying, triggering its
@@ -55,8 +55,9 @@ public class SpawnerComponent {
 
   // Death mechanics
   @Builder.Default private int deathDamage = 0;
-  @Builder.Default private float deathDamageRadius = 0f;
-  @Builder.Default private float deathPushback = 0f;
+  // Death damage radius and knockback distance in game units
+  @Builder.Default private int deathDamageRadius = 0;
+  @Builder.Default private int deathPushback = 0;
   @Builder.Default private List<DeathSpawnEntry> deathSpawns = new ArrayList<>();
 
   // Death area effect (e.g. RageBarbarianBottle drops a Rage zone on death)
@@ -71,8 +72,8 @@ public class SpawnerComponent {
   // Aggro-gated spawning: timer only ticks when enemies are within detection range
   @Builder.Default private boolean spawnOnAggro = false;
 
-  // Detection range for aggro-gated spawning (tiles). Derived from unit's range stat.
-  @Builder.Default private float aggroDetectionRange = 0f;
+  // Detection range for aggro-gated spawning (game units). Derived from unit's range stat.
+  @Builder.Default private int aggroDetectionRange = 0;
 
   // Spawn limit: stop spawning after this many total units (0 = unlimited)
   @Builder.Default private int spawnLimit = 0;

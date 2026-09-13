@@ -10,5 +10,6 @@ import org.crforge.core.player.Team;
  */
 @FunctionalInterface
 public interface UnitSpawner {
-  void spawnUnit(float x, float y, Team team, TroopStats stats, int level, float deployTime);
+  /** Spawns a unit at game-unit coordinates (x, y). */
+  void spawnUnit(int x, int y, Team team, TroopStats stats, int level, float deployTime);
 }

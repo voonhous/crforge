@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.card.ProjectileStats;
@@ -173,11 +175,11 @@ class HunterScatterTest {
         ProjectileStats.builder()
             .name("HunterProjectile")
             .damage(33)
-            .speed(550f / 60f) // 550 raw / 60 = 9.167 tiles/sec
-            .radius(0.07f)
+            .speed(rawSpeedToUnitsPerSecond(550f)) // 550 raw / 60 = 9.167 tiles/sec
+            .radius(tiles(0.07))
             .homing(false)
             .scatter("Line")
-            .projectileRange(6.5f)
+            .projectileRange(tiles(6.5))
             .aoeToGround(true)
             .aoeToAir(true)
             .checkCollisions(true)
@@ -186,14 +188,14 @@ class HunterScatterTest {
     return Troop.builder()
         .name("Hunter")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(700))
-        .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(33)
-                .range(4.0f)
-                .sightRange(5.5f)
+                .range(tiles(4.0))
+                .sightRange(tiles(5.5))
                 .attackCooldown(2.2f)
                 .multipleProjectiles(10)
                 .projectileStats(hunterProjectile)
@@ -208,11 +210,16 @@ class HunterScatterTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(0f, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

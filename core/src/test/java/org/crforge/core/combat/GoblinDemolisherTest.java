@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -72,8 +73,9 @@ class GoblinDemolisherTest {
     assertThat(stats).as("Unit stats").isNotNull();
     assertThat(stats.getHealth()).as("Health").isEqualTo(508);
     assertThat(stats.getDamage()).as("Damage").isEqualTo(73);
-    assertThat(stats.getSpeed()).as("Speed").isEqualTo(1.0f);
-    assertThat(stats.getRange()).as("Range").isEqualTo(5.0f);
+    // Raw speed 60 = one tile per second = 1000 game units per second
+    assertThat(stats.getSpeed()).as("Speed").isEqualTo(1000f);
+    assertThat(stats.getRange()).as("Range").isEqualTo(tiles(5.0));
     assertThat(stats.getProjectile()).as("Projectile").isNotNull();
     assertThat(stats.getProjectile().getName())
         .as("Projectile name")
@@ -96,7 +98,7 @@ class GoblinDemolisherTest {
         .isEqualTo(20.0f);
     assertThat(transformConfig.transformStats().getSpeed())
         .as("Kamikaze speed (2x)")
-        .isEqualTo(2.0f);
+        .isEqualTo(2000f);
 
     // Death spawn projectile on ranged form
     assertThat(stats.getDeathSpawnProjectile()).as("Death projectile on ranged form").isNotNull();
@@ -185,9 +187,9 @@ class GoblinDemolisherTest {
     assertThat(kamikaze).as("Kamikaze form exists").isNotNull();
 
     // Speed: 120 / 60 = 2.0 tiles/sec
-    assertThat(kamikaze.getMovement().getSpeed()).as("Kamikaze speed").isEqualTo(2.0f);
+    assertThat(kamikaze.getMovement().getSpeed()).as("Kamikaze speed").isEqualTo(2000f);
     // Range 0.5 = melee
-    assertThat(kamikaze.getCombat().getRange()).as("Kamikaze range").isEqualTo(0.5f);
+    assertThat(kamikaze.getCombat().getRange()).as("Kamikaze range").isEqualTo(tiles(0.5));
     // Target only buildings
     assertThat(kamikaze.getCombat().isTargetOnlyBuildings()).as("Target only buildings").isTrue();
     // Kamikaze flag
@@ -351,7 +353,8 @@ class GoblinDemolisherTest {
   // -- Helpers --
 
   private Troop deployAndGetTroop() {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(DEPLOY_X).y(DEPLOY_Y).build();
+    PlayerActionDTO action =
+        PlayerActionDTO.builder().handIndex(0).x(tiles(DEPLOY_X)).y(tiles(DEPLOY_Y)).build();
     engine.queueAction(bluePlayer, action);
 
     // Tick past sync delay + deploy time

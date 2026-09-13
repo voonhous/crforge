@@ -2,16 +2,21 @@ package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
+import org.crforge.core.component.Health;
+import org.crforge.core.component.Movement;
+import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
+import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
@@ -65,8 +70,9 @@ class GoblinDrillTest {
     engine.initMatch();
   }
 
+  /** Deploys the Goblin Drill at tile coordinates (converted to game units). */
   private void deployGoblinDrill(Player player, float x, float y) {
-    engine.queueAction(player, PlayerActionDTO.builder().handIndex(0).x(x).y(y).build());
+    engine.queueAction(player, PlayerActionDTO.playAtTiles(0, x, y));
   }
 
   private List<Troop> findTroopsByName(String name) {
@@ -92,7 +98,7 @@ class GoblinDrillTest {
   @Test
   void goblinDrill_canDeployOnEnemySide() {
     // Enemy side for blue is y > 16 (red zone)
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(9.0f).y(25.0f).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 9.0f, 25.0f);
     assertThat(match.validateAction(blue, action)).isTrue();
   }
 
@@ -108,8 +114,8 @@ class GoblinDrillTest {
 
     Troop digTroop = digTroops.get(0);
     // Should start near blue king tower (9.0, 3.0)
-    assertThat(digTroop.getPosition().getX()).isCloseTo(9.0f, within(1.0f));
-    assertThat(digTroop.getPosition().getY()).isCloseTo(3.0f, within(1.0f));
+    assertThat(digTroop.getPosition().getX()).isCloseTo(tiles(9.0), within(tiles(1.0)));
+    assertThat(digTroop.getPosition().getY()).isCloseTo(tiles(3.0), within(tiles(1.0)));
     assertThat(digTroop.getTeam()).isEqualTo(Team.BLUE);
   }
 
@@ -126,7 +132,7 @@ class GoblinDrillTest {
     assertThat(digTroop.isTargetable()).isFalse();
     assertThat(digTroop.isInvulnerable()).isTrue();
     // collisionRadius should be 0 in data (GoblinDrillDig has collisionRadius: 0.0)
-    assertThat(digTroop.getCollisionRadius()).isEqualTo(0f);
+    assertThat(digTroop.getCollisionRadius()).isEqualTo(0);
   }
 
   @Test
@@ -136,7 +142,7 @@ class GoblinDrillTest {
 
     List<Troop> digTroops = findTroopsByName("GoblinDrillDig");
     Troop digTroop = digTroops.get(0);
-    float startY = digTroop.getPosition().getY();
+    int startY = digTroop.getPosition().getY();
 
     // Tick ~0.33s more for the dig troop to move
     engine.tick(ticksFor(0.33f) + 1);
@@ -165,8 +171,8 @@ class GoblinDrillTest {
 
     Building building = buildings.get(0);
     assertThat(building.getTeam()).isEqualTo(Team.BLUE);
-    assertThat(building.getPosition().getX()).isCloseTo(9.0f, within(0.5f));
-    assertThat(building.getPosition().getY()).isCloseTo(25.0f, within(0.5f));
+    assertThat(building.getPosition().getX()).isCloseTo(tiles(9.0), within(tiles(0.5)));
+    assertThat(building.getPosition().getY()).isCloseTo(tiles(25.0), within(tiles(0.5)));
   }
 
   @Test
@@ -176,11 +182,9 @@ class GoblinDrillTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new org.crforge.core.component.Position(9.0f, 25.0f))
-            .health(new org.crforge.core.component.Health(10000))
-            .movement(
-                new org.crforge.core.component.Movement(
-                    0f, 5f, 0.5f, 0.5f, org.crforge.core.entity.base.MovementType.GROUND))
+            .position(new Position(tiles(9.0), tiles(25.0)))
+            .health(new Health(10000))
+            .movement(new Movement(0f, 5f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -204,27 +208,25 @@ class GoblinDrillTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new org.crforge.core.component.Position(9.5f, 25.0f))
-            .health(new org.crforge.core.component.Health(10000))
-            .movement(
-                new org.crforge.core.component.Movement(
-                    1.0f, 5f, 0.5f, 0.5f, org.crforge.core.entity.base.MovementType.GROUND))
+            .position(new Position(tiles(9.5), tiles(25.0)))
+            .health(new Health(10000))
+            .movement(new Movement(tiles(1.0), 5f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .deployTimer(0f)
             .build();
     engine.spawn(enemy);
 
-    float startX = enemy.getPosition().getX();
+    int startX = enemy.getPosition().getX();
     deployGoblinDrill(blue, 9.0f, 25.0f);
 
     // Run until building morphs + area effect processes + a few physics ticks for knockback
     engine.tick(SYNC_DELAY_TICKS + ticksFor(7.83f));
 
     // Enemy should have been knocked back (pushed away from the emergence center)
-    float endX = enemy.getPosition().getX();
+    int endX = enemy.getPosition().getX();
     assertThat(Math.abs(endX - startX))
         .as("Enemy should be displaced by knockback from GoblinDrillDamage pushback")
-        .isGreaterThan(0.01f);
+        .isGreaterThan(tiles(0.01));
   }
 
   @Test

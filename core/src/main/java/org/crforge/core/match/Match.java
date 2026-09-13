@@ -16,6 +16,7 @@ import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Represents an active match with its configuration, players, and mode-specific rules.
@@ -202,7 +203,7 @@ public abstract class Match {
 
     // Buildings must follow strict placement rules (entire footprint in zone)
     if (card.getType() == CardType.BUILDING) {
-      float radius = 0.5f; // Default small radius
+      int radius = GameUnits.HALF_TILE; // Default small radius
       if (card.getUnitStats() != null) {
         radius = card.getUnitStats().getCollisionRadius();
       }
@@ -215,18 +216,17 @@ public abstract class Match {
 
   /**
    * Returns true if any building or tower entity's collision area covers the given coordinates.
-   * Used to enforce canPlaceOnBuildings=false spell placement restrictions.
+   * Used to enforce canPlaceOnBuildings=false spell placement restrictions. Coordinates are game
+   * units.
    */
-  private boolean isBuildingAtLocation(float x, float y) {
+  private boolean isBuildingAtLocation(int x, int y) {
     for (Entity entity : gameState.getAliveEntities()) {
       EntityType type = entity.getEntityType();
       if (type != EntityType.BUILDING && type != EntityType.TOWER) {
         continue;
       }
-      float dx = entity.getPosition().getX() - x;
-      float dy = entity.getPosition().getY() - y;
-      float r = entity.getCollisionRadius();
-      if (dx * dx + dy * dy < r * r) {
+      if (GameUnits.insideRadius(
+          entity.getPosition().distanceSquaredTo(x, y), entity.getCollisionRadius())) {
         return true;
       }
     }

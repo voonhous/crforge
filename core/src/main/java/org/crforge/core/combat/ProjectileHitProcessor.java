@@ -17,7 +17,7 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
-import org.crforge.core.util.Vector2;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Handles the projectile hit pipeline: AOE/single-target damage, reflect check, chain lightning,
@@ -27,7 +27,14 @@ class ProjectileHitProcessor {
 
   // Tight formation radius for multi-unit spawn-on-impact (matches 3-Minion deploy pattern).
   // Physics collision pushes units out of overlapping buildings, creating the correct spread.
-  private static final float SPAWN_ON_IMPACT_FORMATION_RADIUS = 0.577f;
+  // 0.577 tiles, in game units.
+  private static final int SPAWN_ON_IMPACT_FORMATION_RADIUS = 577;
+
+  // Sub-projectile travel range when the spawned projectile has no projectileRange (10 tiles)
+  private static final int DEFAULT_SPAWN_PROJECTILE_RANGE = 10 * GameUnits.UNITS_PER_TILE;
+
+  // Fan (shrapnel) travel range when the projectile has no projectileRange (5 tiles)
+  private static final int DEFAULT_FAN_RANGE = 5 * GameUnits.UNITS_PER_TILE;
 
   private final GameState gameState;
   private final AoeDamageService aoeDamageService;
@@ -111,9 +118,9 @@ class ProjectileHitProcessor {
           && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
         Entity source = projectile.getSource();
         if (source != null && source.isAlive()) {
-          float dist = source.getPosition().distanceTo(reflector.getPosition());
-          float effectiveRadius = reflect.reflectRadius() + source.getCollisionRadius();
-          if (dist <= effectiveRadius) {
+          long effectiveRadius = (long) reflect.reflectRadius() + source.getCollisionRadius();
+          if (GameUnits.withinRadius(
+              source.getPosition().distanceSquaredTo(reflector.getPosition()), effectiveRadius)) {
             abilityBridge.applyReflectDamage(reflector, source, reflectDmg, aoeDamageService);
           }
         }
@@ -150,8 +157,8 @@ class ProjectileHitProcessor {
     int level = projectile.getSpawnCharacterLevel() > 0 ? projectile.getSpawnCharacterLevel() : 1;
     float deployTime = projectile.getSpawnDeployTime();
 
-    // Determine impact position
-    float centerX, centerY;
+    // Determine impact position (game units)
+    int centerX, centerY;
     if (projectile.isPiercing()) {
       // Piercing expire: spawn at current position (e.g. BarbLog Barbarian)
       centerX = projectile.getPosition().getX();
@@ -168,14 +175,14 @@ class ProjectileHitProcessor {
     }
 
     // Always use tight formation around the impact point
-    float formationRadius =
+    int formationRadius =
         (count > 1) ? SPAWN_ON_IMPACT_FORMATION_RADIUS : projectile.getAoeRadius();
 
     for (int i = 0; i < count; i++) {
-      Vector2 offset =
+      FormationLayout.Offset offset =
           FormationLayout.calculateOffset(i, count, formationRadius, stats.getCollisionRadius());
-      float spawnX = centerX + offset.getX();
-      float spawnY = centerY + offset.getY();
+      int spawnX = centerX + offset.x();
+      int spawnY = centerY + offset.y();
 
       // Sphere-slide: if spawn position overlaps a building, push radially outward
       // to just outside the building perimeter (like sliding off a sphere)
@@ -183,22 +190,24 @@ class ProjectileHitProcessor {
         if (entity.getMovementType() != MovementType.BUILDING) {
           continue;
         }
-        float dx = spawnX - entity.getPosition().getX();
-        float dy = spawnY - entity.getPosition().getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-        float minDist = entity.getCollisionRadius() + stats.getCollisionRadius();
-        if (dist < minDist) {
-          // Push outward from building center
-          if (dist > 0.001f) {
-            spawnX = entity.getPosition().getX() + (dx / dist) * minDist;
-            spawnY = entity.getPosition().getY() + (dy / dist) * minDist;
+        int buildingX = entity.getPosition().getX();
+        int buildingY = entity.getPosition().getY();
+        long dx = (long) spawnX - buildingX;
+        long dy = (long) spawnY - buildingY;
+        long distSq = dx * dx + dy * dy;
+        long minDist = (long) entity.getCollisionRadius() + stats.getCollisionRadius();
+        if (GameUnits.insideRadius(distSq, minDist)) {
+          // Push outward from building center, rounding the new position to game units
+          if (distSq > 0) {
+            double dist = Math.sqrt(distSq);
+            spawnX = buildingX + GameUnits.round(dx / dist * minDist);
+            spawnY = buildingY + GameUnits.round(dy / dist * minDist);
           } else {
             // Exactly on center -- use the formation offset direction
-            float offLen =
-                (float) Math.sqrt(offset.getX() * offset.getX() + offset.getY() * offset.getY());
-            if (offLen > 0.001f) {
-              spawnX = entity.getPosition().getX() + (offset.getX() / offLen) * minDist;
-              spawnY = entity.getPosition().getY() + (offset.getY() / offLen) * minDist;
+            double offLen = Math.hypot(offset.x(), offset.y());
+            if (offLen > 0) {
+              spawnX = buildingX + GameUnits.round(offset.x() / offLen * minDist);
+              spawnY = buildingY + GameUnits.round(offset.y() / offLen * minDist);
             }
           }
           break; // only slide off one building
@@ -219,7 +228,7 @@ class ProjectileHitProcessor {
       return;
     }
 
-    float chainRadius = projectile.getChainedHitRadius();
+    int chainRadius = projectile.getChainedHitRadius();
     int chainCount = projectile.getChainedHitCount();
     Team team = projectile.getTeam();
 
@@ -231,9 +240,9 @@ class ProjectileHitProcessor {
       if (e instanceof Troop t && t.isInvisible()) {
         continue;
       }
-      float distSq = e.getPosition().distanceToSquared(primaryTarget.getPosition());
-      float effectiveRadius = chainRadius + e.getCollisionRadius();
-      if (distSq <= effectiveRadius * effectiveRadius) {
+      long distSq = e.getPosition().distanceSquaredTo(primaryTarget.getPosition());
+      long effectiveRadius = (long) chainRadius + e.getCollisionRadius();
+      if (GameUnits.withinRadius(distSq, effectiveRadius)) {
         candidates.add(e);
       }
     }
@@ -241,9 +250,9 @@ class ProjectileHitProcessor {
     // Sort by squared distance (preserves ordering, avoids sqrt)
     candidates.sort(
         (a, b) -> {
-          float da = a.getPosition().distanceToSquared(primaryTarget.getPosition());
-          float db = b.getPosition().distanceToSquared(primaryTarget.getPosition());
-          return Float.compare(da, db);
+          long da = a.getPosition().distanceSquaredTo(primaryTarget.getPosition());
+          long db = b.getPosition().distanceSquaredTo(primaryTarget.getPosition());
+          return Long.compare(da, db);
         });
 
     // chainedHitCount includes the primary target, so spawn (count - 1) chain projectiles
@@ -275,7 +284,7 @@ class ProjectileHitProcessor {
       return;
     }
 
-    float hitX, hitY;
+    int hitX, hitY;
     if (projectile.isPositionTargeted()) {
       hitX = projectile.getTargetX();
       hitY = projectile.getTargetY();
@@ -290,7 +299,8 @@ class ProjectileHitProcessor {
     // Calculate travel direction from origin to impact
     float dx = hitX - projectile.getOriginX();
     float dy = hitY - projectile.getOriginY();
-    float dist = Vector2.distance(projectile.getOriginX(), projectile.getOriginY(), hitX, hitY);
+    float dist =
+        (float) GameUnits.distance(projectile.getOriginX(), projectile.getOriginY(), hitX, hitY);
     float dirX = dist > 0 ? dx / dist : 0;
     float dirY = dist > 0 ? dy / dist : 1;
 
@@ -300,9 +310,12 @@ class ProjectileHitProcessor {
       spawnFanProjectiles(projectile, spawnStats, hitX, hitY, dirX, dirY);
     } else {
       // Single sub-projectile (e.g. Log rolling projectile)
-      float range = spawnStats.getProjectileRange() > 0 ? spawnStats.getProjectileRange() : 10f;
-      float targetX = hitX + dirX * range;
-      float targetY = hitY + dirY * range;
+      int range =
+          spawnStats.getProjectileRange() > 0
+              ? spawnStats.getProjectileRange()
+              : DEFAULT_SPAWN_PROJECTILE_RANGE;
+      int targetX = hitX + GameUnits.round(dirX * (double) range);
+      int targetY = hitY + GameUnits.round(dirY * (double) range);
 
       // Scale sub-projectile damage by spell level/rarity if available
       int subDamage = spawnStats.getDamage();
@@ -311,7 +324,7 @@ class ProjectileHitProcessor {
       }
 
       // Use projectileRadius for hit detection if available, otherwise fall back to AOE radius
-      float hitRadius =
+      int hitRadius =
           spawnStats.getProjectileRadius() > 0
               ? spawnStats.getProjectileRadius()
               : spawnStats.getRadius();
@@ -358,13 +371,13 @@ class ProjectileHitProcessor {
   private void spawnFanProjectiles(
       Projectile parentProjectile,
       ProjectileStats stats,
-      float originX,
-      float originY,
+      int originX,
+      int originY,
       float baseDirX,
       float baseDirY) {
     Team team = parentProjectile.getTeam();
     int count = stats.getSpawnCount();
-    float range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : 5f;
+    int range = stats.getProjectileRange() > 0 ? stats.getProjectileRange() : DEFAULT_FAN_RANGE;
     float baseAngle = (float) Math.atan2(baseDirY, baseDirX);
 
     // Scale shrapnel damage by parent projectile's level/rarity if available
@@ -383,8 +396,8 @@ class ProjectileHitProcessor {
       float dirX = (float) Math.cos(angle);
       float dirY = (float) Math.sin(angle);
 
-      float endX = originX + range * dirX;
-      float endY = originY + range * dirY;
+      int endX = originX + GameUnits.round(range * (double) dirX);
+      int endY = originY + GameUnits.round(range * (double) dirY);
 
       Projectile shrapnel =
           new Projectile(
@@ -412,7 +425,7 @@ class ProjectileHitProcessor {
   private void spawnAreaEffectOnImpact(Projectile projectile) {
     AreaEffectStats stats = projectile.getSpawnAreaEffect();
 
-    float centerX, centerY;
+    int centerX, centerY;
     if (projectile.isPositionTargeted()) {
       centerX = projectile.getTargetX();
       centerY = projectile.getTargetY();

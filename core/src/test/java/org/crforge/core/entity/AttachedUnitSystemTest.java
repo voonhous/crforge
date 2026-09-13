@@ -2,6 +2,7 @@ package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,33 +45,39 @@ class AttachedUnitSystemTest {
     attachedUnitSystem = new AttachedUnitSystem(gameState);
   }
 
+  /** Creates a parent troop at tile coordinates. */
   private Troop createParent(Team team, float x, float y) {
     return Troop.builder()
         .name("Ram")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(1.0f, 8.0f, 0.5f, 0.5f, MovementType.GROUND))
-        .combat(Combat.builder().damage(100).range(1.2f).targetType(TargetType.GROUND).build())
+        .movement(new Movement(tiles(1.0), 8.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+        .combat(
+            Combat.builder().damage(100).range(tiles(1.2)).targetType(TargetType.GROUND).build())
         .deployTime(0f)
         .deployTimer(0f)
         .build();
   }
 
+  /** Creates a child attached at a local offset given in tiles. */
   private Troop createAttachedChild(Troop parent, String name, float offsetX, float offsetY) {
-    AttachedComponent attached = new AttachedComponent(parent, offsetX, offsetY);
+    int offsetXUnits = tiles(offsetX);
+    int offsetYUnits = tiles(offsetY);
+    AttachedComponent attached = new AttachedComponent(parent, offsetXUnits, offsetYUnits);
     return Troop.builder()
         .name(name)
         .team(parent.getTeam())
         .position(
             new Position(
-                parent.getPosition().getX() + offsetX, parent.getPosition().getY() + offsetY))
+                parent.getPosition().getX() + offsetXUnits,
+                parent.getPosition().getY() + offsetYUnits))
         .health(new Health(500))
-        .movement(new Movement(1.0f, 4.0f, 0.3f, 0.3f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 4.0f, tiles(0.3), tiles(0.3), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(50)
-                .range(5.0f)
+                .range(tiles(5.0))
                 .targetType(TargetType.ALL)
                 .targetOnlyTroops(true)
                 .build())
@@ -105,14 +112,14 @@ class AttachedUnitSystemTest {
     gameState.processPending();
 
     // Move the parent
-    parent.getPosition().set(10f, 15f);
+    parent.getPosition().set(tiles(10), tiles(15));
     parent.getPosition().setRotation(0f); // facing right
 
     attachedUnitSystem.update(1f / 30f);
 
     // Child should follow parent (offset 0.5 in Y when rotation=0 means +0.5 in Y)
-    assertThat(child.getPosition().getX()).isCloseTo(10f, within(0.01f));
-    assertThat(child.getPosition().getY()).isCloseTo(15.5f, within(0.01f));
+    assertThat(child.getPosition().getX()).isCloseTo(tiles(10), within(tiles(0.01)));
+    assertThat(child.getPosition().getY()).isCloseTo(tiles(15.5), within(tiles(0.01)));
   }
 
   @Test
@@ -206,8 +213,8 @@ class AttachedUnitSystemTest {
             .name("RamRider")
             .health(500)
             .damage(50)
-            .speed(1.0f)
-            .range(5.0f)
+            .speed(tiles(1.0))
+            .range(tiles(5.0))
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
             .targetOnlyTroops(true)
@@ -219,11 +226,11 @@ class AttachedUnitSystemTest {
             .name("Ram")
             .health(1000)
             .damage(100)
-            .speed(1.0f)
-            .range(1.2f)
+            .speed(tiles(1.0))
+            .range(tiles(1.2))
             .movementType(MovementType.GROUND)
             .targetType(TargetType.GROUND)
-            .liveSpawn(new LiveSpawnConfig("RamRider", 1, 0f, 0f, 0f, 0f, true))
+            .liveSpawn(new LiveSpawnConfig("RamRider", 1, 0f, 0f, 0f, 0, true))
             .build();
 
     Card ramRiderCard =
@@ -242,7 +249,8 @@ class AttachedUnitSystemTest {
     Player player = new Player(Team.BLUE, new Deck(cards), false);
     player.getElixir().update(100f);
 
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(9f).y(10f).build();
+    PlayerActionDTO action =
+        PlayerActionDTO.builder().handIndex(0).x(tiles(9)).y(tiles(10)).build();
     deploymentSystem.queueAction(player, action);
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
@@ -296,8 +304,8 @@ class AttachedUnitSystemTest {
             .name("SpearGoblinGiant")
             .health(100)
             .damage(30)
-            .speed(1.0f)
-            .range(4.0f)
+            .speed(tiles(1.0))
+            .range(tiles(4.0))
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
             .build();
@@ -307,11 +315,11 @@ class AttachedUnitSystemTest {
             .name("GoblinGiant")
             .health(2000)
             .damage(120)
-            .speed(0.75f)
-            .range(1.2f)
+            .speed(tiles(0.75))
+            .range(tiles(1.2))
             .movementType(MovementType.GROUND)
             .targetType(TargetType.GROUND)
-            .liveSpawn(new LiveSpawnConfig("SpearGoblinGiant", 2, 0f, 0f, 0f, 1.0f, true))
+            .liveSpawn(new LiveSpawnConfig("SpearGoblinGiant", 2, 0f, 0f, 0f, tiles(1.0), true))
             .build();
 
     Card goblinGiantCard =
@@ -330,7 +338,8 @@ class AttachedUnitSystemTest {
     Player player = new Player(Team.BLUE, new Deck(cards), false);
     player.getElixir().update(100f);
 
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(9f).y(10f).build();
+    PlayerActionDTO action =
+        PlayerActionDTO.builder().handIndex(0).x(tiles(9)).y(tiles(10)).build();
     deploymentSystem.queueAction(player, action);
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
     gameState.processPending();
@@ -352,12 +361,12 @@ class AttachedUnitSystemTest {
     assertThat(attached).hasSize(2);
 
     // With 2 units and spawnRadius=1.0, they should be offset from each other
-    float x0 = attached.get(0).getPosition().getX();
-    float x1 = attached.get(1).getPosition().getX();
-    float y0 = attached.get(0).getPosition().getY();
-    float y1 = attached.get(1).getPosition().getY();
-    // They should not be at exactly the same position
-    boolean differentPositions = Math.abs(x0 - x1) > 0.01f || Math.abs(y0 - y1) > 0.01f;
+    int x0 = attached.get(0).getPosition().getX();
+    int x1 = attached.get(1).getPosition().getX();
+    int y0 = attached.get(0).getPosition().getY();
+    int y1 = attached.get(1).getPosition().getY();
+    // They should not be at the same position (more than 0.01 tiles apart on some axis)
+    boolean differentPositions = Math.abs(x0 - x1) > tiles(0.01) || Math.abs(y0 - y1) > tiles(0.01);
     assertThat(differentPositions).isTrue();
   }
 
@@ -376,7 +385,7 @@ class AttachedUnitSystemTest {
     attachedUnitSystem.update(1f / 30f);
 
     // Offset (1, 0) rotated 90 degrees -> (0, 1)
-    assertThat(child.getPosition().getX()).isCloseTo(5f, within(0.01f));
-    assertThat(child.getPosition().getY()).isCloseTo(6f, within(0.01f));
+    assertThat(child.getPosition().getX()).isCloseTo(tiles(5), within(tiles(0.01)));
+    assertThat(child.getPosition().getY()).isCloseTo(tiles(6), within(tiles(0.01)));
   }
 }

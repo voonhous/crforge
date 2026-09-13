@@ -14,6 +14,7 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Handles all physics interactions in the game, including movement, collision detection, collision
@@ -22,12 +23,18 @@ import org.crforge.core.player.Team;
 public class PhysicsSystem {
 
   private static final float SLIDE_FACTOR = 0.5f;
-  // Minimum distance to compute meaningful collision direction; below this, use default direction
-  private static final float COLLISION_EPSILON = 0.001f;
 
-  // River zone boundaries for jump detection (same as BasePathfinder)
-  private static final float RIVER_Y_MIN = Arena.RIVER_Y - 1.0f; // 15.0
-  private static final float RIVER_Y_MAX = Arena.RIVER_Y + 1.0f; // 17.0
+  // River zone boundaries for jump detection in game units (same as BasePathfinder)
+  private static final int RIVER_Y_MIN = (Arena.RIVER_Y - 1) * GameUnits.UNITS_PER_TILE; // 15000
+  private static final int RIVER_Y_MAX = (Arena.RIVER_Y + 1) * GameUnits.UNITS_PER_TILE; // 17000
+
+  // Bridge X extents in game units (lower bound inclusive, upper bound exclusive)
+  private static final int LEFT_BRIDGE_MIN_X = Arena.LEFT_BRIDGE_X * GameUnits.UNITS_PER_TILE;
+  private static final int LEFT_BRIDGE_MAX_X =
+      (Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH) * GameUnits.UNITS_PER_TILE;
+  private static final int RIGHT_BRIDGE_MIN_X = Arena.RIGHT_BRIDGE_X * GameUnits.UNITS_PER_TILE;
+  private static final int RIGHT_BRIDGE_MAX_X =
+      (Arena.RIGHT_BRIDGE_X + Arena.BRIDGE_WIDTH) * GameUnits.UNITS_PER_TILE;
 
   // Speed multiplier applied while a troop is jumping over the river
   private static final float JUMP_SPEED_MULTIPLIER = 4f / 3f;
@@ -175,11 +182,11 @@ public class PhysicsSystem {
     Team team = troop.getTeam();
     Team enemyTeam = team.opposite();
 
-    float centerX = arena.getCenterX();
+    int centerX = arena.getCenterX();
     boolean isLeftLane = pos.getX() < centerX;
 
-    float targetX;
-    float targetY;
+    int targetX;
+    int targetY;
 
     // Check if Princess Tower in this lane is alive
     boolean princessAlive;
@@ -231,13 +238,15 @@ public class PhysicsSystem {
   }
 
   private void applyVelocity(Troop troop, float angle, float deltaTime) {
+    // Speed is game units per second; the per-tick step is usually fractional (e.g. 37.5 units),
+    // so it is integrated through Position's fixed-point carry rather than truncated.
     float speed = troop.getMovement().getEffectiveSpeed();
     float distance = speed * deltaTime;
 
     float dx = (float) Math.cos(angle) * distance;
     float dy = (float) Math.sin(angle) * distance;
 
-    troop.getPosition().add(dx, dy);
+    troop.getPosition().move(dx, dy);
     troop.getPosition().setRotation(angle);
   }
 
@@ -251,8 +260,8 @@ public class PhysicsSystem {
       return;
     }
 
-    float y = troop.getPosition().getY();
-    float x = troop.getPosition().getX();
+    int y = troop.getPosition().getY();
+    int x = troop.getPosition().getX();
 
     boolean inRiverZone = y >= RIVER_Y_MIN && y <= RIVER_Y_MAX;
     boolean onBridge = isOnBridge(x);
@@ -270,10 +279,10 @@ public class PhysicsSystem {
     }
   }
 
-  /** Returns true if the given X coordinate is within a bridge's horizontal bounds. */
-  private static boolean isOnBridge(float x) {
-    return (x >= Arena.LEFT_BRIDGE_X && x < Arena.LEFT_BRIDGE_X + Arena.BRIDGE_WIDTH)
-        || (x >= Arena.RIGHT_BRIDGE_X && x < Arena.RIGHT_BRIDGE_X + Arena.BRIDGE_WIDTH);
+  /** Returns true if the given X coordinate (game units) is within a bridge's horizontal bounds. */
+  private static boolean isOnBridge(int x) {
+    return (x >= LEFT_BRIDGE_MIN_X && x < LEFT_BRIDGE_MAX_X)
+        || (x >= RIGHT_BRIDGE_MIN_X && x < RIGHT_BRIDGE_MAX_X);
   }
 
   private void resolveCollisions(Collection<Entity> entities) {
@@ -346,7 +355,9 @@ public class PhysicsSystem {
     return entity instanceof Troop troop && troop.isAttached();
   }
 
-  /** Collision result containing push direction and overlap amount. */
+  /**
+   * Collision result containing the unit push direction and overlap amount (fractional game units).
+   */
   private record CollisionResult(float dirX, float dirY, float overlap) {}
 
   /**
@@ -379,12 +390,13 @@ public class PhysicsSystem {
       pushY += slidingAdjustment.y;
     }
 
-    // Apply position updates
+    // Apply position updates. Pushes are fractional game units and accumulate through the
+    // position's sub-unit carry, so small separations are not rounded away.
     if (a.getMovementType() != MovementType.BUILDING) {
-      a.getPosition().add(pushX * ratioA, pushY * ratioA);
+      a.getPosition().move(pushX * ratioA, pushY * ratioA);
     }
     if (b.getMovementType() != MovementType.BUILDING) {
-      b.getPosition().add(-pushX * ratioB, -pushY * ratioB);
+      b.getPosition().move(-pushX * ratioB, -pushY * ratioB);
     }
   }
 
@@ -461,30 +473,27 @@ public class PhysicsSystem {
   }
 
   private CollisionResult detectCircleCircleCollision(
-      Position posA, float radiusA, Position posB, float radiusB) {
-    float dx = posA.getX() - posB.getX();
-    float dy = posA.getY() - posB.getY();
-    float distSq = dx * dx + dy * dy;
-    float minDist = radiusA + radiusB;
+      Position posA, int radiusA, Position posB, int radiusB) {
+    long dx = (long) posA.getX() - posB.getX();
+    long dy = (long) posA.getY() - posB.getY();
+    long distSq = dx * dx + dy * dy;
+    long minDist = (long) radiusA + radiusB;
 
-    // Quick check with squared distance
+    // Exact integer check: touching circles (distance == sum of radii) do not collide
     if (distSq >= minDist * minDist) {
       return null;
     }
 
-    float dist = (float) Math.sqrt(distSq);
-    float overlap = minDist - dist;
+    double dist = Math.sqrt(distSq);
+    float overlap = (float) (minDist - dist);
 
-    // Normalize direction (from B toward A)
-    if (dist > COLLISION_EPSILON) {
-      dx /= dist;
-      dy /= dist;
-    } else {
-      dx = 1;
-      dy = 0;
+    // Normalize direction (from B toward A). Coincident centers (the only case where integer
+    // positions give no direction; previously any distance under 0.001 tiles = 1 game unit) use a
+    // fixed default direction.
+    if (distSq > 0) {
+      return new CollisionResult((float) (dx / dist), (float) (dy / dist), overlap);
     }
-
-    return new CollisionResult(dx, dy, overlap);
+    return new CollisionResult(1f, 0f, overlap);
   }
 
   private float[] calculatePushRatios(Entity a, Entity b) {
@@ -515,18 +524,11 @@ public class PhysicsSystem {
   }
 
   private void enforceBounds(Entity entity) {
-    Position pos = entity.getPosition();
-    // Use Collision Radius for bounds check
-    float radius = entity.getCollisionRadius();
-
-    float minX = radius;
-    float maxX = Arena.WIDTH - radius;
-    float minY = radius;
-    float maxY = Arena.HEIGHT - radius;
-
-    float x = Math.max(minX, Math.min(maxX, pos.getX()));
-    float y = Math.max(minY, Math.min(maxY, pos.getY()));
-
-    pos.set(x, y);
+    // Use Collision Radius for bounds check. Only out-of-bounds axes are modified, so the sub-unit
+    // movement carry of an in-bounds entity is preserved.
+    int radius = entity.getCollisionRadius();
+    entity
+        .getPosition()
+        .clamp(radius, Arena.WIDTH_UNITS - radius, radius, Arena.HEIGHT_UNITS - radius);
   }
 }

@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -35,13 +37,13 @@ class SnowballTest {
   private CombatSystem combatSystem;
   private PhysicsSystem physicsSystem;
 
-  // SnowballSpell stats from projectiles.json (level-1 base values)
+  // SnowballSpell stats from projectiles.json (level-1 base values), in game units
   private static final int DAMAGE = 70;
-  private static final float AOE_RADIUS = 2.5f;
-  private static final float SPEED = 800f / 60f; // Raw CSV speed / SPEED_BASE
+  private static final int AOE_RADIUS = tiles(2.5);
+  private static final float SPEED = rawSpeedToUnitsPerSecond(800f); // units per second
   private static final int CROWN_TOWER_DAMAGE_PCT = -70; // 30% effective damage on towers
   private static final float SLOW_DURATION = 3.0f;
-  private static final float PUSHBACK = 1800f / 1000f; // 1.8 tiles
+  private static final int PUSHBACK = 1800; // raw pushback, already game units (1.8 tiles)
 
   // IceWizardSlowDown slow effect applied after damage
   private static final List<EffectStats> SNOWBALL_EFFECTS =
@@ -118,7 +120,7 @@ class SnowballTest {
         .as("Enemy should be in knockback state after Snowball hit")
         .isTrue();
 
-    float yBefore = enemy.getPosition().getY();
+    int yBefore = enemy.getPosition().getY();
     physicsSystem.update(gameState.getAliveEntities(), DT);
 
     assertThat(enemy.getPosition().getY())
@@ -128,7 +130,7 @@ class SnowballTest {
 
   @Test
   void snowball_crownTowerTakesReducedDamage() {
-    Tower tower = Tower.createPrincessTower(Team.RED, 10f, 16f, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(16), 1);
     int initialHp = tower.getHealth().getMax();
     gameState.spawnEntity(tower);
     gameState.processPending();
@@ -151,9 +153,9 @@ class SnowballTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(10f, 16f))
+            .position(new Position(tiles(10), tiles(16)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(1.0f)
@@ -222,16 +224,19 @@ class SnowballTest {
 
   // -- Helper methods --
 
-  /** Spawns a position-targeted Snowball projectile with all stats matching projectiles.json. */
+  /**
+   * Spawns a position-targeted Snowball projectile (target in tiles) with all stats matching
+   * projectiles.json.
+   */
   private void spawnSnowball(Team team, float targetX, float targetY) {
     float startY = (team == Team.BLUE) ? targetY - 10f : targetY + 10f;
     Projectile snowball =
         new Projectile(
             team,
-            targetX,
-            startY,
-            targetX,
-            targetY,
+            tiles(targetX),
+            tiles(startY),
+            tiles(targetX),
+            tiles(targetY),
             DAMAGE,
             AOE_RADIUS,
             SPEED,
@@ -252,18 +257,19 @@ class SnowballTest {
     }
   }
 
+  /** Creates a troop at tile coordinates. */
   private Troop createTroop(String name, Team team, float x, float y, int hp) {
     return Troop.builder()
         .name(name)
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(0)
-                .range(1.0f)
-                .sightRange(5.0f)
+                .range(tiles(1.0))
+                .sightRange(tiles(5.0))
                 .attackCooldown(1.0f)
                 .targetType(TargetType.GROUND)
                 .build())

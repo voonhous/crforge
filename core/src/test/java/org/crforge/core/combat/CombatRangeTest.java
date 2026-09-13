@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.component.Combat;
@@ -36,23 +37,23 @@ class CombatRangeTest {
   @Test
   void isRangedShouldDeriveFromRange() {
     // Melee Short
-    Combat c1 = Combat.builder().range(0.8f).build();
+    Combat c1 = Combat.builder().range(tiles(0.8)).build();
     assertThat(c1.isRanged()).isFalse();
 
     // Melee Medium
-    Combat c2 = Combat.builder().range(1.2f).build();
+    Combat c2 = Combat.builder().range(tiles(1.2)).build();
     assertThat(c2.isRanged()).isFalse();
 
     // Melee Long
-    Combat c3 = Combat.builder().range(1.6f).build();
+    Combat c3 = Combat.builder().range(tiles(1.6)).build();
     assertThat(c3.isRanged()).isFalse();
 
     // Ranged (Minions)
-    Combat c4 = Combat.builder().range(2.0f).build();
+    Combat c4 = Combat.builder().range(tiles(2.0)).build();
     assertThat(c4.isRanged()).isTrue();
 
     // Ranged (Musketeer)
-    Combat c5 = Combat.builder().range(6.0f).build();
+    Combat c5 = Combat.builder().range(tiles(6.0)).build();
     assertThat(c5.isRanged()).isTrue();
   }
 
@@ -125,20 +126,21 @@ class CombatRangeTest {
     }
   }
 
+  /** Creates a zero-radius troop at tile coordinates with a range in tiles. */
   private Troop createTroop(Team team, float x, float y, float range) {
     Troop troop =
         Troop.builder()
             .name("TestTroop")
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(100))
             // Create troops with size 0 to test raw range
-            .movement(new Movement(0f, 0f, 0f, 0f, MovementType.GROUND)) // Size 0 for range testing
+            .movement(new Movement(0, 0f, 0, 0, MovementType.GROUND)) // Size 0 for range testing
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(10)
-                    .range(range)
+                    .range(tiles(range))
                     .attackCooldown(1.0f)
                     .loadTime(0f) // Instant windup for this test
                     .build())

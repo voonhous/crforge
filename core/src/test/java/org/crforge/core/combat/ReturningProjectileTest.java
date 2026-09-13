@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.arena.Arena;
@@ -44,7 +46,7 @@ class ReturningProjectileTest {
         Troop.builder()
             .name("Executioner")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1000))
             .deployTime(0f)
             .build();
@@ -54,13 +56,14 @@ class ReturningProjectileTest {
 
     // Create a piercing + returning projectile
     Projectile proj =
-        new Projectile(source, source, 100, 1.0f, 10f, java.util.Collections.emptyList());
-    proj.configurePiercing(1f, 0f, 5f, true, true);
+        new Projectile(
+            source, source, 100, tiles(1.0), tiles(10), java.util.Collections.emptyList());
+    proj.configurePiercing(1f, 0f, tiles(5), true, true);
     proj.configureReturning(source);
 
     gameState.spawnProjectile(proj);
 
-    // Travel outbound: 5 tiles at 10 tiles/sec = 0.5s
+    // Travel outbound: 5 tiles at 10 tiles/sec (10,000 game units/sec) = 0.5s
     for (int i = 0; i < 15; i++) {
       proj.update(1.0f / 30f);
     }
@@ -124,7 +127,7 @@ class ReturningProjectileTest {
         Troop.builder()
             .name("Executioner")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1000))
             .deployTime(0f)
             .build();
@@ -133,8 +136,9 @@ class ReturningProjectileTest {
     gameState.processPending();
 
     Projectile proj =
-        new Projectile(source, source, 100, 1.0f, 10f, java.util.Collections.emptyList());
-    proj.configurePiercing(1f, 0f, 5f, true, true);
+        new Projectile(
+            source, source, 100, tiles(1.0), tiles(10), java.util.Collections.emptyList());
+    proj.configurePiercing(1f, 0f, tiles(5), true, true);
     proj.configureReturning(source);
 
     // Reach outbound max range
@@ -157,7 +161,7 @@ class ReturningProjectileTest {
         Troop.builder()
             .name("Executioner")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1000))
             .deployTime(0f)
             .build();
@@ -166,8 +170,9 @@ class ReturningProjectileTest {
     gameState.processPending();
 
     Projectile proj =
-        new Projectile(source, source, 100, 1.0f, 10f, java.util.Collections.emptyList());
-    proj.configurePiercing(1f, 0f, 5f, true, true);
+        new Projectile(
+            source, source, 100, tiles(1.0), tiles(10), java.util.Collections.emptyList());
+    proj.configurePiercing(1f, 0f, tiles(5), true, true);
     proj.configureReturning(source);
 
     // Travel outbound to max range
@@ -177,12 +182,12 @@ class ReturningProjectileTest {
     assertThat(proj.isReturnPhase()).isTrue();
 
     // Move source to a new position
-    source.getPosition().set(3, 3);
+    source.getPosition().set(tiles(3), tiles(3));
 
     // Run a few return ticks -- projectile should head toward (3,3), not (5,5)
-    float prevDist = proj.getPosition().distanceTo(source.getPosition());
+    float prevDist = proj.getPosition().distance(source.getPosition());
     proj.update(1.0f / 30f);
-    float newDist = proj.getPosition().distanceTo(source.getPosition());
+    float newDist = proj.getPosition().distance(source.getPosition());
 
     assertThat(newDist)
         .as("Projectile should be getting closer to source's NEW position")
@@ -270,8 +275,8 @@ class ReturningProjectileTest {
     assertThat(executioner.getCombat().isReturningProjectileInFlight()).isTrue();
 
     // Record position before physics update
-    float startX = executioner.getPosition().getX();
-    float startY = executioner.getPosition().getY();
+    int startX = executioner.getPosition().getX();
+    int startY = executioner.getPosition().getY();
 
     // Run physics -- the troop should NOT move because it's frozen during returning flight
     PhysicsSystem physicsSystem = new PhysicsSystem(Arena.standard());
@@ -326,17 +331,17 @@ class ReturningProjectileTest {
 
   /**
    * Creates an Executioner-like troop with returning projectile stats (no pingpongMovingShooter).
-   * Executioner freezes in place while axe is in flight.
+   * Executioner freezes in place while axe is in flight. Position is in tiles.
    */
   private Troop createExecutioner(Team team, float x, float y) {
     ProjectileStats axeProjectile =
         ProjectileStats.builder()
             .name("AxeManProjectile")
             .damage(100)
-            .speed(550f / 60f)
-            .radius(1.0f)
+            .speed(rawSpeedToUnitsPerSecond(550f))
+            .radius(tiles(1.0))
             .homing(false)
-            .projectileRange(7.5f)
+            .projectileRange(tiles(7.5))
             .returning(true)
             .aoeToAir(true)
             .aoeToGround(true)
@@ -345,15 +350,15 @@ class ReturningProjectileTest {
     return Troop.builder()
         .name("Executioner")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(1.0f, 4.0f, 0.6f, 0.6f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 4.0f, tiles(0.6), tiles(0.6), MovementType.GROUND))
         .deployTime(0f)
         .combat(
             Combat.builder()
                 .damage(100)
-                .range(4.5f)
-                .sightRange(5.5f)
+                .range(tiles(4.5))
+                .sightRange(tiles(5.5))
                 .attackCooldown(0.9f)
                 .loadTime(0.4f)
                 .attackState(AttackStateMachine.withLoad(0.4f))
@@ -364,17 +369,17 @@ class ReturningProjectileTest {
 
   /**
    * Creates a pingpong moving shooter with pingpongMovingShooter on ProjectileStats. This
-   * represents units like Ram Rider that keep moving while bola is in flight.
+   * represents units like Ram Rider that keep moving while bola is in flight. Position is in tiles.
    */
   private Troop createPingpongShooter(Team team, float x, float y) {
     ProjectileStats pingpongProjectile =
         ProjectileStats.builder()
             .name("PingpongProjectile")
             .damage(100)
-            .speed(550f / 60f)
-            .radius(1.0f)
+            .speed(rawSpeedToUnitsPerSecond(550f))
+            .radius(tiles(1.0))
             .homing(false)
-            .projectileRange(7.5f)
+            .projectileRange(tiles(7.5))
             .returning(true)
             .pingpongMovingShooter(0.2f)
             .aoeToAir(true)
@@ -384,15 +389,15 @@ class ReturningProjectileTest {
     return Troop.builder()
         .name("PingpongShooter")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(1.0f, 4.0f, 0.6f, 0.6f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 4.0f, tiles(0.6), tiles(0.6), MovementType.GROUND))
         .deployTime(0f)
         .combat(
             Combat.builder()
                 .damage(100)
-                .range(4.5f)
-                .sightRange(5.5f)
+                .range(tiles(4.5))
+                .sightRange(tiles(5.5))
                 .attackCooldown(0.9f)
                 .loadTime(0.4f)
                 .attackState(AttackStateMachine.withLoad(0.4f))
@@ -405,11 +410,16 @@ class ReturningProjectileTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
         .deployTime(0f)
         .combat(
-            Combat.builder().damage(0).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(0)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .build();
   }
 }

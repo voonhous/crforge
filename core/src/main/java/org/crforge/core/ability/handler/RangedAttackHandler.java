@@ -8,6 +8,7 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Updates the independent ranged attack state machine. The ranged attack operates completely
@@ -93,7 +94,7 @@ public class RangedAttackHandler implements AbilityHandler {
    */
   private Entity findRangedAttackTarget(Troop source, RangedAttackAbility data) {
     Entity best = null;
-    float bestDistSq = Float.MAX_VALUE;
+    long bestDistSq = Long.MAX_VALUE;
 
     for (Entity entity : gameState.getAliveEntities()) {
       if (entity.getTeam() == source.getTeam()) {
@@ -111,16 +112,15 @@ public class RangedAttackHandler implements AbilityHandler {
         continue;
       }
 
-      // Edge-to-edge distance (include collision radii)
-      float centerDist = source.getPosition().distanceTo(entity.getPosition());
-      float edgeDist = centerDist - source.getCollisionRadius() - entity.getCollisionRadius();
-
-      // Must be within [minimumRange, range]
-      if (edgeDist < data.minimumRange() || edgeDist > data.range()) {
+      // Edge-to-edge window [minimumRange, range], compared as exact center-to-center squared
+      // distances (collision radii added to both bounds)
+      long distSq = source.getPosition().distanceSquaredTo(entity.getPosition());
+      long radii = (long) source.getCollisionRadius() + entity.getCollisionRadius();
+      if (GameUnits.insideRadius(distSq, Math.max(0L, data.minimumRange() + radii))
+          || !GameUnits.withinRadius(distSq, data.range() + radii)) {
         continue;
       }
 
-      float distSq = source.getPosition().distanceToSquared(entity.getPosition());
       if (distSq < bestDistSq) {
         bestDistSq = distSq;
         best = entity;

@@ -2,6 +2,7 @@ package org.crforge.bridge.observation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Offset.offset;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.bridge.dto.RewardDTO;
@@ -207,15 +208,21 @@ class RewardCalculatorTest {
     assertThat(totalEpisode).isLessThan(0f);
   }
 
+  /** Creates a test troop at a tile-space position (converted to game units). */
   private Troop createTestTroop(Team team, float x, float y, int hp) {
     return Troop.builder()
         .name("TestTroop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
         .deployTime(0f)
         .combat(
-            Combat.builder().damage(10).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(10)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .build();
   }
 }

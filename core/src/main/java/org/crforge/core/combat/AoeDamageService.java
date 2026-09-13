@@ -11,6 +11,7 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Handles AOE (area-of-effect) damage application, damage dealing, and status effect application.
@@ -85,24 +86,25 @@ public class AoeDamageService {
    */
   public void applySpellDamage(
       Team sourceTeam,
-      float centerX,
-      float centerY,
+      int centerX,
+      int centerY,
       int damage,
-      float radius,
+      int radius,
       List<EffectStats> effects) {
     applySpellDamage(sourceTeam, centerX, centerY, damage, radius, effects, 0);
   }
 
   /**
    * Apply spell damage to all targetable enemies within radius of the given center point. Accounts
-   * for entity size in the radius check. Applies crown tower damage reduction to Towers.
+   * for entity size in the radius check. Applies crown tower damage reduction to Towers. The center
+   * and radius are game units.
    */
   public void applySpellDamage(
       Team sourceTeam,
-      float centerX,
-      float centerY,
+      int centerX,
+      int centerY,
       int damage,
-      float radius,
+      int radius,
       List<EffectStats> effects,
       int crownTowerDamagePercent) {
     if (radius > 0) {
@@ -119,11 +121,10 @@ public class AoeDamageService {
         continue;
       }
 
-      float distanceSq = entity.getPosition().distanceToSquared(centerX, centerY);
-
-      // Use Collision Radius for spell AOE check (squared distance avoids sqrt)
-      float effectiveRadius = radius + entity.getCollisionRadius();
-      if (distanceSq <= effectiveRadius * effectiveRadius) {
+      long distanceSq = entity.getPosition().distanceSquaredTo(centerX, centerY);
+      // Use Collision Radius for spell AOE check (exact integer squared comparison)
+      long effectiveRadius = (long) radius + entity.getCollisionRadius();
+      if (GameUnits.withinRadius(distanceSq, effectiveRadius)) {
         int effectiveDamage =
             DamageUtil.adjustForCrownTower(damage, entity, crownTowerDamagePercent);
         // Apply pre-damage effects (e.g. Curse)

@@ -112,7 +112,14 @@ Units with `health=0` in stats are treated as bombs:
 - N == 1: offset (0, 0)
 - N > 1: evenly spaced on circle with `spawnRadius`; odd N starts at angle PI/2 (top), even N at
   angle 0 (right)
-- `TILE_SCALE = 355.0f` converts raw CSV summonRadius to tile units
+- Offsets are returned as `FormationLayout.Offset` in integer game units (nearest unit, which
+  reproduces the old three-decimal tile rounding)
+- Explicit `formationOffsets` from cards.json (tiles) are converted to game units once, in
+  `CardLoader`
+- `calculateDeployOffset()` is the legacy fallback for cards without explicit offsets: radius =
+  raw `summonRadius / LEGACY_SUMMON_RADIUS_DIVISOR` (355) tiles. 355 is an empirical legacy
+  divisor, not the 1,000 units per tile coordinate scale, and is not known to match the native
+  formation algorithm
 
 **Key files:**
 

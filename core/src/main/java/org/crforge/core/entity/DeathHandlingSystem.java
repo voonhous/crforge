@@ -31,7 +31,7 @@ import org.crforge.core.match.Match;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
-import org.crforge.core.util.Vector2;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Handles all death-related mechanics: death damage, knockback, death spawns (immediate and
@@ -101,10 +101,11 @@ public class DeathHandlingSystem {
       for (DeathSpawnEntry entry : spawner.getDeathSpawns()) {
         for (int i = 0; i < entry.count(); i++) {
           // Use explicit relative offsets when specified, otherwise FormationLayout
-          Vector2 offset;
+          FormationLayout.Offset offset;
           if (entry.relativeX() != null) {
             offset =
-                new Vector2(entry.relativeX(), entry.relativeY() != null ? entry.relativeY() : 0f);
+                new FormationLayout.Offset(
+                    entry.relativeX(), entry.relativeY() != null ? entry.relativeY() : 0);
           } else {
             offset =
                 FormationLayout.calculateOffset(
@@ -117,8 +118,8 @@ public class DeathHandlingSystem {
                 new PendingDeathSpawn(
                     entity.getPosition().getX(),
                     entity.getPosition().getY(),
-                    offset.getX(),
-                    offset.getY(),
+                    offset.x(),
+                    offset.y(),
                     entity.getTeam(),
                     entry.stats(),
                     spawner.getLevel(),
@@ -161,7 +162,7 @@ public class DeathHandlingSystem {
       // 6. Fallback: legacy death spawn via deathSpawnCount + spawnStats
       if (spawner.getDeathSpawns().isEmpty() && spawner.getDeathSpawnCount() > 0) {
         for (int i = 0; i < spawner.getDeathSpawnCount(); i++) {
-          Vector2 offset =
+          FormationLayout.Offset offset =
               FormationLayout.calculateOffset(
                   i,
                   spawner.getDeathSpawnCount(),
@@ -201,7 +202,7 @@ public class DeathHandlingSystem {
       if (pending.timer <= 0) {
         spawnFactory.doSpawn(
             new Position(pending.x, pending.y),
-            new Vector2(pending.offsetX, pending.offsetY),
+            new FormationLayout.Offset(pending.offsetX, pending.offsetY),
             pending.team,
             pending.stats,
             pending.level,
@@ -218,7 +219,8 @@ public class DeathHandlingSystem {
     }
     // Effect spawns (like Cursed Hogs) appear at the victim's location with no offset.
     // Uses level 1 / Common defaults -- Curse spawns need complex mechanics for proper scaling.
-    spawnFactory.doSpawn(victim.getPosition(), new Vector2(0, 0), ownerTeam, stats, 1, 0f, false);
+    spawnFactory.doSpawn(
+        victim.getPosition(), FormationLayout.Offset.ZERO, ownerTeam, stats, 1, 0f, false);
   }
 
   /**
@@ -272,10 +274,10 @@ public class DeathHandlingSystem {
    * ignorePushback are immune.
    */
   private void applyDeathKnockback(Entity source, SpawnerComponent spawner) {
-    float centerX = source.getPosition().getX();
-    float centerY = source.getPosition().getY();
-    float radius = spawner.getDeathDamageRadius();
-    float pushback = spawner.getDeathPushback();
+    int centerX = source.getPosition().getX();
+    int centerY = source.getPosition().getY();
+    int radius = spawner.getDeathDamageRadius();
+    int pushback = spawner.getDeathPushback();
     Team enemyTeam = source.getTeam().opposite();
 
     for (Entity entity : gameState.getAliveEntities()) {
@@ -291,18 +293,19 @@ public class DeathHandlingSystem {
         continue;
       }
 
-      float distSq = entity.getPosition().distanceToSquared(centerX, centerY);
-      float effectiveRadius = radius + entity.getCollisionRadius();
-      if (distSq > effectiveRadius * effectiveRadius) {
+      long distSq = entity.getPosition().distanceSquaredTo(centerX, centerY);
+      long effectiveRadius = (long) radius + entity.getCollisionRadius();
+      if (!GameUnits.withinRadius(distSq, effectiveRadius)) {
         continue;
       }
 
       // Direction from death center to target
       float dx = entity.getPosition().getX() - centerX;
       float dy = entity.getPosition().getY() - centerY;
-      float dist = (float) Math.sqrt(dx * dx + dy * dy);
-      float dirX = dist > 0.001f ? dx / dist : 0f;
-      float dirY = dist > 0.001f ? dy / dist : 1f;
+      float dist = entity.getPosition().distance(centerX, centerY);
+      // Coincident with the death center: push along +Y (integer positions: dist is 0 or >= 1)
+      float dirX = dist > 0f ? dx / dist : 0f;
+      float dirY = dist > 0f ? dy / dist : 1f;
 
       movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
     }
@@ -314,8 +317,8 @@ public class DeathHandlingSystem {
    */
   private void fireDeathProjectile(Entity entity, SpawnerComponent spawner) {
     ProjectileStats projStats = spawner.getDeathSpawnProjectile();
-    float x = entity.getPosition().getX();
-    float y = entity.getPosition().getY();
+    int x = entity.getPosition().getX();
+    int y = entity.getPosition().getY();
 
     // Damage is already level-scaled when stored in SpawnerComponent (by doSpawn/DeploymentSystem)
     int damage = projStats.getDamage();
@@ -350,10 +353,11 @@ public class DeathHandlingSystem {
 
   /** Pending delayed death spawn entry. Stores all data needed to call doSpawn() after a delay. */
   static class PendingDeathSpawn {
-    final float x;
-    final float y;
-    final float offsetX;
-    final float offsetY;
+    // Death position and spawn offset in game units
+    final int x;
+    final int y;
+    final int offsetX;
+    final int offsetY;
     final Team team;
     final TroopStats stats;
     final int level;
@@ -362,10 +366,10 @@ public class DeathHandlingSystem {
     float timer;
 
     PendingDeathSpawn(
-        float x,
-        float y,
-        float offsetX,
-        float offsetY,
+        int x,
+        int y,
+        int offsetX,
+        int offsetY,
         Team team,
         TroopStats stats,
         int level,

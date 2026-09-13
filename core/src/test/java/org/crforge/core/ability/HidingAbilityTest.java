@@ -1,6 +1,7 @@
 package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
@@ -49,8 +50,8 @@ class HidingAbilityTest {
         .combat(
             Combat.builder()
                 .damage(100)
-                .range(5.5f)
-                .sightRange(5.5f)
+                .range(tiles(5.5f))
+                .sightRange(tiles(5.5f))
                 .attackCooldown(1.1f)
                 .loadTime(0.7f)
                 .build())
@@ -282,13 +283,13 @@ class HidingAbilityTest {
         AreaEffect.builder()
             .name("Earthquake")
             .team(Team.RED)
-            .position(new Position(9, 10))
+            .position(new Position(tiles(9), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .stats(
                 AreaEffectStats.builder()
                     .name("Earthquake")
-                    .radius(3.5f)
+                    .radius(tiles(3.5f))
                     .damage(50)
                     .buffApplication(BuffApplication.of("Earthquake", 1.0f))
                     .hitSpeed(0.0f) // One-shot
@@ -335,13 +336,13 @@ class HidingAbilityTest {
         AreaEffect.builder()
             .name("Freeze")
             .team(Team.RED)
-            .position(new Position(9, 10))
+            .position(new Position(tiles(9), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .stats(
                 AreaEffectStats.builder()
                     .name("Freeze")
-                    .radius(3.0f)
+                    .radius(tiles(3.0f))
                     .damage(0)
                     .buffApplication(BuffApplication.of("Freeze", 4.0f))
                     .hitSpeed(0.0f) // One-shot
@@ -386,13 +387,13 @@ class HidingAbilityTest {
         AreaEffect.builder()
             .name("Zap")
             .team(Team.RED)
-            .position(new Position(9, 10))
+            .position(new Position(tiles(9), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .stats(
                 AreaEffectStats.builder()
                     .name("Zap")
-                    .radius(2.5f)
+                    .radius(tiles(2.5f))
                     .damage(75)
                     .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
                     .hitSpeed(0.0f)
@@ -438,13 +439,13 @@ class HidingAbilityTest {
         AreaEffect.builder()
             .name("Freeze")
             .team(Team.RED)
-            .position(new Position(9, 10))
+            .position(new Position(tiles(9), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0, 0, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .stats(
                 AreaEffectStats.builder()
                     .name("Freeze")
-                    .radius(3.0f)
+                    .radius(tiles(3.0f))
                     .damage(0)
                     .buffApplication(BuffApplication.of("Freeze", 1.0f))
                     .hitSpeed(0.0f)
@@ -527,7 +528,7 @@ class HidingAbilityTest {
     sim.gameState().processPending();
     sim.troop("Ram").setDeployTimer(0);
 
-    Tower farTower = Tower.createPrincessTower(Team.BLUE, 9, 3, 1);
+    Tower farTower = Tower.createPrincessTower(Team.BLUE, tiles(9), tiles(3), 1);
     farTower.onSpawn();
     sim.gameState().spawnEntity(farTower);
     sim.gameState().processPending();

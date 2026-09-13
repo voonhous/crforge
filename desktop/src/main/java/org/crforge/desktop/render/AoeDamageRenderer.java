@@ -39,9 +39,9 @@ public class AoeDamageRenderer {
 
     // Consume new events
     for (AoeDamageEvent event : state.getAoeDamageEvents()) {
-      float worldX = event.centerX() * TILE_PIXELS;
-      float worldY = event.centerY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float worldRadius = event.radius() * TILE_PIXELS;
+      float worldX = unitsToPixels(event.centerX());
+      float worldY = unitsToPixels(event.centerY()) + BOTTOM_UI_HEIGHT;
+      float worldRadius = unitsToPixels(event.radius());
       activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, event.sourceTeam()));
     }
 
