@@ -17,6 +17,7 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Hand;
 import org.crforge.core.player.Player;
+import org.crforge.core.util.GameUnits;
 import org.crforge.data.card.CardRegistry;
 
 /** Builds observation DTOs from the current game state for RL agents. */
@@ -67,8 +68,9 @@ public class ObservationBuilder {
               tower.isCrownTower() ? "crown" : "princess",
               tower.getHealth().getCurrent(),
               tower.getHealth().getMax(),
-              tower.getPosition().getX(),
-              tower.getPosition().getY(),
+              // External observation schema stays in tiles
+              GameUnits.toTiles(tower.getPosition().getX()),
+              GameUnits.toTiles(tower.getPosition().getY()),
               tower.isAlive()));
     }
 
@@ -148,8 +150,9 @@ public class ObservationBuilder {
         entity.getTeam().name(),
         entity.getEntityType().name(),
         entity.getMovementType().name(),
-        entity.getPosition().getX(),
-        entity.getPosition().getY(),
+        // External observation schema stays in tiles
+        GameUnits.toTiles(entity.getPosition().getX()),
+        GameUnits.toTiles(entity.getPosition().getY()),
         entity.getHealth().getCurrent(),
         entity.getHealth().getMax(),
         entity.getHealth().getShield(),

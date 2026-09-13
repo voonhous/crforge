@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
 import org.crforge.core.component.AttackStateMachine;
@@ -32,7 +33,7 @@ class WallBreakerTest {
   private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final int WALL_BREAKER_DAMAGE = 137;
-  private static final float AOE_RADIUS = 1.5f;
+  private static final int AOE_RADIUS = tiles(1.5);
 
   @BeforeEach
   void setUp() {
@@ -178,8 +179,8 @@ class WallBreakerTest {
     Combat combat =
         Combat.builder()
             .damage(WALL_BREAKER_DAMAGE)
-            .range(0.5f)
-            .sightRange(5.5f)
+            .range(tiles(0.5))
+            .sightRange(tiles(5.5))
             .attackCooldown(1.2f)
             .loadTime(1.0f)
             .attackState(AttackStateMachine.withLoad(1.0f)) // Preloaded
@@ -192,9 +193,9 @@ class WallBreakerTest {
     return Troop.builder()
         .name("WallBreaker")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(129))
-        .movement(new Movement(2.0f, 4.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(2.0), 4.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .combat(combat)
         .build();
@@ -204,9 +205,9 @@ class WallBreakerTest {
     return Building.builder()
         .name("Tower")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+        .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
         .deployTime(0f)
         .deployTimer(0f)
         .build();
@@ -216,9 +217,9 @@ class WallBreakerTest {
     return Troop.builder()
         .name("Enemy")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(1.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .build();
   }

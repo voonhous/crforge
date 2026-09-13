@@ -170,7 +170,9 @@ Not part of the entity list. Managed separately by `ProjectileSystem` via `GameS
 - **Scatter** (Hunter): multiple pellets at 10-degree spread, each piercing with
   `checkCollisions=true` (stops on first hit)
 - `delayFrames` -- volley delay for multi-projectile spells
-- `DEFAULT_SPEED = 15f` tiles/second
+- `DEFAULT_SPEED = 15000f` game units/second (15 tiles/second)
+- Per-tick arrival checks allow `Position.MAX_ROUNDING_DISTANCE` (sqrt(0.5) units) so whole-unit
+  position rounding does not delay a hit by a tick
 - Hit detection: circle-based edge-to-edge collision (includes `collisionRadius`)
 
 Advanced features:

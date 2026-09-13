@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,15 +47,16 @@ class LogSpellTest {
   private DeploymentSystem deploymentSystem;
   private PhysicsSystem physicsSystem;
 
-  // Log projectile stats (matching real data at level 1)
+  // Log projectile stats (matching real data at level 1). Spatial values are game units; speeds
+  // are game units per second.
   private static final int LOG_PROJECTILE_DAMAGE = 0; // Stage 1 does no damage
-  private static final float LOG_PROJECTILE_SPEED = 10f / 60f; // Scaled from raw speed
+  private static final float LOG_PROJECTILE_SPEED = rawSpeedToUnitsPerSecond(10f);
   private static final int ROLLING_BASE_DAMAGE = 240; // LogProjectileRolling base damage
-  private static final float ROLLING_SPEED = 480f / 60f; // 8.0 tiles/sec
-  private static final float ROLLING_RANGE = 11.5f; // projectileRange
-  private static final float ROLLING_RADIUS = 1.0f; // projectileRadius for hit detection
-  private static final float ROLLING_PUSHBACK = 1.5f; // pushback / 1000
-  private static final float ROLLING_MIN_DISTANCE = 2.0f; // minDistance
+  private static final float ROLLING_SPEED = rawSpeedToUnitsPerSecond(480f); // 8.0 tiles/sec
+  private static final int ROLLING_RANGE = tiles(11.5); // projectileRange
+  private static final int ROLLING_RADIUS = tiles(1.0); // projectileRadius for hit detection
+  private static final int ROLLING_PUSHBACK = tiles(1.5); // raw pushback 1500
+  private static final int ROLLING_MIN_DISTANCE = tiles(2.0); // minDistance
   private static final int ROLLING_CTDP = -85; // crownTowerDamagePercent
 
   @BeforeEach
@@ -73,18 +76,19 @@ class LogSpellTest {
 
   @Test
   void spellAsDeploy_projectileStartsAtDeployLocation() {
-    // Deploy Log at (9, 14) for blue team
-    float deployX = 9f;
-    float deployY = 14f;
+    // Deploy Log at (9, 14) tiles for blue team
+    int deployX = tiles(9);
+    int deployY = tiles(14);
 
     Card logCard = createLogCard();
     ProjectileStats proj = logCard.getProjectile();
 
-    // Simulate what DeploymentSystem.castSpell does for spellAsDeploy
-    float startX = deployX;
-    float startY = deployY;
-    float forward = proj.getMinDistance() > 0 ? proj.getMinDistance() / 1000f : 3.0f;
-    float destY = startY + forward; // Blue team goes forward (positive Y)
+    // Simulate what SpellFactory.castSpell does for spellAsDeploy (including its legacy
+    // minDistance / 1000 forward travel)
+    int startX = deployX;
+    int startY = deployY;
+    int forward = proj.getMinDistance() > 0 ? Math.round(proj.getMinDistance() / 1000f) : tiles(3);
+    int destY = startY + forward; // Blue team goes forward (positive Y)
 
     Projectile p =
         new Projectile(
@@ -118,7 +122,15 @@ class LogSpellTest {
     // Fire stage 1 from (9, 14) to (9, 14.5) -- short distance
     Projectile stage1 =
         new Projectile(
-            Team.BLUE, 9f, 14f, 9f, 14.5f, 0, 0f, LOG_PROJECTILE_SPEED, Collections.emptyList());
+            Team.BLUE,
+            tiles(9),
+            tiles(14),
+            tiles(9),
+            tiles(14.5),
+            0,
+            0,
+            LOG_PROJECTILE_SPEED,
+            Collections.emptyList());
     stage1.setSpawnProjectile(rollingStats);
     stage1.setSpellLevel(1);
 
@@ -237,7 +249,7 @@ class LogSpellTest {
     assertThat(enemy.getMovement().isKnockedBack()).isTrue();
 
     // Record Y before physics tick
-    float yBefore = enemy.getPosition().getY();
+    int yBefore = enemy.getPosition().getY();
     physicsSystem.update(gameState.getAliveEntities(), dt);
 
     // Knockback should be in the projectile's travel direction (positive Y = upward)
@@ -251,14 +263,14 @@ class LogSpellTest {
         Tower.builder()
             .name("PrincessTower")
             .team(Team.RED)
-            .position(new Position(9f, 17f))
+            .position(new Position(tiles(9), tiles(17)))
             .health(new Health(3000))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(7.5f)
-                    .sightRange(7.5f)
+                    .range(tiles(7.5))
+                    .sightRange(tiles(7.5))
                     .attackCooldown(0.8f)
                     .build())
             .build();
@@ -323,7 +335,7 @@ class LogSpellTest {
     assertThat(attacker.getCombat().isAttacking()).isTrue();
 
     // Apply knockback to attacker
-    attacker.getMovement().startKnockback(0f, 1f, 1.0f, 0.5f, 1.0f);
+    attacker.getMovement().startKnockback(0f, 1f, tiles(1.0), 0.5f, 1.0f);
 
     // Process combat -- knockback should reset the attack state
     combatSystem.update(1.0f / GameEngine.TICKS_PER_SECOND);
@@ -339,7 +351,7 @@ class LogSpellTest {
     match.addPlayer(bluePlayer);
 
     // Blue zone placement (y=10 is well within blue's own side)
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 9f, 10f);
     assertThat(match.validateAction(bluePlayer, action)).isTrue();
   }
 
@@ -350,7 +362,7 @@ class LogSpellTest {
     match.addPlayer(bluePlayer);
 
     // Red zone placement (y=25 is enemy territory for blue)
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 9f, 25f);
     assertThat(match.validateAction(bluePlayer, action)).isFalse();
   }
 
@@ -362,7 +374,7 @@ class LogSpellTest {
 
     // Bridge location
     PlayerActionDTO action =
-        PlayerActionDTO.play(0, Arena.LEFT_BRIDGE_X + 1.0f, Arena.RIVER_Y - 0.5f);
+        PlayerActionDTO.playAtTiles(0, Arena.LEFT_BRIDGE_X + 1.0f, Arena.RIVER_Y - 0.5f);
     assertThat(match.validateAction(bluePlayer, action)).isFalse();
   }
 
@@ -388,7 +400,7 @@ class LogSpellTest {
             .damage(0)
             .speed(LOG_PROJECTILE_SPEED)
             .spawnProjectile(rollingStats)
-            .minDistance(ROLLING_MIN_DISTANCE * 1000f) // raw CSV units
+            .minDistance(ROLLING_MIN_DISTANCE) // game units, as loaded from data
             .build();
 
     return Card.builder()
@@ -408,7 +420,7 @@ class LogSpellTest {
         .name("LogProjectileRolling")
         .damage(ROLLING_BASE_DAMAGE)
         .speed(ROLLING_SPEED)
-        .radius(0f) // No AOE splash
+        .radius(0) // No AOE splash
         .projectileRadius(ROLLING_RADIUS)
         .projectileRange(ROLLING_RANGE)
         .aoeToGround(true)
@@ -422,18 +434,21 @@ class LogSpellTest {
 
   /**
    * Creates a rolling piercing projectile traveling in the given direction. Simulates the
-   * LogProjectileRolling sub-projectile after stage 1 impact.
+   * LogProjectileRolling sub-projectile after stage 1 impact. Start position is in tiles; the
+   * direction is a unit vector.
    */
   private Projectile createRollingProjectile(
       Team team, float startX, float startY, float dirX, float dirY) {
-    float targetX = startX + dirX * ROLLING_RANGE;
-    float targetY = startY + dirY * ROLLING_RANGE;
+    int startXUnits = tiles(startX);
+    int startYUnits = tiles(startY);
+    int targetX = startXUnits + Math.round(dirX * ROLLING_RANGE);
+    int targetY = startYUnits + Math.round(dirY * ROLLING_RANGE);
 
     Projectile proj =
         new Projectile(
             team,
-            startX,
-            startY,
+            startXUnits,
+            startYUnits,
             targetX,
             targetY,
             ROLLING_BASE_DAMAGE,
@@ -454,15 +469,21 @@ class LogSpellTest {
     return createTroop(team, x, y, MovementType.GROUND);
   }
 
+  /** Creates a troop at tile coordinates. */
   private Troop createTroop(Team team, float x, float y, MovementType movementType) {
     return Troop.builder()
         .name("TestTroop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
-        .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, movementType))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), movementType))
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

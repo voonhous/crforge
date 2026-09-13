@@ -1,6 +1,8 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
+import static org.crforge.core.util.GameUnits.toTiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +62,7 @@ class GoblinBarrelTest {
   @Test
   void goblinBarrel_shouldCreateProjectile() {
     // Deploy Goblin Barrel at target location
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(25));
     engine.queueAction(bluePlayer, action);
 
     // Tick past the 1s sync delay + 1 tick to process
@@ -80,7 +82,7 @@ class GoblinBarrelTest {
 
   @Test
   void goblinBarrel_shouldSpawnThreeGoblinsOnImpact() {
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(25));
     engine.queueAction(bluePlayer, action);
 
     // Projectile flies from crown tower (9,3) to target (9,25) = 22 tiles
@@ -97,7 +99,7 @@ class GoblinBarrelTest {
 
   @Test
   void goblinBarrel_goblinsHaveDeployTime() {
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(25));
     engine.queueAction(bluePlayer, action);
 
     // Run enough for impact but not enough for goblins to finish deploying
@@ -119,7 +121,7 @@ class GoblinBarrelTest {
 
   @Test
   void goblinBarrel_goblinsSpawnAtDifferentPositions() {
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(25));
     engine.queueAction(bluePlayer, action);
 
     engine.runSeconds(6f);
@@ -132,8 +134,8 @@ class GoblinBarrelTest {
     assertThat(goblins).hasSize(3);
 
     // Not all goblins should be at the exact same position (formation spread)
-    float firstX = goblins.get(0).getPosition().getX();
-    float firstY = goblins.get(0).getPosition().getY();
+    int firstX = goblins.get(0).getPosition().getX();
+    int firstY = goblins.get(0).getPosition().getY();
     boolean allSamePosition =
         goblins.stream()
             .allMatch(g -> g.getPosition().getX() == firstX && g.getPosition().getY() == firstY);
@@ -154,7 +156,7 @@ class GoblinBarrelTest {
   @Test
   void goblinBarrel_goblinsAttackAfterDeploy() {
     // Place barrel directly on a tower to test attack after deploy
-    PlayerActionDTO action = PlayerActionDTO.play(0, 14.5f, 28f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(14.5), tiles(28));
     engine.queueAction(bluePlayer, action);
 
     // Run enough for sync + travel + deploy (1.1s) + attack cooldown
@@ -174,7 +176,7 @@ class GoblinBarrelTest {
   @Test
   void goblinBarrel_goblinsSpawnWithTightFormation() {
     // Deploy barrel in open space far from any buildings
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 16f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(16));
     engine.queueAction(bluePlayer, action);
 
     // Projectile flies from crown tower (9,3) to (9,16) = 13 tiles
@@ -198,12 +200,12 @@ class GoblinBarrelTest {
     float targetX = 9f;
     float targetY = 16f;
     for (Troop goblin : goblins) {
-      float dx = goblin.getPosition().getX() - targetX;
-      float dy = goblin.getPosition().getY() - targetY;
+      float dx = toTiles(goblin.getPosition().getX()) - targetX;
+      float dy = toTiles(goblin.getPosition().getY()) - targetY;
       float dist = (float) Math.sqrt(dx * dx + dy * dy);
       assertThat(dist)
           .as(
-              "Goblin at (%.2f, %.2f) should be within tight formation radius of impact point",
+              "Goblin at (%d, %d) should be within tight formation radius of impact point",
               goblin.getPosition().getX(), goblin.getPosition().getY())
           .isLessThan(1.0f);
     }
@@ -214,7 +216,7 @@ class GoblinBarrelTest {
     // Deploy barrel directly on red right princess tower (14.5, 25.5)
     float towerX = 14.5f;
     float towerY = 25.5f;
-    PlayerActionDTO action = PlayerActionDTO.play(0, towerX, towerY);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, towerX, towerY);
     engine.queueAction(bluePlayer, action);
 
     // Projectile flies from crown tower (9,3) to (14.5,25.5) = ~23.2 tiles
@@ -237,8 +239,8 @@ class GoblinBarrelTest {
     float[] distances = new float[3];
     float[] angles = new float[3];
     for (int i = 0; i < 3; i++) {
-      float dx = goblins.get(i).getPosition().getX() - towerX;
-      float dy = goblins.get(i).getPosition().getY() - towerY;
+      float dx = toTiles(goblins.get(i).getPosition().getX()) - towerX;
+      float dy = toTiles(goblins.get(i).getPosition().getY()) - towerY;
       distances[i] = (float) Math.sqrt(dx * dx + dy * dy);
       angles[i] = (float) Math.toDegrees(Math.atan2(dy, dx));
     }
@@ -270,8 +272,8 @@ class GoblinBarrelTest {
 
     // First goblin (index 0) should be near 90 degrees (+Y direction)
     // FormationLayout with odd count starts at pi/2 (90 degrees)
-    float firstGoblinDx = goblins.get(0).getPosition().getX() - towerX;
-    float firstGoblinDy = goblins.get(0).getPosition().getY() - towerY;
+    float firstGoblinDx = toTiles(goblins.get(0).getPosition().getX()) - towerX;
+    float firstGoblinDy = toTiles(goblins.get(0).getPosition().getY()) - towerY;
     float firstAngle = (float) Math.toDegrees(Math.atan2(firstGoblinDy, firstGoblinDx));
     assertThat(firstAngle)
         .as("First goblin should be near 90 degrees (+Y from tower center)")
@@ -284,7 +286,7 @@ class GoblinBarrelTest {
     float towerX = 14.5f;
     float towerY = 25.5f;
     float barrelX = towerX + 1.0f; // offset to the right
-    PlayerActionDTO action = PlayerActionDTO.play(0, barrelX, towerY);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, barrelX, towerY);
     engine.queueAction(bluePlayer, action);
 
     // Projectile flies from crown tower (9,3) to (15.5,25.5) = ~23.4 tiles
@@ -309,9 +311,9 @@ class GoblinBarrelTest {
     for (Troop goblin : goblins) {
       assertThat(goblin.getPosition().getX())
           .as(
-              "Goblin at (%.2f, %.2f) should be to the right of tower center (%.2f)",
+              "Goblin at (%d, %d) should be to the right of tower center (%.2f tiles)",
               goblin.getPosition().getX(), goblin.getPosition().getY(), towerX)
-          .isGreaterThan(towerX);
+          .isGreaterThan(tiles(towerX));
     }
   }
 
@@ -336,7 +338,7 @@ class GoblinBarrelTest {
     leveledEngine.initMatch();
     leveledPlayer.getElixir().update(100f);
 
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(25));
     leveledEngine.queueAction(leveledPlayer, action);
     leveledEngine.runSeconds(6f);
 

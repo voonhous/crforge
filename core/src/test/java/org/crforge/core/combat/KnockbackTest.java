@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Collections;
 import org.crforge.core.ability.AbilityComponent;
@@ -57,22 +58,22 @@ class KnockbackTest {
     enemy1.setDeployTimer(0);
     enemy2.setDeployTimer(0);
 
-    float impactX = 10f;
-    float impactY = 17f;
+    int impactX = tiles(10);
+    int impactY = tiles(17);
 
     // Create a position-targeted AOE projectile with pushback (like Fireball)
     Projectile fireball =
         new Projectile(
             Team.BLUE,
             impactX,
-            impactY - 10f,
+            impactY - tiles(10),
             impactX,
             impactY,
             100,
-            2.5f,
-            10f,
+            tiles(2.5),
+            tiles(10),
             Collections.emptyList());
-    fireball.setPushback(1.0f); // 1 tile knockback
+    fireball.setPushback(tiles(1)); // 1 tile knockback
 
     // Advance projectile to hit
     gameState.spawnProjectile(fireball);
@@ -85,8 +86,8 @@ class KnockbackTest {
     assertThat(enemy2.getMovement().isKnockedBack()).isTrue();
 
     // Record positions before physics tick
-    float enemy1YBefore = enemy1.getPosition().getY();
-    float enemy2YBefore = enemy2.getPosition().getY();
+    int enemy1YBefore = enemy1.getPosition().getY();
+    int enemy2YBefore = enemy2.getPosition().getY();
 
     // Tick physics to apply knockback displacement
     physicsSystem.update(gameState.getAliveEntities(), 1.0f / 30f);
@@ -106,21 +107,21 @@ class KnockbackTest {
     gameState.processPending();
     immune.setDeployTimer(0);
 
-    float impactX = 10f;
-    float impactY = 17f;
+    int impactX = tiles(10);
+    int impactY = tiles(17);
 
     Projectile fireball =
         new Projectile(
             Team.BLUE,
             impactX,
-            impactY - 10f,
+            impactY - tiles(10),
             impactX,
             impactY,
             100,
-            2.5f,
-            10f,
+            tiles(2.5),
+            tiles(10),
             Collections.emptyList());
-    fireball.setPushback(1.0f);
+    fireball.setPushback(tiles(1));
 
     gameState.spawnProjectile(fireball);
     while (fireball.isActive()) {
@@ -137,9 +138,9 @@ class KnockbackTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(10f, 16f))
+            .position(new Position(tiles(10), tiles(16)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(1.0f)
@@ -149,21 +150,21 @@ class KnockbackTest {
     gameState.spawnEntity(building);
     gameState.processPending();
 
-    float impactX = 10f;
-    float impactY = 17f;
+    int impactX = tiles(10);
+    int impactY = tiles(17);
 
     Projectile fireball =
         new Projectile(
             Team.BLUE,
             impactX,
-            impactY - 10f,
+            impactY - tiles(10),
             impactX,
             impactY,
             100,
-            2.5f,
-            10f,
+            tiles(2.5),
+            tiles(10),
             Collections.emptyList());
-    fireball.setPushback(1.0f);
+    fireball.setPushback(tiles(1));
 
     gameState.spawnProjectile(fireball);
     while (fireball.isActive()) {
@@ -186,7 +187,7 @@ class KnockbackTest {
     target.setDeployTimer(0);
 
     // Manually start knockback on the attacker
-    attacker.getMovement().startKnockback(0f, -1f, 1.0f, 0.5f, 1.0f);
+    attacker.getMovement().startKnockback(0f, -1f, tiles(1), 0.5f, 1.0f);
     assertThat(attacker.getMovement().isKnockedBack()).isTrue();
 
     // Set up attack: attacker targets enemy, ready to fire
@@ -211,7 +212,7 @@ class KnockbackTest {
     gameState.processPending();
     troop.setDeployTimer(0);
 
-    troop.getMovement().startKnockback(0f, 1f, 1.0f, 0.5f, 1.0f);
+    troop.getMovement().startKnockback(0f, 1f, tiles(1), 0.5f, 1.0f);
     assertThat(troop.getMovement().isKnockedBack()).isTrue();
 
     // Tick physics for slightly more than the knockback duration (0.5s)
@@ -241,8 +242,9 @@ class KnockbackTest {
     bystander.setDeployTimer(0);
 
     // Create entity-targeted projectile with no AOE radius but with pushback
-    Projectile proj = new Projectile(source, directTarget, 50, 0f, 15f, Collections.emptyList());
-    proj.setPushback(1.0f);
+    Projectile proj =
+        new Projectile(source, directTarget, 50, 0, tiles(15), Collections.emptyList());
+    proj.setPushback(tiles(1));
 
     gameState.spawnProjectile(proj);
 
@@ -259,21 +261,23 @@ class KnockbackTest {
   @Test
   void dashLanding_shouldKnockbackEnemies() {
     // Create a MegaKnight-like dasher with AOE dash and pushback
-    AbilityData dashAbility = new DashAbility(200, 4f, 5f, 2.0f, 0f, 0f, 0f, 0f, 1.0f);
+    AbilityData dashAbility =
+        new DashAbility(200, tiles(4), tiles(5), tiles(2), 0f, 0f, 0f, 0f, tiles(1));
 
-    Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    Movement dasherMovement =
+        new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND);
     Troop dasher =
         Troop.builder()
             .name("MegaKnightTest")
             .team(Team.BLUE)
-            .position(new Position(10f, 16f))
+            .position(new Position(tiles(10), tiles(16)))
             .health(new Health(3000))
             .movement(dasherMovement)
             .combat(
                 Combat.builder()
                     .damage(200)
-                    .range(1.5f)
-                    .sightRange(7.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(7.5))
                     .attackCooldown(1.7f)
                     .build())
             .ability(new AbilityComponent(dashAbility))
@@ -300,7 +304,7 @@ class KnockbackTest {
     abilityComp.setDashState(AbilityComponent.DashState.DASHING);
     abilityComp.setDashTargetX(dasher.getPosition().getX());
     abilityComp.setDashTargetY(dasher.getPosition().getY());
-    abilityComp.setDashSpeed(15f);
+    abilityComp.setDashSpeed(tiles(15));
     dasher
         .getCombat()
         .setCombatDisabled(org.crforge.core.component.ModifierSource.ABILITY_DASH, true);
@@ -324,21 +328,23 @@ class KnockbackTest {
 
   @Test
   void dashLanding_shouldNotKnockbackPushbackImmuneEntities() {
-    AbilityData dashAbility = new DashAbility(200, 4f, 5f, 2.0f, 0f, 0f, 0f, 0f, 1.0f);
+    AbilityData dashAbility =
+        new DashAbility(200, tiles(4), tiles(5), tiles(2), 0f, 0f, 0f, 0f, tiles(1));
 
-    Movement dasherMovement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    Movement dasherMovement =
+        new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND);
     Troop dasher =
         Troop.builder()
             .name("MegaKnightTest")
             .team(Team.BLUE)
-            .position(new Position(10f, 16f))
+            .position(new Position(tiles(10), tiles(16)))
             .health(new Health(3000))
             .movement(dasherMovement)
             .combat(
                 Combat.builder()
                     .damage(200)
-                    .range(1.5f)
-                    .sightRange(7.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(7.5))
                     .attackCooldown(1.7f)
                     .build())
             .ability(new AbilityComponent(dashAbility))
@@ -361,7 +367,7 @@ class KnockbackTest {
     abilityComp.setDashState(AbilityComponent.DashState.DASHING);
     abilityComp.setDashTargetX(dasher.getPosition().getX());
     abilityComp.setDashTargetY(dasher.getPosition().getY());
-    abilityComp.setDashSpeed(15f);
+    abilityComp.setDashSpeed(tiles(15));
 
     abilitySystem.update(1.0f / 30f);
 
@@ -370,19 +376,24 @@ class KnockbackTest {
     assertThat(immune.getMovement().isKnockedBack()).isFalse();
   }
 
-  /** Creates a simple troop with movement for knockback testing. */
+  /** Creates a simple troop with movement for knockback testing, at tile coordinates (x, y). */
   private Troop createTroop(Team team, float x, float y, boolean ignorePushback) {
-    Movement movement = new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND);
+    Movement movement = new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND);
     movement.setIgnorePushback(ignorePushback);
 
     return Troop.builder()
         .name("TestTroop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
         .movement(movement)
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

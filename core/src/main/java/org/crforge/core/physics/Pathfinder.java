@@ -11,11 +11,11 @@ public interface Pathfinder {
    *
    * @param startPos Current position of the entity
    * @param moveType The movement type (GROUND, AIR, etc.)
-   * @param targetX Target X coordinate
-   * @param targetY Target Y coordinate
+   * @param targetX Target X coordinate in game units
+   * @param targetY Target Y coordinate in game units
    * @param arena The game arena
    * @return The angle in radians to move towards
    */
   float getNextMovementAngle(
-      Position startPos, MovementType moveType, float targetX, float targetY, Arena arena);
+      Position startPos, MovementType moveType, int targetX, int targetY, Arena arena);
 }

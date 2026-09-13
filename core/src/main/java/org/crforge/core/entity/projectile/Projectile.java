@@ -14,11 +14,17 @@ import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.player.Team;
 
-/** Projectile for ranged attacks. Travels from source to target and deals damage on hit. */
+/**
+ * Projectile for ranged attacks. Travels from source to target and deals damage on hit.
+ *
+ * <p>Coordinates, radii and ranges are integer game units. Speed and distance traveled are
+ * fractional game units (per second and cumulative); per-tick motion integrates through {@link
+ * Position#move(float, float)} so fractional steps are not lost.
+ */
 @Getter
 public class Projectile {
 
-  private static final float DEFAULT_SPEED = 15f; // Tiles per second
+  private static final float DEFAULT_SPEED = 15000f; // Game units per second (15 tiles/s)
   private static long nextId = 1;
   private final long id;
   private final Entity source;
@@ -26,7 +32,7 @@ public class Projectile {
   private final Team team;
   private final Position position;
   private final int damage;
-  private final float aoeRadius;
+  private final int aoeRadius;
   private final float speed;
   private final List<EffectStats> effects;
 
@@ -37,22 +43,22 @@ public class Projectile {
   private final int crownTowerDamagePercent;
 
   // Position-targeted fields (for spell projectiles)
-  private final float targetX;
-  private final float targetY;
+  private final int targetX;
+  private final int targetY;
   private final boolean positionTargeted;
 
   // Non-homing: fixed landing position captured at fire time
-  private float fixedTargetX;
-  private float fixedTargetY;
+  private int fixedTargetX;
+  private int fixedTargetY;
   private boolean homing = true;
 
   // Advanced projectile features
-  @Setter private float chainedHitRadius;
+  @Setter private int chainedHitRadius;
   @Setter private int chainedHitCount;
   @Setter private ProjectileStats spawnProjectile;
 
   // Knockback on hit
-  @Setter private float pushback;
+  @Setter private int pushback;
   @Setter private boolean pushbackAll;
 
   // Spawn area effect on impact (Heal Spirit heal zone, etc.)
@@ -65,8 +71,8 @@ public class Projectile {
   @Setter private float spawnDeployTime;
 
   // Origin position (for spawn projectile direction calculation)
-  private final float originX;
-  private final float originY;
+  private final int originX;
+  private final int originY;
 
   // Effective speed for chain sub-projectile creation
   private final float projectileSpeed;
@@ -78,8 +84,8 @@ public class Projectile {
   @Setter private boolean piercing;
   @Getter private float piercingDirX;
   @Getter private float piercingDirY;
-  private float piercingRange;
-  private float distanceTraveled;
+  private int piercingRange;
+  private float distanceTraveled; // fractional game units
   private Set<Long> hitEntities;
   @Setter private boolean aoeToGround;
   @Setter private boolean aoeToAir;
@@ -88,7 +94,7 @@ public class Projectile {
   @Setter private boolean checkCollisions;
 
   // Min travel distance before piercing hits register (e.g. Log must roll past deploy point)
-  @Setter private float minDistance;
+  @Setter private int minDistance;
 
   // Spell level for sub-projectile damage scaling
   @Setter private int spellLevel;
@@ -109,7 +115,7 @@ public class Projectile {
       Entity source,
       Entity target,
       int damage,
-      float aoeRadius,
+      int aoeRadius,
       float speed,
       List<EffectStats> effects,
       int crownTowerDamagePercent) {
@@ -138,7 +144,7 @@ public class Projectile {
       Entity source,
       Entity target,
       int damage,
-      float aoeRadius,
+      int aoeRadius,
       float speed,
       List<EffectStats> effects) {
     this(source, target, damage, aoeRadius, speed, effects, 0);
@@ -147,12 +153,12 @@ public class Projectile {
   /** Position-targeted projectile with crown tower damage modifier (spell projectiles). */
   public Projectile(
       Team team,
-      float startX,
-      float startY,
-      float destX,
-      float destY,
+      int startX,
+      int startY,
+      int destX,
+      int destY,
       int damage,
-      float aoeRadius,
+      int aoeRadius,
       float speed,
       List<EffectStats> effects,
       int crownTowerDamagePercent) {
@@ -179,18 +185,18 @@ public class Projectile {
   /** Position-targeted projectile without crown tower damage modifier (convenience). */
   public Projectile(
       Team team,
-      float startX,
-      float startY,
-      float destX,
-      float destY,
+      int startX,
+      int startY,
+      int destX,
+      int destY,
       int damage,
-      float aoeRadius,
+      int aoeRadius,
       float speed,
       List<EffectStats> effects) {
     this(team, startX, startY, destX, destY, damage, aoeRadius, speed, effects, 0);
   }
 
-  public Projectile(Entity source, Entity target, int damage, float aoeRadius) {
+  public Projectile(Entity source, Entity target, int damage, int aoeRadius) {
     this(source, target, damage, aoeRadius, DEFAULT_SPEED, Collections.emptyList());
   }
 
@@ -246,12 +252,11 @@ public class Projectile {
     Position targetPos = target.getPosition();
     float dx = targetPos.getX() - position.getX();
     float dy = targetPos.getY() - position.getY();
-    float distance = position.distanceTo(targetPos);
-
+    float distance = position.distance(targetPos);
     float moveDistance = speed * deltaTime;
-
-    // Use Collision Radius for hit check
-    if (distance <= moveDistance || distance <= target.getCollisionRadius()) {
+    // Use Collision Radius for hit check. The step comparison allows for position rounding.
+    if (distance <= moveDistance + Position.MAX_ROUNDING_DISTANCE
+        || distance <= target.getCollisionRadius()) {
       // Reached target
       hit = true;
       active = false;
@@ -260,8 +265,7 @@ public class Projectile {
 
     // Move toward target
     float ratio = moveDistance / distance;
-    position.add(dx * ratio, dy * ratio);
-
+    position.move(dx * ratio, dy * ratio);
     // Update rotation to face target
     position.setRotation((float) Math.atan2(dy, dx));
 
@@ -272,19 +276,16 @@ public class Projectile {
   private boolean updateFixedTarget(float deltaTime) {
     float dx = fixedTargetX - position.getX();
     float dy = fixedTargetY - position.getY();
-    float distance = position.distanceTo(fixedTargetX, fixedTargetY);
-
+    float distance = position.distance(fixedTargetX, fixedTargetY);
     float moveDistance = speed * deltaTime;
-
-    if (distance <= moveDistance) {
+    if (distance <= moveDistance + Position.MAX_ROUNDING_DISTANCE) {
       position.set(fixedTargetX, fixedTargetY);
       hit = true;
       active = false;
       return true;
     }
-
     float ratio = moveDistance / distance;
-    position.add(dx * ratio, dy * ratio);
+    position.move(dx * ratio, dy * ratio);
 
     position.setRotation((float) Math.atan2(dy, dx));
 
@@ -294,21 +295,18 @@ public class Projectile {
   private boolean updatePositionTargeted(float deltaTime) {
     float dx = targetX - position.getX();
     float dy = targetY - position.getY();
-    float distance = position.distanceTo(targetX, targetY);
-
+    float distance = position.distance(targetX, targetY);
     float moveDistance = speed * deltaTime;
-
-    if (distance <= moveDistance) {
+    if (distance <= moveDistance + Position.MAX_ROUNDING_DISTANCE) {
       // Snap to target position
       position.set(targetX, targetY);
       hit = true;
       active = false;
       return true;
     }
-
     // Move toward target position
     float ratio = moveDistance / distance;
-    position.add(dx * ratio, dy * ratio);
+    position.move(dx * ratio, dy * ratio);
 
     // Update rotation to face target
     position.setRotation((float) Math.atan2(dy, dx));
@@ -321,7 +319,7 @@ public class Projectile {
    * passing through enemies and hitting all in its path until it reaches the specified range.
    */
   public void configurePiercing(
-      float dirX, float dirY, float range, boolean aoeToGround, boolean aoeToAir) {
+      float dirX, float dirY, int range, boolean aoeToGround, boolean aoeToAir) {
     this.piercing = true;
     this.piercingDirX = dirX;
     this.piercingDirY = dirY;
@@ -375,9 +373,10 @@ public class Projectile {
 
       float dx = sourceEntity.getPosition().getX() - position.getX();
       float dy = sourceEntity.getPosition().getY() - position.getY();
-      float dist = (float) Math.sqrt(dx * dx + dy * dy);
+      float dist = position.distance(sourceEntity.getPosition());
 
-      if (dist <= moveDistance || dist <= sourceEntity.getCollisionRadius()) {
+      if (dist <= moveDistance + Position.MAX_ROUNDING_DISTANCE
+          || dist <= sourceEntity.getCollisionRadius()) {
         active = false;
         return false;
       }
@@ -385,10 +384,10 @@ public class Projectile {
       // Update piercing direction to track source (needed for processPiercingHits direction)
       piercingDirX = dx / dist;
       piercingDirY = dy / dist;
-      position.add(piercingDirX * moveDistance, piercingDirY * moveDistance);
+      position.move(piercingDirX * moveDistance, piercingDirY * moveDistance);
     } else {
       // Outbound phase: travel in fixed direction
-      position.add(piercingDirX * moveDistance, piercingDirY * moveDistance);
+      position.move(piercingDirX * moveDistance, piercingDirY * moveDistance);
       distanceTraveled += moveDistance;
 
       if (distanceTraveled >= piercingRange) {

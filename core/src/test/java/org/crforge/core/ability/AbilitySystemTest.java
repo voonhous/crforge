@@ -1,6 +1,8 @@
 package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.handler.ChargeHandler;
@@ -82,8 +84,7 @@ class AbilitySystemTest {
 
     // Should have accumulated ~1s of charge, not yet charged (needs 2.5s)
     AbilityComponent ability = prince.getAbility();
-    assertThat(ability.getChargeTimer())
-        .isCloseTo(1.0f, org.assertj.core.data.Offset.offset(0.05f));
+    assertThat(ability.getChargeTimer()).isCloseTo(1.0f, within(0.05f));
     assertThat(ability.isCharged()).isFalse();
   }
 
@@ -371,7 +372,7 @@ class AbilitySystemTest {
             prince,
             50,
             0,
-            15f,
+            tiles(15),
             List.of(
                 EffectStats.builder()
                     .type(StatusEffectType.STUN)
@@ -416,7 +417,7 @@ class AbilitySystemTest {
     AreaEffectStats zapStats =
         AreaEffectStats.builder()
             .name("Zap")
-            .radius(2.5f)
+            .radius(tiles(2.5f))
             .lifeDuration(0.1f)
             .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
             .damage(75)
@@ -426,7 +427,7 @@ class AbilitySystemTest {
         AreaEffect.builder()
             .name("Zap")
             .team(Team.RED)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1))
             .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
             .stats(zapStats)
@@ -464,7 +465,7 @@ class AbilitySystemTest {
     AreaEffectStats zapStats =
         AreaEffectStats.builder()
             .name("Zap")
-            .radius(2.5f)
+            .radius(tiles(2.5f))
             .lifeDuration(0.1f)
             .buffApplication(BuffApplication.of("ZapFreeze", 0.5f))
             .damage(75)
@@ -474,7 +475,7 @@ class AbilitySystemTest {
         AreaEffect.builder()
             .name("Zap")
             .team(Team.RED)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1))
             .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
             .stats(zapStats)
@@ -659,7 +660,7 @@ class AbilitySystemTest {
     AreaEffectStats freezeStats =
         AreaEffectStats.builder()
             .name("Freeze")
-            .radius(3.0f)
+            .radius(tiles(3.0f))
             .lifeDuration(0.1f)
             .buffApplication(BuffApplication.of("Freeze", 4.0f))
             .damage(0)
@@ -669,7 +670,7 @@ class AbilitySystemTest {
         AreaEffect.builder()
             .name("Freeze")
             .team(Team.RED)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1))
             .movement(new Movement(0, 0, 0, 0, MovementType.GROUND))
             .stats(freezeStats)
@@ -717,7 +718,7 @@ class AbilitySystemTest {
 
     // Move target out of attack range but within sight range so targeting keeps it.
     // Center distance 6.0 -> edge-to-edge 5.0 > range 4.0, but <= sightRange 5.5.
-    target.getPosition().set(11, 5);
+    target.getPosition().set(tiles(11), tiles(5));
 
     // Next tick: combat detects out-of-range and unlocks target
     targetingSystem.updateTargets(gameState.getAliveEntities());
@@ -875,9 +876,9 @@ class AbilitySystemTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(9, 12))
+            .position(new Position(tiles(9), tiles(12)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(1.0f), tiles(1.0f), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(0f)
@@ -900,7 +901,7 @@ class AbilitySystemTest {
 
     // Record starting X -- Bandit and Cannon share the same X coordinate,
     // so the Bandit should move straight up (Y only) with X unchanged.
-    float startX = bandit.getPosition().getX();
+    int startX = bandit.getPosition().getX();
 
     // Run full system loop (ability + physics) for enough ticks to complete the dash
     for (int i = 0; i < 60; i++) {
@@ -909,10 +910,10 @@ class AbilitySystemTest {
     }
 
     // Bandit should NOT have drifted sideways (orbiting).
-    // Allow a tiny epsilon for float imprecision.
+    // Allow a tiny epsilon (0.01 tiles) for rounding.
     assertThat(bandit.getPosition().getX())
         .as("Bandit X should stay constant (no orbiting) during dash into building")
-        .isCloseTo(startX, org.assertj.core.data.Offset.offset(0.01f));
+        .isCloseTo(startX, within(tiles(0.01)));
 
     // Dash should have completed (landed or returned to idle)
     assertThat(bandit.getAbility().getDashState())
@@ -937,7 +938,7 @@ class AbilitySystemTest {
     bandit.getCombat().setCurrentTarget(target);
 
     // Initial cooldown is active (0.8s). Tick a few times -- should hold position.
-    float startX = bandit.getPosition().getX();
+    int startX = bandit.getPosition().getX();
     for (int i = 0; i < 10; i++) {
       abilitySystem.update(DT);
     }
@@ -982,7 +983,7 @@ class AbilitySystemTest {
         .isLessThan(initialCooldown);
 
     // Move target beyond maxRange -- cooldown should reset to full
-    target.getPosition().set(15, 5);
+    target.getPosition().set(tiles(15), tiles(5));
     abilitySystem.update(DT);
 
     assertThat(bandit.getAbility().getDashCooldownTimer())
@@ -1012,7 +1013,7 @@ class AbilitySystemTest {
     assertThat(bandit.getAbility().isDashCandidateAcquired()).isTrue();
 
     // Move target below minRange (edge distance ~2.0) but still within maxRange
-    target.getPosition().set(8, 5);
+    target.getPosition().set(tiles(8), tiles(5));
 
     // Burn through remaining cooldown
     for (int i = 0; i < 25; i++) {
@@ -1252,7 +1253,7 @@ class AbilitySystemTest {
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.PULLING);
 
     // Target should start moving toward the fisherman
-    float initialTargetX = target.getPosition().getX();
+    int initialTargetX = target.getPosition().getX();
 
     for (int i = 0; i < 30; i++) {
       abilitySystem.update(DT);
@@ -1273,9 +1274,9 @@ class AbilitySystemTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(9, 15))
+            .position(new Position(tiles(9), tiles(15)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5f), tiles(0.5f), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(0f)
@@ -1288,15 +1289,15 @@ class AbilitySystemTest {
     fisher.setDeployTimer(0);
     cannon.setDeployTimer(0);
 
-    float speed = 1.0f; // tile/s, matching Fisherman's speed
-    float startY = fisher.getPosition().getY();
+    float speed = tiles(1.0); // 1 tile/s in game units, matching Fisherman's speed
+    int startY = fisher.getPosition().getY();
 
     // Phase 1: Simulate walking toward building until hook triggers (max 5s)
     int hookTriggeredAtTick = -1;
     for (int i = 0; i < 150; i++) {
       // Simulate walking: move Fisherman toward building if hook hasn't triggered
       if (fisher.getAbility().getHookState() == AbilityComponent.HookState.IDLE) {
-        fisher.getPosition().add(0, speed * DT);
+        fisher.getPosition().move(0, speed * DT);
       }
 
       targetingSystem.updateTargets(gameState.getAliveEntities());
@@ -1320,7 +1321,7 @@ class AbilitySystemTest {
         .isGreaterThanOrEqualTo(0);
 
     // Phase 2: Hook just triggered -- verify Fisherman stays put during 1.3s wind-up
-    float yAtHookTrigger = fisher.getPosition().getY();
+    int yAtHookTrigger = fisher.getPosition().getY();
 
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
@@ -1341,8 +1342,8 @@ class AbilitySystemTest {
         .isEqualTo(yAtHookTrigger);
 
     // Building should never have moved
-    assertThat(cannon.getPosition().getX()).isEqualTo(9f);
-    assertThat(cannon.getPosition().getY()).isEqualTo(15f);
+    assertThat(cannon.getPosition().getX()).isEqualTo(tiles(9));
+    assertThat(cannon.getPosition().getY()).isEqualTo(tiles(15));
   }
 
   @Test
@@ -1350,20 +1351,20 @@ class AbilitySystemTest {
     // Use an absurdly long hookLoadTime so the Fisherman never exits WINDING_UP.
     // Run the full system loop (targeting + ability + physics) to verify that
     // PhysicsSystem respects movementDisabled and the Fisherman truly stops.
-    AbilityData hookData = new HookAbility(7.0f, 3.5f, 9999f, 850f, 450f);
+    AbilityData hookData = new HookAbility(tiles(7.0), tiles(3.5), 9999f, 850f, 450f);
 
     Troop fisher =
         Troop.builder()
             .name("Fisherman")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(900))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(80)
-                    .range(1.2f)
-                    .sightRange(7.5f)
+                    .range(tiles(1.2f))
+                    .sightRange(tiles(7.5f))
                     .attackCooldown(1.3f)
                     .build())
             .deployTime(1.0f)
@@ -1387,8 +1388,8 @@ class AbilitySystemTest {
 
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
-    float startX = fisher.getPosition().getX();
-    float startY = fisher.getPosition().getY();
+    int startX = fisher.getPosition().getX();
+    int startY = fisher.getPosition().getY();
 
     // Run for 10 seconds (300 ticks) matching real GameEngine tick order:
     // StatusEffectSystem (resets flags) -> targeting -> ability -> physics
@@ -1419,8 +1420,8 @@ class AbilitySystemTest {
         .isFalse();
 
     // Target should not have moved either (not yet in PULLING)
-    assertThat(target.getPosition().getX()).isEqualTo(10f);
-    assertThat(target.getPosition().getY()).isEqualTo(5f);
+    assertThat(target.getPosition().getX()).isEqualTo(tiles(10));
+    assertThat(target.getPosition().getY()).isEqualTo(tiles(5));
   }
 
   @Test
@@ -1431,9 +1432,9 @@ class AbilitySystemTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(10, 5))
+            .position(new Position(tiles(10), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5f), tiles(0.5f), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(0f)
@@ -1461,11 +1462,11 @@ class AbilitySystemTest {
         .isEqualTo(AbilityComponent.HookState.DRAGGING_SELF);
 
     // Building should not have moved at all
-    assertThat(cannon.getPosition().getX()).isEqualTo(10f);
-    assertThat(cannon.getPosition().getY()).isEqualTo(5f);
+    assertThat(cannon.getPosition().getX()).isEqualTo(tiles(10));
+    assertThat(cannon.getPosition().getY()).isEqualTo(tiles(5));
 
     // Run a few more ticks -- Fisherman should be moving toward the building
-    float fisherXBefore = fisher.getPosition().getX();
+    int fisherXBefore = fisher.getPosition().getX();
     for (int i = 0; i < 10; i++) {
       abilitySystem.update(DT);
     }
@@ -1483,14 +1484,14 @@ class AbilitySystemTest {
         Troop.builder()
             .name("Attacker")
             .team(Team.RED)
-            .position(new Position(5.5f, 5))
+            .position(new Position(tiles(5.5f), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.5f))
+                    .sightRange(tiles(5.5f))
                     .attackCooldown(1.0f)
                     .build())
             .deployTime(0f)
@@ -1524,14 +1525,14 @@ class AbilitySystemTest {
         Troop.builder()
             .name("Ranged")
             .team(Team.RED)
-            .position(new Position(7, 5))
+            .position(new Position(tiles(7), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(6.0f)
-                    .sightRange(6.0f)
+                    .range(tiles(6.0f))
+                    .sightRange(tiles(6.0f))
                     .attackCooldown(1.0f)
                     .build())
             .deployTime(0f)
@@ -1544,7 +1545,7 @@ class AbilitySystemTest {
     eGiant.setDeployTimer(0);
 
     // Create a projectile that is about to hit eGiant (simulates ranged attack)
-    Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, 15f, List.of());
+    Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, tiles(15), List.of());
     // Place projectile at eGiant's position so it hits on next update
     projectile.getPosition().set(eGiant.getPosition().getX(), eGiant.getPosition().getY());
     gameState.spawnProjectile(projectile);
@@ -1570,14 +1571,14 @@ class AbilitySystemTest {
         Troop.builder()
             .name("Ranged")
             .team(Team.RED)
-            .position(new Position(12, 5))
+            .position(new Position(tiles(12), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(8.0f)
-                    .sightRange(8.0f)
+                    .range(tiles(8.0f))
+                    .sightRange(tiles(8.0f))
                     .attackCooldown(1.0f)
                     .build())
             .deployTime(0f)
@@ -1590,7 +1591,7 @@ class AbilitySystemTest {
     eGiant.setDeployTimer(0);
 
     // Create a projectile that is about to hit eGiant
-    Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, 15f, List.of());
+    Projectile projectile = new Projectile(rangedAttacker, eGiant, 100, 0, tiles(15), List.of());
     projectile.getPosition().set(eGiant.getPosition().getX(), eGiant.getPosition().getY());
     gameState.spawnProjectile(projectile);
 
@@ -1611,11 +1612,16 @@ class AbilitySystemTest {
     return Troop.builder()
         .name("Prince")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(1.5f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.5f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(100).range(1.5f).sightRange(5.5f).attackCooldown(1.4f).build())
+            Combat.builder()
+                .damage(100)
+                .range(tiles(1.5f))
+                .sightRange(tiles(5.5f))
+                .attackCooldown(1.4f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(chargeData))
@@ -1634,14 +1640,14 @@ class AbilitySystemTest {
     return Troop.builder()
         .name("InfernoDragon")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(800))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.AIR))
+        .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.AIR))
         .combat(
             Combat.builder()
                 .damage(14) // base damage, overridden by ability
-                .range(4.0f)
-                .sightRange(5.5f)
+                .range(tiles(4.0f))
+                .sightRange(tiles(5.5f))
                 .attackCooldown(0.4f)
                 .build())
         .deployTime(1.0f)
@@ -1651,16 +1657,21 @@ class AbilitySystemTest {
   }
 
   private Troop createDashTroop(Team team, float x, float y) {
-    AbilityData dashData = new DashAbility(152, 3.5f, 6.0f, 0f, 0.8f, 0.1f, 0.2f, 0f, 0f);
+    AbilityData dashData = new DashAbility(152, tiles(3.5), tiles(6.0), 0, 0.8f, 0.1f, 0.2f, 0f, 0);
 
     return Troop.builder()
         .name("Bandit")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(750))
-        .movement(new Movement(2.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(2.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(80).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(80)
+                .range(tiles(1.5f))
+                .sightRange(tiles(5.5f))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(dashData))
@@ -1668,16 +1679,22 @@ class AbilitySystemTest {
   }
 
   private Troop createConstantTimeDashTroop(Team team, float x, float y) {
-    AbilityData dashData = new DashAbility(480, 3.5f, 7.0f, 2.5f, 0.9f, 0f, 0.3f, 0.8f, 0f);
+    AbilityData dashData =
+        new DashAbility(480, tiles(3.5), tiles(7.0), tiles(2.5), 0.9f, 0f, 0.3f, 0.8f, 0);
 
     return Troop.builder()
         .name("MegaKnight")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(4000))
-        .movement(new Movement(1.5f, 8f, 1.0f, 1.0f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.5f), 8f, tiles(1.0f), tiles(1.0f), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(222).range(1.5f).sightRange(7.5f).attackCooldown(1.5f).build())
+            Combat.builder()
+                .damage(222)
+                .range(tiles(1.5f))
+                .sightRange(tiles(7.5f))
+                .attackCooldown(1.5f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(dashData))
@@ -1685,16 +1702,21 @@ class AbilitySystemTest {
   }
 
   private Troop createHookTroop(Team team, float x, float y) {
-    AbilityData hookData = new HookAbility(7.0f, 3.5f, 1.3f, 850f, 450f);
+    AbilityData hookData = new HookAbility(tiles(7.0), tiles(3.5), 1.3f, 850f, 450f);
 
     return Troop.builder()
         .name("Fisherman")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(900))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(80).range(1.2f).sightRange(7.5f).attackCooldown(1.3f).build())
+            Combat.builder()
+                .damage(80)
+                .range(tiles(1.2f))
+                .sightRange(tiles(7.5f))
+                .attackCooldown(1.3f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(hookData))
@@ -1703,19 +1725,19 @@ class AbilitySystemTest {
 
   private Troop createReflectTroop(Team team, float x, float y) {
     AbilityData reflectData =
-        new ReflectAbility(75, 2.0f, org.crforge.core.effect.StatusEffectType.STUN, 0.5f, 50, null);
+        new ReflectAbility(75, tiles(2.0), StatusEffectType.STUN, 0.5f, 50, null);
 
     return Troop.builder()
         .name("ElectroGiant")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(3000))
-        .movement(new Movement(0.8f, 8f, 1.0f, 1.0f, MovementType.GROUND))
+        .movement(new Movement(tiles(0.8f), 8f, tiles(1.0f), tiles(1.0f), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(0) // ElectroGiant doesn't deal damage directly, reflect does
-                .range(1.5f)
-                .sightRange(5.5f)
+                .range(tiles(1.5f))
+                .sightRange(tiles(5.5f))
                 .attackCooldown(1.0f)
                 .build())
         .deployTime(1.0f)
@@ -1739,14 +1761,14 @@ class AbilitySystemTest {
     return Troop.builder()
         .name("EWiz")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(50)
-                .range(range)
-                .sightRange(7.5f)
+                .range(tiles(range))
+                .sightRange(tiles(7.5f))
                 .attackCooldown(1.8f)
                 .buffOnDamage(stunBuff)
                 .build())
@@ -1759,9 +1781,9 @@ class AbilitySystemTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(0f, 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

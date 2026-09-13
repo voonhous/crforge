@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Objects;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -53,7 +55,7 @@ class MagicArcherIntegrationTest {
     assertThat(unit).isNotNull();
     assertThat(unit.getHealth()).isEqualTo(207);
     assertThat(unit.getDamage()).isEqualTo(56);
-    assertThat(unit.getRange()).isEqualTo(7.0f);
+    assertThat(unit.getRange()).isEqualTo(tiles(7.0));
     assertThat(unit.getAttackCooldown()).isEqualTo(1.1f);
     assertThat(unit.getMovementType()).isEqualTo(MovementType.GROUND);
 
@@ -61,9 +63,9 @@ class MagicArcherIntegrationTest {
     assertThat(proj.isHoming()).isFalse();
     assertThat(proj.isAoeToAir()).isTrue();
     assertThat(proj.isAoeToGround()).isTrue();
-    assertThat(proj.getRadius()).isEqualTo(0.25f);
-    assertThat(proj.getProjectileRange()).isEqualTo(11.0f);
-    assertThat(proj.getPushback()).isEqualTo(0f);
+    assertThat(proj.getRadius()).isEqualTo(tiles(0.25));
+    assertThat(proj.getProjectileRange()).isEqualTo(tiles(11.0));
+    assertThat(proj.getPushback()).isEqualTo(0);
   }
 
   @Test
@@ -178,9 +180,9 @@ class MagicArcherIntegrationTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(9f, 17f))
+            .position(new Position(tiles(9), tiles(17)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(1.0f)
@@ -215,33 +217,40 @@ class MagicArcherIntegrationTest {
   /**
    * Creates a Magic Archer troop with EliteArcherArrow projectile stats. Matches JSON data: HP=207,
    * damage=56, range=7.0, attackCooldown=1.1, speed=1.0 tiles/sec. Arrow: non-homing,
-   * aoeToAir+aoeToGround, radius=0.25, projectileRange=11.0, speed=16.667 tiles/sec.
+   * aoeToAir+aoeToGround, radius=0.25, projectileRange=11.0, speed=16.667 tiles/sec. Position is in
+   * tiles.
    */
   private Troop createMagicArcher(Team team, float x, float y) {
     ProjectileStats arrowStats =
         ProjectileStats.builder()
             .name("EliteArcherArrow")
             .damage(56)
-            .speed(1000f / 60f) // 1000 raw / 60 = 16.667 tiles/sec
-            .radius(0.25f)
+            .speed(rawSpeedToUnitsPerSecond(1000f)) // 1000 raw = 16.667 tiles/sec
+            .radius(tiles(0.25))
             .homing(false)
             .aoeToGround(true)
             .aoeToAir(true)
-            .projectileRange(11.0f)
-            .pushback(0f)
+            .projectileRange(tiles(11.0))
+            .pushback(0)
             .build();
 
     return Troop.builder()
         .name("EliteArcher")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(207))
-        .movement(new Movement(60f / 60f, 60f / 60f, 0.6f, 0.6f, MovementType.GROUND))
+        .movement(
+            new Movement(
+                rawSpeedToUnitsPerSecond(60f),
+                60f / 60f,
+                tiles(0.6),
+                tiles(0.6),
+                MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(56)
-                .range(7.0f)
-                .sightRange(7.5f)
+                .range(tiles(7.0))
+                .sightRange(tiles(7.5))
                 .attackCooldown(1.1f)
                 .projectileStats(arrowStats)
                 .build())
@@ -250,16 +259,21 @@ class MagicArcherIntegrationTest {
         .build();
   }
 
-  /** Creates a stationary target troop with 500 HP. */
+  /** Creates a stationary target troop with 500 HP at tile coordinates. */
   private Troop createTarget(Team team, float x, float y, MovementType movementType) {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
-        .movement(new Movement(0f, 0f, 0.5f, 0.5f, movementType))
+        .movement(new Movement(0f, 0f, tiles(0.5), tiles(0.5), movementType))
         .combat(
-            Combat.builder().damage(50).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(50)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .build();

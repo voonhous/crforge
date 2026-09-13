@@ -11,10 +11,17 @@ import org.crforge.core.entity.base.MovementType;
 @RequiredArgsConstructor
 public class Movement {
 
+  /** Base movement speed in game units per second. */
   @Getter private final float speed;
+
   private final float mass;
-  private final float collisionRadius;
-  private final float visualRadius;
+
+  /** Collision radius in game units. */
+  private final int collisionRadius;
+
+  /** Visual radius in game units. */
+  private final int visualRadius;
+
   private final MovementType type;
 
   @Setter private boolean canMoveFlag = true;
@@ -28,7 +35,7 @@ public class Movement {
   // Knockback displacement state
   private float knockbackDirX;
   private float knockbackDirY;
-  private float knockbackSpeed; // tiles per second
+  private float knockbackSpeed; // game units per second
   private float knockbackTimeRemaining;
 
   // Attack dash state (lunge toward target when attack starts, e.g. Bat)
@@ -40,7 +47,7 @@ public class Movement {
 
   private float attackDashDirX;
   private float attackDashDirY;
-  private float attackDashSpeed;
+  private float attackDashSpeed; // game units per second
   private float attackDashTimeRemaining;
   private AttackDashPhase attackDashPhase;
   private float attackDashDuration; // duration per phase (used to reset timer for return)
@@ -145,7 +152,7 @@ public class Movement {
     if (attackDashTimeRemaining <= 0) {
       return;
     }
-    position.add(
+    position.move(
         attackDashDirX * attackDashSpeed * deltaTime, attackDashDirY * attackDashSpeed * deltaTime);
     attackDashTimeRemaining -= deltaTime;
 
@@ -171,12 +178,11 @@ public class Movement {
    *
    * @param dirX normalized X direction
    * @param dirY normalized Y direction
-   * @param distance total displacement distance in tiles
+   * @param distance total displacement distance in game units
    * @param duration active knockback duration in seconds
    * @param maxTime time base for speed calculation (distance / maxTime = speed)
    */
-  public void startKnockback(
-      float dirX, float dirY, float distance, float duration, float maxTime) {
+  public void startKnockback(float dirX, float dirY, int distance, float duration, float maxTime) {
     this.knockbackDirX = dirX;
     this.knockbackDirY = dirY;
     this.knockbackSpeed = distance / maxTime;
@@ -188,7 +194,7 @@ public class Movement {
   /** Ticks the knockback displacement, moving the position each frame. */
   public void tickKnockback(Position position, float deltaTime) {
     if (knockbackTimeRemaining > 0) {
-      position.add(
+      position.move(
           knockbackDirX * knockbackSpeed * deltaTime, knockbackDirY * knockbackSpeed * deltaTime);
       knockbackTimeRemaining -= deltaTime;
     }

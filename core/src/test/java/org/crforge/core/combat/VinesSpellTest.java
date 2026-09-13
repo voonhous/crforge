@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -39,7 +40,7 @@ class VinesSpellTest {
 
   private static final Card VINES = CardRegistry.get("vines");
 
-  // Deploy at y=14 to avoid tower aggro
+  // Deploy at y=14 to avoid tower aggro (tiles; helpers convert to game units)
   private static final float DEPLOY_X = 9f;
   private static final float DEPLOY_Y = 14f;
 
@@ -257,14 +258,14 @@ class VinesSpellTest {
         Troop.builder()
             .name("BabyDragon")
             .team(Team.RED)
-            .position(new Position(DEPLOY_X, DEPLOY_Y))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y)))
             .health(new Health(800))
-            .movement(new Movement(0f, 4.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(0f, 4.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(3.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(3.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.8f)
                     .targetType(TargetType.ALL)
                     .build())
@@ -278,14 +279,14 @@ class VinesSpellTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(DEPLOY_X, DEPLOY_Y + 0.5f))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y + 0.5f)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 6.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 6.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.2f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.2))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.2f)
                     .targetType(TargetType.GROUND)
                     .build())
@@ -315,14 +316,14 @@ class VinesSpellTest {
         Troop.builder()
             .name("BabyDragon")
             .team(Team.RED)
-            .position(new Position(DEPLOY_X, DEPLOY_Y))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y)))
             .health(new Health(2000))
-            .movement(new Movement(0f, 4.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(0f, 4.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(3.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(3.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.8f)
                     .targetType(TargetType.ALL)
                     .build())
@@ -363,7 +364,8 @@ class VinesSpellTest {
                 e ->
                     e.getTeam() == Team.RED
                         && e.getName().contains("Princess")
-                        && e.getPosition().distanceTo(new Position(towerX, towerY)) < 2f)
+                        && e.getPosition().distance(new Position(tiles(towerX), tiles(towerY)))
+                            < tiles(2))
             .findFirst();
 
     if (redTowers.isEmpty()) {
@@ -395,9 +397,9 @@ class VinesSpellTest {
         Building.builder()
             .name("Cannon")
             .team(Team.RED)
-            .position(new Position(DEPLOY_X, DEPLOY_Y))
+            .position(new Position(tiles(DEPLOY_X), tiles(DEPLOY_Y)))
             .health(new Health(500))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -441,24 +443,26 @@ class VinesSpellTest {
 
   // -- Helpers --
 
+  /** Deploys Vines at tile coordinates. */
   private void deployVines(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, x, y);
     engine.queueAction(bluePlayer, action);
   }
 
+  /** Spawns a stationary enemy at tile coordinates. */
   private Troop spawnEnemyAt(float x, float y, int hp, String name) {
     Troop enemy =
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())
@@ -469,19 +473,20 @@ class VinesSpellTest {
     return enemy;
   }
 
+  /** Spawns a stationary shielded enemy at tile coordinates. */
   private Troop spawnEnemyWithShield(float x, float y, int hp, int shield, String name) {
     Troop enemy =
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp, shield))
-            .movement(new Movement(0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(0)
-                    .range(1.0f)
-                    .sightRange(5.0f)
+                    .range(tiles(1.0))
+                    .sightRange(tiles(5.0))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.GROUND)
                     .build())

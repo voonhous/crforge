@@ -1,8 +1,9 @@
 package org.crforge.core.physics;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,8 +29,7 @@ class PhysicsSystemTest {
     arena = new Arena("Test Arena");
     pathfinder = mock(Pathfinder.class);
     // Mock pathfinder to return 0 angle (Move right) by default
-    when(pathfinder.getNextMovementAngle(any(), any(), anyFloat(), anyFloat(), any()))
-        .thenReturn(0f);
+    when(pathfinder.getNextMovementAngle(any(), any(), anyInt(), anyInt(), any())).thenReturn(0f);
 
     physicsSystem = new PhysicsSystem(arena, pathfinder);
   }
@@ -41,7 +41,7 @@ class PhysicsSystemTest {
     Troop t2 = createTroop("T2", 10f, 10f, 1.0f); // Mass 1
 
     // Force them slightly apart so collision resolution has a direction vector
-    t2.getPosition().set(10.1f, 10f); // T2 is slightly to the right
+    t2.getPosition().set(tiles(10.1), tiles(10)); // T2 is slightly to the right
 
     List<Entity> entities = List.of(t1, t2);
 
@@ -49,8 +49,8 @@ class PhysicsSystemTest {
     physicsSystem.update(entities, 0.033f);
 
     // T1 should be pushed left, T2 pushed right (equal mass)
-    assertThat(t1.getPosition().getX()).isLessThan(10f);
-    assertThat(t2.getPosition().getX()).isGreaterThan(10.1f);
+    assertThat(t1.getPosition().getX()).isLessThan(tiles(10));
+    assertThat(t2.getPosition().getX()).isGreaterThan(tiles(10.1));
   }
 
   @Test
@@ -62,8 +62,8 @@ class PhysicsSystemTest {
     physicsSystem.update(entities, 0.033f);
 
     // Calculate displacement
-    float heavyDisp = Math.abs(heavy.getPosition().getX() - 10f);
-    float lightDisp = Math.abs(light.getPosition().getX() - 10.5f);
+    int heavyDisp = Math.abs(heavy.getPosition().getX() - tiles(10));
+    int lightDisp = Math.abs(light.getPosition().getX() - tiles(10.5));
 
     // Light troop should move significantly more than heavy troop
     assertThat(lightDisp).isGreaterThan(heavyDisp);
@@ -77,18 +77,19 @@ class PhysicsSystemTest {
     List<Entity> entities = List.of(t);
     physicsSystem.update(entities, 0.033f);
 
-    // Should be clamped to radius (0.5)
-    assertThat(t.getPosition().getX()).isEqualTo(0.5f);
+    // Should be clamped to radius (0.5 tiles)
+    assertThat(t.getPosition().getX()).isEqualTo(tiles(0.5));
   }
 
   // Helpers
+  /** Creates a collidable troop at a tile-space position. */
   private Troop createTroop(String name, float x, float y, float mass) {
     Troop troop =
         Troop.builder()
             .name(name)
             .team(Team.BLUE)
-            .position(new Position(x, y))
-            .movement(new Movement(5.0f, mass, 0.5f, 0.5f, MovementType.GROUND))
+            .position(new Position(tiles(x), tiles(y)))
+            .movement(new Movement(tiles(5.0), mass, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
 

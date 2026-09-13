@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -65,8 +66,8 @@ class PhoenixIntegrationTest {
             .name("PhoenixNoRespawn")
             .health(411)
             .damage(85)
-            .speed(1.0f)
-            .range(1.6f)
+            .speed(tiles(1.0))
+            .range(tiles(1.6))
             .attackCooldown(1.0f)
             .movementType(MovementType.AIR)
             .targetType(TargetType.ALL)
@@ -82,7 +83,7 @@ class PhoenixIntegrationTest {
             .movementType(MovementType.GROUND)
             .targetType(TargetType.GROUND)
             .liveSpawn(
-                new LiveSpawnConfig("PhoenixNoRespawn", 1, 4.3f, 0f, 4.3f, 0f, false, 1, true))
+                new LiveSpawnConfig("PhoenixNoRespawn", 1, 4.3f, 0f, 4.3f, 0, false, 1, true))
             .spawnTemplate(phoenixNoRespawnStats)
             .build();
 
@@ -90,12 +91,12 @@ class PhoenixIntegrationTest {
         ProjectileStats.builder()
             .name("PhoenixFireball")
             .damage(64)
-            .speed(10.0f)
-            .radius(2.5f)
+            .speed(tiles(10.0))
+            .radius(tiles(2.5))
             .homing(false)
             .aoeToAir(true)
             .aoeToGround(true)
-            .pushback(2.0f)
+            .pushback(tiles(2.0))
             .spawnCharacterName("PhoenixEgg")
             .spawnCharacter(phoenixEggStats)
             .spawnCharacterCount(1)
@@ -106,8 +107,8 @@ class PhoenixIntegrationTest {
             .name("Phoenix")
             .health(411)
             .damage(85)
-            .speed(1.0f)
-            .range(1.6f)
+            .speed(tiles(1.0))
+            .range(tiles(1.6))
             .attackCooldown(1.0f)
             .movementType(MovementType.AIR)
             .targetType(TargetType.ALL)
@@ -115,9 +116,9 @@ class PhoenixIntegrationTest {
             .build();
   }
 
-  /** Helper to spawn a Phoenix troop with proper SpawnerComponent wiring. */
+  /** Helper to spawn a Phoenix troop at tile coordinates with SpawnerComponent wiring. */
   private Troop spawnPhoenix(Team team, float x, float y) {
-    spawnerSystem.spawnUnit(x, y, team, phoenixStats, 1, 0f);
+    spawnerSystem.spawnUnit(tiles(x), tiles(y), team, phoenixStats, 1, 0f);
     gameState.processPending();
     return gameState.getEntitiesOfType(Troop.class).stream()
         .filter(t -> t.getName().equals("Phoenix"))
@@ -138,7 +139,7 @@ class PhoenixIntegrationTest {
     assertThat(projectiles).hasSize(1);
     Projectile fireball = projectiles.get(0);
     assertThat(fireball.getDamage()).isGreaterThan(0);
-    assertThat(fireball.getAoeRadius()).isCloseTo(2.5f, org.assertj.core.data.Offset.offset(0.01f));
+    assertThat(fireball.getAoeRadius()).isEqualTo(tiles(2.5));
     assertThat(fireball.getSpawnCharacterStats()).isNotNull();
     assertThat(fireball.getSpawnCharacterStats().getName()).isEqualTo("PhoenixEgg");
   }
@@ -152,9 +153,9 @@ class PhoenixIntegrationTest {
         Troop.builder()
             .name("Enemy")
             .team(Team.RED)
-            .position(new Position(9f, 16.5f))
+            .position(new Position(tiles(9), tiles(16.5)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .deployTimer(0f)
             .build();

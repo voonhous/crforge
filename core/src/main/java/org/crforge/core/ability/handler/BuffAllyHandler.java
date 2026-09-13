@@ -11,6 +11,7 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Handles the BUFF_ALLY ability (GiantBuffer). Manages the buff cycle timer, target selection, buff
@@ -113,8 +114,9 @@ public class BuffAllyHandler implements AbilityHandler {
         continue;
       }
 
-      float dist = source.getPosition().distanceTo(troop.getPosition());
-      if (dist <= data.searchRange()) {
+      // Center-to-center search range in game units (exact squared comparison)
+      if (GameUnits.withinRadius(
+          source.getPosition().distanceSquaredTo(troop.getPosition()), data.searchRange())) {
         candidates.add(troop);
       }
     }
@@ -122,9 +124,9 @@ public class BuffAllyHandler implements AbilityHandler {
     // Sort by distance (ascending)
     candidates.sort(
         (a, b) -> {
-          float da = source.getPosition().distanceToSquared(a.getPosition());
-          float db = source.getPosition().distanceToSquared(b.getPosition());
-          return Float.compare(da, db);
+          long da = source.getPosition().distanceSquaredTo(a.getPosition());
+          long db = source.getPosition().distanceSquaredTo(b.getPosition());
+          return Long.compare(da, db);
         });
 
     return candidates.subList(0, Math.min(data.maxTargets(), candidates.size()));

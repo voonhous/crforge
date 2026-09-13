@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.AbilityComponent;
@@ -47,8 +48,8 @@ class BattleRamTest {
           .name("Barbarian")
           .health(300)
           .damage(75)
-          .speed(1.0f)
-          .range(0.7f)
+          .speed(tiles(1.0))
+          .range(tiles(0.7))
           .attackCooldown(1.4f)
           .movementType(MovementType.GROUND)
           .targetType(TargetType.GROUND)
@@ -188,15 +189,15 @@ class BattleRamTest {
   private Troop createBattleRam(Team team, float x, float y) {
     // Death spawn config: 2 Barbarians
     List<DeathSpawnEntry> deathSpawns =
-        List.of(new DeathSpawnEntry(BARBARIAN_STATS, 2, 0.6f, 0f, 0f, null, null));
+        List.of(new DeathSpawnEntry(BARBARIAN_STATS, 2, tiles(0.6), 0f, 0f, null, null));
 
     SpawnerComponent spawner = SpawnerComponent.builder().deathSpawns(deathSpawns).level(1).build();
 
     Combat combat =
         Combat.builder()
             .damage(112)
-            .range(0.5f)
-            .sightRange(5.5f)
+            .range(tiles(0.5))
+            .sightRange(tiles(5.5))
             .attackCooldown(0.4f)
             .loadTime(0.35f)
             .attackState(AttackStateMachine.withLoad(0.35f)) // Preloaded
@@ -210,10 +211,10 @@ class BattleRamTest {
     return Troop.builder()
         .name("BattleRam")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(378))
         .deployTime(1.0f)
-        .movement(new Movement(1.0f, 6.0f, 0.75f, 0.75f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 6.0f, tiles(0.75), tiles(0.75), MovementType.GROUND))
         .combat(combat)
         .spawner(spawner)
         .ability(ability)
@@ -224,9 +225,9 @@ class BattleRamTest {
     return Building.builder()
         .name("Tower")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(0, 0, 1.0f, 1.0f, MovementType.BUILDING))
+        .movement(new Movement(0, 0, tiles(1.0), tiles(1.0), MovementType.BUILDING))
         .deployTime(0f)
         .deployTimer(0f)
         .build();

@@ -1,7 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -74,8 +74,9 @@ class DeploymentSystemTest {
         team, new Deck(new ArrayList<>(Collections.nCopies(8, card))), false, levelConfig);
   }
 
+  /** Creates a slot-0 deploy action at tile coordinates (converted to game units). */
   private PlayerActionDTO playAt(float x, float y) {
-    return PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    return PlayerActionDTO.playAtTiles(0, x, y);
   }
 
   // -- Core deployment tests --
@@ -87,7 +88,7 @@ class DeploymentSystemTest {
     float initialElixir = player.getElixir().getCurrent(); // 5.0
 
     // Create action to play card at slot 0 (Cost 3)
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(20f).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 10f, 20f);
 
     // Queue and Update
     deploymentSystem.queueAction(player, action);
@@ -109,7 +110,7 @@ class DeploymentSystemTest {
     Card cardSlot0 = player.getHand().getCard(0);
 
     // Create action
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(20f).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 10f, 20f);
 
     // Queue and Update
     deploymentSystem.queueAction(player, action);
@@ -131,7 +132,7 @@ class DeploymentSystemTest {
         TroopStats.builder()
             .name("TombstoneBuilding")
             .health(500)
-            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0f, false))
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, 3.5f, 0.5f, 0f, 0, false))
             .build();
 
     Card tombstone =
@@ -176,7 +177,7 @@ class DeploymentSystemTest {
         TroopStats.builder()
             .name("TombstoneBuilding")
             .health(500)
-            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0f, false))
+            .liveSpawn(new LiveSpawnConfig("Skeleton", 2, spawnPauseTime, 0.5f, 0f, 0, false))
             .build();
 
     Card tombstone =
@@ -236,7 +237,7 @@ class DeploymentSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(10f, 10f))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(100))
             .build();
     enemy.onSpawn();
@@ -253,7 +254,7 @@ class DeploymentSystemTest {
             .projectile(
                 ProjectileStats.builder()
                     .damage(50)
-                    .radius(2.0f)
+                    .radius(tiles(2.0))
                     .speed(0) // 0 speed = Instant/Direct application
                     .build())
             .build();
@@ -277,7 +278,7 @@ class DeploymentSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(10f, 10f))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(500))
             .build();
     enemy.onSpawn();
@@ -294,8 +295,8 @@ class DeploymentSystemTest {
             .projectile(
                 ProjectileStats.builder()
                     .damage(303)
-                    .radius(4.0f)
-                    .speed(8.0f) // > 0 means it creates a projectile
+                    .radius(tiles(4.0))
+                    .speed(tiles(8.0)) // > 0 means it creates a projectile
                     .build())
             .build();
 
@@ -321,7 +322,7 @@ class DeploymentSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(10f, 10f))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(10000))
             .build();
     enemy.onSpawn();
@@ -343,7 +344,7 @@ class DeploymentSystemTest {
             .projectile(
                 ProjectileStats.builder()
                     .damage(baseDamage)
-                    .radius(2.0f)
+                    .radius(tiles(2.0))
                     .speed(0) // Instant
                     .build())
             .build();
@@ -367,7 +368,9 @@ class DeploymentSystemTest {
   void testDeployWithFormationOffsets_shouldUsePrecomputedPositions() {
     TroopStats archerStats = TroopStats.builder().name("Archer").health(100).damage(50).build();
 
-    List<float[]> offsets = List.of(new float[] {0.5f, 0.0f}, new float[] {-0.5f, 0.0f});
+    // Explicit offsets authored in tiles, converted to game units once
+    List<int[]> offsets =
+        List.of(new int[] {tiles(0.5), tiles(0.0)}, new int[] {tiles(-0.5), tiles(0.0)});
 
     Card archers =
         Card.builder()
@@ -396,19 +399,20 @@ class DeploymentSystemTest {
             .map(e -> (Troop) e)
             .toList();
 
-    // First archer at (9 + 0.5, 10 + 0.0)
-    assertThat(troops.get(0).getPosition().getX()).isCloseTo(9.5f, within(0.01f));
-    assertThat(troops.get(0).getPosition().getY()).isCloseTo(10.0f, within(0.01f));
-    // Second archer at (9 - 0.5, 10 + 0.0)
-    assertThat(troops.get(1).getPosition().getX()).isCloseTo(8.5f, within(0.01f));
-    assertThat(troops.get(1).getPosition().getY()).isCloseTo(10.0f, within(0.01f));
+    // First archer at (9 + 0.5, 10 + 0.0) tiles (exact in game units)
+    assertThat(troops.get(0).getPosition().getX()).isEqualTo(tiles(9.5));
+    assertThat(troops.get(0).getPosition().getY()).isEqualTo(tiles(10.0));
+    // Second archer at (9 - 0.5, 10 + 0.0) tiles
+    assertThat(troops.get(1).getPosition().getX()).isEqualTo(tiles(8.5));
+    assertThat(troops.get(1).getPosition().getY()).isEqualTo(tiles(10.0));
   }
 
   @Test
   void testDeployWithFormationOffsets_redTeamNegatesOffsets() {
     TroopStats archerStats = TroopStats.builder().name("Archer").health(100).damage(50).build();
 
-    List<float[]> offsets = List.of(new float[] {0.5f, 1.0f}, new float[] {-0.5f, -1.0f});
+    List<int[]> offsets =
+        List.of(new int[] {tiles(0.5), tiles(1.0)}, new int[] {tiles(-0.5), tiles(-1.0)});
 
     Card archers =
         Card.builder()
@@ -436,12 +440,12 @@ class DeploymentSystemTest {
             .map(e -> (Troop) e)
             .toList();
 
-    // Red team negates offsets: first at (9 - 0.5, 20 - 1.0)
-    assertThat(troops.get(0).getPosition().getX()).isCloseTo(8.5f, within(0.01f));
-    assertThat(troops.get(0).getPosition().getY()).isCloseTo(19.0f, within(0.01f));
-    // Second at (9 + 0.5, 20 + 1.0)
-    assertThat(troops.get(1).getPosition().getX()).isCloseTo(9.5f, within(0.01f));
-    assertThat(troops.get(1).getPosition().getY()).isCloseTo(21.0f, within(0.01f));
+    // Red team negates offsets: first at (9 - 0.5, 20 - 1.0) tiles
+    assertThat(troops.get(0).getPosition().getX()).isEqualTo(tiles(8.5));
+    assertThat(troops.get(0).getPosition().getY()).isEqualTo(tiles(19.0));
+    // Second at (9 + 0.5, 20 + 1.0) tiles
+    assertThat(troops.get(1).getPosition().getX()).isEqualTo(tiles(9.5));
+    assertThat(troops.get(1).getPosition().getY()).isEqualTo(tiles(21.0));
   }
 
   @Test
@@ -451,14 +455,14 @@ class DeploymentSystemTest {
     TroopStats spearGoblin = TroopStats.builder().name("SpearGoblin").health(52).damage(24).build();
 
     // 3 primary + 3 secondary = 6 total, 6 offsets
-    List<float[]> offsets =
+    List<int[]> offsets =
         List.of(
-            new float[] {-0.1f, 1.5f},
-            new float[] {-1.2f, -0.9f},
-            new float[] {1.3f, -0.9f},
-            new float[] {0.0f, -0.2f},
-            new float[] {-0.7f, -1.6f},
-            new float[] {0.7f, -1.6f});
+            new int[] {tiles(-0.1), tiles(1.5)},
+            new int[] {tiles(-1.2), tiles(-0.9)},
+            new int[] {tiles(1.3), tiles(-0.9)},
+            new int[] {tiles(0.0), tiles(-0.2)},
+            new int[] {tiles(-0.7), tiles(-1.6)},
+            new int[] {tiles(0.7), tiles(-1.6)});
 
     Card goblinGang =
         Card.builder()
@@ -500,14 +504,19 @@ class DeploymentSystemTest {
     assertThat(spearCount).isEqualTo(3);
 
     // Verify positions use formation offsets
-    assertThat(troops.get(0).getPosition().getX()).isCloseTo(9f - 0.1f, within(0.01f));
-    assertThat(troops.get(0).getPosition().getY()).isCloseTo(10f + 1.5f, within(0.01f));
+    assertThat(troops.get(0).getPosition().getX()).isEqualTo(tiles(9 - 0.1));
+    assertThat(troops.get(0).getPosition().getY()).isEqualTo(tiles(10 + 1.5));
   }
 
   @Test
   void testDeployWithoutFormationOffsets_shouldFallbackToCircular() {
     TroopStats archerStats =
-        TroopStats.builder().name("Archer").health(100).damage(50).collisionRadius(0.2f).build();
+        TroopStats.builder()
+            .name("Archer")
+            .health(100)
+            .damage(50)
+            .collisionRadius(tiles(0.2))
+            .build();
 
     // No formationOffsets, but with raw CSV summonRadius -> should use circular algorithm
     Card archers =
@@ -542,9 +551,17 @@ class DeploymentSystemTest {
         troops.stream()
             .anyMatch(
                 t ->
-                    Math.abs(t.getPosition().getX() - 9f) > 0.01f
-                        || Math.abs(t.getPosition().getY() - 10f) > 0.01f);
+                    Math.abs(t.getPosition().getX() - tiles(9)) > tiles(0.01)
+                        || Math.abs(t.getPosition().getY() - tiles(10)) > tiles(0.01));
     assertThat(anyOffset).isTrue();
+
+    // Legacy fallback layout is unchanged: raw summonRadius 355 / LEGACY_SUMMON_RADIUS_DIVISOR
+    // (355) = 1 tile, and an even count starts at angle 0, so the two archers sit exactly one tile
+    // to the right and left of the deploy point.
+    assertThat(troops.get(0).getPosition().getX()).isEqualTo(tiles(10));
+    assertThat(troops.get(0).getPosition().getY()).isEqualTo(tiles(10));
+    assertThat(troops.get(1).getPosition().getX()).isEqualTo(tiles(8));
+    assertThat(troops.get(1).getPosition().getY()).isEqualTo(tiles(10));
   }
 
   // -- Staggered deployment tests --
@@ -683,7 +700,7 @@ class DeploymentSystemTest {
     AreaEffectStats deployEffect =
         AreaEffectStats.builder()
             .name("EWizStun")
-            .radius(3.5f)
+            .radius(tiles(3.5))
             .damage(50)
             .lifeDuration(0.5f)
             .onlyEnemies(true)

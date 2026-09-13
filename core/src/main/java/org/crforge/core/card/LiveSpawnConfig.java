@@ -9,7 +9,7 @@ package org.crforge.core.card;
  * @param spawnPauseTime delay between waves (seconds)
  * @param spawnInterval delay between units within a wave (seconds)
  * @param spawnStartTime initial delay before first spawn (seconds)
- * @param spawnRadius formation radius for spawned units (tile units)
+ * @param spawnRadius formation radius for spawned units (game units)
  * @param spawnAttach if true, spawned units attach permanently to the parent (e.g. Ram Rider)
  */
 public record LiveSpawnConfig(
@@ -18,7 +18,7 @@ public record LiveSpawnConfig(
     float spawnPauseTime,
     float spawnInterval,
     float spawnStartTime,
-    float spawnRadius,
+    int spawnRadius,
     boolean spawnAttach,
     int spawnLimit,
     boolean destroyAtLimit,
@@ -31,7 +31,7 @@ public record LiveSpawnConfig(
       float spawnPauseTime,
       float spawnInterval,
       float spawnStartTime,
-      float spawnRadius,
+      int spawnRadius,
       boolean spawnAttach) {
     this(
         spawnCharacter,
@@ -53,7 +53,7 @@ public record LiveSpawnConfig(
       float spawnPauseTime,
       float spawnInterval,
       float spawnStartTime,
-      float spawnRadius,
+      int spawnRadius,
       boolean spawnAttach,
       int spawnLimit,
       boolean destroyAtLimit) {

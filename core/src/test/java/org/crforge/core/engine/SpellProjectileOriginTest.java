@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -35,12 +36,12 @@ class SpellProjectileOriginTest {
   void spellProjectile_shouldOriginateFromBlueCrownTower() {
     Tower blueCrown = engine.getGameState().getCrownTower(Team.BLUE);
     assertThat(blueCrown).isNotNull();
-    float crownX = blueCrown.getPosition().getX();
-    float crownY = blueCrown.getPosition().getY();
+    int crownX = blueCrown.getPosition().getX();
+    int crownY = blueCrown.getPosition().getY();
 
     // Target off-center so we can verify X differs from crown tower X
-    float targetX = 3f;
-    float targetY = 20f;
+    int targetX = tiles(3);
+    int targetY = tiles(20);
 
     Card spell = buildProjectileSpell();
     castSpell(Team.BLUE, spell, targetX, targetY);
@@ -61,11 +62,11 @@ class SpellProjectileOriginTest {
   void spellProjectile_redTeam_shouldOriginateFromRedCrownTower() {
     Tower redCrown = engine.getGameState().getCrownTower(Team.RED);
     assertThat(redCrown).isNotNull();
-    float crownX = redCrown.getPosition().getX();
-    float crownY = redCrown.getPosition().getY();
+    int crownX = redCrown.getPosition().getX();
+    int crownY = redCrown.getPosition().getY();
 
-    float targetX = 15f;
-    float targetY = 10f;
+    int targetX = tiles(15);
+    int targetY = tiles(10);
 
     Card spell = buildProjectileSpell();
     castSpell(Team.RED, spell, targetX, targetY);
@@ -81,8 +82,8 @@ class SpellProjectileOriginTest {
 
   @Test
   void spellAsDeploy_shouldStartAtDeployPoint() {
-    float targetX = 5f;
-    float targetY = 16f;
+    int targetX = tiles(5);
+    int targetY = tiles(16);
 
     Card logSpell =
         Card.builder()
@@ -92,7 +93,8 @@ class SpellProjectileOriginTest {
             .rarity(Rarity.LEGENDARY)
             .cost(2)
             .spellAsDeploy(true)
-            .projectile(ProjectileStats.builder().name("TestLogProj").damage(100).speed(5f).build())
+            .projectile(
+                ProjectileStats.builder().name("TestLogProj").damage(100).speed(tiles(5)).build())
             .build();
 
     castSpell(Team.BLUE, logSpell, targetX, targetY);
@@ -113,7 +115,7 @@ class SpellProjectileOriginTest {
         .rarity(Rarity.RARE)
         .cost(4)
         .projectile(
-            ProjectileStats.builder().name("TestFireballProj").damage(200).speed(8f).build())
+            ProjectileStats.builder().name("TestFireballProj").damage(200).speed(tiles(8)).build())
         .build();
   }
 
@@ -121,7 +123,7 @@ class SpellProjectileOriginTest {
    * Constructs a SpellFactory wired to the engine's GameState and casts the spell. SpellFactory is
    * package-private, so the test must live in the same package.
    */
-  private void castSpell(Team team, Card card, float x, float y) {
+  private void castSpell(Team team, Card card, int x, int y) {
     SpellFactory factory =
         new SpellFactory(
             engine.getGameState(), null, null, new AreaEffectFactory(engine.getGameState()));

@@ -67,8 +67,8 @@ class TransformationSystem {
     TroopStats kamikazeStats = config.transformStats();
 
     // Capture state from old entity
-    float x = old.getPosition().getX();
-    float y = old.getPosition().getY();
+    int x = old.getPosition().getX();
+    int y = old.getPosition().getY();
     int currentHp = old.getHealth().getCurrent();
     int level = old.getLevel();
 

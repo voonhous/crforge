@@ -10,7 +10,7 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
-import org.crforge.core.util.Vector2;
+import org.crforge.core.util.GameUnits;
 
 public class SpawnerSystem {
 
@@ -24,12 +24,11 @@ public class SpawnerSystem {
 
   /**
    * Spawns a unit at a specific position. Used by CombatSystem for projectile spawn-on-impact (e.g.
-   * PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns Goblins).
+   * PhoenixFireball spawns PhoenixEgg, GoblinBarrel spawns Goblins). Coordinates are game units.
    */
-  public void spawnUnit(
-      float x, float y, Team team, TroopStats stats, int level, float deployTime) {
+  public void spawnUnit(int x, int y, Team team, TroopStats stats, int level, float deployTime) {
     spawnFactory.doSpawn(
-        new Position(x, y), new Vector2(0, 0), team, stats, level, deployTime, false);
+        new Position(x, y), FormationLayout.Offset.ZERO, team, stats, level, deployTime, false);
   }
 
   public void update(float deltaTime) {
@@ -64,7 +63,7 @@ public class SpawnerSystem {
 
       // Only tick periodic spawning for entities with live spawn capability
       if (spawner.hasLiveSpawn() && spawner.tick(deltaTime)) {
-        Vector2 offset;
+        FormationLayout.Offset offset;
         if (spawner.isSpawnOnAggro()) {
           // Spawn adjacent to building, toward the nearest enemy
           Entity nearestEnemy = findNearestEnemy(entity, spawner.getAggroDetectionRange());
@@ -72,8 +71,8 @@ public class SpawnerSystem {
         } else {
           int spawnIndex = spawner.getLastSpawnIndex();
           int total = spawner.getUnitsPerWave();
-          float formationRadius = spawner.getFormationRadius();
-          float collisionRadius = spawner.getSpawnStats().getCollisionRadius();
+          int formationRadius = spawner.getFormationRadius();
+          int collisionRadius = spawner.getSpawnStats().getCollisionRadius();
           offset =
               FormationLayout.calculateOffset(spawnIndex, total, formationRadius, collisionRadius);
         }
@@ -104,19 +103,19 @@ public class SpawnerSystem {
    * Returns true if any targetable enemy entity is within the given range of the source entity.
    * Used for aggro-gated spawning (e.g. GoblinHut_Rework only spawns when enemies are nearby).
    */
-  private boolean hasEnemyInRange(Entity source, float range) {
+  private boolean hasEnemyInRange(Entity source, int range) {
     return findNearestEnemy(source, range) != null;
   }
 
   /**
    * Returns the nearest targetable enemy entity within the given range, or null if none found. Used
-   * for aggro-gated spawning to determine both presence and direction of nearby enemies.
+   * for aggro-gated spawning to determine both presence and direction of nearby enemies. The range
+   * is center-to-center in game units.
    */
-  private Entity findNearestEnemy(Entity source, float range) {
-    float rangeSq = range * range;
+  private Entity findNearestEnemy(Entity source, int range) {
     Team enemyTeam = source.getTeam().opposite();
     Entity nearest = null;
-    float nearestDistSq = Float.MAX_VALUE;
+    long nearestDistSq = Long.MAX_VALUE;
     for (Entity other : gameState.getAliveEntities()) {
       if (other.getTeam() != enemyTeam || !other.isTargetable()) {
         continue;
@@ -125,8 +124,8 @@ public class SpawnerSystem {
       if (type != EntityType.TROOP && type != EntityType.BUILDING && type != EntityType.TOWER) {
         continue;
       }
-      float distSq = source.getPosition().distanceToSquared(other.getPosition());
-      if (distSq <= rangeSq && distSq < nearestDistSq) {
+      long distSq = source.getPosition().distanceSquaredTo(other.getPosition());
+      if (GameUnits.withinRadius(distSq, range) && distSq < nearestDistSq) {
         nearestDistSq = distSq;
         nearest = other;
       }
@@ -138,19 +137,20 @@ public class SpawnerSystem {
    * Calculates a spawn offset toward the target enemy so the spawned unit appears at the building's
    * edge facing the threat. Returns (0,0) if the target is null or overlapping.
    */
-  private Vector2 calculateAggroSpawnOffset(Entity building, Entity target) {
+  private FormationLayout.Offset calculateAggroSpawnOffset(Entity building, Entity target) {
     if (target == null) {
-      return new Vector2(0, 0);
+      return FormationLayout.Offset.ZERO;
     }
-    float dx = target.getPosition().getX() - building.getPosition().getX();
-    float dy = target.getPosition().getY() - building.getPosition().getY();
-    float dist = (float) Math.sqrt(dx * dx + dy * dy);
-    if (dist < 0.001f) {
-      return new Vector2(0, 0);
+    double dx = (double) target.getPosition().getX() - building.getPosition().getX();
+    double dy = (double) target.getPosition().getY() - building.getPosition().getY();
+    double dist = Math.hypot(dx, dy);
+    if (dist == 0) {
+      return FormationLayout.Offset.ZERO;
     }
     // Offset by building's collision radius so the unit spawns at the building's edge
-    float spawnDist = building.getCollisionRadius();
-    return new Vector2((dx / dist) * spawnDist, (dy / dist) * spawnDist);
+    int spawnDist = building.getCollisionRadius();
+    return new FormationLayout.Offset(
+        GameUnits.round(dx / dist * spawnDist), GameUnits.round(dy / dist * spawnDist));
   }
 
   private boolean isDeploying(Entity entity) {

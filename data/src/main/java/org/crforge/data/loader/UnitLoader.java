@@ -1,6 +1,7 @@
 package org.crforge.data.loader;
 
 import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -38,6 +39,7 @@ import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.TargetSelectAlgorithm;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.entity.base.TargetType;
+import org.crforge.core.util.GameUnits;
 import org.crforge.data.loader.dto.AbilityConfigDTO;
 import org.crforge.data.loader.dto.BuffOnDamageConfigDTO;
 import org.crforge.data.loader.dto.DeathDamageConfigDTO;
@@ -54,7 +56,10 @@ public class UnitLoader {
 
   private static final ObjectMapper mapper =
       new ObjectMapper().configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
-  private static final float SPEED_BASE = 60.0f;
+
+  // Defaults in tiles, matching the data convention before conversion to game units
+  private static final float DEFAULT_COLLISION_RADIUS_TILES = 0.5f;
+  private static final float DEFAULT_SIGHT_RANGE_TILES = 5.5f;
 
   /**
    * Loads all unit definitions from the given input stream. Uses recursive resolution with
@@ -161,12 +166,17 @@ public class UnitLoader {
           dto.getTargetType(), "TargetType is required for attacking unit: " + dto.getName());
     }
 
-    // Conversion: Base speed 60 = 1.0 tiles/sec
-    float effectiveSpeed = dto.getSpeed() / SPEED_BASE;
+    // Unit boundary: units.json stores radii and ranges in tiles, speeds as raw values (60 = one
+    // tile per second), and pushback distances as raw game units. Each is converted to simulation
+    // game units exactly once here.
+    float effectiveSpeed = GameUnits.rawSpeedToUnitsPerSecond(dto.getSpeed());
 
-    // Resolve radii
-    float colRad = dto.getCollisionRadius() != null ? dto.getCollisionRadius() : 0.5f;
-    float visRad = dto.getVisualRadius() != null ? dto.getVisualRadius() : colRad;
+    // Resolve radii (tiles -> game units)
+    float colRadTiles =
+        dto.getCollisionRadius() != null
+            ? dto.getCollisionRadius()
+            : DEFAULT_COLLISION_RADIUS_TILES;
+    float visRadTiles = dto.getVisualRadius() != null ? dto.getVisualRadius() : colRadTiles;
 
     TroopStats.TroopStatsBuilder builder =
         TroopStats.builder()
@@ -175,13 +185,14 @@ public class UnitLoader {
             .damage(dto.getDamage())
             .speed(effectiveSpeed)
             .mass(dto.getMass())
-            .collisionRadius(colRad)
-            .visualRadius(visRad)
-            .range(dto.getRange())
-            .sightRange(dto.getSightRange() > 0 ? dto.getSightRange() : 5.5f)
+            .collisionRadius(tiles(colRadTiles))
+            .visualRadius(tiles(visRadTiles))
+            .range(tiles(dto.getRange()))
+            .sightRange(
+                tiles(dto.getSightRange() > 0 ? dto.getSightRange() : DEFAULT_SIGHT_RANGE_TILES))
             .attackCooldown(dto.getAttackCooldown())
             .loadTime(dto.getLoadTime() != null ? dto.getLoadTime() : 0f)
-            .aoeRadius(dto.getAreaDamageRadius())
+            .aoeRadius(tiles(dto.getAreaDamageRadius()))
             .movementType(dto.getMovementType())
             .targetType(dto.getTargetType())
             .deployTime(dto.getDeployTime() != null ? dto.getDeployTime() : DEFAULT_DEPLOY_TIME)
@@ -196,15 +207,16 @@ public class UnitLoader {
             .targetOnlyBuildings(dto.isTargetOnlyBuildings())
             .targetOnlyTroops(dto.isTargetOnlyTroops())
             .ignoreTargetsWithBuff(dto.getIgnoreTargetsWithBuff())
-            .minimumRange(dto.getMinimumRange())
+            .minimumRange(tiles(dto.getMinimumRange()))
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
             .ignorePushback(dto.isIgnorePushback())
             .kamikaze(dto.isKamikaze())
             .jumpEnabled(dto.isJumpEnabled())
             .hovering(dto.isHovering())
-            .spawnPathfindSpeed(dto.getSpawnPathfindSpeed() / SPEED_BASE)
+            .spawnPathfindSpeed(GameUnits.rawSpeedToUnitsPerSecond(dto.getSpawnPathfindSpeed()))
             .attackDashTime(dto.getAttackDashTime())
-            .attackPushBack(dto.getAttackPushBack() / 1000f)
+            // attackPushBack is already raw game units (e.g. 1000 = one tile)
+            .attackPushBack(dto.getAttackPushBack())
             // Building lifetime
             .lifeTime(dto.getLifeTime())
             // Elixir granted to opponent on death (e.g. Elixir Golem)
@@ -234,8 +246,9 @@ public class UnitLoader {
     DeathDamageConfigDTO deathDmg = dto.getDeathDamage();
     if (deathDmg != null) {
       builder.deathDamage(deathDmg.getDamage());
-      builder.deathDamageRadius(deathDmg.getRadius());
-      builder.deathPushback(deathDmg.getPushback() / 1000f);
+      builder.deathDamageRadius(tiles(deathDmg.getRadius()));
+      // Death pushback is already raw game units
+      builder.deathPushback(deathDmg.getPushback());
     }
 
     // Buff on damage (e.g. EWiz stun, Mother Witch curse)
@@ -277,11 +290,11 @@ public class UnitLoader {
               new DeathSpawnEntry(
                   resolved,
                   ds.getSpawnNumber(),
-                  ds.getSpawnRadius(),
+                  tiles(ds.getSpawnRadius()),
                   ds.getDeployTime(),
                   ds.getSpawnDelay(),
-                  ds.getRelativeX(),
-                  ds.getRelativeY()));
+                  ds.getRelativeX() != null ? tiles(ds.getRelativeX()) : null,
+                  ds.getRelativeY() != null ? tiles(ds.getRelativeY()) : null));
         }
       }
       builder.deathSpawns(deathSpawns);
@@ -313,7 +326,7 @@ public class UnitLoader {
               liveSpawn.getSpawnPauseTime(),
               liveSpawn.getSpawnInterval(),
               liveSpawn.getSpawnStartTime(),
-              liveSpawn.getSpawnRadius(),
+              tiles(liveSpawn.getSpawnRadius()),
               liveSpawn.isSpawnAttach(),
               liveSpawn.getSpawnLimit(),
               liveSpawn.isDestroyAtLimit(),
@@ -360,7 +373,8 @@ public class UnitLoader {
     // Auto-create TunnelAbility when spawnPathfindSpeed is set and no other ability exists
     if (dto.getSpawnPathfindSpeed() > 0
         && (dto.getAbilities() == null || dto.getAbilities().isEmpty())) {
-      builder.ability(new TunnelAbility(dto.getSpawnPathfindSpeed() / SPEED_BASE));
+      builder.ability(
+          new TunnelAbility(GameUnits.rawSpeedToUnitsPerSecond(dto.getSpawnPathfindSpeed())));
     }
 
     // Attack sequence: per-hit damage values for multi-hit combo units (e.g. Berserker)
@@ -420,25 +434,27 @@ public class UnitLoader {
       case DASH ->
           new DashAbility(
               dto.getDamage(),
-              dto.getMinRange(),
-              dto.getMaxRange(),
-              dto.getRadius(),
+              tiles(dto.getMinRange()),
+              tiles(dto.getMaxRange()),
+              tiles(dto.getRadius()),
               dto.getCooldown(),
               dto.getImmuneTimeMs() / 1000f,
               dto.getLandingTime(),
               dto.getConstantTime(),
-              dto.getPushback());
+              // Ability pushback is stored in tiles (unlike projectile/death pushback)
+              tiles(dto.getPushback()));
       case HOOK ->
           new HookAbility(
-              dto.getRange(),
-              dto.getMinimumRange(),
+              tiles(dto.getRange()),
+              tiles(dto.getMinimumRange()),
               dto.getLoadTime(),
+              // Drag speeds stay raw (60 = one tile per second); HookHandler converts them
               dto.getDragBackSpeed(),
               dto.getDragSelfSpeed());
       case REFLECT ->
           new ReflectAbility(
               dto.getDamage(),
-              dto.getRadius(),
+              tiles(dto.getRadius()),
               StatusEffectType.fromBuffName(dto.getBuff()),
               dto.getBuffDuration(),
               dto.getCrownTowerDamagePercent(),
@@ -463,12 +479,12 @@ public class UnitLoader {
             dto.getAddedDamage(),
             dto.getAddedCrownTowerDamage(),
             dto.getAttackAmount(),
-            dto.getSearchRange(),
+            tiles(dto.getSearchRange()),
             dto.getMaxTargets(),
             dto.getCooldown(),
             dto.getActionDelay(),
             dto.getBuffDelay(),
-            dto.getMaxRange(),
+            tiles(dto.getMaxRange()),
             dto.getPersistAfterDeath(),
             multipliers);
       }
@@ -481,8 +497,8 @@ public class UnitLoader {
             dto.getTargetType() != null ? TargetType.valueOf(dto.getTargetType()) : TargetType.ALL;
         yield new RangedAttackAbility(
             projStats,
-            dto.getRange(),
-            dto.getMinimumRange(),
+            tiles(dto.getRange()),
+            tiles(dto.getMinimumRange()),
             dto.getLoadTime(),
             dto.getAttackDelay(),
             dto.getAttackCooldown(),

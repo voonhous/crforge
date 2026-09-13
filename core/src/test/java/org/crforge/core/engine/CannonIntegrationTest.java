@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -33,13 +34,13 @@ class CannonIntegrationTest {
         Building.builder()
             .name("Cannon")
             .team(Team.BLUE)
-            .position(new Position(10f, 10f))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(800))
-            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0f, 0f, tiles(1.0), tiles(1.0), MovementType.BUILDING))
             .combat(
                 Combat.builder()
-                    .range(5.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(5.5))
+                    .sightRange(tiles(5.5))
                     .damage(100)
                     .attackCooldown(0.8f)
                     .build())
@@ -55,9 +56,9 @@ class CannonIntegrationTest {
         Troop.builder()
             .name("TargetDummy")
             .team(Team.RED)
-            .position(new Position(12f, 10f))
+            .position(new Position(tiles(12), tiles(10)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0) // Make it targetable immediately
             .build();
 

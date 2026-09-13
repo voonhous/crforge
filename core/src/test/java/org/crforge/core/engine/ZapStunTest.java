@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -40,8 +41,8 @@ class ZapStunTest {
         Troop.builder()
             .name("Runner")
             .team(Team.BLUE)
-            .position(new Position(10f, 10f))
-            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .position(new Position(tiles(10), tiles(10)))
+            .movement(new Movement(tiles(5.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(Combat.builder().build())
             .deployTime(0)
             .build();
@@ -59,10 +60,10 @@ class ZapStunTest {
     // Manually apply spell damage/effect logic
     aoeDamageService.applySpellDamage(
         Team.RED, // Enemy team casts it
-        10f,
-        10f, // Center
+        tiles(10),
+        tiles(10), // Center
         0, // No damage for this test to focus on stun
-        2.5f, // Radius
+        tiles(2.5), // Radius
         List.of(EffectStats.builder().type(StatusEffectType.STUN).duration(1.0f).build()));
 
     // 4. Run loop while stunned

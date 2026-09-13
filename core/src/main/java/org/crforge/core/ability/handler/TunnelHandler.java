@@ -9,18 +9,19 @@ import org.crforge.core.component.ModifierSource;
 import org.crforge.core.component.Position;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.util.GameUnits;
 
 /** Handles the TUNNEL ability (Miner underground travel). */
 public class TunnelHandler implements AbilityHandler {
 
-  /** Tolerance for diagonal vs cardinal direction selection. */
-  private static final float DIRECTION_TOLERANCE = 0.2f;
+  /** Tolerance for diagonal vs cardinal direction selection (0.2 tiles, in game units). */
+  private static final int DIRECTION_TOLERANCE = 200;
 
-  /** Distance threshold for switching from waypoint to final target. */
-  private static final float WAYPOINT_ARRIVAL_DISTANCE = 0.5f;
+  /** Distance threshold for switching from waypoint to final target (0.5 tiles). */
+  private static final int WAYPOINT_ARRIVAL_DISTANCE = GameUnits.HALF_TILE;
 
-  /** Distance threshold for emerging at the final target. */
-  private static final float EMERGE_DISTANCE = 1.0f;
+  /** Distance threshold for emerging at the final target (1 tile). */
+  private static final int EMERGE_DISTANCE = GameUnits.UNITS_PER_TILE;
 
   @Setter private TunnelMorphHandler tunnelMorphHandler;
 
@@ -38,8 +39,8 @@ public class TunnelHandler implements AbilityHandler {
     float speed = data.tunnelSpeed() * deltaTime;
 
     // Determine current target: waypoint if still routing, else final target
-    float destX;
-    float destY;
+    int destX;
+    int destY;
     if (ability.isTunnelUsingWaypoint()) {
       destX = ability.getTunnelWaypointX();
       destY = ability.getTunnelWaypointY();
@@ -49,12 +50,12 @@ public class TunnelHandler implements AbilityHandler {
     }
 
     Position pos = troop.getPosition();
-    float dx = destX - pos.getX();
-    float dy = destY - pos.getY();
+    int dx = destX - pos.getX();
+    int dy = destY - pos.getY();
 
     // 8-directional movement matching reference JS pattern
-    float absDx = Math.abs(dx);
-    float absDy = Math.abs(dy);
+    int absDx = Math.abs(dx);
+    int absDy = Math.abs(dy);
 
     float moveX;
     float moveY;
@@ -73,28 +74,28 @@ public class TunnelHandler implements AbilityHandler {
       moveY = Math.signum(dy) * diag;
     }
 
-    pos.set(pos.getX() + moveX, pos.getY() + moveY);
+    pos.move(moveX, moveY);
 
     // Check waypoint arrival
     if (ability.isTunnelUsingWaypoint()) {
-      float distToWaypoint = pos.distanceTo(destX, destY);
-      if (distToWaypoint < WAYPOINT_ARRIVAL_DISTANCE) {
+      if (GameUnits.insideRadius(pos.distanceSquaredTo(destX, destY), WAYPOINT_ARRIVAL_DISTANCE)) {
         ability.setTunnelUsingWaypoint(false);
       }
       return;
     }
 
     // Check final target arrival
-    float distToTarget = pos.distanceTo(ability.getTunnelTargetX(), ability.getTunnelTargetY());
-    if (distToTarget < EMERGE_DISTANCE) {
+    long distToTargetSq =
+        pos.distanceSquaredTo(ability.getTunnelTargetX(), ability.getTunnelTargetY());
+    if (GameUnits.insideRadius(distToTargetSq, EMERGE_DISTANCE)) {
       emergeTunnel(troop, ability);
     }
   }
 
   /** Completes the tunnel travel: snap to target, become targetable, enter deploy animation. */
   private void emergeTunnel(Troop troop, AbilityComponent ability) {
-    float targetX = ability.getTunnelTargetX();
-    float targetY = ability.getTunnelTargetY();
+    int targetX = ability.getTunnelTargetX();
+    int targetY = ability.getTunnelTargetY();
 
     // Morph path: dig troop transforms into a building (e.g. GoblinDrillDig -> GoblinDrill)
     if (troop.getMorphCard() != null && tunnelMorphHandler != null) {

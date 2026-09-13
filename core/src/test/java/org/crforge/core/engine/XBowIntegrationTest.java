@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -15,6 +16,7 @@ import org.crforge.core.player.Team;
 import org.crforge.core.testing.BuildingTemplate;
 import org.crforge.core.testing.SimHarness;
 import org.crforge.core.testing.TroopTemplate;
+import org.crforge.core.util.GameUnits;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.Test;
 
@@ -28,15 +30,16 @@ class XBowIntegrationTest {
   // X-Bow level 1 stats from units.json
   private static final int XBOW_HP = 625;
   private static final int XBOW_DAMAGE = 17;
-  private static final float XBOW_RANGE = 11.5f;
-  private static final float XBOW_SIGHT_RANGE = 11.5f;
+  private static final int XBOW_RANGE = tiles(11.5);
+  private static final int XBOW_SIGHT_RANGE = tiles(11.5);
   private static final float XBOW_ATTACK_COOLDOWN = 0.3f;
   private static final float XBOW_DEPLOY_TIME = 3.5f;
   private static final float XBOW_LIFETIME = 30.0f;
+  // In tiles: passed to BuildingTemplate, which converts to game units
   private static final float XBOW_COLLISION_RADIUS = 0.6f;
 
-  // xbow_projectile stats
-  private static final float XBOW_PROJECTILE_SPEED = 1400f / 60f;
+  // xbow_projectile stats (raw speed 1400, 60 = one tile per second)
+  private static final float XBOW_PROJECTILE_SPEED = GameUnits.rawSpeedToUnitsPerSecond(1400f);
 
   @Test
   void cardRegistry_shouldLoadXBowWithCorrectStats() {

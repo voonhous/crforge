@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,7 @@ class SpellDeploymentTest {
             .name("Fireball")
             .type(CardType.SPELL)
             .cost(4)
-            .projectile(ProjectileStats.builder().damage(100).radius(2.5f).build())
+            .projectile(ProjectileStats.builder().damage(100).radius(tiles(2.5)).build())
             .build();
 
     troopCard = Card.builder().name("Knight").type(CardType.TROOP).cost(3).build();
@@ -58,10 +59,10 @@ class SpellDeploymentTest {
     engine.initMatch();
 
     // Enemy side (Top half)
-    float enemyY = 25.0f;
+    int enemyY = tiles(25.0);
 
     // Slot 0 is Fireball (Guaranteed)
-    PlayerActionDTO action = PlayerActionDTO.play(0, 10f, enemyY);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(10), enemyY);
 
     // Should pass validation
     boolean valid = match.validateAction(bluePlayer, action);
@@ -85,10 +86,10 @@ class SpellDeploymentTest {
     engine.initMatch();
 
     // Enemy side
-    float enemyY = 25.0f;
+    int enemyY = tiles(25.0);
 
     // Slot 0 is Knight (Guaranteed)
-    PlayerActionDTO action = PlayerActionDTO.play(0, 10f, enemyY);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(10), enemyY);
 
     boolean valid = match.validateAction(bluePlayer, action);
     assertThat(valid).as("Troop should NOT be allowed on enemy side").isFalse();
@@ -108,8 +109,8 @@ class SpellDeploymentTest {
     match.addPlayer(createPlayerWithAll(spellCard, Team.RED));
     engine.initMatch();
 
-    float ownY = 5.0f;
-    PlayerActionDTO action = PlayerActionDTO.play(0, 10f, ownY);
+    int ownY = tiles(5.0);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(10), ownY);
     assertThat(match.validateAction(bluePlayer, action)).isTrue();
   }
 }

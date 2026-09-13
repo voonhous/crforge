@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +46,7 @@ class AbilityDamageScalingTest {
   }
 
   /** Deploys a card at the given level and returns the first non-tower entity matching the name. */
-  private Entity deployCard(String cardId, float x, float y) {
+  private Entity deployCard(String cardId, int x, int y) {
     Card card = Objects.requireNonNull(CardRegistry.get(cardId), cardId + " not found");
     List<Card> deckCards = new ArrayList<>(Collections.nCopies(8, card));
 
@@ -82,7 +83,7 @@ class AbilityDamageScalingTest {
 
   @Test
   void dashDamage_shouldBeScaledByLevel() {
-    Entity entity = deployCard("megaknight", 9f, 10f);
+    Entity entity = deployCard("megaknight", tiles(9), tiles(10));
     assertThat(entity).isInstanceOf(Troop.class);
 
     Troop troop = (Troop) entity;
@@ -101,7 +102,7 @@ class AbilityDamageScalingTest {
 
   @Test
   void chargeDamage_shouldBeScaledByLevel() {
-    Entity entity = deployCard("prince", 9f, 10f);
+    Entity entity = deployCard("prince", tiles(9), tiles(10));
     assertThat(entity).isInstanceOf(Troop.class);
 
     Troop troop = (Troop) entity;
@@ -119,7 +120,7 @@ class AbilityDamageScalingTest {
 
   @Test
   void reflectDamage_shouldBeScaledByLevel() {
-    Entity entity = deployCard("electrogiant", 9f, 10f);
+    Entity entity = deployCard("electrogiant", tiles(9), tiles(10));
     assertThat(entity).isInstanceOf(Troop.class);
 
     Troop troop = (Troop) entity;
@@ -137,7 +138,7 @@ class AbilityDamageScalingTest {
 
   @Test
   void variableDamage_shouldBeScaledByLevel() {
-    Entity entity = deployCard("infernodragon", 9f, 10f);
+    Entity entity = deployCard("infernodragon", tiles(9), tiles(10));
     assertThat(entity).isInstanceOf(Troop.class);
 
     Troop troop = (Troop) entity;
@@ -165,7 +166,7 @@ class AbilityDamageScalingTest {
 
   @Test
   void buildingVariableDamage_shouldBeScaledByLevel() {
-    Entity entity = deployCard("infernotower", 9f, 10f);
+    Entity entity = deployCard("infernotower", tiles(9), tiles(10));
     assertThat(entity).isInstanceOf(Building.class);
 
     Building building = (Building) entity;

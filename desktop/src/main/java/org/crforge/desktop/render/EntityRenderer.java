@@ -35,9 +35,9 @@ public class EntityRenderer {
     ctx.getShapeRenderer().begin(ShapeType.Filled);
 
     for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float visualRadius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float visualRadius = unitsToPixels(entity.getVisualRadius());
 
       // Tower boundary rectangle
       if (entity.getEntityType() == EntityType.TOWER) {
@@ -88,9 +88,9 @@ public class EntityRenderer {
     ctx.getShapeRenderer().begin(ShapeType.Line);
 
     for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float visualRadius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float visualRadius = unitsToPixels(entity.getVisualRadius());
 
       // Visual outline (darker version of entity color)
       Color baseColor = getEntityColor(entity);
@@ -99,7 +99,7 @@ public class EntityRenderer {
       ctx.getShapeRenderer().circle(x, y, visualRadius);
 
       // Collision circle (yellow overlay)
-      float collisionRadius = entity.getCollisionRadius() * TILE_PIXELS;
+      float collisionRadius = unitsToPixels(entity.getCollisionRadius());
       ctx.getShapeRenderer().setColor(COLOR_COLLISION_CIRCLE);
       ctx.getShapeRenderer().circle(x, y, collisionRadius);
 

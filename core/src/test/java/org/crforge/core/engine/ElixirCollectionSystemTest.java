@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -35,8 +36,8 @@ class ElixirCollectionSystemTest {
   private static final Card ELIXIR_COLLECTOR = CardRegistry.get("elixircollector");
 
   // Deploy at y=10 on blue side, away from towers
-  private static final float DEPLOY_X = 9f;
-  private static final float DEPLOY_Y = 10f;
+  private static final int DEPLOY_X = tiles(9);
+  private static final int DEPLOY_Y = tiles(10);
 
   // 1.0s placement sync delay = 30 ticks
   private static final int SYNC_DELAY_TICKS = 30;

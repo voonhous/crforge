@@ -11,6 +11,7 @@ import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Processes a targeted area effect (Vines). Selects up to targetCount enemies with the highest
@@ -118,8 +119,8 @@ public class TargetedEffectHandler {
   private Entity findHighestHpTarget(AreaEffect effect) {
     AreaEffectStats stats = effect.getStats();
     Team enemyTeam = effect.getTeam().opposite();
-    float centerX = effect.getPosition().getX();
-    float centerY = effect.getPosition().getY();
+    int centerX = effect.getPosition().getX();
+    int centerY = effect.getPosition().getY();
 
     Entity bestTarget = null;
     int bestEffectiveHp = -1;
@@ -141,9 +142,9 @@ public class TargetedEffectHandler {
 
       // Check within radius (regardless of hitsGround/hitsAir since Vines has both false
       // but uses targeted selection instead)
-      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
-      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
-      if (distanceSq > effectiveRadius * effectiveRadius) {
+      long distanceSq = target.getPosition().distanceSquaredTo(centerX, centerY);
+      long effectiveRadius = (long) stats.getRadius() + target.getCollisionRadius();
+      if (!GameUnits.withinRadius(distanceSq, effectiveRadius)) {
         continue;
       }
 

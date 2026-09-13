@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 /** Tests for the Clone spell's area effect mechanic. */
 class CloneSpellTest {
 
-  private static final float CLONE_RADIUS = 3.0f;
+  private static final int CLONE_RADIUS = tiles(3.0);
 
   /** Builds a Clone spell area effect stats. */
   private AreaEffectStats cloneStats() {
@@ -43,21 +44,22 @@ class CloneSpellTest {
         .build();
   }
 
-  /** Creates a Clone area effect entity at the given position for the given team. */
+  /** Creates a Clone area effect entity at the given tile position for the given team. */
   private AreaEffect createCloneEffect(Team team, float x, float y) {
     AreaEffectStats stats = cloneStats();
     return AreaEffect.builder()
         .name("Clone")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .stats(stats)
         .remainingLifetime(stats.getLifeDuration())
         .build();
   }
 
   /**
-   * Casts clone at position and flushes pending spawns. Clone entities are added to pendingSpawns
-   * during applyClone(), so we need processPending() after the tick to make them visible.
+   * Casts clone at a tile position and flushes pending spawns. Clone entities are added to
+   * pendingSpawns during applyClone(), so we need processPending() after the tick to make them
+   * visible.
    */
   private void castCloneAndFlush(SimHarness sim, Team team, float x, float y) {
     sim.gameState().spawnEntity(createCloneEffect(team, x, y));
@@ -172,10 +174,10 @@ class CloneSpellTest {
         Troop.builder()
             .name("DarkPrince")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(800, 200))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().damage(100).range(1.5f).build())
+            .movement(new Movement(tiles(1.0), 4f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(Combat.builder().damage(100).range(tiles(1.5)).build())
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -227,7 +229,7 @@ class CloneSpellTest {
             .orElse(null);
 
     assertThat(original).isNotNull();
-    assertThat(original.getPosition().getY()).isGreaterThan(10f);
+    assertThat(original.getPosition().getY()).isGreaterThan(tiles(10));
 
     // Clone should be at the original's pre-displacement position
     Troop clone =
@@ -238,7 +240,7 @@ class CloneSpellTest {
             .orElse(null);
 
     assertThat(clone).isNotNull();
-    assertThat(clone.getPosition().getY()).isEqualTo(10f);
+    assertThat(clone.getPosition().getY()).isEqualTo(tiles(10));
   }
 
   @Test
@@ -275,13 +277,14 @@ class CloneSpellTest {
             .name("Golemite")
             .health(500)
             .damage(50)
-            .speed(0.5f)
+            .speed(tiles(0.5))
             .mass(6f)
-            .collisionRadius(0.4f)
-            .visualRadius(0.4f)
+            .collisionRadius(tiles(0.4))
+            .visualRadius(tiles(0.4))
             .build();
 
-    DeathSpawnEntry deathSpawn = new DeathSpawnEntry(golemiteStats, 2, 0.5f, 0f, 0f, null, null);
+    DeathSpawnEntry deathSpawn =
+        new DeathSpawnEntry(golemiteStats, 2, tiles(0.5), 0f, 0f, null, null);
 
     SpawnerComponent spawner = SpawnerComponent.builder().deathSpawns(List.of(deathSpawn)).build();
 
@@ -289,10 +292,10 @@ class CloneSpellTest {
         Troop.builder()
             .name("Golem")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(2000))
-            .movement(new Movement(0.5f, 10f, 0.8f, 0.8f, MovementType.GROUND))
-            .combat(Combat.builder().damage(200).range(1.5f).build())
+            .movement(new Movement(tiles(0.5), 10f, tiles(0.8), tiles(0.8), MovementType.GROUND))
+            .combat(Combat.builder().damage(200).range(tiles(1.5)).build())
             .deployTime(0f)
             .deployTimer(0f)
             .spawner(spawner)
@@ -351,10 +354,10 @@ class CloneSpellTest {
             .name("Skeleton")
             .health(100)
             .damage(30)
-            .speed(1.0f)
+            .speed(tiles(1.0))
             .mass(1f)
-            .collisionRadius(0.3f)
-            .visualRadius(0.3f)
+            .collisionRadius(tiles(0.3))
+            .visualRadius(tiles(0.3))
             .build();
 
     SpawnerComponent spawner =
@@ -371,10 +374,10 @@ class CloneSpellTest {
         Troop.builder()
             .name("Witch")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(800))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
-            .combat(Combat.builder().damage(100).range(5.0f).build())
+            .movement(new Movement(tiles(1.0), 4f, tiles(0.5), tiles(0.5), MovementType.GROUND))
+            .combat(Combat.builder().damage(100).range(tiles(5.0)).build())
             .deployTime(0f)
             .deployTimer(0f)
             .spawner(spawner)
@@ -466,7 +469,7 @@ class CloneSpellTest {
     assertThat(clone).isNotNull();
     assertThat(clone.getCombat()).isNotNull();
     assertThat(clone.getCombat().getDamage()).isEqualTo(200);
-    assertThat(clone.getCombat().getRange()).isEqualTo(1.5f);
+    assertThat(clone.getCombat().getRange()).isEqualTo(tiles(1.5));
     assertThat(clone.getCombat().getAttackCooldown()).isEqualTo(1.2f);
   }
 
@@ -565,7 +568,7 @@ class CloneSpellTest {
             .orElse(null);
 
     assertThat(original).isNotNull();
-    assertThat(original.getPosition().getY()).isLessThan(20f);
+    assertThat(original.getPosition().getY()).isLessThan(tiles(20));
   }
 
   @Test

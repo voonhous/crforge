@@ -1,6 +1,7 @@
 package org.crforge.core.testing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
@@ -47,11 +48,11 @@ class SimHarnessAbilityTest {
   }
 
   private static AbilityData hookData() {
-    return new HookAbility(7.0f, 3.5f, 1.3f, 850f, 450f);
+    return new HookAbility(tiles(7.0), tiles(3.5), 1.3f, 850f, 450f);
   }
 
   private static AbilityData longWindupHookData() {
-    return new HookAbility(7.0f, 3.5f, 9999f, 850f, 450f);
+    return new HookAbility(tiles(7.0), tiles(3.5), 9999f, 850f, 450f);
   }
 
   private static AbilityData chargeData() {
@@ -59,7 +60,7 @@ class SimHarnessAbilityTest {
   }
 
   private static AbilityData dashData() {
-    return new DashAbility(152, 3.5f, 6.0f, 0f, 0.8f, 0.1f, 0.2f, 0f, 0f);
+    return new DashAbility(152, tiles(3.5), tiles(6.0), 0, 0.8f, 0.1f, 0.2f, 0f, 0);
   }
 
   // -- Hook tests via SimHarness --
@@ -96,7 +97,7 @@ class SimHarnessAbilityTest {
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.PULLING);
 
     // Pull target toward fisherman
-    float initialTargetX = target.getPosition().getX();
+    int initialTargetX = target.getPosition().getX();
     sim.tickSeconds(1.0f);
     assertThat(target.getPosition().getX()).isLessThan(initialTargetX);
   }
@@ -131,8 +132,8 @@ class SimHarnessAbilityTest {
     sim.tick();
     assertThat(fisher.getAbility().getHookState()).isEqualTo(AbilityComponent.HookState.WINDING_UP);
 
-    float startX = fisher.getPosition().getX();
-    float startY = fisher.getPosition().getY();
+    int startX = fisher.getPosition().getX();
+    int startY = fisher.getPosition().getY();
 
     // Run for 10 seconds with ALL systems (including StatusEffectSystem and Physics)
     sim.tickSeconds(10.0f);
@@ -185,10 +186,10 @@ class SimHarnessAbilityTest {
         .isEqualTo(AbilityComponent.HookState.DRAGGING_SELF);
 
     // Building should not have moved
-    assertThat(sim.building("Cannon").getPosition().getX()).isEqualTo(10f);
+    assertThat(sim.building("Cannon").getPosition().getX()).isEqualTo(tiles(10));
 
     // Fisherman should be moving toward the building
-    float fisherXBefore = fisher.getPosition().getX();
+    int fisherXBefore = fisher.getPosition().getX();
     sim.tickSeconds(0.33f);
     assertThat(fisher.getPosition().getX()).isGreaterThan(fisherXBefore);
   }

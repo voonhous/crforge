@@ -21,8 +21,7 @@ class AreaEffectFactory {
     this.state = state;
   }
 
-  void deployAreaEffect(
-      Team team, AreaEffectStats stats, float x, float y, Rarity rarity, int level) {
+  void deployAreaEffect(Team team, AreaEffectStats stats, int x, int y, Rarity rarity, int level) {
     int scaledDamage = stats.getDamage() > 0 ? LevelScaling.scaleCard(stats.getDamage(), level) : 0;
     int resolvedCtdp = stats.getCrownTowerDamagePercent();
     int buildingDmgPct = 0;

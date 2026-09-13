@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -33,9 +35,9 @@ class ElectroSpiritTest {
   private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final int ELECTRO_SPIRIT_DAMAGE = 39;
-  private static final float PROJECTILE_SPEED = 1000f / 60f; // ~16.67 t/s
+  private static final float PROJECTILE_SPEED = rawSpeedToUnitsPerSecond(1000f); // ~16.67 t/s
   private static final float STUN_DURATION = 0.5f;
-  private static final float CHAIN_RADIUS = 4.0f;
+  private static final int CHAIN_RADIUS = tiles(4.0);
   private static final int CHAIN_HIT_COUNT = 9; // Total including primary
 
   @BeforeEach
@@ -174,8 +176,8 @@ class ElectroSpiritTest {
     Combat combat =
         Combat.builder()
             .damage(ELECTRO_SPIRIT_DAMAGE)
-            .range(2.5f)
-            .sightRange(5.5f)
+            .range(tiles(2.5))
+            .sightRange(tiles(5.5))
             .attackCooldown(0.3f)
             .loadTime(0.1f)
             .kamikaze(true)
@@ -186,9 +188,9 @@ class ElectroSpiritTest {
     return Troop.builder()
         .name("ElectroSpirit")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(90))
-        .movement(new Movement(2.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(2.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .combat(combat)
         .build();
@@ -198,9 +200,9 @@ class ElectroSpiritTest {
     return Troop.builder()
         .name("Enemy")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(1.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .build();
   }

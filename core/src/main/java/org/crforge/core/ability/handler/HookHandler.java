@@ -9,11 +9,10 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.util.GameUnits;
 
 /** Handles the HOOK ability (Fisherman). */
 public class HookHandler implements AbilityHandler {
-
-  private static final float SPEED_BASE = 60.0f;
 
   private final GameState gameState;
 
@@ -36,13 +35,12 @@ public class HookHandler implements AbilityHandler {
           return;
         }
         Entity target = combat.getCurrentTarget();
-        float distance =
-            troop.getPosition().distanceTo(target.getPosition())
-                - troop.getCollisionRadius()
-                - target.getCollisionRadius();
-
-        // Hook triggers when target is in [minimumRange, range]
-        if (distance >= data.hookMinimumRange() && distance <= data.hookRange()) {
+        // Hook triggers when the edge-to-edge distance is in [minimumRange, range]; compared as
+        // exact center-to-center squared distances
+        long distSq = troop.getPosition().distanceSquaredTo(target.getPosition());
+        long radii = (long) troop.getCollisionRadius() + target.getCollisionRadius();
+        if (!GameUnits.insideRadius(distSq, Math.max(0L, data.hookMinimumRange() + radii))
+            && GameUnits.withinRadius(distSq, data.hookRange() + radii)) {
           ability.setHookState(AbilityComponent.HookState.WINDING_UP);
           ability.setHookTimer(0f);
           ability.setHookedTargetId(target.getId());
@@ -86,19 +84,22 @@ public class HookHandler implements AbilityHandler {
 
         float dx = hookerPos.getX() - targetPos.getX();
         float dy = hookerPos.getY() - targetPos.getY();
-        float dist = hookerPos.distanceTo(targetPos);
-
-        float pullSpeed = data.hookDragBackSpeed() / SPEED_BASE;
+        float dist = hookerPos.distance(targetPos);
+        float pullSpeed = GameUnits.rawSpeedToUnitsPerSecond(data.hookDragBackSpeed());
         float moveAmount = pullSpeed * deltaTime;
 
-        if (dist <= moveAmount + troop.getCollisionRadius() + target.getCollisionRadius()) {
+        if (dist
+            <= moveAmount
+                + Position.MAX_ROUNDING_DISTANCE
+                + troop.getCollisionRadius()
+                + target.getCollisionRadius()) {
           // Target arrived -- start dragging self (or just finish)
           ability.setHookState(AbilityComponent.HookState.DRAGGING_SELF);
           ability.setHookTimer(0f);
         } else {
           float nx = dx / dist;
           float ny = dy / dist;
-          targetPos.set(targetPos.getX() + nx * moveAmount, targetPos.getY() + ny * moveAmount);
+          targetPos.move(nx * moveAmount, ny * moveAmount);
         }
       }
       case DRAGGING_SELF -> {
@@ -116,18 +117,21 @@ public class HookHandler implements AbilityHandler {
 
         float dx = targetPos.getX() - hookerPos.getX();
         float dy = targetPos.getY() - hookerPos.getY();
-        float dist = hookerPos.distanceTo(targetPos);
-
-        float selfSpeed = data.hookDragSelfSpeed() / SPEED_BASE;
+        float dist = hookerPos.distance(targetPos);
+        float selfSpeed = GameUnits.rawSpeedToUnitsPerSecond(data.hookDragSelfSpeed());
         float moveAmount = selfSpeed * deltaTime;
 
-        if (dist <= moveAmount + troop.getCollisionRadius() + target.getCollisionRadius()) {
+        if (dist
+            <= moveAmount
+                + Position.MAX_ROUNDING_DISTANCE
+                + troop.getCollisionRadius()
+                + target.getCollisionRadius()) {
           // Done -- back to idle
           resetHook(troop, ability);
         } else {
           float nx = dx / dist;
           float ny = dy / dist;
-          hookerPos.set(hookerPos.getX() + nx * moveAmount, hookerPos.getY() + ny * moveAmount);
+          hookerPos.move(nx * moveAmount, ny * moveAmount);
         }
       }
     }

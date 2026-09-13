@@ -2,6 +2,7 @@ package org.crforge.data.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -49,9 +50,10 @@ class UnitLoaderTest {
     assertThat(knight).isNotNull();
     assertThat(knight.getHealth()).isEqualTo(690);
     assertThat(knight.getDamage()).isEqualTo(79);
-    assertThat(knight.getSpeed()).isCloseTo(1.0f, within(0.01f)); // 60/60
+    // Raw speed 60 = one tile per second = 1000 game units per second
+    assertThat(knight.getSpeed()).isCloseTo(1000f, within(0.1f));
     assertThat(knight.getMass()).isCloseTo(6.0f, within(0.01f));
-    assertThat(knight.getRange()).isCloseTo(1.2f, within(0.01f));
+    assertThat(knight.getRange()).isEqualTo(tiles(1.2));
     assertThat(knight.getAttackCooldown()).isCloseTo(1.2f, within(0.01f));
     assertThat(knight.getLoadTime()).isCloseTo(0.7f, within(0.01f));
     assertThat(knight.getTargetType()).isEqualTo(TargetType.GROUND);
@@ -137,7 +139,7 @@ class UnitLoaderTest {
 
     TroopStats golem = map.get("Golem");
     assertThat(golem.getDeathDamage()).isEqualTo(120);
-    assertThat(golem.getDeathDamageRadius()).isCloseTo(2.0f, within(0.01f));
+    assertThat(golem.getDeathDamageRadius()).isEqualTo(tiles(2.0));
     assertThat(golem.getDeathSpawns()).hasSize(1);
     assertThat(golem.getDeathSpawns().get(0).stats().getName()).isEqualTo("Golemite");
     assertThat(golem.getDeathSpawns().get(0).count()).isEqualTo(2);
@@ -180,7 +182,7 @@ class UnitLoaderTest {
     assertThat(witch.getLiveSpawn().spawnNumber()).isEqualTo(4);
     assertThat(witch.getLiveSpawn().spawnPauseTime()).isCloseTo(7.0f, within(0.01f));
     assertThat(witch.getLiveSpawn().spawnStartTime()).isCloseTo(1.0f, within(0.01f));
-    assertThat(witch.getLiveSpawn().spawnRadius()).isCloseTo(2.0f, within(0.01f));
+    assertThat(witch.getLiveSpawn().spawnRadius()).isEqualTo(tiles(2.0));
   }
 
   @Test
@@ -271,7 +273,7 @@ class UnitLoaderTest {
 
     TroopStats valkyrie = map.get("Valkyrie");
     assertThat(valkyrie).isNotNull();
-    assertThat(valkyrie.getAoeRadius()).isCloseTo(1.3f, within(0.01f));
+    assertThat(valkyrie.getAoeRadius()).isEqualTo(tiles(1.3));
   }
 
   @Test
@@ -444,10 +446,10 @@ class UnitLoaderTest {
         ProjectileStats.builder()
             .name("PhoenixFireball")
             .damage(64)
-            .speed(10.0f)
-            .radius(2.5f)
+            .speed(10000f)
+            .radius(tiles(2.5))
             .homing(false)
-            .pushback(2.0f)
+            .pushback(tiles(2.0))
             .spawnCharacterName("PhoenixEgg")
             .spawnCharacterCount(1)
             .build();
@@ -600,7 +602,7 @@ class UnitLoaderTest {
       // Spot checks
       TroopStats knight = map.get("Knight");
       assertThat(knight).isNotNull();
-      assertThat(knight.getSpeed()).isCloseTo(1.0f, within(0.01f));
+      assertThat(knight.getSpeed()).isCloseTo(1000f, within(0.1f));
 
       TroopStats witch = map.get("Witch");
       assertThat(witch).isNotNull();
@@ -609,7 +611,7 @@ class UnitLoaderTest {
       // Verify splash troops have areaDamageRadius loaded correctly
       TroopStats valkyrie = map.get("Valkyrie");
       assertThat(valkyrie).isNotNull();
-      assertThat(valkyrie.getAoeRadius()).isGreaterThan(0f);
+      assertThat(valkyrie.getAoeRadius()).isGreaterThan(0);
 
       // Verify chained death spawn: SkeletonBalloon -> SkeletonContainer -> Skeleton
       TroopStats skelBalloon = map.get("SkeletonBalloon");
@@ -665,7 +667,7 @@ class UnitLoaderTest {
       assertThat(goblinDrill.getLiveSpawn().spawnCharacter()).isEqualTo("Goblin");
       assertThat(goblinDrill.getSpawnAreaEffect()).isNotNull();
       assertThat(goblinDrill.getSpawnAreaEffect().getName()).isEqualTo("GoblinDrillDamage");
-      assertThat(goblinDrill.getSpawnAreaEffect().getPushback()).isGreaterThan(0f);
+      assertThat(goblinDrill.getSpawnAreaEffect().getPushback()).isGreaterThan(0);
 
       // Verify Phoenix chain resolution from real data
       TroopStats phoenix = map.get("Phoenix");
@@ -691,7 +693,7 @@ class UnitLoaderTest {
       assertThat(mounted.getDamage()).isEqualTo(121);
       assertThat(mounted.getMovementType()).isEqualTo(MovementType.AIR);
       assertThat(mounted.getTargetType()).isEqualTo(TargetType.ALL);
-      assertThat(mounted.getRange()).isCloseTo(5.0f, within(0.01f));
+      assertThat(mounted.getRange()).isEqualTo(tiles(5.0));
       assertThat(mounted.getProjectile()).isNotNull();
       assertThat(mounted.getProjectile().getName()).isEqualTo("MergeMaidenProjectile_Mounted");
 
@@ -701,7 +703,7 @@ class UnitLoaderTest {
       assertThat(normal.getDamage()).isEqualTo(121);
       assertThat(normal.getMovementType()).isEqualTo(MovementType.GROUND);
       assertThat(normal.getTargetType()).isEqualTo(TargetType.GROUND);
-      assertThat(normal.getRange()).isCloseTo(1.2f, within(0.01f));
+      assertThat(normal.getRange()).isEqualTo(tiles(1.2));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

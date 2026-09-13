@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
@@ -42,21 +43,21 @@ class SpellRadiusResolutionTest {
             .type(CardType.SPELL)
             .rarity(Rarity.COMMON)
             .cost(3)
-            .spellRadius(3.5f)
+            .spellRadius(tiles(3.5))
             .projectile(
                 ProjectileStats.builder()
                     .name("TestArrowsProj")
                     .damage(100)
-                    .speed(8f)
-                    .radius(1.4f)
+                    .speed(tiles(8))
+                    .radius(tiles(1.4))
                     .build())
             .build();
 
-    castSpell(Team.BLUE, arrows, 9f, 20f);
+    castSpell(Team.BLUE, arrows, tiles(9), tiles(20));
 
     assertThat(engine.getGameState().getProjectiles()).hasSize(1);
     Projectile p = engine.getGameState().getProjectiles().get(0);
-    assertThat(p.getAoeRadius()).isEqualTo(3.5f);
+    assertThat(p.getAoeRadius()).isEqualTo(tiles(3.5));
   }
 
   @Test
@@ -74,19 +75,19 @@ class SpellRadiusResolutionTest {
                 ProjectileStats.builder()
                     .name("TestFireballProj")
                     .damage(200)
-                    .speed(8f)
-                    .radius(2.5f)
+                    .speed(tiles(8))
+                    .radius(tiles(2.5))
                     .build())
             .build();
 
-    castSpell(Team.BLUE, fireball, 9f, 20f);
+    castSpell(Team.BLUE, fireball, tiles(9), tiles(20));
 
     assertThat(engine.getGameState().getProjectiles()).hasSize(1);
     Projectile p = engine.getGameState().getProjectiles().get(0);
-    assertThat(p.getAoeRadius()).isEqualTo(2.5f);
+    assertThat(p.getAoeRadius()).isEqualTo(tiles(2.5));
   }
 
-  private void castSpell(Team team, Card card, float x, float y) {
+  private void castSpell(Team team, Card card, int x, int y) {
     SpellFactory factory =
         new SpellFactory(
             engine.getGameState(), null, null, new AreaEffectFactory(engine.getGameState()));

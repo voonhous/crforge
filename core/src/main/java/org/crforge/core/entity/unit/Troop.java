@@ -16,6 +16,7 @@ import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.util.GameUnits;
 
 @Getter
 @SuperBuilder
@@ -101,13 +102,14 @@ public class Troop extends AbstractEntity {
     if (currentTarget == null) {
       return false;
     }
-    float distance = position.distanceTo(currentTarget.getPosition());
-    // Collision Radius used for attack range calculation
-    float effectiveRange =
-        combat.getRange() + getCollisionRadius() + currentTarget.getCollisionRadius();
-    return distance <= effectiveRange;
+    // Collision Radius used for attack range calculation (exact integer squared comparison)
+    long effectiveRange =
+        (long) combat.getRange() + getCollisionRadius() + currentTarget.getCollisionRadius();
+    return GameUnits.withinRadius(
+        position.distanceSquaredTo(currentTarget.getPosition()), effectiveRange);
   }
 
+  /** Center-to-center distance to the current target in game units. */
   public float getDistanceToTarget() {
     if (combat == null) {
       return Float.MAX_VALUE;
@@ -116,7 +118,7 @@ public class Troop extends AbstractEntity {
     if (currentTarget == null) {
       return Float.MAX_VALUE;
     }
-    return position.distanceTo(currentTarget.getPosition());
+    return position.distance(currentTarget.getPosition());
   }
 
   @Override

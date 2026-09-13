@@ -13,6 +13,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Building;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Shared utilities for area effect handlers. Holds a {@link GameState} reference and provides
@@ -48,12 +49,9 @@ public class AreaEffectContext {
 
   /** Returns true if the entity is within the effect's radius (accounting for collision radius). */
   public boolean isInRadius(AreaEffect effect, Entity target) {
-    float distanceSq =
-        target
-            .getPosition()
-            .distanceToSquared(effect.getPosition().getX(), effect.getPosition().getY());
-    float effectiveRadius = effect.getStats().getRadius() + target.getCollisionRadius();
-    return distanceSq <= effectiveRadius * effectiveRadius;
+    long distanceSq = target.getPosition().distanceSquaredTo(effect.getPosition());
+    long effectiveRadius = (long) effect.getStats().getRadius() + target.getCollisionRadius();
+    return GameUnits.withinRadius(distanceSq, effectiveRadius);
   }
 
   /** Returns true if the entity currently has a STUN or FREEZE effect active. */
@@ -127,10 +125,9 @@ public class AreaEffectContext {
 
   /**
    * Applies knockback to an entity hit by an area effect. Buildings and entities with
-   * ignorePushback are immune.
+   * ignorePushback are immune. The center and pushback distance are game units.
    */
-  public void applyAreaEffectKnockback(
-      Entity target, float centerX, float centerY, float pushback) {
+  public void applyAreaEffectKnockback(Entity target, int centerX, int centerY, int pushback) {
     Movement movement = target.getMovement();
     if (movement == null) {
       return;
@@ -141,9 +138,10 @@ public class AreaEffectContext {
 
     float dx = target.getPosition().getX() - centerX;
     float dy = target.getPosition().getY() - centerY;
-    float dist = (float) Math.sqrt(dx * dx + dy * dy);
-    float dirX = dist > 0.001f ? dx / dist : 0f;
-    float dirY = dist > 0.001f ? dy / dist : 1f;
+    float dist = target.getPosition().distance(centerX, centerY);
+    // Coincident with the center: push along +Y (integer positions: dist is 0 or >= 1)
+    float dirX = dist > 0f ? dx / dist : 0f;
+    float dirY = dist > 0f ? dy / dist : 1f;
 
     movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
   }

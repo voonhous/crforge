@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.StealthAbility;
@@ -113,16 +114,16 @@ class SuspiciousBushTest {
     assertThat(entry0.stats().getName()).isEqualTo("BushGoblin");
     assertThat(entry0.count()).as("Spawn number").isEqualTo(1);
     assertThat(entry0.spawnDelay()).as("Spawn delay").isEqualTo(0.675f);
-    assertThat(entry0.relativeX()).as("Relative X").isEqualTo(-1.0f);
-    assertThat(entry0.relativeY()).as("Relative Y").isEqualTo(0.0f);
+    assertThat(entry0.relativeX()).as("Relative X").isEqualTo(tiles(-1.0));
+    assertThat(entry0.relativeY()).as("Relative Y").isEqualTo(0);
 
     // Entry 1: BushGoblin at (+1, 0) with 0.625s delay
     DeathSpawnEntry entry1 = deathSpawns.get(1);
     assertThat(entry1.stats().getName()).isEqualTo("BushGoblin");
     assertThat(entry1.count()).as("Spawn number").isEqualTo(1);
     assertThat(entry1.spawnDelay()).as("Spawn delay").isEqualTo(0.625f);
-    assertThat(entry1.relativeX()).as("Relative X").isEqualTo(1.0f);
-    assertThat(entry1.relativeY()).as("Relative Y").isEqualTo(0.0f);
+    assertThat(entry1.relativeX()).as("Relative X").isEqualTo(tiles(1.0));
+    assertThat(entry1.relativeY()).as("Relative Y").isEqualTo(0);
   }
 
   @Test
@@ -161,7 +162,8 @@ class SuspiciousBushTest {
 
     // Spawn a red melee troop right next to the bush
     Troop redTroop =
-        createMeleeTroop(Team.RED, bush.getPosition().getX(), bush.getPosition().getY() + 1f, 100);
+        createMeleeTroop(
+            Team.RED, bush.getPosition().getX(), bush.getPosition().getY() + tiles(1), 100);
     engine.getGameState().spawnEntity(redTroop);
     engine.tick(5);
 
@@ -232,8 +234,8 @@ class SuspiciousBushTest {
     engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2);
 
     Troop bush = findBush();
-    float deathX = bush.getPosition().getX();
-    float deathY = bush.getPosition().getY();
+    int deathX = bush.getPosition().getX();
+    int deathY = bush.getPosition().getY();
 
     bush.getHealth().takeDamage(bush.getHealth().getCurrent());
     // 1 tick for death + max delay (0.675s) + processPending
@@ -251,14 +253,14 @@ class SuspiciousBushTest {
         goblins.stream()
             .anyMatch(
                 g ->
-                    Math.abs(g.getPosition().getX() - (deathX - 1.0f)) < 0.01f
-                        && Math.abs(g.getPosition().getY() - deathY) < 0.01f);
+                    Math.abs(g.getPosition().getX() - (deathX - tiles(1.0))) < tiles(0.01)
+                        && Math.abs(g.getPosition().getY() - deathY) < tiles(0.01));
     boolean hasRight =
         goblins.stream()
             .anyMatch(
                 g ->
-                    Math.abs(g.getPosition().getX() - (deathX + 1.0f)) < 0.01f
-                        && Math.abs(g.getPosition().getY() - deathY) < 0.01f);
+                    Math.abs(g.getPosition().getX() - (deathX + tiles(1.0))) < tiles(0.01)
+                        && Math.abs(g.getPosition().getY() - deathY) < tiles(0.01));
 
     assertThat(hasLeft).as("Should have BushGoblin at left offset (-1, 0)").isTrue();
     assertThat(hasRight).as("Should have BushGoblin at right offset (+1, 0)").isTrue();
@@ -361,8 +363,9 @@ class SuspiciousBushTest {
 
   // -- Helpers --
 
+  /** Deploys the bush at a tile-space position. */
   private void deployBush(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, x, y);
     engine.queueAction(bluePlayer, action);
   }
 
@@ -387,18 +390,19 @@ class SuspiciousBushTest {
         .orElse(null);
   }
 
-  private Troop createMeleeTroop(Team team, float x, float y, int damage) {
+  /** Creates a melee troop at a game-unit position. */
+  private Troop createMeleeTroop(Team team, int x, int y, int damage) {
     TroopStats stats =
         TroopStats.builder()
             .name("TestTroop")
             .health(100)
             .damage(damage)
-            .speed(1.0f)
+            .speed(tiles(1.0))
             .mass(4.0f)
-            .collisionRadius(0.5f)
-            .visualRadius(0.5f)
-            .range(0.8f)
-            .sightRange(5.5f)
+            .collisionRadius(tiles(0.5))
+            .visualRadius(tiles(0.5))
+            .range(tiles(0.8))
+            .sightRange(tiles(5.5))
             .attackCooldown(1.0f)
             .movementType(org.crforge.core.entity.base.MovementType.GROUND)
             .targetType(org.crforge.core.entity.base.TargetType.GROUND)
@@ -411,12 +415,16 @@ class SuspiciousBushTest {
         .health(new org.crforge.core.component.Health(100))
         .movement(
             new org.crforge.core.component.Movement(
-                1.0f, 4.0f, 0.5f, 0.5f, org.crforge.core.entity.base.MovementType.GROUND))
+                tiles(1.0),
+                4.0f,
+                tiles(0.5),
+                tiles(0.5),
+                org.crforge.core.entity.base.MovementType.GROUND))
         .combat(
             org.crforge.core.component.Combat.builder()
                 .damage(damage)
-                .range(0.8f)
-                .sightRange(5.5f)
+                .range(tiles(0.8))
+                .sightRange(tiles(5.5))
                 .attackCooldown(1.0f)
                 .targetType(org.crforge.core.entity.base.TargetType.GROUND)
                 .build())

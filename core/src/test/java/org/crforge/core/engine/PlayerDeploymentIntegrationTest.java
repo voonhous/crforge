@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +69,7 @@ class PlayerDeploymentIntegrationTest {
     int cost = cardAtSlot0.getCost();
 
     // Queue action to play card at slot 0
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(10));
     engine.queueAction(bluePlayer, action);
 
     // Tick past the 1s placement sync delay (30 ticks) + 1 tick to process pending spawns
@@ -94,7 +95,7 @@ class PlayerDeploymentIntegrationTest {
     int initialEntityCount = engine.getGameState().getEntities().size();
 
     // Try to play a card (all cards in deck cost at least 2)
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(10));
     engine.queueAction(bluePlayer, action);
 
     // Tick past sync delay + 1 extra tick
@@ -116,7 +117,7 @@ class PlayerDeploymentIntegrationTest {
     int initialEntityCount = engine.getGameState().getEntities().size();
 
     // Try to place on enemy side (y=25 is in red zone)
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO action = PlayerActionDTO.play(0, tiles(9), tiles(25));
     engine.queueAction(bluePlayer, action);
 
     // Tick past sync delay + 1 extra tick
@@ -158,7 +159,7 @@ class PlayerDeploymentIntegrationTest {
                 .filter(e -> e.getEntityType() == EntityType.TROOP)
                 .count();
 
-    PlayerActionDTO action = PlayerActionDTO.play(goblinsSlot, 9f, 10f);
+    PlayerActionDTO action = PlayerActionDTO.play(goblinsSlot, tiles(9), tiles(10));
     engine.queueAction(bluePlayer, action);
 
     // Tick past sync delay + full stagger window + 1 extra to process pending spawns.
@@ -260,7 +261,7 @@ class PlayerDeploymentIntegrationTest {
       return; // Knight not in initial hand
     }
 
-    PlayerActionDTO action = PlayerActionDTO.play(knightSlot, 9f, 10f);
+    PlayerActionDTO action = PlayerActionDTO.play(knightSlot, tiles(9), tiles(10));
     engine.queueAction(bluePlayer, action);
 
     // Tick past sync delay + 1 extra to process pending spawns
@@ -281,7 +282,7 @@ class PlayerDeploymentIntegrationTest {
     assertThat(knight.getHealth().getMax()).isEqualTo(690);
     assertThat(knight.getCombat().getDamage()).isEqualTo(79);
     // Position may have shifted slightly due to physics, use approximate check
-    assertThat(knight.getPosition().getX()).isCloseTo(9f, within(1f));
-    assertThat(knight.getPosition().getY()).isCloseTo(10f, within(1f));
+    assertThat(knight.getPosition().getX()).isCloseTo(tiles(9), within(tiles(1)));
+    assertThat(knight.getPosition().getY()).isCloseTo(tiles(10), within(tiles(1)));
   }
 }

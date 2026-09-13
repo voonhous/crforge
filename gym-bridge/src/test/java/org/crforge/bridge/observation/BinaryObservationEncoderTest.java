@@ -172,7 +172,7 @@ class BinaryObservationEncoderTest {
   @Test
   void entityFeaturesMatchJsonObservation() {
     // Deploy a knight to have a non-tower entity
-    PlayerActionDTO action = PlayerActionDTO.play(0, 9f, 10f);
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, 9f, 10f);
     engine.queueAction(bluePlayer, action);
     engine.tick(60); // 2 seconds for deploy + movement
 

@@ -2,6 +2,7 @@ package org.crforge.data.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -40,7 +41,8 @@ class ProjectileLoaderTest {
     ProjectileStats arrow = map.get("ArcherArrow");
     assertThat(arrow).isNotNull();
     assertThat(arrow.getDamage()).isEqualTo(44);
-    assertThat(arrow.getSpeed()).isCloseTo(600f / 60f, within(0.01f));
+    // Raw speed 600 = 10 tiles per second = 10,000 game units per second
+    assertThat(arrow.getSpeed()).isCloseTo(10000f, within(0.1f));
     assertThat(arrow.isHoming()).isTrue();
     assertThat(arrow.isAoeToAir()).isFalse();
     assertThat(arrow.isAoeToGround()).isFalse();
@@ -75,7 +77,7 @@ class ProjectileLoaderTest {
     assertThat(slowEffect.getDuration()).isCloseTo(2.5f, within(0.01f));
     assertThat(slowEffect.getBuffName()).isEqualTo("IceWizardSlowDown");
     assertThat(slowEffect.isApplyAfterDamage()).isTrue();
-    assertThat(proj.getRadius()).isCloseTo(1.5f, within(0.01f));
+    assertThat(proj.getRadius()).isEqualTo(tiles(1.5));
   }
 
   @Test
@@ -101,7 +103,7 @@ class ProjectileLoaderTest {
     Map<String, ProjectileStats> map = ProjectileLoader.loadProjectiles(toStream(json));
 
     ProjectileStats proj = map.get("ElectroDragonProjectile");
-    assertThat(proj.getChainedHitRadius()).isCloseTo(4.0f, within(0.01f));
+    assertThat(proj.getChainedHitRadius()).isEqualTo(tiles(4.0));
     assertThat(proj.getChainedHitCount()).isEqualTo(3);
     // targetBuff is now merged into hitEffects
     assertThat(proj.getHitEffects()).hasSize(1);
@@ -166,7 +168,7 @@ class ProjectileLoaderTest {
     Map<String, ProjectileStats> map = ProjectileLoader.loadProjectiles(toStream(json));
 
     ProjectileStats proj = map.get("HunterProjectile");
-    assertThat(proj.getProjectileRange()).isCloseTo(6.5f, within(0.01f));
+    assertThat(proj.getProjectileRange()).isEqualTo(tiles(6.5));
     assertThat(proj.isHoming()).isFalse();
   }
 
@@ -195,7 +197,7 @@ class ProjectileLoaderTest {
     assertThat(proj).isNotNull();
     assertThat(proj.isReturning()).isTrue();
     assertThat(proj.isHoming()).isFalse();
-    assertThat(proj.getProjectileRange()).isCloseTo(7.5f, within(0.01f));
+    assertThat(proj.getProjectileRange()).isEqualTo(tiles(7.5));
   }
 
   @Test

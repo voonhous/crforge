@@ -50,7 +50,7 @@ public class ProjectileConfigDTO {
   // Character spawning on impact (GoblinBarrel, BarbLog)
   private SpawnConfigDTO spawn;
 
-  // Knockback on hit (raw CSV units: divide by 1000 for tiles)
+  // Knockback distance on hit, already in raw game units (1000 = one tile)
   private int pushback;
   private boolean pushbackAll;
 

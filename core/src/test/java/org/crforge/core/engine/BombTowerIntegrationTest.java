@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -34,12 +35,12 @@ class BombTowerIntegrationTest {
   // BombTower level 1 stats from units.json
   private static final int BOMB_TOWER_HP = 530;
   private static final int BOMB_TOWER_DAMAGE = 87;
-  private static final float BOMB_TOWER_RANGE = 6.0f;
+  private static final int BOMB_TOWER_RANGE = tiles(6.0);
   private static final float BOMB_TOWER_LIFETIME = 30.0f;
 
   // BombTowerBomb stats
   private static final int BOMB_DEATH_DAMAGE = 87;
-  private static final float BOMB_DEATH_DAMAGE_RADIUS = 3.0f;
+  private static final int BOMB_DEATH_DAMAGE_RADIUS = tiles(3.0);
   private static final float BOMB_DEPLOY_TIME = 3.0f;
 
   @Test
@@ -67,7 +68,7 @@ class BombTowerIntegrationTest {
     assertThat(projectile.isHoming()).isFalse();
     assertThat(projectile.isAoeToGround()).isTrue();
     assertThat(projectile.isAoeToAir()).isFalse();
-    assertThat(projectile.getRadius()).isEqualTo(1.5f);
+    assertThat(projectile.getRadius()).isEqualTo(tiles(1.5));
 
     // Should have a death spawn entry for BombTowerBomb
     assertThat(unitStats.getDeathSpawns()).hasSize(1);
@@ -229,11 +230,11 @@ class BombTowerIntegrationTest {
         ProjectileStats.builder()
             .name("BombTowerProjectile")
             .damage(BOMB_TOWER_DAMAGE)
-            .speed(500)
+            .speed(tiles(500))
             .homing(false)
             .aoeToGround(true)
             .aoeToAir(false)
-            .radius(1.5f)
+            .radius(tiles(1.5))
             .build();
 
     Combat combat =
@@ -251,7 +252,7 @@ class BombTowerIntegrationTest {
     TroopStats bombStats = bombTowerBombStats();
     SpawnerComponent spawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0f, 0f, 0f, null, null)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bombStats, 1, 0, 0f, 0f, null, null)))
             .build();
 
     return BuildingTemplate.defense("BombTower", team)

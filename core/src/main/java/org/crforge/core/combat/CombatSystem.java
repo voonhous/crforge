@@ -16,6 +16,7 @@ import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /** Handles attack execution, damage dealing, and delegates projectile management. */
 public class CombatSystem {
@@ -152,8 +153,9 @@ public class CombatSystem {
           && troop.getMovement() != null) {
         float dx = target.getPosition().getX() - entity.getPosition().getX();
         float dy = target.getPosition().getY() - entity.getPosition().getY();
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0.001f) {
+        float dist = entity.getPosition().distance(target.getPosition());
+        // Integer positions: any nonzero distance (at least one game unit) has a direction
+        if (dist > 0f) {
           float dirX = dx / dist;
           float dirY = dy / dist;
           troop
@@ -179,21 +181,24 @@ public class CombatSystem {
   }
 
   private boolean isInAttackRange(Entity attacker, Entity target, Combat combat) {
-    float distanceSq = attacker.getPosition().distanceToSquared(target.getPosition());
-    // Use Collision Radius for range calculation
-    float effectiveRange =
-        combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
+    long distanceSq = attacker.getPosition().distanceSquaredTo(target.getPosition());
+    // Use Collision Radius for range calculation (exact integer comparison, boundary inclusive)
+    long effectiveRange = edgeRange(combat.getRange(), attacker, target);
 
     // Minimum range check (e.g. Mortar cannot attack nearby enemies)
     if (combat.getMinimumRange() > 0) {
-      float effectiveMinRange =
-          combat.getMinimumRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
-      if (distanceSq < effectiveMinRange * effectiveMinRange) {
+      long effectiveMinRange = edgeRange(combat.getMinimumRange(), attacker, target);
+      if (GameUnits.insideRadius(distanceSq, effectiveMinRange)) {
         return false;
       }
     }
 
-    return distanceSq <= effectiveRange * effectiveRange;
+    return GameUnits.withinRadius(distanceSq, effectiveRange);
+  }
+
+  /** Center-to-center range in game units for an edge-to-edge range between two entities. */
+  private static long edgeRange(int range, Entity attacker, Entity target) {
+    return (long) range + attacker.getCollisionRadius() + target.getCollisionRadius();
   }
 
   // -- executeAttack and its extracted sub-methods --
@@ -289,9 +294,9 @@ public class CombatSystem {
     if (reflectDmg > 0
         && target instanceof Troop reflector
         && reflector.getAbility().getData() instanceof ReflectAbility reflect) {
-      float dist = attacker.getPosition().distanceTo(reflector.getPosition());
-      float effectiveRadius = reflect.reflectRadius() + attacker.getCollisionRadius();
-      if (dist <= effectiveRadius) {
+      long effectiveRadius = (long) reflect.reflectRadius() + attacker.getCollisionRadius();
+      if (GameUnits.withinRadius(
+          attacker.getPosition().distanceSquaredTo(reflector.getPosition()), effectiveRadius)) {
         abilityBridge.applyReflectDamage(reflector, attacker, reflectDmg, aoeDamageService);
       }
     }
@@ -324,11 +329,11 @@ public class CombatSystem {
     }
 
     // Attack recoil: push the attacker backward when they fire (e.g. Firecracker)
-    if (combat.getAttackPushBack() > 0f && attacker.getMovement() != null) {
+    if (combat.getAttackPushBack() > 0 && attacker.getMovement() != null) {
       float dx = target.getPosition().getX() - attacker.getPosition().getX();
       float dy = target.getPosition().getY() - attacker.getPosition().getY();
-      float dist = (float) Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.001f) {
+      float dist = attacker.getPosition().distance(target.getPosition());
+      if (dist > 0f) {
         float recoilDirX = -dx / dist;
         float recoilDirY = -dy / dist;
         attacker
@@ -379,9 +384,9 @@ public class CombatSystem {
     // Sort by squared distance (preserves ordering, avoids sqrt)
     candidates.sort(
         (a, b) -> {
-          float da = attacker.getPosition().distanceToSquared(a.getPosition());
-          float db = attacker.getPosition().distanceToSquared(b.getPosition());
-          return Float.compare(da, db);
+          long da = attacker.getPosition().distanceSquaredTo(a.getPosition());
+          long db = attacker.getPosition().distanceSquaredTo(b.getPosition());
+          return Long.compare(da, db);
         });
 
     int baseDamage = combat.getDamage();
@@ -454,19 +459,16 @@ public class CombatSystem {
       return false;
     }
 
-    float distanceSq = attacker.getPosition().distanceToSquared(target.getPosition());
-    float effectiveRange =
-        combat.getRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
-
-    if (distanceSq > effectiveRange * effectiveRange) {
+    long distanceSq = attacker.getPosition().distanceSquaredTo(target.getPosition());
+    long effectiveRange = edgeRange(combat.getRange(), attacker, target);
+    if (!GameUnits.withinRadius(distanceSq, effectiveRange)) {
       return false;
     }
 
     // Minimum range check
     if (combat.getMinimumRange() > 0) {
-      float effectiveMinRange =
-          combat.getMinimumRange() + attacker.getCollisionRadius() + target.getCollisionRadius();
-      if (distanceSq < effectiveMinRange * effectiveMinRange) {
+      long effectiveMinRange = edgeRange(combat.getMinimumRange(), attacker, target);
+      if (GameUnits.insideRadius(distanceSq, effectiveMinRange)) {
         return false;
       }
     }

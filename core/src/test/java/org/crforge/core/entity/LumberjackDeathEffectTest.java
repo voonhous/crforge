@@ -1,6 +1,7 @@
 package org.crforge.core.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import java.util.Map;
@@ -73,7 +74,7 @@ class LumberjackDeathEffectTest {
     rageAreaEffect =
         AreaEffectStats.builder()
             .name("BarbarianRage")
-            .radius(3.0f)
+            .radius(tiles(3.0))
             .lifeDuration(5.5f)
             .hitsGround(true)
             .hitsAir(true)
@@ -97,7 +98,7 @@ class LumberjackDeathEffectTest {
         Troop.builder()
             .name("RageBarbarianBottle")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(bottleSpawner)
@@ -116,9 +117,9 @@ class LumberjackDeathEffectTest {
     AreaEffect rage = effects.get(0);
     assertThat(rage.getName()).isEqualTo("BarbarianRage");
     assertThat(rage.getTeam()).isEqualTo(Team.BLUE);
-    assertThat(rage.getPosition().getX()).isEqualTo(10f);
-    assertThat(rage.getPosition().getY()).isEqualTo(10f);
-    assertThat(rage.getStats().getRadius()).isEqualTo(3.0f);
+    assertThat(rage.getPosition().getX()).isEqualTo(tiles(10));
+    assertThat(rage.getPosition().getY()).isEqualTo(tiles(10));
+    assertThat(rage.getStats().getRadius()).isEqualTo(tiles(3.0));
     assertThat(rage.getStats().getLifeDuration()).isEqualTo(5.5f);
   }
 
@@ -129,7 +130,7 @@ class LumberjackDeathEffectTest {
         AreaEffect.builder()
             .name("BarbarianRage")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(rageAreaEffect)
             .remainingLifetime(5.5f)
             .build();
@@ -139,9 +140,9 @@ class LumberjackDeathEffectTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
 
@@ -163,7 +164,7 @@ class LumberjackDeathEffectTest {
         AreaEffect.builder()
             .name("BarbarianRage")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(rageAreaEffect)
             .remainingLifetime(5.5f)
             .build();
@@ -173,9 +174,9 @@ class LumberjackDeathEffectTest {
         Troop.builder()
             .name("Knight")
             .team(Team.RED)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
 
@@ -199,7 +200,7 @@ class LumberjackDeathEffectTest {
     AreaEffectStats dummyAoe =
         AreaEffectStats.builder()
             .name("DummyEffect")
-            .radius(0f)
+            .radius(0)
             .hitsGround(false)
             .hitsAir(false)
             .build();
@@ -212,7 +213,7 @@ class LumberjackDeathEffectTest {
         Troop.builder()
             .name("TestUnit")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
             .deployTime(0f)
             .spawner(spawner)
@@ -239,7 +240,7 @@ class LumberjackDeathEffectTest {
     AreaEffectStats dummyAoe =
         AreaEffectStats.builder()
             .name("DummyRageEffect")
-            .radius(0f)
+            .radius(0)
             .hitsGround(false)
             .hitsAir(false)
             .build();
@@ -261,16 +262,16 @@ class LumberjackDeathEffectTest {
     SpawnerComponent ljSpawner =
         SpawnerComponent.builder()
             .deathAreaEffect(dummyAoe)
-            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f, 0f, null, null)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0, 0f, 0f, null, null)))
             .build();
 
     Troop lumberjack =
         Troop.builder()
             .name("RageBarbarian")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(1.2f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.2), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .spawner(ljSpawner)
             .build();
@@ -303,7 +304,7 @@ class LumberjackDeathEffectTest {
     List<AreaEffect> effects = gameState.getEntitiesOfType(AreaEffect.class);
     assertThat(effects).hasSize(1);
     assertThat(effects.get(0).getName()).isEqualTo("BarbarianRage");
-    assertThat(effects.get(0).getStats().getRadius()).isEqualTo(3.0f);
+    assertThat(effects.get(0).getStats().getRadius()).isEqualTo(tiles(3.0));
   }
 
   @Test
@@ -328,25 +329,25 @@ class LumberjackDeathEffectTest {
             .name("RageBarbarian")
             .health(1000)
             .damage(200)
-            .speed(1.2f)
+            .speed(tiles(1.2))
             .movementType(MovementType.GROUND)
             .targetType(TargetType.ALL)
-            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f, 0f, null, null)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0, 0f, 0f, null, null)))
             .build();
 
     // Create lumberjack with death spawn wired
     SpawnerComponent ljSpawner =
         SpawnerComponent.builder()
-            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0f, 0f, 0f, null, null)))
+            .deathSpawns(List.of(new DeathSpawnEntry(bottleStats, 1, 0, 0f, 0f, null, null)))
             .build();
 
     Troop lumberjack =
         Troop.builder()
             .name("RageBarbarian")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .health(new Health(1))
-            .movement(new Movement(1.2f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.2), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .spawner(ljSpawner)
             .build();
@@ -356,9 +357,9 @@ class LumberjackDeathEffectTest {
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
 

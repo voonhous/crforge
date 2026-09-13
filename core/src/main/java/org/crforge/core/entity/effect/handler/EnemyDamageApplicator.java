@@ -25,8 +25,8 @@ public class EnemyDamageApplicator {
   public void applyDamageToEnemies(AreaEffect effect) {
     AreaEffectStats stats = effect.getStats();
     Team enemyTeam = effect.getTeam().opposite();
-    float centerX = effect.getPosition().getX();
-    float centerY = effect.getPosition().getY();
+    int centerX = effect.getPosition().getX();
+    int centerY = effect.getPosition().getY();
     int damage = effect.getEffectiveDamage();
     int ctdp = effect.getEffectiveCrownTowerDamagePercent();
 

@@ -15,14 +15,17 @@ public class ProjectileStats {
 
   private final String name;
   @Builder.Default private final int damage = 0;
-  @Builder.Default private final float speed = 15.0f;
-  @Builder.Default private final float radius = 0f; // AOE radius
-  @Builder.Default private final float radiusY = 0f; // Elliptical AOE depth (Log/BarbLog)
+  // Travel speed in game units per second (15,000 = 15 tiles per second)
+  @Builder.Default private final float speed = 15000f;
+
+  // Spatial fields are in integer game units (1,000 per tile)
+  @Builder.Default private final int radius = 0; // AOE radius
+  @Builder.Default private final int radiusY = 0; // Elliptical AOE depth (Log/BarbLog)
   @Builder.Default private final boolean homing = true;
   @Builder.Default private final List<EffectStats> hitEffects = new ArrayList<>();
 
   // Chain lightning: after primary hit, chain to N more targets within radius
-  @Builder.Default private final float chainedHitRadius = 0f;
+  @Builder.Default private final int chainedHitRadius = 0;
   @Builder.Default private final int chainedHitCount = 0;
 
   // AOE targeting flags
@@ -30,7 +33,7 @@ public class ProjectileStats {
   @Builder.Default private final boolean aoeToGround = false;
 
   // Non-homing scatter projectiles expire at this range
-  @Builder.Default private final float projectileRange = 0f;
+  @Builder.Default private final int projectileRange = 0;
 
   // Scatter pattern type (e.g. "Line" for Hunter shotgun fan)
   private final String scatter;
@@ -44,17 +47,17 @@ public class ProjectileStats {
   // Spawn sub-projectile on impact
   private final ProjectileStats spawnProjectile;
   @Builder.Default private final int spawnCount = 0;
-  @Builder.Default private final float spawnRadius = 0f;
+  @Builder.Default private final int spawnRadius = 0;
 
-  // Knockback on hit (in tile units)
-  @Builder.Default private final float pushback = 0f;
+  // Knockback distance on hit (game units)
+  @Builder.Default private final int pushback = 0;
   @Builder.Default private final boolean pushbackAll = false;
 
   // Piercing hit detection radius (distinct from AOE splash radius, e.g. Log rolling projectile)
-  @Builder.Default private final float projectileRadius = 0f;
+  @Builder.Default private final int projectileRadius = 0;
 
   // Min travel distance before hits register (e.g. Log must roll past deploy point)
-  @Builder.Default private final float minDistance = 0f;
+  @Builder.Default private final int minDistance = 0;
 
   // Projectile stops on first hit instead of piercing through (e.g. Hunter pellets)
   @Builder.Default private final boolean checkCollisions = false;

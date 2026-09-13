@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,8 +79,9 @@ class MirrorTest {
         LevelConfig.standard());
   }
 
+  /** Creates a deploy action at tile coordinates (converted to game units). */
   private PlayerActionDTO playAt(int handIndex, float x, float y) {
-    return PlayerActionDTO.builder().handIndex(handIndex).x(x).y(y).build();
+    return PlayerActionDTO.playAtTiles(handIndex, x, y);
   }
 
   /** Find a card in the player's hand by id and return its slot index, or -1 if not found. */
@@ -246,7 +248,7 @@ class MirrorTest {
             .areaEffect(
                 AreaEffectStats.builder()
                     .name("ZapEffect")
-                    .radius(2.5f)
+                    .radius(tiles(2.5))
                     .damage(75)
                     .lifeDuration(0.1f)
                     .onlyEnemies(true)

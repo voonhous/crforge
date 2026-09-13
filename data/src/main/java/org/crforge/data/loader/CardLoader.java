@@ -1,5 +1,7 @@
 package org.crforge.data.loader;
 
+import static org.crforge.core.util.GameUnits.tiles;
+
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -162,17 +164,17 @@ public class CardLoader {
       }
     }
 
-    // summonRadius for troop deploy formation
+    // summonRadius for the legacy circular deploy formation: kept raw, see FormationLayout
     builder.summonRadius(dto.getSummonRadius());
 
     // Stagger delay for multi-unit deploy
     builder.summonDeployDelay(dto.getSummonDeployDelay());
 
-    // Formation offsets (pre-computed tile-unit positions)
+    // Formation offsets: stored in tiles in cards.json, converted to game units exactly once here
     if (dto.getFormationOffsets() != null && !dto.getFormationOffsets().isEmpty()) {
-      List<float[]> offsets =
+      List<int[]> offsets =
           dto.getFormationOffsets().stream()
-              .map(pair -> new float[] {pair.get(0), pair.get(1)})
+              .map(pair -> new int[] {tiles(pair.get(0)), tiles(pair.get(1))})
               .toList();
       builder.formationOffsets(offsets);
     }
@@ -208,7 +210,7 @@ public class CardLoader {
     builder.canPlaceOnBuildings(dto.isCanPlaceOnBuildings());
 
     // Spell wave configuration (e.g. Arrows)
-    builder.spellRadius(dto.getRadius());
+    builder.spellRadius(tiles(dto.getRadius()));
     builder.multipleProjectiles(dto.getMultipleProjectiles());
     builder.projectileWaves(dto.getProjectileWaves());
     builder.projectileWaveInterval(dto.getProjectileWaveInterval());
@@ -270,14 +272,15 @@ public class CardLoader {
     AreaEffectStats.AreaEffectStatsBuilder builder =
         AreaEffectStats.builder()
             .name(dto.getName())
-            .radius(dto.getRadius())
+            .radius(tiles(dto.getRadius()))
             .lifeDuration(dto.getLifeDuration())
             .hitsGround(dto.isHitsGround())
             .hitsAir(dto.isHitsAir())
             .damage(dto.getDamage())
             .hitSpeed(dto.getHitSpeed())
             .crownTowerDamagePercent(dto.getCrownTowerDamagePercent())
-            .pushback(dto.getPushback())
+            // Area effect pushback is stored in tiles
+            .pushback(tiles(dto.getPushback()))
             .hitBiggestTargets(dto.isHitBiggestTargets())
             .controlsBuff(dto.isControlsBuff())
             .capBuffTimeToAreaEffectTime(dto.isCapBuffTimeToAreaEffectTime())
@@ -348,7 +351,7 @@ public class CardLoader {
                 .map(
                     e ->
                         new SpawnSequenceEntry(
-                            e.getSpawnDelay(), e.getRelativeX(), e.getRelativeY()))
+                            e.getSpawnDelay(), tiles(e.getRelativeX()), tiles(e.getRelativeY())))
                 .toList();
         builder.spawnSequence(entries);
       }

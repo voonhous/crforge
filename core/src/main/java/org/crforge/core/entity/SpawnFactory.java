@@ -13,7 +13,7 @@ import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
-import org.crforge.core.util.Vector2;
+import org.crforge.core.util.FormationLayout;
 
 /**
  * Builds and spawns Troop entities from TroopStats. Handles level scaling, combat component
@@ -29,14 +29,14 @@ public class SpawnFactory {
 
   void doSpawn(
       Position origin,
-      Vector2 offset,
+      FormationLayout.Offset offset,
       Team team,
       TroopStats stats,
       int level,
       float deathSpawnDeployTime,
       boolean asClone) {
-    float x = origin.getX() + offset.getX();
-    float y = origin.getY() + offset.getY();
+    int x = origin.getX() + offset.x();
+    int y = origin.getY() + offset.y();
 
     // Bomb entities (health=0) survive their deploy phase with 1 HP, then self-destruct
     boolean isBomb = stats.getHealth() <= 0;
@@ -141,7 +141,7 @@ public class SpawnFactory {
             .spawnLimit(ls.spawnLimit())
             .destroyAtLimit(ls.destroyAtLimit())
             .spawnOnAggro(ls.spawnOnAggro())
-            .aggroDetectionRange(ls.spawnOnAggro() ? stats.getRange() : 0f);
+            .aggroDetectionRange(ls.spawnOnAggro() ? stats.getRange() : 0);
       }
 
       spawner = spawnerBuilder.build();

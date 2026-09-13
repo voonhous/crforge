@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.component.Combat;
@@ -37,14 +38,14 @@ class TargetOnlyTroopsTest {
         Troop.builder()
             .name("Attacker")
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 4.0f, 0.3f, 0.3f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 4.0f, tiles(0.3), tiles(0.3), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(50)
-                    .range(5.0f)
-                    .sightRange(7.0f)
+                    .range(tiles(5.0))
+                    .sightRange(tiles(7.0))
                     .targetType(TargetType.ALL)
                     .targetOnlyTroops(targetOnlyTroops)
                     .ignoreTargetsWithBuff(ignoreTargetsWithBuff)
@@ -61,10 +62,11 @@ class TargetOnlyTroopsTest {
         Troop.builder()
             .name("EnemyTroop")
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(300))
-            .movement(new Movement(1.0f, 4.0f, 0.3f, 0.3f, MovementType.GROUND))
-            .combat(Combat.builder().damage(30).range(1.0f).targetType(TargetType.GROUND).build())
+            .movement(new Movement(tiles(1.0), 4.0f, tiles(0.3), tiles(0.3), MovementType.GROUND))
+            .combat(
+                Combat.builder().damage(30).range(tiles(1.0)).targetType(TargetType.GROUND).build())
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -77,10 +79,11 @@ class TargetOnlyTroopsTest {
         Building.builder()
             .name("EnemyBuilding")
             .team(team)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 0f, 0.5f, 0.5f, MovementType.BUILDING))
-            .combat(Combat.builder().damage(50).range(5.0f).targetType(TargetType.GROUND).build())
+            .movement(new Movement(0, 0f, tiles(0.5), tiles(0.5), MovementType.BUILDING))
+            .combat(
+                Combat.builder().damage(50).range(tiles(5.0)).targetType(TargetType.GROUND).build())
             .lifetime(30f)
             .remainingLifetime(30f)
             .deployTime(0f)

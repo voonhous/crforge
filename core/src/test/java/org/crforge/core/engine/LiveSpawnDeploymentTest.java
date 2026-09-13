@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -86,7 +87,7 @@ class LiveSpawnDeploymentTest {
       }
       // Give enough elixir and play
       giveMaxElixir();
-      engine.queueAction(bluePlayer, PlayerActionDTO.play(cheapestSlot, 9f, 5f));
+      engine.queueAction(bluePlayer, PlayerActionDTO.play(cheapestSlot, tiles(9), tiles(5)));
       engine.tick();
       engine.tick();
     }
@@ -100,7 +101,7 @@ class LiveSpawnDeploymentTest {
 
     // Give enough elixir for Witch (cost 5)
     giveMaxElixir();
-    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, tiles(9), tiles(10)));
 
     // Tick past the 1s placement sync delay + 1 to process pending spawns
     int syncTicks = (int) (DeploymentSystem.PLACEMENT_SYNC_DELAY * GameEngine.TICKS_PER_SECOND);
@@ -129,7 +130,7 @@ class LiveSpawnDeploymentTest {
     assertThat(slot).as("Witch should be reachable in hand").isGreaterThanOrEqualTo(0);
 
     giveMaxElixir();
-    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, tiles(9), tiles(10)));
 
     // Run past sync delay (1.0s) but not past deploy time -- still in sync + deploy phase
     engine.runSeconds(1.5f);
@@ -154,7 +155,7 @@ class LiveSpawnDeploymentTest {
     assertThat(slot).as("Witch should be reachable in hand").isGreaterThanOrEqualTo(0);
 
     giveMaxElixir();
-    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, tiles(9), tiles(10)));
 
     // Run past sync (1.0s) + deploy (1.0s) + spawnStartTime (1.0s) + spawnPauseTime (7.0s) + margin
     // First wave at ~3.0s, second wave at ~10.0s
@@ -176,7 +177,7 @@ class LiveSpawnDeploymentTest {
     assertThat(slot).as("Witch should be reachable in hand").isGreaterThanOrEqualTo(0);
 
     giveMaxElixir();
-    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, 9f, 10f));
+    engine.queueAction(bluePlayer, PlayerActionDTO.play(slot, tiles(9), tiles(10)));
 
     // Run past sync (1.0s) + deploy (1.0s) + spawnStartTime (1.0s) + margin for first wave
     engine.runSeconds(3.5f);

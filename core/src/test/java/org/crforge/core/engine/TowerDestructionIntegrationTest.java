@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.Health;
@@ -34,18 +35,23 @@ class TowerDestructionIntegrationTest {
     redPrincess.getHealth().takeDamage(redPrincess.getHealth().getCurrent() - 1);
 
     // 2. Spawn Blue Knight right next to it
-    float targetX = redPrincess.getPosition().getX();
-    float targetY = redPrincess.getPosition().getY();
+    int targetX = redPrincess.getPosition().getX();
+    int targetY = redPrincess.getPosition().getY();
 
     Troop knight =
         Troop.builder()
             .name("Knight")
             .team(Team.BLUE)
-            .position(new Position(targetX, targetY - 2.0f))
+            .position(new Position(targetX, targetY - tiles(2.0)))
             .health(new Health(1000))
-            .movement(new Movement(5.0f, 1.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(5.0), 1.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .combat(
-                Combat.builder().damage(10).range(1.0f).attackCooldown(0.1f).loadTime(0f).build())
+                Combat.builder()
+                    .damage(10)
+                    .range(tiles(1.0))
+                    .attackCooldown(0.1f)
+                    .loadTime(0f)
+                    .build())
             .build();
     knight.onSpawn();
 
@@ -67,6 +73,6 @@ class TowerDestructionIntegrationTest {
 
     assertThat(knight.getPosition().getY())
         .as("Knight should move North past the dead tower")
-        .isGreaterThan(targetY + 1.0f);
+        .isGreaterThan(targetY + tiles(1.0));
   }
 }

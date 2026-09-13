@@ -33,9 +33,9 @@ public class ProjectileRenderer {
         continue;
       }
 
-      float landX = projectile.getTargetX() * TILE_PIXELS;
-      float landY = projectile.getTargetY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float zoneRadius = projectile.getAoeRadius() * TILE_PIXELS;
+      float landX = unitsToPixels(projectile.getTargetX());
+      float landY = unitsToPixels(projectile.getTargetY()) + BOTTOM_UI_HEIGHT;
+      float zoneRadius = unitsToPixels(projectile.getAoeRadius());
 
       ctx.getShapeRenderer()
           .setColor(
@@ -56,12 +56,12 @@ public class ProjectileRenderer {
         continue;
       }
 
-      float x = projectile.getPosition().getX() * TILE_PIXELS;
-      float y = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float x = unitsToPixels(projectile.getPosition().getX());
+      float y = unitsToPixels(projectile.getPosition().getY()) + BOTTOM_UI_HEIGHT;
 
       // Piercing projectiles render as oriented rectangles showing their hit area
       if (projectile.isPiercing()) {
-        float halfWidth = projectile.getAoeRadius() * TILE_PIXELS;
+        float halfWidth = unitsToPixels(projectile.getAoeRadius());
         float halfDepth = Math.max(halfWidth * 0.3f, PROJECTILE_RADIUS);
         float angle =
             (float)
@@ -85,7 +85,7 @@ public class ProjectileRenderer {
       // Scale projectile dot for position-targeted AOE projectiles
       float radius = PROJECTILE_RADIUS;
       if (projectile.isPositionTargeted() && projectile.hasAoe()) {
-        radius = Math.min(projectile.getAoeRadius() * TILE_PIXELS * 0.3f, 10f);
+        radius = Math.min(unitsToPixels(projectile.getAoeRadius()) * 0.3f, 10f);
         radius = Math.max(radius, PROJECTILE_RADIUS);
       }
 
@@ -103,19 +103,19 @@ public class ProjectileRenderer {
         continue;
       }
 
-      float toX = projectile.getPosition().getX() * TILE_PIXELS;
-      float toY = projectile.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float toX = unitsToPixels(projectile.getPosition().getX());
+      float toY = unitsToPixels(projectile.getPosition().getY()) + BOTTOM_UI_HEIGHT;
 
       if (projectile.getChainOrigin() != null) {
         // Chain sub-projectile: line from chain origin entity to current position
-        float fromX = projectile.getChainOrigin().getPosition().getX() * TILE_PIXELS;
+        float fromX = unitsToPixels(projectile.getChainOrigin().getPosition().getX());
         float fromY =
-            projectile.getChainOrigin().getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+            unitsToPixels(projectile.getChainOrigin().getPosition().getY()) + BOTTOM_UI_HEIGHT;
         ctx.getShapeRenderer().line(fromX, fromY, toX, toY);
       } else if (projectile.getChainedHitCount() > 0) {
         // Primary chain projectile: line from origin to current position
-        float fromX = projectile.getOriginX() * TILE_PIXELS;
-        float fromY = projectile.getOriginY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+        float fromX = unitsToPixels(projectile.getOriginX());
+        float fromY = unitsToPixels(projectile.getOriginY()) + BOTTOM_UI_HEIGHT;
         ctx.getShapeRenderer().line(fromX, fromY, toX, toY);
       }
     }

@@ -1,6 +1,7 @@
 package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.arena.Arena;
@@ -170,7 +171,7 @@ class StealthAbilityTest {
     int hpBefore = ghost.getHealth().getCurrent();
 
     // Cast a Fireball (position-based AOE) at the ghost's location
-    aoeDamageService.applySpellDamage(Team.RED, 5, 5, 200, 2.5f, List.of());
+    aoeDamageService.applySpellDamage(Team.RED, tiles(5), tiles(5), 200, tiles(2.5), List.of());
 
     assertThat(ghost.getHealth().getCurrent())
         .as("Invisible ghost should still be hit by AOE spell damage")
@@ -324,14 +325,14 @@ class StealthAbilityTest {
         Troop.builder()
             .name("RoyalGhost")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(800))
-            .movement(new Movement(0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(216)
-                    .range(1.2f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.2f))
+                    .sightRange(tiles(5.5f))
                     .attackCooldown(1.8f)
                     .build())
             .deployTime(0f)
@@ -342,9 +343,9 @@ class StealthAbilityTest {
         Troop.builder()
             .name("Blocker")
             .team(Team.RED)
-            .position(new Position(5.5f, 5))
+            .position(new Position(tiles(5.5f), tiles(5)))
             .health(new Health(1000))
-            .movement(new Movement(0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(0f, 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .deployTime(0f)
             .build();
 
@@ -356,8 +357,8 @@ class StealthAbilityTest {
     assertThat(ghost.isInvisible()).isTrue();
 
     // Record positions before collision resolution
-    float ghostX = ghost.getPosition().getX();
-    float blockerX = blocker.getPosition().getX();
+    int ghostX = ghost.getPosition().getX();
+    int blockerX = blocker.getPosition().getX();
 
     // Run physics -- they overlap but invisible ghost should not be pushed
     physicsSystem.update(gameState.getAliveEntities(), DT);
@@ -437,14 +438,14 @@ class StealthAbilityTest {
         Troop.builder()
             .name("EWiz")
             .team(Team.RED)
-            .position(new Position(7, 5))
+            .position(new Position(tiles(7), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(50)
-                    .range(5.0f)
-                    .sightRange(5.5f)
+                    .range(tiles(5.0f))
+                    .sightRange(tiles(5.5f))
                     .attackCooldown(1.8f)
                     .multipleTargets(2)
                     .build())
@@ -486,11 +487,16 @@ class StealthAbilityTest {
     return Troop.builder()
         .name("RoyalGhost")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(800))
-        .movement(new Movement(1.6f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.6f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(216).range(1.2f).sightRange(5.5f).attackCooldown(1.8f).build())
+            Combat.builder()
+                .damage(216)
+                .range(tiles(1.2f))
+                .sightRange(tiles(5.5f))
+                .attackCooldown(1.8f)
+                .build())
         .deployTime(1.0f)
         .deployTimer(1.0f)
         .ability(new AbilityComponent(stealthData))
@@ -502,11 +508,16 @@ class StealthAbilityTest {
     return Troop.builder()
         .name("Knight")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(1.0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0f), 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
-            Combat.builder().damage(100).range(1.5f).sightRange(5.5f).attackCooldown(1.2f).build())
+            Combat.builder()
+                .damage(100)
+                .range(tiles(1.5f))
+                .sightRange(tiles(5.5f))
+                .attackCooldown(1.2f)
+                .build())
         .deployTime(0f)
         .build();
   }
@@ -515,9 +526,9 @@ class StealthAbilityTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1000))
-        .movement(new Movement(0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(0f, 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .deployTime(0f)
         .build();
   }

@@ -15,21 +15,23 @@ minimum range blind spots, and invisibility.
   tick.
 - **Locked phase** (in attack range, `combat.targetLocked=true`): stays locked on current target.
   Only unlocks when target becomes invalid (dead, out of retention range, invisible, etc.).
-- Retention range = `sightRange * 1.5f + collisionRadii` -- target stays valid at 1.5x sight range
+- Retention range = `round(sightRange * 1.5) + collisionRadii` (game units) -- target stays valid at 1.5x sight range
   before being dropped
 - Building-targeting troops (`targetOnlyBuildings=true`) always retarget to closest building
   regardless of lock state
 
 ### Range Calculation
 
-All ranges use edge-to-edge distance (center-to-center minus collision radii):
+All ranges use edge-to-edge distance (center-to-center minus collision radii). Ranges and radii are
+integer game units, and checks compare exact `long` squared center distances (attack and sight
+range inclusive at the boundary, minimum range exclusive):
 
 ```
 effectiveSightRange = sightRange + attacker.collisionRadius + target.collisionRadius
 effectiveMinRange   = minimumRange + attacker.collisionRadius + target.collisionRadius
 ```
 
-Default sight range: 5.5 tiles (per `Combat` component).
+Default sight range: 5.5 tiles = 5500 game units (per `Combat` component).
 
 ### Target Filtering
 
@@ -79,7 +81,7 @@ For each entity with a `Combat` component:
 
 ### Melee vs. Ranged
 
-Threshold: `RANGED_THRESHOLD = 2.0f` tiles. Range >= 2.0 uses projectiles.
+Threshold: `RANGED_THRESHOLD = 2000` game units (2 tiles). Range >= 2 tiles uses projectiles.
 
 **Melee attack:**
 
@@ -189,11 +191,11 @@ or freeze. `ChargeHandler.getChargeDamage()` and `consumeCharge()` are static he
 stun/freeze. Sets `Combat.damageOverride`.
 
 **DASH** -- States: IDLE -> DASHING -> LANDING. Acquisition range `[dashMinRange, dashMaxRange]`.
-Provides invulnerability during flight (`dashImmuneTime`). DASH_SPEED = 15 tiles/sec. Landing deals
+Provides invulnerability during flight (`dashImmuneTime`). DASH_SPEED = 15 tiles/sec (15000 game units/sec). Landing deals
 `dashDamage` in `dashRadius` with optional `dashPushback`.
 
 **HOOK** -- States: IDLE -> WINDING_UP -> PULLING -> DRAGGING_SELF. Pulls target toward Fisherman (
-buildings cannot be pulled, skips to DRAGGING_SELF). Speed base: raw speed / 60.0.
+buildings cannot be pulled, skips to DRAGGING_SELF). Speed base: raw speed / 60 tiles/sec, converted with `GameUnits.rawSpeedToUnitsPerSecond()`.
 `ModifierSource.ABILITY_HOOK` persists through StatusEffect resets.
 
 **REFLECT** -- Passive. Called by `CombatSystem` on melee hit. Reflects `reflectDamage` back to

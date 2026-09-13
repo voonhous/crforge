@@ -8,7 +8,7 @@ import static org.crforge.desktop.render.RenderConstants.COLOR_DASH_LINE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_HOOK_LINE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_REFLECT_AURA;
 import static org.crforge.desktop.render.RenderConstants.COLOR_VARIABLE_DAMAGE_DOT;
-import static org.crforge.desktop.render.RenderConstants.TILE_PIXELS;
+import static org.crforge.desktop.render.RenderConstants.unitsToPixels;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -68,9 +68,9 @@ public class AbilityOverlayRenderer {
       }
 
       AbilityComponent ability = troop.getAbility();
-      float x = troop.getPosition().getX() * TILE_PIXELS;
-      float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float visualRadius = troop.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(troop.getPosition().getX());
+      float y = unitsToPixels(troop.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float visualRadius = unitsToPixels(troop.getVisualRadius());
 
       switch (ability.getData().type()) {
         case CHARGE -> renderChargeBar(x, y, visualRadius, ability);
@@ -90,8 +90,8 @@ public class AbilityOverlayRenderer {
       }
 
       AbilityComponent ability = troop.getAbility();
-      float x = troop.getPosition().getX() * TILE_PIXELS;
-      float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float x = unitsToPixels(troop.getPosition().getX());
+      float y = unitsToPixels(troop.getPosition().getY()) + BOTTOM_UI_HEIGHT;
 
       switch (ability.getData().type()) {
         case DASH -> {
@@ -165,8 +165,8 @@ public class AbilityOverlayRenderer {
   }
 
   private void renderDashLine(float x, float y, AbilityComponent ability) {
-    float targetX = ability.getDashTargetX() * TILE_PIXELS;
-    float targetY = ability.getDashTargetY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+    float targetX = unitsToPixels(ability.getDashTargetX());
+    float targetY = unitsToPixels(ability.getDashTargetY()) + BOTTOM_UI_HEIGHT;
 
     ctx.getShapeRenderer().setColor(COLOR_DASH_LINE);
     ctx.getShapeRenderer().line(x, y, targetX, targetY);
@@ -178,8 +178,8 @@ public class AbilityOverlayRenderer {
 
     if (hookedTarget.isPresent() && hookedTarget.get().isAlive()) {
       Entity target = hookedTarget.get();
-      float targetX = target.getPosition().getX() * TILE_PIXELS;
-      float targetY = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float targetX = unitsToPixels(target.getPosition().getX());
+      float targetY = unitsToPixels(target.getPosition().getY()) + BOTTOM_UI_HEIGHT;
 
       ctx.getShapeRenderer().setColor(COLOR_HOOK_LINE);
       ctx.getShapeRenderer().line(x, y, targetX, targetY);
@@ -187,7 +187,7 @@ public class AbilityOverlayRenderer {
   }
 
   private void renderReflectAura(float x, float y, AbilityComponent ability) {
-    float reflectRadius = ((ReflectAbility) ability.getData()).reflectRadius() * TILE_PIXELS;
+    float reflectRadius = unitsToPixels(((ReflectAbility) ability.getData()).reflectRadius());
     if (reflectRadius > 0) {
       ctx.getShapeRenderer().setColor(COLOR_REFLECT_AURA);
       ctx.getShapeRenderer().circle(x, y, reflectRadius, CIRCLE_SEGMENTS);
@@ -196,13 +196,13 @@ public class AbilityOverlayRenderer {
 
   private void renderTunnelLine(float x, float y, AbilityComponent ability) {
     // Draw a dashed-style line from current position to tunnel target
-    float targetX = ability.getTunnelTargetX() * TILE_PIXELS;
-    float targetY = ability.getTunnelTargetY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+    float targetX = unitsToPixels(ability.getTunnelTargetX());
+    float targetY = unitsToPixels(ability.getTunnelTargetY()) + BOTTOM_UI_HEIGHT;
 
     // Line to waypoint first (if using), then to final target
     if (ability.isTunnelUsingWaypoint()) {
-      float waypointX = ability.getTunnelWaypointX() * TILE_PIXELS;
-      float waypointY = ability.getTunnelWaypointY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+      float waypointX = unitsToPixels(ability.getTunnelWaypointX());
+      float waypointY = unitsToPixels(ability.getTunnelWaypointY()) + BOTTOM_UI_HEIGHT;
       ctx.getShapeRenderer().setColor(0.8f, 0.6f, 0.2f, 0.7f);
       ctx.getShapeRenderer().line(x, y, waypointX, waypointY);
       ctx.getShapeRenderer().line(waypointX, waypointY, targetX, targetY);

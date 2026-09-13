@@ -1,6 +1,8 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.rawSpeedToUnitsPerSecond;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -33,8 +35,8 @@ class IceSpiritTest {
   private final EntityTimerSystem entityTimerSystem = new EntityTimerSystem();
 
   private static final int ICE_SPIRIT_DAMAGE = 43;
-  private static final float PROJECTILE_SPEED = 400f / 60f; // ~6.67 t/s
-  private static final float AOE_RADIUS = 1.5f;
+  private static final float PROJECTILE_SPEED = rawSpeedToUnitsPerSecond(400f); // ~6.67 t/s
+  private static final int AOE_RADIUS = tiles(1.5);
   private static final float FREEZE_DURATION = 1.1f;
 
   @BeforeEach
@@ -160,8 +162,8 @@ class IceSpiritTest {
     Combat combat =
         Combat.builder()
             .damage(ICE_SPIRIT_DAMAGE)
-            .range(2.5f)
-            .sightRange(5.5f)
+            .range(tiles(2.5))
+            .sightRange(tiles(5.5))
             .attackCooldown(0.3f)
             .loadTime(0.1f)
             .kamikaze(true)
@@ -172,9 +174,9 @@ class IceSpiritTest {
     return Troop.builder()
         .name("IceSpirit")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(90))
-        .movement(new Movement(2.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(2.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .combat(combat)
         .build();
@@ -184,9 +186,9 @@ class IceSpiritTest {
     return Troop.builder()
         .name("Enemy")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(1.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .build();
   }

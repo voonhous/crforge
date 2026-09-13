@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,7 +58,7 @@ class LoadTimeMechanicTest {
             .combat(
                 Combat.builder()
                     .damage(10)
-                    .range(1.0f)
+                    .range(tiles(1.0))
                     .attackCooldown(attackCooldown)
                     .loadTime(loadTime)
                     .build())
@@ -67,7 +68,7 @@ class LoadTimeMechanicTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(1, 0))
+            .position(new Position(tiles(1), 0))
             .health(new Health(100))
             .deployTime(0f)
             .build();
@@ -155,7 +156,7 @@ class LoadTimeMechanicTest {
       List<Card> cards = new ArrayList<>(Collections.nCopies(8, card));
       Player player = new Player(Team.BLUE, new Deck(cards), false);
       deploymentSystem.queueAction(
-          player, PlayerActionDTO.builder().handIndex(0).x(9f).y(9f).build());
+          player, PlayerActionDTO.builder().handIndex(0).x(tiles(9)).y(tiles(9)).build());
       deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
       gameState.processPending();
     }
@@ -176,7 +177,7 @@ class LoadTimeMechanicTest {
               .name("Knight")
               .health(100)
               .damage(10)
-              .range(1.0f)
+              .range(tiles(1.0))
               .attackCooldown(1.2f)
               .loadTime(loadTime)
               .deployTime(1.0f)
@@ -203,7 +204,7 @@ class LoadTimeMechanicTest {
               .name("Balloon")
               .health(100)
               .damage(10)
-              .range(1.5f)
+              .range(tiles(1.5))
               .attackCooldown(attackCooldown)
               .loadTime(loadTime)
               .deployTime(deployTime)
@@ -224,7 +225,7 @@ class LoadTimeMechanicTest {
           Troop.builder()
               .name("Target")
               .team(Team.RED)
-              .position(new Position(9f, 10f))
+              .position(new Position(tiles(9), tiles(10)))
               .health(new Health(100))
               .deployTime(0f)
               .build();
@@ -247,7 +248,7 @@ class LoadTimeMechanicTest {
               .name("Sparky")
               .health(100)
               .damage(10)
-              .range(3.0f)
+              .range(tiles(3.0))
               .attackCooldown(4.0f)
               .loadTime(4.0f)
               .deployTime(1.0f)

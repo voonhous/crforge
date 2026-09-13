@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Collections;
 import java.util.List;
@@ -132,7 +133,8 @@ class CombatSystemTest {
     enemy1.setDeployTimer(0);
     enemy2.setDeployTimer(0);
 
-    aoeDamageService.applySpellDamage(Team.BLUE, 10f, 10f, 50, 3.0f, Collections.emptyList());
+    aoeDamageService.applySpellDamage(
+        Team.BLUE, tiles(10), tiles(10), 50, tiles(3), Collections.emptyList());
 
     assertThat(enemy1.getHealth().getCurrent()).isEqualTo(50);
     assertThat(enemy2.getHealth().getCurrent()).isEqualTo(50);
@@ -153,14 +155,14 @@ class CombatSystemTest {
     return Troop.builder()
         .name("Melee")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(100))
         .deployTime(1.0f)
         .combat(
             Combat.builder()
                 .damage(damage)
-                .range(1.5f)
-                .sightRange(5.5f)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
                 .attackCooldown(1.0f)
                 .loadTime(0f)
                 .build())
@@ -174,17 +176,17 @@ class CombatSystemTest {
         Troop.builder()
             .name("Mortar")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(1.0f)
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(11.5f)
-                    .sightRange(11.5f)
+                    .range(tiles(11.5))
+                    .sightRange(tiles(11.5))
                     .attackCooldown(5.0f)
-                    .minimumRange(3.5f)
+                    .minimumRange(tiles(3.5))
                     .build())
             .build();
 
@@ -215,21 +217,21 @@ class CombatSystemTest {
         Troop.builder()
             .name("Miner")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1000))
             .deployTime(1.0f)
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.0f)
                     .crownTowerDamagePercent(-75)
                     .build())
             .build();
 
     // Create a tower as target
-    Tower tower = Tower.createPrincessTower(Team.RED, 6, 5, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(6), tiles(5), 1);
     tower.onSpawn();
     int towerMaxHp = tower.getHealth().getMax();
 
@@ -256,14 +258,14 @@ class CombatSystemTest {
         Troop.builder()
             .name("Miner")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(1000))
             .deployTime(1.0f)
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.0f)
                     .crownTowerDamagePercent(-75)
                     .build())
@@ -290,14 +292,14 @@ class CombatSystemTest {
     return Troop.builder()
         .name("Ranged")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(100))
         .deployTime(1.0f)
         .combat(
             Combat.builder()
                 .damage(damage)
-                .range(6.0f)
-                .sightRange(6.0f)
+                .range(tiles(6.0))
+                .sightRange(tiles(6.0))
                 .attackCooldown(1.0f)
                 .build())
         .build();
@@ -310,7 +312,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("ShieldedUnit")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(100, 50)) // 100 HP + 50 shield
             .deployTime(0f)
             .build();
@@ -343,14 +345,14 @@ class CombatSystemTest {
         Troop.builder()
             .name("Stunner")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(50)
-                    .range(1.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.0f)
                     .buffOnDamage(stunOnHit)
                     .build())
@@ -360,7 +362,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(5.5f, 5))
+            .position(new Position(tiles(5.5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -389,14 +391,14 @@ class CombatSystemTest {
         Troop.builder()
             .name("EWiz")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(46)
-                    .range(5.0f)
-                    .sightRange(5.5f)
+                    .range(tiles(5.0))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.8f)
                     .multipleTargets(2)
                     .build())
@@ -406,7 +408,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target1")
             .team(Team.RED)
-            .position(new Position(8, 5))
+            .position(new Position(tiles(8), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -415,7 +417,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target2")
             .team(Team.RED)
-            .position(new Position(9, 5))
+            .position(new Position(tiles(9), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -424,7 +426,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target3")
             .team(Team.RED)
-            .position(new Position(50, 50))
+            .position(new Position(tiles(50), tiles(50)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -454,14 +456,14 @@ class CombatSystemTest {
         Troop.builder()
             .name("EWiz")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(46)
-                    .range(5.0f)
-                    .sightRange(5.5f)
+                    .range(tiles(5.0))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.8f)
                     .multipleTargets(2)
                     .build())
@@ -471,7 +473,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(8, 5))
+            .position(new Position(tiles(8), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .build();
@@ -499,21 +501,21 @@ class CombatSystemTest {
         Troop.builder()
             .name("ElectroDragon")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(75)
-                    .range(3.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(3.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(2.1f)
                     .projectileStats(
                         org.crforge.core.card.ProjectileStats.builder()
                             .name("ElectroDragonProjectile")
                             .damage(75)
-                            .speed(10f)
-                            .chainedHitRadius(4.0f)
+                            .speed(tiles(10))
+                            .chainedHitRadius(tiles(4.0))
                             .chainedHitCount(3)
                             .build())
                     .build())
@@ -562,21 +564,21 @@ class CombatSystemTest {
         Troop.builder()
             .name("ElectroDragon")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(75)
-                    .range(3.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(3.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(2.1f)
                     .projectileStats(
                         org.crforge.core.card.ProjectileStats.builder()
                             .name("ElectroDragonProjectile")
                             .damage(75)
-                            .speed(10f)
-                            .chainedHitRadius(4.0f)
+                            .speed(tiles(10))
+                            .chainedHitRadius(tiles(4.0))
                             .chainedHitCount(3)
                             .build())
                     .build())
@@ -623,16 +625,16 @@ class CombatSystemTest {
         Troop.builder()
             .name("Valkyrie")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.0f)
-                    .aoeRadius(2.0f)
+                    .aoeRadius(tiles(2.0))
                     .selfAsAoeCenter(true)
                     .build())
             .build();
@@ -676,16 +678,16 @@ class CombatSystemTest {
         Troop.builder()
             .name("NormalAoeMelee")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
             .deployTime(0f)
             .combat(
                 Combat.builder()
                     .damage(100)
-                    .range(1.5f)
-                    .sightRange(5.5f)
+                    .range(tiles(1.5))
+                    .sightRange(tiles(5.5))
                     .attackCooldown(1.0f)
-                    .aoeRadius(2.0f)
+                    .aoeRadius(tiles(2.0))
                     .selfAsAoeCenter(false)
                     .build())
             .build();
@@ -724,7 +726,7 @@ class CombatSystemTest {
   @Test
   void spellProjectile_crownTowerDamagePercent_shouldReduceDamageToTower() {
     // Fireball-like spell projectile with -70 crownTowerDamagePercent
-    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     tower.onSpawn();
     int towerMaxHp = tower.getHealth().getMax();
 
@@ -733,7 +735,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(10.5f, 10))
+            .position(new Position(tiles(10.5), tiles(10)))
             .health(new Health(1000))
             .deployTime(0f)
             .build();
@@ -743,12 +745,22 @@ class CombatSystemTest {
     gameState.processPending();
 
     int spellDamage = 200;
-    float aoeRadius = 2.5f;
+    int aoeRadius = tiles(2.5);
     int ctdp = -70;
 
     // Create a position-targeted spell projectile with crown tower damage reduction
     Projectile fireball =
-        new Projectile(Team.BLUE, 10, 0, 10, 10, spellDamage, aoeRadius, 15f, List.of(), ctdp);
+        new Projectile(
+            Team.BLUE,
+            tiles(10),
+            0,
+            tiles(10),
+            tiles(10),
+            spellDamage,
+            aoeRadius,
+            tiles(15),
+            List.of(),
+            ctdp);
     gameState.spawnProjectile(fireball);
 
     // Run enough ticks for the projectile to arrive and hit
@@ -771,7 +783,7 @@ class CombatSystemTest {
   @Test
   void applySpellDamage_crownTowerDamagePercent_shouldReduceDamageToTower() {
     // Test the instant spell path (applySpellDamage with ctdp parameter)
-    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     tower.onSpawn();
     int towerMaxHp = tower.getHealth().getMax();
 
@@ -779,7 +791,7 @@ class CombatSystemTest {
         Troop.builder()
             .name("Target")
             .team(Team.RED)
-            .position(new Position(10.5f, 10))
+            .position(new Position(tiles(10.5), tiles(10)))
             .health(new Health(1000))
             .deployTime(0f)
             .build();
@@ -792,7 +804,7 @@ class CombatSystemTest {
     int ctdp = -75;
 
     aoeDamageService.applySpellDamage(
-        Team.BLUE, 10f, 10f, spellDamage, 3.0f, Collections.emptyList(), ctdp);
+        Team.BLUE, tiles(10), tiles(10), spellDamage, tiles(3), Collections.emptyList(), ctdp);
 
     // Tower: 300 * (100 + (-75)) / 100 = 75
     assertThat(tower.getHealth().getCurrent())
@@ -809,11 +821,16 @@ class CombatSystemTest {
     return Troop.builder()
         .name("ChainTarget")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
         .deployTime(0f)
         .combat(
-            Combat.builder().damage(0).range(1.5f).sightRange(5.5f).attackCooldown(1.0f).build())
+            Combat.builder()
+                .damage(0)
+                .range(tiles(1.5))
+                .sightRange(tiles(5.5))
+                .attackCooldown(1.0f)
+                .build())
         .build();
   }
 }

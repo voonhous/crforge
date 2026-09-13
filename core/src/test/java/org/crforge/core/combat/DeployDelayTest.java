@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -35,8 +36,9 @@ class DeployDelayTest {
   private static final Card KNIGHT = CardRegistry.get("knight");
 
   // Deploy on blue's side to avoid red tower aggro
-  private static final float DEPLOY_X = 9f;
-  private static final float DEPLOY_Y = 7f;
+  // Deploy location in game units (tile 9, 7)
+  private static final int DEPLOY_X = tiles(9);
+  private static final int DEPLOY_Y = tiles(7);
 
   // Placement sync delay (1.0s) before the troop entity appears
   private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;

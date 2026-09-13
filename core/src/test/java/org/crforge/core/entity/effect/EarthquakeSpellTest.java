@@ -1,6 +1,7 @@
 package org.crforge.core.entity.effect;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Map;
 import org.crforge.core.ability.AbilityComponent;
@@ -74,7 +75,7 @@ class EarthquakeSpellTest {
   private AreaEffectStats earthquakeStats() {
     return AreaEffectStats.builder()
         .name("Earthquake")
-        .radius(3.5f)
+        .radius(tiles(3.5))
         .lifeDuration(3.0f)
         .hitsGround(true)
         .hitsAir(false)
@@ -90,7 +91,7 @@ class EarthquakeSpellTest {
     return AreaEffect.builder()
         .name("Earthquake")
         .team(Team.BLUE)
-        .position(new Position(10, 10))
+        .position(new Position(tiles(10), tiles(10)))
         .stats(stats)
         .scaledDamage(3) // round(32 * 0.1)
         .resolvedCrownTowerDamagePercent(-35)
@@ -104,9 +105,9 @@ class EarthquakeSpellTest {
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 5.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
     troop.setDeployTimer(0); // make targetable
@@ -118,9 +119,9 @@ class EarthquakeSpellTest {
         Troop.builder()
             .name(name)
             .team(Team.RED)
-            .position(new Position(x, y))
+            .position(new Position(tiles(x), tiles(y)))
             .health(new Health(hp))
-            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.AIR))
+            .movement(new Movement(tiles(1.0), 5.0f, tiles(0.5), tiles(0.5), MovementType.AIR))
             .deployTime(0f)
             .build();
     troop.setDeployTimer(0);
@@ -205,7 +206,7 @@ class EarthquakeSpellTest {
     AreaEffect effect = createEarthquakeEffect();
 
     // Crown tower at level 1
-    Tower tower = Tower.createPrincessTower(Team.RED, 10, 10, 1);
+    Tower tower = Tower.createPrincessTower(Team.RED, tiles(10), tiles(10), 1);
     tower.setDeployTimer(0);
 
     gameState.spawnEntity(effect);
@@ -289,9 +290,9 @@ class EarthquakeSpellTest {
         Troop.builder()
             .name("FriendlyKnight")
             .team(Team.BLUE)
-            .position(new Position(11, 10))
+            .position(new Position(tiles(11), tiles(10)))
             .health(new Health(500))
-            .movement(new Movement(1.0f, 5.0f, 0.5f, 0.5f, MovementType.GROUND))
+            .movement(new Movement(tiles(1.0), 5.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
             .deployTime(0f)
             .build();
     friendly.setDeployTimer(0);
@@ -315,7 +316,7 @@ class EarthquakeSpellTest {
         AreaEffect.builder()
             .name("Earthquake2")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(earthquakeStats())
             .scaledDamage(3)
             .resolvedCrownTowerDamagePercent(-35)
@@ -352,7 +353,7 @@ class EarthquakeSpellTest {
         AreaEffect.builder()
             .name("Earthquake")
             .team(Team.BLUE)
-            .position(new Position(10, 10))
+            .position(new Position(tiles(10), tiles(10)))
             .stats(stats)
             .scaledDamage(3)
             .resolvedCrownTowerDamagePercent(-35)

@@ -23,43 +23,56 @@ public class Tower extends Building {
 
   @Builder.Default @Setter private float activationTimer = 0f;
 
+  // Tower geometry in game units (unchanged from the previous tile values: crown 1.4 / 2.0 radius,
+  // 7.0 range; princess 1.0 / 1.5 radius, 7.5 range, 9.5 sight range)
+  public static final int CROWN_COLLISION_RADIUS = 1400;
+  public static final int CROWN_VISUAL_RADIUS = 2000;
+  public static final int CROWN_RANGE = 7000;
+  public static final int PRINCESS_COLLISION_RADIUS = 1000;
+  public static final int PRINCESS_VISUAL_RADIUS = 1500;
+  public static final int PRINCESS_RANGE = 7500;
+  public static final int PRINCESS_SIGHT_RANGE = 9500;
+
   // Factory methods for standard towers
-  public static Tower createCrownTower(Team team, float x, float y, int level) {
+  public static Tower createCrownTower(Team team, int x, int y, int level) {
     return Tower.builder()
         .name("Crown Tower")
         .team(team)
         .position(new Position(x, y))
         .health(new Health(LevelScaling.scaleKingHp(level)))
-        .movement(new Movement(0, 0, 1.4f, 2.0f, MovementType.BUILDING))
+        .movement(
+            new Movement(0, 0, CROWN_COLLISION_RADIUS, CROWN_VISUAL_RADIUS, MovementType.BUILDING))
         .towerType(TowerType.CROWN)
         .active(false)
         .level(level)
         .combat(
             Combat.builder()
                 .damage(LevelScaling.scaleKingDamage(level))
-                .range(7.0f)
-                .sightRange(7.0f)
+                .range(CROWN_RANGE)
+                .sightRange(CROWN_RANGE)
                 .attackCooldown(1.0f)
                 .loadTime(0.0f)
                 .build())
         .build();
   }
 
-  public static Tower createPrincessTower(Team team, float x, float y, int level) {
+  public static Tower createPrincessTower(Team team, int x, int y, int level) {
     return Tower.builder()
         .name("Princess Tower")
         .team(team)
         .position(new Position(x, y))
         .health(new Health(LevelScaling.scalePrincessHp(level)))
-        .movement(new Movement(0, 0, 1.0f, 1.5f, MovementType.BUILDING))
+        .movement(
+            new Movement(
+                0, 0, PRINCESS_COLLISION_RADIUS, PRINCESS_VISUAL_RADIUS, MovementType.BUILDING))
         .towerType(TowerType.PRINCESS)
         .active(true)
         .level(level)
         .combat(
             Combat.builder()
                 .damage(LevelScaling.scalePrincessDamage(level))
-                .range(7.5f)
-                .sightRange(9.5f)
+                .range(PRINCESS_RANGE)
+                .sightRange(PRINCESS_SIGHT_RANGE)
                 .attackCooldown(0.8f)
                 .loadTime(0.0f)
                 .build())

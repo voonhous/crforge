@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Collections;
 import java.util.List;
@@ -65,7 +66,8 @@ class BuildingDeployTimeTest {
     player.getElixir().update(10f); // Max elixir
 
     // 3. Deploy
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(10f).build();
+    PlayerActionDTO action =
+        PlayerActionDTO.builder().handIndex(0).x(tiles(10)).y(tiles(10)).build();
 
     deploymentSystem.queueAction(player, action);
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);
@@ -108,7 +110,8 @@ class BuildingDeployTimeTest {
     player = new Player(Team.BLUE, new Deck(Collections.nCopies(8, buildingCard)), false);
     player.getElixir().update(10f);
 
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(10f).y(10f).build();
+    PlayerActionDTO action =
+        PlayerActionDTO.builder().handIndex(0).x(tiles(10)).y(tiles(10)).build();
 
     deploymentSystem.queueAction(player, action);
     deploymentSystem.update(DeploymentSystem.PLACEMENT_SYNC_DELAY);

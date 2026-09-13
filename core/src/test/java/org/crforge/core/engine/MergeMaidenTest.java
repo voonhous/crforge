@@ -1,6 +1,7 @@
 package org.crforge.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,8 +56,8 @@ class MergeMaidenTest {
             .name("MergeMaiden_Mounted")
             .health(466)
             .damage(121)
-            .speed(1.0f)
-            .range(5.0f)
+            .speed(tiles(1.0))
+            .range(tiles(5.0))
             .attackCooldown(1.4f)
             .loadTime(0.9f)
             .movementType(MovementType.AIR)
@@ -68,8 +69,8 @@ class MergeMaidenTest {
             .name("MergeMaiden_Normal")
             .health(486)
             .damage(121)
-            .speed(1.0f)
-            .range(1.2f)
+            .speed(tiles(1.0))
+            .range(tiles(1.2))
             .attackCooldown(1.1f)
             .loadTime(0.8f)
             .movementType(MovementType.GROUND)
@@ -113,8 +114,9 @@ class MergeMaidenTest {
         new Random(42));
   }
 
+  /** Creates a deploy action at tile coordinates (converted to game units). */
   private PlayerActionDTO playAt(int handIndex, float x, float y) {
-    return PlayerActionDTO.builder().handIndex(handIndex).x(x).y(y).build();
+    return PlayerActionDTO.playAtTiles(handIndex, x, y);
   }
 
   // -- Card.resolveVariant unit tests --

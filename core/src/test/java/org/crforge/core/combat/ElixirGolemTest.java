@@ -2,6 +2,7 @@ package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -52,8 +53,8 @@ class ElixirGolemTest {
           .name("ElixirGolem4")
           .health(200)
           .damage(36)
-          .speed(1.0f)
-          .range(0.7f)
+          .speed(tiles(1.0))
+          .range(tiles(0.7))
           .attackCooldown(1.3f)
           .movementType(MovementType.GROUND)
           .targetType(TargetType.GROUND)
@@ -67,15 +68,15 @@ class ElixirGolemTest {
           .name("ElixirGolem2")
           .health(400)
           .damage(36)
-          .speed(1.0f)
-          .range(0.7f)
+          .speed(tiles(1.0))
+          .range(tiles(0.7))
           .attackCooldown(1.3f)
           .movementType(MovementType.GROUND)
           .targetType(TargetType.GROUND)
           .targetOnlyBuildings(true)
           .manaOnDeathForOpponent(500)
           .deathSpawns(
-              List.of(new DeathSpawnEntry(ELIXIR_GOLEM4_STATS, 2, 0.6f, 0f, 0f, null, null)))
+              List.of(new DeathSpawnEntry(ELIXIR_GOLEM4_STATS, 2, tiles(0.6), 0f, 0f, null, null)))
           .build();
 
   // ElixirGolem1: main form, death spawns 2 ElixirGolem2s
@@ -84,15 +85,15 @@ class ElixirGolemTest {
           .name("ElixirGolem1")
           .health(800)
           .damage(36)
-          .speed(1.0f)
-          .range(0.7f)
+          .speed(tiles(1.0))
+          .range(tiles(0.7))
           .attackCooldown(1.3f)
           .movementType(MovementType.GROUND)
           .targetType(TargetType.GROUND)
           .targetOnlyBuildings(true)
           .manaOnDeathForOpponent(1000)
           .deathSpawns(
-              List.of(new DeathSpawnEntry(ELIXIR_GOLEM2_STATS, 2, 0.6f, 0f, 0f, null, null)))
+              List.of(new DeathSpawnEntry(ELIXIR_GOLEM2_STATS, 2, tiles(0.6), 0f, 0f, null, null)))
           .build();
 
   @BeforeEach
@@ -303,7 +304,7 @@ class ElixirGolemTest {
     return Troop.builder()
         .name(stats.getName())
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(stats.getHealth()))
         .deployTime(1.0f)
         .movement(

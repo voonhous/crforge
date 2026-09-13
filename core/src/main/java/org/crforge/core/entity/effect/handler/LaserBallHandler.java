@@ -9,6 +9,7 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Processes the DarkMagic laser ball mechanic. After an initial delay, scans every scanInterval
@@ -143,8 +144,8 @@ public class LaserBallHandler {
   private List<Entity> findLaserTargets(AreaEffect effect) {
     AreaEffectStats stats = effect.getStats();
     Team enemyTeam = effect.getTeam().opposite();
-    float centerX = effect.getPosition().getX();
-    float centerY = effect.getPosition().getY();
+    int centerX = effect.getPosition().getX();
+    int centerY = effect.getPosition().getY();
 
     List<Entity> targets = new ArrayList<>();
     for (Entity target : gameState.getAliveEntities()) {
@@ -155,9 +156,9 @@ public class LaserBallHandler {
         continue;
       }
 
-      float distanceSq = target.getPosition().distanceToSquared(centerX, centerY);
-      float effectiveRadius = stats.getRadius() + target.getCollisionRadius();
-      if (distanceSq > effectiveRadius * effectiveRadius) {
+      long distanceSq = target.getPosition().distanceSquaredTo(centerX, centerY);
+      long effectiveRadius = (long) stats.getRadius() + target.getCollisionRadius();
+      if (!GameUnits.withinRadius(distanceSq, effectiveRadius)) {
         continue;
       }
 

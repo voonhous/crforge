@@ -1,6 +1,7 @@
 package org.crforge.desktop.render;
 
 import com.badlogic.gdx.graphics.Color;
+import org.crforge.core.util.GameUnits;
 
 /** Centralized constants for the debug renderer: colors, dimensions, and thresholds. */
 public final class RenderConstants {
@@ -9,14 +10,28 @@ public final class RenderConstants {
 
   // ---- Dimensions ----
 
-  /** Scale: 1 tile = TILE_PIXELS pixels. */
+  /** Scale: 1 tile = TILE_PIXELS pixels. Use for tile indices and tile counts. */
   public static final float TILE_PIXELS = 24f;
+
+  /**
+   * Scale for simulation values in integer game units (positions, radii, ranges, offsets): 1 game
+   * unit = PIXELS_PER_UNIT pixels, i.e. TILE_PIXELS per {@link GameUnits#UNITS_PER_TILE} units.
+   */
+  public static final float PIXELS_PER_UNIT = TILE_PIXELS / GameUnits.UNITS_PER_TILE;
 
   /** Height of the top UI panel (red player HUD). */
   public static final float TOP_UI_HEIGHT = 140f;
 
   /** Height of the bottom UI panel (blue player HUD). */
   public static final float BOTTOM_UI_HEIGHT = 140f;
+
+  /**
+   * Converts a simulation distance or coordinate in game units to pixels. Add {@link
+   * #BOTTOM_UI_HEIGHT} separately for arena-space Y coordinates.
+   */
+  public static float unitsToPixels(float units) {
+    return units * PIXELS_PER_UNIT;
+  }
 
   // Card layout
   public static final float CARD_WIDTH = 60f;

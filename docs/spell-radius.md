@@ -25,7 +25,7 @@ When both values exist, **card-level radius wins**. The logic lives in
 `SpellFactory.castSpell()` (line 67):
 
 ```java
-float radius = card.getSpellRadius() > 0 ? card.getSpellRadius() : proj.getRadius();
+int radius = card.getSpellRadius() > 0 ? card.getSpellRadius() : proj.getRadius();
 ```
 
 This is correct because:

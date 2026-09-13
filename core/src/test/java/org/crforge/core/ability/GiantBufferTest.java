@@ -1,6 +1,7 @@
 package org.crforge.core.ability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.handler.BuffAllyHandler;
@@ -47,7 +48,7 @@ class GiantBufferTest {
   private static final float ACTION_DELAY = 1.0f;
   private static final float COOLDOWN = 3.0f;
   private static final float BUFF_DELAY = 0.28f;
-  private static final float SEARCH_RANGE = 7.0f;
+  private static final int SEARCH_RANGE = tiles(7.0); // 7 tiles in game units
   private static final int MAX_TARGETS = 2;
   private static final float PERSIST_AFTER_DEATH = 5.0f;
 
@@ -202,10 +203,10 @@ class GiantBufferTest {
         Troop.builder()
             .name("Rider")
             .team(Team.BLUE)
-            .position(new Position(6, 5))
+            .position(new Position(tiles(6), tiles(5)))
             .health(new Health(100))
-            .movement(new Movement(1f, 4f, 0.3f, 0.3f, MovementType.GROUND))
-            .attached(new AttachedComponent(parent, 0f, 0.5f))
+            .movement(new Movement(tiles(1f), 4f, tiles(0.3f), tiles(0.3f), MovementType.GROUND))
+            .attached(new AttachedComponent(parent, 0, tiles(0.5)))
             .deployTime(0f)
             .deployTimer(0f)
             .build();
@@ -378,9 +379,9 @@ class GiantBufferTest {
         Tower.builder()
             .name("PrincessTower")
             .team(Team.RED)
-            .position(new Position(5, 6))
+            .position(new Position(tiles(5), tiles(6)))
             .health(new Health(2000))
-            .movement(new Movement(0f, 0f, 1.0f, 1.0f, MovementType.BUILDING))
+            .movement(new Movement(0f, 0f, tiles(1.0f), tiles(1.0f), MovementType.BUILDING))
             .build();
 
     GiantBuffState buff = createActiveBuff(ally);
@@ -403,13 +404,13 @@ class GiantBufferTest {
         Troop.builder()
             .name("ElectroWizard")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(1f, 4f, 0.4f, 0.4f, MovementType.GROUND))
+            .movement(new Movement(tiles(1f), 4f, tiles(0.4f), tiles(0.4f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(50)
-                    .range(5.0f)
+                    .range(tiles(5.0f))
                     .attackCooldown(1.8f)
                     .targetType(TargetType.ALL)
                     .build())
@@ -438,13 +439,13 @@ class GiantBufferTest {
         Troop.builder()
             .name("RamRider")
             .team(Team.BLUE)
-            .position(new Position(5, 5))
+            .position(new Position(tiles(5), tiles(5)))
             .health(new Health(500))
-            .movement(new Movement(1f, 4f, 0.4f, 0.4f, MovementType.GROUND))
+            .movement(new Movement(tiles(1f), 4f, tiles(0.4f), tiles(0.4f), MovementType.GROUND))
             .combat(
                 Combat.builder()
                     .damage(50)
-                    .range(5.0f)
+                    .range(tiles(5.0f))
                     .attackCooldown(1.0f)
                     .targetType(TargetType.ALL)
                     .projectileStats(
@@ -545,7 +546,7 @@ class GiantBufferTest {
         COOLDOWN,
         ACTION_DELAY,
         BUFF_DELAY,
-        8.5f,
+        tiles(8.5),
         PERSIST_AFTER_DEATH,
         MULTIPLIERS);
   }
@@ -559,13 +560,13 @@ class GiantBufferTest {
     return Troop.builder()
         .name("GiantBuffer")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(1040))
-        .movement(new Movement(1f, 18f, 0.75f, 0.75f, MovementType.GROUND))
+        .movement(new Movement(tiles(1f), 18f, tiles(0.75f), tiles(0.75f), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(47)
-                .range(1.2f)
+                .range(tiles(1.2f))
                 .attackCooldown(1.5f)
                 .targetType(TargetType.GROUND)
                 .targetOnlyBuildings(true)
@@ -580,13 +581,13 @@ class GiantBufferTest {
     return Troop.builder()
         .name("Knight")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(690))
-        .movement(new Movement(1f, 6f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1f), 6f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(79)
-                .range(1.2f)
+                .range(tiles(1.2f))
                 .attackCooldown(1.2f)
                 .targetType(TargetType.GROUND)
                 .build())
@@ -599,13 +600,13 @@ class GiantBufferTest {
     return Troop.builder()
         .name("MeleeAlly")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(500))
-        .movement(new Movement(1f, 4f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(1f), 4f, tiles(0.4f), tiles(0.4f), MovementType.GROUND))
         .combat(
             Combat.builder()
                 .damage(100)
-                .range(1.2f)
+                .range(tiles(1.2f))
                 .attackCooldown(1.0f)
                 .targetType(TargetType.GROUND)
                 .build())
@@ -618,9 +619,9 @@ class GiantBufferTest {
     return Troop.builder()
         .name("Target")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(5000))
-        .movement(new Movement(0f, 4f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(0f, 4f, tiles(0.5f), tiles(0.5f), MovementType.GROUND))
         .deployTime(0f)
         .deployTimer(0f)
         .build();

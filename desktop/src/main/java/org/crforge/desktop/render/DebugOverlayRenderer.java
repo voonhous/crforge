@@ -10,6 +10,7 @@ import static org.crforge.desktop.render.RenderConstants.COLOR_PATH;
 import static org.crforge.desktop.render.RenderConstants.HEALTH_BAR_HEIGHT;
 import static org.crforge.desktop.render.RenderConstants.HEALTH_BAR_Y_OFFSET;
 import static org.crforge.desktop.render.RenderConstants.TILE_PIXELS;
+import static org.crforge.desktop.render.RenderConstants.unitsToPixels;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -47,10 +48,10 @@ public class DebugOverlayRenderer {
 
       Entity target = combat.getCurrentTarget();
       if (target != null && target.isAlive()) {
-        float x1 = entity.getPosition().getX() * TILE_PIXELS;
-        float y1 = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-        float x2 = target.getPosition().getX() * TILE_PIXELS;
-        float y2 = target.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+        float x1 = unitsToPixels(entity.getPosition().getX());
+        float y1 = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+        float x2 = unitsToPixels(target.getPosition().getX());
+        float y2 = unitsToPixels(target.getPosition().getY()) + BOTTOM_UI_HEIGHT;
 
         ctx.getShapeRenderer().setColor(1f, 0f, 0f, 0.3f);
         ctx.getShapeRenderer().line(x1, y1, x2, y2);
@@ -68,8 +69,8 @@ public class DebugOverlayRenderer {
 
     for (Entity entity : state.getAliveEntities()) {
       if (entity instanceof Troop troop && troop.isAlive()) {
-        float x = troop.getPosition().getX() * TILE_PIXELS;
-        float y = troop.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+        float x = unitsToPixels(troop.getPosition().getX());
+        float y = unitsToPixels(troop.getPosition().getY()) + BOTTOM_UI_HEIGHT;
         float rot = troop.getPosition().getRotation();
 
         float len = TILE_PIXELS * 1.5f;
@@ -94,15 +95,15 @@ public class DebugOverlayRenderer {
       if (combat == null) {
         continue;
       }
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float attackRadius = (combat.getRange() + entity.getCollisionRadius()) * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float attackRadius = unitsToPixels(combat.getRange() + entity.getCollisionRadius());
       ctx.getShapeRenderer().circle(x, y, attackRadius, CIRCLE_SEGMENTS);
 
       // Draw minimum range (blind spot) circle if present
       if (combat.getMinimumRange() > 0) {
         ctx.getShapeRenderer().setColor(COLOR_MINIMUM_RANGE);
-        float minRadius = (combat.getMinimumRange() + entity.getCollisionRadius()) * TILE_PIXELS;
+        float minRadius = unitsToPixels(combat.getMinimumRange() + entity.getCollisionRadius());
         ctx.getShapeRenderer().circle(x, y, minRadius, CIRCLE_SEGMENTS);
         ctx.getShapeRenderer().setColor(COLOR_ATTACK_RANGE);
       }
@@ -115,9 +116,9 @@ public class DebugOverlayRenderer {
       if (spawner == null || !spawner.isSpawnOnAggro()) {
         continue;
       }
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float aggroRadius = spawner.getAggroDetectionRange() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float aggroRadius = unitsToPixels(spawner.getAggroDetectionRange());
       ctx.getShapeRenderer().circle(x, y, aggroRadius, CIRCLE_SEGMENTS);
     }
 
@@ -128,9 +129,9 @@ public class DebugOverlayRenderer {
   public void renderEntityNames(GameState state) {
     ctx.getSpriteBatch().begin();
     for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(entity.getVisualRadius());
 
       // Push name above both health bar and shield bar (if present)
       float barsHeight = HEALTH_BAR_Y_OFFSET + HEALTH_BAR_HEIGHT;
@@ -171,9 +172,9 @@ public class DebugOverlayRenderer {
     ctx.getEntityNameFont().setColor(COLOR_HP_TEXT);
 
     for (Entity entity : state.getAliveEntities()) {
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(entity.getVisualRadius());
 
       float barY = y + radius + HEALTH_BAR_Y_OFFSET;
       float barCenterY = barY + HEALTH_BAR_HEIGHT / 2;
@@ -210,9 +211,9 @@ public class DebugOverlayRenderer {
         continue;
       }
 
-      float x = entity.getPosition().getX() * TILE_PIXELS;
-      float y = entity.getPosition().getY() * TILE_PIXELS + BOTTOM_UI_HEIGHT;
-      float radius = entity.getVisualRadius() * TILE_PIXELS;
+      float x = unitsToPixels(entity.getPosition().getX());
+      float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+      float radius = unitsToPixels(entity.getVisualRadius());
 
       // Draw countdown text below the entity
       String timerText = String.format("%.1f", spawner.getCurrentTimer());

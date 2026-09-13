@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.Map;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -50,11 +51,11 @@ class BattleHealerTest {
 
   // BattleHealer heal on hit: 40 HP via BattleHealerAll buff (healPerSecond=40, buffDuration=1.0)
   private static final int HEAL_ON_HIT_AMOUNT = 40;
-  private static final float HEAL_ON_HIT_RADIUS = 4.0f;
+  private static final int HEAL_ON_HIT_RADIUS = tiles(4.0);
 
   // BattleHealer heal on deploy: 79 HP via BattleHealerSpawnBuff
   private static final int HEAL_ON_DEPLOY_AMOUNT = 79;
-  private static final float HEAL_ON_DEPLOY_RADIUS = 2.5f;
+  private static final int HEAL_ON_DEPLOY_RADIUS = tiles(2.5);
 
   private static final int BATTLE_HEALER_HP = 671;
   private static final int BATTLE_HEALER_DAMAGE = 58;
@@ -177,7 +178,7 @@ class BattleHealerTest {
         AreaEffect.builder()
             .name("BattleHealerSpawnHeal")
             .team(Team.BLUE)
-            .position(new Position(5, 10))
+            .position(new Position(tiles(5), tiles(10)))
             .stats(deployEffect)
             .remainingLifetime(1.0f)
             .build();
@@ -204,9 +205,9 @@ class BattleHealerTest {
         Building.builder()
             .name("FriendlyTower")
             .team(Team.BLUE)
-            .position(new Position(5.5f, 10))
+            .position(new Position(tiles(5.5), tiles(10)))
             .health(new Health(1000))
-            .movement(new Movement(0, 0, 0.5f, 0.5f, MovementType.BUILDING))
+            .movement(new Movement(0, 0, tiles(0.5), tiles(0.5), MovementType.BUILDING))
             .lifetime(0f)
             .remainingLifetime(0f)
             .build();
@@ -237,7 +238,7 @@ class BattleHealerTest {
     AreaEffectStats aoeOnHit =
         AreaEffectStats.builder()
             .name("BattleHealerHeal")
-            .radius(4.0f)
+            .radius(tiles(4.0))
             .lifeDuration(0.05f)
             .hitsGround(true)
             .hitsAir(true)
@@ -249,7 +250,7 @@ class BattleHealerTest {
             .name("BattleHealer")
             .health(671)
             .damage(58)
-            .range(1.6f)
+            .range(tiles(1.6))
             .attackCooldown(1.5f)
             .movementType(MovementType.GROUND)
             .targetType(TargetType.GROUND)
@@ -259,7 +260,7 @@ class BattleHealerTest {
     Combat combat =
         Combat.builder()
             .damage(58)
-            .range(1.6f)
+            .range(tiles(1.6))
             .attackCooldown(1.5f)
             .targetType(TargetType.GROUND)
             .areaEffectOnHit(stats.getAreaEffectOnHit())
@@ -267,7 +268,7 @@ class BattleHealerTest {
 
     assertThat(combat.getAreaEffectOnHit()).isNotNull();
     assertThat(combat.getAreaEffectOnHit().getName()).isEqualTo("BattleHealerHeal");
-    assertThat(combat.getAreaEffectOnHit().getRadius()).isEqualTo(4.0f);
+    assertThat(combat.getAreaEffectOnHit().getRadius()).isEqualTo(tiles(4.0));
     assertThat(combat.getAreaEffectOnHit().getBuff()).isEqualTo("BattleHealerAll");
   }
 
@@ -277,7 +278,7 @@ class BattleHealerTest {
     AreaEffectStats spawnAE =
         AreaEffectStats.builder()
             .name("BattleHealerSpawnHeal")
-            .radius(2.5f)
+            .radius(tiles(2.5))
             .lifeDuration(1.0f)
             .buffApplication(BuffApplication.of("BattleHealerSpawnBuff", 1.0f))
             .build();
@@ -287,7 +288,7 @@ class BattleHealerTest {
             .name("BattleHealer")
             .health(671)
             .damage(58)
-            .range(1.6f)
+            .range(tiles(1.6))
             .movementType(MovementType.GROUND)
             .targetType(TargetType.GROUND)
             .spawnAreaEffect(spawnAE)
@@ -307,10 +308,11 @@ class BattleHealerTest {
 
     assertThat(card.getDeployEffect()).isNotNull();
     assertThat(card.getDeployEffect().getName()).isEqualTo("BattleHealerSpawnHeal");
-    assertThat(card.getDeployEffect().getRadius()).isEqualTo(2.5f);
+    assertThat(card.getDeployEffect().getRadius()).isEqualTo(tiles(2.5));
     assertThat(card.getDeployEffect().getBuff()).isEqualTo("BattleHealerSpawnBuff");
   }
 
+  /** Creates a BattleHealer at tile coordinates. */
   private Troop createBattleHealer(Team team, float x, float y) {
     AreaEffectStats aoeOnHit =
         AreaEffectStats.builder()
@@ -325,8 +327,8 @@ class BattleHealerTest {
     Combat combat =
         Combat.builder()
             .damage(BATTLE_HEALER_DAMAGE)
-            .range(1.6f)
-            .sightRange(5.5f)
+            .range(tiles(1.6))
+            .sightRange(tiles(5.5))
             .attackCooldown(1.5f)
             .loadTime(1.2f)
             .attackState(AttackStateMachine.withLoad(1.2f))
@@ -337,21 +339,22 @@ class BattleHealerTest {
     return Troop.builder()
         .name("BattleHealer")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(BATTLE_HEALER_HP))
-        .movement(new Movement(1.0f, 6.0f, 0.5f, 0.5f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 6.0f, tiles(0.5), tiles(0.5), MovementType.GROUND))
         .deployTime(1.0f)
         .combat(combat)
         .build();
   }
 
+  /** Creates a plain troop at tile coordinates. */
   private Troop createTroop(Team team, float x, float y, int hp) {
     return Troop.builder()
         .name("Troop")
         .team(team)
-        .position(new Position(x, y))
+        .position(new Position(tiles(x), tiles(y)))
         .health(new Health(hp))
-        .movement(new Movement(1.0f, 1.0f, 0.4f, 0.4f, MovementType.GROUND))
+        .movement(new Movement(tiles(1.0), 1.0f, tiles(0.4), tiles(0.4), MovementType.GROUND))
         .deployTime(1.0f)
         .build();
   }

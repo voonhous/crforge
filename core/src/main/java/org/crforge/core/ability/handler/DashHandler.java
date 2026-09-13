@@ -9,11 +9,15 @@ import org.crforge.core.component.Position;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.util.GameUnits;
 
 /** Handles the DASH ability (Bandit, MegaKnight). */
 public class DashHandler implements AbilityHandler {
 
-  private static final float DASH_SPEED = 15f; // Tiles per second during dash movement
+  private static final float DASH_SPEED = 15000f; // Game units per second (15 tiles/s)
+
+  // A dash within this distance of its landing point snaps to it (0.1 tiles, in game units)
+  private static final float ARRIVAL_DISTANCE = 100f;
   private static final float KNOCKBACK_DURATION = 0.5f;
   private static final float KNOCKBACK_MAX_TIME = 1.0f;
 
@@ -38,14 +42,13 @@ public class DashHandler implements AbilityHandler {
           return;
         }
         Entity target = combat.getCurrentTarget();
-        float distance =
-            troop.getPosition().distanceTo(target.getPosition())
-                - troop.getCollisionRadius()
-                - target.getCollisionRadius();
-
+        // Edge-to-edge dash ranges compared as exact center-to-center squared distances
+        long distSq = troop.getPosition().distanceSquaredTo(target.getPosition());
+        long radii = (long) troop.getCollisionRadius() + target.getCollisionRadius();
+        boolean inDashableRange = GameUnits.withinRadius(distSq, data.dashMaxRange() + radii);
         boolean inAcquisitionRange =
-            distance >= data.dashMinRange() && distance <= data.dashMaxRange();
-        boolean inDashableRange = distance <= data.dashMaxRange();
+            !GameUnits.insideRadius(distSq, Math.max(0L, data.dashMinRange() + radii))
+                && inDashableRange;
 
         // Acquire candidate when target enters [minRange, maxRange]
         if (inAcquisitionRange && !ability.isDashCandidateAcquired()) {
@@ -84,21 +87,22 @@ public class DashHandler implements AbilityHandler {
           // Start dash toward target -- stop at collision boundary, not center
           ability.setDashState(AbilityComponent.DashState.DASHING);
           ability.setDashTimer(0f);
-          float tx = target.getPosition().getX();
-          float ty = target.getPosition().getY();
-          float dx = tx - troop.getPosition().getX();
-          float dy = ty - troop.getPosition().getY();
-          float dist = (float) Math.sqrt(dx * dx + dy * dy);
-          float stopDist = troop.getCollisionRadius() + target.getCollisionRadius();
+          int tx = target.getPosition().getX();
+          int ty = target.getPosition().getY();
+          double dx = (double) tx - troop.getPosition().getX();
+          double dy = (double) ty - troop.getPosition().getY();
+          double dist = Math.hypot(dx, dy);
+          int stopDist = troop.getCollisionRadius() + target.getCollisionRadius();
           if (dist > stopDist) {
-            float ratio = (dist - stopDist) / dist;
-            tx = troop.getPosition().getX() + dx * ratio;
-            ty = troop.getPosition().getY() + dy * ratio;
+            // Landing point rounded to the nearest game unit
+            double ratio = (dist - stopDist) / dist;
+            tx = troop.getPosition().getX() + GameUnits.round(dx * ratio);
+            ty = troop.getPosition().getY() + GameUnits.round(dy * ratio);
           }
           ability.setDashTargetX(tx);
           ability.setDashTargetY(ty);
           // Calculate dash speed: fixed-duration flight or constant speed
-          float dashDistance = troop.getPosition().distanceTo(tx, ty);
+          float dashDistance = troop.getPosition().distance(tx, ty);
           if (data.dashConstantTime() > 0 && dashDistance > 0) {
             ability.setDashSpeed(dashDistance / data.dashConstantTime());
           } else {
@@ -121,12 +125,10 @@ public class DashHandler implements AbilityHandler {
         Position pos = troop.getPosition();
         float dx = ability.getDashTargetX() - pos.getX();
         float dy = ability.getDashTargetY() - pos.getY();
-        float dist = pos.distanceTo(ability.getDashTargetX(), ability.getDashTargetY());
-
+        float dist = pos.distance(ability.getDashTargetX(), ability.getDashTargetY());
         float dashSpeed = ability.getDashSpeed();
         float moveAmount = dashSpeed * deltaTime;
-
-        if (dist <= moveAmount || dist < 0.1f) {
+        if (dist <= moveAmount + Position.MAX_ROUNDING_DISTANCE || dist < ARRIVAL_DISTANCE) {
           // Arrived at target -- transition to landing
           pos.set(ability.getDashTargetX(), ability.getDashTargetY());
           ability.setDashState(AbilityComponent.DashState.LANDING);
@@ -143,7 +145,7 @@ public class DashHandler implements AbilityHandler {
           // Move toward target
           float nx = dx / dist;
           float ny = dy / dist;
-          pos.set(pos.getX() + nx * moveAmount, pos.getY() + ny * moveAmount);
+          pos.move(nx * moveAmount, ny * moveAmount);
         }
       }
       case LANDING -> {
@@ -169,8 +171,8 @@ public class DashHandler implements AbilityHandler {
       return;
     }
 
-    float pushback = data.dashPushback();
-    float radius = data.dashRadius();
+    int pushback = data.dashPushback();
+    int radius = data.dashRadius();
     if (radius > 0) {
       // AOE dash damage (MegaKnight)
       for (Entity entity : gameState.getAliveEntities()) {
@@ -180,9 +182,9 @@ public class DashHandler implements AbilityHandler {
         if (!entity.isTargetable()) {
           continue;
         }
-        float distSq = dasher.getPosition().distanceToSquared(entity.getPosition());
-        float effectiveRadius = radius + entity.getCollisionRadius();
-        if (distSq <= effectiveRadius * effectiveRadius) {
+        long distSq = dasher.getPosition().distanceSquaredTo(entity.getPosition());
+        long effectiveRadius = (long) radius + entity.getCollisionRadius();
+        if (GameUnits.withinRadius(distSq, effectiveRadius)) {
           entity.getHealth().takeDamage(damage);
           applyDashKnockback(dasher, entity, pushback);
         }
@@ -202,7 +204,7 @@ public class DashHandler implements AbilityHandler {
    * Applies knockback to an entity hit by a dash landing. Buildings and entities with
    * ignorePushback are immune.
    */
-  private void applyDashKnockback(Troop dasher, Entity target, float pushback) {
+  private void applyDashKnockback(Troop dasher, Entity target, int pushback) {
     if (pushback <= 0) {
       return;
     }
@@ -216,9 +218,9 @@ public class DashHandler implements AbilityHandler {
 
     float dx = target.getPosition().getX() - dasher.getPosition().getX();
     float dy = target.getPosition().getY() - dasher.getPosition().getY();
-    float dist = (float) Math.sqrt(dx * dx + dy * dy);
-    float dirX = dist > 0.001f ? dx / dist : 0f;
-    float dirY = dist > 0.001f ? dy / dist : 1f;
+    float dist = dasher.getPosition().distance(target.getPosition());
+    float dirX = dist > 0f ? dx / dist : 0f;
+    float dirY = dist > 0f ? dy / dist : 1f;
 
     movement.startKnockback(dirX, dirY, pushback, KNOCKBACK_DURATION, KNOCKBACK_MAX_TIME);
   }

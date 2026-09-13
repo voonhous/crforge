@@ -87,7 +87,8 @@ public class ArenaRenderer {
     // Validate placement
     boolean isValid = true;
     if (player != null && selectedCard != null) {
-      PlayerActionDTO action = PlayerActionDTO.play(selectedHandIndex, x + 0.5f, y + 0.5f);
+      // Hover position is a tile index; deploy at the tile center, converted to game units
+      PlayerActionDTO action = PlayerActionDTO.playAtTiles(selectedHandIndex, x + 0.5f, y + 0.5f);
       isValid = match.validateAction(player, action);
     }
 
@@ -120,8 +121,8 @@ public class ArenaRenderer {
           && card.getProjectile().getSpawnProjectile() != null) {
         // Rolling projectile spells (e.g. The Log): draw a rectangular path preview
         ProjectileStats rolling = card.getProjectile().getSpawnProjectile();
-        float halfWidth = rolling.getProjectileRadius() * TILE_PIXELS;
-        float length = rolling.getProjectileRange() * TILE_PIXELS;
+        float halfWidth = unitsToPixels(rolling.getProjectileRadius());
+        float length = unitsToPixels(rolling.getProjectileRange());
         float rectX = centerX - halfWidth;
         float rectY = (team == Team.BLUE) ? centerY : centerY - length;
 
@@ -132,11 +133,11 @@ public class ArenaRenderer {
         // takes priority over projectile AOE radius; projectile radius is the final fallback
         float radius;
         if (card.getAreaEffect() != null) {
-          radius = card.getAreaEffect().getRadius() * TILE_PIXELS;
+          radius = unitsToPixels(card.getAreaEffect().getRadius());
         } else if (card.getSpellRadius() > 0) {
-          radius = card.getSpellRadius() * TILE_PIXELS;
+          radius = unitsToPixels(card.getSpellRadius());
         } else if (card.getProjectile() != null) {
-          radius = card.getProjectile().getRadius() * TILE_PIXELS;
+          radius = unitsToPixels(card.getProjectile().getRadius());
         } else {
           radius = TILE_PIXELS; // fallback: 1 tile
         }
@@ -150,9 +151,9 @@ public class ArenaRenderer {
               card, totalUnits, 0, team, card.getUnitStats().getVisualRadius());
 
       for (float[] pos : positions) {
-        float ghostX = centerX + pos[0] * TILE_PIXELS;
-        float ghostY = centerY + pos[1] * TILE_PIXELS;
-        float visRadius = pos[2] * TILE_PIXELS;
+        float ghostX = centerX + unitsToPixels(pos[0]);
+        float ghostY = centerY + unitsToPixels(pos[1]);
+        float visRadius = unitsToPixels(pos[2]);
 
         ctx.getShapeRenderer().setColor(ghostColor);
         ctx.getShapeRenderer().circle(ghostX, ghostY, visRadius);
@@ -183,13 +184,13 @@ public class ArenaRenderer {
     ctx.getShapeRenderer().begin(ShapeType.Line);
 
     // Outer attack range circle
-    float attackRange = (unitStats.getRange() + collisionRadius) * TILE_PIXELS;
+    float attackRange = unitsToPixels(unitStats.getRange() + collisionRadius);
     ctx.getShapeRenderer().setColor(COLOR_HOVER_ATTACK_RANGE);
     ctx.getShapeRenderer().circle(centerX, centerY, attackRange, CIRCLE_SEGMENTS);
 
     // Inner minimum range circle (blind spot)
     if (unitStats.getMinimumRange() > 0) {
-      float minRange = (unitStats.getMinimumRange() + collisionRadius) * TILE_PIXELS;
+      float minRange = unitsToPixels(unitStats.getMinimumRange() + collisionRadius);
       ctx.getShapeRenderer().setColor(COLOR_MINIMUM_RANGE);
       ctx.getShapeRenderer().circle(centerX, centerY, minRange, CIRCLE_SEGMENTS);
     }

@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.card.Card;
@@ -78,11 +79,12 @@ class FurnaceReworkTest {
     assertThat(FURNACE.getUnitStats().getHealth()).as("Health").isEqualTo(284);
     assertThat(FURNACE.getUnitStats().getDamage()).as("Damage").isEqualTo(70);
     // Speed 60 in units.json -> 1.0 tiles/sec after UnitLoader conversion (60 / SPEED_BASE)
-    assertThat(FURNACE.getUnitStats().getSpeed()).as("Speed").isEqualTo(1.0f);
+    // Raw speed 60 = one tile per second = 1000 game units per second
+    assertThat(FURNACE.getUnitStats().getSpeed()).as("Speed").isEqualTo(1000f);
     assertThat(FURNACE.getUnitStats().getMovementType())
         .as("Movement type")
         .isEqualTo(MovementType.GROUND);
-    assertThat(FURNACE.getUnitStats().getRange()).as("Range").isEqualTo(6.0f);
+    assertThat(FURNACE.getUnitStats().getRange()).as("Range").isEqualTo(tiles(6.0));
     assertThat(FURNACE.getUnitStats().getProjectile()).as("Projectile").isNotNull();
     assertThat(FURNACE.getUnitStats().getProjectile().getName())
         .as("Projectile name")
@@ -127,12 +129,12 @@ class FurnaceReworkTest {
 
     Troop furnace = findFurnaceTroop();
     assertThat(furnace).as("Furnace should exist").isNotNull();
-    float initialY = furnace.getPosition().getY();
+    int initialY = furnace.getPosition().getY();
 
     // Tick enough for movement to occur (blue walks toward red = +Y)
     engine.tick(ticksFor(2.0f));
 
-    float movedY = furnace.getPosition().getY();
+    int movedY = furnace.getPosition().getY();
     assertThat(movedY)
         .as("Furnace should walk toward enemy (increasing Y for blue)")
         .isGreaterThan(initialY);
@@ -155,7 +157,7 @@ class FurnaceReworkTest {
     // Run enough ticks for the Furnace to acquire a target and fire
     // It has range=6.0 and the red towers are at y~29, so it needs to walk close enough first.
     // Instead, verify the combat setup is correct (projectile-based ranged attack).
-    assertThat(furnace.getCombat().getRange()).as("Attack range").isEqualTo(6.0f);
+    assertThat(furnace.getCombat().getRange()).as("Attack range").isEqualTo(tiles(6.0));
     assertThat(furnace.getCombat().getProjectileStats().getName())
         .as("Projectile name")
         .isEqualTo("Furnace_Rework_Projectile");
@@ -259,7 +261,8 @@ class FurnaceReworkTest {
   // -- Helpers --
 
   private void deployFurnace(float x, float y) {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(x).y(y).build();
+    // Helper coordinates are tiles; the engine action takes game units
+    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(tiles(x)).y(tiles(y)).build();
     engine.queueAction(bluePlayer, action);
   }
 

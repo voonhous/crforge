@@ -45,8 +45,19 @@ Executed in `CardRegistry` static initializer.
 
 ### Speed Conversion
 
-Raw JSON speed values divide by 60: `effectiveSpeed = dto.getSpeed() / 60.0` (base unit = 60
-pixels/sec = 1 tile/sec).
+Raw JSON speed values use 60 = 1 tile/sec. Loaders convert them to game units per second with
+`GameUnits.rawSpeedToUnitsPerSecond()` (`raw * 1000 / 60`, e.g. 60 -> 1000, 45 -> 750).
+
+### Spatial Units
+
+The JSON files keep their existing mixed units; loaders convert each field exactly once:
+
+- Radii, ranges, offsets and area-effect/ability pushback stored in tiles (e.g. `range: 1.2`) are
+  converted with `GameUnits.tiles()` to integer game units (1200).
+- Projectile `pushback`, unit `attackPushBack` and `deathDamage.pushback` are already raw game units
+  (1000 = one tile) and pass through unchanged.
+- Card `summonRadius` stays raw for the legacy formation fallback; Fisherman hook drag speeds stay
+  raw and are converted at runtime.
 
 ### CardRegistry
 

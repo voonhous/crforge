@@ -2,6 +2,7 @@ package org.crforge.core.match;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -143,11 +144,11 @@ class MatchTest {
     match.addPlayer(bluePlayer);
 
     // Valid placement (bottom half, Y=10)
-    PlayerActionDTO validAction = PlayerActionDTO.play(0, 9f, 10f);
+    PlayerActionDTO validAction = PlayerActionDTO.play(0, tiles(9), tiles(10));
     assertThat(match.validateAction(bluePlayer, validAction)).isTrue();
 
     // Invalid placement (top half, Y=25)
-    PlayerActionDTO invalidAction = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO invalidAction = PlayerActionDTO.play(0, tiles(9), tiles(25));
     assertThat(match.validateAction(bluePlayer, invalidAction)).isFalse();
   }
 
@@ -156,11 +157,11 @@ class MatchTest {
     match.addPlayer(redPlayer);
 
     // Valid placement (top half, Y=25)
-    PlayerActionDTO validAction = PlayerActionDTO.play(0, 9f, 25f);
+    PlayerActionDTO validAction = PlayerActionDTO.play(0, tiles(9), tiles(25));
     assertThat(match.validateAction(redPlayer, validAction)).isTrue();
 
     // Invalid placement (bottom half, Y=5)
-    PlayerActionDTO invalidAction = PlayerActionDTO.play(0, 9f, 5f);
+    PlayerActionDTO invalidAction = PlayerActionDTO.play(0, tiles(9), tiles(5));
     assertThat(match.validateAction(redPlayer, invalidAction)).isFalse();
   }
 
@@ -173,7 +174,7 @@ class MatchTest {
     // River tiles are Y=15, 16.
 
     PlayerActionDTO bridgeAction =
-        PlayerActionDTO.play(0, Arena.LEFT_BRIDGE_X + 1.0f, Arena.RIVER_Y - 0.5f);
+        PlayerActionDTO.play(0, tiles(Arena.LEFT_BRIDGE_X + 1.0), tiles(Arena.RIVER_Y - 0.5));
 
     // Should be rejected for Troops
     assertThat(match.validateAction(bluePlayer, bridgeAction))
@@ -186,7 +187,7 @@ class MatchTest {
     match.addPlayer(bluePlayer);
 
     // River location (not bridge): Center X=9, Y=16
-    PlayerActionDTO riverAction = PlayerActionDTO.play(0, 9f, 16f);
+    PlayerActionDTO riverAction = PlayerActionDTO.play(0, tiles(9), tiles(16));
 
     assertThat(match.validateAction(bluePlayer, riverAction))
         .as("River placement should be rejected")

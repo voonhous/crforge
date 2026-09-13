@@ -26,10 +26,14 @@ import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
-import org.crforge.core.util.Vector2;
+import org.crforge.core.util.GameUnits;
 
 /** Creates Troop entities with level-scaled stats, formation offsets, and attached units. */
 class TroopFactory {
+
+  // Tunnel river-crossing waypoint X coordinates in game units (4.1 and 13.9 tiles)
+  private static final int TUNNEL_LEFT_WAYPOINT_X = 4100;
+  private static final int TUNNEL_RIGHT_WAYPOINT_X = 13900;
 
   private final GameState state;
 
@@ -42,7 +46,7 @@ class TroopFactory {
    * unit selection, spawner components (idx==0 only), death mechanics, and formation offset
    * positioning.
    */
-  void spawnSingleTroop(Team team, Card card, float x, float y, int level, int idx) {
+  void spawnSingleTroop(Team team, Card card, int x, int y, int level, int idx) {
     TroopStats primaryStats = card.getUnitStats();
     if (primaryStats == null) {
       return;
@@ -51,7 +55,7 @@ class TroopFactory {
     int primaryCount = card.getUnitCount();
     int totalUnits = card.getTotalDeployCount();
     TroopStats secondaryStats = card.getSecondaryUnitStats();
-    List<float[]> formationOffsets = card.getFormationOffsets();
+    List<int[]> formationOffsets = card.getFormationOffsets();
     float summonRadius = card.getSummonRadius();
 
     boolean isSecondary = idx >= primaryCount;
@@ -81,7 +85,7 @@ class TroopFactory {
                 .spawnStats(spawnStats)
                 .formationRadius(ls.spawnRadius())
                 .spawnOnAggro(ls.spawnOnAggro())
-                .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0f)
+                .aggroDetectionRange(ls.spawnOnAggro() ? unitStats.getRange() : 0)
                 .level(level)
                 .build();
       }
@@ -140,7 +144,7 @@ class TroopFactory {
    * (death area effect, death spawns, death damage, etc.). Mirrors the bomb entity pattern in
    * {@link org.crforge.core.entity.SpawnerSystem#doSpawn}.
    */
-  Troop spawnBombSummon(Team team, TroopStats stats, float x, float y, int level) {
+  Troop spawnBombSummon(Team team, TroopStats stats, int x, int y, int level) {
     int scaledDeathDamage =
         stats.getDeathDamage() > 0 ? LevelScaling.scaleCard(stats.getDeathDamage(), level) : 0;
 
@@ -192,15 +196,15 @@ class TroopFactory {
     }
 
     int count = ls.spawnNumber();
-    float formationRadius = ls.spawnRadius();
+    int formationRadius = ls.spawnRadius();
 
     for (int i = 0; i < count; i++) {
       // Calculate formation offset for this attached unit
-      Vector2 offset =
+      FormationLayout.Offset offset =
           FormationLayout.calculateOffset(
               i, count, formationRadius, spawnStats.getCollisionRadius());
-      float offsetX = offset.getX();
-      float offsetY = offset.getY();
+      int offsetX = offset.x();
+      int offsetY = offset.y();
 
       int scaledHp = LevelScaling.scaleCard(spawnStats.getHealth(), level);
       int scaledDamage = LevelScaling.scaleCard(spawnStats.getDamage(), level);
@@ -263,29 +267,28 @@ class TroopFactory {
   Troop createTroop(
       Team team,
       TroopStats stats,
-      float baseX,
-      float baseY,
+      int baseX,
+      int baseY,
       SpawnerComponent spawner,
       int level,
       int index,
       int total,
       float summonRadius,
-      List<float[]> formationOffsets) {
-    float offsetX = 0f;
-    float offsetY = 0f;
-
+      List<int[]> formationOffsets) {
+    int offsetX = 0;
+    int offsetY = 0;
     if (formationOffsets != null && index < formationOffsets.size()) {
-      // Pre-computed offsets (already in tile units, no TILE_SCALE conversion needed)
-      float[] offset = formationOffsets.get(index);
+      // Pre-computed offsets (already converted to game units once, at card load time)
+      int[] offset = formationOffsets.get(index);
       offsetX = offset[0];
       offsetY = offset[1];
     } else if (total > 1 && summonRadius > 0) {
-      // Fallback: circular formation algorithm
-      Vector2 offset =
+      // Fallback: legacy circular formation algorithm (raw summonRadius / 355 tiles)
+      FormationLayout.Offset offset =
           FormationLayout.calculateDeployOffset(
               index, total, summonRadius, stats.getCollisionRadius());
-      offsetX = offset.getX();
-      offsetY = offset.getY();
+      offsetX = offset.x();
+      offsetY = offset.y();
     }
 
     if (team == Team.RED) {
@@ -293,8 +296,8 @@ class TroopFactory {
       offsetY = -offsetY;
     }
 
-    float spawnX = baseX + offsetX;
-    float spawnY = baseY + offsetY;
+    int spawnX = baseX + offsetX;
+    int spawnY = baseY + offsetY;
 
     // Troops enter the arena preloaded per RoyaleAPI secret stats:
     // https://royaleapi.com/blog/secret-stats
@@ -396,13 +399,16 @@ class TroopFactory {
    * Sets up the tunnel travel for a Miner-type troop. Overrides spawn position to the team's king
    * tower and computes a river dogleg waypoint if the target crosses the river.
    */
-  void initializeTunnel(Troop troop, float targetX, float targetY) {
+  void initializeTunnel(Troop troop, int targetX, int targetY) {
     AbilityComponent ability = troop.getAbility();
     Team team = troop.getTeam();
 
-    // Start at own king tower
-    float startX = Arena.WIDTH / 2f; // 9.0
-    float startY = team == Team.BLUE ? 3.0f : Arena.HEIGHT - 3.0f;
+    // Start at own king tower (game units: 9000, 3000 or 29000)
+    int startX = Arena.WIDTH_UNITS / 2;
+    int startY =
+        team == Team.BLUE
+            ? Arena.CROWN_TOWER_Y_OFFSET
+            : Arena.HEIGHT_UNITS - Arena.CROWN_TOWER_Y_OFFSET;
     troop.getPosition().set(startX, startY);
 
     // Store tunnel target
@@ -411,13 +417,18 @@ class TroopFactory {
 
     // Compute river dogleg waypoint if target crosses the river
     boolean crossesRiver =
-        (team == Team.BLUE && targetY > Arena.RIVER_Y - 1)
-            || (team == Team.RED && targetY < Arena.RIVER_Y + 1);
+        (team == Team.BLUE && targetY > (Arena.RIVER_Y - 1) * GameUnits.UNITS_PER_TILE)
+            || (team == Team.RED && targetY < (Arena.RIVER_Y + 1) * GameUnits.UNITS_PER_TILE);
 
     if (crossesRiver) {
       // Pick the bridge lane closer to the target's X position
-      float waypointX = targetX < Arena.WIDTH / 2f ? 4.1f : 13.9f;
-      float waypointY = team == Team.BLUE ? 15.0f : 17.0f;
+      // Waypoints just inside each bridge (4.1 / 13.9 tiles) on the near bank (15 / 17 tiles)
+      int waypointX =
+          targetX < Arena.WIDTH_UNITS / 2 ? TUNNEL_LEFT_WAYPOINT_X : TUNNEL_RIGHT_WAYPOINT_X;
+      int waypointY =
+          team == Team.BLUE
+              ? (Arena.RIVER_Y - 1) * GameUnits.UNITS_PER_TILE
+              : (Arena.RIVER_Y + 1) * GameUnits.UNITS_PER_TILE;
       ability.setTunnelWaypointX(waypointX);
       ability.setTunnelWaypointY(waypointY);
       ability.setTunnelUsingWaypoint(true);

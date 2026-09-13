@@ -6,6 +6,7 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.player.Team;
+import org.crforge.core.util.GameUnits;
 
 /**
  * Per-tick collision detection for piercing projectiles. Checks all alive enemy entities within the
@@ -32,9 +33,9 @@ class PiercingHitDetector {
     }
 
     Team enemyTeam = projectile.getTeam().opposite();
-    float projX = projectile.getPosition().getX();
-    float projY = projectile.getPosition().getY();
-    float aoeRadius = projectile.getAoeRadius();
+    int projX = projectile.getPosition().getX();
+    int projY = projectile.getPosition().getY();
+    int aoeRadius = projectile.getAoeRadius();
     int baseDamage = projectile.getDamage();
     int ctdp = projectile.getCrownTowerDamagePercent();
 
@@ -52,9 +53,9 @@ class PiercingHitDetector {
         continue;
       }
 
-      float distSq = entity.getPosition().distanceToSquared(projX, projY);
-      float effectiveRadius = aoeRadius + entity.getCollisionRadius();
-      if (distSq > effectiveRadius * effectiveRadius) {
+      long distSq = entity.getPosition().distanceSquaredTo(projX, projY);
+      long effectiveRadius = (long) aoeRadius + entity.getCollisionRadius();
+      if (!GameUnits.withinRadius(distSq, effectiveRadius)) {
         continue;
       }
 

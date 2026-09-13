@@ -1,6 +1,7 @@
 package org.crforge.core.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.util.GameUnits.tiles;
 
 import java.util.List;
 import org.crforge.core.ability.AbilityType;
@@ -55,7 +56,7 @@ class GoblinMachineTest {
 
   // Center distance that gives edge distance 3.0 (within rocket range [2.5, 5.0])
   // edge = 4.25 - 0.75 - 0.5 = 3.0
-  private static final float ROCKET_RANGE_OFFSET = 4.25f;
+  private static final int ROCKET_RANGE_OFFSET = tiles(4.25);
 
   // Enough ticks for the rocket to fire AND travel to the target (~3.57s + margin)
   private static final int ROCKET_HIT_TICKS = 4 * GameEngine.TICKS_PER_SECOND;
@@ -95,7 +96,7 @@ class GoblinMachineTest {
     assertThat(stats).as("Unit stats").isNotNull();
     assertThat(stats.getHealth()).as("Health").isEqualTo(840);
     assertThat(stats.getDamage()).as("Damage").isEqualTo(83);
-    assertThat(stats.getRange()).as("Range").isEqualTo(1.2f);
+    assertThat(stats.getRange()).as("Range").isEqualTo(tiles(1.2));
     assertThat(stats.getTargetType()).as("Primary target type").isEqualTo(TargetType.GROUND);
     assertThat(stats.isIgnorePushback()).as("Ignore pushback").isTrue();
 
@@ -109,8 +110,8 @@ class GoblinMachineTest {
     assertThat(ra.projectile().getName())
         .as("Projectile name")
         .isEqualTo("GoblinMachineRocketProjectile");
-    assertThat(ra.range()).as("Rocket range").isEqualTo(5.0f);
-    assertThat(ra.minimumRange()).as("Rocket minimum range").isEqualTo(2.5f);
+    assertThat(ra.range()).as("Rocket range").isEqualTo(tiles(5.0));
+    assertThat(ra.minimumRange()).as("Rocket minimum range").isEqualTo(tiles(2.5));
     assertThat(ra.loadTime()).as("Rocket load time").isEqualTo(1.5f);
     assertThat(ra.attackDelay()).as("Rocket attack delay").isEqualTo(1.0f);
     assertThat(ra.attackCooldown()).as("Rocket attack cooldown").isEqualTo(2.5f);
@@ -135,7 +136,7 @@ class GoblinMachineTest {
     Troop enemy =
         createDummyEnemy(
             Team.RED,
-            machine.getPosition().getX() + 1.0f,
+            machine.getPosition().getX() + tiles(1.0),
             machine.getPosition().getY(),
             500,
             MovementType.GROUND);
@@ -181,7 +182,7 @@ class GoblinMachineTest {
     Troop airEnemy =
         createDummyEnemy(
             Team.RED,
-            machine.getPosition().getX() + 2.0f,
+            machine.getPosition().getX() + tiles(2.0),
             machine.getPosition().getY(),
             1000,
             MovementType.AIR);
@@ -246,7 +247,7 @@ class GoblinMachineTest {
             .orElse(null);
 
     if (rocket != null) {
-      assertThat(rocket.getAoeRadius()).as("Rocket AOE radius").isEqualTo(1.5f);
+      assertThat(rocket.getAoeRadius()).as("Rocket AOE radius").isEqualTo(tiles(1.5));
       assertThat(rocket.getCrownTowerDamagePercent())
           .as("Crown tower damage percent")
           .isEqualTo(-50);
@@ -267,7 +268,7 @@ class GoblinMachineTest {
     Troop meleeTarget =
         createDummyEnemy(
             Team.RED,
-            machine.getPosition().getX() + 1.0f,
+            machine.getPosition().getX() + tiles(1.0),
             machine.getPosition().getY(),
             2000,
             MovementType.GROUND);
@@ -349,7 +350,7 @@ class GoblinMachineTest {
   // -- Helpers --
 
   private Troop deployAndGetTroop() {
-    PlayerActionDTO action = PlayerActionDTO.builder().handIndex(0).x(DEPLOY_X).y(DEPLOY_Y).build();
+    PlayerActionDTO action = PlayerActionDTO.playAtTiles(0, DEPLOY_X, DEPLOY_Y);
     engine.queueAction(bluePlayer, action);
     engine.tick(SYNC_DELAY_TICKS + DEPLOY_TICKS + 2);
 
@@ -366,13 +367,14 @@ class GoblinMachineTest {
         .orElse(null);
   }
 
-  private Troop createDummyEnemy(Team team, float x, float y, int hp, MovementType movementType) {
+  /** Creates a stationary dummy enemy at a game-unit position. */
+  private Troop createDummyEnemy(Team team, int x, int y, int hp, MovementType movementType) {
     return Troop.builder()
         .name("DummyTarget")
         .team(team)
         .position(new Position(x, y))
         .health(new Health(hp))
-        .movement(new Movement(0, 10, 0.5f, 0.5f, movementType))
+        .movement(new Movement(0, 10, tiles(0.5), tiles(0.5), movementType))
         .combat(Combat.builder().build())
         .deployTime(0f)
         .deployTimer(0f)
