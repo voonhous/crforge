@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeployFormation;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
+import org.crforge.core.util.FormationLayout;
 import org.crforge.core.util.GameUnits;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.Test;
@@ -42,22 +44,27 @@ class RenderUnitConversionTest {
   }
 
   @Test
-  void ghostFormation_skeletonArmyGhostsDrawAtLegacyPixelOffsets() {
+  void ghostFormation_skeletonArmyGhostsMatchSimulationRadialOffsets() {
     Card skeletonArmy = Objects.requireNonNull(CardRegistry.get("skeletonarmy"));
     int total = skeletonArmy.getTotalDeployCount();
+    DeployFormation formation = DeployFormation.of(skeletonArmy);
 
     List<float[]> blue = GhostFormation.computePositions(skeletonArmy, total, 0, Team.BLUE, 800f);
     List<float[]> red = GhostFormation.computePositions(skeletonArmy, total, 0, Team.RED, 800f);
 
-    // First two legacy tile offsets: (-2.0, 2.0) and (-2.75, 0.0)
-    assertThat(RenderConstants.unitsToPixels(blue.get(0)[0]))
-        .isEqualTo(-2.0f * RenderConstants.TILE_PIXELS);
-    assertThat(RenderConstants.unitsToPixels(blue.get(0)[1]))
-        .isEqualTo(2.0f * RenderConstants.TILE_PIXELS);
+    assertThat(blue).hasSize(total);
+    for (int i = 0; i < total; i++) {
+      FormationLayout.Offset expected = formation.offsetFor(i, 500);
+      assertThat(blue.get(i)[0]).as("blue x %d", i).isEqualTo((float) expected.x());
+      assertThat(blue.get(i)[1]).as("blue y %d", i).isEqualTo((float) expected.y());
+      // Red mirrors blue on both axes
+      assertThat(red.get(i)[0]).as("red x %d", i).isEqualTo((float) -expected.x());
+      assertThat(red.get(i)[1]).as("red y %d", i).isEqualTo((float) -expected.y());
+    }
+    // Index 1 radial offset (-563, 1266) game units, drawn in pixels
     assertThat(RenderConstants.unitsToPixels(blue.get(1)[0]))
-        .isEqualTo(-2.75f * RenderConstants.TILE_PIXELS);
-    // Red mirrors blue, and the visual radius (0.5 tiles) is carried in game units
-    assertThat(red.get(1)[0]).isEqualTo(2750f);
+        .isEqualTo(-563 * RenderConstants.PIXELS_PER_UNIT);
+    // Visual radius (0.5 tiles) is carried in game units
     assertThat(blue.get(0)[2]).isEqualTo(500f);
   }
 

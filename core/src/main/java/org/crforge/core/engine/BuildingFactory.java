@@ -3,6 +3,7 @@ package org.crforge.core.engine;
 import org.crforge.core.ability.AbilityComponent;
 import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeployFormation;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
@@ -155,7 +156,8 @@ class BuildingFactory {
     }
 
     // Create the dig troop (single unit, no formation)
-    Troop digTroop = troopFactory.createTroop(team, digStats, x, y, null, level, 0, 1, 0f, null);
+    Troop digTroop =
+        troopFactory.createTroop(team, digStats, x, y, null, level, 0, DeployFormation.SINGLE);
 
     // Set up tunnel travel from king tower to target
     troopFactory.initializeTunnel(digTroop, x, y);

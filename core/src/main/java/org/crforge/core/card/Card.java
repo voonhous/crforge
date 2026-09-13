@@ -74,6 +74,12 @@ public class Card {
   private final List<int[]> formationOffsets;
 
   /**
+   * Formation layout selection. {@link FormationLayoutType#RADIAL} computes offsets at deploy time
+   * and ignores {@link #formationOffsets} and the legacy circular fallback.
+   */
+  @Builder.Default private final FormationLayoutType formationLayout = FormationLayoutType.DEFAULT;
+
+  /**
    * Secondary unit type for dual-unit cards (e.g., SpearGoblin in GoblinGang). Null for single-unit
    * cards.
    */

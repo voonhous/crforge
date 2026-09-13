@@ -121,6 +121,21 @@ Units with `health=0` in stats are treated as bombs:
   divisor, not the 1,000 units per tile coordinate scale, and is not known to match the native
   formation algorithm
 
+### Radial Formation (Skeleton Army)
+
+Cards with `"formationLayout": "radial"` (currently only `skeletonarmy`) use
+`FormationHelper.offset()`, resolved through `DeployFormation.offsetFor()` for both the simulation
+(`TroopFactory`) and the desktop ghost preview:
+
+- Pure integer math: truncating division and an integer sine table (`round(1024 * sin(deg))`)
+- Radius input: nonzero card `summonRadius` (raw, already game units), otherwise the unit's
+  collision radius (500 for Skeleton)
+- 15 Skeletons get a varying-radius layout; indices 0, 7 and 14 spawn on the deploy point and are
+  separated by collision resolution
+- Offsets are for the blue side; red negates both axes (simulator convention; the in-game side and
+  lane reflection mapping is unverified)
+- Pre-collision only: final in-game positions after separation have not been verified
+
 **Key files:**
 
 - `core/.../entity/SpawnerSystem.java`

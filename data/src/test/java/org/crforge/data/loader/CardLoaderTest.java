@@ -1,6 +1,7 @@
 package org.crforge.data.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.crforge.core.util.GameUnits.tiles;
 
@@ -15,6 +16,7 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.CardVariant;
 import org.crforge.core.card.DamageTier;
+import org.crforge.core.card.FormationLayoutType;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
@@ -414,6 +416,78 @@ class CardLoaderTest {
     // Tile offsets from JSON are converted to game units exactly once at load time
     assertThat(card.getFormationOffsets().get(0)).containsExactly(tiles(0.5), 0);
     assertThat(card.getFormationOffsets().get(1)).containsExactly(tiles(-0.5), 0);
+  }
+
+  @Test
+  void loadCards_shouldParseRadialFormationLayout() {
+    TroopStats skeleton =
+        TroopStats.builder()
+            .name("Skeleton")
+            .health(32)
+            .damage(32)
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
+
+    String json =
+        """
+        [
+          {
+            "id": "skeletonarmy",
+            "name": "SkeletonArmy",
+            "type": "TROOP",
+            "cost": 3,
+            "unit": "Skeleton",
+            "count": 15,
+            "formationLayout": "radial"
+          },
+          {
+            "id": "skeletons",
+            "name": "Skeletons",
+            "type": "TROOP",
+            "cost": 1,
+            "unit": "Skeleton",
+            "count": 3
+          }
+        ]
+        """;
+
+    List<Card> cards = CardLoader.loadCards(toStream(json), unitMap(skeleton), Map.of());
+
+    assertThat(cards.get(0).getFormationLayout()).isEqualTo(FormationLayoutType.RADIAL);
+    assertThat(cards.get(0).getFormationOffsets()).isNull();
+    // Absent formationLayout keeps the default offsets / legacy fallback behavior
+    assertThat(cards.get(1).getFormationLayout()).isEqualTo(FormationLayoutType.DEFAULT);
+  }
+
+  @Test
+  void loadCards_shouldRejectUnknownFormationLayout() {
+    TroopStats skeleton =
+        TroopStats.builder()
+            .name("Skeleton")
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
+
+    String json =
+        """
+        [
+          {
+            "id": "skeletonarmy",
+            "name": "SkeletonArmy",
+            "type": "TROOP",
+            "cost": 3,
+            "unit": "Skeleton",
+            "count": 15,
+            "formationLayout": "spiral"
+          }
+        ]
+        """;
+
+    assertThatThrownBy(() -> CardLoader.loadCards(toStream(json), unitMap(skeleton), Map.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("spiral")
+        .hasMessageContaining("skeletonarmy");
   }
 
   @Test
