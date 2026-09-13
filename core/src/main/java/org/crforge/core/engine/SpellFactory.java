@@ -2,6 +2,7 @@ package org.crforge.core.engine;
 
 import java.util.List;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeployFormation;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
@@ -47,7 +48,8 @@ class SpellFactory {
         state.spawnEntity(summoned);
       } else {
         Troop summoned =
-            troopFactory.createTroop(team, summonStats, x, y, null, level, 0, 1, 0f, null);
+            troopFactory.createTroop(
+                team, summonStats, x, y, null, level, 0, DeployFormation.SINGLE);
         state.spawnEntity(summoned);
       }
     }

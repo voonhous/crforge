@@ -12,6 +12,7 @@ import org.crforge.core.ability.VariableDamageAbility;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.AttackSequenceHit;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeployFormation;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
@@ -55,9 +56,6 @@ class TroopFactory {
     int primaryCount = card.getUnitCount();
     int totalUnits = card.getTotalDeployCount();
     TroopStats secondaryStats = card.getSecondaryUnitStats();
-    List<int[]> formationOffsets = card.getFormationOffsets();
-    float summonRadius = card.getSummonRadius();
-
     boolean isSecondary = idx >= primaryCount;
     TroopStats unitStats = isSecondary ? secondaryStats : primaryStats;
     if (unitStats == null) {
@@ -121,9 +119,7 @@ class TroopFactory {
       }
     }
 
-    Troop troop =
-        createTroop(
-            team, unitStats, x, y, spawner, level, idx, totalUnits, summonRadius, formationOffsets);
+    Troop troop = createTroop(team, unitStats, x, y, spawner, level, idx, DeployFormation.of(card));
 
     // Tunnel ability: override spawn position to king tower and set up underground travel
     if (troop.getAbility() != null && troop.getAbility().getData() instanceof TunnelAbility) {
@@ -263,6 +259,9 @@ class TroopFactory {
    * <p>This means that a formation defined with offsets (dx, dy) for Blue (where +y is forward and
    * +x is right) should be applied as (-dx, -dy) for Red to preserve the formation's relative shape
    * and orientation towards the enemy.
+   *
+   * @param index zero-based unit index within the card's formation
+   * @param formation the card's formation ({@link DeployFormation#SINGLE} for lone units)
    */
   Troop createTroop(
       Team team,
@@ -272,25 +271,10 @@ class TroopFactory {
       SpawnerComponent spawner,
       int level,
       int index,
-      int total,
-      float summonRadius,
-      List<int[]> formationOffsets) {
-    int offsetX = 0;
-    int offsetY = 0;
-    if (formationOffsets != null && index < formationOffsets.size()) {
-      // Pre-computed offsets (already converted to game units once, at card load time)
-      int[] offset = formationOffsets.get(index);
-      offsetX = offset[0];
-      offsetY = offset[1];
-    } else if (total > 1 && summonRadius > 0) {
-      // Fallback: legacy circular formation algorithm (raw summonRadius / 355 tiles)
-      FormationLayout.Offset offset =
-          FormationLayout.calculateDeployOffset(
-              index, total, summonRadius, stats.getCollisionRadius());
-      offsetX = offset.x();
-      offsetY = offset.y();
-    }
-
+      DeployFormation formation) {
+    FormationLayout.Offset offset = formation.offsetFor(index, stats.getCollisionRadius());
+    int offsetX = offset.x();
+    int offsetY = offset.y();
     if (team == Team.RED) {
       offsetX = -offsetX;
       offsetY = -offsetY;

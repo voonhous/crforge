@@ -107,6 +107,8 @@ Array of card objects in `data/src/main/resources/cards/cards.json`. Each card h
 | `unit`         | string | yes      | Unit name -> lookup in `units.json`            |
 | `count`        | int    | no       | Number of units deployed (omitted when 1)             |
 | `summonRadius` | float  | no       | Spread radius for multi-unit deploy                   |
+| `formationOffsets` | float[][] | no | Explicit per-unit deploy offsets in tiles, blue side |
+| `formationLayout` | string | no      | `"radial"` computes offsets at deploy time (Skeleton Army); absent = offsets or legacy fallback |
 | `deployEffect` | object | no       | Area effect triggered on deploy (inline, see Area Effect) |
 
 ### BUILDING cards

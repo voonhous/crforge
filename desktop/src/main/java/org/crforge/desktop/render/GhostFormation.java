@@ -3,6 +3,7 @@ package org.crforge.desktop.render;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.DeployFormation;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
@@ -39,29 +40,17 @@ final class GhostFormation {
     List<float[]> positions = new ArrayList<>();
     int primaryCount = card.getUnitCount();
     TroopStats secondaryStats = card.getSecondaryUnitStats();
-    List<int[]> formationOffsets = card.getFormationOffsets();
-    float summonRadius = card.getSummonRadius();
-
+    DeployFormation formation = DeployFormation.of(card);
     for (int idx = startIdx; idx < totalUnits; idx++) {
       boolean isSecondary = idx >= primaryCount;
       TroopStats stats = isSecondary ? secondaryStats : primaryStats;
       if (stats == null) continue;
 
       float visRadius = stats.getVisualRadius() > 0 ? stats.getVisualRadius() : defaultRadius;
-      float offsetX = 0f;
-      float offsetY = 0f;
-
-      if (formationOffsets != null && idx < formationOffsets.size()) {
-        int[] offset = formationOffsets.get(idx);
-        offsetX = offset[0];
-        offsetY = offset[1];
-      } else if (totalUnits > 1 && summonRadius > 0) {
-        FormationLayout.Offset offset =
-            FormationLayout.calculateDeployOffset(
-                idx, totalUnits, summonRadius, stats.getCollisionRadius());
-        offsetX = offset.x();
-        offsetY = offset.y();
-      }
+      // Same offset resolution as the simulation's TroopFactory
+      FormationLayout.Offset offset = formation.offsetFor(idx, stats.getCollisionRadius());
+      float offsetX = offset.x();
+      float offsetY = offset.y();
 
       if (team == Team.RED) {
         offsetX = -offsetX;

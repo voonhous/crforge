@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
@@ -20,6 +21,7 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.CardType;
 import org.crforge.core.card.CardVariant;
 import org.crforge.core.card.DamageTier;
+import org.crforge.core.card.FormationLayoutType;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
 import org.crforge.core.card.Rarity;
@@ -177,6 +179,11 @@ public class CardLoader {
               .map(pair -> new int[] {tiles(pair.get(0)), tiles(pair.get(1))})
               .toList();
       builder.formationOffsets(offsets);
+    }
+
+    // Formation layout selection (e.g. "radial" for Skeleton Army)
+    if (dto.getFormationLayout() != null) {
+      builder.formationLayout(parseFormationLayout(dto.getFormationLayout(), dto.getId()));
     }
 
     // Secondary unit for dual-unit cards (e.g., GoblinGang, Rascals)
@@ -382,5 +389,17 @@ public class CardLoader {
       return null;
     }
     return unitMap.get(def.getDeathSpawn());
+  }
+
+  /**
+   * Parses a formationLayout value, rejecting unknown layouts instead of silently ignoring them.
+   */
+  static FormationLayoutType parseFormationLayout(String value, String cardId) {
+    try {
+      return FormationLayoutType.valueOf(value.toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Unknown formationLayout '" + value + "' for card " + cardId, e);
+    }
   }
 }
