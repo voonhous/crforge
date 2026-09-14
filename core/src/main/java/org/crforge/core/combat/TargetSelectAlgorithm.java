@@ -2,8 +2,10 @@ package org.crforge.core.combat;
 
 /**
  * Target selection algorithm used by units and area effects to choose which enemy to engage.
- * Reverse-engineered from Clash Royale's libg.so via Ghidra analysis of the targeting enum at
- * address 0x1135F20. Ordinal values 0-14 match the game binary.
+ *
+ * <p>Ordinals 0 to 14 are significant: the community-decoded card data encodes this field as an
+ * integer, so the declaration order below is the wire format. Do not reorder or insert constants
+ * except at the end.
  */
 public enum TargetSelectAlgorithm {
   NEAREST, // 0 - closest enemy (default)
