@@ -708,4 +708,55 @@ class UnitLoaderTest {
       throw new RuntimeException(e);
     }
   }
+
+  @Test
+  void loadUnits_shouldExposeRawSpeedAlongsideConvertedSpeed() {
+    String json =
+        """
+        {
+          "Knight": {
+            "name": "Knight",
+            "health": 690,
+            "damage": 79,
+            "speed": 60.0,
+            "mass": 6.0,
+            "collisionRadius": 0.5,
+            "sightRange": 5.5,
+            "range": 1.2,
+            "attackCooldown": 1.2,
+            "loadTime": 0.7,
+            "deployTime": 1.0,
+            "targetType": "GROUND",
+            "movementType": "GROUND"
+          },
+          "Minion": {
+            "name": "Minion",
+            "health": 90,
+            "damage": 42,
+            "speed": 90.0,
+            "mass": 2.0,
+            "collisionRadius": 0.5,
+            "sightRange": 5.5,
+            "range": 2.5,
+            "attackCooldown": 1.2,
+            "loadTime": 0.7,
+            "deployTime": 1.0,
+            "targetType": "ALL",
+            "movementType": "AIR"
+          }
+        }
+        """;
+
+    Map<String, TroopStats> map = UnitLoader.loadUnits(toStream(json), Map.of());
+
+    // Raw speed is kept exactly as published in the game data: world units per tick
+    TroopStats knight = map.get("Knight");
+    assertThat(knight.getRawSpeed()).isEqualTo(60);
+    // The converted speed is unchanged: raw 60 is one tile (1000 game units) per second
+    assertThat(knight.getSpeed()).isCloseTo(1000f, within(0.1f));
+
+    TroopStats minion = map.get("Minion");
+    assertThat(minion.getRawSpeed()).isEqualTo(90);
+    assertThat(minion.getSpeed()).isCloseTo(1500f, within(0.1f));
+  }
 }

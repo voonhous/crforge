@@ -23,6 +23,10 @@ public class TroopStats {
   // Movement speed in game units per second (1,000 = one tile per second)
   @Builder.Default private final float speed = 1000f;
 
+  // Movement speed as published in the game data: world units per tick. The grid movement mode
+  // reads this directly; the waypoint mode uses `speed` in units per second.
+  @Builder.Default private final int rawSpeed = 0;
+
   @Builder.Default private final float mass = 1.0f;
 
   // Spatial stats are in integer game units (1,000 per tile)

@@ -184,6 +184,8 @@ public class UnitLoader {
             .health(dto.getHealth())
             .damage(dto.getDamage())
             .speed(effectiveSpeed)
+            // Raw speed is kept as published: world units per tick, used by the grid movement mode
+            .rawSpeed(Math.round(dto.getSpeed()))
             .mass(dto.getMass())
             .collisionRadius(tiles(colRadTiles))
             .visualRadius(tiles(visRadTiles))
