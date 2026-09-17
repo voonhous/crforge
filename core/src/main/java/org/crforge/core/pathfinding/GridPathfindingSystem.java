@@ -56,6 +56,7 @@ import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
 import org.crforge.core.pathfinding.target.AttackRange;
+import org.crforge.core.pathfinding.target.RangeTest;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
@@ -467,6 +468,9 @@ public class GridPathfindingSystem {
     view.setBuilding(building);
     view.setOccludes(building);
     view.setMovementActive(!building);
+    // A building takes no part in pushing: see GridEntity.pushEnabled for why this is answered
+    // here rather than read from the entity.
+    view.setPushEnabled(!building);
     view.setKing(entity instanceof Tower tower && tower.isCrownTower());
     view.setAir(entity.getMovementType() == MovementType.AIR);
     view.setKingCandidate(view.isKing() ? 1 : 0);
@@ -497,7 +501,9 @@ public class GridPathfindingSystem {
    * Brings a view up to date with the entity it describes, at the head of the tick.
    *
    * <p>The position is read back from the entity every tick, so a troop moved by something outside
-   * this system - a knockback, a pull, an ability - is picked up rather than snapped back.
+   * this system - a knockback, a pull, an ability - is picked up rather than snapped back. The
+   * previous-position copy is refreshed from it at the same moment, so it holds where the entity
+   * stood at the head of this tick.
    *
    * <p>The state of a managed troop belongs to this system and is left alone. The state of a troop
    * it does not manage is mirrored from the simulator, so that it reads as deploying while its own
@@ -505,6 +511,12 @@ public class GridPathfindingSystem {
    * state on it.
    */
   private void syncView(GridEntity view, Entity entity) {
+    // The previous-position copy is refreshed from the current position at the head of every tick,
+    // before anything has moved, so a pass that reads it during the tick sees where the entity
+    // stood when the tick began.
+    view.setPrevX(entity.getPosition().getX());
+    view.setPrevY(entity.getPosition().getY());
+    view.setPrevZ(view.getZ());
     view.setX(entity.getPosition().getX());
     view.setY(entity.getPosition().getY());
     view.setAlive(entity.isAlive());
@@ -593,6 +605,15 @@ public class GridPathfindingSystem {
    * The targeting columns of one entity. Distances are game units and times are milliseconds, both
    * as the simulator already stores them. A building or a tower is described by the tower factory,
    * which is the same set of columns with the building flag raised.
+   *
+   * <p>Every targeting column the simulator's combat component carries is copied across. The
+   * columns the targeting pass knows about but the simulator does not store anywhere keep the
+   * standard-character default and are listed here so it is plain which behaviour is not reachable
+   * yet: the burst columns, the attack sequence columns, the dash columns, the special-attack
+   * columns, {@code targetLowestHp}, {@code doNotTargetTowers}, {@code targetOnlyTowers}, {@code
+   * targetOnlyKingTower}, {@code deprioritizeTargetsWithBuff}, {@code loadFirstHit}, {@code
+   * lifeTime} (the simulator keeps only the countdown, not the column), {@code sightClip} and
+   * {@code sightClipSide} (both at the standard character values), and {@code suckElixirSpeed}.
    */
   private TargetingConfig configFor(Entity entity) {
     Combat combat = entity.getCombat();
@@ -614,12 +635,16 @@ public class GridPathfindingSystem {
     if (combat == null) {
       return base.toBuilder().configKey(key).build();
     }
+    String ignoredBuff = combat.getIgnoreTargetsWithBuff();
     return base.toBuilder()
         .configKey(key)
         .minimumRange(combat.getMinimumRange())
         .targetOnlyBuildings(combat.isTargetOnlyBuildings())
         .targetOnlyTroops(combat.isTargetOnlyTroops())
         .hasProjectile(combat.getProjectileStats() != null)
+        .multipleTargets(combat.getMultipleTargets())
+        .attackDashTime(Math.round(combat.getAttackDashTime() * 1000f))
+        .ignoreTargetsWithBuff(ignoredBuff != null && !ignoredBuff.isBlank())
         .build();
   }
 
@@ -651,6 +676,22 @@ public class GridPathfindingSystem {
       return Math.round(troop.getDeployTime() * 1000f);
     }
     return 0;
+  }
+
+  /**
+   * 1 when a troop's current reference already stands within its attack range, with no extra
+   * allowance, and 0 when it has no reference at all.
+   *
+   * <p>This is the answer the route follower reads to stop a dash that has already brought the
+   * troop close enough, rather than letting it run its whole landing distance.
+   */
+  static int referenceInRange(GridUnitState unit) {
+    TargetingState targeting = unit.getTargeting();
+    TargetView target = targeting.getReference();
+    if (target == null) {
+      return 0;
+    }
+    return RangeTest.referenceInRange(targeting, target, 0) ? 1 : 0;
   }
 
   /** The state-visit answers for an ordinary unit that may follow a route. */
@@ -781,7 +822,14 @@ public class GridPathfindingSystem {
       return CellTests.cellBlocked(grid, worldX, worldY);
     }
 
-    /** The speed and gate inputs, read live from the entity and its two components. */
+    /**
+     * The speed and gate inputs, read live from the entity and its two components.
+     *
+     * <p>The standard game freezes these once, before the visit, and answers every gate from that
+     * snapshot. Nothing inside a movement visit writes the state, the flags or the charge progress,
+     * so reading them live gives the same answers; a pass that started writing them mid-visit would
+     * make the two differ.
+     */
     private SpeedInputs speedInputs() {
       GridEntity entity = unit.getEntity();
       TargetingState targeting = unit.getTargeting();
@@ -868,6 +916,11 @@ public class GridPathfindingSystem {
     }
 
     @Override
+    public int referenceInRange() {
+      return GridPathfindingSystem.referenceInRange(unit);
+    }
+
+    @Override
     public int gridWidth() {
       return grid.getWidth();
     }
@@ -878,12 +931,17 @@ public class GridPathfindingSystem {
     }
 
     /**
-     * Every entity on the arena accepts contact from every other. Nothing in the simulator turns
-     * this down today, and what would is not documented, so the answer is left at accepting.
+     * Whether a neighbour accepts physical contact from the troop looking around, which is what
+     * lets the avoidance handler steer around it.
+     *
+     * <p>Nothing in the simulator writes this bit and what would is not documented, so the answer
+     * is a supplied one: a troop accepts contact, a building or a tower does not. A unit therefore
+     * steers around other units but walks past a tower on the trajectory the standard game gives
+     * it; the tower is still routed around through the cost overlay its footprint stamps.
      */
     @Override
     public int neighbourAcceptsContact(GridEntity other) {
-      return 1;
+      return other.isBuilding() ? 0 : 1;
     }
 
     /**

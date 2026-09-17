@@ -32,10 +32,14 @@ import org.junit.jupiter.api.Test;
  * Drives a whole Knight deployment through {@link GameEngine} in grid mode and compares every tick
  * with a reference trajectory.
  *
- * <p>The reference trajectories are three deployments of a Knight on the standard arena with
- * nothing on it but the six crown towers, produced by a model of the game's movement and targeting
- * rules. Each record holds the unit's position, its state, the tower it was heading for and how
- * many nodes of its route were left, at the point in the tick where the reference recorded it.
+ * <p>The reference trajectories are five deployments of a Knight on the standard arena with nothing
+ * on it but the six crown towers, produced by a model of the game's movement and targeting rules.
+ * Each record holds the unit's position, its state, the tower it was heading for and how many nodes
+ * of its route were left, at the point in the tick where the reference recorded it.
+ *
+ * <p>Two of the five - {@code knight_right_rear} and {@code knight_behind_king} - deploy the unit
+ * right beside one of its own towers, so that the passes which look at the unit's neighbours are
+ * covered end to end and not only on trajectories that never come near a building.
  *
  * <p>Tick alignment: the reference's tick 0 is the first tick in which the unit exists and its
  * deploy countdown steps. In the engine that is the first {@code tick()} after the unit was
@@ -72,6 +76,18 @@ class GridGoldenTrajectoryTest {
   @DisplayName("a Knight deployed in the centre switches tower and locks on at tick 242")
   void centreDeployment() {
     replay("knight_centre", "PrincessTower_1_2", 242);
+  }
+
+  @Test
+  @DisplayName("a Knight deployed behind the right tower walks past it and locks on at tick 323")
+  void rightRearDeployment() {
+    replay("knight_right_rear", "PrincessTower_1_2", 323);
+  }
+
+  @Test
+  @DisplayName("a Knight deployed behind its king tower keeps the right lane and locks at tick 361")
+  void behindKingDeployment() {
+    replay("knight_behind_king", "PrincessTower_1_2", 361);
   }
 
   /**

@@ -23,6 +23,22 @@ import org.crforge.core.pathfinding.move.MovementState;
  *
  * <p>Timers are milliseconds. The visit never advances one by more than {@link
  * TargetingQueries#timeStepMs()} in a tick.
+ *
+ * <p><b>The dash path is incomplete and nothing exercises it.</b> No card the grid drives dashes
+ * today, so none of this is reachable, but an integrator adding one should know that three pieces
+ * of the standard game's dash are missing here:
+ *
+ * <ul>
+ *   <li>the pushback a dash applies is given to every entity in reach, where the standard game
+ *       skips an entity that has no movement component of its own - so a dashing unit would push a
+ *       building or a tower, which the standard game never does. The dash target view carries no
+ *       movement-component answer, so the gate cannot be expressed at all yet;
+ *   <li>the number of hits a dash applies is read from the first dash slot rather than from the
+ *       dashing entity's own dash index, which the entity view does not carry;
+ *   <li>the offset that stops a dash at the two entities' touching edges, rather than at the
+ *       target's centre, is not applied, so a unit configured to stop on contact and with no fixed
+ *       dash distance would overshoot into its target.
+ * </ul>
  */
 public final class TargetingVisit {
 
@@ -523,11 +539,13 @@ public final class TargetingVisit {
     t.setAttackTimerMs(t.getAttackTimerMs() + queries.attackTimerStepMs());
     t.setBurstProgressMs(t.getBurstProgressMs() + queries.burstTimerStepMs());
     t.setHitInProgress(t.getAttackTimerMs() % hitSpeed > TargetingQueries.TICK_MS);
-    if ((cfg.attackSequenceMode() & ~1) == 2) {
-      t.setAttackSequenceIndex(queries.nextAttackSequenceStep(t.getAttackTimerMs()));
-    }
+    // The action runs before the sequence steps on, so an action that re-enters targeting sees the
+    // step - and therefore the attack range - the unit had when the attack started.
     if (attackTimerOnEntry == 0 || t.getAttackTimerMs() / hitSpeed > hitsBefore) {
       queries.onStartingAttack();
+    }
+    if ((cfg.attackSequenceMode() & ~1) == 2) {
+      t.setAttackSequenceIndex(queries.nextAttackSequenceStep(t.getAttackTimerMs()));
     }
     boolean hitPending = t.getAttackTimerMs() / hitSpeed > hitsBefore;
     boolean hitReady = false;
@@ -538,7 +556,6 @@ public final class TargetingVisit {
         hitReady = t.getSpecialLoadTimerMs() == 0;
       }
     }
-    int hitsWithDashTime = (cfg.attackDashTime() + attackTimerOnEntry) / hitSpeed;
     int burstsNow = burstDelay >= 1 ? t.getBurstProgressMs() / burstDelay : 0;
     if (burstsNow > burstsBefore) {
       if (burstsNow == cfg.burst() - 1) {
@@ -574,7 +591,7 @@ public final class TargetingVisit {
       }
     }
 
-    applyHits(t, cfg, globals, queries, burstDelay, burstsNow, hitsWithDashTime);
+    applyHits(t, cfg, globals, queries, burstDelay, burstsNow);
     if (cfg.attackSequenceMode() == 1 && cfg.attackSequenceLength() != 0) {
       t.setAttackSequenceIndex((t.getAttackSequenceIndex() + 1) % cfg.attackSequenceLength());
     }
@@ -588,8 +605,7 @@ public final class TargetingVisit {
       TargetingGlobals globals,
       TargetingQueries queries,
       int burstDelay,
-      int burstsNow,
-      int hitsWithDashTime) {
+      int burstsNow) {
     TargetView target = t.getReference();
     int multiple = cfg.multipleTargets();
     int index = burstsNow;
@@ -602,9 +618,10 @@ public final class TargetingVisit {
       index = multiple < 2 ? -1 : 0;
     }
     int extra = queries.hasBuffComponent() ? queries.extraTargetCount() : 0;
-    boolean landed = queries.hitSink().hit(target, index, extra, index == -1);
+    boolean nothingLanded = queries.hitSink().hit(target, index, extra, index == -1);
     if (cfg.loadFirstHit() && globals.loadFirstHitResetTimerAfterAttack()) {
-      if (landed && globals.loadFirstHitKeepLoadedAfterDiscard()) {
+      // Nothing landed: the wind-up stays loaded and only the attack timer is rewound.
+      if (nothingLanded && globals.loadFirstHitKeepLoadedAfterDiscard()) {
         t.setAttackTimerMs(0);
         t.setLoadTimerMs(0);
       } else {

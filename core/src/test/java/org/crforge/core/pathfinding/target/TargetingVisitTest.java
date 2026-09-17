@@ -28,6 +28,22 @@ class TargetingVisitTest {
     private TargetView selection;
     private int selectionCalls;
 
+    /** The attack sequence step the on-starting-attack action saw, one entry per run. */
+    private final List<Integer> actionSawStep = new ArrayList<>();
+
+    /** What the next-step query answers, so a test can tell the step apart from the entry value. */
+    private int nextStep;
+
+    @Override
+    public void onStartingAttack() {
+      actionSawStep.add(knight.getAttackSequenceIndex());
+    }
+
+    @Override
+    public int nextAttackSequenceStep(int attackTimerMs) {
+      return nextStep;
+    }
+
     @Override
     public TargetView runSelection() {
       selectionCalls++;
@@ -40,11 +56,14 @@ class TargetingVisitTest {
           knight, knight.getReference(), mode, ValidatorQueries.standard1v1());
     }
 
+    /** What the sink answers: true means nothing landed, false means the hit was applied. */
+    private boolean nothingLands;
+
     @Override
     public HitSink hitSink() {
       return (target, sequenceIndex, extra, last) -> {
         hits.add(new int[] {sequenceIndex, extra, last ? 1 : 0});
-        return false;
+        return nothingLands;
       };
     }
   }
@@ -140,6 +159,57 @@ class TargetingVisitTest {
     assertThat(knight.getReference()).isSameAs(tower);
     assertThat(outcome.isResumeRequested()).isTrue();
     assertThat(unit.getState()).isEqualTo(GridEntityState.MOVING);
+  }
+
+  @Test
+  @DisplayName("the on-starting-attack action runs before the attack sequence steps on")
+  void theActionRunsBeforeTheSequenceSteps() {
+    knight.setConfig(
+        knight.getConfig().toBuilder()
+            .attackSequenceMode(2)
+            .attackSequenceLength(2)
+            .attackSequenceStepIds(List.of(0, 1))
+            .attackSequenceEntries(List.of(AttackSequenceEntry.none(), AttackSequenceEntry.none()))
+            .build());
+    knight.setReference(tower);
+    queries.nextStep = 1;
+
+    visit();
+
+    assertThat(queries.actionSawStep)
+        .as("the action saw the step the attack started on")
+        .containsExactly(TargetingState.NO_SEQUENCE_STEP);
+    assertThat(knight.getAttackSequenceIndex()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("a wind-up-first unit stays loaded when nothing lands and reloads when a hit does")
+  void theWindUpFollowsWhetherTheHitLanded() {
+    TargetingGlobals globals =
+        TargetingGlobals.standard1v1().toBuilder()
+            .loadFirstHitResetTimerAfterAttack(true)
+            .loadFirstHitKeepLoadedAfterDiscard(true)
+            .build();
+    knight.setGlobals(globals);
+    knight.setConfig(knight.getConfig().toBuilder().loadFirstHit(true).build());
+    knight.setReference(tower);
+
+    // One tick short of the hit speed, so this visit's step lands the hit.
+    knight.setAttackTimerMs(1150);
+    queries.nothingLands = true;
+    visit();
+
+    assertThat(queries.hits).hasSize(1);
+    assertThat(knight.getLoadTimerMs()).as("nothing landed, so the wind-up stays spent").isZero();
+
+    knight.clearAttack();
+    knight.setAttackTimerMs(1150);
+    queries.nothingLands = false;
+    visit();
+
+    assertThat(knight.getLoadTimerMs())
+        .as("the hit landed, so the wind-up is reloaded")
+        .isEqualTo(700);
   }
 
   @Test

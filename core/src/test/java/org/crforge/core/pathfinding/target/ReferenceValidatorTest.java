@@ -2,6 +2,8 @@ package org.crforge.core.pathfinding.target;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -201,6 +203,64 @@ class ReferenceValidatorTest {
     assertThat(
             ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))
         .isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "the tower rules read the entity's own summoner answer, not its configuration column")
+  void theTowerRulesReadTheEntityAnswer() {
+    // A spawner building that is not a crown tower: its configuration column says summoner tower,
+    // the entity's own answer is what the two tower rules consult.
+    GridEntity spawner = entity("Spawner_1_1", 9, 1, 3500, 20_000);
+    spawner.setBuilding(true);
+    spawner.setTargetable(1);
+    TargetView target =
+        new TargetView(
+            spawner, TargetingConfig.tower("SpawnerHut", 7500, 7500, 1000, 800, 0, true));
+    assertThat(target.summonerTowerColumn()).isTrue();
+
+    knight.setConfig(knight.getConfig().toBuilder().doNotTargetTowers(true).build());
+
+    target.setSummonerTowerEntity(false);
+    assertThat(ReferenceValidator.validate(knight, target, ReferenceValidator.MODE_TAKE, queries))
+        .as("the entity does not count itself a tower, so the tower-avoider may take it")
+        .isTrue();
+
+    target.setSummonerTowerEntity(true);
+    assertThat(ReferenceValidator.validate(knight, target, ReferenceValidator.MODE_TAKE, queries))
+        .as("the entity counts itself a tower, so the tower-avoider refuses it")
+        .isFalse();
+  }
+
+  @Test
+  @DisplayName("the acceptance flag the validator is called with reaches the target's answer")
+  void theAcceptanceFlagReachesTheTarget() {
+    RecordingTarget target = new RecordingTarget(enemyTower);
+
+    ReferenceValidator.sharedValidate(knight, target, false, false, true, true, queries);
+
+    assertThat(target.flagsSeen).containsExactly(true);
+
+    target.flagsSeen.clear();
+    ReferenceValidator.sharedValidate(knight, target, false, false, false, true, queries);
+
+    assertThat(target.flagsSeen).containsExactly(false);
+  }
+
+  /** A target that records the acceptance flag every question is asked with. */
+  private static final class RecordingTarget extends TargetView {
+
+    private final List<Boolean> flagsSeen = new ArrayList<>();
+
+    private RecordingTarget(TargetView like) {
+      super(like.getEntity(), like.getConfig());
+    }
+
+    @Override
+    public boolean acceptsAttacker(boolean acceptanceFlag) {
+      flagsSeen.add(acceptanceFlag);
+      return true;
+    }
   }
 
   @Test

@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.grid;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +53,17 @@ class RouteSearchHeapTest {
 
     assertThat(heap.indexOf(2)).isEqualTo(2);
     assertThat(heap.indexOf(0)).isZero();
+  }
+
+  @Test
+  void askingForANodeThatIsNotThereIsRefused() {
+    int[] priority = {5, 6, 7};
+    RouteSearchHeap heap = new RouteSearchHeap(priority, 3);
+    heap.add(0);
+
+    assertThatThrownBy(() -> heap.indexOf(2))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("not in the heap");
   }
 
   @Test

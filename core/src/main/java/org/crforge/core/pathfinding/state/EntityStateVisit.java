@@ -34,6 +34,23 @@ import org.crforge.core.pathfinding.move.MovementState;
  * attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, the morph
  * timer with its growth scale, and the live spawner. They sit between blocks 4 and 5 and between 11
  * and 12 in the order above and none of them changes a state or a position that routing reads.
+ *
+ * <p>Two consequences of leaving them out, which matter to anyone extending this class rather than
+ * to a plain ground troop:
+ *
+ * <ul>
+ *   <li><b>Reachability.</b> The omitted growth and morph block ends the visit early for an entity
+ *       with a running timer, so the blocks after it - the spawner, the morph countdown and the
+ *       tail - run here where the standard game would already have returned.
+ *   <li><b>The removal request.</b> The lifetime block below is the only ported writer of it. The
+ *       original also raises it for a kamikaze unit with no hit-point object, for a morph timer
+ *       reaching zero and for a spawner past its limit, all inside omitted blocks, so none of those
+ *       three ever asks to be removed here.
+ * </ul>
+ *
+ * <p>Two further gaps inside ported blocks: the dash-landing block announces the landing without
+ * running the targeting work the standard game does alongside it, and the ability block starts the
+ * cast without removing the buff the cast leaves behind.
  */
 public final class EntityStateVisit {
 

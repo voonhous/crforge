@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.state;
 
+import org.crforge.core.pathfinding.grid.PathfindingGlobals;
+
 /**
  * The match-wide settings the entity state visit reads.
  *
@@ -8,8 +10,11 @@ package org.crforge.core.pathfinding.state;
  */
 public record StateVisitGlobals(int attackFinishTimeMs) {
 
-  /** The standard game's value, which the recorded trajectories use. */
+  /**
+   * The standard game's value: {@link PathfindingGlobals#ATTACK_FINISH_TIME_MS}, so the
+   * attack-finish latch survives five ticks and clears on the sixth.
+   */
   public static StateVisitGlobals standard() {
-    return new StateVisitGlobals(0);
+    return new StateVisitGlobals(PathfindingGlobals.ATTACK_FINISH_TIME_MS);
   }
 }

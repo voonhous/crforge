@@ -14,7 +14,9 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param rangeExtensionToKeepTarget extra range, in game units, a unit is allowed before it gives
  *     up a reference it already has
  * @param attackFinishTimeMs milliseconds a unit keeps attacking after losing its reference;
- *     supplied as zero, so the attack ends on the tick the reference is lost
+ *     supplied as zero, so the attack ends on the tick the reference is lost. This is the targeting
+ *     visit's own switch and not the entity state visit's attack-finish time, which is a separate
+ *     published value
  * @param preserveTargetIfHitStarted true when a reference that is slightly out of range is kept
  *     while a projectile attack is already under way
  * @param currentTargetIgnoresPendingDamage true when a reference that has taken damage may be kept

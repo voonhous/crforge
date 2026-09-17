@@ -6,6 +6,7 @@ import static org.crforge.core.util.GameUnits.tiles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;
@@ -17,6 +18,7 @@ import org.crforge.core.player.Deck;
 import org.crforge.core.player.LevelConfig;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
+import org.crforge.core.player.dto.PlayerActionDTO;
 import org.crforge.core.testing.SimHarness;
 import org.crforge.core.testing.SimSystems;
 import org.crforge.core.testing.TroopTemplate;
@@ -68,6 +70,16 @@ class GridPathfindingModeTest {
     assertThat(engine.getGridPathfindingSystem().manages(knight)).isTrue();
     assertThat(knight.getGridUnitState().getMovement().getRoute().size()).isGreaterThan(0);
     assertThat(knight.getPosition().getY()).isGreaterThan(tiles(10));
+
+    // The previous-position copy is refreshed at the head of every tick, so after one more tick it
+    // holds where the troop stood at the end of the tick before it.
+    int wasX = knight.getPosition().getX();
+    int wasY = knight.getPosition().getY();
+    engine.tick();
+    GridEntity view = knight.getGridUnitState().getEntity();
+    assertThat(view.getPrevX()).isEqualTo(wasX);
+    assertThat(view.getPrevY()).isEqualTo(wasY);
+    assertThat(view.getY()).isGreaterThan(wasY);
   }
 
   @Test
@@ -119,6 +131,99 @@ class GridPathfindingModeTest {
     grid.tick(5);
 
     assertThat(grid.troop("Knight").getGridUnitState()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("a building-only attacker walks past an enemy troop without ever taking it")
+  void aBuildingOnlyAttackerNeverTakesATroop() {
+    GameEngine engine = gridEngineHolding("giant");
+    Troop giantTroop = playFromHand(engine, "giant", tiles(4), tiles(10));
+
+    assertThat(giantTroop.getGridUnitState().getTargeting().getConfig().targetOnlyBuildings())
+        .as("the Giant's building-only column reached the grid")
+        .isTrue();
+
+    Card musketeer = Objects.requireNonNull(CardRegistry.get("musketeer"), "musketeer not found");
+    engine
+        .getSpawnerSystem()
+        .spawnUnit(tiles(4), tiles(13), Team.RED, musketeer.getUnitStats(), LEVEL, 0f);
+
+    for (int tick = 0; tick < 120; tick++) {
+      engine.tick();
+      assertThat(giantTroop.getCombat().getCurrentTarget())
+          .as("tick %d: the Giant took a troop as its reference", tick)
+          .matches(target -> !(target instanceof Troop));
+    }
+  }
+
+  @Test
+  @DisplayName("a multi-target unit's target count reaches its grid targeting columns")
+  void aMultiTargetUnitCarriesItsTargetCount() {
+    GameEngine engine = gridEngineHolding("electrowizard");
+    Troop unit = playFromHand(engine, "electrowizard", tiles(4), tiles(10));
+
+    assertThat(unit.getCombat().getMultipleTargets()).isEqualTo(2);
+    assertThat(unit.getGridUnitState().getTargeting().getConfig().multipleTargets()).isEqualTo(2);
+  }
+
+  /**
+   * A grid match whose blue player holds the given card in its opening hand. The hand is drawn from
+   * a shuffled deck, so the seed is searched rather than assumed.
+   */
+  private static GameEngine gridEngineHolding(String cardId) {
+    AbstractEntity.resetIdCounter();
+    for (int seed = 0; seed < 1000; seed++) {
+      Player blue = playerWithDeck(Team.BLUE, cardId, seed);
+      if (handSlot(blue, cardId) < 0) {
+        continue;
+      }
+      Standard1v1Match match = new Standard1v1Match(LEVEL, PathfindingMode.GRID);
+      match.addPlayer(blue);
+      match.addPlayer(playerWithDeck(Team.RED, cardId, seed));
+      GameEngine engine = new GameEngine();
+      engine.setMatch(match);
+      engine.initMatch();
+      return engine;
+    }
+    throw new IllegalStateException("no shuffle put " + cardId + " in the opening hand");
+  }
+
+  /** A player whose deck holds the given card plus seven others, shuffled with the given seed. */
+  private static Player playerWithDeck(Team team, String cardId, int seed) {
+    List<Card> cards = new ArrayList<>();
+    cards.add(Objects.requireNonNull(CardRegistry.get(cardId), cardId + " not found"));
+    for (String id : List.of("knight", "musketeer", "archer", "goblins", "valkyrie", "bomber")) {
+      cards.add(Objects.requireNonNull(CardRegistry.get(id), id + " not found"));
+    }
+    cards.add(Objects.requireNonNull(CardRegistry.get("minions"), "minions not found"));
+    return new Player(team, new Deck(cards), false, new LevelConfig(LEVEL), new Random(seed));
+  }
+
+  /** The slot the card sits in, or -1 when the hand does not hold it. */
+  private static int handSlot(Player player, String cardId) {
+    for (int slot = 0; slot < 4; slot++) {
+      Card card = player.getHand().getCard(slot);
+      if (card != null && cardId.equals(card.getId())) {
+        return slot;
+      }
+    }
+    return -1;
+  }
+
+  /** Plays the card from the blue player's hand and runs on until its troop is grid-driven. */
+  private static Troop playFromHand(GameEngine engine, String cardId, int x, int y) {
+    Player blue = engine.getMatch().getPlayers(Team.BLUE).get(0);
+    blue.getElixir().add(10);
+    engine.queueAction(blue, PlayerActionDTO.play(handSlot(blue, cardId), x, y));
+    for (int tick = 0; tick < 40; tick++) {
+      engine.tick();
+      for (Entity entity : engine.getGameState().getAliveEntities()) {
+        if (entity instanceof Troop troop && troop.getGridUnitState() != null) {
+          return troop;
+        }
+      }
+    }
+    throw new IllegalStateException(cardId + " never reached the arena");
   }
 
   private static GameEngine engineFor(Standard1v1Match match) {

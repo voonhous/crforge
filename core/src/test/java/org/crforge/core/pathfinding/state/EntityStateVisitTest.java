@@ -69,6 +69,28 @@ class EntityStateVisitTest {
   }
 
   @Test
+  void theAttackFinishLatchSurvivesFiveVisitsAndClearsOnTheSixth() {
+    entity.setState(GridEntityState.MOVING);
+    timers.setAttackFinishing(true);
+
+    int[] expectedElapsed = {50, 100, 150, 200, 250};
+    for (int visit = 0; visit < expectedElapsed.length; visit++) {
+      visit();
+      assertThat(timers.getAttackFinishElapsedMs())
+          .as("elapsed after visit %d", visit + 1)
+          .isEqualTo(expectedElapsed[visit]);
+      assertThat(timers.isAttackFinishing())
+          .as("still finishing after visit %d", visit + 1)
+          .isTrue();
+    }
+
+    visit();
+
+    assertThat(timers.getAttackFinishElapsedMs()).isEqualTo(300);
+    assertThat(timers.isAttackFinishing()).isFalse();
+  }
+
+  @Test
   void aUnitThatMayNotHoldARouteStandsInsteadOfMoving() {
     StateQueries standing = StateQueries.forUnitWithRoute(0).withMayHoldRoute(false);
     for (int tick = 0; tick < 20; tick++) {

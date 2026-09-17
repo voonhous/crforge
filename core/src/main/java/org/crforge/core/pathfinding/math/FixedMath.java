@@ -212,6 +212,13 @@ public final class FixedMath {
     }
     int degrees = atanRatio(ay, ax);
     int wrapped = 360 - degrees;
+    // A full turn is the same heading as none: a vector so shallow that the ratio lookup answers
+    // zero degrees points straight along the positive x axis and its heading is 0, not 360. This
+    // keeps the documented 0..359 range, which the caller's unwrap around a parent's heading
+    // depends on.
+    if (wrapped == 360) {
+      return 0;
+    }
     return wrapped < 0 ? wrapped + 360 : wrapped;
   }
 

@@ -7,7 +7,6 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.pathfinding.GridEntity;
-import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
 
@@ -50,7 +49,7 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
   /** The opposing side's king tower, which seeds the default selection. */
   @Getter @Setter private TargetView seed;
 
-  /** Where the targeting visit's hits go. */
+  /** Where the targeting visit's hits go; the default answers that every hit landed. */
   @Getter @Setter private HitSink hitSink = (target, sequenceIndex, extra, last) -> false;
 
   /** Collects the route and resume requests the selection and the visit make. */
@@ -159,6 +158,16 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
     return hitSink;
   }
 
+  /**
+   * Runs the action the owner performs when it starts an attack. Both the targeting visit and the
+   * reference setter ask for it through this one chain, so the single override below answers both.
+   * No card the grid drives carries such an action yet, so nothing runs.
+   */
+  @Override
+  public void onStartingAttack() {
+    // No grid-driven character carries an on-starting-attack action.
+  }
+
   // -------------------------------------------------------------------------------------------
   // SelectionQueries
   // -------------------------------------------------------------------------------------------
@@ -215,21 +224,5 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
         defaultSelectionRules,
         defaultSelectionQueries,
         candidate -> validate(candidate, ReferenceValidator.MODE_TAKE));
-  }
-
-  /**
-   * The radius the sight query uses: the unit's sight range, plus its own collision radius under
-   * {@link PathfindingGlobals#ADD_CHARACTER_RANGE_TO_RADIUS}, plus the larger of the two extra
-   * sight bonuses.
-   */
-  public int sightQueryRadius() {
-    int sight = SightRange.sightRange(state);
-    if (PathfindingGlobals.ADD_CHARACTER_RANGE_TO_RADIUS) {
-      sight += state.getConfig().collisionRadius();
-    }
-    return Math.max(
-            PathfindingGlobals.EXTRA_SIGHT_RANGE_TO_CROWN_TOWERS,
-            PathfindingGlobals.EXTRA_SIGHT_RANGE_TO_BUILDING)
-        + sight;
   }
 }

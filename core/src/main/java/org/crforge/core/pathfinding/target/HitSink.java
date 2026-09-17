@@ -19,8 +19,10 @@ public interface HitSink {
    *     the index within the burst or the multi-target list
    * @param extraTargets number of extra targets the owner's buffs add to this attack
    * @param last true when this is the last hit of the attack
-   * @return true when the hit was applied; the visit only reads this for a unit whose wind-up runs
-   *     before its first hit
+   * @return true when <b>nothing landed</b> - the hit was discarded, missed or had no target - and
+   *     false when it was applied. The visit only reads this for a unit whose wind-up runs before
+   *     its first hit: such a unit keeps its wind-up loaded when nothing landed and reloads it when
+   *     something did.
    */
   boolean hit(TargetView target, int sequenceIndex, int extraTargets, boolean last);
 }

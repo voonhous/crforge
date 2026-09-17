@@ -13,7 +13,9 @@ model, not necessarily with the game.
 ## Conditions the trajectories were produced under
 
 - One unit and the six crown towers are the only things on the arena. With a single unit the push
-  and avoidance rules have nothing to act on, so none of these three runs exercises them.
+  and avoidance rules have nothing else to act on, so no run here exercises unit-to-unit pushing or
+  steering. Two of the runs do walk the unit right past one of its own towers, which is what pins
+  how a building takes part in those two passes.
 - The unit is a Knight: speed 60 units per tick, attack range 1200, sight range 5500, collision
   radius 500, hit speed 1200 ms, wind-up 700 ms, deploy time 1000 ms. It attacks the ground only.
 - The deployment lasts twenty ticks. Ticks 0 to 19 are the deploying state at the deploy position,
@@ -22,7 +24,7 @@ model, not necessarily with the game.
   the top side's are the same mirrored along the arena's length. King towers have a collision radius
   of 1400 and princess towers 1000.
 - Levels and damage do not affect the path and are not carried here; no tower is destroyed in any of
-  the three runs.
+  the runs.
 - A destroyed building would leave the entity list at the end of the tick in which it dies.
 - The follower advances to the next route node as soon as the remaining distance projected on its
   route direction drops to 1000 units, so the unit effectively aims two nodes ahead and clips the
@@ -71,7 +73,7 @@ inputs it asked with and the answer it got.
 - `search` - takes a start cell, a goal cell and the goal-adjust flag, and answers the route, goal
   first, as row-major cell ids (`row * 36 + column`).
 - `farther` - answers whether the route leads past the reference.
-- `relocate` and `cellTest` - do not occur in these three runs; the format is listed for
+- `relocate` and `cellTest` - do not occur in those three runs; the format is listed for
   completeness.
 
 The movement replay test feeds these answers back and asserts that the same inputs are asked for, so
@@ -85,6 +87,15 @@ unit ends up.
 | `knight_left` | (3500, 10000) | PrincessTower_1_1 | tick 235 |
 | `knight_right` | (14500, 10000) | PrincessTower_1_2 | tick 235 |
 | `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 242 |
+| `knight_right_rear` | (16500, 5000) | PrincessTower_1_2 | tick 323 |
+| `knight_behind_king` | (9000, 4600) | KingTower_1_0, then PrincessTower_1_2 from tick 80 | tick 361 |
 
 The centre case is the interesting one: the king tower is the closest in x from the deploy point, so
 the unit walks at it until a princess tower becomes closer in x, which happens at tick 82.
+
+The last two cases deploy the unit beside one of its own towers - behind the right princess tower
+and behind the king tower - so that the trajectory runs through the part of the arena where a
+building is a neighbour. `knight_behind_king` is the sharpest of the five: the unit starts inside
+its own king tower's collision circle, and a change to how a building takes part in pushing or
+steering sends it down the other lane. Only `knight_left`, `knight_right` and `knight_centre` have a
+`movement_replay` file; the two new cases are replayed through the engine only.

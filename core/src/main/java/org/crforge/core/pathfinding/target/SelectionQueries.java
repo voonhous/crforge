@@ -45,4 +45,12 @@ public interface SelectionQueries {
   default boolean touchdownMode() {
     return false;
   }
+
+  /**
+   * Runs the action a unit performs on the first hit of an attack. The reference setter runs it
+   * again when a unit part way through an attack takes a new target that is already in range.
+   */
+  default void onStartingAttack() {
+    // No action by default.
+  }
 }

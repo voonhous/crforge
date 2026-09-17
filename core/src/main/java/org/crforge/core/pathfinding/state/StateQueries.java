@@ -12,8 +12,8 @@ package org.crforge.core.pathfinding.state;
  *     spawn-pathfinding unit is given
  * @param mayHoldRoute whether the entity is one that can follow a route at all
  * @param gridAllowsRoute whether the arena will give that entity a route
- * @param gridRouteFlag a flag the grid's route question is asked with; its meaning is not
- *     documented
+ * @param gridRouteFlag the flag the grid's route question is asked with, read just before that
+ *     question; its meaning is not documented
  * @param hasHitPoints whether the entity still has hit points, which decides whether a unit that
  *     may not route stands or is removed
  * @param abilityCastActive whether an ability is currently being cast, which holds the casting
@@ -41,6 +41,17 @@ public record StateQueries(
 
   /** Milliseconds one tick advances every countdown by. */
   public static final int TICK_MS = 50;
+
+  /**
+   * Whether the arena will give the entity a route, asked the way the resume helper asks it: with
+   * the flag it has just read. Nothing varies the answer with the flag today and what would is not
+   * documented, so the flag is carried to the question and the standing answer is given.
+   *
+   * @param routeFlag the flag read immediately before the question
+   */
+  public boolean gridAllowsRoute(boolean routeFlag) {
+    return gridAllowsRoute;
+  }
 
   /**
    * The answers for an ordinary unit that can follow a route: both route questions yes, hit points

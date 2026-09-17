@@ -167,11 +167,6 @@ public interface MovementQueries {
     return true;
   }
 
-  /** True when the entity still has hit points. Supplied as true. */
-  default boolean ownerAlive() {
-    return true;
-  }
-
   /**
    * 1 when a push along a single axis may be copied onto the other axis after the pass has seen a
    * static neighbour. Supplied as 0; what writes it is not documented.

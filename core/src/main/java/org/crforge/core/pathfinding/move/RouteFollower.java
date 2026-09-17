@@ -240,7 +240,14 @@ public final class RouteFollower {
    * The jump-enabled water crossing: when the node just uncovered is water, the entity jumps to the
    * centre of the first node below it that is not.
    *
-   * <p>Not exercised by tests: only the five jump-enabled cards reach it.
+   * <p>Not exercised by tests: only the five jump-enabled cards reach it, and none of them is
+   * grid-driven.
+   *
+   * <p><b>The landing point is computed and then thrown away.</b> The chain is told that a jump
+   * target was set but not where, because the chain only carries a name, so nothing downstream can
+   * learn where the jump should land. Only the distance to it survives, in the component's jump
+   * total. An integrator making jump-enabled units grid-driven has to give the chain somewhere to
+   * put the point first.
    */
   private static void crossWaterByJumping(
       MovementState component,
@@ -282,7 +289,14 @@ public final class RouteFollower {
   /**
    * One visit while the entity follows a jump arc.
    *
-   * <p>Not exercised by tests: only the five jump-enabled cards reach it.
+   * <p>Not exercised by tests: only the five jump-enabled cards reach it, and none of them is
+   * grid-driven.
+   *
+   * <p><b>The landing point is computed and then thrown away.</b> The chain is told that a jump
+   * target was set but not where, because the chain only carries a name, so nothing downstream can
+   * learn where the jump should land. Only the distance to it survives, in the component's jump
+   * total. An integrator making jump-enabled units grid-driven has to give the chain somewhere to
+   * put the point first.
    */
   private static void jumpVisit(
       MovementState component,

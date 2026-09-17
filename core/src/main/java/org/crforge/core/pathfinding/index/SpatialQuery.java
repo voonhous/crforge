@@ -16,7 +16,9 @@ package org.crforge.core.pathfinding.index;
  *
  * @param x query centre along the arena's width
  * @param y query centre along the arena's length
- * @param radius query radius; a negative radius answers with no candidates
+ * @param radius query radius. A negative radius does not by itself empty the answer: the bucket
+ *     scan only gives up when the spans it derives invert, and the circle test still accepts an
+ *     entity whose own collision radius more than covers the shortfall
  * @param halfHeight half height of the box test, or 0 for the circle test
  * @param kingsLast true to order king towers after everything else
  * @param buildingAware true to test buildings as squares

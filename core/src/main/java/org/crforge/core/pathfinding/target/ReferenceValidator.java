@@ -71,7 +71,8 @@ public final class ReferenceValidator {
    *
    * @param skipTeamCheck true to let an attacker take a target on its own team
    * @param onlyBuildings the building filter, normally the owner's TargetOnlyBuildings column
-   * @param acceptanceFlag value handed to the target's own acceptance answer
+   * @param acceptanceFlag value handed to the target's own acceptance answer, which every ordinary
+   *     entity ignores
    * @param mode true when the caller is deciding to keep or take the target
    */
   public static boolean sharedValidate(
@@ -98,14 +99,14 @@ public final class ReferenceValidator {
 
     TargetingConfig cfg = t.getConfig();
     if (owner.getType() == TYPE_CHARACTER) {
-      if (target.getEntity().getType() == TYPE_CONTACT && target.isAcceptsAttacker()) {
+      if (target.getEntity().getType() == TYPE_CONTACT && target.acceptsAttacker(acceptanceFlag)) {
         return true;
       }
     } else {
       if (owner.getType() == TYPE_CONTACT && !queries.nonCharacterOwnerAccepts(target)) {
         return false;
       }
-      return accepted(target);
+      return accepted(target, acceptanceFlag);
     }
 
     TargetingConfig targetConfig = target.getConfig();
@@ -126,7 +127,7 @@ public final class ReferenceValidator {
           return false;
         }
       }
-      if (cfg.suckElixirSpeed() >= 1 && !target.towerFlag() && !target.summonerTower()) {
+      if (cfg.suckElixirSpeed() >= 1 && !target.towerFlag() && !target.summonerTowerColumn()) {
         return false;
       }
     }
@@ -134,13 +135,13 @@ public final class ReferenceValidator {
       return false;
     }
     if (cfg.doNotTargetTowers()) {
-      if (target.summonerTower() || target.towerFlag()) {
+      if (target.isSummonerTowerEntity() || target.towerFlag()) {
         return false;
       }
     }
     if (cfg.targetOnlyTowers()
         && !target.towerFlag()
-        && !target.summonerTower()
+        && !target.isSummonerTowerEntity()
         && !airOnlyGate(cfg, target)) {
       return false;
     }
@@ -183,9 +184,9 @@ public final class ReferenceValidator {
       }
     }
     if (cfg.hasProjectile() && mode) {
-      return pendingDamageRule(t, target, queries);
+      return pendingDamageRule(t, target, queries, acceptanceFlag);
     }
-    return accepted(target);
+    return accepted(target, acceptanceFlag);
   }
 
   /**
@@ -193,11 +194,11 @@ public final class ReferenceValidator {
    * or take a target reaches it.
    */
   private static boolean pendingDamageRule(
-      TargetingState t, TargetView target, ValidatorQueries queries) {
+      TargetingState t, TargetView target, ValidatorQueries queries, boolean acceptanceFlag) {
     int amount = target.getPendingDamageAmount();
     int duration = target.getPendingDamageDuration();
     if (amount == 0) {
-      return accepted(target);
+      return accepted(target, acceptanceFlag);
     }
     boolean hitPointsObject = target.isHitPointsPresent();
     boolean notBuffed = true;
@@ -217,24 +218,27 @@ public final class ReferenceValidator {
       alreadyCommitted = queries.committedDamage(target, target.getPendingDamageKey()) <= amount;
     }
     if (!hitPointsObject) {
-      return accepted(target);
+      return accepted(target, acceptanceFlag);
     }
     if (!queries.pendingDamageAccepted(target, amount)) {
-      return accepted(target);
+      return accepted(target, acceptanceFlag);
     }
     if (duration > t.getGlobals().pendingDamageIgnoreIfDurationLess()) {
-      return accepted(target);
+      return accepted(target, acceptanceFlag);
     }
     boolean keep = recent || keepsAttacker || !(notBuffed || alreadyCommitted);
     if (!keep) {
       return false;
     }
-    return accepted(target);
+    return accepted(target, acceptanceFlag);
   }
 
-  /** The target's own last word: it must carry hit points and accept the attacker. */
-  private static boolean accepted(TargetView target) {
-    return target.isHitPointsPresent() && target.isAcceptsAttacker();
+  /**
+   * The target's own last word: it must carry hit points and accept the attacker, asked with the
+   * acceptance flag the validator was called with.
+   */
+  private static boolean accepted(TargetView target, boolean acceptanceFlag) {
+    return target.isHitPointsPresent() && target.acceptsAttacker(acceptanceFlag);
   }
 
   /**

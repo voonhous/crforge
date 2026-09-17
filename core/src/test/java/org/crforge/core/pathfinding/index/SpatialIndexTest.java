@@ -67,6 +67,25 @@ class SpatialIndexTest {
   }
 
   @Test
+  @DisplayName("a negative radius still finds an entity whose own radius more than covers it")
+  void aNegativeRadiusIsNotAnEmptyAnswer() {
+    // The unit's own collision radius is 500, so a radius of -100 still leaves 400 units of reach
+    // and the circle test accepts the unit standing at the query's centre.
+    List<GridEntity> found =
+        index.query(new SpatialQuery(3500, 10_000, -100, 0, false, false, 0, -1));
+
+    assertThat(found).containsExactly(unit);
+    index.release(found);
+
+    // The same radius 450 units away is beyond that reach, so the circle test refuses it. Both
+    // queries scan the same bucket, so it is the circle test deciding and not the bucket guard.
+    List<GridEntity> none =
+        index.query(new SpatialQuery(3950, 10_000, -100, 0, false, false, 0, -1));
+
+    assertThat(none).isEmpty();
+  }
+
+  @Test
   @DisplayName("the standard arena is covered by 18 by 32 buckets of 1024 units")
   void dimensionsOfTheStandardArena() {
     SpatialIndex.Dimensions dimensions =

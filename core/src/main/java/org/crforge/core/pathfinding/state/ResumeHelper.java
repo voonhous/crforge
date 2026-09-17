@@ -56,8 +56,9 @@ public final class ResumeHelper {
     chain.add("may_hold_route");
     if (queries.mayHoldRoute()) {
       chain.add("grid_route_flag");
+      boolean routeFlag = queries.gridRouteFlag();
       chain.add("grid_allows_route");
-      if (queries.gridAllowsRoute()) {
+      if (queries.gridAllowsRoute(routeFlag)) {
         setter.setState(entity, GridEntityState.MOVING);
         return;
       }

@@ -99,6 +99,13 @@ public final class PathfindingGlobals {
   /** How much closer, in game units, a continuous-damage attacker moves toward its target. */
   public static final int LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER = 500;
 
+  /**
+   * How long, in milliseconds, an entity counts as finishing an attack. The entity state visit adds
+   * one tick per visit and clears the latch on the first visit that carries the total past this, so
+   * the latch survives five ticks and clears on the sixth.
+   */
+  public static final int ATTACK_FINISH_TIME_MS = 250;
+
   // -------------------------------------------------------------------------------------------
   // Movement and target selection rules
   // -------------------------------------------------------------------------------------------

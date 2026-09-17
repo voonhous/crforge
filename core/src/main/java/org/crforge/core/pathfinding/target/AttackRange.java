@@ -36,6 +36,17 @@ public final class AttackRange {
    * </ol>
    */
   public static int attackRange(TargetingState t) {
+    return attackRange(t, t.isMovementComponentActive());
+  }
+
+  /**
+   * The component's current attack range, with the "does the owner move" answer supplied.
+   *
+   * @param t the targeting component
+   * @param movementComponentActive whether the owner counts as having an active movement component
+   *     for the walk-closer rule
+   */
+  private static int attackRange(TargetingState t, boolean movementComponentActive) {
     TargetView reference = t.getReference();
     if (reference != null && reference.getEntity().getType() == CONTACT_RANGE_TYPE) {
       return CONTACT_RANGE;
@@ -57,7 +68,7 @@ public final class AttackRange {
     if (PathfindingGlobals.LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER == 0) {
       return range;
     }
-    if (!t.isMovementComponentActive()) {
+    if (!movementComponentActive) {
       return range;
     }
     if (cfg.attackSequenceMode() == 0) {
@@ -90,13 +101,21 @@ public final class AttackRange {
   /**
    * The attack range an entity advertises to the rest of the simulation: the attack range of its
    * targeting component, or zero when the entity has no active one. Route preparation uses it as
-   * the radius it stops at, and the flying waypoint rule uses it as the distance it keeps.
+   * the radius it stops at, the flying waypoint rule uses it as the distance it keeps, and the
+   * default target selection uses it as the reach it compares candidates against.
+   *
+   * <p>The advertised range is worked out as though the entity had no movement component, so the
+   * walk-closer allowance of {@link
+   * PathfindingGlobals#LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER} is never subtracted from
+   * it. A unit with an attack sequence therefore advertises the same reach whether it is walking or
+   * standing, while {@link #attackRange(TargetingState)} - what the unit itself stops at - still
+   * gives up those 500 units while it walks.
    */
   public static int attackRangeWithRadius(TargetingState t) {
     if (t == null || !t.isTargetingComponentActive()) {
       return 0;
     }
-    return attackRange(t);
+    return attackRange(t, false);
   }
 
   /**

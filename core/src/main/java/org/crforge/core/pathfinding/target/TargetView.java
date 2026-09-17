@@ -40,6 +40,17 @@ public class TargetView {
   private boolean acceptsAttacker = true;
 
   /**
+   * The same answer, asked the way the validator asks it: with the acceptance flag of the call it
+   * is deciding. No entity varies its answer with the flag today and what would is not documented,
+   * so the flag is carried to the answer and the standing answer is given.
+   *
+   * @param acceptanceFlag the flag the validator was called with
+   */
+  public boolean acceptsAttacker(boolean acceptanceFlag) {
+    return acceptsAttacker;
+  }
+
+  /**
    * Damage already on its way to this entity but not yet applied, in hit points. Zero for an entity
    * that is not about to be hit.
    */
@@ -65,10 +76,19 @@ public class TargetView {
    */
   private int hiddenCountdownMs;
 
+  /**
+   * The entity's own answer to "do I count as a summoner tower", which the validator's
+   * do-not-target-towers and target-only-towers rules read. It is a per-entity answer and not the
+   * configuration column of the same name, although an ordinary tower answers both the same way;
+   * what would make them differ is not documented.
+   */
+  private boolean summonerTowerEntity;
+
   /** Wraps an entity together with its targeting columns. */
   public TargetView(GridEntity entity, TargetingConfig config) {
     this.entity = entity;
     this.config = config;
+    this.summonerTowerEntity = config != null && config.isSummonerTower();
   }
 
   /** Position along the arena's width, in game units. */
@@ -150,8 +170,11 @@ public class TargetView {
     return entity.getSquaredDistanceReduction();
   }
 
-  /** True for a tower that spawns units. */
-  public boolean summonerTower() {
+  /**
+   * The configuration column that marks a tower which spawns units. The elixir-drain rule reads
+   * this column; the two tower-restriction rules read {@link #isSummonerTowerEntity()} instead.
+   */
+  public boolean summonerTowerColumn() {
     return config != null && config.isSummonerTower();
   }
 }

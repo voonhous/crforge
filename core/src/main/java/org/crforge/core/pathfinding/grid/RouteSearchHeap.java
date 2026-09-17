@@ -91,8 +91,13 @@ final class RouteSearchHeap {
   }
 
   /**
-   * Position of a node in the heap, found by scanning from the front, or -1 when it is not there.
-   * The search only ever asks about a node that is in the heap exactly once.
+   * Position of a node in the heap, found by scanning from the front.
+   *
+   * <p>The search only ever asks about a node it has already opened, and an open node is in the
+   * heap exactly once, so a node that is not there is a broken invariant rather than an ordinary
+   * answer and is refused outright.
+   *
+   * @throws IllegalStateException when the node is not in the heap
    */
   int indexOf(int node) {
     for (int i = 0; i < size; i++) {
@@ -100,7 +105,7 @@ final class RouteSearchHeap {
         return i;
       }
     }
-    return -1;
+    throw new IllegalStateException("Node " + node + " is not in the heap");
   }
 
   /**

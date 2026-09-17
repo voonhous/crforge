@@ -210,8 +210,10 @@ class GridSmokeScenariosTest {
     assertThat(run.stuck).isEmpty();
     assertThat(run.oscillating).isEmpty();
     assertThat(run.lockTick).as("the swarm reached a tower").isNotNegative();
-    // Anomalies 1 to 3 all show here; their presence is pinned so a change in behaviour is noticed.
-    assertThat(run.emptyRoute).isNotEmpty();
+    // Anomalies 2 and 3 show here; their presence is pinned so a change in behaviour is noticed.
+    // Anomaly 1 does not: a tower no longer pushes the swarm, so no skeleton of this run ever
+    // consumes its last route node and finds itself still walking on the next tick.
+    assertThat(run.emptyRoute).isEmpty();
     assertThat(run.onWater).as("anomaly 2: pushed off the bridge").isNotEmpty();
     assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").isNotEmpty();
     assertThat(run.leftArena).isEmpty();
@@ -272,7 +274,7 @@ class GridSmokeScenariosTest {
    * check.
    *
    * <p>Reproduction: play {@code skeletonarmy} from BLUE's hand at (500, 1500) in grid mode and run
-   * 401 ticks. Seven of the fifteen formation places land outside the arena and stay there for the
+   * 391 ticks. Seven of the fifteen formation places land outside the arena and stay there for the
    * whole run - anomaly 4. Those seven are also the seven entries of the run's hard invariant list:
    * a troop standing off the routing grid gets no route at all, so from tick 42 each of them is in
    * the walking state, holding a target, with an empty route for more than one tick. The counts and
@@ -291,14 +293,16 @@ class GridSmokeScenariosTest {
     assertThat(run.stuck).isEmpty();
     assertThat(run.oscillating).isEmpty();
     assertThat(run.onWater).isEmpty();
-    assertThat(run.insideTowerFootprint).isEmpty();
+    // Anomaly 3 reaches this scenario as well: the crowd presses two of its own into the tower
+    // they are attacking. The count is pinned so a change in behaviour is noticed.
+    assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").hasSize(25);
     assertThat(run.pushedTicks)
         .as("the eight skeletons inside the arena crowd each other")
         .isPositive();
-    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(301);
+    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(291);
 
     // Anomaly 4: seven formation places are outside the arena and nothing brings them back, so
-    // each of the seven is counted on every one of the 381 ticks from tick 21 to the last.
+    // each of the seven is counted on every one of the 371 ticks from tick 21 to the last.
     assertThat(run.outsideArena)
         .containsExactly(
             "Skeleton#7 at (-1500, 3500)",
@@ -308,7 +312,7 @@ class GridSmokeScenariosTest {
             "Skeleton#12 at (-1250, 0)",
             "Skeleton#19 at (1500, -500)",
             "Skeleton#21 at (3000, -1000)");
-    assertThat(run.leftArena).hasSize(7 * 381);
+    assertThat(run.leftArena).hasSize(7 * 371);
 
     // The seven cannot be routed from off the grid, which is what the hard invariant sees.
     assertThat(run.emptyRoute).hasSize(7);

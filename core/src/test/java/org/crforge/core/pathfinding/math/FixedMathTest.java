@@ -252,10 +252,64 @@ class FixedMathTest {
       "100, -100, 315",
       "81, 243, 72",
       "243, 81, 18",
-      "-181, 181, 135"
+      "-181, 181, 135",
+      // Shallowest fourth-quadrant pair whose ratio lookup answers zero: a full turn is no turn.
+      "65, -1, 0"
     })
     void headingIsMeasuredCounterClockwiseFromTheXAxis(int x, int y, int expected) {
       assertThat(FixedMath.angleOfVector(x, y)).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("every heading over a 601 by 601 square is a whole turn's worth of degrees")
+    void everyHeadingStaysWithinOneTurn() {
+      for (int x = -300; x <= 300; x++) {
+        for (int y = -300; y <= 300; y++) {
+          int heading = FixedMath.angleOfVector(x, y);
+          assertThat(heading)
+              .as("angleOfVector(%d, %d)", x, y)
+              .isEqualTo(expectedHeading(x, y))
+              .isBetween(0, 359);
+        }
+      }
+    }
+
+    /**
+     * The heading of a vector, restated here independently of {@link FixedMath}: the octant is
+     * decided first, then the minor component shifted left by seven is divided by the major one to
+     * index the arc-tangent table, and a full turn folds back onto zero.
+     */
+    private static int expectedHeading(int x, int y) {
+      if ((x | y) == 0) {
+        return 0;
+      }
+      int ax = Math.abs(x);
+      int ay = Math.abs(y);
+      if (x >= 1 && y >= 0) {
+        return y < x ? atan(y, x) : 90 - atan(x, y);
+      }
+      if (x <= 0 && y >= 1) {
+        return ax < y ? atan(ax, y) + 90 : 180 - atan(y, ax);
+      }
+      if (x < 0 && y <= 0) {
+        if (ay < ax) {
+          return atan(ay, ax) + 180;
+        }
+        return y == 0 ? 0 : 270 - atan(ax, ay);
+      }
+      if (ax < ay) {
+        return atan(ax, ay) + 270;
+      }
+      if (x == 0) {
+        return 0;
+      }
+      int turned = 360 - atan(ay, ax);
+      return turned % 360;
+    }
+
+    /** Degrees between 0 and 45 for a minor over major ratio, with truncating division. */
+    private static int atan(int numerator, int denominator) {
+      return TrigTables.atan(FixedMath.div(numerator << 7, denominator));
     }
   }
 }

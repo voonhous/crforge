@@ -87,7 +87,9 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param multipleTargets number of targets a single attack hits, below two for a single target
  * @param uniqueMultipleTargets true when each of those targets must be a different entity
  * @param allTargetsHit true when a missing extra target falls back to the unit's own reference
- * @param attackDashTime milliseconds added to the attack timer when timing the hit of a dash attack
+ * @param attackDashTime milliseconds added to the attack timer when timing the hit of a dash
+ *     attack. The column is carried across from the character data, but the block that reads it
+ *     only announces the dash hit and is not ported, so nothing reads it today
  * @param attackFinishTime milliseconds a unit keeps attacking after losing its target
  * @param overrideAttackFinishTime true when {@code attackFinishTime} replaces the global default
  * @param keepTargetWithPendingDamage true when a target that has taken damage is kept although the

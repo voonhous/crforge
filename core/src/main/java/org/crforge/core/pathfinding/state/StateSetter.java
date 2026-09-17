@@ -14,6 +14,16 @@ import org.crforge.core.pathfinding.GridEntityState;
  * difference there because the only state change during a deployment happens after the countdown
  * has already reached zero. A tick driver in which a deploying unit can be stunned, killed or
  * targeted wants the guarded setter.
+ *
+ * <p><b>What this interface does not carry.</b> The standard game also runs an action when an
+ * entity enters or leaves certain states, and none of those actions is ported. Entering the
+ * deploying state seeds the deploy countdown and its copy from the DeployTime column; leaving the
+ * deploying, standing or moving state clears the countdown; entering the morphing state seeds the
+ * morph countdown; entering the casting state seeds the ability countdown and its warning; and
+ * entering the dashing state raises the dashing flag and clears the landing countdown. The grid
+ * driver seeds the deploy countdown itself when it builds a troop's view, so an ordinary ground
+ * troop deploys correctly, but the morph, ability and dash countdowns have no writer anywhere and
+ * the blocks of the entity state visit that count them down are therefore inert.
  */
 @FunctionalInterface
 public interface StateSetter {

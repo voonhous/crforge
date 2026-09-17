@@ -55,9 +55,13 @@ public final class ReferenceSetter {
       if (inRange) {
         if (cfg.attackSequenceMode() != 0 || cfg.loadAfterRetarget()) {
           t.clearAttack();
+        } else if (t.getAttackTimerMs() >= 1
+            && cfg.hasOnStartingAttackAction()
+            && queries != null) {
+          // A unit already part way through an attack keeps its timing and runs its on-starting
+          // action again for the target it has just taken.
+          queries.onStartingAttack();
         }
-        // A unit already part way through an attack runs its on-starting action again; the action
-        // itself is out of scope here.
       } else {
         boolean windsUpBeforeHitting = cfg.loadFirstHit() || cfg.loadAfterRetarget();
         if (windsUpBeforeHitting && t.getAttackTimerMs() != 0) {
