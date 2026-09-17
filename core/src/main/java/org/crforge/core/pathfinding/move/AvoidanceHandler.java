@@ -119,7 +119,7 @@ public final class AvoidanceHandler {
       if (moving) {
         int dot = other.getDirX() * dirX + other.getDirY() * dirY;
         chain.mark("neighbour_state_override");
-        if ((other.getSlot190() & 1) != 0) {
+        if ((other.getTargetable() & 1) != 0) {
           int state = other.getState();
           if (state == GridEntityState.CLONE_SETUP
               || state == GridEntityState.STANDING

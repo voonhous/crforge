@@ -52,7 +52,7 @@ public final class ChargeBookkeeping {
         chain.mark("targeting_lookup");
         if (queries.targetingLookup()) {
           chain.mark("targeting_lookup");
-          owner.setSlot37(1);
+          owner.setMovingMarker(1);
         }
       } else {
         int range = config.chargeRange();
@@ -99,7 +99,7 @@ public final class ChargeBookkeeping {
       GridEntity owner, MovementQueries queries, MovementChain chain) {
     chain.mark("movement_byte");
     if (queries.targetingPresent()) {
-      owner.setSlot37(0);
+      owner.setMovingMarker(0);
     }
   }
 }

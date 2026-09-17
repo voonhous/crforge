@@ -131,7 +131,7 @@ public class TargetView {
    * tower filters branch on it; its meaning beyond that is not documented.
    */
   public boolean towerFlag() {
-    return (entity.getSlot170() & 1) != 0;
+    return (entity.getKingCandidate() & 1) != 0;
   }
 
   /**
@@ -139,7 +139,7 @@ public class TargetView {
    * answer it; its meaning is not documented.
    */
   public boolean presenceFlag() {
-    return (entity.getSlot190() & 1) != 0;
+    return (entity.getTargetable() & 1) != 0;
   }
 
   /**
@@ -147,7 +147,7 @@ public class TargetView {
    * squared game units. Ordinary entities answer zero.
    */
   public int squaredDistanceReduction() {
-    return entity.getSlot1d8();
+    return entity.getSquaredDistanceReduction();
   }
 
   /** True for a tower that spawns units. */

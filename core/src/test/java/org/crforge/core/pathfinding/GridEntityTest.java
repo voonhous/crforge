@@ -12,7 +12,7 @@ class GridEntityTest {
     GridEntity entity = new GridEntity();
     assertThat(entity.isAlive()).isTrue();
     assertThat(entity.getType()).isEqualTo(5);
-    assertThat(entity.isSlotE0()).isTrue();
+    assertThat(entity.isPushEnabled()).isTrue();
     assertThat(entity.getState()).isEqualTo(GridEntityState.STANDING);
     assertThat(entity.getFlags()).isZero();
     assertThat(entity.getPendingFlags()).isZero();

@@ -59,7 +59,7 @@ class TargetingVisitTest {
     unit.setY(24000);
     unit.setCollisionRadius(500);
     unit.setState(GridEntityState.MOVING);
-    unit.setSlot190(1);
+    unit.setTargetable(1);
 
     knight = new TargetingState();
     knight.setOwner(unit);
@@ -74,8 +74,8 @@ class TargetingVisitTest {
     towerEntity.setY(25500);
     towerEntity.setCollisionRadius(1000);
     towerEntity.setBuilding(true);
-    towerEntity.setSlot170(1);
-    towerEntity.setSlot190(1);
+    towerEntity.setKingCandidate(1);
+    towerEntity.setTargetable(1);
     tower =
         new TargetView(
             towerEntity, TargetingConfig.tower("PrincessTower", 7500, 7500, 1000, 800, 0, true));

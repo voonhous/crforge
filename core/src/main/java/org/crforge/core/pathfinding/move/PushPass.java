@@ -95,7 +95,7 @@ public final class PushPass {
         continue;
       }
       chain.mark("neighbour_push_enabled");
-      if (!other.isSlotE0()) {
+      if (!other.isPushEnabled()) {
         continue;
       }
       if ((other.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {

@@ -12,7 +12,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Behaviour of one displacement toward a point, and of the charge bookkeeping it tails into. */
+/**
+ * Behaviour of one displacement toward a point, and of the charge bookkeeping it tails into.
+ *
+ * <p>The two arrival-boundary cases set the route direction to a unit vector straight along the
+ * arena's width, so the projection the arrival test computes is simply the distance left along that
+ * axis after the step: a target 1060 units away less the 60-unit step leaves exactly 1000, and 1061
+ * leaves 1001. That is the smallest pair either side of the threshold.
+ */
 class DisplacementTest {
 
   private static final CellGrid GRID =
@@ -106,6 +113,32 @@ class DisplacementTest {
     assertThat(owner.getY()).isEqualTo(10000);
     assertThat(owner.getDirY()).isEqualTo(256);
     assertThat(component.getWaypointReached()).isEqualTo(1);
+  }
+
+  @Test
+  void aProjectedRemainingDistanceOfExactlyAThousandCountsAsArrival() {
+    component.setRouteDirX(256);
+    component.setRouteDirY(0);
+
+    int step = displace(3500 + 1060, 10_000, 60, 0);
+
+    assertThat(step).isEqualTo(60);
+    assertThat(owner.getX()).isEqualTo(3560);
+    assertThat(owner.getY()).isEqualTo(10_000);
+    assertThat(component.getWaypointReached()).isEqualTo(1);
+  }
+
+  @Test
+  void aProjectedRemainingDistanceOfOneMoreThanAThousandDoesNot() {
+    component.setRouteDirX(256);
+    component.setRouteDirY(0);
+
+    int step = displace(3500 + 1061, 10_000, 60, 0);
+
+    assertThat(step).isEqualTo(60);
+    assertThat(owner.getX()).isEqualTo(3560);
+    assertThat(owner.getY()).isEqualTo(10_000);
+    assertThat(component.getWaypointReached()).isZero();
   }
 
   @Test

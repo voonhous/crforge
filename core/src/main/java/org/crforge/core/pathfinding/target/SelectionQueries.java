@@ -6,7 +6,7 @@ import java.util.List;
  * What the candidate selector needs from outside the targeting pass: the candidate list, the
  * validator's answers and the default target.
  *
- * <p>The two candidate methods are called at the point in the selection where the original asks for
+ * <p>The two candidate methods are called at the point in the selection where the game asks for
  * them, so an implementation that walks the spatial index does its work in the same order. The
  * implementation is responsible for returning its result list to the index when the selector calls
  * {@link #releaseCandidates(List)}.

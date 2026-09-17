@@ -467,7 +467,7 @@ public final class RouteFollower {
       GridEntity owner, MovementQueries queries, MovementChain chain) {
     chain.mark("movement_byte");
     if (queries.targetingSlotZero()) {
-      owner.setSlot37(0);
+      owner.setMovingMarker(0);
     }
   }
 }

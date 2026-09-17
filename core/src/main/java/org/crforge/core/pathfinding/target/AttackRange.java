@@ -101,7 +101,7 @@ public final class AttackRange {
 
   /**
    * The attack sequence step the component's index selects, or null when no step is active. An
-   * index past the end of the sequence is read anyway, which is what the original does.
+   * index past the end of the sequence is read anyway, which is what the game does.
    */
   static AttackSequenceEntry sequenceEntry(TargetingState t, TargetingConfig cfg) {
     int index = t.getAttackSequenceIndex();

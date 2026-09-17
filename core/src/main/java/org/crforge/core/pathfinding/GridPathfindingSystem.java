@@ -469,8 +469,8 @@ public class GridPathfindingSystem {
     view.setMovementActive(!building);
     view.setKing(entity instanceof Tower tower && tower.isCrownTower());
     view.setAir(entity.getMovementType() == MovementType.AIR);
-    view.setSlot170(view.isKing() ? 1 : 0);
-    view.setSlot190(1);
+    view.setKingCandidate(view.isKing() ? 1 : 0);
+    view.setTargetable(1);
     view.setX(entity.getPosition().getX());
     view.setY(entity.getPosition().getY());
     if (entity instanceof Troop) {

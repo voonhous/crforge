@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import org.crforge.core.card.Card;
 import org.crforge.core.component.GridUnitState;
 import org.crforge.core.engine.GameEngine;
@@ -40,7 +42,6 @@ import org.junit.jupiter.api.Test;
  * checks, for every troop the grid system drives:
  *
  * <ul>
- *   <li>the troop stands inside the arena;
  *   <li>its state is one of the documented state constants;
  *   <li>its movement budget is between zero and its speed column, and the largest step any of its
  *       displacements was allowed to spend is between zero and that budget;
@@ -52,7 +53,11 @@ import org.junit.jupiter.api.Test;
  *       route.
  * </ul>
  *
- * <p>Three further invariants the brief asks for do not hold today. They are recorded on every run
+ * <p>Whether a troop stands inside the arena is recorded rather than failed outright, because of
+ * anomaly 4 below. Every run but scenario 6 asserts that the record is empty, so the bound is held
+ * just as tightly everywhere the anomaly does not reach.
+ *
+ * <p>Four further invariants the brief asks for do not hold today. They are recorded on every run
  * and asserted in the {@link Disabled} tests at the bottom of this class, which name the anomaly
  * each is waiting on; the live tests assert what does hold, never a weakened form of the invariant:
  *
@@ -62,7 +67,9 @@ import org.junit.jupiter.api.Test;
  *       visit;
  *   <li>anomaly 2 - a troop pushed sideways off a bridge stands on water for as long as it takes to
  *       walk back onto the bridge;
- *   <li>anomaly 3 - a troop pushed by a crowd ends up inside a tower's collision circle.
+ *   <li>anomaly 3 - a troop pushed by a crowd ends up inside a tower's collision circle;
+ *   <li>anomaly 4 - a formation deployed at an arena corner puts part of itself outside the arena
+ *       and leaves it there, which scenario 6 is written around.
  * </ul>
  */
 class GridSmokeScenariosTest {
@@ -132,6 +139,7 @@ class GridSmokeScenariosTest {
     assertThat(run.largestOverlap).isLessThanOrEqualTo(tolerance);
     assertThat(run.insideTowerFootprint).isEmpty();
     assertThat(run.onWater).isEmpty();
+    assertThat(run.leftArena).isEmpty();
   }
 
   // -------------------------------------------------------------------------------------------
@@ -157,6 +165,7 @@ class GridSmokeScenariosTest {
     assertThat(run.oscillating).isEmpty();
     assertThat(run.insideTowerFootprint).isEmpty();
     assertThat(run.onWater).isEmpty();
+    assertThat(run.leftArena).isEmpty();
     assertThat(run.emptyRoute).isEmpty();
     assertThat(run.lockTick).as("at least one Knight reached a tower").isNotNegative();
   }
@@ -177,6 +186,7 @@ class GridSmokeScenariosTest {
     assertThat(run.oscillating).isEmpty();
     assertThat(run.insideTowerFootprint).isEmpty();
     assertThat(run.onWater).isEmpty();
+    assertThat(run.leftArena).isEmpty();
     assertThat(run.lockTick).as("the two saw each other and locked on").isNotNegative();
     // Each stops at its attack range, so neither ever reaches the other's collision circle and the
     // push pass never fires; anomaly 1 shows up twice per Knight on the way to the bridge.
@@ -204,6 +214,7 @@ class GridSmokeScenariosTest {
     assertThat(run.emptyRoute).isNotEmpty();
     assertThat(run.onWater).as("anomaly 2: pushed off the bridge").isNotEmpty();
     assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").isNotEmpty();
+    assertThat(run.leftArena).isEmpty();
   }
 
   @Test
@@ -222,6 +233,7 @@ class GridSmokeScenariosTest {
     assertThat(run.oscillating).isEmpty();
     assertThat(run.insideTowerFootprint).isEmpty();
     assertThat(run.onWater).isEmpty();
+    assertThat(run.leftArena).isEmpty();
     assertThat(run.emptyRoute).isEmpty();
     assertThat(run.steeredTicks).as("the two never met").isZero();
     assertThat(run.lockTick).isNotNegative();
@@ -248,13 +260,66 @@ class GridSmokeScenariosTest {
     assertThat(run.oscillating).isEmpty();
     assertThat(run.insideTowerFootprint).isEmpty();
     assertThat(run.onWater).isEmpty();
+    assertThat(run.leftArena).isEmpty();
     assertThat(run.emptyRoute).isEmpty();
     int tolerance = 2 * (run.largestBudget + MAX_PUSH_STEP);
     assertThat(run.largestOverlap).isLessThanOrEqualTo(tolerance);
   }
 
+  /**
+   * Scenario 6: a Skeleton Army played at the bottom-left deployable tile, the same card, the same
+   * hand path and the same deploy point the formation migration test uses for its arena-bounds
+   * check.
+   *
+   * <p>Reproduction: play {@code skeletonarmy} from BLUE's hand at (500, 1500) in grid mode and run
+   * 401 ticks. Seven of the fifteen formation places land outside the arena and stay there for the
+   * whole run - anomaly 4. Those seven are also the seven entries of the run's hard invariant list:
+   * a troop standing off the routing grid gets no route at all, so from tick 42 each of them is in
+   * the walking state, holding a target, with an empty route for more than one tick. The counts and
+   * the positions are pinned here exactly, so a change in either is noticed; the strict invariant
+   * is held by the disabled test at the bottom of this class.
+   */
+  @Test
+  @DisplayName("scenario 6: a Skeleton Army played at the arena corner spills outside the arena")
+  void aSwarmPlayedAtTheArenaCorner() {
+    Run run = new Run("corner swarm").play(Team.BLUE, "skeletonarmy", 500, 1500).go();
+
+    assertThat(run.routeGoalOffEndpoint).isEmpty();
+    assertThat(run.troopsSeen)
+        .as("every skeleton of the formation is driven by the grid")
+        .isEqualTo(swarmSize());
+    assertThat(run.stuck).isEmpty();
+    assertThat(run.oscillating).isEmpty();
+    assertThat(run.onWater).isEmpty();
+    assertThat(run.insideTowerFootprint).isEmpty();
+    assertThat(run.pushedTicks)
+        .as("the eight skeletons inside the arena crowd each other")
+        .isPositive();
+    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(301);
+
+    // Anomaly 4: seven formation places are outside the arena and nothing brings them back, so
+    // each of the seven is counted on every one of the 381 ticks from tick 21 to the last.
+    assertThat(run.outsideArena)
+        .containsExactly(
+            "Skeleton#7 at (-1500, 3500)",
+            "Skeleton#8 at (-2250, 1500)",
+            "Skeleton#9 at (-1250, 2000)",
+            "Skeleton#11 at (-750, 1000)",
+            "Skeleton#12 at (-1250, 0)",
+            "Skeleton#19 at (1500, -500)",
+            "Skeleton#21 at (3000, -1000)");
+    assertThat(run.leftArena).hasSize(7 * 381);
+
+    // The seven cannot be routed from off the grid, which is what the hard invariant sees.
+    assertThat(run.emptyRoute).hasSize(7);
+    assertThat(run.violations).hasSize(7);
+    assertThat(run.violations)
+        .allMatch(line -> line.contains("tick 42"))
+        .allMatch(line -> line.contains("walking toward a target with no route two ticks running"));
+  }
+
   // -------------------------------------------------------------------------------------------
-  // The three invariants that do not hold yet
+  // The four invariants that do not hold yet
   // -------------------------------------------------------------------------------------------
 
   @Test
@@ -293,6 +358,18 @@ class GridSmokeScenariosTest {
     Run run = new Run("skeleton army").play(Team.BLUE, "skeletonarmy", 3500, 10_000).go();
 
     assertThat(run.insideTowerFootprint).isEmpty();
+  }
+
+  @Test
+  @Disabled(
+      "anomaly 4: a formation is placed at its raw offsets from the deploy point with no test"
+          + " against the arena, and no pass clamps a grid-driven troop back inside it, so a"
+          + " corner deployment leaves part of the formation outside the arena for the whole run")
+  @DisplayName("no troop ever stands outside the arena")
+  void noTroopEverStandsOutsideTheArena() {
+    Run run = new Run("corner swarm").play(Team.BLUE, "skeletonarmy", 500, 1500).go();
+
+    assertThat(run.leftArena).isEmpty();
   }
 
   // -------------------------------------------------------------------------------------------
@@ -335,6 +412,12 @@ class GridSmokeScenariosTest {
 
     /** Troops standing on a water cell while not deploying (anomaly 2). */
     private final List<String> onWater = new ArrayList<>();
+
+    /** Troop ticks spent standing outside the arena (anomaly 4). */
+    private final List<String> leftArena = new ArrayList<>();
+
+    /** One entry per troop that ever stood outside the arena, with where it stood (anomaly 4). */
+    private final Set<String> outsideArena = new LinkedHashSet<>();
 
     /** Troops walking toward a target with no route (anomaly 1). */
     private final List<String> emptyRoute = new ArrayList<>();
@@ -493,7 +576,8 @@ class GridSmokeScenariosTest {
             || view.getX() >= ARENA_WIDTH
             || view.getY() < 0
             || view.getY() >= ARENA_LENGTH) {
-          violations.add(who + ": left the arena" + where);
+          leftArena.add(who + ": left the arena" + where);
+          outsideArena.add(troop.getName() + "#" + troop.getId() + where);
         }
         if (view.getState() < 0 || view.getState() > GridEntityState.MAX_STATE) {
           violations.add(who + ": state " + view.getState() + " is not a documented state");

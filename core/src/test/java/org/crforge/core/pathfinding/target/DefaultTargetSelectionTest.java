@@ -30,8 +30,8 @@ class DefaultTargetSelectionTest {
     e.setCollisionRadius(king ? 1400 : 1000);
     e.setBuilding(true);
     e.setKing(king);
-    e.setSlot170(1);
-    e.setSlot190(1);
+    e.setKingCandidate(1);
+    e.setTargetable(1);
     return new TargetView(
         e,
         king

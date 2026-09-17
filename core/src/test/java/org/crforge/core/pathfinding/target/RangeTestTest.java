@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding.target;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,8 +45,8 @@ class RangeTestTest {
     tower.setY(25500);
     tower.setCollisionRadius(1000);
     tower.setBuilding(true);
-    tower.setSlot170(1);
-    tower.setSlot190(1);
+    tower.setKingCandidate(1);
+    tower.setTargetable(1);
     leftPrincessTower =
         new TargetView(
             tower, TargetingConfig.tower("PrincessTower", 7500, 7500, 1000, 800, 0, true));
@@ -144,7 +145,7 @@ class RangeTestTest {
   void sequenceStepOverridesTheRange() {
     knight.setConfig(
         knight.getConfig().toBuilder()
-            .attackSequenceEntries(java.util.List.of(new AttackSequenceEntry(300, 900, -1)))
+            .attackSequenceEntries(List.of(new AttackSequenceEntry(300, 900, -1)))
             .build());
     knight.setAttackSequenceIndex(0);
 

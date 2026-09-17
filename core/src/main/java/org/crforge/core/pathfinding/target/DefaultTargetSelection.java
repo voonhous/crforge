@@ -86,8 +86,8 @@ public final class DefaultTargetSelection {
    *
    * <p>A candidate that scores at or above the running threshold is skipped. A candidate that beats
    * the threshold lowers it <b>even when the validator refuses it</b>, so a refused candidate still
-   * shuts out the ones behind it; this is the behaviour of the original and must not be tidied into
-   * a filter-then-minimum loop.
+   * shuts out the ones behind it; this is the game's behaviour and must not be tidied into a
+   * filter-then-minimum loop.
    *
    * @param unitX unit position along the arena's width
    * @param unitY unit position along the arena's length

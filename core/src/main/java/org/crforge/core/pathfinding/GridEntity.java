@@ -139,39 +139,40 @@ public class GridEntity {
    * Countdown in milliseconds that blocks movement while it is positive, for example the delay
    * after a dash lands. The speed budget and all three movement gates return zero while it runs.
    *
-   * <p>The reference composition used the movement component's countdown here as well; they are two
-   * distinct fields and this one is the entity's.
+   * <p>The movement component carries its own countdown at the same position in its record; the two
+   * must not be conflated. This one is the entity's.
    */
   private int blockCountdownMs;
 
   /**
    * A per-entity enable bit the push pass checks before it considers the entity at all, both for
    * the pushing entity and for each neighbour. Ordinary units answer enabled. Its writers are not
-   * established, so the name stays neutral.
+   * established.
    */
-  private boolean slotE0 = true;
+  private boolean pushEnabled = true;
 
   /**
    * Byte the follower and the displacement helper write while the entity moves. Its readers are not
-   * established, so the name stays neutral.
+   * established.
    */
-  private int slot37;
+  private int movingMarker;
 
   /**
-   * A candidate flag the target selector and the validator read. Its meaning is not established, so
-   * the name stays neutral.
+   * Candidate flag the target selector and the validator read, set from the crown-tower flag when
+   * the entity's view is built. Its meaning beyond the crown towers is not established.
    */
-  private int slot170;
+  private int kingCandidate;
 
   /**
-   * A candidate flag the target selector and the avoidance handler read. Its meaning is not
-   * established, so the name stays neutral.
+   * Candidacy gate the target selector and the avoidance handler read, enabled for every entity
+   * when its view is built. Its writers are not established.
    */
-  private int slot190;
+  private int targetable;
 
   /**
-   * A candidate flag the target selector reads. Its meaning is not established, so the name stays
-   * neutral.
+   * Amount by which the target selector lowers this candidate's squared distance before it ranks
+   * the candidate, in squared game units. Ordinary entities answer zero. Its writers are not
+   * established.
    */
-  private int slot1d8;
+  private int squaredDistanceReduction;
 }

@@ -59,7 +59,7 @@ class CandidateSelectorTest {
     e.setX(x);
     e.setY(y);
     e.setCollisionRadius(radius);
-    e.setSlot190(1);
+    e.setTargetable(1);
     return new TargetView(e, TargetingConfig.forUnit(500, 5000, radius, 1000, 500, true, false));
   }
 
@@ -73,8 +73,8 @@ class CandidateSelectorTest {
     e.setCollisionRadius(king ? 1400 : 1000);
     e.setBuilding(true);
     e.setKing(king);
-    e.setSlot170(1);
-    e.setSlot190(1);
+    e.setKingCandidate(1);
+    e.setTargetable(1);
     return new TargetView(
         e,
         king
@@ -92,7 +92,7 @@ class CandidateSelectorTest {
     unit.setY(10000);
     unit.setCollisionRadius(500);
     unit.setState(GridEntityState.MOVING);
-    unit.setSlot190(1);
+    unit.setTargetable(1);
 
     knight = new TargetingState();
     knight.setOwner(unit);

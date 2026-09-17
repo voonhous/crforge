@@ -30,8 +30,8 @@ class ReferenceValidatorTest {
   private static TargetView tower(String name, int id, int side, int x, int y) {
     GridEntity e = entity(name, id, side, x, y);
     e.setBuilding(true);
-    e.setSlot170(1);
-    e.setSlot190(1);
+    e.setKingCandidate(1);
+    e.setTargetable(1);
     return new TargetView(
         e, TargetingConfig.tower("PrincessTower", 7500, 7500, 1000, 800, 0, true));
   }
@@ -40,7 +40,7 @@ class ReferenceValidatorTest {
   void setUp() {
     GridEntity unit = entity("owner", 7, 0, 3500, 10000);
     unit.setCollisionRadius(500);
-    unit.setSlot190(1);
+    unit.setTargetable(1);
     unit.setState(1);
 
     knight = new TargetingState();
@@ -123,7 +123,7 @@ class ReferenceValidatorTest {
   void airAndGroundPairing() {
     GridEntity balloon = entity("Balloon", 9, 1, 3500, 12000);
     balloon.setAir(true);
-    balloon.setSlot190(1);
+    balloon.setTargetable(1);
     TargetView airTarget =
         new TargetView(balloon, TargetingConfig.forUnit(500, 5000, 500, 1000, 500, true, false));
 
@@ -145,7 +145,7 @@ class ReferenceValidatorTest {
   void airOnlyGateOpensOnlyTheFirstBuildingCheck() {
     GridEntity balloon = entity("Balloon", 9, 1, 3500, 12000);
     balloon.setAir(true);
-    balloon.setSlot190(1);
+    balloon.setTargetable(1);
     TargetingConfig plain = TargetingConfig.forUnit(500, 5000, 500, 1000, 500, true, false);
     TargetView airTarget = new TargetView(balloon, plain);
 
@@ -172,7 +172,7 @@ class ReferenceValidatorTest {
   @DisplayName("a building-only attacker refuses an ordinary troop")
   void buildingFilterRefusesTroops() {
     GridEntity troop = entity("Archer", 9, 1, 3500, 12000);
-    troop.setSlot190(1);
+    troop.setTargetable(1);
     TargetView troopTarget =
         new TargetView(troop, TargetingConfig.forUnit(5000, 5500, 500, 1000, 500, true, true));
 

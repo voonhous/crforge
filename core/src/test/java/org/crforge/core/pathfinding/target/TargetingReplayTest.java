@@ -92,7 +92,7 @@ class TargetingReplayTest {
       unit.setCollisionRadius(KNIGHT_COLLISION_RADIUS);
       unit.setState(GridEntityState.MOVING);
       unit.setMovementActive(true);
-      unit.setSlot190(1);
+      unit.setTargetable(1);
 
       state.setOwner(unit);
       state.setConfig(
@@ -126,8 +126,8 @@ class TargetingReplayTest {
         tower.setCollisionRadius(king ? 1400 : 1000);
         tower.setBuilding(true);
         tower.setKing(king);
-        tower.setSlot170(king ? 1 : 0);
-        tower.setSlot190(1);
+        tower.setKingCandidate(king ? 1 : 0);
+        tower.setTargetable(1);
         entities.add(tower);
 
         TargetView view =

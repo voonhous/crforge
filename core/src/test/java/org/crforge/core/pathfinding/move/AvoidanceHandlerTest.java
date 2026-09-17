@@ -69,7 +69,7 @@ class AvoidanceHandlerTest {
     entity.setCollisionRadius(500);
     entity.setMass(3);
     entity.setMovementActive(false);
-    entity.setSlot190(1);
+    entity.setTargetable(1);
     return entity;
   }
 
@@ -261,7 +261,7 @@ class AvoidanceHandlerTest {
   void aMoverWithoutTheStateOverrideKeepsItsFacing() {
     component.setRoute(Route.of(NEXT_NODE));
     GridEntity other = mover(2, 3400, 10400, 0, 256, GridEntityState.ATTACKING);
-    other.setSlot190(0);
+    other.setTargetable(0);
 
     run(List.of(other));
 
