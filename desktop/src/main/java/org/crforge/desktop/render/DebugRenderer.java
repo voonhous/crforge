@@ -1,6 +1,8 @@
 package org.crforge.desktop.render;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
@@ -28,12 +30,17 @@ public class DebugRenderer {
   private final HudRenderer hudRenderer;
   private final DamageNumberRenderer damageNumberRenderer;
   private final AoeDamageRenderer aoeDamageRenderer;
+  private final CellCostOverlayRenderer cellCostOverlayRenderer;
+  private final RouteOverlayRenderer routeOverlayRenderer;
+  private final GoldenTrajectoryRenderer goldenTrajectoryRenderer;
 
   @Getter private boolean drawPaths = false;
   @Getter private boolean drawRanges = false;
   @Getter private boolean drawDamageNumbers = false;
   @Getter private boolean drawAoeDamage = true;
   @Getter private boolean drawHpNumbers = false;
+  @Getter private boolean drawCellCosts = false;
+  @Getter private boolean drawRoutes = false;
 
   public DebugRenderer() {
     this.ctx = new RenderContext();
@@ -48,6 +55,9 @@ public class DebugRenderer {
     this.hudRenderer = new HudRenderer(ctx);
     this.damageNumberRenderer = new DamageNumberRenderer(ctx);
     this.aoeDamageRenderer = new AoeDamageRenderer(ctx);
+    this.cellCostOverlayRenderer = new CellCostOverlayRenderer(ctx);
+    this.routeOverlayRenderer = new RouteOverlayRenderer(ctx);
+    this.goldenTrajectoryRenderer = new GoldenTrajectoryRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -70,6 +80,17 @@ public class DebugRenderer {
     drawHpNumbers = !drawHpNumbers;
   }
 
+  /** Toggles the per-cell routing cost overlay. */
+  public void toggleDrawCellCosts() {
+    drawCellCosts = !drawCellCosts;
+  }
+
+  /** Toggles the route, reference and state overlay of the grid-driven troops. */
+  public void toggleDrawRoutes() {
+    drawRoutes = !drawRoutes;
+  }
+
+  /** Renders one frame with no grid pathfinding information, for screens that offer none. */
   public void render(
       GameEngine engine,
       OrthographicCamera camera,
@@ -77,6 +98,22 @@ public class DebugRenderer {
       int hoverY,
       int selectedHandIndex,
       Team selectedTeam) {
+    render(engine, camera, hoverX, hoverY, selectedHandIndex, selectedTeam, GridDebugStatus.none());
+  }
+
+  /**
+   * Renders one frame.
+   *
+   * @param gridStatus what the screen knows about the grid pathfinding overlays this frame
+   */
+  public void render(
+      GameEngine engine,
+      OrthographicCamera camera,
+      int hoverX,
+      int hoverY,
+      int selectedHandIndex,
+      Team selectedTeam,
+      GridDebugStatus gridStatus) {
     GameState state = engine.getGameState();
     Arena arena = engine.getArena();
     Match match = engine.getMatch();
@@ -91,6 +128,11 @@ public class DebugRenderer {
 
     // 2. Grid lines
     arenaRenderer.renderGrid(arena);
+
+    // 2.5. Routing cell costs (under the entity passes so entities stay on top)
+    if (drawCellCosts) {
+      cellCostOverlayRenderer.render(engine, gridStatus.hoverCellCol(), gridStatus.hoverCellRow());
+    }
 
     // 3. Pending deployment ghosts (sync delay silhouettes, rendered under entities)
     deployOverlayRenderer.renderPendingDeployments(
@@ -130,6 +172,12 @@ public class DebugRenderer {
       debugOverlayRenderer.renderPathLines(state);
     }
 
+    // 10.5. Golden scenario ghost trajectory and grid routes
+    goldenTrajectoryRenderer.render(gridStatus.golden());
+    if (drawRoutes) {
+      routeOverlayRenderer.render(engine);
+    }
+
     // 11. Attack range circles
     if (drawRanges) {
       debugOverlayRenderer.renderAttackRanges(state);
@@ -167,18 +215,49 @@ public class DebugRenderer {
     // 15. Spawner timers
     debugOverlayRenderer.renderSpawnerTimers(state);
 
-    // 16. HUD (timer, cards, elixir)
+    // 16. HUD (timer, cards, elixir, status column)
     hudRenderer.render(
-        engine,
-        match,
-        camera,
-        selectedHandIndex,
-        selectedTeam,
-        drawPaths,
-        drawRanges,
-        drawDamageNumbers,
-        drawAoeDamage,
-        drawHpNumbers);
+        engine, match, camera, selectedHandIndex, selectedTeam, statusLines(engine, gridStatus));
+  }
+
+  /**
+   * The status column: one line per overlay that is on, then the active and pending pathfinding
+   * modes, the cell under the mouse while the cost overlay is up, and the golden scenario's lines.
+   */
+  private List<String> statusLines(GameEngine engine, GridDebugStatus gridStatus) {
+    List<String> lines = new ArrayList<>();
+    if (drawPaths) {
+      lines.add("Paths: ON");
+    }
+    if (drawRanges) {
+      lines.add("Ranges: ON");
+    }
+    if (drawDamageNumbers) {
+      lines.add("Damage: ON");
+    }
+    if (drawAoeDamage) {
+      lines.add("AOE: ON");
+    }
+    if (drawHpNumbers) {
+      lines.add("HP: ON");
+    }
+    if (drawRoutes) {
+      lines.add("Routes: ON");
+    }
+    if (gridStatus.activeMode() != null) {
+      lines.add("mode: " + gridStatus.activeMode());
+      if (gridStatus.pendingMode() != gridStatus.activeMode()) {
+        lines.add("pending: " + gridStatus.pendingMode());
+      }
+    }
+    if (drawCellCosts) {
+      lines.add("Cells: ON");
+      lines.add(
+          cellCostOverlayRenderer.hoverStatus(
+              engine, gridStatus.hoverCellCol(), gridStatus.hoverCellRow()));
+    }
+    lines.addAll(gridStatus.scenarioLines());
+    return lines;
   }
 
   private Player getPlayer(Match match, Team selectedTeam) {

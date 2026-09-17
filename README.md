@@ -44,6 +44,10 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
 
+The visualizer prints its key map on startup; see
+[Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the grid
+pathfinding overlays (`M`, `G`, `N`), the golden scenarios (`S`) and the trajectory export (`E`).
+
 ### Python / RL Training
 
 **Requirements:** Python 3.10+, Java bridge server running

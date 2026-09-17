@@ -5,6 +5,7 @@ import static org.crforge.desktop.render.RenderConstants.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import java.util.List;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.match.Match;
@@ -17,6 +18,9 @@ import org.crforge.core.player.Team;
  * player HUDs (cards + elixir bar).
  */
 public class HudRenderer {
+
+  /** Vertical spacing between two lines of the status column, in pixels. */
+  private static final float STATUS_LINE_HEIGHT = 16f;
 
   private final RenderContext ctx;
 
@@ -39,18 +43,19 @@ public class HudRenderer {
     ctx.getShapeRenderer().end();
   }
 
-  /** Render all HUD elements: timer, entity count, player hands/elixir, debug status. */
+  /**
+   * Render all HUD elements: timer, entity count, player hands/elixir and the status column.
+   *
+   * @param statusLines one line per active overlay and per piece of grid pathfinding state, printed
+   *     right aligned and bottom up; the caller decides what belongs there
+   */
   public void render(
       GameEngine engine,
       Match match,
       OrthographicCamera camera,
       int selectedHandIndex,
       Team selectedTeam,
-      boolean drawPaths,
-      boolean drawRanges,
-      boolean drawDamageNumbers,
-      boolean drawAoeDamage,
-      boolean drawHpNumbers) {
+      List<String> statusLines) {
     float screenWidth = camera.viewportWidth;
     float screenHeight = camera.viewportHeight;
 
@@ -106,47 +111,16 @@ public class HudRenderer {
               screenHeight / 2);
     }
 
-    // Debug overlay status
-    int overlayLine = 0;
-    if (drawPaths) {
+    // Debug overlay status: right aligned so a long line cannot run off the panel
+    for (int line = 0; line < statusLines.size(); line++) {
+      String text = statusLines.get(line);
+      ctx.getGlyphLayout().setText(ctx.getFont(), text);
       ctx.getFont()
           .draw(
               ctx.getSpriteBatch(),
-              "Paths: ON",
-              screenWidth - 110,
-              screenHeight / 2 + 20 + (overlayLine++ * 16));
-    }
-    if (drawRanges) {
-      ctx.getFont()
-          .draw(
-              ctx.getSpriteBatch(),
-              "Ranges: ON",
-              screenWidth - 110,
-              screenHeight / 2 + 20 + (overlayLine++ * 16));
-    }
-    if (drawDamageNumbers) {
-      ctx.getFont()
-          .draw(
-              ctx.getSpriteBatch(),
-              "Damage: ON",
-              screenWidth - 110,
-              screenHeight / 2 + 20 + (overlayLine++ * 16));
-    }
-    if (drawAoeDamage) {
-      ctx.getFont()
-          .draw(
-              ctx.getSpriteBatch(),
-              "AOE: ON",
-              screenWidth - 110,
-              screenHeight / 2 + 20 + (overlayLine++ * 16));
-    }
-    if (drawHpNumbers) {
-      ctx.getFont()
-          .draw(
-              ctx.getSpriteBatch(),
-              "HP: ON",
-              screenWidth - 110,
-              screenHeight / 2 + 20 + (overlayLine++ * 16));
+              text,
+              screenWidth - 10 - ctx.getGlyphLayout().width,
+              screenHeight / 2 + 20 + (line * STATUS_LINE_HEIGHT));
     }
 
     ctx.getSpriteBatch().end();

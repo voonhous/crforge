@@ -163,6 +163,50 @@ public final class RenderConstants {
   public static final Color COLOR_REFLECT_AURA = new Color(1f, 0.3f, 1f, 0.5f);
   public static final Color COLOR_CLONE_AURA = new Color(0.9f, 0.4f, 0.9f, 0.7f);
 
+  // ---- Grid pathfinding overlay ----
+
+  /** Side of one routing cell in pixels: 500 game units at the arena's scale. */
+  public static final float CELL_PIXELS = TILE_PIXELS / 2f;
+
+  /** Cell carrying a road, which the route search charges less for than plain ground. */
+  public static final Color COLOR_CELL_ROAD = new Color(0.95f, 0.85f, 0.3f, 0.3f);
+
+  /** Plain ground cell with no road and nothing stamped over it. */
+  public static final Color COLOR_CELL_DEFAULT = new Color(0.4f, 0.85f, 0.45f, 0.22f);
+
+  /** Water cell, which a unit with no water permission is charged the blocked weight for. */
+  public static final Color COLOR_CELL_WATER = new Color(0.2f, 0.45f, 1f, 0.45f);
+
+  /** Cell flagged blocked by the arena's cell map. */
+  public static final Color COLOR_CELL_BLOCKED = new Color(0.12f, 0.12f, 0.12f, 0.55f);
+
+  /** Cell covered by a building's footprint in the routing overlay. */
+  public static final Color COLOR_CELL_BUILDING = new Color(1f, 0.35f, 0.2f, 0.45f);
+
+  /** Cell outside the arena, which the cost rule rejects outright. */
+  public static final Color COLOR_CELL_OUT_OF_ARENA = new Color(0.7f, 0.1f, 0.7f, 0.5f);
+
+  /** Outline drawn around the cell the mouse is over. */
+  public static final Color COLOR_CELL_HOVER = new Color(1f, 1f, 1f, 0.9f);
+
+  /** Polyline through the cells still left on a troop's route. */
+  public static final Color COLOR_ROUTE_LINE = new Color(0.2f, 1f, 0.9f, 0.85f);
+
+  /** Marker on each cell centre a troop's route passes through. */
+  public static final Color COLOR_ROUTE_NODE = new Color(0.2f, 1f, 0.9f, 0.55f);
+
+  /** Marker on the position a troop currently holds as its reference. */
+  public static final Color COLOR_ROUTE_REFERENCE = new Color(1f, 0.85f, 0.2f, 0.9f);
+
+  /** Ghost polyline of a golden scenario's whole reference trajectory. */
+  public static final Color COLOR_GOLDEN_PATH = new Color(0.85f, 0.85f, 0.85f, 0.45f);
+
+  /** Hollow marker on the reference position for the tick currently being simulated. */
+  public static final Color COLOR_GOLDEN_MARKER = new Color(1f, 1f, 1f, 0.9f);
+
+  /** Marker on the first tick where the live unit left the reference trajectory. */
+  public static final Color COLOR_GOLDEN_DEVIATION = new Color(1f, 0.2f, 0.2f, 0.95f);
+
   // ---- Damage number colors ----
 
   /** Red color for floating HP damage numbers. */
