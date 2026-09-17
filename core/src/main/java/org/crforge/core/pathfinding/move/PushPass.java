@@ -26,7 +26,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */
-  private static final int QUERY_MARGIN = 20;
+  public static final int QUERY_MARGIN = 20;
 
   /** Largest collision radius a neighbour without a movement component reaches with. */
   private static final int STATIC_RADIUS_CLAMP = 500;

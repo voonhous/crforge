@@ -107,7 +107,7 @@ public final class RouteFollower {
 
     chain.mark("avoidance_gate");
     if ((queries.avoidanceGate() & 1) != 0) {
-      chain.mark("avoidance");
+      chain.avoidance();
     }
     int blend = component.getAvoidanceBlend();
     component.setAvoidanceBlend(

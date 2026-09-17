@@ -31,12 +31,21 @@ public final class MovementChain {
   private final MovementConfig config;
   private final MovementGlobals globals;
   private final ReferencePoint reference;
-  private final List<GridEntity> others;
+  private final NeighbourQuery neighbours;
   private final MovementQueries queries;
   private final List<String> markers = new ArrayList<>();
 
+  /** Largest number of pushes the push pass accumulated in one run during this visit. */
+  private int pushContributions;
+
+  /** Largest step, in game units, any displacement of this visit was allowed to spend. */
+  private int largestDisplacementStep;
+
   /**
-   * Creates a chain over the state one movement visit works on.
+   * Creates a chain over the state one movement visit works on, with a fixed neighbour list.
+   *
+   * <p>Both the push pass and the avoidance handler then see that same list whatever they ask for,
+   * which is what a single-unit case wants: hand in an empty list and neither pass finds anything.
    *
    * @param component the entity's movement component
    * @param owner the entity being moved
@@ -44,7 +53,7 @@ public final class MovementChain {
    * @param config the entity's movement configuration columns
    * @param globals the match-wide movement settings
    * @param reference the position the entity is heading for, or null when it has no reference
-   * @param others the neighbours the push pass considers, empty when the entity stands alone
+   * @param others the neighbours both passes consider, empty when the entity stands alone
    * @param queries the answers the movement pass pulls from the rest of the simulation
    */
   public MovementChain(
@@ -56,13 +65,38 @@ public final class MovementChain {
       ReferencePoint reference,
       List<GridEntity> others,
       MovementQueries queries) {
+    this(component, owner, grid, config, globals, reference, NeighbourQuery.fixed(others), queries);
+  }
+
+  /**
+   * Creates a chain over the state one movement visit works on, with the neighbours looked up at
+   * the moment each pass asks for them.
+   *
+   * @param component the entity's movement component
+   * @param owner the entity being moved
+   * @param grid the arena's routing grid and cost overlay
+   * @param config the entity's movement configuration columns
+   * @param globals the match-wide movement settings
+   * @param reference the position the entity is heading for, or null when it has no reference
+   * @param neighbours the query that answers which entities are near a point
+   * @param queries the answers the movement pass pulls from the rest of the simulation
+   */
+  public MovementChain(
+      MovementState component,
+      GridEntity owner,
+      CellGrid grid,
+      MovementConfig config,
+      MovementGlobals globals,
+      ReferencePoint reference,
+      NeighbourQuery neighbours,
+      MovementQueries queries) {
     this.component = component;
     this.owner = owner;
     this.grid = grid;
     this.config = config;
     this.globals = globals;
     this.reference = reference;
-    this.others = others;
+    this.neighbours = neighbours;
     this.queries = queries;
   }
 
@@ -91,9 +125,44 @@ public final class MovementChain {
     RouteFollower.follow(component, owner, config, globals, grid, queries, this);
   }
 
-  /** Runs the push pass on the shared state. */
+  /**
+   * Runs the avoidance handler on the shared state, over the entities within the entity's collision
+   * radius - capped at 500 game units - of the point one facing vector ahead of it.
+   */
+  public void avoidance() {
+    int radius = Math.min(owner.getCollisionRadius(), AvoidanceHandler.QUERY_RADIUS_CLAMP);
+    List<GridEntity> near =
+        neighbours.near(owner.getX() + owner.getDirX(), owner.getY() + owner.getDirY(), radius);
+    try {
+      AvoidanceHandler.avoidance(component, owner, near, queries, this);
+    } finally {
+      neighbours.release(near);
+    }
+  }
+
+  /**
+   * Runs the push pass on the shared state, over the entities within the entity's collision radius
+   * plus the query margin of its own position.
+   */
   public void pushPass() {
-    PushPass.pushPass(component, owner, others, queries, this);
+    List<GridEntity> near =
+        neighbours.near(
+            owner.getX(), owner.getY(), owner.getCollisionRadius() + PushPass.QUERY_MARGIN);
+    try {
+      PushPass.pushPass(component, owner, near, queries, this);
+    } finally {
+      neighbours.release(near);
+    }
+    pushContributions = Math.max(pushContributions, component.getPushCount());
+  }
+
+  /**
+   * The largest number of neighbours the push pass accumulated a push from in one run during this
+   * visit. The displacement zeroes the accumulators as it spends them, so this is the only record
+   * left of whether the entity was pushed at all this tick.
+   */
+  public int pushContributions() {
+    return pushContributions;
   }
 
   /**
@@ -107,20 +176,31 @@ public final class MovementChain {
    */
   public MovementOutcome displace(
       int targetX, int targetY, int budget, int updateFacing, int attackFlag) {
-    Displacement.displace(
-        component,
-        owner,
-        grid,
-        config,
-        globals,
-        queries,
-        this,
-        targetX,
-        targetY,
-        budget,
-        updateFacing,
-        attackFlag);
+    int step =
+        Displacement.displace(
+            component,
+            owner,
+            grid,
+            config,
+            globals,
+            queries,
+            this,
+            targetX,
+            targetY,
+            budget,
+            updateFacing,
+            attackFlag);
+    largestDisplacementStep = Math.max(largestDisplacementStep, step);
     return new MovementOutcome(owner.getX(), owner.getY(), component.getWaypointReached());
+  }
+
+  /**
+   * The largest step, in game units, any displacement of this visit was allowed to spend: the
+   * smaller of the visit's budget, the distance left to the waypoint and the 250-unit substep cap.
+   * It does not include whatever a push added on top of that step.
+   */
+  public int largestDisplacementStep() {
+    return largestDisplacementStep;
   }
 
   /** Recomputes the route direction pair from the route's next waypoint. */

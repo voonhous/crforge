@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.move;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.Route;
 
 /**
@@ -35,6 +38,14 @@ class StubMovementQueries implements MovementQueries {
   int facingUpdateSuppressed;
   int hovering;
   Route searchResult = new Route();
+
+  /** Per-neighbour answers the avoidance handler pulls, keyed by the neighbour itself. */
+  final Map<GridEntity, Integer> neighbourContact = new IdentityHashMap<>();
+
+  final Map<GridEntity, Integer> neighbourBlend = new IdentityHashMap<>();
+
+  final Map<GridEntity, Integer> neighbourSpecialLoad = new IdentityHashMap<>();
+
   GridMoveEntity entityView = new GridMoveEntity(5, 1, false, false);
 
   @Override
@@ -160,5 +171,20 @@ class StubMovementQueries implements MovementQueries {
   @Override
   public int hovering() {
     return hovering;
+  }
+
+  @Override
+  public int neighbourAcceptsContact(GridEntity other) {
+    return neighbourContact.getOrDefault(other, 1);
+  }
+
+  @Override
+  public int neighbourAvoidanceBlend(GridEntity other) {
+    return neighbourBlend.getOrDefault(other, 0);
+  }
+
+  @Override
+  public int neighbourSpecialLoadPending(GridEntity other) {
+    return neighbourSpecialLoad.getOrDefault(other, 0);
   }
 }

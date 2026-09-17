@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +31,7 @@ import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.SpatialIndex;
+import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.GridMoveEntity;
 import org.crforge.core.pathfinding.move.MovementChain;
@@ -39,6 +41,7 @@ import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementQueries;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.MovementVisit;
+import org.crforge.core.pathfinding.move.NeighbourQuery;
 import org.crforge.core.pathfinding.move.ReferencePoint;
 import org.crforge.core.pathfinding.move.RouteBeyondReference;
 import org.crforge.core.pathfinding.move.SpeedBudget;
@@ -131,6 +134,44 @@ public class GridPathfindingSystem {
   /** This tick's managed troops in creation order. */
   private final List<Troop> managedTroops = new ArrayList<>();
 
+  /** The grid state behind each managed troop's view, so a neighbour's own state can be read. */
+  private final Map<GridEntity, GridUnitState> unitStates = new IdentityHashMap<>();
+
+  /**
+   * How many neighbours pushed each managed troop during the most recent movement update, keyed by
+   * entity id. The displacement zeroes the accumulators as it spends them, so this is what is left
+   * to look at afterwards.
+   */
+  private final Map<Long, Integer> pushContributions = new HashMap<>();
+
+  /**
+   * The movement budget each managed troop was given during the most recent movement update, in
+   * game units, keyed by entity id.
+   */
+  private final Map<Long, Integer> lastSpeedBudget = new HashMap<>();
+
+  /**
+   * The largest step any displacement of each managed troop was allowed to spend during the most
+   * recent movement update, in game units, keyed by entity id.
+   */
+  private final Map<Long, Integer> lastDisplacementStep = new HashMap<>();
+
+  /**
+   * The cell each managed troop's route preparation last chose to stop at, packed as {@code (column
+   * << 16) | row}, or -1 when the scan found nothing, keyed by entity id.
+   */
+  private final Map<Long, Integer> lastEndpoint = new HashMap<>();
+
+  /**
+   * Number of ticks this system has driven. It is stepped at the head of {@link
+   * #updateTargeting(Collection)}, right after the spatial index and the footprint overlay have
+   * been rebuilt, so a caller can tell that both are this tick's.
+   */
+  @Getter private long tickCount;
+
+  /** The neighbour answers both the push pass and the avoidance handler ask for. */
+  private final NeighbourQuery neighbourQuery = new GridNeighbourQuery();
+
   /**
    * Creates the system for one match.
    *
@@ -178,6 +219,71 @@ public class GridPathfindingSystem {
     return troop.getGridUnitState();
   }
 
+  /**
+   * How many neighbours pushed this troop during the most recent movement update, or zero when it
+   * was not pushed at all or is not managed here.
+   */
+  public int pushContributions(Troop troop) {
+    return pushContributions.getOrDefault(troop.getId(), 0);
+  }
+
+  /**
+   * The movement budget this troop was given during the most recent movement update, in game units,
+   * or zero when it did not move this tick or is not managed here.
+   */
+  public int speedBudget(Troop troop) {
+    return lastSpeedBudget.getOrDefault(troop.getId(), 0);
+  }
+
+  /**
+   * The largest step any of this troop's displacements was allowed to spend during the most recent
+   * movement update, in game units. It is bounded by the movement budget and does not include what
+   * a push added on top.
+   */
+  public int displacementStep(Troop troop) {
+    return lastDisplacementStep.getOrDefault(troop.getId(), 0);
+  }
+
+  /**
+   * The cell this troop's route preparation last chose to stop at to reach its target, packed as
+   * {@code (column << 16) | row}, or -1 when the scan found nothing or none was asked for.
+   */
+  public int referenceEndpoint(Troop troop) {
+    return lastEndpoint.getOrDefault(troop.getId(), -1);
+  }
+
+  /**
+   * The neighbour answers the push pass and the avoidance handler pull, taken from this tick's
+   * spatial index.
+   *
+   * <p>Both passes ask the same question with their own point and radius: the plain circle test
+   * that keeps an entity whose own collision circle reaches within the radius of the point, in the
+   * index's bucket order, with no king-tower ordering, no type mask and no team exclusion. The
+   * asking entity is in the answer and each pass skips it itself.
+   *
+   * <p>The index lends out a fixed number of result lists, so every answer is handed back as soon
+   * as the pass that asked for it has finished. When none is free the answer is the shared empty
+   * list, which is never handed back.
+   */
+  private final class GridNeighbourQuery implements NeighbourQuery {
+
+    /** What a query answers when the index has no result list to lend. */
+    private final List<GridEntity> noNeighbours = List.of();
+
+    @Override
+    public List<GridEntity> near(int x, int y, int radius) {
+      List<GridEntity> result = index.query(new SpatialQuery(x, y, radius, 0, false, false, 0, -1));
+      return result == null ? noNeighbours : result;
+    }
+
+    @Override
+    public void release(List<GridEntity> result) {
+      if (result != noNeighbours) {
+        index.release(result);
+      }
+    }
+  }
+
   // -----------------------------------------------------------------------------------------
   // The tick
   // -----------------------------------------------------------------------------------------
@@ -193,6 +299,7 @@ public class GridPathfindingSystem {
     index.rebuild(orderedViews);
     FootprintOverlay.buildOverlay(grid, orderedViews);
     grid.setChangeFlags(grid.getChanged().clone());
+    tickCount++;
 
     for (Troop troop : managedTroops) {
       GridUnitState unit = troop.getGridUnitState();
@@ -227,6 +334,10 @@ public class GridPathfindingSystem {
    *     tick; the argument is taken so both halves of the tick read the same way at the call site.
    */
   public void updateMovement(Collection<Entity> alive) {
+    pushContributions.clear();
+    lastSpeedBudget.clear();
+    lastDisplacementStep.clear();
+    lastEndpoint.clear();
     for (Troop troop : managedTroops) {
       GridUnitState unit = troop.getGridUnitState();
       GridEntity entity = unit.getEntity();
@@ -242,10 +353,14 @@ public class GridPathfindingSystem {
               unit.getMovementConfig(),
               movementGlobals,
               queries.reference(),
-              orderedViews,
+              neighbourQuery,
               queries);
       MovementVisit.movementVisit(
           unit.getMovement(), entity, null, unit.getMovementConfig(), null, queries, false, chain);
+      pushContributions.put(troop.getId(), chain.pushContributions());
+      lastSpeedBudget.put(troop.getId(), queries.lastSpeedBudget());
+      lastDisplacementStep.put(troop.getId(), chain.largestDisplacementStep());
+      lastEndpoint.put(troop.getId(), queries.lastEndpoint());
     }
 
     for (Troop troop : managedTroops) {
@@ -288,6 +403,7 @@ public class GridPathfindingSystem {
 
     orderedViews.clear();
     managedTroops.clear();
+    unitStates.clear();
     Set<Long> seen = new HashSet<>();
 
     for (Entity entity : sorted) {
@@ -307,6 +423,7 @@ public class GridPathfindingSystem {
           troop.setGridUnitState(createUnitState(troop, view));
         }
         managedTroops.add(troop);
+        unitStates.put(view, troop.getGridUnitState());
       }
     }
 
@@ -587,6 +704,12 @@ public class GridPathfindingSystem {
     private final GridUnitState unit;
     private final ReferencePoint reference;
 
+    /** The last budget this visit asked for, kept so the tick driver can report it afterwards. */
+    private int lastSpeedBudget;
+
+    /** The last endpoint this visit asked for, kept so the tick driver can report it afterwards. */
+    private int lastEndpoint = -1;
+
     private GridMovementQueries(GridUnitState unit) {
       this.unit = unit;
       TargetView target = unit.getTargeting().getReference();
@@ -623,22 +746,29 @@ public class GridPathfindingSystem {
       if (point == null) {
         return -1;
       }
-      return ReferenceEndpoint.selectEndpoint(
-          grid.getWidth(),
-          grid.getHeight(),
-          entity.getX(),
-          entity.getY(),
-          referenceCol,
-          referenceRow,
-          radius,
-          entity.isAir(),
-          PathfindingGlobals.KS_POS_TO_TARGET_FLYING_NO_WATER,
-          PathfindingGlobals.KS_POS_TO_TARGET_GROUND_AVOID_BUILDINGS,
-          ReferenceEndpoint.everyCellInBounds(grid.getWidth(), grid.getHeight()),
-          (x, y) -> FixedMath.squaredDistance(point.x(), point.y(), x, y),
-          grid::water,
-          (col, row) -> CellTests.overlayBlocks(grid, col, row),
-          null);
+      lastEndpoint =
+          ReferenceEndpoint.selectEndpoint(
+              grid.getWidth(),
+              grid.getHeight(),
+              entity.getX(),
+              entity.getY(),
+              referenceCol,
+              referenceRow,
+              radius,
+              entity.isAir(),
+              PathfindingGlobals.KS_POS_TO_TARGET_FLYING_NO_WATER,
+              PathfindingGlobals.KS_POS_TO_TARGET_GROUND_AVOID_BUILDINGS,
+              ReferenceEndpoint.everyCellInBounds(grid.getWidth(), grid.getHeight()),
+              (x, y) -> FixedMath.squaredDistance(point.x(), point.y(), x, y),
+              grid::water,
+              (col, row) -> CellTests.overlayBlocks(grid, col, row),
+              null);
+      return lastEndpoint;
+    }
+
+    /** The last endpoint this visit asked for, or -1 when it asked for none. */
+    private int lastEndpoint() {
+      return lastEndpoint;
     }
 
     @Override
@@ -671,7 +801,14 @@ public class GridPathfindingSystem {
 
     @Override
     public int speedBudget() {
-      return SpeedBudget.speedBudget(speedInputs(), unit.getSpeedConfig(), SpeedGlobals.standard());
+      lastSpeedBudget =
+          SpeedBudget.speedBudget(speedInputs(), unit.getSpeedConfig(), SpeedGlobals.standard());
+      return lastSpeedBudget;
+    }
+
+    /** The last budget this visit asked for, zero when it asked for none. */
+    private int lastSpeedBudget() {
+      return lastSpeedBudget;
     }
 
     @Override
@@ -738,6 +875,36 @@ public class GridPathfindingSystem {
     @Override
     public GridMoveEntity entityView() {
       return GridMoveEntity.of(unit.getEntity(), unit.getMovementConfig());
+    }
+
+    /**
+     * Every entity on the arena accepts contact from every other. Nothing in the simulator turns
+     * this down today, and what would is not documented, so the answer is left at accepting.
+     */
+    @Override
+    public int neighbourAcceptsContact(GridEntity other) {
+      return 1;
+    }
+
+    /**
+     * The blend of a neighbour this system also drives. A neighbour it does not drive - an air
+     * unit, a jumping unit, a building - has no blend of its own and answers zero, which makes the
+     * avoidance handler fall back to the side the neighbour stands on.
+     */
+    @Override
+    public int neighbourAvoidanceBlend(GridEntity other) {
+      GridUnitState state = unitStates.get(other);
+      return state == null ? 0 : state.getMovement().getAvoidanceBlend();
+    }
+
+    /**
+     * Whether a neighbour this system also drives has a special attack loaded. A neighbour it does
+     * not drive answers zero, as an entity with no targeting component does.
+     */
+    @Override
+    public int neighbourSpecialLoadPending(GridEntity other) {
+      GridUnitState state = unitStates.get(other);
+      return state != null && state.getTargeting().isSpecialLoadPending() ? 1 : 0;
     }
   }
 }

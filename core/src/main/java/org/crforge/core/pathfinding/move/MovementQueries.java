@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.Route;
 
 /**
@@ -234,5 +235,36 @@ public interface MovementQueries {
   /** 1 when the entity belongs to side 0, which decides how coincident units separate. */
   default int ownerSideZero() {
     return ownerSide() == 0 ? 1 : 0;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Per-neighbour answers the avoidance handler pulls
+  // ---------------------------------------------------------------------------------------------
+
+  /**
+   * A per-neighbour enable bit the avoidance handler reads before it considers that neighbour at
+   * all: the neighbour is asked whether it accepts physical contact from the entity looking around,
+   * and is dropped when it does not. Only the low bit is tested. Its writers are not documented, so
+   * the name describes only where it is read; supplied as accepting.
+   */
+  default int neighbourAcceptsContact(GridEntity other) {
+    return 1;
+  }
+
+  /**
+   * The avoidance blend a moving neighbour has of its own, which decides the side the entity steers
+   * to when nothing else does. Supplied as 0, which falls back to the side the neighbour stands on.
+   */
+  default int neighbourAvoidanceBlend(GridEntity other) {
+    return 0;
+  }
+
+  /**
+   * Non-zero when a moving neighbour has a special attack loaded, which makes it count as facing
+   * nowhere and therefore block whatever direction it is pointing in. Supplied as 0, which also
+   * covers a neighbour with no targeting component at all.
+   */
+  default int neighbourSpecialLoadPending(GridEntity other) {
+    return 0;
   }
 }
