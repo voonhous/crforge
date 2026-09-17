@@ -8,7 +8,7 @@ import org.crforge.core.pathfinding.grid.Route;
 
 /**
  * Working state of one entity's movement component: the route it follows, the timers the follower
- * counts, the push accumulators the push pass fills and the scratch pair the waypoint selector and
+ * counts, the push accumulators the push pass fills and the work vector the waypoint selector and
  * the displacement helper share.
  *
  * <p>Nothing that belongs to the entity itself lives here; positions, facing, state and flags are
@@ -119,11 +119,11 @@ public final class MovementState {
   private int pushCount;
 
   /**
-   * Scratch pair shared by the waypoint selector, which writes the chosen waypoint into it, and the
+   * Work vector shared by the waypoint selector, which writes the chosen waypoint into it, and the
    * displacement helper, which reuses it for the blended and averaged push vectors. The two uses
    * alias deliberately: keep one pair rather than giving each step its own.
    */
-  private final int[] scratch = new int[2];
+  private final int[] workVector = new int[2];
 
   /** Set by the push pass when the entity cannot be moved out of its cell. */
   private int pushStuck;
@@ -158,10 +158,10 @@ public final class MovementState {
     return state;
   }
 
-  /** Overwrites the scratch pair with the given values. */
-  public void setScratch(int x, int y) {
-    scratch[0] = x;
-    scratch[1] = y;
+  /** Overwrites the work vector with the given values. */
+  public void setWorkVector(int x, int y) {
+    workVector[0] = x;
+    workVector[1] = y;
   }
 
   /** Clears the accumulated push vector, its count and the two push bits. */

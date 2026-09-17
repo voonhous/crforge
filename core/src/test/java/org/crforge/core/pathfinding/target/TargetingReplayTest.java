@@ -11,20 +11,21 @@ import java.util.List;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.index.SpatialIndex;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Replays the recorded reference trajectories through the targeting pass.
+ * Replays the reference trajectories through the targeting pass.
  *
- * <p>The recordings hold one line per tick with the unit's position, its state and the target it
- * held. Movement belongs to another pass, so the unit is put at the recorded position of the
- * previous tick and only the targeting pass is run; the target it chooses and the state it ends in
- * are compared with the recording.
+ * <p>The trajectories hold one line per tick with the unit's position, its state and the target it
+ * held. Movement belongs to another pass, so the unit is put at the position of the previous tick
+ * and only the targeting pass is run; the target it chooses and the state it ends in are compared
+ * with the trajectory.
  *
- * <p>The conditions the recordings were made under: one Knight of the top side and the six crown
- * towers on the standard arena, nothing else, and a deployment that ends in the moving state after
- * twenty ticks.
+ * <p>The conditions the trajectories were produced under: one Knight of the top side and the six
+ * crown towers on the standard arena, nothing else, and a deployment that ends in the moving state
+ * after twenty ticks.
  */
 class TargetingReplayTest {
 
@@ -38,6 +39,23 @@ class TargetingReplayTest {
   private static final int KNIGHT_HIT_SPEED_MS = 1200;
   private static final int KNIGHT_LOAD_TIME_MS = 700;
 
+  /**
+   * The six crown towers of the standard arena in placement order - king, left princess, right
+   * princess for the bottom side and then the same for the top side - with their positions in game
+   * units and their collision radii. The trajectories were produced with exactly this layout.
+   */
+  private static final List<TowerFixture> TOWERS =
+      List.of(
+          new TowerFixture("KingTower_0_0", 9000, 3000, 0, true),
+          new TowerFixture("PrincessTower_0_1", 3500, 6500, 0, false),
+          new TowerFixture("PrincessTower_0_2", 14500, 6500, 0, false),
+          new TowerFixture("KingTower_1_0", 9000, 29000, 1, true),
+          new TowerFixture("PrincessTower_1_1", 3500, 25500, 1, false),
+          new TowerFixture("PrincessTower_1_2", 14500, 25500, 1, false));
+
+  /** One crown tower of the standard layout. */
+  private record TowerFixture(String name, int x, int y, int side, boolean king) {}
+
   /** One recorded tick. */
   private record Record(int tick, int x, int y, int state, String reference) {}
 
@@ -49,7 +67,7 @@ class TargetingReplayTest {
     private final TargetingState state = new TargetingState();
     private final SelectionChain chain;
     private final GridEntity unit = new GridEntity();
-    private final TargetingMovementView movement = new TargetingMovementView();
+    private final MovementState movement = new MovementState();
     private final List<Integer> hitTicks = new ArrayList<>();
     private int tick;
 
@@ -96,26 +114,19 @@ class TargetingReplayTest {
           });
 
       int id = 1;
-      for (JsonNode node : fixture.get("towers")) {
-        String name = node.get("name").asText();
-        int x = node.get("x").asInt();
-        int y = node.get("y").asInt();
-        int towerSide = node.get("side").asInt();
-        boolean king = name.startsWith("KingTower");
+      for (TowerFixture fixtureTower : TOWERS) {
+        boolean king = fixtureTower.king();
 
         GridEntity tower = new GridEntity();
-        tower.setName(name);
+        tower.setName(fixtureTower.name());
         tower.setId(id++);
-        tower.setSide(towerSide);
-        tower.setX(x);
-        tower.setY(y);
-        // Road 1 covers the left half of the arena and road 2 the right half; the lane assignment
-        // itself belongs to the grid pass.
-        tower.setLane(x < 9000 ? 1 : 2);
+        tower.setSide(fixtureTower.side());
+        tower.setX(fixtureTower.x());
+        tower.setY(fixtureTower.y());
         tower.setCollisionRadius(king ? 1400 : 1000);
         tower.setBuilding(true);
         tower.setKing(king);
-        tower.setSlot170(1);
+        tower.setSlot170(king ? 1 : 0);
         tower.setSlot190(1);
         entities.add(tower);
 
@@ -125,7 +136,7 @@ class TargetingReplayTest {
                 king
                     ? TargetingConfig.tower("KingTower", 7000, 7000, 1400, 1000, 500, false)
                     : TargetingConfig.tower("PrincessTower", 7500, 7500, 1000, 800, 0, true));
-        if (towerSide != side) {
+        if (fixtureTower.side() != side) {
           chain.registerTower(view);
           if (king) {
             chain.setSeed(view);
@@ -186,7 +197,7 @@ class TargetingReplayTest {
 
   private static Replay load(String name) throws IOException {
     try (InputStream in =
-        TargetingReplayTest.class.getResourceAsStream("/pathfinding/" + name + ".json")) {
+        TargetingReplayTest.class.getResourceAsStream("/pathfinding/golden/" + name + ".json")) {
       assertThat(in).as("fixture %s", name).isNotNull();
       return new Replay(new ObjectMapper().readTree(in));
     }

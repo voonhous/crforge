@@ -18,7 +18,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * no reference keeps its own x and only walks along the arena's length.
  *
  * <p>The answer is returned as a fresh {@code {x, y}} pair; the callers that need it kept decide
- * for themselves whether to copy it into the component's scratch pair.
+ * for themselves whether to copy it into the component's work vector.
  */
 public final class WaypointSelector {
 

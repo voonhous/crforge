@@ -10,9 +10,9 @@ import java.util.List;
  * The two that have no default are the candidate selection and the hit sink, because the visit
  * cannot invent either.
  *
- * <p>The three supplied time answers are the ones the recorded reference trajectories were produced
- * with: each visit advances the wind-up timers by one tick and the attack timer by one tick, and
- * adds nothing to the burst timer.
+ * <p>The three supplied time answers are the ones the reference trajectories were produced with:
+ * each visit advances the wind-up timers by one tick and the attack timer by one tick, and adds
+ * nothing to the burst timer.
  */
 public interface TargetingQueries {
 

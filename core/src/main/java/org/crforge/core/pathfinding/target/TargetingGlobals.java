@@ -7,10 +7,9 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * The balance switches the targeting visit and the validator read that are not already part of
  * {@link PathfindingGlobals}.
  *
- * <p>Five of the values below are answered as fixed constants by the recorded reference
- * trajectories rather than taken from the published data, and {@link #standard1v1()} answers them
- * the same way so the simulation reproduces those recordings exactly. Each one says so in its
- * Javadoc.
+ * <p>Five of the values below are answered as fixed constants by the reference trajectories rather
+ * than taken from the published data, and {@link #standard1v1()} answers them the same way so the
+ * simulation reproduces those trajectories exactly. Each one says so in its Javadoc.
  *
  * @param rangeExtensionToKeepTarget extra range, in game units, a unit is allowed before it gives
  *     up a reference it already has
@@ -47,7 +46,7 @@ public record TargetingGlobals(
     int pendingDamageIgnoreIfDurationLess) {
 
   /**
-   * The switches as the standard 1v1 mode answers them for the recorded reference trajectories: the
+   * The switches as the standard 1v1 mode answers them for the reference trajectories: the
    * published range extension and wind-up reload, and the five switches listed above answered as
    * constants.
    */

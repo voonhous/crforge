@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.state;
 
 import java.util.List;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -42,24 +43,6 @@ public final class EntityStateVisit {
   /** The x value that marks an entity's position as never having been written. */
   private static final int UNSET_POSITION = Integer.MAX_VALUE;
 
-  /** The entity takes no part in physical interaction with other objects. */
-  private static final long DISABLE_PHYSICAL = 1L << 47;
-
-  /** The entity's ability cooldown is held. */
-  private static final long ABILITY_COOLDOWN_PAUSED = 1L << 55;
-
-  /** The entity is casting an ability. */
-  private static final long CASTING_ABILITY = 1L << 51;
-
-  /** Movement is forbidden outright. */
-  private static final long NO_MOVE = 1L << 6;
-
-  /** Movement is forbidden except when the entity is pulled by something else. */
-  private static final long NO_MOVE_ALLOW_ATTRACT = 1L << 58;
-
-  /** The entity has been captured by the other side. */
-  private static final long CAPTURED = 1L << 46;
-
   private EntityStateVisit() {
     // Utility class
   }
@@ -89,11 +72,11 @@ public final class EntityStateVisit {
     int word = entity.getState();
     if ((entity.getState() & ~1) == GridEntityState.SPAWN_PATHFIND) {
       MovementState component = entity.isMovementActive() ? movement : null;
-      entity.setPendingFlags(entity.getPendingFlags() | DISABLE_PHYSICAL);
+      entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.DISABLE_PHYSICAL);
       if (component != null
           && component.getRoute().isEmpty()
-          && (entity.getFlags() & (NO_MOVE_ALLOW_ATTRACT | NO_MOVE)) == 0
-          && (entity.getFlags() & CAPTURED) == 0) {
+          && (entity.getFlags() & (EntityFlags.NO_MOVE_ALLOW_ATTRACT | EntityFlags.NO_MOVE)) == 0
+          && (entity.getFlags() & EntityFlags.CAPTURED) == 0) {
         word = arrival(entity, component, config, queries, chain, setter);
       } else {
         word = entity.getState();
@@ -170,13 +153,13 @@ public final class EntityStateVisit {
         timers.setAbilityReady(false);
         setter.setState(entity, GridEntityState.CASTING);
       } else {
-        entity.setPendingFlags(entity.getPendingFlags() | ABILITY_COOLDOWN_PAUSED);
+        entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
       }
     }
 
     // 8. The casting and follow-up countdowns.
     if (entity.getState() == GridEntityState.CASTING) {
-      entity.setPendingFlags(entity.getPendingFlags() | CASTING_ABILITY);
+      entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.CASTING_ABILITY);
       chain.add("ability_cast_active");
       if (queries.abilityCastActive() && config.abilityPresent() && config.abilityHoldsState()) {
         ResumeHelper.resume(entity, config, queries, chain, setter);

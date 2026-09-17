@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.target;
 
 import java.util.List;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 
@@ -53,7 +54,7 @@ public final class CandidateSelector {
     if (state == STATE_DASHING || state == STATE_JUMPING) {
       return;
     }
-    if ((t.getOwner().getFlags() & TargetingFlags.LOCK_TARGET) != 0) {
+    if ((t.getOwner().getFlags() & EntityFlags.LOCK_TARGET) != 0) {
       return;
     }
 

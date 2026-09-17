@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
 import java.util.List;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -36,18 +37,6 @@ public final class PushPass {
   /** Sideways nudge, in game units, applied when a building sits on the arena's edge. */
   private static final int EDGE_SEPARATION = 256;
 
-  /** The entity takes no part in physical interaction with other objects. */
-  private static final long DISABLE_PHYSICAL = 1L << 47;
-
-  /** The entity is treated as an obstacle to steer around rather than a body to push. */
-  private static final long AVOIDANCE_AS_OBSTACLE = 1L << 54;
-
-  /** The entity may not be pushed by the other side. */
-  private static final long NO_PUSHED_BY_ENEMY = 1L << 17;
-
-  /** The entity may not be pushed by its own side. */
-  private static final long NO_PUSHED_BY_ALLY = 1L << 53;
-
   private PushPass() {
     // Utility class
   }
@@ -77,10 +66,10 @@ public final class PushPass {
     if (!queries.ownerPushEnabled()) {
       return;
     }
-    if ((owner.getFlags() & DISABLE_PHYSICAL) != 0) {
+    if ((owner.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {
       return;
     }
-    if ((owner.getFlags() & AVOIDANCE_AS_OBSTACLE) != 0) {
+    if ((owner.getFlags() & EntityFlags.AVOIDANCE_AS_OBSTACLE) != 0) {
       return;
     }
     int ownerX = owner.getX();
@@ -94,8 +83,8 @@ public final class PushPass {
       return;
     }
     int staticRadiusTerm = Math.min(radius, STATIC_RADIUS_CLAMP);
-    boolean noEnemyPush = (owner.getFlags() & NO_PUSHED_BY_ENEMY) != 0;
-    boolean noAllyPush = (owner.getFlags() & NO_PUSHED_BY_ALLY) != 0;
+    boolean noEnemyPush = (owner.getFlags() & EntityFlags.NO_PUSHED_BY_ENEMY) != 0;
+    boolean noAllyPush = (owner.getFlags() & EntityFlags.NO_PUSHED_BY_ALLY) != 0;
     int staticNeighbours = 0;
 
     for (GridEntity other : others) {
@@ -109,7 +98,7 @@ public final class PushPass {
       if (!other.isSlotE0()) {
         continue;
       }
-      if ((other.getFlags() & DISABLE_PHYSICAL) != 0) {
+      if ((other.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {
         continue;
       }
       chain.mark("neighbour_alive");
@@ -124,12 +113,12 @@ public final class PushPass {
         if (noEnemyPush) {
           continue;
         }
-        mask = NO_PUSHED_BY_ENEMY;
+        mask = EntityFlags.NO_PUSHED_BY_ENEMY;
       } else {
         if (noAllyPush) {
           continue;
         }
-        mask = NO_PUSHED_BY_ALLY;
+        mask = EntityFlags.NO_PUSHED_BY_ALLY;
       }
       int massTerm = (other.getFlags() & mask) != 0 ? -1 : otherMass;
       boolean neighbourMoves = other.isMovementActive();

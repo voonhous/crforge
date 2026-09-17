@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -52,12 +53,6 @@ public final class RouteFollower {
   /** Height below which a jump arc sample is not recorded at all. */
   private static final int MIN_ARC_HEIGHT = 16;
 
-  /** Movement is forbidden outright. */
-  private static final long NO_MOVE = 1L << 6;
-
-  /** Movement is forbidden except when the entity is pulled by something else. */
-  private static final long NO_MOVE_ALLOW_ATTRACT = 1L << 58;
-
   private RouteFollower() {
     // Utility class
   }
@@ -82,7 +77,7 @@ public final class RouteFollower {
       MovementQueries queries,
       MovementChain chain) {
     long flags = owner.getFlags();
-    if ((flags & (NO_MOVE | NO_MOVE_ALLOW_ATTRACT)) != 0) {
+    if ((flags & (EntityFlags.NO_MOVE | EntityFlags.NO_MOVE_ALLOW_ATTRACT)) != 0) {
       if (component.getChargeProgress() != MovementState.CHARGE_INACTIVE) {
         if (config.chargeRange() == 0) {
           chain.mark("modifier_component");
@@ -105,7 +100,7 @@ public final class RouteFollower {
           || state == GridEntityState.ROUTE_FOLLOWING_ALTERNATE) {
         chain.mark("set_state_standing");
       }
-      if ((flags & NO_MOVE) != 0) {
+      if ((flags & EntityFlags.NO_MOVE) != 0) {
         return;
       }
     }
@@ -196,7 +191,7 @@ public final class RouteFollower {
       int speed) {
     int[] waypoint =
         WaypointSelector.selectWaypoint(component, owner, config, globals, queries, chain);
-    component.setScratch(waypoint[0], waypoint[1]);
+    component.setWorkVector(waypoint[0], waypoint[1]);
     chain.mark("facing_gate");
     step(chain, component, owner, waypoint, speed, queries.facingGate() & 1, 0);
   }
@@ -220,7 +215,7 @@ public final class RouteFollower {
     while (true) {
       int[] waypoint =
           WaypointSelector.selectWaypoint(component, owner, config, globals, queries, chain);
-      component.setScratch(waypoint[0], waypoint[1]);
+      component.setWorkVector(waypoint[0], waypoint[1]);
       int nextRemaining = remaining - SUBSTEP;
       int stepSize = speed > SUBSTEP - 1 ? Math.min(remaining, SUBSTEP) : remaining;
       chain.mark("facing_gate");

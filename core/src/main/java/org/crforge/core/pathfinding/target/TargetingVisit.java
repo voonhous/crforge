@@ -2,8 +2,10 @@ package org.crforge.core.pathfinding.target;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.move.MovementState;
 
 /**
  * The per-tick targeting pass of one entity.
@@ -56,7 +58,7 @@ public final class TargetingVisit {
   public static void targetingVisit(
       TargetingState t,
       GridEntity e,
-      TargetingMovementView movement,
+      MovementState movement,
       TargetingQueries queries,
       TargetingOutcome outcome) {
     TargetingConfig cfg = t.getConfig();
@@ -86,7 +88,7 @@ public final class TargetingVisit {
     boolean pushbackBlocks = false;
     boolean attackPushbackRuns = false;
     if (movement != null) {
-      pushbackBlocks = movement.getPushbackInFlight() != 0 || movement.getBlockCountdownMs() > 0;
+      pushbackBlocks = movement.getPushbackInFlight() != 0 || movement.getBlockCountdown() > 0;
       attackPushbackRuns = movement.getAttackPushback() != 0;
     }
     if (cfg.specialChargeTime() >= 1) {
@@ -164,10 +166,10 @@ public final class TargetingVisit {
   private static void applyDashHits(
       TargetingState t,
       GridEntity e,
-      TargetingMovementView movement,
+      MovementState movement,
       TargetingConfig cfg,
       TargetingQueries queries) {
-    e.setPendingFlags(e.getPendingFlags() | TargetingFlags.DASHING);
+    e.setPendingFlags(e.getPendingFlags() | EntityFlags.DASHING);
     if (queries.dashDamageIndex(0) < 1) {
       return;
     }
@@ -305,7 +307,7 @@ public final class TargetingVisit {
       clearReference(t, e, outcome);
     }
     if (t.getReference() != null
-        && (t.getReference().getEntity().getFlags() & TargetingFlags.UNTARGETABLE) != 0) {
+        && (t.getReference().getEntity().getFlags() & EntityFlags.UNTARGETABLE) != 0) {
       clearReference(t, e, outcome);
     }
   }
@@ -316,7 +318,7 @@ public final class TargetingVisit {
     if (cfg.dashCooldown() <= 0) {
       return;
     }
-    if (t.getDashWindupMs() >= 1 && (e.getFlags() & TargetingFlags.NO_DASH) != 0) {
+    if (t.getDashWindupMs() >= 1 && (e.getFlags() & EntityFlags.NO_DASH) != 0) {
       t.setDashWindupMs(0);
     }
     boolean keep = t.getReference() != null && queries.dashRangeReached(t.getReference());
@@ -340,7 +342,7 @@ public final class TargetingVisit {
   private static void runAttackLogic(
       TargetingState t,
       GridEntity e,
-      TargetingMovementView movement,
+      MovementState movement,
       TargetingConfig cfg,
       TargetingGlobals globals,
       TargetingQueries queries,
@@ -425,7 +427,7 @@ public final class TargetingVisit {
   private static void attack(
       TargetingState t,
       GridEntity e,
-      TargetingMovementView movement,
+      MovementState movement,
       TargetingConfig cfg,
       TargetingGlobals globals,
       TargetingQueries queries,
@@ -438,7 +440,7 @@ public final class TargetingVisit {
     TargetView reference = t.getReference();
     int attackTimerOnEntry = t.getAttackTimerMs();
     boolean withinPlainRange = reference != null && RangeTest.referenceInRange(t, reference, 0);
-    boolean mayNotAttack = (e.getFlags() & TargetingFlags.NO_ATTACK) != 0;
+    boolean mayNotAttack = (e.getFlags() & EntityFlags.NO_ATTACK) != 0;
     if (mayNotAttack) {
       t.clearAttack();
       t.setSpecialChargeTimerMs(0);
@@ -454,7 +456,7 @@ public final class TargetingVisit {
 
     if (cfg.specialRange() >= 1
         && !t.isSpecialLoadPending()
-        && (e.getFlags() & TargetingFlags.NO_SPECIAL_ATTACK) == 0
+        && (e.getFlags() & EntityFlags.NO_SPECIAL_ATTACK) == 0
         && reference != null
         && RangeTest.rangeTest(
             reference, e.getX(), e.getY(), cfg.specialRange(), cfg.specialMinRange(), false)

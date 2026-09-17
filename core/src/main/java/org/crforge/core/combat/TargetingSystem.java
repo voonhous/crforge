@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Predicate;
+import lombok.Setter;
 import org.crforge.core.component.Combat;
 import org.crforge.core.effect.AppliedEffect;
 import org.crforge.core.entity.base.Entity;
@@ -24,6 +26,13 @@ public class TargetingSystem {
   private static final int CROWDEST_NEIGHBOR_RADIUS = 2 * GameUnits.UNITS_PER_TILE;
 
   private final Random rng;
+
+  /**
+   * Troops whose targets are chosen elsewhere. A troop this answers true for is skipped entirely,
+   * so nothing here writes its combat target. The default answers false for every troop, which is
+   * the behaviour of a match that has no other target source.
+   */
+  @Setter private Predicate<Troop> externallyManaged = troop -> false;
 
   public TargetingSystem() {
     this(42);
@@ -51,8 +60,10 @@ public class TargetingSystem {
         continue;
       }
 
-      // Troops cannot target while deploying or tunneling underground
-      if (entity instanceof Troop troop && (troop.isDeploying() || troop.isTunneling())) {
+      // Troops cannot target while deploying or tunneling underground, and a troop whose target
+      // is chosen elsewhere is left alone entirely.
+      if (entity instanceof Troop troop
+          && (troop.isDeploying() || troop.isTunneling() || externallyManaged.test(troop))) {
         continue;
       }
       // Buildings cannot target while deploying

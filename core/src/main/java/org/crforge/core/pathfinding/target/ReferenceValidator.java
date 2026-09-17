@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 
@@ -88,7 +89,7 @@ public final class ReferenceValidator {
     if (!skipTeamCheck && SpatialIndex.team(target.getEntity()) == SpatialIndex.team(owner)) {
       return false;
     }
-    if ((target.getEntity().getFlags() & TargetingFlags.UNTARGETABLE) != 0) {
+    if ((target.getEntity().getFlags() & EntityFlags.UNTARGETABLE) != 0) {
       return false;
     }
     if (queries.ownerIgnores(target.id())) {

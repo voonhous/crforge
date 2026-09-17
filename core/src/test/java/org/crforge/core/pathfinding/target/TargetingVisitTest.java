@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +17,7 @@ class TargetingVisitTest {
 
   private TargetingState knight;
   private GridEntity unit;
-  private TargetingMovementView movement;
+  private MovementState movement;
   private TargetingOutcome outcome;
   private TargetView tower;
   private Queries queries;
@@ -78,7 +80,7 @@ class TargetingVisitTest {
         new TargetView(
             towerEntity, TargetingConfig.tower("PrincessTower", 7500, 7500, 1000, 800, 0, true));
 
-    movement = new TargetingMovementView();
+    movement = new MovementState();
     outcome = new TargetingOutcome();
     queries = new Queries();
     queries.selection = tower;
@@ -244,7 +246,7 @@ class TargetingVisitTest {
   void theNoAttackFlagClearsTheAttack() {
     knight.setReference(tower);
     knight.setAttackTimerMs(600);
-    unit.setFlags(TargetingFlags.NO_ATTACK);
+    unit.setFlags(EntityFlags.NO_ATTACK);
 
     visit();
 

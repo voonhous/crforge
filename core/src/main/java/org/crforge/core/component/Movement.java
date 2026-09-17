@@ -24,6 +24,13 @@ public class Movement {
 
   private final MovementType type;
 
+  /**
+   * The unit's speed column in game units per tick, as the card data carries it. It is set wherever
+   * a component is built from a unit's stats. Zero for a building, and zero for a component built
+   * by hand rather than from stats.
+   */
+  @Setter private int rawSpeed;
+
   @Setter private boolean canMoveFlag = true;
 
   @Setter private boolean ignorePushback;
@@ -146,7 +153,7 @@ public class Movement {
   /**
    * Ticks the attack dash displacement, moving the position each frame. During the LUNGING phase
    * the entity moves toward the target; when that timer expires it flips to the RETURNING phase
-   * with reversed direction and the same speed/duration so the entity snaps back to its origin.
+   * with the direction negated and the same speed/duration so the entity snaps back to its origin.
    */
   public void tickAttackDash(Position position, float deltaTime) {
     if (attackDashTimeRemaining <= 0) {
@@ -159,7 +166,7 @@ public class Movement {
     // When the current phase timer expires, transition or finish
     if (attackDashTimeRemaining <= 0) {
       if (attackDashPhase == AttackDashPhase.LUNGING) {
-        // Flip to return phase: reverse direction, reset timer
+        // Flip to return phase: negate the direction, reset timer
         attackDashDirX = -attackDashDirX;
         attackDashDirY = -attackDashDirY;
         attackDashTimeRemaining = attackDashDuration;

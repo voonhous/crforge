@@ -74,7 +74,7 @@ class MovementVisitTest {
     assertThat(owner.getX()).isEqualTo(3500);
     assertThat(owner.getY()).isEqualTo(10000);
     assertThat(component.getWaypointReached()).isEqualTo(1);
-    assertThat(component.getScratch()).containsExactly(3500, 10000);
+    assertThat(component.getWorkVector()).containsExactly(3500, 10000);
     assertThat(component.getMoveTimeMs()).isEqualTo(50);
     assertThat(chain.markers())
         .containsExactly(
@@ -100,7 +100,7 @@ class MovementVisitTest {
 
     assertThat(owner.getX()).isEqualTo(3518);
     assertThat(owner.getY()).isEqualTo(10056);
-    assertThat(component.getScratch()).containsExactly(3750, 10750);
+    assertThat(component.getWorkVector()).containsExactly(3750, 10750);
     assertThat(component.getRoute().isEmpty()).isTrue();
     assertThat(component.getRouteDirX()).isZero();
     assertThat(component.getRouteDirY()).isZero();

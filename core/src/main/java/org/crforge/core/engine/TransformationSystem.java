@@ -119,6 +119,7 @@ class TransformationSystem {
             kamikazeStats.getCollisionRadius(),
             kamikazeStats.getVisualRadius(),
             kamikazeStats.getMovementType());
+    movement.setRawSpeed(kamikazeStats.getRawSpeed());
     movement.setIgnorePushback(kamikazeStats.isIgnorePushback());
 
     Troop kamikaze =

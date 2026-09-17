@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding.target;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -94,7 +95,7 @@ class ReferenceValidatorTest {
   @Test
   @DisplayName("the untargetable flag hides an entity from everything")
   void untargetableIsRefused() {
-    enemyTower.getEntity().setFlags(TargetingFlags.UNTARGETABLE);
+    enemyTower.getEntity().setFlags(EntityFlags.UNTARGETABLE);
 
     assertThat(
             ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))

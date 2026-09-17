@@ -29,22 +29,22 @@ import org.crforge.core.pathfinding.state.StateVisitGlobals;
 import org.junit.jupiter.api.Test;
 
 /**
- * Drives a whole Knight deployment tick by tick and checks every position against a recorded
+ * Drives a whole Knight deployment tick by tick and checks every position against a reference
  * trajectory.
  *
- * <p>The recorded trajectories are three deployments of a Knight on the standard arena with nothing
- * else on it but the six crown towers. Under those conditions nothing pushes the unit and nothing
- * steers it around a neighbour, so the whole path is the route follower, the displacement and the
- * state visit.
+ * <p>The reference trajectories are three deployments of a Knight on the standard arena with
+ * nothing else on it but the six crown towers. Under those conditions nothing pushes the unit and
+ * nothing steers it around a neighbour, so the whole path is the route follower, the displacement
+ * and the state visit.
  *
  * <p>Two pieces of each tick are fed in rather than computed, because they belong to parts of the
  * simulation this package does not cover:
  *
  * <ul>
  *   <li>the tower the unit is heading for, and the tick it locks onto it, both taken from the
- *       recording, which is what target selection would produce;
- *   <li>the route searches, endpoint scans, relocations and cell tests, replayed from a recorded
- *       log that also asserts the inputs each of them is asked with, which is what the routing grid
+ *       trajectory, which is what target selection would produce;
+ *   <li>the route searches, endpoint scans, relocations and cell tests, replayed from a logged run
+ *       that also asserts the inputs each of them is asked with, which is what the routing grid
  *       would produce.
  * </ul>
  *
@@ -191,7 +191,7 @@ class MovementReplayTest {
   private static ReferencePoint point(String tower) {
     int[] position = TOWERS.get(tower);
     if (position == null) {
-      throw new IllegalArgumentException("Unknown tower in the recording: " + tower);
+      throw new IllegalArgumentException("Unknown tower in the trajectory: " + tower);
     }
     return new ReferencePoint(position[0], position[1]);
   }
@@ -208,8 +208,8 @@ class MovementReplayTest {
   }
 
   /**
-   * Answers the movement pass the way the recording did: the grid answers come from the log and are
-   * checked against the inputs they were recorded with, while the speed budget, the gates and the
+   * Answers the movement pass the way the reference run did: the grid answers come from the log and
+   * are checked against the inputs they were logged with, while the speed budget, the gates and the
    * route-beyond-reference predicate are computed for real.
    */
   private static final class ReplayQueries implements MovementQueries {

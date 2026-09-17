@@ -108,6 +108,25 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
     return views.get(entity);
   }
 
+  /**
+   * Drops an entity that has left the match, both from the views and, when it was one, from the
+   * opposing side's tower list. A chain that keeps a destroyed tower would keep offering it as the
+   * default target.
+   */
+  public void unregister(GridEntity entity) {
+    TargetView view = views.remove(entity);
+    if (view == null) {
+      return;
+    }
+    registeredTowers.remove(view);
+    if (seed == view) {
+      seed = null;
+    }
+    if (state.getReference() == view) {
+      state.setReference(null);
+    }
+  }
+
   /** Clears the per-tick selection cache and the outcome. Call once, before the visit. */
   public void beginTick() {
     selectionDone = false;

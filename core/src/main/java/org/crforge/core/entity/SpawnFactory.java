@@ -147,19 +147,22 @@ public class SpawnFactory {
       spawner = spawnerBuilder.build();
     }
 
+    Movement movement =
+        new Movement(
+            stats.getSpeed(),
+            stats.getMass(),
+            stats.getCollisionRadius(),
+            stats.getVisualRadius(),
+            stats.getMovementType());
+    movement.setRawSpeed(stats.getRawSpeed());
+
     Troop unit =
         Troop.builder()
             .name(stats.getName())
             .team(team)
             .position(new Position(x, y))
             .health(new Health(scaledHp, scaledShield))
-            .movement(
-                new Movement(
-                    stats.getSpeed(),
-                    stats.getMass(),
-                    stats.getCollisionRadius(),
-                    stats.getVisualRadius(),
-                    stats.getMovementType()))
+            .movement(movement)
             .combat(combat)
             .deployTime(deployTime)
             .deployTimer(deployTime)

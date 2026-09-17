@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 
 /**
@@ -11,12 +12,6 @@ import org.crforge.core.pathfinding.GridEntityState;
  * are written out separately rather than folded together.
  */
 public final class MovementGates {
-
-  /** Avoidance is disabled for this entity outright. */
-  private static final long NO_CHECKAVOIDANCE = 1L << 15;
-
-  /** Collision handling, and with it pushing, is disabled for this entity outright. */
-  private static final long NO_CHECKCOLLISIONS = 1L << 14;
 
   private MovementGates() {
     // Utility class
@@ -46,7 +41,7 @@ public final class MovementGates {
    * movement-blocking countdown runs.
    */
   public static int avoidanceGate(SpeedInputs entity) {
-    if ((entity.flags() & NO_CHECKAVOIDANCE) != 0) {
+    if ((entity.flags() & EntityFlags.NO_CHECK_AVOIDANCE) != 0) {
       return 0;
     }
     if (GridEntityState.inMask(entity.state(), GridEntityState.AVOIDANCE_GATE_MASK)) {
@@ -75,7 +70,7 @@ public final class MovementGates {
     if (SpeedBudget.targetingActive(entity)) {
       return 0;
     }
-    if ((entity.flags() & NO_CHECKCOLLISIONS) != 0) {
+    if ((entity.flags() & EntityFlags.NO_CHECK_COLLISIONS) != 0) {
       return 0;
     }
     if (entity.blockCountdownMs() > 0) {

@@ -116,7 +116,7 @@ class DisplacementTest {
 
     assertThat(owner.getX()).isEqualTo(3486);
     assertThat(owner.getY()).isEqualTo(10058);
-    assertThat(component.getScratch()).containsExactly(-14, 58);
+    assertThat(component.getWorkVector()).containsExactly(-14, 58);
   }
 
   @Test

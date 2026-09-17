@@ -38,6 +38,17 @@ public class Standard1v1Match extends Match {
     this.towerLevel = towerLevel;
   }
 
+  /**
+   * Creates a standard match whose ground troops run under the given pathfinding rules.
+   *
+   * @param towerLevel the level the six crown towers are scaled to
+   * @param pathfindingMode which movement and target-acquisition rules ground troops follow
+   */
+  public Standard1v1Match(int towerLevel, PathfindingMode pathfindingMode) {
+    this(towerLevel);
+    this.pathfindingMode = pathfindingMode;
+  }
+
   @Override
   public int getMaxPlayersPerTeam() {
     return 1;

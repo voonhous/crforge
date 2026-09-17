@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -59,9 +60,6 @@ public final class Displacement {
   /** Sideways nudge, in game units, a pushed ground unit standing on water takes off the river. */
   private static final int RIVER_NUDGE = 256;
 
-  /** Set on the entity while its charge is complete. */
-  private static final long CHARGING = 1L << 3;
-
   private Displacement() {
     // Utility class
   }
@@ -69,8 +67,8 @@ public final class Displacement {
   /**
    * Moves the entity one step toward a point and returns the distance the step was allowed to be.
    *
-   * @param component the entity's movement component, whose scratch pair, push accumulators,
-   *     arrival bit and charge progress this writes
+   * @param component the entity's movement component, whose work vector, push accumulators, arrival
+   *     bit and charge progress this writes
    * @param owner the entity, whose position, facing and pending flags this writes
    * @param grid the arena's routing grid
    * @param config the entity's movement configuration columns
@@ -147,28 +145,29 @@ public final class Displacement {
           Math.max(Math.min(component.getAvoidanceBlend(), DIRECTION_SCALE), -DIRECTION_SCALE);
       int forward = DIRECTION_SCALE - Math.abs(blend);
       // Arithmetic shifts, not divisions: a negative product rounds down here.
-      component.setScratch(
+      component.setWorkVector(
           ((forward * proposal[0]) >> 8) + ((blend * proposal[1]) >> 8),
           ((forward * proposal[1]) >> 8) + ((-(proposal[0] * blend)) >> 8));
-      FixedMath.normalize(component.getScratch(), step);
-      proposal[0] = component.getScratch()[0];
-      proposal[1] = component.getScratch()[1];
+      FixedMath.normalize(component.getWorkVector(), step);
+      proposal[0] = component.getWorkVector()[0];
+      proposal[1] = component.getWorkVector()[1];
     }
 
     int stuck = 0;
     if (component.getPushCount() >= 1) {
       int count = component.getPushCount();
-      component.setScratch(
+      component.setWorkVector(
           FixedMath.divOrZero(component.getPushX(), count),
           FixedMath.divOrZero(component.getPushY(), count));
       if (component.getPushUnclamped() == 0
-          && FixedMath.guardedSumOfSquares(component.getScratch()[0], component.getScratch()[1])
+          && FixedMath.guardedSumOfSquares(
+                  component.getWorkVector()[0], component.getWorkVector()[1])
               >= PUSH_CLAMP_SQUARED) {
-        FixedMath.normalize(component.getScratch(), PUSH_CLAMP_LENGTH);
+        FixedMath.normalize(component.getWorkVector(), PUSH_CLAMP_LENGTH);
       }
       stuck = component.getPushStuck() != 0 ? 1 : 0;
-      proposal[0] += component.getScratch()[0];
-      proposal[1] += component.getScratch()[1];
+      proposal[0] += component.getWorkVector()[0];
+      proposal[1] += component.getWorkVector()[1];
       component.clearPush();
     }
 
@@ -220,6 +219,6 @@ public final class Displacement {
 
   /** Sets the charging flag on the entity once its charge progress is complete. */
   static void markCharging(GridEntity owner) {
-    owner.setPendingFlags(owner.getPendingFlags() | CHARGING);
+    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.CHARGING);
   }
 }

@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
 
@@ -26,12 +27,6 @@ public final class SpeedBudget {
   /** Denominator of the clone displacement, one routing cell in game units. */
   private static final int CLONE_STEP_DENOMINATOR = 500;
 
-  /** Movement is forbidden outright. */
-  private static final long NO_MOVE = 1L << 6;
-
-  /** Movement is forbidden except when the entity is pulled by something else. */
-  private static final long NO_MOVE_ALLOW_ATTRACT = 1L << 58;
-
   private SpeedBudget() {
     // Utility class
   }
@@ -45,7 +40,7 @@ public final class SpeedBudget {
    *     up
    */
   public static int speedBudget(SpeedInputs entity, SpeedConfig config, SpeedGlobals globals) {
-    if ((entity.flags() & (NO_MOVE | NO_MOVE_ALLOW_ATTRACT)) != 0) {
+    if ((entity.flags() & (EntityFlags.NO_MOVE | EntityFlags.NO_MOVE_ALLOW_ATTRACT)) != 0) {
       return 0;
     }
     if (entity.hasTargetingComponent()) {

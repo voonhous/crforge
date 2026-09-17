@@ -93,6 +93,6 @@ class DirectionInitializerTest {
             component, ownerAt(3500, 25000), new ReferencePoint(3500, 25500), WIDTH);
 
     assertThat(answer).isEqualTo(1);
-    assertThat(component.getScratch()).containsExactly(3750 - 3500, 10750 - 25500);
+    assertThat(component.getWorkVector()).containsExactly(3750 - 3500, 10750 - 25500);
   }
 }

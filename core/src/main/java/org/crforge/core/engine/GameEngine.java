@@ -19,7 +19,10 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.match.Match;
+import org.crforge.core.match.PathfindingMode;
 import org.crforge.core.match.Standard1v1Match;
+import org.crforge.core.pathfinding.GridPathfindingSystem;
+import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.physics.PhysicsSystem;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
@@ -48,6 +51,14 @@ public class GameEngine {
 
   // Initialized when match is set
   private PhysicsSystem physicsSystem;
+
+  /**
+   * Grid movement and targeting for ground troops, created only for a match in {@link
+   * PathfindingMode#GRID}. Null in waypoint matches, which is what makes every other system behave
+   * exactly as before.
+   */
+  private GridPathfindingSystem gridPathfindingSystem;
+
   private Match match;
 
   private boolean running;
@@ -93,6 +104,17 @@ public class GameEngine {
     this.elixirCollectionSystem.setMatch(match);
     match.setGameState(this.gameState);
     gameState.setArena(match.getArena());
+
+    // In grid mode the grid system owns the target and the position of every plain ground troop,
+    // and the targeting and physics systems skip exactly those troops.
+    if (match.getPathfindingMode() == PathfindingMode.GRID) {
+      this.gridPathfindingSystem = new GridPathfindingSystem(gameState, TileMap.standard1v1());
+      this.targetingSystem.setExternallyManaged(gridPathfindingSystem::manages);
+      this.physicsSystem.setExternallyManaged(gridPathfindingSystem::manages);
+    } else {
+      this.gridPathfindingSystem = null;
+      this.targetingSystem.setExternallyManaged(troop -> false);
+    }
   }
 
   /** Queue a player action for processing on next tick. */
@@ -175,6 +197,9 @@ public class GameEngine {
     areaEffectSystem.update(DELTA_TIME);
 
     // 8. Update targeting
+    if (gridPathfindingSystem != null) {
+      gridPathfindingSystem.updateTargeting(gameState.getAliveEntities());
+    }
     targetingSystem.updateTargets(gameState.getAliveEntities());
 
     // 9. Update abilities (charge, variable damage) -- before combat so damage mods apply
@@ -187,6 +212,9 @@ public class GameEngine {
     transformationSystem.update();
 
     // 11. Update physics (movement and collisions)
+    if (gridPathfindingSystem != null) {
+      gridPathfindingSystem.updateMovement(gameState.getAliveEntities());
+    }
     if (physicsSystem != null) {
       physicsSystem.update(gameState.getAliveEntities(), DELTA_TIME);
     }

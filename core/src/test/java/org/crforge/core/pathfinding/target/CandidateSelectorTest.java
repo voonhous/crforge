@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.BeforeEach;
@@ -171,7 +172,7 @@ class CandidateSelectorTest {
     TargetView enemy = troop("Archer", 9, 1, 3500, 13000, 500);
     around.add(enemy);
 
-    knight.getOwner().setFlags(TargetingFlags.LOCK_TARGET);
+    knight.getOwner().setFlags(EntityFlags.LOCK_TARGET);
     CandidateSelector.select(knight, false, false, queries, outcome);
     assertThat(knight.getReference()).isNull();
 

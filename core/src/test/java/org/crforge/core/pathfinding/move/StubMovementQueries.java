@@ -6,7 +6,7 @@ import org.crforge.core.pathfinding.grid.Route;
  * A movement query provider whose answers are plain fields, for tests that drive one module at a
  * time.
  *
- * <p>Every answer defaults to what the recorded trajectories use; a test sets only the field whose
+ * <p>Every answer defaults to what the reference trajectories use; a test sets only the field whose
  * branch it wants to exercise.
  */
 class StubMovementQueries implements MovementQueries {
