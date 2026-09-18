@@ -505,23 +505,29 @@ public class DebugGameScreen implements Screen {
     log.info(
         """
         === CRForge Debug Visualizer ===
-        Controls:
+        Match:
           SPACE - Pause/Resume
           R     - Reset match
-          P     - Toggle path visualization
+          +/-   - Speed up/slow down
+
+        Cards:
+          1-4   - Select blue card
+          5-8   - Select red card
+          Click - Select a card, or deploy the selected one
+
+        Combat overlays:
           O     - Toggle attack range circles
           D     - Toggle floating damage numbers
           A     - Toggle AOE damage indicators
           H     - Toggle HP numbers
+
+        Pathing:
+          P     - Toggle path visualization
           M     - Flip pathfinding mode (applied on reset)
           G     - Toggle routing cell cost overlay
           N     - Toggle route / reference / state overlay
           S     - Run next golden scenario (resets under the grid rules)
           E     - Export recorded trajectories to build/trajectories
-          +/-   - Speed up/slow down
-          1-4   - Select blue card
-          5-8   - Select red card
-          Click - Select a card, or deploy the selected one
         ================================""");
   }
 
