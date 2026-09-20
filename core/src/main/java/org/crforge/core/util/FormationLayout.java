@@ -1,5 +1,9 @@
 package org.crforge.core.util;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
+import org.crforge.core.fidelity.Fidelity;
+
 /**
  * Calculates circular formation offsets for multi-unit deployments. Ported from the Python parser's
  * _calculate_offsets algorithm.
@@ -12,6 +16,12 @@ package org.crforge.core.util;
  * integer game units rounded to the nearest unit, which reproduces the previous tile offsets that
  * were rounded to three decimal places (one thousandth of a tile is one game unit).
  */
+@Fidelity(
+    status = GUESS,
+    note =
+        "legacy circular layout carried over from the data parser, not the game's own"
+            + " algorithm; the 355 summonRadius divisor and the resulting spacing are"
+            + " inferred")
 public final class FormationLayout {
 
   /**

@@ -1,5 +1,7 @@
 package org.crforge.core.engine;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.List;
 import org.crforge.core.card.AreaEffectStats;
 import org.crforge.core.card.BuffApplication;
@@ -10,9 +12,15 @@ import org.crforge.core.component.Position;
 import org.crforge.core.effect.BuffDefinition;
 import org.crforge.core.effect.BuffRegistry;
 import org.crforge.core.entity.effect.AreaEffect;
+import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Team;
 
 /** Creates AreaEffect entities with level-scaled damage, buff-derived DPS, and laser ball tiers. */
+@Fidelity(
+    status = GUESS,
+    note =
+        "buff precedence, first-match-wins selection and absent-value defaults are inferred;"
+            + " laser tier rounding order tuned to expected values")
 class AreaEffectFactory {
 
   private final GameState state;

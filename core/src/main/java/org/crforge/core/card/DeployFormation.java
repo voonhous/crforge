@@ -1,6 +1,9 @@
 package org.crforge.core.card;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.util.FormationHelper;
 import org.crforge.core.util.FormationLayout;
 import org.crforge.core.util.GameUnits;
@@ -15,6 +18,11 @@ import org.crforge.core.util.GameUnits;
  * @param primaryCount number of primary units
  * @param secondaryCount number of secondary units
  */
+@Fidelity(
+    status = GUESS,
+    note =
+        "only the RADIAL path uses the traced offset helper; the explicit offsets table has"
+            + " undocumented provenance and the legacy summonRadius divisor is inferred")
 public record DeployFormation(
     FormationLayoutType layout,
     List<int[]> formationOffsets,
