@@ -2,6 +2,7 @@ package org.crforge.data.loader;
 
 import static org.crforge.core.card.TroopStats.DEFAULT_DEPLOY_TIME;
 import static org.crforge.core.util.GameUnits.tiles;
+import static org.crforge.core.util.ValidationUtils.checkState;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -104,9 +105,8 @@ public class UnitLoader {
     if (dto == null) {
       return null; // Unknown reference, skip
     }
-    if (!resolving.add(name)) {
-      throw new IllegalStateException("Circular death spawn chain detected: " + name);
-    }
+    // add() marks the unit as in-flight and returns false if it was already on the stack
+    checkState(resolving.add(name), () -> "Circular death spawn chain detected: " + name);
     // Recursively resolve death spawn dependencies first
     if (dto.getDeathSpawn() != null) {
       for (DeathSpawnConfigDTO ds : dto.getDeathSpawn()) {

@@ -1,5 +1,7 @@
 package org.crforge.core.match;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -64,10 +66,9 @@ public abstract class Match {
    */
   public void addPlayer(Player player) {
     List<Player> teamList = getPlayersForTeam(player.getTeam());
-    if (teamList.size() >= getMaxPlayersPerTeam()) {
-      throw new IllegalArgumentException(
-          "Team " + player.getTeam() + " is full (max " + getMaxPlayersPerTeam() + ")");
-    }
+    checkArgument(
+        teamList.size() < getMaxPlayersPerTeam(),
+        () -> "Team " + player.getTeam() + " is full (max " + getMaxPlayersPerTeam() + ")");
     teamList.add(player);
   }
 

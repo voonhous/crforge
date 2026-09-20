@@ -1,5 +1,7 @@
 package org.crforge.bridge;
 
+import static org.crforge.core.util.ValidationUtils.checkState;
+
 import java.util.List;
 import java.util.Random;
 import org.crforge.bridge.dto.InitConfig;
@@ -66,9 +68,7 @@ public class GameSession {
    * instance to avoid recreating 15+ system objects.
    */
   public void reset(Long seedOverride) {
-    if (config == null) {
-      throw new IllegalStateException("Must call init() before reset()");
-    }
+    checkState(config != null, "Must call init() before reset()");
 
     if (seedOverride != null) {
       this.seed = seedOverride;

@@ -1,5 +1,7 @@
 package org.crforge.core.card;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 /**
  * Stat scaling by card level and rarity, based on: https://royaleapi.com/blog/secret-stats and
  * LEVEL_SCALING.md
@@ -48,9 +50,7 @@ public final class LevelScaling {
    * @return scaled stat value
    */
   public static int scaleCard(int baseStat, int level) {
-    if (level <= 0) {
-      throw new IllegalArgumentException("Card level must be >= 1, got: " + level);
-    }
+    checkArgument(level >= 1, () -> "Card level must be >= 1, got: " + level);
     int clampedLevel = Math.min(level, MAX_CARD_LEVEL);
     return applyMultiplier(baseStat, clampedLevel - 1, 1.10);
   }

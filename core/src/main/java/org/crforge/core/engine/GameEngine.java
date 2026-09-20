@@ -1,5 +1,7 @@
 package org.crforge.core.engine;
 
+import static org.crforge.core.util.ValidationUtils.checkState;
+
 import lombok.Getter;
 import org.crforge.core.ability.AbilitySystem;
 import org.crforge.core.ability.DefaultCombatAbilityBridge;
@@ -95,9 +97,7 @@ public class GameEngine {
 
   /** Queue a player action for processing on next tick. */
   public void queueAction(Player player, PlayerActionDTO action) {
-    if (match == null) {
-      throw new IllegalStateException("Match not set");
-    }
+    checkState(match != null, "Match not set");
     if (match.validateAction(player, action)) {
       deploymentSystem.queueAction(player, action);
     }
@@ -122,9 +122,7 @@ public class GameEngine {
 
   /** Initialize a new match. Requires setMatch() to be called first. */
   public void initMatch() {
-    if (match == null) {
-      throw new IllegalStateException("Match not set. Call setMatch() first.");
-    }
+    checkState(match != null, "Match not set. Call setMatch() first.");
 
     gameState.reset();
     running = true;
