@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.crforge.core.fidelity.FidelityStatus.GUESS;
 import static org.crforge.core.fidelity.FidelityStatus.PARTIAL;
 import static org.crforge.core.fidelity.FidelityStatus.TRACED;
-import static org.crforge.core.fidelity.FidelityStatus.UNASSESSED;
 
 import java.util.List;
 import org.crforge.core.fidelity.FidelityLedger.Entry;
@@ -38,7 +37,7 @@ class FidelityLedgerTest {
             entry("TracedBare", TRACED, ""),
             entry("PartialBare", PARTIAL, "   "),
             entry("GuessBare", GUESS, ""),
-            entry("Unassessed", UNASSESSED, ""));
+            entry("GuessNoted", GUESS, "hit speed inferred"));
 
     assertThat(FidelityLedger.unjustified(entries))
         .extracting(Entry::simpleName)
@@ -67,16 +66,17 @@ class FidelityLedgerTest {
         .noneMatch(name -> name.startsWith("org.crforge.core.fidelity."));
   }
 
+  /** No "not looked at yet" state: code with nothing to point to is simply a guess. */
   @Test
-  void unannotatedClassesReadAsUnassessed() {
+  void unannotatedClassesReadAsGuesses() {
     Entry vector2 =
         FidelityLedger.scan().stream()
             .filter(e -> e.className().equals("org.crforge.core.util.Vector2"))
             .findFirst()
             .orElseThrow();
 
-    assertThat(vector2.status()).isEqualTo(UNASSESSED);
-    assertThat(vector2.isAssessed()).isFalse();
+    assertThat(vector2.status()).isEqualTo(GUESS);
+    assertThat(vector2.isNoteworthy()).isFalse();
   }
 
   @Test
@@ -89,16 +89,20 @@ class FidelityLedgerTest {
 
     assertThat(formationHelper.status()).isEqualTo(PARTIAL);
     assertThat(formationHelper.note()).contains("mirroring");
-    assertThat(formationHelper.isAssessed()).isTrue();
+    assertThat(formationHelper.isNoteworthy()).isTrue();
   }
 
-  /** Unassessed classes are a count by default; listing all of them would bury the real entries. */
+  /** A bare guess adds nothing to the default, so it is a count unless the caller asks for all. */
   @Test
-  void unassessedClassesAreListedOnlyOnRequest() {
+  void bareGuessesAreListedOnlyOnRequest() {
     List<Entry> entries =
-        List.of(entry("Traced", TRACED, "pinned"), entry("util.Vector2", UNASSESSED, ""));
+        List.of(
+            entry("Traced", TRACED, "pinned"),
+            entry("util.Vector2", GUESS, ""),
+            entry("engine.AreaEffectFactory", GUESS, "buff precedence inferred"));
 
-    assertThat(FidelityLedger.render(entries, false)).doesNotContain("Vector2");
+    String terse = FidelityLedger.render(entries, false);
+    assertThat(terse).doesNotContain("Vector2").contains("AreaEffectFactory");
     assertThat(FidelityLedger.render(entries, true)).contains("Vector2");
   }
 

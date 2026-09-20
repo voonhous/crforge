@@ -17,13 +17,13 @@ import java.util.stream.Stream;
 /**
  * Collects {@link Fidelity} declarations from the compiled classes and renders them as a report.
  *
- * <p>Run it with {@code ./gradlew :core:fidelityReport}, or with {@code --unassessed} to also list
- * the classes nobody has looked at yet.
+ * <p>Run it with {@code ./gradlew :core:fidelityReport}, or with {@code --all} to list every class
+ * rather than only the ones carrying a note.
  *
- * <p>Every class is in scope and starts {@link FidelityStatus#UNASSESSED}, so the ledger cannot
- * miss anything by being told about the wrong set of classes. The number worth watching early is
- * how many classes are established, not what fraction: the denominator still counts plumbing that
- * will never need tracing, so a percentage would be misleading until that is separated out.
+ * <p>Every class is in scope and starts at {@link FidelityStatus#GUESS}, so the ledger cannot miss
+ * anything by being told about the wrong set of classes. The number worth watching early is how
+ * many classes are established, not what fraction: the denominator still counts plumbing that will
+ * never need tracing, so a percentage would be misleading until that is separated out.
  *
  * <p>Classes are discovered by walking the compiled output rather than a hand-maintained list, so a
  * new class cannot be left out by forgetting to register it.
@@ -48,16 +48,16 @@ public final class FidelityLedger {
       return className.substring(className.lastIndexOf('.') + 1);
     }
 
-    /** Whether someone has looked at this class and recorded a status. */
-    public boolean isAssessed() {
-      return status != FidelityStatus.UNASSESSED;
+    /** Whether this entry says anything beyond the default, and so is worth listing. */
+    public boolean isNoteworthy() {
+      return status != FidelityStatus.GUESS || !note.isBlank();
     }
   }
 
   /**
    * Scans {@link #REPORTED_PACKAGE} and returns one entry per class, sorted by status then name.
-   * Unannotated classes come back as {@link FidelityStatus#UNASSESSED} rather than being omitted,
-   * so the report shows the gap instead of hiding it.
+   * Unannotated classes come back as {@link FidelityStatus#GUESS} rather than being omitted, so the
+   * report counts the whole codebase instead of only the annotated part.
    */
   public static List<Entry> scan() {
     List<Entry> entries = new ArrayList<>();
@@ -65,7 +65,7 @@ public final class FidelityLedger {
       Fidelity declared = load(className).getDeclaredAnnotation(Fidelity.class);
       entries.add(
           declared == null
-              ? new Entry(className, FidelityStatus.UNASSESSED, "")
+              ? new Entry(className, FidelityStatus.GUESS, "")
               : new Entry(className, declared.status(), declared.note()));
     }
     entries.sort(Comparator.comparing(Entry::status).thenComparing(Entry::className));
@@ -87,11 +87,11 @@ public final class FidelityLedger {
   }
 
   /**
-   * Renders the counts followed by the assessed classes. Unassessed classes are a count only unless
-   * {@code listUnassessed} is set, because listing every unexamined class buries the entries that
-   * someone has actually recorded something about.
+   * Renders the counts followed by the classes worth listing. A bare {@link FidelityStatus#GUESS}
+   * says nothing the default did not already say, so those are a count only unless {@code listAll}
+   * is set; otherwise they would bury the entries someone has actually recorded something about.
    */
-  public static String render(List<Entry> entries, boolean listUnassessed) {
+  public static String render(List<Entry> entries, boolean listAll) {
     Map<FidelityStatus, List<Entry>> byStatus = new EnumMap<>(FidelityStatus.class);
     for (Entry entry : entries) {
       byStatus.computeIfAbsent(entry.status(), status -> new ArrayList<>()).add(entry);
@@ -106,11 +106,13 @@ public final class FidelityLedger {
 
     for (FidelityStatus status : FidelityStatus.values()) {
       List<Entry> inStatus = byStatus.getOrDefault(status, List.of());
-      if (inStatus.isEmpty() || (status == FidelityStatus.UNASSESSED && !listUnassessed)) {
+      List<Entry> listed =
+          listAll ? inStatus : inStatus.stream().filter(Entry::isNoteworthy).toList();
+      if (listed.isEmpty()) {
         continue;
       }
       report.append("\n").append(status).append("\n");
-      for (Entry entry : inStatus) {
+      for (Entry entry : listed) {
         report.append("  ").append(entry.simpleName());
         if (!entry.note().isEmpty()) {
           report.append(" -- ").append(entry.note());
@@ -123,8 +125,7 @@ public final class FidelityLedger {
 
   /** Prints the report. Entry point for the {@code fidelityReport} Gradle task. */
   public static void main(String[] args) {
-    boolean listUnassessed = List.of(args).contains("--unassessed");
-    System.out.print(render(scan(), listUnassessed));
+    System.out.print(render(scan(), List.of(args).contains("--all")));
   }
 
   /** Binary names of every reported class in the compiled output, excluding nested classes. */

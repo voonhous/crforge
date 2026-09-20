@@ -9,9 +9,10 @@ import java.lang.annotation.Target;
 /**
  * Declares how well a class or method is known to match the standard game.
  *
- * <p>Unannotated code is {@link FidelityStatus#UNASSESSED}, which the ledger treats as a guess.
- * That is the safe default, so this annotation is only ever needed to record a departure from it:
- * either that someone looked and it is still a guess, or that some of it is now established.
+ * <p>Unannotated code is a {@link FidelityStatus#GUESS}. There is no "not looked at yet" state:
+ * whoever wrote the logic knew whether they had something to write it against, and code that cannot
+ * point to evidence is a guess. So this annotation is only needed to record a departure from that
+ * default, or to say what specifically is uncertain about a guess.
  *
  * <p>{@link FidelityStatus#TRACED} and {@link FidelityStatus#PARTIAL} require a {@link #note()},
  * because those are the two claims that could mislead someone into building on them. {@code
@@ -30,7 +31,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.METHOD})
 public @interface Fidelity {
 
-  /** How well this element's behaviour is known. Never {@link FidelityStatus#UNASSESSED}. */
+  /** How well this element's behaviour is known. */
   FidelityStatus status();
 
   /** What specifically is uncertain, or for a settled element, what it is settled against. */
