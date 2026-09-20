@@ -157,13 +157,27 @@ class FormationHelperTest {
     assertThat(FormationHelper.offset(0, 1, 0, 500, 0, 0)).isEqualTo(FormationLayout.Offset.ZERO);
   }
 
+  /** Each rejected input names the single value that broke, not a combined catch-all message. */
   @Test
   void invalidIndexOrCounts_areRejected() {
     assertThatThrownBy(() -> FormationHelper.offset(15, 15, 0, 500, 0, 0))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Formation index 15 is out of range for 15 primary and 0 secondary units");
     assertThatThrownBy(() -> FormationHelper.offset(-1, 15, 0, 500, 0, 0))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Formation index must be >= 0, got: -1");
     assertThatThrownBy(() -> FormationHelper.offset(0, 0, 0, 500, 0, 0))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("primaryCount must be >= 1, got: 0");
+    assertThatThrownBy(() -> FormationHelper.offset(0, 1, -1, 500, 0, 0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("secondaryCount must be >= 0, got: -1");
+  }
+
+  /** The last valid index of a group is accepted; only one past it is rejected. */
+  @Test
+  void lastValidIndex_isAccepted() {
+    assertThat(FormationHelper.offset(14, 15, 0, 500, 0, 0)).isNotNull();
+    assertThat(FormationHelper.offset(3, 2, 2, 500, 0, 0)).isNotNull();
   }
 }

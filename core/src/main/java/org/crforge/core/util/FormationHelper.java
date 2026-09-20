@@ -1,5 +1,7 @@
 package org.crforge.core.util;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 /**
  * Integer radial formation helper for multi-unit deploys.
  *
@@ -58,19 +60,7 @@ public final class FormationHelper {
    */
   public static FormationLayout.Offset offset(
       int index, int primaryCount, int secondaryCount, int radius, int width, int angleShift) {
-    if (primaryCount < 1
-        || secondaryCount < 0
-        || index < 0
-        || index >= primaryCount + secondaryCount) {
-      throw new IllegalArgumentException(
-          "Invalid formation index "
-              + index
-              + " for "
-              + primaryCount
-              + " primary and "
-              + secondaryCount
-              + " secondary units");
-    }
+    validateInputs(index, primaryCount, secondaryCount);
 
     // Effective number of angular slots: mixed groups alternate around a ring twice the larger size
     int slots = secondaryCount > 0 ? 2 * Math.max(primaryCount, secondaryCount) : primaryCount;
@@ -165,6 +155,27 @@ public final class FormationHelper {
     }
 
     return new FormationLayout.Offset(x, y);
+  }
+
+  /**
+   * Checks the group counts and index that {@link #offset} needs. Split out so each rule is a
+   * separate check naming the one value that broke, and because {@code offset} reassigns {@code
+   * index}, which would stop a message supplier from capturing it there.
+   */
+  private static void validateInputs(int index, int primaryCount, int secondaryCount) {
+    checkArgument(primaryCount >= 1, () -> "primaryCount must be >= 1, got: " + primaryCount);
+    checkArgument(secondaryCount >= 0, () -> "secondaryCount must be >= 0, got: " + secondaryCount);
+    checkArgument(index >= 0, () -> "Formation index must be >= 0, got: " + index);
+    checkArgument(
+        index < primaryCount + secondaryCount,
+        () ->
+            "Formation index "
+                + index
+                + " is out of range for "
+                + primaryCount
+                + " primary and "
+                + secondaryCount
+                + " secondary units");
   }
 
   /**
