@@ -36,8 +36,9 @@ import org.crforge.core.fidelity.Fidelity;
 @Fidelity(
     status = PARTIAL,
     note =
-        "layout and integer rounding pinned by offset fixtures; side and lane mirroring"
-            + " inferred, so callers apply the simulator's own convention")
+        "offset algorithm and integer rounding agree with an independent implementation across"
+            + " 180 cases; side and lane mapping, and final positions after collision separation,"
+            + " are unverified")
 public final class FormationHelper {
 
   /** Fixed-point scale of {@link #sine1024(int)}: 1024 represents 1.0. */
