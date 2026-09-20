@@ -15,12 +15,13 @@ import java.util.function.Supplier;
  * IllegalArgumentException}) and {@link #checkState} for constraints on the receiver's state, such
  * as an initialisation step the caller skipped ({@link IllegalStateException}).
  *
- * <p>Java evaluates arguments eagerly, so passing a concatenated message directly builds that
- * string on every call, including the passing ones -- work the equivalent {@code if} block never
- * did, because the concatenation sat on the failure path. Prefer the {@link Supplier} overloads
- * whenever the message does any work (concatenation or formatting); they defer it to the failure
- * path. A message that is a compile-time constant has nothing to defer, so pass it as a plain
- * {@link String} rather than wrapping it in a lambda that only adds a capture.
+ * <p>Convention: pass a constant message as a plain {@link String}, and use the {@link Supplier}
+ * overloads when the message concatenates or formats. Java evaluates arguments eagerly, so an
+ * inline concatenation runs on every call including the passing ones, whereas a supplier keeps that
+ * work on the failure path. This is a consistency rule, not a measured optimization: at this
+ * codebase's handful of call sites neither form is measurably cheaper, so the point is that the
+ * choice is not re-argued per site. A constant message has nothing to defer and gains nothing from
+ * a lambda.
  */
 public final class ValidationUtils {
 
