@@ -15,20 +15,26 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Collects {@link Fidelity} declarations from the compiled simulation classes and renders them as a
- * report.
+ * Collects {@link Fidelity} declarations from the compiled classes and renders them as a report.
  *
- * <p>Run it with {@code ./gradlew :core:fidelityReport}. The number that matters is how many
- * classes are still {@link FidelityStatus#GUESS}: it is the size of the gap between what the
- * simulator does and what is actually established, and it should fall as behaviour is settled.
+ * <p>Run it with {@code ./gradlew :core:fidelityReport}, or with {@code --unassessed} to also list
+ * the classes nobody has looked at yet.
+ *
+ * <p>Every class is in scope and starts {@link FidelityStatus#UNASSESSED}, so the ledger cannot
+ * miss anything by being told about the wrong set of classes. The number worth watching early is
+ * how many classes are established, not what fraction: the denominator still counts plumbing that
+ * will never need tracing, so a percentage would be misleading until that is separated out.
  *
  * <p>Classes are discovered by walking the compiled output rather than a hand-maintained list, so a
- * new system cannot be left out of the ledger by forgetting to register it.
+ * new class cannot be left out by forgetting to register it.
  */
 public final class FidelityLedger {
 
   /** The package the ledger reports on. */
-  public static final String SIMULATION_PACKAGE = "org.crforge.core";
+  public static final String REPORTED_PACKAGE = "org.crforge.core";
+
+  /** The ledger's own package, excluded because the tool does not report on itself. */
+  private static final String OWN_PACKAGE = "org.crforge.core.fidelity";
 
   private FidelityLedger() {
     // Utility class
@@ -41,45 +47,57 @@ public final class FidelityLedger {
     public String simpleName() {
       return className.substring(className.lastIndexOf('.') + 1);
     }
+
+    /** Whether someone has looked at this class and recorded a status. */
+    public boolean isAssessed() {
+      return status != FidelityStatus.UNASSESSED;
+    }
   }
 
   /**
-   * Whether a class is expected to carry a {@link Fidelity} declaration. Systems and services hold
-   * the behaviour worth tracking; data holders, components and utilities do not, so requiring an
-   * annotation on them would only add noise the ledger has to be read around.
-   */
-  public static boolean isSimulationClass(String className) {
-    String simpleName = className.substring(className.lastIndexOf('.') + 1);
-    return simpleName.endsWith("System") || simpleName.endsWith("Service");
-  }
-
-  /**
-   * Scans {@link #SIMULATION_PACKAGE} and returns one entry per simulation class, sorted by status
-   * then name. Classes without the annotation come back as {@link FidelityStatus#UNDECLARED} rather
-   * than being omitted, so the report shows the gap instead of hiding it.
+   * Scans {@link #REPORTED_PACKAGE} and returns one entry per class, sorted by status then name.
+   * Unannotated classes come back as {@link FidelityStatus#UNASSESSED} rather than being omitted,
+   * so the report shows the gap instead of hiding it.
    */
   public static List<Entry> scan() {
     List<Entry> entries = new ArrayList<>();
-    for (String className : simulationClassNames()) {
-      Class<?> type = load(className);
-      Fidelity declared = type.getDeclaredAnnotation(Fidelity.class);
+    for (String className : reportedClassNames()) {
+      Fidelity declared = load(className).getDeclaredAnnotation(Fidelity.class);
       entries.add(
           declared == null
-              ? new Entry(className, FidelityStatus.UNDECLARED, "")
+              ? new Entry(className, FidelityStatus.UNASSESSED, "")
               : new Entry(className, declared.status(), declared.note()));
     }
     entries.sort(Comparator.comparing(Entry::status).thenComparing(Entry::className));
     return entries;
   }
 
-  /** Renders the counts followed by the classes in each status. */
-  public static String render(List<Entry> entries) {
+  /**
+   * Entries claiming {@link FidelityStatus#TRACED} or {@link FidelityStatus#PARTIAL} without a
+   * note. Those are the two statuses someone could build on, so an unexplained one is treated as a
+   * build failure; a bare {@link FidelityStatus#GUESS} needs no justification.
+   */
+  public static List<Entry> unjustified(List<Entry> entries) {
+    return entries.stream()
+        .filter(
+            entry ->
+                entry.status() == FidelityStatus.TRACED || entry.status() == FidelityStatus.PARTIAL)
+        .filter(entry -> entry.note().isBlank())
+        .toList();
+  }
+
+  /**
+   * Renders the counts followed by the assessed classes. Unassessed classes are a count only unless
+   * {@code listUnassessed} is set, because listing every unexamined class buries the entries that
+   * someone has actually recorded something about.
+   */
+  public static String render(List<Entry> entries, boolean listUnassessed) {
     Map<FidelityStatus, List<Entry>> byStatus = new EnumMap<>(FidelityStatus.class);
     for (Entry entry : entries) {
       byStatus.computeIfAbsent(entry.status(), status -> new ArrayList<>()).add(entry);
     }
 
-    StringBuilder report = new StringBuilder("Fidelity ledger -- " + SIMULATION_PACKAGE + "\n\n");
+    StringBuilder report = new StringBuilder("Fidelity ledger -- " + REPORTED_PACKAGE + "\n\n");
     for (FidelityStatus status : FidelityStatus.values()) {
       report.append(
           String.format("  %-11s %3d%n", status, byStatus.getOrDefault(status, List.of()).size()));
@@ -88,7 +106,7 @@ public final class FidelityLedger {
 
     for (FidelityStatus status : FidelityStatus.values()) {
       List<Entry> inStatus = byStatus.getOrDefault(status, List.of());
-      if (inStatus.isEmpty()) {
+      if (inStatus.isEmpty() || (status == FidelityStatus.UNASSESSED && !listUnassessed)) {
         continue;
       }
       report.append("\n").append(status).append("\n");
@@ -105,20 +123,21 @@ public final class FidelityLedger {
 
   /** Prints the report. Entry point for the {@code fidelityReport} Gradle task. */
   public static void main(String[] args) {
-    System.out.print(render(scan()));
+    boolean listUnassessed = List.of(args).contains("--unassessed");
+    System.out.print(render(scan(), listUnassessed));
   }
 
-  /** Binary names of every simulation class in the compiled output, excluding nested classes. */
-  private static List<String> simulationClassNames() {
+  /** Binary names of every reported class in the compiled output, excluding nested classes. */
+  private static List<String> reportedClassNames() {
     Path root = compiledClassesRoot();
     try (Stream<Path> files = Files.walk(root)) {
       return files
           .filter(path -> path.toString().endsWith(".class"))
           .map(path -> toBinaryName(root, path))
-          .filter(name -> name.startsWith(SIMULATION_PACKAGE + "."))
+          .filter(name -> name.startsWith(REPORTED_PACKAGE + "."))
+          .filter(name -> !name.startsWith(OWN_PACKAGE + "."))
           // Nested and anonymous classes are covered by their enclosing class's declaration
           .filter(name -> name.indexOf('$') < 0)
-          .filter(FidelityLedger::isSimulationClass)
           .sorted()
           .toList();
     } catch (IOException e) {
@@ -128,7 +147,7 @@ public final class FidelityLedger {
 
   /**
    * Loads a class without initializing it. The ledger only reads annotations, and running static
-   * initializers for every system just to report on them would be a needless side effect.
+   * initializers for every class just to report on them would be a needless side effect.
    */
   private static Class<?> load(String className) {
     try {

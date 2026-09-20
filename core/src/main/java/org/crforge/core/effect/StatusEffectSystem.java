@@ -1,7 +1,5 @@
 package org.crforge.core.effect;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import java.util.List;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
@@ -9,13 +7,11 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.fidelity.Fidelity;
 
 /**
  * Handles the calculation of final attributes based on active status effects. Only touches the
  * STATUS_EFFECT modifier source, leaving ability sources untouched.
  */
-@Fidelity(status = GUESS)
 public class StatusEffectSystem {
 
   public void update(GameState state, float deltaTime) {

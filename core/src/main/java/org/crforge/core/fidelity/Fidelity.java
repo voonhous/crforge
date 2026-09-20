@@ -7,14 +7,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares how well a simulation class or method is known to match the standard game.
+ * Declares how well a class or method is known to match the standard game.
  *
- * <p>The point of carrying this in the code rather than in a document is that it cannot drift: a
- * class is annotated where it lives, {@code FidelityLedgerTest} fails when a new simulation class
- * arrives without one, and {@code ./gradlew :core:fidelityReport} turns the annotations into a
- * count that should fall over time.
+ * <p>Unannotated code is {@link FidelityStatus#UNASSESSED}, which the ledger treats as a guess.
+ * That is the safe default, so this annotation is only ever needed to record a departure from it:
+ * either that someone looked and it is still a guess, or that some of it is now established.
  *
- * <p>Keep {@link #note()} descriptive rather than evidential. Say what is uncertain ("windup timing
+ * <p>{@link FidelityStatus#TRACED} and {@link FidelityStatus#PARTIAL} require a {@link #note()},
+ * because those are the two claims that could mislead someone into building on them. {@code
+ * FidelityLedgerTest} fails the build if either is left unjustified.
+ *
+ * <p>Keep the note descriptive rather than evidential. Say what is uncertain ("windup timing
  * inferred from observation"), not where the answer came from. Evidence belongs in working notes
  * outside the repository.
  *
@@ -27,7 +30,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.METHOD})
 public @interface Fidelity {
 
-  /** How well this element's behaviour is known. Never {@link FidelityStatus#UNDECLARED}. */
+  /** How well this element's behaviour is known. Never {@link FidelityStatus#UNASSESSED}. */
   FidelityStatus status();
 
   /** What specifically is uncertain, or for a settled element, what it is settled against. */

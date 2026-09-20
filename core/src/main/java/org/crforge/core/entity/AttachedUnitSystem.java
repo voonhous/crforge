@@ -1,7 +1,5 @@
 package org.crforge.core.entity;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
@@ -10,7 +8,6 @@ import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.util.GameUnits;
 
 /**
@@ -21,7 +18,6 @@ import org.crforge.core.util.GameUnits;
  * cannot be independently targeted. When the parent dies, all attached children die too.
  */
 @RequiredArgsConstructor
-@Fidelity(status = GUESS)
 public class AttachedUnitSystem {
 
   private final GameState gameState;

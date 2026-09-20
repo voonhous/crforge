@@ -1,12 +1,9 @@
 package org.crforge.core.engine;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import lombok.Setter;
 import org.crforge.core.component.ElixirCollectorComponent;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
-import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.match.Match;
 import org.crforge.core.player.Elixir;
 import org.crforge.core.player.Player;
@@ -20,7 +17,6 @@ import org.crforge.core.player.Player;
  * where the timer pauses until the owner has room. Stunned/frozen buildings do not tick their
  * timer.
  */
-@Fidelity(status = GUESS)
 public class ElixirCollectionSystem {
 
   private final GameState gameState;

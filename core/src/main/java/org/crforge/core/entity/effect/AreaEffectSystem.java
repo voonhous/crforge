@@ -1,7 +1,5 @@
 package org.crforge.core.entity.effect;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import java.util.List;
 import lombok.Setter;
 import org.crforge.core.card.AreaEffectStats;
@@ -18,7 +16,6 @@ import org.crforge.core.entity.effect.handler.SpawnProcessor;
 import org.crforge.core.entity.effect.handler.TargetApplicationRouter;
 import org.crforge.core.entity.effect.handler.TargetedEffectHandler;
 import org.crforge.core.entity.effect.handler.TickingHandler;
-import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Team;
 
 /**
@@ -26,7 +23,6 @@ import org.crforge.core.player.Team;
  * effects are routed to the appropriate handler based on their stats, with pull and spawn
  * processing running independently.
  */
-@Fidelity(status = GUESS)
 public class AreaEffectSystem {
 
   /** Callback for spawning units (wired to SpawnerSystem::spawnUnit). */

@@ -1,7 +1,5 @@
 package org.crforge.core.entity;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -29,7 +27,6 @@ import org.crforge.core.entity.effect.AreaEffect;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.match.Match;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
@@ -40,7 +37,6 @@ import org.crforge.core.util.GameUnits;
  * Handles all death-related mechanics: death damage, knockback, death spawns (immediate and
  * delayed), death area effects, death projectiles, elixir grants, and curse spawns.
  */
-@Fidelity(status = GUESS)
 public class DeathHandlingSystem {
 
   private static final float KNOCKBACK_DURATION = 0.5f;

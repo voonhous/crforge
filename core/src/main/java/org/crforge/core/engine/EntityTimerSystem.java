@@ -1,20 +1,16 @@
 package org.crforge.core.engine;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import java.util.List;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.fidelity.Fidelity;
 
 /**
  * Handles per-entity timer logic each tick: deploy countdowns, building lifetime decay, troop
  * lifetime, grounded timer, and tower activation. CES architecture: all per-tick timer logic lives
  * here rather than in entity update() methods.
  */
-@Fidelity(status = GUESS)
 public class EntityTimerSystem {
 
   /** Update all entity timers. Called once per tick (step 8 in GameEngine). */

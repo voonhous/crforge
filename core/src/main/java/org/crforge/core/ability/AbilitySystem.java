@@ -1,7 +1,5 @@
 package org.crforge.core.ability;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +18,6 @@ import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.fidelity.Fidelity;
 
 /**
  * Processes ability updates each tick. Dispatches to per-ability-type handlers.
@@ -28,7 +25,6 @@ import org.crforge.core.fidelity.Fidelity;
  * <p>Should run before CombatSystem in the tick loop so damage modifications take effect on the
  * current tick's attacks.
  */
-@Fidelity(status = GUESS)
 public class AbilitySystem {
 
   private final GameState gameState;

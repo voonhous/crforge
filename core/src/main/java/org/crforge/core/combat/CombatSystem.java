@@ -1,7 +1,5 @@
 package org.crforge.core.combat;
 
-import static org.crforge.core.fidelity.FidelityStatus.GUESS;
-
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.ability.ReflectAbility;
@@ -17,12 +15,10 @@ import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
 
 /** Handles attack execution, damage dealing, and delegates projectile management. */
-@Fidelity(status = GUESS)
 public class CombatSystem {
 
   private final GameState gameState;

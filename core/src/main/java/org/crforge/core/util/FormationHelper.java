@@ -1,6 +1,9 @@
 package org.crforge.core.util;
 
+import static org.crforge.core.fidelity.FidelityStatus.PARTIAL;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
+
+import org.crforge.core.fidelity.Fidelity;
 
 /**
  * Integer radial formation helper for multi-unit deploys.
@@ -30,6 +33,11 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
  * team using the simulator's existing convention (negate both axes). The result is a pre-collision
  * spawn offset; physics separates overlapping units afterwards.
  */
+@Fidelity(
+    status = PARTIAL,
+    note =
+        "layout and integer rounding pinned by offset fixtures; side and lane mirroring"
+            + " inferred, so callers apply the simulator's own convention")
 public final class FormationHelper {
 
   /** Fixed-point scale of {@link #sine1024(int)}: 1024 represents 1.0. */
