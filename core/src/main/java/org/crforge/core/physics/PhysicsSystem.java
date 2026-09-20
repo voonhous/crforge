@@ -1,5 +1,7 @@
 package org.crforge.core.physics;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -13,6 +15,7 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
 
@@ -20,6 +23,7 @@ import org.crforge.core.util.GameUnits;
  * Handles all physics interactions in the game, including movement, collision detection, collision
  * resolution, and arena boundary enforcement.
  */
+@Fidelity(status = GUESS)
 public class PhysicsSystem {
 
   private static final float SLIDE_FACTOR = 0.5f;

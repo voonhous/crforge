@@ -1,5 +1,7 @@
 package org.crforge.core.entity;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
@@ -8,10 +10,12 @@ import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.FormationLayout;
 import org.crforge.core.util.GameUnits;
 
+@Fidelity(status = GUESS)
 public class SpawnerSystem {
 
   private final GameState gameState;

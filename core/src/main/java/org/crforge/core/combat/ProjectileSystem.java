@@ -1,17 +1,21 @@
 package org.crforge.core.combat;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.List;
 import org.crforge.core.component.Combat;
 import org.crforge.core.component.ModifierSource;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.projectile.Projectile;
+import org.crforge.core.fidelity.Fidelity;
 
 /**
  * Orchestrates the projectile lifecycle: movement, hit detection, and cleanup. Delegates creation
  * to {@link ProjectileFactory}, hit processing to {@link ProjectileHitProcessor}, piercing
  * detection to {@link PiercingHitDetector}, and knockback to {@link KnockbackHelper}.
  */
+@Fidelity(status = GUESS)
 public class ProjectileSystem {
 
   private final GameState gameState;

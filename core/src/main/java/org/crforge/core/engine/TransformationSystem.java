@@ -1,5 +1,7 @@
 package org.crforge.core.engine;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.List;
 import org.crforge.core.card.LevelScaling;
 import org.crforge.core.card.ProjectileStats;
@@ -12,6 +14,7 @@ import org.crforge.core.component.Position;
 import org.crforge.core.component.SpawnerComponent;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.fidelity.Fidelity;
 
 /**
  * Handles HP-threshold transformations. When a troop's HP drops to or below its configured
@@ -21,6 +24,7 @@ import org.crforge.core.entity.unit.Troop;
  * <p>The old entity is marked dead (suppressing death handlers) and removed. The new entity spawns
  * at the same position with HP carried over proportionally.
  */
+@Fidelity(status = GUESS)
 class TransformationSystem {
 
   private final GameState gameState;

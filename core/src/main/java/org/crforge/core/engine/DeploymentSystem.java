@@ -1,5 +1,7 @@
 package org.crforge.core.engine;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -9,6 +11,7 @@ import lombok.Getter;
 import org.crforge.core.card.Card;
 import org.crforge.core.combat.AoeDamageService;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
@@ -23,6 +26,7 @@ import org.crforge.core.player.dto.PlayerActionDTO;
  *
  * <p>Entity construction is delegated to {@link EntityFactory}.
  */
+@Fidelity(status = GUESS)
 public class DeploymentSystem {
 
   /** Server synchronization delay before a card's deploy timer starts (seconds). */

@@ -1,5 +1,7 @@
 package org.crforge.core.combat;
 
+import static org.crforge.core.fidelity.FidelityStatus.GUESS;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +12,7 @@ import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
 
@@ -18,6 +21,7 @@ import org.crforge.core.util.GameUnits;
  * Extracted from CombatSystem to break the circular dependency between CombatSystem and
  * SpawnerSystem. Both systems can depend on this service without depending on each other.
  */
+@Fidelity(status = GUESS)
 public class AoeDamageService {
 
   private final GameState gameState;
