@@ -248,6 +248,18 @@ public final class RouteFollower {
    * learn where the jump should land. Only the distance to it survives, in the component's jump
    * total. An integrator making jump-enabled units grid-driven has to give the chain somewhere to
    * put the point first.
+   *
+   * <p><b>Setting a jump target does more than record a point, and none of the rest happens here
+   * either.</b> It replaces the route with the single node at the landing cell, re-initialises the
+   * direction and writes the byte the dash reads to decide whether to stop early. With only the
+   * name announced, the remaining iterations of the same substep loop still see the old route.
+   *
+   * <p><b>The state changes this pass asks for are announced, not applied.</b> Standing at the head
+   * of a held position, moving when a jump lands and jumping at the water crossing are each passed
+   * to the chain as a name, and nothing reads them. The pass re-reads the owner's state after the
+   * first of those, so a held unit that was jumping takes the ordinary path once the change has
+   * been applied and the jump path while it has not. Only jumping and dashing units are affected,
+   * and none is grid-driven.
    */
   private static void crossWaterByJumping(
       MovementState component,

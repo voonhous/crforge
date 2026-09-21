@@ -15,15 +15,37 @@ import org.crforge.core.pathfinding.GridEntityState;
  * has already reached zero. A tick driver in which a deploying unit can be stunned, killed or
  * targeted wants the guarded setter.
  *
- * <p><b>What this interface does not carry.</b> The standard game also runs an action when an
- * entity enters or leaves certain states, and none of those actions is ported. Entering the
- * deploying state seeds the deploy countdown and its copy from the DeployTime column; leaving the
- * deploying, standing or moving state clears the countdown; entering the morphing state seeds the
- * morph countdown; entering the casting state seeds the ability countdown and its warning; and
- * entering the dashing state raises the dashing flag and clears the landing countdown. The grid
- * driver seeds the deploy countdown itself when it builds a troop's view, so an ordinary ground
- * troop deploys correctly, but the morph, ability and dash countdowns have no writer anywhere and
- * the blocks of the entity state visit that count them down are therefore inert.
+ * <p><b>What this interface does not carry.</b> The standard game runs actions when an entity
+ * leaves a state and when it enters one, and none of them is ported; only the guard above is.
+ *
+ * <ul>
+ *   <li><b>Components.</b> Entering the moving, deploying or clone-setup state switches the
+ *       movement component on; entering the staggered-placement, following or carried states
+ *       switches both components off, and leaving the following states switches them back on. Here
+ *       a component is never switched by a state change, so whatever drives the entity has to keep
+ *       a unit in one of those states quiet itself.
+ *   <li><b>Routes.</b> Entering the standing, attacking or casting state empties the route, and
+ *       entering the moving state prepares one at once rather than on the next movement visit. Here
+ *       a route survives into the attacking state, and a unit that resumes walking prepares its
+ *       route one visit later.
+ *   <li><b>Countdowns.</b> Entering the deploying state seeds the deploy countdown and its copy
+ *       from the DeployTime column; leaving the deploying, spawn-pathfinding or in-game-pathfinding
+ *       state for anything but clone setup clears it; entering the morphing state seeds the morph
+ *       countdown; entering the casting states seeds the ability countdowns; leaving the attacking
+ *       state seeds the not-attacking buff timer; and entering the dashing state raises the dashing
+ *       flag and clears the landing countdown.
+ *   <li><b>Rewrites.</b> A building asked to enter the second following state stands instead;
+ *       leaving a following state moves the entity to a free cell; a dash chained from the setter
+ *       returns without storing the requested state; and a cast of no length reverts.
+ * </ul>
+ *
+ * <p>What that means in practice. Whatever creates a unit seeds its deploy countdown, so an
+ * ordinary ground troop deploys correctly. The morph, ability and dash countdowns have no writer
+ * anywhere, so the blocks of the entity state visit that count them down are inert. Two cases would
+ * go wrong rather than merely stay inert, and neither is reachable while only plain ground units
+ * are driven: a unit put into a following state while still deploying keeps its countdown and is
+ * then refused its way out, and a unit that reaches the deploying state from spawn pathfinding or
+ * staggered placement arrives with no countdown and never leaves it.
  */
 @FunctionalInterface
 public interface StateSetter {

@@ -13,8 +13,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * range, and at 10000 it is complete: the completion action runs and the charging flag goes on the
  * entity. An entity with no charge range at all loses its charge outright rather than keeping it.
  *
- * <p>Standing still, an attack pushback, a jump and clone setup each reset the charge. The reset is
- * to zero when the entity has a charge range to build over and to "no charge" when it has not.
+ * <p>Standing still resets the charge: to zero when the entity has a charge range to build over and
+ * to "no charge" when it has not. An attack pushback, a jump and clone setup are the exceptions:
+ * the entity is not walking, but the charge is left exactly as it was.
  *
  * <p>This never runs for an entity whose charge is already inactive; the displacement returns
  * before it.
