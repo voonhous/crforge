@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
@@ -20,6 +22,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * opposite orientation from the endpoint scan's. Always unpack with {@link #unpackX(int)} and
  * {@link #unpackY(int)} rather than by hand.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Agrees with the reference line for line: the clamp, the three row sets, both"
+            + " skip tests and the distance rule. Held by its own tests; no reference walk"
+            + " puts a unit on water.")
 public final class Relocation {
 
   /** Distance kept from every arena edge when the point is clamped. */

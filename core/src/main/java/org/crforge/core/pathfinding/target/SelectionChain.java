@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
@@ -31,6 +33,13 @@ import org.crforge.core.pathfinding.index.SpatialQuery;
  * answer is cached until {@link #beginTick()} clears it. A caller clears the cache once per tick,
  * before the visit.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Wires the index, the validator, the selector and default selection into one"
+            + " answer per tick; held by the five reference walks. A reference to an entity"
+            + " that leaves is cleared directly and not through the setter's null path. Hits"
+            + " go to a sink that applies nothing.")
 public class SelectionChain implements SelectionQueries, TargetingQueries {
 
   /** Arena length in routing cells, used by the default selection's lane bonus. */

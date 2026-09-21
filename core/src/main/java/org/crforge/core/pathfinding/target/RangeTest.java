@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
@@ -10,6 +12,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * the squared thresholds are ordinary wrapping products, matching the arithmetic the rest of the
  * targeting code uses.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "The range test, the squared distance, the minimum range and the"
+            + " reference-in-range answer agree with the reference line for line and decide"
+            + " the lock tick of all five reference walks.")
 public final class RangeTest {
 
   private RangeTest() {

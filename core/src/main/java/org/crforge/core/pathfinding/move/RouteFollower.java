@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -33,6 +35,17 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * out so that the behaviour is complete, but no plain ground unit reaches any of them and no test
  * here exercises them.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line. Held: the ordinary walk, arrival, and"
+            + " the node advance at 1000 units. Not held by any fixture: the held-position"
+            + " head, the jump visit and its arc, the dash visit, the stop-movement and wait"
+            + " timers, the scaled time step, speeds of 250 and above, and the water crossing"
+            + " of a jump-enabled unit. Not modelled: a jump target is announced by name only,"
+            + " so the route replacement, the direction reset and the dash stop byte do not"
+            + " happen, and the state changes this pass asks for are announced and not"
+            + " applied.")
 public final class RouteFollower {
 
   /** Largest distance one displacement may cover, in game units. */

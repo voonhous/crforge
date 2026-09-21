@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
@@ -16,6 +18,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * ascending, first one winning a tie. A window with no width or no height, or with no usable cell
  * in it, gives up.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Start validation and the goal adjustment window agree with the reference line"
+            + " for line, and every search of the five reference walks goes through it. The"
+            + " window's clipped edges and an off-map goal are held by its own tests only.")
 public final class RouteSearchWrapper {
 
   private RouteSearchWrapper() {

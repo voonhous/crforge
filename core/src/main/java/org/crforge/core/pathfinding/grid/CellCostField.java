@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
 
 /**
@@ -26,6 +28,13 @@ import org.crforge.core.pathfinding.GridEntityState;
  * <p>"A unit is supplied" is the {@code entityPresent} argument: the same rule is also asked about
  * a bare cell, and then the water permission, the lane and the pathfinding states play no part.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled against the five reference walks: the two that head for the king tower"
+            + " first move when a cost does. The water-permission branches and the blocked bit"
+            + " are not reached by a ground unit on the standard map and are held by its own"
+            + " tests only.")
 public final class CellCostField {
 
   private CellCostField() {

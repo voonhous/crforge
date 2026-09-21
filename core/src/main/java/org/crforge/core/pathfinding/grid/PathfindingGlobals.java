@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * Balance and pathfinding constants of the standard game, community-decoded game data.
  *
@@ -7,6 +10,12 @@ package org.crforge.core.pathfinding.grid;
  * it came from by name alone. Costs are the per-cell weights the route search multiplies by its
  * step factor; distances are game units; times are milliseconds.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Every value is the published one for the current data. The routing costs and"
+            + " the default-target switches are held by the five reference walks; the rest by"
+            + " the value tests.")
 public final class PathfindingGlobals {
 
   private PathfindingGlobals() {

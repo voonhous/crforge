@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * Stores a new reference on a targeting component and prepares the component for it.
  *
@@ -8,6 +11,12 @@ package org.crforge.core.pathfinding.target;
  * stood. Whether the attack timing is reset, rebased or left alone depends on whether the new
  * reference is already in range and on the owner's wind-up columns, in the order below.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The store, the wind-up rebase and the null paths agree with the reference. Not"
+            + " modelled: the two notifications the standard game sends when a reference"
+            + " changes. Only taking a new reference is held by a fixture.")
 public final class ReferenceSetter {
 
   /** The entity state of a unit that is dashing. */

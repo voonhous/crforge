@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.state;
 
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 
@@ -16,6 +18,12 @@ import org.crforge.core.pathfinding.GridEntityState;
  * entity in the casting state is resumed only while the cast is still active and its ability holds
  * the state.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Agrees with the reference line for line: the states it leaves alone, the"
+            + " casting double gate, the order of its four questions and the exemptions. Held"
+            + " by its own tests and by the end of every reference deployment.")
 public final class ResumeHelper {
 
   private ResumeHelper() {

@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * How far a unit notices candidates.
  *
@@ -8,6 +11,10 @@ package org.crforge.core.pathfinding.target;
  * more steps the index is read without checking for "no step active", so a component between steps
  * reads the step id stored before the start of the sequence rather than skipping the override.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference; the attack-sequence override is not held by any" + " fixture.")
 public final class SightRange {
 
   /** Shortest attack sequence that can override the sight range. */

@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -19,6 +21,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * ends holding the last one measured. That is a side effect the routine's callers see, not an
  * accident.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Agrees with the reference line for line: scan order, the strict comparison and"
+            + " the answer for a route of fewer than two nodes; held by its own tests and"
+            + " asked on every replan of the five reference walks.")
 public final class RouteBeyondReference {
 
   private RouteBeyondReference() {

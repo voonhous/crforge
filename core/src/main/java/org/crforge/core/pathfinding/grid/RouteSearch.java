@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
@@ -19,6 +21,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * expanded <b>before</b> it is closed, and a node taken off the heap is expanded <b>before</b> the
  * "have we closed the goal" test, so the goal is always expanded exactly once.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled against reference routes compared node for node and against the route"
+            + " length of every tick of the five reference walks: neighbour order, step costs,"
+            + " the heuristic, open-node refresh and the termination rule. The accumulating"
+            + " heuristic, closed-node reopening and the expansion budget are switched off in"
+            + " the standard game and are held by this class's own tests only.")
 public final class RouteSearch {
 
   /** Column step, row step and step factor of each neighbour, in the order they are examined. */

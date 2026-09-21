@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * Whether a candidate is one the owner prefers.
  *
@@ -8,6 +11,12 @@ package org.crforge.core.pathfinding.target;
  * building-target column lets it take them at all, and an attacker that ranks buffed candidates
  * lower prefers the ones without the buff.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference: a building-only attacker prefers buildings and the"
+            + " troops its building-target column lets it take. The buff-deprioritising rule"
+            + " is not held by any fixture, and no driven unit sets either column.")
 public final class TargetPriority {
 
   /** The preferred answer. */

@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.state;
 
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -52,6 +54,18 @@ import org.crforge.core.pathfinding.move.MovementState;
  * running the targeting work the standard game does alongside it, and the ability block starts the
  * cast without removing the buff the cast leaves behind.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "What is ported agrees with the reference line for line: arrival from the"
+            + " pathfind states, the delay accumulators, staggered placement, the dash landing"
+            + " delay, pending damage, dash immunity, the ability countdowns, the follow"
+            + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
+            + " deploy countdown ending in the moving state, and little else. Not modelled:"
+            + " the not-attacking buff timer, kamikaze self-damage, elixir generation, hiding,"
+            + " growth, the spawner timers, and the targeting visit the standard game runs"
+            + " straight after a hidden unit resumes. A removal is requested by name and read"
+            + " by nothing.")
 public final class EntityStateVisit {
 
   /** Milliseconds one tick advances every countdown by. */

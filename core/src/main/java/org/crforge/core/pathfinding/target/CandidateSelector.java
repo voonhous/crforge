@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.target;
 
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.index.SpatialIndex;
@@ -17,6 +19,15 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
  * candidate sits far enough away for the squared distance to saturate; those use {@link
  * Integer#compareUnsigned(int, int)}.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The loop, the ranking, the tie-breaks, the clips and the fallbacks agree with"
+            + " the reference. Held with towers as the only candidates. Not held by any"
+            + " fixture: enemy troops as candidates, lowest hit points, sight clipping,"
+            + " minimum range and the touchdown rule. A hidden candidate is skipped on its"
+            + " countdown alone, without asking whether it carries the component the reference"
+            + " also requires.")
 public final class CandidateSelector {
 
   /** The entity state of a unit that is dashing. */

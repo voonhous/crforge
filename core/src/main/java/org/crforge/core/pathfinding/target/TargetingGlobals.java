@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.target;
 
 import lombok.Builder;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 
 /**
@@ -34,6 +36,11 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param pendingDamageIgnoreIfDurationLess longest pending-damage duration, in milliseconds, that
  *     still lets the validator keep a dying target
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Every switch carries its published value. No reference walk reaches six of"
+            + " them, so those six are held by the value test and not by behaviour.")
 @Builder(toBuilder = true)
 public record TargetingGlobals(
     int rangeExtensionToKeepTarget,

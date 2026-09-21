@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.index;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.math.FixedMath;
 
@@ -11,6 +13,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * throughout: the squares below are allowed to wrap, and two of them compare the squared values as
  * unsigned words, so {@link Integer#compareUnsigned(int, int)} is used where that applies.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "All four shape tests agree with the reference line for line. Only the circle"
+            + " test is held by a fixture; the two box tests and the circle-against-shape test"
+            + " are reached by nothing yet.")
 public final class ShapeTests {
 
   private ShapeTests() {

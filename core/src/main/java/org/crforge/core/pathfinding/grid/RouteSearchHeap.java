@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.grid;
 
 import java.util.Arrays;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 
 /**
  * The heap of open nodes used by {@link RouteSearch}, ordered by an external priority array.
@@ -25,6 +27,11 @@ import java.util.Arrays;
  *
  * <p>The class is package private: it exists for the route search, not as a general container.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled with the route search: equal priorities pop in the order the reference"
+            + " routes need, which a general-purpose priority queue does not give.")
 final class RouteSearchHeap {
 
   private final int[] priority;

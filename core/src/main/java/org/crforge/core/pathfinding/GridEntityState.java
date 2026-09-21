@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * The seventeen states a {@link GridEntity} can be in, and the state masks that gate movement.
  *
@@ -12,6 +15,11 @@ package org.crforge.core.pathfinding;
  * <p>The names describe the observed behaviour of each state. Several states have no writer on the
  * paths this package covers; they are listed so the masks stay complete and readable.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The seventeen state numbers are settled. What several of the rarely used"
+            + " states mean is inferred from what enters and leaves them.")
 public final class GridEntityState {
 
   private GridEntityState() {

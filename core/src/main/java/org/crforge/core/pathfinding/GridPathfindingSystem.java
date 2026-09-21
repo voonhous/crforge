@@ -19,6 +19,8 @@ import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.CellTests;
@@ -102,6 +104,13 @@ import org.crforge.core.util.GameUnits;
  * <p>The troop's own deploy timer is left alone; the grid deploy countdown runs beside it and both
  * are twenty ticks for a one second deploy time.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Drives these rules from the engine. It keeps the entity order and the pre-pass"
+            + " and post-pass work, but it splits one tick into two calls with the engine's"
+            + " own combat between them and copies targets and positions back into the"
+            + " engine's components.")
 public class GridPathfindingSystem {
 
   /** Height the push pass reads for an entity that is off the ground. */

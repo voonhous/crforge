@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.state;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 
@@ -47,6 +49,14 @@ import org.crforge.core.pathfinding.GridEntityState;
  * then refused its way out, and a unit that reaches the deploying state from spawn pathfinding or
  * staggered placement arrives with no countdown and never leaves it.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled: while a deploy countdown runs only clone setup and the two following"
+            + " states may be set. Not modelled: every action the standard game runs on"
+            + " leaving and entering a state - switching components, emptying and preparing"
+            + " routes, seeding countdowns, the rewrites - as the class comment lists. The"
+            + " reference walks were produced the same way, so they do not hold this either.")
 @FunctionalInterface
 public interface StateSetter {
 

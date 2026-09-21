@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 
 /**
@@ -26,6 +28,13 @@ import org.crforge.core.pathfinding.GridEntity;
  *
  * <p>The class is not thread safe.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Bucket layout, insertion margin, bucket visiting order, the seen mark, the"
+            + " type mask, the team rule and both kings-last orderings agree with the"
+            + " reference line for line; the five reference walks hold the circle query, the"
+            + " multi-unit smoke scenarios hold it with several movers.")
 public final class SpatialIndex {
 
   /** Bucket edge length in game units; the bucket of a coordinate is that coordinate shifted. */

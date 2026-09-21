@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * The static cell map of an arena: one flag word per 500-unit routing cell.
  *
@@ -22,6 +25,12 @@ package org.crforge.core.pathfinding.grid;
  *
  * <p>Instances are immutable.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled: the standard arena's cells, and the road, not-placeable, water and"
+            + " blocked bits. Not settled: what the higher bits of a few published cells mean;"
+            + " they are masked away and never read.")
 public final class TileMap {
 
   /** Side length of one routing cell in game units. */

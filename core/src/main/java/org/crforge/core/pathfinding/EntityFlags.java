@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * The bits of {@link GridEntity#getFlags()} that the routing, movement, push, targeting and state
  * passes read, and the same bits as they are requested on {@link GridEntity#getPendingFlags()}.
@@ -11,6 +14,11 @@ package org.crforge.core.pathfinding;
  * <p>The names describe what each bit does where it is read. Bits with no reader on the paths these
  * packages cover are not listed.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The flag bits the ported passes read are settled. Nothing here sets a flag, so"
+            + " every flag-gated branch runs with the flag clear.")
 public final class EntityFlags {
 
   private EntityFlags() {

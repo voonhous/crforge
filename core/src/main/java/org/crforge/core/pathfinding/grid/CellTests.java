@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * The two cheap yes/no questions the rest of the movement code asks about a cell.
  *
@@ -10,6 +13,11 @@ package org.crforge.core.pathfinding.grid;
  * and takes cell coordinates; the standing test looks only at the static map and takes <b>world</b>
  * coordinates. Neither consults the other.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Agrees with the reference line for line; held by its own tests, since no"
+            + " reference walk ends up asking either question.")
 public final class CellTests {
 
   /** Bits that make a cell unusable to stand on: not placeable and blocked. */

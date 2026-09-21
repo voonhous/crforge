@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -16,6 +18,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The follower divides the budget by 250 to decide how many extra displacements a visit takes,
  * so a speed of 60 gives exactly one displacement of 60 units per tick.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line; held for a walking unit at its base"
+            + " speed, at the one speed the reference walks use. Not held: the held-position"
+            + " flags, the attack hold, the block countdown, jump speed, clone setup and the"
+            + " pathfind speed columns. Not modelled: status effects never reach the budget,"
+            + " so a slowed or raged unit walks at base speed.")
 public final class SpeedBudget {
 
   /** Percent the modifier arithmetic is expressed in. */

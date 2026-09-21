@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -23,6 +25,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The visit itself performs almost nothing: it announces route preparation, the follower, the
  * push pass and each displacement, and {@link MovementChain} runs them where they are announced.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line. Held: the ordinary visit of a walking"
+            + " ground unit. Not held by any fixture: attached placement and its limited"
+            + " rotation, the pushback visit's relocation ladder and end action, the block"
+            + " countdown. Both callers fix the parent to none and collision checks to on.")
 public final class MovementVisit {
 
   /** The x value that marks an entity's position as never having been written. */

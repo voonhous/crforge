@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.move;
 
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -37,6 +39,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The unit takes no part in any of this while it is flagged out of physical interaction or
  * flagged as an obstacle itself.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line, including the 32-bit wrap of the"
+            + " cross and dot products. Held: steering around a standing attacker and the"
+            + " blend's step and clamp. Not held: the zero cross and dot ties, the charge"
+            + " comparison at exactly 10000 and at equal mass, the standing, clone-setup and"
+            + " casting states, and two obstacles dropped in one pass. Supplied: a building"
+            + " never accepts contact.")
 public final class AvoidanceHandler {
 
   /** Largest radius, in game units, the neighbour query uses whatever the unit's own radius is. */

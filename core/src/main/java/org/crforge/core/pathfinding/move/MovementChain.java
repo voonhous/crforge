@@ -3,6 +3,8 @@ package org.crforge.core.pathfinding.move;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.CellGrid;
 
@@ -23,6 +25,13 @@ import org.crforge.core.pathfinding.grid.CellGrid;
  *
  * <p>One chain covers one entity's visit. It is not thread safe.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Runs each pass at the point the visit announces it, so later passes see"
+            + " earlier writes; held by the five reference walks and the multi-unit smoke"
+            + " scenarios. The names it collects for state changes, jump targets and end"
+            + " actions are recorded and read by nothing.")
 public final class MovementChain {
 
   private final MovementState component;

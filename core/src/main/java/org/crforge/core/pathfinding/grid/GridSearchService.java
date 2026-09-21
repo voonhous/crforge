@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * One whole route query, the way route preparation asks for it.
  *
@@ -18,6 +21,12 @@ package org.crforge.core.pathfinding.grid;
  * <p>The cost field is rebuilt on every query rather than cached, because the overlay it reads
  * changes from tick to tick.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled: cost field, wrapper and search composed with the standard settings,"
+            + " held by the five reference walks. Supplied: both water permissions are passed"
+            + " in by the caller, and every caller passes false.")
 public final class GridSearchService {
 
   private GridSearchService() {

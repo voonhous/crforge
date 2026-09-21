@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -20,6 +22,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>This never runs for an entity whose charge is already inactive; the displacement returns
  * before it.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "All five paths agree with the reference line for line, but no driven unit"
+            + " charges, so nothing beyond the inactive-charge early return is held by a"
+            + " fixture.")
 public final class ChargeBookkeeping {
 
   /** Scale the charge progress is expressed in relative to the configured charge range. */

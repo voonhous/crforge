@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 
 /**
  * Per-match routing state of one arena: the static cell map together with the dynamic cost overlay
@@ -25,6 +27,12 @@ import lombok.Setter;
  * <p>Overlay arrays are row-major with one entry per cell, so a cell's slot is {@code row * width +
  * column}, the same id space routes use.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled: the overlay's two buffers and their rotation, the per-side hash and"
+            + " change flags. Not held by any reference: a tick on which the set of occluders"
+            + " actually changes, since no building appears or dies in a reference walk.")
 public final class CellGrid {
 
   /** One entry per side of the match. */

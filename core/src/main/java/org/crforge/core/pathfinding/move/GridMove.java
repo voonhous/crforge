@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -19,6 +21,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * the corner of a bridge cell. A character in the spawn-pathfinding state is instead governed by
  * its water permission, and everything else crosses freely.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line, including the uneven bounds tests and"
+            + " the unconditional snap to the cell edge, which also applies to a unit standing"
+            + " off the grid. Held by its own tests; no reference walk is ever clamped.")
 public final class GridMove {
 
   private GridMove() {

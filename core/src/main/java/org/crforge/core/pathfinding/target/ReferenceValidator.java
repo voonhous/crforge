@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.index.SpatialIndex;
@@ -14,6 +16,15 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
  * <p>The mode argument is 1 when the caller is deciding whether to keep or take a target and 0 when
  * it is re-checking one it has. Only the pending-damage rule reads it.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Every rule agrees with the reference in order and in comparison. Held for"
+            + " towers as the only targets. Not held by any fixture: the restriction columns"
+            + " other than air and ground, the excluded configuration, buffs that hide a"
+            + " target, the jumping and in-game-pathfind states, and the whole pending-damage"
+            + " rule. Supplied: a target is ground exactly when it is not air, which the"
+            + " standard game reads from two separate columns.")
 public final class ReferenceValidator {
 
   /** Mode used by the re-check of a target that is already held. */

@@ -2,6 +2,8 @@ package org.crforge.core.pathfinding.grid;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.math.FixedMath;
 
@@ -23,6 +25,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The end-of-tick rotation that turns the overlay just built into the previous one is {@link
  * CellGrid#swap()} and belongs to the tick driver, not to this class.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled against the five reference walks, every one of which routes around"
+            + " tower footprints stamped here, and against the per-side change flags the"
+            + " reference route retention reads. Only towers occlude in any reference; the"
+            + " rasteriser's handling of a moving occluder is held by its own tests.")
 public final class FootprintOverlay {
 
   /** Virtual type of the entities the build considers; everything else is skipped. */

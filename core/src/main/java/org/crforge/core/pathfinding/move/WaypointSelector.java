@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.Route;
@@ -20,6 +22,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The answer is returned as a fresh {@code {x, y}} pair; the callers that need it kept decide
  * for themselves whether to copy it into the component's work vector.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The ordinary waypoint agrees with the reference. Not modelled: the special"
+            + " waypoint of a unit that flies direct paths, which is answered as the arena"
+            + " origin and is unreachable while no such unit is driven; the touchdown override"
+            + " is not held by a fixture.")
 public final class WaypointSelector {
 
   private WaypointSelector() {

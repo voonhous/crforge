@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 
@@ -11,6 +13,11 @@ import org.crforge.core.pathfinding.GridEntityState;
  * starts from a different condition and they do not test the same things in the same order, so they
  * are written out separately rather than folded together.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "All three gates agree with the reference line for line. Only the walking and"
+            + " attacking answers are held by a fixture.")
 public final class MovementGates {
 
   private MovementGates() {

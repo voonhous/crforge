@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -16,6 +18,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p>An empty route clears the pair rather than leaving the old one behind.
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Agrees with the reference line for line; held by its own tests and by the"
+            + " facing of every reference walk's first step.")
 public final class DirectionInitializer {
 
   private DirectionInitializer() {

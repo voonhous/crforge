@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding.move;
 
 import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -23,6 +25,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * neighbours are skipped when they are on a different height layer, are not alive, or carry the
  * flag that forbids pushing this unit from their side.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line: early outs, skip order, the box and"
+            + " circle rejects, the coincident case, the magnitude chain and the write order."
+            + " Held: two and three equal units pushing apart, and the multi-unit smoke"
+            + " scenarios. Not held by any fixture: unequal masses, a radius above 500, the"
+            + " height layers, the no-pushed-by flags, edge separation and the single-axis"
+            + " copy. Supplied: a building never pushes and is never pushed.")
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */

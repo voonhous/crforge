@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.grid;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * Which cell a unit walks to in order to reach its target.
  *
@@ -32,6 +35,13 @@ package org.crforge.core.pathfinding.grid;
  * opposite orientation from a relocated position's. Unpack with {@link #unpackCol(int)} and {@link
  * #unpackRow(int)}.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled against the endpoint of every route preparation of the five reference"
+            + " walks, in both scan directions. All five are one unit with one attack range,"
+            + " so other ranges are held by its own tests alone. Which cells are acceptable at"
+            + " all is asked of the caller, and the caller accepts every cell on the map.")
 public final class ReferenceEndpoint {
 
   /** The preferred rank: a cell with nothing against it. */

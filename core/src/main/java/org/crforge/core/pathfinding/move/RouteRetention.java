@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.Route;
 
 /**
@@ -19,6 +21,11 @@ import org.crforge.core.pathfinding.grid.Route;
  *
  * <p>Node ids outside either overlay are ignored rather than treated as a change.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line, but no fixture calls it with an"
+            + " overlay that changed, because no building appears or dies in a reference walk.")
 public final class RouteRetention {
 
   private RouteRetention() {

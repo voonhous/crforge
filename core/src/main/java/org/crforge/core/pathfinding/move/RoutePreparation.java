@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.Route;
@@ -21,6 +23,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>A unit that does not walk on the ground never searches at all; it gets a single-node route
  * straight to the destination cell.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line; held by the five reference walks for"
+            + " a unit with a tower as its reference. Not held: the friendly-only occlusion"
+            + " path, a same-path epsilon below one, and a replan that finds no route.")
 public final class RoutePreparation {
 
   private RoutePreparation() {

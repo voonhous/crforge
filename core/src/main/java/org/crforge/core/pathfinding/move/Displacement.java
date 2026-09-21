@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -36,6 +38,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * effectively aims two nodes ahead. That is what makes a unit clip the corner of the cell it enters
  * a bridge through.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Agrees with the reference line for line. Held: the step clamp, the facing"
+            + " update, the blend rotation and a clamped push, by the five reference walks and"
+            + " its own tests. Supplied as off: the whole pushed-ground family - the cell test"
+            + " that marks a pushed unit stuck, the water clamp it arms and the nudge away"
+            + " from the river line - which is what would stop a unit pushed off a bridge."
+            + " Whether the standard game has it on is not settled.")
 public final class Displacement {
 
   /** Largest distance one displacement may cover, in game units. */

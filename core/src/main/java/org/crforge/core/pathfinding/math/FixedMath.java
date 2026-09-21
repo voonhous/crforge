@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.math;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * Integer arithmetic helpers shared by the grid routing, movement and targeting code.
  *
@@ -21,6 +24,12 @@ package org.crforge.core.pathfinding.math;
  *       displacement code.
  * </ul>
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled against the five reference walks, which pass every distance, angle and"
+            + " division of a walk through it, and its own boundary tests. The overflow guards"
+            + " are held by the tests alone; no position on the arena reaches them.")
 public final class FixedMath {
 
   /** Largest signed 32-bit value, used as the saturation result of the guarded helpers. */

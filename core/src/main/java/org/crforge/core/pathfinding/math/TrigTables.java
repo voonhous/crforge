@@ -1,5 +1,8 @@
 package org.crforge.core.pathfinding.math;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
 /**
  * The two lookup tables the standard game's integer trigonometry reads.
  *
@@ -16,6 +19,11 @@ package org.crforge.core.pathfinding.math;
  *       whole number of degrees between 0 and 45.
  * </ul>
  */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "The sine and arctangent tables are the published ones, entry for entry; every"
+            + " facing and avoidance angle of the five reference walks reads them.")
 public final class TrigTables {
 
   /** Number of entries in the sine table: one per whole degree of a quarter turn, inclusive. */

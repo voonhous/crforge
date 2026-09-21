@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.target;
 
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 
 /**
@@ -9,6 +11,13 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * geometric test in {@link RangeTest} adds the target's own collision radius before it compares.
  * The order of operations matters and is the one below.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The attack range of a unit agrees with the reference. Not settled: the range a"
+            + " unit advertises to route preparation is worked out as though it had no"
+            + " movement component, which differs from the standard game for a walking unit"
+            + " with an attack sequence; no driven unit has one.")
 public final class AttackRange {
 
   /** Attack range against a type-3 reference, which is fought at contact distance. */

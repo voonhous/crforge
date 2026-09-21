@@ -2,6 +2,8 @@ package org.crforge.core.pathfinding.target;
 
 import java.util.List;
 import java.util.function.Predicate;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.math.FixedMath;
 
@@ -19,6 +21,18 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * distance; otherwise the candidates are ranked by an approximate squared distance with an optional
  * bonus for a matching lane. The published values select the x-position rule.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "The published switches, the candidate filter, the smallest-offset rule and the"
+            + " ranking agree with the reference, and the five reference walks hold them, two"
+            + " of them through a switch from the king tower to a princess tower. Not settled,"
+            + " and shared with the reference walks themselves: the value compared against 500"
+            + " to skip a tower in another lane is fed the unit's attack range, where the"
+            + " standard game appears to read how long the unit has been in its state, and the"
+            + " seed threshold is the squared approximate distance where the standard game"
+            + " appears to use the true one. The alternate seed, the goal mode and the"
+            + " six-object branch are not held by any fixture.")
 public final class DefaultTargetSelection {
 
   /** Score no candidate can reach, used as the starting threshold. */
