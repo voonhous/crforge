@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 /** Per-cell routing costs on the standard arena and on synthetic cost constants. */
 class CellCostFieldTest {
 
-  /** The standard arena's costs: water 5, blocked 100, building 100, default 7, roads 5 and 5. */
+  /** The standard arena's costs: water 7, blocked 50, building 50, default 8, roads 5 and 5. */
   private static final CellCosts LIVE = CellCosts.standard();
 
   /**
@@ -57,13 +57,13 @@ class CellCostFieldTest {
   @Test
   void chargesTheDefaultCostOffTheRoads() {
     assertThat(map.bits(0, 0)).isEqualTo(16);
-    assertThat(liveCost(0, 0, GridEntityState.MOVING, 1)).isEqualTo(7);
+    assertThat(liveCost(0, 0, GridEntityState.MOVING, 1)).isEqualTo(8);
   }
 
   @Test
   void chargesTheBlockedCostOnWaterWithoutPermission() {
     assertThat(map.bits(3, 31)).isEqualTo(32);
-    assertThat(liveCost(3, 31, GridEntityState.MOVING, 1)).isEqualTo(100);
+    assertThat(liveCost(3, 31, GridEntityState.MOVING, 1)).isEqualTo(50);
   }
 
   @Test
@@ -76,9 +76,9 @@ class CellCostFieldTest {
 
   @Test
   void returnsTheDefaultCostInThePathfindStatesBeforeTheRoadRuleIsReached() {
-    assertThat(liveCost(7, 20, GridEntityState.SPAWN_PATHFIND, 1)).isEqualTo(7);
-    assertThat(liveCost(7, 20, GridEntityState.INGAME_PATHFIND, 1)).isEqualTo(7);
-    assertThat(liveCost(7, 20, GridEntityState.ROUTE_FOLLOWING_ALTERNATE, 1)).isEqualTo(7);
+    assertThat(liveCost(7, 20, GridEntityState.SPAWN_PATHFIND, 1)).isEqualTo(8);
+    assertThat(liveCost(7, 20, GridEntityState.INGAME_PATHFIND, 1)).isEqualTo(8);
+    assertThat(liveCost(7, 20, GridEntityState.ROUTE_FOLLOWING_ALTERNATE, 1)).isEqualTo(8);
   }
 
   @Test
@@ -157,25 +157,25 @@ class CellCostFieldTest {
 
     assertThat(field).hasSize(36 * 64);
     assertThat(field[20 * 36 + 7]).isEqualTo(5);
-    assertThat(field[0]).isEqualTo(7);
-    assertThat(field[31 * 36 + 3]).isEqualTo(100);
-    assertThat(field[6 * 36 + 18]).isEqualTo(100);
+    assertThat(field[0]).isEqualTo(8);
+    assertThat(field[31 * 36 + 3]).isEqualTo(50);
+    assertThat(field[6 * 36 + 18]).isEqualTo(50);
 
     int fives = 0;
-    int sevens = 0;
-    int hundreds = 0;
+    int eights = 0;
+    int fifties = 0;
     for (int cost : field) {
       if (cost == 5) {
         fives++;
-      } else if (cost == 7) {
-        sevens++;
-      } else if (cost == 100) {
-        hundreds++;
+      } else if (cost == 8) {
+        eights++;
+      } else if (cost == 50) {
+        fifties++;
       }
     }
     assertThat(fives).isEqualTo(556);
-    assertThat(sevens).isEqualTo(1500);
-    assertThat(hundreds).isEqualTo(248);
+    assertThat(eights).isEqualTo(1500);
+    assertThat(fifties).isEqualTo(248);
   }
 
   @Test
@@ -197,10 +197,10 @@ class CellCostFieldTest {
 
   @Test
   void exposesThePublishedCostConstants() {
-    assertThat(LIVE.waterCost()).isEqualTo(5);
-    assertThat(LIVE.blockedCost()).isEqualTo(100);
-    assertThat(LIVE.buildingCost()).isEqualTo(100);
-    assertThat(LIVE.defaultCost()).isEqualTo(7);
+    assertThat(LIVE.waterCost()).isEqualTo(7);
+    assertThat(LIVE.blockedCost()).isEqualTo(50);
+    assertThat(LIVE.buildingCost()).isEqualTo(50);
+    assertThat(LIVE.defaultCost()).isEqualTo(8);
     assertThat(LIVE.roadCost()).isEqualTo(5);
     assertThat(LIVE.matchingRoadCost()).isEqualTo(5);
   }

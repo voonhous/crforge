@@ -9,12 +9,12 @@ class PathfindingGlobalsTest {
 
   @Test
   void cellCostsAreTheStandardValues() {
-    assertThat(PathfindingGlobals.PATHFINDING_DEFAULT_COST).isEqualTo(7);
+    assertThat(PathfindingGlobals.PATHFINDING_DEFAULT_COST).isEqualTo(8);
     assertThat(PathfindingGlobals.PATHFINDING_ROAD_COST).isEqualTo(5);
     assertThat(PathfindingGlobals.PATHFINDING_MATCHINGROAD_COST).isEqualTo(5);
-    assertThat(PathfindingGlobals.PATHFINDING_WATER_COST).isEqualTo(5);
-    assertThat(PathfindingGlobals.PATHFINDING_BLOCKED_COST).isEqualTo(100);
-    assertThat(PathfindingGlobals.PATHFINDING_BUILDING_COST).isEqualTo(100);
+    assertThat(PathfindingGlobals.PATHFINDING_WATER_COST).isEqualTo(7);
+    assertThat(PathfindingGlobals.PATHFINDING_BLOCKED_COST).isEqualTo(50);
+    assertThat(PathfindingGlobals.PATHFINDING_BUILDING_COST).isEqualTo(50);
   }
 
   @Test
@@ -52,6 +52,6 @@ class PathfindingGlobalsTest {
     assertThat(PathfindingGlobals.LOGIC_PATHFIND_BACKWARDS_TRY_KEEP_TARGET).isTrue();
     assertThat(PathfindingGlobals.LOGIC_XPOS_BASED_TOWER_TARGETING).isTrue();
     assertThat(PathfindingGlobals.LOGIC_DEFAULT_TARGET_USE_LANE_ID).isFalse();
-    assertThat(PathfindingGlobals.LOGIC_PRINCESS_TOWERS_ALWAYS_AS_DEFAULT_TARGET).isFalse();
+    assertThat(PathfindingGlobals.LOGIC_PRINCESS_TOWERS_ALWAYS_AS_DEFAULT_TARGET).isTrue();
   }
 }

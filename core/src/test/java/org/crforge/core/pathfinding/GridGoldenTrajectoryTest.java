@@ -73,9 +73,9 @@ class GridGoldenTrajectoryTest {
   }
 
   @Test
-  @DisplayName("a Knight deployed in the centre switches tower and locks on at tick 242")
+  @DisplayName("a Knight deployed in the centre switches tower and locks on at tick 245")
   void centreDeployment() {
-    replay("knight_centre", "PrincessTower_1_2", 242);
+    replay("knight_centre", "PrincessTower_1_2", 245);
   }
 
   @Test
@@ -85,9 +85,9 @@ class GridGoldenTrajectoryTest {
   }
 
   @Test
-  @DisplayName("a Knight deployed behind its king tower keeps the right lane and locks at tick 361")
+  @DisplayName("a Knight deployed behind its king tower keeps the right lane and locks at tick 368")
   void behindKingDeployment() {
-    replay("knight_behind_king", "PrincessTower_1_2", 361);
+    replay("knight_behind_king", "PrincessTower_1_2", 368);
   }
 
   /**

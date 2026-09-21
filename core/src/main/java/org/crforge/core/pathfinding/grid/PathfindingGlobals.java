@@ -18,7 +18,7 @@ public final class PathfindingGlobals {
   // -------------------------------------------------------------------------------------------
 
   /** Cost of an ordinary cell that carries no road. */
-  public static final int PATHFINDING_DEFAULT_COST = 7;
+  public static final int PATHFINDING_DEFAULT_COST = 8;
 
   /** Cost of a cell carrying a road the unit is not assigned to. */
   public static final int PATHFINDING_ROAD_COST = 5;
@@ -27,13 +27,13 @@ public final class PathfindingGlobals {
   public static final int PATHFINDING_MATCHINGROAD_COST = 5;
 
   /** Cost of a water cell for a unit that is allowed to enter water. */
-  public static final int PATHFINDING_WATER_COST = 5;
+  public static final int PATHFINDING_WATER_COST = 7;
 
   /** Cost of a cell the unit cannot cross at all. */
-  public static final int PATHFINDING_BLOCKED_COST = 100;
+  public static final int PATHFINDING_BLOCKED_COST = 50;
 
   /** Cost stamped over the cells a building occupies. */
-  public static final int PATHFINDING_BUILDING_COST = 100;
+  public static final int PATHFINDING_BUILDING_COST = 50;
 
   // -------------------------------------------------------------------------------------------
   // Route search: heuristic and node handling
@@ -130,5 +130,5 @@ public final class PathfindingGlobals {
    * value contains a literal space ("ALWAYS_AS DEFAULT_TARGET"); the name here closes the gap
    * because a Java identifier cannot carry one.
    */
-  public static final boolean LOGIC_PRINCESS_TOWERS_ALWAYS_AS_DEFAULT_TARGET = false;
+  public static final boolean LOGIC_PRINCESS_TOWERS_ALWAYS_AS_DEFAULT_TARGET = true;
 }

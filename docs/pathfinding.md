@@ -80,7 +80,7 @@ Cost evaluation distinguishes water permission, blocked cells, default terrain, 
 
 Some terrain and movement-state branches return their cost before dynamic overlays are applied. In the ordinary terrain branch, an active overlay uses the maximum of base cost and overlay cost. Road preference can depend on whether the road ID matches the unit's lane value.
 
-The active cost constants are: default terrain 7, road 5, a road whose id matches the unit's lane 5, water 5 when the unit is permitted on water and 100 when it is not, and the building overlay 100. These rules alone do not predict which bridge a troop will choose.
+The active cost constants are: default terrain 8, road 5, a road whose id matches the unit's lane 5, water 7 when the unit is permitted on water and 50 when it is not, and the building overlay 50. These rules alone do not predict which bridge a troop will choose.
 
 The overlay is rebuilt each tick before any component pass. Every entity of the routing type that answers that it occludes has a square box stamped around it at the building cost, sized from its own collision radius, and its id is folded into a running hash of its side. Each side's change flag then says whether that side's hash differs from the previous build's, which is what route retention consults before keeping a cached route. The flags therefore react to which occluders exist and in what order, not to where they are.
 
@@ -106,9 +106,9 @@ Five golden cases pin a whole Knight deployment on the standard arena with nothi
 | --- | --- | --- | --- | --- |
 | `knight_left` | (3500, 10000) | PrincessTower_1_1 | tick 235 | (3731, 22854) |
 | `knight_right` | (14500, 10000) | PrincessTower_1_2 | tick 235 | (14731, 22854) |
-| `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 242 | (13731, 22952) |
+| `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245 | (14231, 22852) |
 | `knight_right_rear` | (16500, 5000) | PrincessTower_1_2 | tick 323 | (14769, 22836) |
-| `knight_behind_king` | (9000, 4600) | KingTower_1_0, then PrincessTower_1_2 from tick 80 | tick 361 | (14231, 22849) |
+| `knight_behind_king` | (9000, 4600) | KingTower_1_0, then PrincessTower_1_2 from tick 73 | tick 368 | (14231, 22820) |
 
 The centre case is the interesting one: the king tower is closest in x from the deploy point, so the unit walks at it until a princess tower becomes closer in x at tick 82.
 

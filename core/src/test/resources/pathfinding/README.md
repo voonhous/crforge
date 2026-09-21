@@ -37,8 +37,25 @@ One entry per 50 ms tick of the whole deployment, from placement to the tick the
 tower.
 
 ```json
-{"card": "Knight", "deploy": [3500, 10000], "side": 0, "lane": 1,
- "records": [{"tick": 20, "x": 3518, "y": 10056, "state": 1, "ref": "PrincessTower_1_1", "route": 27}]}
+{
+  "card": "Knight",
+  "deploy": [
+    3500,
+    10000
+  ],
+  "side": 0,
+  "lane": 1,
+  "records": [
+    {
+      "tick": 20,
+      "x": 3518,
+      "y": 10056,
+      "state": 1,
+      "ref": "PrincessTower_1_1",
+      "route": 27
+    }
+  ]
+}
 ```
 
 - `card`, `deploy`, `side`, `lane` - the deployment. `deploy` is in game units, 1000 per arena tile
@@ -62,9 +79,36 @@ Every question the movement pass put to the routing grid during the same run, in
 inputs it asked with and the answer it got.
 
 ```json
-{"case": "knight_left",
- "calls": [{"tick": 20, "query": "endpoint", "inputs": [7, 51, 1700], "output": 393264},
-           {"tick": 20, "query": "search", "inputs": [7, 20, 6, 48, 1], "outputs": [1734, 1699]}]}
+{
+  "case": "knight_left",
+  "calls": [
+    {
+      "tick": 20,
+      "query": "endpoint",
+      "inputs": [
+        7,
+        51,
+        1700
+      ],
+      "output": 393264
+    },
+    {
+      "tick": 20,
+      "query": "search",
+      "inputs": [
+        7,
+        20,
+        6,
+        48,
+        1
+      ],
+      "outputs": [
+        1734,
+        1699
+      ]
+    }
+  ]
+}
 ```
 
 - `attackRange` - the unit's attack range in game units, which sizes the endpoint scan.
@@ -82,13 +126,13 @@ unit ends up.
 
 ## Cases
 
-| Case | Deploy | Target | Attack lock |
-| --- | --- | --- | --- |
-| `knight_left` | (3500, 10000) | PrincessTower_1_1 | tick 235 |
-| `knight_right` | (14500, 10000) | PrincessTower_1_2 | tick 235 |
-| `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 242 |
-| `knight_right_rear` | (16500, 5000) | PrincessTower_1_2 | tick 323 |
-| `knight_behind_king` | (9000, 4600) | KingTower_1_0, then PrincessTower_1_2 from tick 80 | tick 361 |
+| Case                 | Deploy         | Target                                             | Attack lock |
+|----------------------|----------------|----------------------------------------------------|-------------|
+| `knight_left`        | (3500, 10000)  | PrincessTower_1_1                                  | tick 235    |
+| `knight_right`       | (14500, 10000) | PrincessTower_1_2                                  | tick 235    |
+| `knight_centre`      | (9000, 12000)  | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245    |
+| `knight_right_rear`  | (16500, 5000)  | PrincessTower_1_2                                  | tick 323    |
+| `knight_behind_king` | (9000, 4600)   | KingTower_1_0, then PrincessTower_1_2 from tick 73 | tick 368    |
 
 The centre case is the interesting one: the king tower is the closest in x from the deploy point, so
 the unit walks at it until a princess tower becomes closer in x, which happens at tick 82.

@@ -37,7 +37,7 @@ class CellGridTest {
   void carriesTheConfiguredOcclusionSettings() {
     assertThat(grid.isDynamicOcclusionsEnabled()).isTrue();
     assertThat(grid.dynamicEnabled()).isEqualTo(1);
-    assertThat(grid.getBuildingCost()).isEqualTo(100);
+    assertThat(grid.getBuildingCost()).isEqualTo(50);
 
     CellGrid disabled = new CellGrid(TileMap.standard1v1(), false, 100);
     assertThat(disabled.isDynamicOcclusionsEnabled()).isFalse();

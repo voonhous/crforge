@@ -13,7 +13,7 @@ class GridSearchServiceTest {
 
   @BeforeEach
   void setUp() {
-    grid = new CellGrid(TileMap.standard1v1(), true, 100);
+    grid = new CellGrid(TileMap.standard1v1(), true, PathfindingGlobals.PATHFINDING_BUILDING_COST);
     FootprintOverlay.buildOverlay(grid, StandardTowers.entities());
   }
 
@@ -86,7 +86,7 @@ class GridSearchServiceTest {
             50,
             1);
 
-    assertThat(moving.size()).isEqualTo(48);
+    assertThat(moving.size()).isEqualTo(63);
     assertThat(pathfinding.size()).isEqualTo(47);
   }
 
