@@ -295,31 +295,43 @@ class GridSmokeScenariosTest {
     assertThat(run.onWater).isEmpty();
     // Anomaly 3 reaches this scenario as well: the crowd presses two of its own into the tower
     // they are attacking. The count is pinned so a change in behaviour is noticed.
-    assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").hasSize(25);
-    assertThat(run.pushedTicks)
-        .as("the eight skeletons inside the arena crowd each other")
-        .isPositive();
-    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(291);
+    assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").hasSize(59);
+    assertThat(run.pushedTicks).as("the skeletons inside the arena crowd each other").isPositive();
+    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(282);
 
-    // Anomaly 4: seven formation places are outside the arena and nothing brings them back, so
-    // each of the seven is counted on every one of the 371 ticks from tick 21 to the last.
+    // Anomaly 4: six formation places are outside the arena, because nothing on the deploy path
+    // keeps a formation inside it. Four of them stand off the routing grid outright and never
+    // move. The other two stand within one cell of the left edge, which the cell conversion still
+    // reports as the leftmost column: they hold a route, and the first step either of them takes
+    // to the left snaps it to the cell's lower edge, which for a unit standing off the grid is
+    // ahead of it, inside the arena. Skeleton#8 then drifts back out and is listed a second time.
     assertThat(run.outsideArena)
         .containsExactly(
-            "Skeleton#7 at (-1500, 3500)",
-            "Skeleton#8 at (-2250, 1500)",
-            "Skeleton#9 at (-1250, 2000)",
-            "Skeleton#11 at (-750, 1000)",
-            "Skeleton#12 at (-1250, 0)",
-            "Skeleton#19 at (1500, -500)",
-            "Skeleton#21 at (3000, -1000)");
-    assertThat(run.leftArena).hasSize(7 * 371);
+            "Skeleton#8 at (-63, 2766)",
+            "Skeleton#9 at (-1561, 3355)",
+            "Skeleton#10 at (-378, 1785)",
+            "Skeleton#11 at (-1797, 1259)",
+            "Skeleton#13 at (-587, 5)",
+            "Skeleton#16 at (2130, -743)",
+            "Skeleton#8 at (-15, 2841)");
+    assertThat(run.leftArena).hasSize(1489);
 
-    // The seven cannot be routed from off the grid, which is what the hard invariant sees.
-    assertThat(run.emptyRoute).hasSize(7);
-    assertThat(run.violations).hasSize(7);
+    // The four off the grid cannot be routed, which is what the hard invariant sees from tick 42.
+    // The fifth violation is the snap itself: Skeleton#10 is carried 391 units in one tick, from
+    // 378 units outside the left edge onto it. The snap is the grid move's own rule and is kept;
+    // what is wrong is that a unit was ever placed where the rule could carry it that far.
+    assertThat(run.emptyRoute).hasSize(4);
     assertThat(run.violations)
-        .allMatch(line -> line.contains("tick 42"))
-        .allMatch(line -> line.contains("walking toward a target with no route two ticks running"));
+        .containsExactly(
+            "corner swarm tick 41 Skeleton#10: covered 391 units on a budget of 90 plus a push",
+            "corner swarm tick 42 Skeleton#9: walking toward a target with no route two ticks"
+                + " running at (-1561, 3355)",
+            "corner swarm tick 42 Skeleton#11: walking toward a target with no route two ticks"
+                + " running at (-1797, 1259)",
+            "corner swarm tick 42 Skeleton#13: walking toward a target with no route two ticks"
+                + " running at (-587, 5)",
+            "corner swarm tick 42 Skeleton#16: walking toward a target with no route two ticks"
+                + " running at (2130, -743)");
   }
 
   // -------------------------------------------------------------------------------------------
