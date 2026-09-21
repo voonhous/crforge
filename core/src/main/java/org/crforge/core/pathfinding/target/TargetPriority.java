@@ -4,8 +4,9 @@ package org.crforge.core.pathfinding.target;
  * Whether a candidate is one the owner prefers.
  *
  * <p>The answer is only ever 0 or 1, and the selector settles equal priorities by distance. Only a
- * character can prefer anything: a building-only attacker prefers buildings, and an attacker that
- * ranks buffed candidates lower prefers the ones without the buff.
+ * character can prefer anything: a building-only attacker prefers buildings and the troops whose
+ * building-target column lets it take them at all, and an attacker that ranks buffed candidates
+ * lower prefers the ones without the buff.
  */
 public final class TargetPriority {
 
@@ -30,9 +31,7 @@ public final class TargetPriority {
         return PREFERRED;
       }
       TargetingConfig candidateConfig = candidate.getConfig();
-      if (candidate.presenceFlag()
-          && candidateConfig != null
-          && candidateConfig.preferredByBuildingAttackers()) {
+      if (candidate.presenceFlag() && candidateConfig != null && candidateConfig.buildingTarget()) {
         return PREFERRED;
       }
     }

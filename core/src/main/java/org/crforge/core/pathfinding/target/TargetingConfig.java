@@ -39,9 +39,7 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     while moving
  * @param isSummonerTower true for a tower that spawns units, which some filters treat apart
  * @param buildingTarget true when the entity may be taken by a building-only attacker although it
- *     is not itself a building
- * @param preferredByBuildingAttackers flag on a candidate that makes a building-only attacker rank
- *     it as highly as a building; the published name of this flag is not documented
+ *     is not itself a building; such an attacker also ranks it level with a building
  * @param targetOnlyBuildings the unit attacks buildings only
  * @param targetOnlyTroops the unit attacks troops only
  * @param targetOnlyTowers the unit attacks towers only
@@ -120,7 +118,6 @@ public record TargetingConfig(
     boolean isBuilding,
     boolean isSummonerTower,
     boolean buildingTarget,
-    boolean preferredByBuildingAttackers,
     boolean targetOnlyBuildings,
     boolean targetOnlyTroops,
     boolean targetOnlyTowers,
