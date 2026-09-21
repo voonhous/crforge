@@ -89,10 +89,10 @@ import org.crforge.core.util.GameUnits;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Drives these rules from the engine. It keeps the entity order and the pre-pass"
-            + " and post-pass work, but it splits one tick into two calls with the engine's"
-            + " own combat between them and copies targets and positions back into the"
-            + " engine's components.")
+        "The older engine's adapter onto these rules. It keeps the entity order and the"
+            + " pre-pass and post-pass work, but it splits one tick into two calls with the"
+            + " older engine's combat between them and copies targets and positions back,"
+            + " which the battle package does not need to do.")
 public class GridPathfindingSystem {
 
   /** Height the push pass reads for an entity that is off the ground. */

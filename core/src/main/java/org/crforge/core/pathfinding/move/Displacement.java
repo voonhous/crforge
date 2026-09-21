@@ -42,7 +42,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line. Held: the step clamp, the facing"
-            + " update, the blend rotation and a clamped push, by the five reference walks and"
+            + " update, the blend rotation and a clamped push, by the 53 reference walks and"
             + " its own tests. Supplied as off: the whole pushed-ground family - the cell test"
             + " that marks a pushed unit stuck, the water clamp it arms and the nudge away"
             + " from the river line - which is what would stop a unit pushed off a bridge."

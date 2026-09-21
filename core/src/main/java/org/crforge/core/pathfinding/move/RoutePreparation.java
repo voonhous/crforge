@@ -26,8 +26,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line; held by the five reference walks for"
-            + " a unit with a tower as its reference. Not held: the friendly-only occlusion"
+        "Agrees with the reference line for line; held by the 53 reference walks for a"
+            + " unit with a tower as its reference. Not held: the friendly-only occlusion"
             + " path, a same-path epsilon below one, and a replan that finds no route.")
 public final class RoutePreparation {
 

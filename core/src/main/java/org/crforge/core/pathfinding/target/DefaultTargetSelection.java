@@ -25,8 +25,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "The published switches, the candidate filter, the smallest-offset rule and the"
-            + " ranking agree with the reference, and the five reference walks hold them, two"
-            + " of them through a switch from the king tower to a princess tower. Not settled,"
+            + " ranking agree with the reference, and the 53 reference walks hold them, 32 of"
+            + " them through a switch from the king tower to a princess tower. Not settled,"
             + " and shared with the reference walks themselves: the value compared against 500"
             + " to skip a tower in another lane is fed the unit's attack range, where the"
             + " standard game appears to read how long the unit has been in its state, and the"

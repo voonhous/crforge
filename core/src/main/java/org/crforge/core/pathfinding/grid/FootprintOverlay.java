@@ -28,10 +28,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled against the five reference walks, every one of which routes around"
-            + " tower footprints stamped here, and against the per-side change flags the"
-            + " reference route retention reads. Only towers occlude in any reference; the"
-            + " rasteriser's handling of a moving occluder is held by its own tests.")
+        "Settled against the 53 reference walks, every one of which routes around tower"
+            + " footprints stamped here, and against the per-side change flags the reference"
+            + " route retention reads. Only towers occlude in any reference; the rasteriser's"
+            + " handling of a moving occluder is held by its own tests.")
 public final class FootprintOverlay {
 
   /** Virtual type of the entities the build considers; everything else is skipped. */

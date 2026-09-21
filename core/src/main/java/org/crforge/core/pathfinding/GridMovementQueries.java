@@ -1,6 +1,8 @@
 package org.crforge.core.pathfinding;
 
 import java.util.function.Function;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.CellTests;
@@ -31,6 +33,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
  *
  * <p>One instance serves one visit: the reference point is read once, when the instance is built.
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Answers the movement pass from the live grid and the unit's own state; held by"
+            + " the 53 reference walks. Supplied: both water permissions off, every map cell"
+            + " an acceptable endpoint, no status effects in the speed inputs, and a unit that"
+            + " always carries both components.")
 public final class GridMovementQueries implements MovementQueries {
 
   private final GridUnitState unit;

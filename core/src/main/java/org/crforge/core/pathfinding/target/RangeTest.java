@@ -17,7 +17,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "The range test, the squared distance, the minimum range and the"
             + " reference-in-range answer agree with the reference line for line and decide"
-            + " the lock tick of all five reference walks.")
+            + " the lock tick of all 53 reference walks.")
 public final class RangeTest {
 
   private RangeTest() {

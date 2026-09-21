@@ -20,11 +20,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>A unit's lane is written once when it is created and never recomputed.
  */
 @Fidelity(
-    status = FidelityStatus.PARTIAL,
+    status = FidelityStatus.TRACED,
     note =
-        "Agrees with the lane of all five reference walks and with its own tests for"
-            + " both roads. Every reference walk is deployed on the bottom side, so the top"
-            + " side is held by the tests alone.")
+        "Settled against the lane of all 53 reference walks, deployed at random points"
+            + " on both sides.")
 public final class LaneAssignment {
 
   private LaneAssignment() {

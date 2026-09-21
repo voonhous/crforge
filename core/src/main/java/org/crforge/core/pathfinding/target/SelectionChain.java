@@ -37,9 +37,9 @@ import org.crforge.core.pathfinding.index.SpatialQuery;
     status = FidelityStatus.PARTIAL,
     note =
         "Wires the index, the validator, the selector and default selection into one"
-            + " answer per tick; held by the five reference walks. A reference to an entity"
-            + " that leaves is cleared directly and not through the setter's null path. Hits"
-            + " go to a sink that applies nothing.")
+            + " answer per tick; held by the 53 reference walks. A reference to an entity that"
+            + " leaves is cleared directly and not through the setter's null path. Hits go to"
+            + " a sink that applies nothing.")
 public class SelectionChain implements SelectionQueries, TargetingQueries {
 
   /** Arena length in routing cells, used by the default selection's lane bonus. */

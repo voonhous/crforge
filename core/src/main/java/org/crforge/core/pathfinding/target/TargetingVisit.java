@@ -47,7 +47,7 @@ import org.crforge.core.pathfinding.move.MovementState;
     note =
         "Agrees with the reference line for line: every early return, the uneven"
             + " comparisons and the order of timer reads and writes. Held: selection, keeping"
-            + " and dropping a reference, and the lock, by the five reference walks. Not"
+            + " and dropping a reference, and the lock, by the 53 reference walks. Not"
             + " settled: the attack-timer advance is supplied as a flat 50 ms per visit, so"
             + " the wind-up before a first hit and everything a burst needs are not modelled,"
             + " and the hit writes nothing back into this state. Not held by any fixture:"

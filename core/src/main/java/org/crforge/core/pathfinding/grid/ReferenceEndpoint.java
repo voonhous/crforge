@@ -36,12 +36,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * #unpackRow(int)}.
  */
 @Fidelity(
-    status = FidelityStatus.PARTIAL,
+    status = FidelityStatus.TRACED,
     note =
-        "Settled against the endpoint of every route preparation of the five reference"
-            + " walks, in both scan directions. All five are one unit with one attack range,"
-            + " so other ranges are held by its own tests alone. Which cells are acceptable at"
-            + " all is asked of the caller, and the caller accepts every cell on the map.")
+        "Settled against the endpoint of every route preparation of the 53 reference"
+            + " walks, for attack ranges from 500 to 9000 and both scan directions. Which"
+            + " cells are acceptable at all is asked of the caller, and the caller accepts"
+            + " every cell on the map.")
 public final class ReferenceEndpoint {
 
   /** The preferred rank: a cell with nothing against it. */

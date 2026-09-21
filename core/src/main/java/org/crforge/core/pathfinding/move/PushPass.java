@@ -30,8 +30,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Agrees with the reference line for line: early outs, skip order, the box and"
             + " circle rejects, the coincident case, the magnitude chain and the write order."
-            + " Held: two and three equal units pushing apart, and the multi-unit smoke"
-            + " scenarios. Not held by any fixture: unequal masses, a radius above 500, the"
+            + " Held: two and three equal units pushing apart, and the multi-unit parity"
+            + " scenes. Not held by any fixture: unequal masses, a radius above 500, the"
             + " height layers, the no-pushed-by flags, edge separation and the single-axis"
             + " copy. Supplied: a building never pushes and is never pushed.")
 public final class PushPass {

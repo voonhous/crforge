@@ -27,7 +27,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled against the five reference walks, which pass every distance, angle and"
+        "Settled against the 53 reference walks, which pass every distance, angle and"
             + " division of a walk through it, and its own boundary tests. The overflow guards"
             + " are held by the tests alone; no position on the arena reaches them.")
 public final class FixedMath {
