@@ -7,11 +7,15 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
+import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.match.PathfindingMode;
 import org.crforge.core.match.Standard1v1Match;
 import org.crforge.core.player.Deck;
 import org.crforge.core.player.LevelConfig;
@@ -19,8 +23,12 @@ import org.crforge.core.player.Player;
 import org.crforge.core.player.Team;
 import org.crforge.core.player.dto.PlayerActionDTO;
 import org.crforge.data.card.CardRegistry;
+import org.crforge.desktop.GoldenScenario;
+import org.crforge.desktop.TrajectoryRecorder;
 import org.crforge.desktop.render.CardLayout;
 import org.crforge.desktop.render.DebugRenderer;
+import org.crforge.desktop.render.GoldenOverlay;
+import org.crforge.desktop.render.GridDebugStatus;
 import org.crforge.desktop.render.RenderConstants;
 
 /**
@@ -36,8 +44,13 @@ import org.crforge.desktop.render.RenderConstants;
  *   <li>D: Toggle floating damage numbers
  *   <li>A: Toggle AOE damage indicators
  *   <li>H: Toggle HP numbers
- *   <li>1-4: Play card from blue player's hand at random position
- *   <li>5-8: Play card from red player's hand at random position
+ *   <li>M: Flip the pathfinding mode, applied on the next reset
+ *   <li>G: Toggle the routing cell cost overlay
+ *   <li>N: Toggle the route, reference and state overlay
+ *   <li>S: Run the next golden scenario (resets the match under the grid rules)
+ *   <li>E: Export the recorded trajectories to build/trajectories
+ *   <li>1-4: Select a card from the blue player's hand
+ *   <li>5-8: Select a card from the red player's hand
  *   <li>+/-: Speed up/slow down simulation
  *   <li>Click: Deploy selected card at position
  * </ul>
@@ -47,6 +60,12 @@ public class DebugGameScreen implements Screen {
 
   private static final float SIM_SPEED_MIN = 0.25f;
   private static final float SIM_SPEED_MAX = 8f;
+
+  /** Level both the hands and the towers are scaled to, which is standard ladder play. */
+  private static final int LEVEL = 11;
+
+  /** Where the trajectory export writes its files. */
+  private static final Path TRAJECTORY_DIRECTORY = Path.of("build", "trajectories");
 
   private final GameEngine engine;
   private final DebugRenderer renderer;
@@ -62,6 +81,17 @@ public class DebugGameScreen implements Screen {
 
   private int hoverTileX = -1;
   private int hoverTileY = -1;
+
+  /** The routing cell under the mouse, which is four to a tile. */
+  private int hoverCellX = -1;
+
+  private int hoverCellY = -1;
+
+  /** The rules the next reset builds the match with; the running match keeps its own. */
+  private PathfindingMode pathfindingMode = PathfindingMode.WAYPOINTS;
+
+  private final GoldenScenario goldenScenario = new GoldenScenario();
+  private final TrajectoryRecorder trajectoryRecorder = new TrajectoryRecorder();
 
   private int selectedHandIndex = -1;
   private Player selectedPlayer = null;
@@ -88,8 +118,8 @@ public class DebugGameScreen implements Screen {
   }
 
   private void setupMatch() {
-    // Create a standard 1v1 match
-    Standard1v1Match match = new Standard1v1Match();
+    // Create a standard 1v1 match under the pathfinding rules currently selected
+    Standard1v1Match match = new Standard1v1Match(LEVEL, pathfindingMode);
 
     // Decks showcasing special abilities and effects:
     // Blue: charge, hook, variable damage, deploy effect, spawner, area effect spell, radial
@@ -122,7 +152,7 @@ public class DebugGameScreen implements Screen {
     Deck blueDeck = new Deck(blueCards);
     Deck redDeck = new Deck(redCards);
 
-    LevelConfig levelCfg = new LevelConfig(11); // Level 11 for standard ladder gameplay
+    LevelConfig levelCfg = new LevelConfig(LEVEL); // Level 11 for standard ladder gameplay
     bluePlayer = new Player(Team.BLUE, blueDeck, false, levelCfg);
     redPlayer = new Player(Team.RED, redDeck, true, levelCfg);
 
@@ -164,6 +194,17 @@ public class DebugGameScreen implements Screen {
                 renderer.toggleDrawHpNumbers();
                 log.info("HP numbers: {}", renderer.isDrawHpNumbers() ? "ON" : "OFF");
               }
+              case Input.Keys.M -> togglePathfindingMode();
+              case Input.Keys.G -> {
+                renderer.toggleDrawCellCosts();
+                log.info("Cell cost overlay: {}", renderer.isDrawCellCosts() ? "ON" : "OFF");
+              }
+              case Input.Keys.N -> {
+                renderer.toggleDrawRoutes();
+                log.info("Route overlay: {}", renderer.isDrawRoutes() ? "ON" : "OFF");
+              }
+              case Input.Keys.S -> startGoldenScenario();
+              case Input.Keys.E -> exportTrajectories();
               case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
               case Input.Keys.MINUS -> adjustSpeed(0.5f);
 
@@ -222,6 +263,10 @@ public class DebugGameScreen implements Screen {
     // Snap to grid
     hoverTileX = (int) Math.floor(rawTileX);
     hoverTileY = (int) Math.floor(rawTileY);
+
+    // Routing cells are half a tile across, so the cost overlay needs its own hover
+    hoverCellX = (int) Math.floor(arenaX / RenderConstants.CELL_PIXELS);
+    hoverCellY = (int) Math.floor(arenaY / RenderConstants.CELL_PIXELS);
   }
 
   private void handleLeftClick(int screenX, int screenY) {
@@ -331,8 +376,67 @@ public class DebugGameScreen implements Screen {
     engine.getGameState().reset();
     engine.getDeploymentSystem().reset();
     setupMatch();
+    goldenScenario.clear();
+    trajectoryRecorder.clear();
     paused = false;
     log.info("Match reset");
+  }
+
+  /** Flips the rules the next reset builds the match with. The running match keeps its own. */
+  private void togglePathfindingMode() {
+    pathfindingMode =
+        pathfindingMode == PathfindingMode.WAYPOINTS
+            ? PathfindingMode.GRID
+            : PathfindingMode.WAYPOINTS;
+    log.info("pathfinding mode {} (applied on reset)", pathfindingMode);
+  }
+
+  /**
+   * Resets the match under the grid rules and deploys the next golden scenario's unit, so its first
+   * tick is the reference trajectory's tick 0.
+   */
+  private void startGoldenScenario() {
+    String caseName = goldenScenario.nextCaseName();
+    pathfindingMode = PathfindingMode.GRID;
+    resetMatch();
+    GoldenScenario.Case scenarioCase = GoldenScenario.load(caseName);
+    int spawnFrame = goldenScenario.deploy(engine, scenarioCase);
+    goldenScenario.begin(scenarioCase, spawnFrame);
+    log.info(
+        "Golden scenario {}: {} for side {} at ({}, {})",
+        caseName,
+        scenarioCase.card(),
+        scenarioCase.side(),
+        scenarioCase.deployX(),
+        scenarioCase.deployY());
+  }
+
+  /** Writes one file per recorded troop and logs where they went. */
+  private void exportTrajectories() {
+    try {
+      List<Path> written = trajectoryRecorder.export(TRAJECTORY_DIRECTORY);
+      if (written.isEmpty()) {
+        log.info("No trajectories recorded yet");
+        return;
+      }
+      for (Path file : written) {
+        log.info("Wrote trajectory {}", file.toAbsolutePath());
+      }
+    } catch (IOException e) {
+      log.error("Failed to export trajectories", e);
+    }
+  }
+
+  /** The golden scenario's trajectory as the renderer needs it. */
+  private GoldenOverlay goldenOverlay() {
+    if (!goldenScenario.isActive()) {
+      return GoldenOverlay.none();
+    }
+    int tick = goldenScenario.referenceTick(engine.getGameState().getFrameCount());
+    return new GoldenOverlay(
+        goldenScenario.goldenPath(),
+        goldenScenario.goldenAt(tick),
+        goldenScenario.deviationPoint());
   }
 
   @Override
@@ -346,22 +450,48 @@ public class DebugGameScreen implements Screen {
       if (!paused && engine.isRunning()) {
         accumulator += delta * simSpeed;
 
-        // Fixed timestep simulation
+        // Fixed timestep simulation. Sampling happens inside this loop, not once a frame: a
+        // frame covers several ticks at high speeds and none at low ones.
         float tickDelta = GameEngine.DELTA_TIME;
         while (accumulator >= tickDelta) {
           engine.tick();
           accumulator -= tickDelta;
+          trajectoryRecorder.sample(engine);
+          sampleGoldenScenario();
         }
       }
 
       // Render
       camera.update();
       Team selTeam = selectedPlayer != null ? selectedPlayer.getTeam() : null;
-      renderer.render(engine, camera, hoverTileX, hoverTileY, selectedHandIndex, selTeam);
+      GridDebugStatus gridStatus =
+          new GridDebugStatus(
+              engine.getMatch().getPathfindingMode(),
+              pathfindingMode,
+              hoverCellX,
+              hoverCellY,
+              goldenOverlay(),
+              goldenScenario.statusLines());
+      renderer.render(
+          engine, camera, hoverTileX, hoverTileY, selectedHandIndex, selTeam, gridStatus);
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
       paused = true;
       Gdx.app.exit();
+    }
+  }
+
+  /** Compares the golden scenario's unit with the reference trajectory for the tick just run. */
+  private void sampleGoldenScenario() {
+    if (!goldenScenario.isActive()) {
+      return;
+    }
+    Troop unit = goldenScenario.findUnit(engine);
+    if (unit != null) {
+      goldenScenario.sample(
+          engine.getGameState().getFrameCount(),
+          unit.getPosition().getX(),
+          unit.getPosition().getY());
     }
   }
 
@@ -375,18 +505,29 @@ public class DebugGameScreen implements Screen {
     log.info(
         """
         === CRForge Debug Visualizer ===
-        Controls:
+        Match:
           SPACE - Pause/Resume
           R     - Reset match
-          P     - Toggle path visualization
+          +/-   - Speed up/slow down
+
+        Cards:
+          1-4   - Select blue card
+          5-8   - Select red card
+          Click - Select a card, or deploy the selected one
+
+        Combat overlays:
           O     - Toggle attack range circles
           D     - Toggle floating damage numbers
           A     - Toggle AOE damage indicators
           H     - Toggle HP numbers
-          +/-   - Speed up/slow down
-          1-4   - Play blue card
-          5-8   - Play red card
-          Click - Deploy at position
+
+        Pathing:
+          P     - Toggle path visualization
+          M     - Flip pathfinding mode (applied on reset)
+          G     - Toggle routing cell cost overlay
+          N     - Toggle route / reference / state overlay
+          S     - Run next golden scenario (resets under the grid rules)
+          E     - Export recorded trajectories to build/trajectories
         ================================""");
   }
 

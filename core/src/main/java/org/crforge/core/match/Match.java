@@ -44,6 +44,13 @@ public abstract class Match {
 
   protected boolean overtime;
   protected int elixirMultiplier = 1;
+
+  /**
+   * Which movement and target-acquisition rules this match runs its ground troops under. Defaults
+   * to {@link PathfindingMode#WAYPOINTS}, so a match that says nothing behaves exactly as before.
+   */
+  @Setter protected PathfindingMode pathfindingMode = PathfindingMode.WAYPOINTS;
+
   @Setter protected boolean draw;
   @Setter protected Team winner;
   @Setter protected GameState gameState;

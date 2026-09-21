@@ -24,6 +24,8 @@ import org.crforge.core.entity.effect.AreaEffectSystem;
 import org.crforge.core.entity.projectile.Projectile;
 import org.crforge.core.entity.structure.Building;
 import org.crforge.core.entity.unit.Troop;
+import org.crforge.core.pathfinding.GridPathfindingSystem;
+import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.physics.PhysicsSystem;
 
 /**
@@ -63,6 +65,9 @@ public class SimHarness {
   private final DeathHandlingSystem deathHandlingSystem;
   private final AreaEffectSystem areaEffectSystem;
   private final EntityTimerSystem entityTimerSystem;
+
+  /** Grid movement and targeting, wired only when the builder asked for it. */
+  private final GridPathfindingSystem gridPathfindingSystem;
 
   private SimHarness(Builder builder) {
     this.gameState = builder.gameState;
@@ -115,6 +120,22 @@ public class SimHarness {
             : null;
 
     this.entityTimerSystem = new EntityTimerSystem();
+
+    // Grid movement and targeting, wired exactly as GameEngine.setMatch wires it: the grid system
+    // owns the target and the position of every plain ground troop and the other two systems skip
+    // those troops.
+    this.gridPathfindingSystem =
+        builder.gridPathfinding
+            ? new GridPathfindingSystem(gameState, TileMap.standard1v1())
+            : null;
+    if (gridPathfindingSystem != null) {
+      if (targetingSystem != null) {
+        targetingSystem.setExternallyManaged(gridPathfindingSystem::manages);
+      }
+      if (physicsSystem != null) {
+        physicsSystem.setExternallyManaged(gridPathfindingSystem::manages);
+      }
+    }
 
     // Wire callbacks if both systems exist
     if (projectileSystem != null && spawnerSystem != null) {
@@ -186,6 +207,9 @@ public class SimHarness {
     }
 
     // 4. Targeting
+    if (gridPathfindingSystem != null) {
+      gridPathfindingSystem.updateTargeting(gameState.getAliveEntities());
+    }
     if (targetingSystem != null) {
       targetingSystem.updateTargets(gameState.getAliveEntities());
     }
@@ -211,6 +235,9 @@ public class SimHarness {
     }
 
     // 8. Physics
+    if (gridPathfindingSystem != null) {
+      gridPathfindingSystem.updateMovement(gameState.getAliveEntities());
+    }
     if (physicsSystem != null) {
       physicsSystem.update(gameState.getAliveEntities(), DT);
     }
@@ -295,6 +322,11 @@ public class SimHarness {
     return physicsSystem;
   }
 
+  /** The grid movement and targeting system, or null when the harness runs the waypoint rules. */
+  public GridPathfindingSystem gridPathfindingSystem() {
+    return gridPathfindingSystem;
+  }
+
   public SpawnerSystem spawnerSystem() {
     return spawnerSystem;
   }
@@ -316,6 +348,16 @@ public class SimHarness {
     private final List<Entity> entities = new ArrayList<>();
     private final EnumSet<SimSystems> enabledSystems = EnumSet.noneOf(SimSystems.class);
     private boolean deployed = false;
+    private boolean gridPathfinding = false;
+
+    /**
+     * Run plain ground troops under the grid movement and targeting rules instead of the waypoint
+     * ones, the way a match in grid mode does.
+     */
+    public Builder withGridPathfinding() {
+      this.gridPathfinding = true;
+      return this;
+    }
 
     /** Enable all systems (recommended default). */
     public Builder withAllSystems() {

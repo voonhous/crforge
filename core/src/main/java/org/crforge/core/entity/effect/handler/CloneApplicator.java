@@ -141,6 +141,7 @@ public class CloneApplicator {
             originalMovement.getCollisionRadius(),
             originalMovement.getVisualRadius(),
             originalMovement.getType());
+    cloneMovement.setRawSpeed(originalMovement.getRawSpeed());
     cloneMovement.setIgnorePushback(originalMovement.isIgnorePushback());
     cloneMovement.setJumpEnabled(originalMovement.isJumpEnabled());
     cloneMovement.setHovering(originalMovement.isHovering());

@@ -3,6 +3,7 @@ package org.crforge.core.physics;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Predicate;
 import lombok.Setter;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.component.ModifierSource;
@@ -49,6 +50,14 @@ public class PhysicsSystem {
   @Setter private GameState gameState;
 
   /**
+   * Troops whose position is written elsewhere. A troop this answers true for takes no part in this
+   * system at all: it is not moved, it is left out of collision separation, and its position is not
+   * clamped to the arena bounds. The default answers false for every troop, which is the behaviour
+   * of a match in which this system owns all movement.
+   */
+  @Setter private Predicate<Troop> externallyManaged = troop -> false;
+
+  /**
    * Creates a PhysicsSystem with a specific Arena and Pathfinder.
    *
    * @param arena The game arena.
@@ -78,7 +87,7 @@ public class PhysicsSystem {
     // Build movable entity list without stream (input is already alive from cache)
     List<Entity> movableEntities = new ArrayList<>();
     for (Entity e : entities) {
-      if (e.getMovementType() != MovementType.BUILDING) {
+      if (e.getMovementType() != MovementType.BUILDING && !isExternallyManaged(e)) {
         movableEntities.add(e);
       }
     }
@@ -289,7 +298,7 @@ public class PhysicsSystem {
     // Build collidable list without stream (input is already alive from cache)
     List<Entity> collidable = new ArrayList<>();
     for (Entity e : entities) {
-      if (e.isTargetable()) {
+      if (e.isTargetable() && !isExternallyManaged(e)) {
         collidable.add(e);
       }
     }
@@ -521,6 +530,11 @@ public class PhysicsSystem {
       return 0;
     }
     return 1;
+  }
+
+  /** True when the entity is a troop whose position is written outside this system. */
+  private boolean isExternallyManaged(Entity entity) {
+    return entity instanceof Troop troop && externallyManaged.test(troop);
   }
 
   private void enforceBounds(Entity entity) {

@@ -160,18 +160,21 @@ class TroopFactory {
             .selfDestruct(true)
             .build();
 
+    Movement movement =
+        new Movement(
+            stats.getSpeed(),
+            stats.getMass(),
+            stats.getCollisionRadius(),
+            stats.getVisualRadius(),
+            stats.getMovementType());
+    movement.setRawSpeed(stats.getRawSpeed());
+
     return Troop.builder()
         .name(stats.getName())
         .team(team)
         .position(new Position(x, y))
         .health(new Health(1))
-        .movement(
-            new Movement(
-                stats.getSpeed(),
-                stats.getMass(),
-                stats.getCollisionRadius(),
-                stats.getVisualRadius(),
-                stats.getMovementType()))
+        .movement(movement)
         .deployTime(stats.getDeployTime())
         .deployTimer(stats.getDeployTime() + stats.getDeployDelay())
         .spawner(spawner)
@@ -226,6 +229,15 @@ class TroopFactory {
 
       AttachedComponent attachedComponent = new AttachedComponent(parent, offsetX, offsetY);
 
+      Movement childMovement =
+          new Movement(
+              spawnStats.getSpeed(),
+              spawnStats.getMass(),
+              spawnStats.getCollisionRadius(),
+              spawnStats.getVisualRadius(),
+              spawnStats.getMovementType());
+      childMovement.setRawSpeed(spawnStats.getRawSpeed());
+
       Troop child =
           Troop.builder()
               .name(spawnStats.getName())
@@ -234,13 +246,7 @@ class TroopFactory {
                   new Position(
                       parent.getPosition().getX() + offsetX, parent.getPosition().getY() + offsetY))
               .health(new Health(scaledHp, scaledShield))
-              .movement(
-                  new Movement(
-                      spawnStats.getSpeed(),
-                      spawnStats.getMass(),
-                      spawnStats.getCollisionRadius(),
-                      spawnStats.getVisualRadius(),
-                      spawnStats.getMovementType()))
+              .movement(childMovement)
               .combat(combat)
               .deployTime(0f)
               .deployTimer(0f)
@@ -357,6 +363,7 @@ class TroopFactory {
             stats.getCollisionRadius(),
             stats.getVisualRadius(),
             stats.getMovementType());
+    movement.setRawSpeed(stats.getRawSpeed());
     movement.setIgnorePushback(stats.isIgnorePushback());
     movement.setJumpEnabled(stats.isJumpEnabled());
     movement.setHovering(stats.isHovering());

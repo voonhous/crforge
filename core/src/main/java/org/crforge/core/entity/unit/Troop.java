@@ -12,6 +12,7 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
+import org.crforge.core.component.GridUnitState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
@@ -61,6 +62,13 @@ public class Troop extends AbstractEntity {
   // Lifetime countdown for troops with limited duration (e.g. kamikaze form's 20s lifeTime)
   // 0 = no lifetime limit
   @Setter @Builder.Default private float lifeTimer = 0f;
+
+  /**
+   * Grid movement and targeting state, attached by the grid pathfinding system the first time it
+   * sees this troop. Null in matches that run the waypoint rules, and null for troops the grid
+   * system does not manage.
+   */
+  @Setter @Builder.Default private GridUnitState gridUnitState = null;
 
   /** Returns true if this troop is currently invisible (stealth ability active). */
   public boolean isInvisible() {
