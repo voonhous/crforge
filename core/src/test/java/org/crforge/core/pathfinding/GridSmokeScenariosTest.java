@@ -12,7 +12,6 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import org.crforge.core.card.Card;
-import org.crforge.core.component.GridUnitState;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -583,7 +582,7 @@ class GridSmokeScenariosTest {
         if (unit == null || !grid.manages(troop)) {
           continue;
         }
-        GridEntity view = unit.getEntity();
+        GridEntity view = unit.entity();
         live.add(view);
         String who = name + " tick " + tick + " " + troop.getName() + "#" + troop.getId();
         String where = " at (" + view.getX() + ", " + view.getY() + ")";
@@ -607,7 +606,7 @@ class GridSmokeScenariosTest {
         int budget = grid.speedBudget(troop);
         int step = grid.displacementStep(troop);
         largestBudget = Math.max(largestBudget, budget);
-        if (unit.getMovement().getAvoidanceBlend() != 0) {
+        if (unit.movement().getAvoidanceBlend() != 0) {
           steeredTicks++;
         }
         if (budget < 0 || budget > rawSpeed) {
@@ -618,14 +617,14 @@ class GridSmokeScenariosTest {
         }
 
         List<Sample> samples = history.computeIfAbsent(troop.getId(), id -> new ArrayList<>());
-        boolean hasReference = unit.getTargeting().getReference() != null;
+        boolean hasReference = unit.targeting().getReference() != null;
         Sample sample =
             new Sample(
                 tick,
                 view.getX(),
                 view.getY(),
                 view.getState(),
-                unit.getMovement().getRoute().size(),
+                unit.movement().getRoute().size(),
                 hasReference);
         if (!samples.isEmpty()) {
           Sample previous = samples.get(samples.size() - 1);
@@ -682,10 +681,10 @@ class GridSmokeScenariosTest {
     private void trackRouteGoal(
         GridPathfindingSystem grid, Troop troop, GridUnitState unit, String who) {
       int endpoint = grid.referenceEndpoint(troop);
-      if (endpoint < 0 || unit.getMovement().getRoute().isEmpty()) {
+      if (endpoint < 0 || unit.movement().getRoute().isEmpty()) {
         return;
       }
-      int goal = unit.getMovement().getRoute().get(0);
+      int goal = unit.movement().getRoute().get(0);
       int goalCol = goal % grid.getGrid().getWidth();
       int goalRow = goal / grid.getGrid().getWidth();
       int endpointCol = (endpoint >> 16) & 0xffff;

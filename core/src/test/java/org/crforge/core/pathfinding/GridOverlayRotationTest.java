@@ -180,7 +180,7 @@ class GridOverlayRotationTest {
 
   /** The route the Knight holds, goal first, as plain cell ids. */
   private static List<Integer> routeNodes(Troop troop) {
-    Route route = troop.getGridUnitState().getMovement().getRoute();
+    Route route = troop.getGridUnitState().movement().getRoute();
     List<Integer> nodes = new ArrayList<>(route.size());
     for (int index = 0; index < route.size(); index++) {
       nodes.add(route.get(index));
