@@ -94,14 +94,14 @@ class GridCombatWriteBackTest {
     sim.tick(LOCK_TICK - 1);
     Troop troop = sim.troop("Knight");
     Combat combat = troop.getCombat();
-    assertThat(troop.getGridUnitState().getEntity().getState())
+    assertThat(troop.getGridUnitState().entity().getState())
         .as("the Knight is still walking on the tick before it locks on")
         .isEqualTo(GridEntityState.MOVING);
     assertThat(combat.isTargetLocked()).as("nothing has locked yet").isFalse();
 
     sim.tick();
 
-    assertThat(troop.getGridUnitState().getEntity().getState())
+    assertThat(troop.getGridUnitState().entity().getState())
         .as("the targeting visit put the Knight into the attacking state")
         .isEqualTo(GridEntityState.ATTACKING);
     assertThat(combat.getCurrentTarget())

@@ -10,12 +10,12 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
-import org.crforge.core.component.GridUnitState;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.move.SpeedBudget;
@@ -90,7 +90,7 @@ public class RouteOverlayRenderer {
 
   /** The polyline from the troop through every remaining route cell, ending at the goal. */
   private void drawRoute(Entity entity, GridUnitState unit) {
-    Route route = unit.getMovement().getRoute();
+    Route route = unit.movement().getRoute();
     if (route.isEmpty()) {
       return;
     }
@@ -121,7 +121,7 @@ public class RouteOverlayRenderer {
 
   /** A ring on the position the troop is currently holding as its reference. */
   private void drawReference(GridUnitState unit) {
-    TargetView reference = unit.getTargeting().getReference();
+    TargetView reference = unit.targeting().getReference();
     if (reference == null) {
       return;
     }
@@ -136,9 +136,9 @@ public class RouteOverlayRenderer {
   /** The state name, the number of route cells left and this tick's movement budget. */
   private void drawLabel(Entity entity, GridUnitState unit) {
     String label =
-        stateName(unit.getEntity().getState())
+        stateName(unit.entity().getState())
             + " n="
-            + unit.getMovement().getRoute().size()
+            + unit.movement().getRoute().size()
             + " v="
             + speedBudget(unit);
     float x = unitsToPixels(entity.getPosition().getX());
@@ -166,8 +166,8 @@ public class RouteOverlayRenderer {
    * feed the grid speed budget yet, so the modifier list is empty here as it is there.
    */
   private static int speedBudget(GridUnitState unit) {
-    GridEntity gridEntity = unit.getEntity();
-    TargetingState targeting = unit.getTargeting();
+    GridEntity gridEntity = unit.entity();
+    TargetingState targeting = unit.targeting();
     SpeedInputs inputs =
         new SpeedInputs(
             gridEntity.getFlags(),
@@ -179,8 +179,8 @@ public class RouteOverlayRenderer {
             gridEntity.getBlockCountdownMs(),
             new int[0],
             true,
-            unit.getMovement().getChargeProgress());
-    return SpeedBudget.speedBudget(inputs, unit.getSpeedConfig(), SpeedGlobals.standard());
+            unit.movement().getChargeProgress());
+    return SpeedBudget.speedBudget(inputs, unit.speedConfig(), SpeedGlobals.standard());
   }
 
   /** The name of an entity state, for the label. */

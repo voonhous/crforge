@@ -22,7 +22,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Start validation and the goal adjustment window agree with the reference line"
-            + " for line, and every search of the five reference walks goes through it. The"
+            + " for line, and every search of the 53 reference walks goes through it. The"
             + " window's clipped edges and an off-map goal are held by its own tests only.")
 public final class RouteSearchWrapper {
 

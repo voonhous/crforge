@@ -29,9 +29,9 @@ import org.crforge.core.pathfinding.grid.CellGrid;
     status = FidelityStatus.PARTIAL,
     note =
         "Runs each pass at the point the visit announces it, so later passes see"
-            + " earlier writes; held by the five reference walks and the multi-unit smoke"
-            + " scenarios. The names it collects for state changes, jump targets and end"
-            + " actions are recorded and read by nothing.")
+            + " earlier writes; held by the 53 reference walks and the multi-unit parity"
+            + " scenes. The names it collects for state changes, jump targets and end actions"
+            + " are recorded and read by nothing.")
 public final class MovementChain {
 
   private final MovementState component;

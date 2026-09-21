@@ -22,10 +22,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line; held for a walking unit at its base"
-            + " speed, at the one speed the reference walks use. Not held: the held-position"
-            + " flags, the attack hold, the block countdown, jump speed, clone setup and the"
-            + " pathfind speed columns. Not modelled: status effects never reach the budget,"
-            + " so a slowed or raged unit walks at base speed.")
+            + " speed across sixteen speeds. Not held: the held-position flags, the attack"
+            + " hold, the block countdown, jump speed, clone setup and the pathfind speed"
+            + " columns. Not modelled: status effects never reach the budget, so a slowed or"
+            + " raged unit walks at base speed.")
 public final class SpeedBudget {
 
   /** Percent the modifier arithmetic is expressed in. */

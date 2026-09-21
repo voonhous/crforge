@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
 import org.crforge.core.component.Combat;
-import org.crforge.core.component.GridUnitState;
 import org.crforge.core.component.Movement;
 import org.crforge.core.engine.GameState;
 import org.crforge.core.entity.base.Entity;
@@ -23,33 +22,18 @@ import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
-import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.grid.FootprintOverlay;
-import org.crforge.core.pathfinding.grid.GridSearchService;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
-import org.crforge.core.pathfinding.grid.ReferenceEndpoint;
-import org.crforge.core.pathfinding.grid.Relocation;
-import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.SpatialIndex;
-import org.crforge.core.pathfinding.index.SpatialQuery;
-import org.crforge.core.pathfinding.math.FixedMath;
-import org.crforge.core.pathfinding.move.GridMoveEntity;
 import org.crforge.core.pathfinding.move.MovementChain;
 import org.crforge.core.pathfinding.move.MovementConfig;
-import org.crforge.core.pathfinding.move.MovementGates;
 import org.crforge.core.pathfinding.move.MovementGlobals;
-import org.crforge.core.pathfinding.move.MovementQueries;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.MovementVisit;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
-import org.crforge.core.pathfinding.move.ReferencePoint;
-import org.crforge.core.pathfinding.move.RouteBeyondReference;
-import org.crforge.core.pathfinding.move.SpeedBudget;
 import org.crforge.core.pathfinding.move.SpeedConfig;
-import org.crforge.core.pathfinding.move.SpeedGlobals;
-import org.crforge.core.pathfinding.move.SpeedInputs;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.ResumeHelper;
 import org.crforge.core.pathfinding.state.StateQueries;
@@ -57,8 +41,6 @@ import org.crforge.core.pathfinding.state.StateSetter;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
-import org.crforge.core.pathfinding.target.AttackRange;
-import org.crforge.core.pathfinding.target.RangeTest;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
@@ -107,10 +89,10 @@ import org.crforge.core.util.GameUnits;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Drives these rules from the engine. It keeps the entity order and the pre-pass"
-            + " and post-pass work, but it splits one tick into two calls with the engine's"
-            + " own combat between them and copies targets and positions back into the"
-            + " engine's components.")
+        "The older engine's adapter onto these rules. It keeps the entity order and the"
+            + " pre-pass and post-pass work, but it splits one tick into two calls with the"
+            + " older engine's combat between them and copies targets and positions back,"
+            + " which the battle package does not need to do.")
 public class GridPathfindingSystem {
 
   /** Height the push pass reads for an entity that is off the ground. */
@@ -180,7 +162,7 @@ public class GridPathfindingSystem {
   @Getter private long tickCount;
 
   /** The neighbour answers both the push pass and the avoidance handler ask for. */
-  private final NeighbourQuery neighbourQuery = new GridNeighbourQuery();
+  private final NeighbourQuery neighbourQuery;
 
   /**
    * Creates the system for one match.
@@ -198,6 +180,7 @@ public class GridPathfindingSystem {
             PathfindingGlobals.PATHFINDING_DYNAMIC_OCCLUSIONS,
             PathfindingGlobals.PATHFINDING_BUILDING_COST);
     this.index = new SpatialIndex(tileMap.width(), tileMap.height());
+    this.neighbourQuery = new IndexNeighbourQuery(index);
     this.movementGlobals = MovementGlobals.forStandardArena(tileMap.width());
   }
 
@@ -262,38 +245,6 @@ public class GridPathfindingSystem {
     return lastEndpoint.getOrDefault(troop.getId(), -1);
   }
 
-  /**
-   * The neighbour answers the push pass and the avoidance handler pull, taken from this tick's
-   * spatial index.
-   *
-   * <p>Both passes ask the same question with their own point and radius: the plain circle test
-   * that keeps an entity whose own collision circle reaches within the radius of the point, in the
-   * index's bucket order, with no king-tower ordering, no type mask and no team exclusion. The
-   * asking entity is in the answer and each pass skips it itself.
-   *
-   * <p>The index lends out a fixed number of result lists, so every answer is handed back as soon
-   * as the pass that asked for it has finished. When none is free the answer is the shared empty
-   * list, which is never handed back.
-   */
-  private final class GridNeighbourQuery implements NeighbourQuery {
-
-    /** What a query answers when the index has no result list to lend. */
-    private final List<GridEntity> noNeighbours = List.of();
-
-    @Override
-    public List<GridEntity> near(int x, int y, int radius) {
-      List<GridEntity> result = index.query(new SpatialQuery(x, y, radius, 0, false, false, 0, -1));
-      return result == null ? noNeighbours : result;
-    }
-
-    @Override
-    public void release(List<GridEntity> result) {
-      if (result != noNeighbours) {
-        index.release(result);
-      }
-    }
-  }
-
   // -----------------------------------------------------------------------------------------
   // The tick
   // -----------------------------------------------------------------------------------------
@@ -313,21 +264,20 @@ public class GridPathfindingSystem {
 
     for (Troop troop : managedTroops) {
       GridUnitState unit = troop.getGridUnitState();
-      GridEntity entity = unit.getEntity();
+      GridEntity entity = unit.entity();
       if (entity.getState() == GridEntityState.DEPLOYING) {
         continue;
       }
-      MovementState movement = unit.getMovement();
-      unit.getTargeting().setRouteLeadsAway(movement.getRouteLeadsAway() != 0);
+      MovementState movement = unit.movement();
+      unit.targeting().setRouteLeadsAway(movement.getRouteLeadsAway() != 0);
 
-      SelectionChain chain = unit.getSelection();
+      SelectionChain chain = unit.selection();
       chain.beginTick();
-      TargetingVisit.targetingVisit(
-          unit.getTargeting(), entity, movement, chain, chain.getOutcome());
+      TargetingVisit.targetingVisit(unit.targeting(), entity, movement, chain, chain.getOutcome());
       if (chain.getOutcome().isResumeRequested()) {
         ResumeHelper.resume(
             entity,
-            unit.getStateConfig(),
+            unit.stateConfig(),
             stateQueries(entity),
             new ArrayList<>(),
             StateSetter.guarded());
@@ -350,23 +300,23 @@ public class GridPathfindingSystem {
     lastEndpoint.clear();
     for (Troop troop : managedTroops) {
       GridUnitState unit = troop.getGridUnitState();
-      GridEntity entity = unit.getEntity();
+      GridEntity entity = unit.entity();
       if (entity.getState() == GridEntityState.DEPLOYING) {
         continue;
       }
-      GridMovementQueries queries = new GridMovementQueries(unit);
+      GridMovementQueries queries = new GridMovementQueries(unit, grid, costs, unitStates::get);
       MovementChain chain =
           new MovementChain(
-              unit.getMovement(),
+              unit.movement(),
               entity,
               grid,
-              unit.getMovementConfig(),
+              unit.movementConfig(),
               movementGlobals,
               queries.reference(),
               neighbourQuery,
               queries);
       MovementVisit.movementVisit(
-          unit.getMovement(), entity, null, unit.getMovementConfig(), null, queries, false, chain);
+          unit.movement(), entity, null, unit.movementConfig(), null, queries, false, chain);
       pushContributions.put(troop.getId(), chain.pushContributions());
       lastSpeedBudget.put(troop.getId(), queries.lastSpeedBudget());
       lastDisplacementStep.put(troop.getId(), chain.largestDisplacementStep());
@@ -375,12 +325,12 @@ public class GridPathfindingSystem {
 
     for (Troop troop : managedTroops) {
       GridUnitState unit = troop.getGridUnitState();
-      GridEntity entity = unit.getEntity();
+      GridEntity entity = unit.entity();
       EntityStateVisit.stateVisit(
           entity,
-          unit.getTimers(),
-          unit.getMovement(),
-          unit.getStateConfig(),
+          unit.timers(),
+          unit.movement(),
+          unit.stateConfig(),
           StateVisitGlobals.standard(),
           stateQueries(entity),
           new ArrayList<>(),
@@ -459,7 +409,7 @@ public class GridPathfindingSystem {
       targetViews.remove(id);
       simulatorEntities.remove(id);
       for (Troop troop : managedTroops) {
-        troop.getGridUnitState().getSelection().unregister(view);
+        troop.getGridUnitState().selection().unregister(view);
       }
     }
   }
@@ -545,7 +495,7 @@ public class GridPathfindingSystem {
 
   /** Registers every view this troop's chain has not seen yet. */
   private void syncRegistrations(GridUnitState unit) {
-    SelectionChain chain = unit.getSelection();
+    SelectionChain chain = unit.selection();
     for (GridEntity view : orderedViews) {
       if (chain.view(view) == null) {
         chain.register(targetViews.get((long) view.getId()));
@@ -687,22 +637,6 @@ public class GridPathfindingSystem {
     return 0;
   }
 
-  /**
-   * 1 when a troop's current reference already stands within its attack range, with no extra
-   * allowance, and 0 when it has no reference at all.
-   *
-   * <p>This is the answer the route follower reads to stop a dash that has already brought the
-   * troop close enough, rather than letting it run its whole landing distance.
-   */
-  static int referenceInRange(GridUnitState unit) {
-    TargetingState targeting = unit.getTargeting();
-    TargetView target = targeting.getReference();
-    if (target == null) {
-      return 0;
-    }
-    return RangeTest.referenceInRange(targeting, target, 0) ? 1 : 0;
-  }
-
   /** The state-visit answers for an ordinary unit that may follow a route. */
   private static StateQueries stateQueries(GridEntity entity) {
     return StateQueries.forUnitWithRoute(entity.getSide() & 1);
@@ -729,249 +663,13 @@ public class GridPathfindingSystem {
     if (combat == null) {
       return;
     }
-    TargetView reference = unit.getTargeting().getReference();
+    TargetView reference = unit.targeting().getReference();
     Entity target = reference == null ? null : simulatorEntities.get((long) reference.id());
     if (combat.getCurrentTarget() != target) {
       combat.setCurrentTarget(target);
     }
-    if (unit.getEntity().getState() == GridEntityState.ATTACKING && target != null) {
+    if (unit.entity().getState() == GridEntityState.ATTACKING && target != null) {
       combat.setTargetLocked(true);
-    }
-  }
-
-  // -----------------------------------------------------------------------------------------
-  // The answers the movement pass pulls
-  // -----------------------------------------------------------------------------------------
-
-  /**
-   * The movement pass's view of the rest of the simulation for one troop's visit.
-   *
-   * <p>Everything geometric is answered from the routing grid and the troop's own live state, so an
-   * answer asked for after the pass has already moved the troop reflects the new position.
-   */
-  private final class GridMovementQueries implements MovementQueries {
-
-    private final GridUnitState unit;
-    private final ReferencePoint reference;
-
-    /** The last budget this visit asked for, kept so the tick driver can report it afterwards. */
-    private int lastSpeedBudget;
-
-    /** The last endpoint this visit asked for, kept so the tick driver can report it afterwards. */
-    private int lastEndpoint = -1;
-
-    private GridMovementQueries(GridUnitState unit) {
-      this.unit = unit;
-      TargetView target = unit.getTargeting().getReference();
-      this.reference = target == null ? null : new ReferencePoint(target.x(), target.y());
-    }
-
-    private ReferencePoint reference() {
-      return reference;
-    }
-
-    @Override
-    public Route search(int startCol, int startRow, int goalCol, int goalRow, int adjust) {
-      GridEntity entity = unit.getEntity();
-      // Both water permissions are off: a plain ground unit may not route through the river, and
-      // the units that may are not managed here.
-      return GridSearchService.route(
-          grid,
-          costs,
-          entity.getState(),
-          entity.getLane(),
-          false,
-          false,
-          startCol,
-          startRow,
-          goalCol,
-          goalRow,
-          adjust);
-    }
-
-    @Override
-    public int endpoint(int referenceCol, int referenceRow, int radius) {
-      GridEntity entity = unit.getEntity();
-      ReferencePoint point = reference;
-      if (point == null) {
-        return -1;
-      }
-      lastEndpoint =
-          ReferenceEndpoint.selectEndpoint(
-              grid.getWidth(),
-              grid.getHeight(),
-              entity.getX(),
-              entity.getY(),
-              referenceCol,
-              referenceRow,
-              radius,
-              entity.isAir(),
-              PathfindingGlobals.KS_POS_TO_TARGET_FLYING_NO_WATER,
-              PathfindingGlobals.KS_POS_TO_TARGET_GROUND_AVOID_BUILDINGS,
-              ReferenceEndpoint.everyCellInBounds(grid.getWidth(), grid.getHeight()),
-              (x, y) -> FixedMath.squaredDistance(point.x(), point.y(), x, y),
-              grid::water,
-              (col, row) -> CellTests.overlayBlocks(grid, col, row),
-              null);
-      return lastEndpoint;
-    }
-
-    /** The last endpoint this visit asked for, or -1 when it asked for none. */
-    private int lastEndpoint() {
-      return lastEndpoint;
-    }
-
-    @Override
-    public int relocate(int x, int y) {
-      return Relocation.relocate(grid.getWidth(), grid.getHeight(), x, y, -1, grid::water);
-    }
-
-    @Override
-    public int cellTest(int worldX, int worldY) {
-      return CellTests.cellBlocked(grid, worldX, worldY);
-    }
-
-    /**
-     * The speed and gate inputs, read live from the entity and its two components.
-     *
-     * <p>The standard game freezes these once, before the visit, and answers every gate from that
-     * snapshot. Nothing inside a movement visit writes the state, the flags or the charge progress,
-     * so reading them live gives the same answers; a pass that started writing them mid-visit would
-     * make the two differ.
-     */
-    private SpeedInputs speedInputs() {
-      GridEntity entity = unit.getEntity();
-      TargetingState targeting = unit.getTargeting();
-      return new SpeedInputs(
-          entity.getFlags(),
-          entity.getState(),
-          true,
-          targeting.getDashWindupMs(),
-          targeting.getAttackBlockTimerMs(),
-          targeting.isSpecialLoadPending() ? 1 : 0,
-          entity.getBlockCountdownMs(),
-          // Status effects do not feed the grid speed budget yet.
-          new int[0],
-          true,
-          unit.getMovement().getChargeProgress());
-    }
-
-    @Override
-    public int speedBudget() {
-      lastSpeedBudget =
-          SpeedBudget.speedBudget(speedInputs(), unit.getSpeedConfig(), SpeedGlobals.standard());
-      return lastSpeedBudget;
-    }
-
-    /** The last budget this visit asked for, zero when it asked for none. */
-    private int lastSpeedBudget() {
-      return lastSpeedBudget;
-    }
-
-    @Override
-    public int facingGate() {
-      return MovementGates.facingGate(speedInputs());
-    }
-
-    @Override
-    public int avoidanceGate() {
-      return MovementGates.avoidanceGate(speedInputs());
-    }
-
-    @Override
-    public int pushGate() {
-      return MovementGates.pushGate(speedInputs(), unit.getSpeedConfig());
-    }
-
-    @Override
-    public int routeRequest() {
-      int state = unit.getEntity().getState();
-      return state == GridEntityState.MOVING
-              || state == GridEntityState.SPAWN_PATHFIND
-              || state == GridEntityState.INGAME_PATHFIND
-          ? 1
-          : 0;
-    }
-
-    @Override
-    public int attackRange() {
-      return AttackRange.attackRangeWithRadius(unit.getTargeting());
-    }
-
-    @Override
-    public int farther() {
-      return RouteBeyondReference.routeBeyondReference(
-          unit.getMovement(), unit.getEntity(), reference, grid.getWidth());
-    }
-
-    @Override
-    public int ownerSide() {
-      return unit.getEntity().getSide();
-    }
-
-    @Override
-    public int air() {
-      return unit.getEntity().isAir() ? 1 : 0;
-    }
-
-    @Override
-    public int ground() {
-      return unit.getEntity().isAir() ? 0 : 1;
-    }
-
-    @Override
-    public int referenceAvailable() {
-      return reference == null ? 0 : 1;
-    }
-
-    @Override
-    public int referenceInRange() {
-      return GridPathfindingSystem.referenceInRange(unit);
-    }
-
-    @Override
-    public int gridWidth() {
-      return grid.getWidth();
-    }
-
-    @Override
-    public GridMoveEntity entityView() {
-      return GridMoveEntity.of(unit.getEntity(), unit.getMovementConfig());
-    }
-
-    /**
-     * Whether a neighbour accepts physical contact from the troop looking around, which is what
-     * lets the avoidance handler steer around it.
-     *
-     * <p>Nothing in the simulator writes this bit and what would is not documented, so the answer
-     * is a supplied one: a troop accepts contact, a building or a tower does not. A unit therefore
-     * steers around other units but walks past a tower on the trajectory the standard game gives
-     * it; the tower is still routed around through the cost overlay its footprint stamps.
-     */
-    @Override
-    public int neighbourAcceptsContact(GridEntity other) {
-      return other.isBuilding() ? 0 : 1;
-    }
-
-    /**
-     * The blend of a neighbour this system also drives. A neighbour it does not drive - an air
-     * unit, a jumping unit, a building - has no blend of its own and answers zero, which makes the
-     * avoidance handler fall back to the side the neighbour stands on.
-     */
-    @Override
-    public int neighbourAvoidanceBlend(GridEntity other) {
-      GridUnitState state = unitStates.get(other);
-      return state == null ? 0 : state.getMovement().getAvoidanceBlend();
-    }
-
-    /**
-     * Whether a neighbour this system also drives has a special attack loaded. A neighbour it does
-     * not drive answers zero, as an entity with no targeting component does.
-     */
-    @Override
-    public int neighbourSpecialLoadPending(GridEntity other) {
-      GridUnitState state = unitStates.get(other);
-      return state != null && state.getTargeting().isSpecialLoadPending() ? 1 : 0;
     }
   }
 }

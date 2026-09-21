@@ -25,7 +25,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Settled against reference routes compared node for node and against the route"
-            + " length of every tick of the five reference walks: neighbour order, step costs,"
+            + " length of every tick of the 53 reference walks: neighbour order, step costs,"
             + " the heuristic, open-node refresh and the termination rule. The accumulating"
             + " heuristic, closed-node reopening and the expansion budget are switched off in"
             + " the standard game and are held by this class's own tests only.")

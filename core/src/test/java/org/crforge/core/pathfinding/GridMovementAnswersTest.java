@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.crforge.core.component.GridUnitState;
 import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.SpeedConfig;
@@ -37,7 +36,7 @@ class GridMovementAnswersTest {
   void noReferenceIsNotInRange() {
     GridUnitState unit = unitWithReferenceAt(null);
 
-    assertThat(GridPathfindingSystem.referenceInRange(unit)).isZero();
+    assertThat(answersFor(unit).referenceInRange()).isZero();
   }
 
   @Test
@@ -45,8 +44,16 @@ class GridMovementAnswersTest {
   void theAnswerFollowsTheAttackRange() {
     // Attack range is the range column plus the unit's own radius, and the range test adds the
     // target's radius on top: 1200 + 500 + 1000 = 2700 game units between the two centres.
-    assertThat(GridPathfindingSystem.referenceInRange(unitWithReferenceAt(2700))).isEqualTo(1);
-    assertThat(GridPathfindingSystem.referenceInRange(unitWithReferenceAt(2701))).isZero();
+    assertThat(answersFor(unitWithReferenceAt(2700)).referenceInRange()).isEqualTo(1);
+    assertThat(answersFor(unitWithReferenceAt(2701)).referenceInRange()).isZero();
+  }
+
+  /**
+   * The movement answers for one visit of the unit. The range answer reads nothing but the unit's
+   * own targeting state, so no routing grid, costs or neighbours are needed.
+   */
+  private static GridMovementQueries answersFor(GridUnitState unit) {
+    return new GridMovementQueries(unit, null, null, other -> null);
   }
 
   /**

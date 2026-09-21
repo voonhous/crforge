@@ -12,11 +12,11 @@ import org.crforge.core.card.Card;
 import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.component.AttachedComponent;
 import org.crforge.core.component.Combat;
-import org.crforge.core.component.GridUnitState;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.base.EntityType;
 import org.crforge.core.entity.base.MovementType;
+import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.util.GameUnits;
 
 @Getter

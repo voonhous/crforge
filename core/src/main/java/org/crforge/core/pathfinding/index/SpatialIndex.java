@@ -33,8 +33,8 @@ import org.crforge.core.pathfinding.GridEntity;
     note =
         "Bucket layout, insertion margin, bucket visiting order, the seen mark, the"
             + " type mask, the team rule and both kings-last orderings agree with the"
-            + " reference line for line; the five reference walks hold the circle query, the"
-            + " multi-unit smoke scenarios hold it with several movers.")
+            + " reference line for line; the 53 reference walks hold the circle query, the"
+            + " multi-unit parity scenes hold it with several movers.")
 public final class SpatialIndex {
 
   /** Bucket edge length in game units; the bucket of a coordinate is that coordinate shifted. */

@@ -1,0 +1,141 @@
+package org.crforge.core.battle.unit;
+
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.Getter;
+import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.HolderPasses;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridUnitState;
+import org.crforge.core.pathfinding.IndexNeighbourQuery;
+import org.crforge.core.pathfinding.grid.CellCosts;
+import org.crforge.core.pathfinding.grid.CellGrid;
+import org.crforge.core.pathfinding.grid.FootprintOverlay;
+import org.crforge.core.pathfinding.grid.PathfindingGlobals;
+import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.index.SpatialIndex;
+import org.crforge.core.pathfinding.move.MovementGlobals;
+import org.crforge.core.pathfinding.move.NeighbourQuery;
+
+/**
+ * What the entities of one battle share: the arena's routing grid with its building overlay, and
+ * the spatial index every target selection and neighbour query reads.
+ *
+ * <p>Both are per-tick structures. The pre-pass rebuilds them from the tick's snapshot before any
+ * entity is visited, in snapshot order, which is ascending entity id; the post-pass retires them.
+ * An entity that moves during the tick is therefore found where it stood at the head of the tick,
+ * while the shape tests that follow a lookup read its live position.
+ */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled: the index and the overlay are rebuilt in the pre-pass from the id-ordered"
+            + " snapshot and retired in the post-pass, and the overlay's per-side change flags"
+            + " are copied once per tick. Not settled: how a destroyed tower leaves the default"
+            + " target lists; here it leaves them at the first pre-pass after its removal.")
+public class BattleWorld implements HolderPasses {
+
+  @Getter private final TileMap tileMap;
+
+  /** The routing grid: the static cell map and the live building overlay. */
+  @Getter private final CellGrid grid;
+
+  /** The spatial index, populated only between the pre-pass and the post-pass. */
+  @Getter private final SpatialIndex index;
+
+  @Getter private final CellCosts costs = CellCosts.standard();
+  @Getter private final MovementGlobals movementGlobals;
+
+  /** The neighbour answers the push pass and the avoidance handler ask for. */
+  @Getter private final NeighbourQuery neighbourQuery;
+
+  /** This tick's arena entities in ascending id. */
+  private final List<WorldEntity> present = new ArrayList<>();
+
+  /** This tick's views in the same order: what the index and the overlay are built from. */
+  private final List<GridEntity> views = new ArrayList<>();
+
+  /** Every arena entity seen so far and not yet gone, keyed by its view. */
+  private final Map<GridEntity, WorldEntity> known = new IdentityHashMap<>();
+
+  public BattleWorld(TileMap tileMap) {
+    this.tileMap = tileMap;
+    this.grid =
+        new CellGrid(
+            tileMap,
+            PathfindingGlobals.PATHFINDING_DYNAMIC_OCCLUSIONS,
+            PathfindingGlobals.PATHFINDING_BUILDING_COST);
+    this.index = new SpatialIndex(tileMap.width(), tileMap.height());
+    this.movementGlobals = MovementGlobals.forStandardArena(tileMap.width());
+    this.neighbourQuery = new IndexNeighbourQuery(index);
+  }
+
+  /** This tick's arena entities in ascending id. */
+  public List<WorldEntity> present() {
+    return List.copyOf(present);
+  }
+
+  /**
+   * The grid state of another character, or null for an entity that has none, such as a tower. The
+   * movement pass asks this about its neighbours.
+   */
+  public GridUnitState unitStateOf(GridEntity view) {
+    return known.get(view) instanceof CharacterEntity character ? character.getUnit() : null;
+  }
+
+  @Override
+  public void prePass(int tick, List<BattleEntity> snapshot) {
+    present.clear();
+    views.clear();
+    for (BattleEntity entity : snapshot) {
+      if (entity instanceof WorldEntity worldEntity) {
+        worldEntity.beginTick();
+        present.add(worldEntity);
+        views.add(worldEntity.getView());
+      }
+    }
+    forgetDeparted();
+    for (WorldEntity entity : present) {
+      known.put(entity.getView(), entity);
+    }
+    for (WorldEntity entity : present) {
+      if (entity instanceof CharacterEntity character) {
+        character.registerCandidates(present);
+      }
+    }
+    index.rebuild(views);
+    FootprintOverlay.buildOverlay(grid, views);
+    grid.setChangeFlags(grid.getChanged().clone());
+  }
+
+  /** Drops every entity that is no longer in the snapshot from every character's selection. */
+  private void forgetDeparted() {
+    List<GridEntity> departed = new ArrayList<>();
+    for (GridEntity view : known.keySet()) {
+      if (!views.contains(view)) {
+        departed.add(view);
+      }
+    }
+    for (GridEntity view : departed) {
+      known.remove(view);
+      for (WorldEntity entity : present) {
+        if (entity instanceof CharacterEntity character) {
+          character.forget(view);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void afterPostHooks() {}
+
+  @Override
+  public void postPass(int tick) {
+    grid.swap();
+    index.clear();
+  }
+}

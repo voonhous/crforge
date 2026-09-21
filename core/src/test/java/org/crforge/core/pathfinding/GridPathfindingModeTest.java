@@ -68,7 +68,7 @@ class GridPathfindingModeTest {
 
     assertThat(knight.getGridUnitState()).isNotNull();
     assertThat(engine.getGridPathfindingSystem().manages(knight)).isTrue();
-    assertThat(knight.getGridUnitState().getMovement().getRoute().size()).isGreaterThan(0);
+    assertThat(knight.getGridUnitState().movement().getRoute().size()).isGreaterThan(0);
     assertThat(knight.getPosition().getY()).isGreaterThan(tiles(10));
 
     // The previous-position copy is refreshed at the head of every tick, so after one more tick it
@@ -76,7 +76,7 @@ class GridPathfindingModeTest {
     int wasX = knight.getPosition().getX();
     int wasY = knight.getPosition().getY();
     engine.tick();
-    GridEntity view = knight.getGridUnitState().getEntity();
+    GridEntity view = knight.getGridUnitState().entity();
     assertThat(view.getPrevX()).isEqualTo(wasX);
     assertThat(view.getPrevY()).isEqualTo(wasY);
     assertThat(view.getY()).isGreaterThan(wasY);
@@ -89,7 +89,7 @@ class GridPathfindingModeTest {
     Troop knight = spawnKnight(engine);
 
     assertThat(knight.getMovement().getRawSpeed()).isEqualTo(KNIGHT_RAW_SPEED);
-    assertThat(knight.getGridUnitState().getSpeedConfig().speed()).isEqualTo(KNIGHT_RAW_SPEED);
+    assertThat(knight.getGridUnitState().speedConfig().speed()).isEqualTo(KNIGHT_RAW_SPEED);
   }
 
   @Test
@@ -139,7 +139,7 @@ class GridPathfindingModeTest {
     GameEngine engine = gridEngineHolding("giant");
     Troop giantTroop = playFromHand(engine, "giant", tiles(4), tiles(10));
 
-    assertThat(giantTroop.getGridUnitState().getTargeting().getConfig().targetOnlyBuildings())
+    assertThat(giantTroop.getGridUnitState().targeting().getConfig().targetOnlyBuildings())
         .as("the Giant's building-only column reached the grid")
         .isTrue();
 
@@ -163,7 +163,7 @@ class GridPathfindingModeTest {
     Troop unit = playFromHand(engine, "electrowizard", tiles(4), tiles(10));
 
     assertThat(unit.getCombat().getMultipleTargets()).isEqualTo(2);
-    assertThat(unit.getGridUnitState().getTargeting().getConfig().multipleTargets()).isEqualTo(2);
+    assertThat(unit.getGridUnitState().targeting().getConfig().multipleTargets()).isEqualTo(2);
   }
 
   /**

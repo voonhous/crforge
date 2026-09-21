@@ -25,8 +25,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: cost field, wrapper and search composed with the standard settings,"
-            + " held by the five reference walks. Supplied: both water permissions are passed"
-            + " in by the caller, and every caller passes false.")
+            + " held by the 53 reference walks. Supplied: both water permissions are passed in"
+            + " by the caller, and every caller passes false.")
 public final class GridSearchService {
 
   private GridSearchService() {

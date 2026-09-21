@@ -12,7 +12,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.card.Card;
-import org.crforge.core.component.GridUnitState;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -149,10 +148,10 @@ class GridGoldenTrajectoryTest {
 
       assertThat(troop.getPosition().getX()).as("%s x", where).isEqualTo(record.get("x").asInt());
       assertThat(troop.getPosition().getY()).as("%s y", where).isEqualTo(record.get("y").asInt());
-      assertThat(unit.getEntity().getState())
+      assertThat(unit.entity().getState())
           .as("%s state", where)
           .isEqualTo(expectedState(records, i));
-      assertThat(unit.getMovement().getRoute().size())
+      assertThat(unit.movement().getRoute().size())
           .as("%s route length", where)
           .isEqualTo(record.get("route").asInt());
       assertThat(name(troop.getCombat().getCurrentTarget(), engine))
@@ -162,7 +161,7 @@ class GridGoldenTrajectoryTest {
 
     JsonNode last = records.get(records.size() - 1);
     assertThat(last.get("tick").asInt()).as("%s lock tick", caseName).isEqualTo(lockTick);
-    assertThat(troop.getGridUnitState().getEntity().getState())
+    assertThat(troop.getGridUnitState().entity().getState())
         .as("%s stands in the attacking state", caseName)
         .isEqualTo(GridEntityState.ATTACKING);
     assertThat(name(troop.getCombat().getCurrentTarget(), engine))
