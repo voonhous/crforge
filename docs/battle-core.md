@@ -73,6 +73,7 @@ A ground character deployed on the standard arena walks its lane, picks its targ
 - `BattleGoldenTrajectoryTest` replays the five Knight reference trajectories through `Battle` and asserts position, state, route length and target after every step. Reference tick `n` is battle step `n + 1`, and nothing is shifted to make that so: it is what running commands after the entity tick produces.
 - `BattleTrajectorySweepTest` replays 48 more reference trajectories the same way: sixteen ground units whose speed, attack range, sight range, collision radius and deploy time all differ, deployed at random points on both sides, two thirds of them switching from the king tower to a princess tower on the way. A change to a cell cost, the default target rule, the endpoint scan or lane assignment moves a route somewhere in here even when it leaves the five Knight walks alone.
 - `BattleMultiUnitParityTest` runs multi-unit scenes through both engines and requires identical positions and states on every tick, which a single-unit trajectory cannot do, because with one unit a per-entity order and a per-pass order cannot be told apart.
+- `BattleKillRunTest` drives the kill run, a Knight destroying the princess tower and then the king tower, and holds the battle to as much of it as the milestone has reached: today the tick of every hit on the princess tower. An attack starting from zero is credited the whole of a run-down load, so the first hit lands nine ticks after the lock and the rest follow at the hit speed.
 - `EntityHolderTest` and `BattleTest` pin the two orders above line by line.
 
 The reference trajectories are the output of a model of the game's rules, not captures of the game. What that means for a disagreement is set out in `core/src/test/resources/pathfinding/README.md`.
@@ -105,7 +106,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
 - A deploying character's targeting and movement components return at once. The reference trajectories encode this; whether the components run and find nothing to do, or are not run, is not settled.
 - A tower has no components, so it never attacks.
-- Hits are decided but land on nothing, so no entity ever loses hit points and nothing is ever removed.
+- Hits are timed and recorded on the attacker but land on nothing yet, so no entity loses hit points and nothing is removed.
 - Both command passes read one queue with one rule, due when the command's tick is not after the battle's. Which commands belong to which pass is not settled.
 - The mode never ends the match and always lets the entity tick run.
 - The assumptions of the movement and targeting rules themselves are listed in [Troop Pathfinding](pathfinding.md#assumptions) and apply unchanged.
