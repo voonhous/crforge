@@ -64,7 +64,8 @@ tower.
 - `state` - the entity state: 4 while it is being placed, 1 while it walks, 2 once it stands and
   attacks.
 - `ref` - the tower the unit is heading for, or null while it has none.
-- `route` - how many cells are left on its route.
+- `route` - how many cells are left on its route. It is 0 on the lock tick: entering the attacking
+  state empties the route, so a unit that stands holds none.
 
 An entry is written after the movement pass of its tick. For a unit that is walking or attacking
 that is also after the entity state visit, so the entry holds the state the unit ends the tick with.
@@ -123,6 +124,12 @@ inputs it asked with and the answer it got.
 The movement replay test feeds these answers back and asserts that the same inputs are asked for, so
 a change in how the movement pass phrases its questions fails as loudly as a change in where the
 unit ends up.
+
+Not every preparation in the log comes from the movement visit. Storing a reference prepares the
+route to it at once, so the tick a unit takes or changes its target holds two preparations: the
+reference setter's, with a search, and then the movement visit's, which finds the goal unchanged and
+stops after the endpoint scan. The tick a unit resumes moving prepares a route too, but with no
+reference and no goal that preparation asks the grid nothing and leaves no entry.
 
 ## Cases
 

@@ -7,16 +7,18 @@ import org.crforge.core.fidelity.FidelityStatus;
  * Stores a new reference on a targeting component and prepares the component for it.
  *
  * <p>Storing a reference is more than an assignment: it remembers the previous one, decides what
- * happens to the attack timing, asks for a route to the new target and remembers where that target
+ * happens to the attack timing, prepares a route to the new target and remembers where that target
  * stood. Whether the attack timing is reset, rebased or left alone depends on whether the new
- * reference is already in range and on the owner's wind-up columns, in the order below.
+ * reference is already in range and on the owner's wind-up columns, in the order below. The route
+ * is prepared through the outcome, at the point the store reaches it, when the caller has given the
+ * outcome a preparer; otherwise the request is only recorded.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "The store, the wind-up rebase and the null paths agree with the reference. Not"
-            + " modelled: the two notifications the standard game sends when a reference"
-            + " changes. Only taking a new reference is held by a fixture.")
+        "The store, the wind-up rebase, the null paths and the route preparation agree with"
+            + " the reference. Not modelled: the two notifications the standard game sends when"
+            + " a reference changes. Only taking a new reference is held by a fixture.")
 public final class ReferenceSetter {
 
   /** The entity state of a unit that is dashing. */
@@ -113,7 +115,7 @@ public final class ReferenceSetter {
     t.setSpecialLoadPending(false);
     t.setSpecialLoadTimerMs(0);
     if (t.getTargetLostTimerMs() == 0 && t.isMovementComponentActive()) {
-      outcome.setRoutePreparationRequested(true);
+      outcome.requestRoutePreparation();
     }
     t.storeReferencePosition();
   }

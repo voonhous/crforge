@@ -21,7 +21,9 @@ import org.crforge.core.pathfinding.move.MovementState;
  *
  * <p>Two things the visit decides are for the caller to carry out and are reported through {@link
  * TargetingOutcome}: the request to plan a route to a newly chosen target, and the resume request
- * that follows a dropped reference or a finished attack.
+ * that follows a dropped reference or a finished attack. The attacking state itself is requested
+ * through the caller's {@link TargetingQueries#stateSetter() state setter}, which applies it or
+ * refuses it and runs whatever a state change carries.
  *
  * <p>Timers are milliseconds. The visit never advances one by more than {@link
  * TargetingQueries#timeStepMs()} in a tick.
@@ -545,9 +547,7 @@ public final class TargetingVisit {
     if (cfg.dashCooldown() > 0) {
       t.setDashWindupMs(0);
     }
-    if (queries.stateChangeApplies()) {
-      e.setState(STATE_ATTACKING);
-    }
+    queries.stateSetter().setState(e, STATE_ATTACKING);
     int hitsBefore = attackTimerOnEntry / hitSpeed;
     t.setAttackTimerMs(t.getAttackTimerMs() + queries.attackTimerStepMs());
     t.setBurstProgressMs(t.getBurstProgressMs() + queries.burstTimerStepMs());

@@ -8,6 +8,7 @@ import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
+import org.crforge.core.pathfinding.state.StateSetter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,14 @@ class TargetingVisitTest {
         hits.add(new int[] {sequenceIndex, extra, last ? 1 : 0});
         return nothingLands;
       };
+    }
+
+    /** How the visit's request for the attacking state is applied; the bare guard by default. */
+    private StateSetter setter = StateSetter.guarded();
+
+    @Override
+    public StateSetter stateSetter() {
+      return setter;
     }
   }
 
@@ -237,6 +246,20 @@ class TargetingVisitTest {
     assertThat(knight.getAttackTimerMs()).isEqualTo(1200);
     assertThat(queries.hits).hasSize(1);
     assertThat(queries.hits.get(0)).containsExactly(-1, 0, 1);
+  }
+
+  @Test
+  @DisplayName("the attacking state is requested through the caller's setter, which may refuse")
+  void theLockGoesThroughTheStateSetter() {
+    List<Integer> requested = new ArrayList<>();
+    queries.setter = (entity, newState) -> requested.add(newState);
+    knight.setReference(tower);
+
+    visit();
+
+    assertThat(requested).containsExactly(GridEntityState.ATTACKING);
+    assertThat(unit.getState()).isEqualTo(GridEntityState.MOVING);
+    assertThat(knight.getAttackTimerMs()).isEqualTo(50);
   }
 
   @Test

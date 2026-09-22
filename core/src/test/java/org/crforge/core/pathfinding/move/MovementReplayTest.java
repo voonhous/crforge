@@ -14,8 +14,10 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.GridStateSetter;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.Route;
@@ -42,7 +44,10 @@ import org.junit.jupiter.api.Test;
  *
  * <ul>
  *   <li>the tower the unit is heading for, and the tick it locks onto it, both taken from the
- *       trajectory, which is what target selection would produce;
+ *       trajectory, which is what target selection would produce. Storing a reference prepares a
+ *       route at once and the lock goes through the state setter, so both are applied here the way
+ *       the targeting pass applies them: a preparation on the tick the reference changes, before
+ *       the movement visit, and the lock through the unit's setter, which empties the route;
  *   <li>the route searches, endpoint scans, relocations and cell tests, replayed from a logged run
  *       that also asserts the inputs each of them is asked with, which is what the routing grid
  *       would produce.
@@ -50,8 +55,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Everything else - the movement visit, route preparation, the follower, the waypoint selector,
  * the push pass, the displacement, the speed budget, the gates, the direction initializer, the
- * route-beyond-reference predicate and the entity state visit - runs for real, and the unit's
- * position, state and remaining route length are compared on every tick.
+ * route-beyond-reference predicate, the state setter and the entity state visit - runs for real,
+ * and the unit's position, state and remaining route length are compared on every tick.
  */
 class MovementReplayTest {
 
@@ -134,30 +139,45 @@ class MovementReplayTest {
     StateTimers timers = new StateTimers();
     ReplayQueries queries =
         new ReplayQueries(unit, component, config, speedConfig, recordedCalls, globals);
+    // The unit has no targeting component here; the setter still runs every route action.
+    GridStateSetter setter =
+        new GridStateSetter(
+            unit,
+            component,
+            null,
+            () ->
+                new MovementChain(
+                    component, unit, grid, config, globals, queries.reference, List.of(), queries));
 
+    String previousReference = null;
     for (JsonNode record : golden.get("records")) {
       int tick = record.get("tick").asInt();
       queries.beginTick(tick);
-      ReferencePoint reference =
-          record.get("ref").isNull() ? null : point(record.get("ref").asText());
+      String referenceName = record.get("ref").isNull() ? null : record.get("ref").asText();
+      ReferencePoint reference = referenceName == null ? null : point(referenceName);
       queries.reference = reference;
 
       if (unit.getState() == GridEntityState.DEPLOYING) {
         assertRecord(caseName, record, unit, component, tick);
-        stateVisit(unit, timers, component, stateConfig);
+        stateVisit(unit, timers, component, stateConfig, setter);
         queries.assertTickDrained(caseName, tick);
         continue;
       }
 
-      // The targeting pass is not part of this package: the recorded lock is applied here.
+      // The targeting pass is not part of this package: what it does to the route is applied here.
+      // Storing a reference prepares the route to it at once, and the lock goes through the setter.
+      if (!Objects.equals(referenceName, previousReference)) {
+        setter.prepareRoute();
+      }
+      previousReference = referenceName;
       if (record.get("state").asInt() == GridEntityState.ATTACKING) {
-        unit.setState(GridEntityState.ATTACKING);
+        setter.setState(unit, GridEntityState.ATTACKING);
       }
 
       MovementChain chain =
           new MovementChain(component, unit, grid, config, globals, reference, List.of(), queries);
       MovementVisit.movementVisit(component, unit, null, config, null, queries, false, chain);
-      stateVisit(unit, timers, component, stateConfig);
+      stateVisit(unit, timers, component, stateConfig, setter);
 
       assertRecord(caseName, record, unit, component, tick);
       queries.assertTickDrained(caseName, tick);
@@ -165,7 +185,11 @@ class MovementReplayTest {
   }
 
   private static void stateVisit(
-      GridEntity unit, StateTimers timers, MovementState component, StateVisitConfig config) {
+      GridEntity unit,
+      StateTimers timers,
+      MovementState component,
+      StateVisitConfig config,
+      StateSetter setter) {
     EntityStateVisit.stateVisit(
         unit,
         timers,
@@ -174,7 +198,7 @@ class MovementReplayTest {
         StateVisitGlobals.standard(),
         StateQueries.forUnitWithRoute(unit.getSide() & 1),
         new ArrayList<>(),
-        StateSetter.guarded());
+        setter);
   }
 
   private static void assertRecord(

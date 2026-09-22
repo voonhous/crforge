@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.target;
 
 import java.util.List;
+import org.crforge.core.pathfinding.state.StateSetter;
 
 /**
  * What the targeting visit needs from outside the targeting pass.
@@ -8,7 +9,9 @@ import java.util.List;
  * <p>Every method has a default that gives the answer the standard 1v1 mode gives for an ordinary
  * single-target troop without a projectile, so an implementation only overrides what it changes.
  * The two that have no default are the candidate selection and the hit sink, because the visit
- * cannot invent either.
+ * cannot invent either. The state setter defaults to the bare interrupt guard, which applies the
+ * attacking state but runs none of the actions a state change carries; a driver that holds the
+ * unit's movement component gives the visit the unit's own setter.
  *
  * <p>The three supplied time answers are the ones the reference trajectories were produced with:
  * each visit advances the wind-up timers by one tick and the attack timer by one tick, and adds
@@ -37,9 +40,12 @@ public interface TargetingQueries {
     return 0;
   }
 
-  /** True when the visit's request to enter the attacking state takes effect immediately. */
-  default boolean stateChangeApplies() {
-    return true;
+  /**
+   * How the visit's request to enter the attacking state is applied. The setter decides whether the
+   * request takes effect and what else changes with it; the visit only asks.
+   */
+  default StateSetter stateSetter() {
+    return StateSetter.guarded();
   }
 
   /** True when the entity carries the buff component the visit asks about. */

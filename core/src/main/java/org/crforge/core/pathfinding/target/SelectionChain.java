@@ -11,6 +11,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
+import org.crforge.core.pathfinding.state.StateSetter;
 
 /**
  * Wires the spatial index, the validator, the default target selection and the candidate selector
@@ -60,6 +61,13 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
 
   /** Where the targeting visit's hits go; the default answers that every hit landed. */
   @Getter @Setter private HitSink hitSink = (target, sequenceIndex, extra, last) -> false;
+
+  /**
+   * How the visit's request for the attacking state is applied: the bare interrupt guard until the
+   * unit's owner installs the unit's own setter, which also runs the actions a state change
+   * carries.
+   */
+  @Getter @Setter private StateSetter stateSetter = StateSetter.guarded();
 
   /** Collects the route and resume requests the selection and the visit make. */
   @Getter private final TargetingOutcome outcome = new TargetingOutcome();
@@ -165,6 +173,11 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
   @Override
   public HitSink hitSink() {
     return hitSink;
+  }
+
+  @Override
+  public StateSetter stateSetter() {
+    return stateSetter;
   }
 
   /**
