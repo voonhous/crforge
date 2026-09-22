@@ -26,7 +26,8 @@ import org.crforge.core.pathfinding.move.MovementState;
  * refuses it and runs whatever a state change carries.
  *
  * <p>Timers are milliseconds. The visit never advances one by more than {@link
- * TargetingQueries#timeStepMs()} in a tick.
+ * TargetingQueries#timeStepMs()} in a tick, except the attack time, which {@link
+ * AttackTimerAdvance} first credits with the part of the wind-up that has already run down.
  *
  * <p><b>The dash path is incomplete and nothing exercises it.</b> No card the grid drives dashes
  * today, so none of this is reachable, but an integrator adding one should know that three pieces
@@ -49,12 +50,10 @@ import org.crforge.core.pathfinding.move.MovementState;
     note =
         "Agrees with the reference line for line: every early return, the uneven"
             + " comparisons and the order of timer reads and writes. Held: selection, keeping"
-            + " and dropping a reference, and the lock, by the 53 reference walks. Not"
-            + " settled: the attack-timer advance is supplied as a flat 50 ms per visit, so"
-            + " the wind-up before a first hit and everything a burst needs are not modelled,"
-            + " and the hit writes nothing back into this state. Not held by any fixture:"
-            + " dashes, special loads, bursts, several targets, attack sequences, the block"
-            + " timer and pending damage.")
+            + " and dropping a reference, and the lock, by the 53 reference walks; the attack"
+            + " tick and the hit cadence by the kill run. Not held by any fixture: dashes,"
+            + " special loads, bursts, several targets, attack sequences, the block timer and"
+            + " pending damage.")
 public final class TargetingVisit {
 
   /** Entity states in which the targeting pass does nothing at all. */
@@ -549,8 +548,7 @@ public final class TargetingVisit {
     }
     queries.stateSetter().setState(e, STATE_ATTACKING);
     int hitsBefore = attackTimerOnEntry / hitSpeed;
-    t.setAttackTimerMs(t.getAttackTimerMs() + queries.attackTimerStepMs());
-    t.setBurstProgressMs(t.getBurstProgressMs() + queries.burstTimerStepMs());
+    AttackTimerAdvance.advance(t, cfg, queries);
     t.setHitInProgress(t.getAttackTimerMs() % hitSpeed > TargetingQueries.TICK_MS);
     // The action runs before the sequence steps on, so an action that re-enters targeting sees the
     // step - and therefore the attack range - the unit had when the attack started.

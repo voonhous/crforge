@@ -13,9 +13,9 @@ import org.crforge.core.pathfinding.state.StateSetter;
  * attacking state but runs none of the actions a state change carries; a driver that holds the
  * unit's movement component gives the visit the unit's own setter.
  *
- * <p>The three supplied time answers are the ones the reference trajectories were produced with:
- * each visit advances the wind-up timers by one tick and the attack timer by one tick, and adds
- * nothing to the burst timer.
+ * <p>The two supplied time answers are the ones the reference trajectories were produced with: a
+ * unit without status effects steps every timer by the unscaled amount, and the battle never holds
+ * the attack timers.
  */
 public interface TargetingQueries {
 
@@ -23,21 +23,30 @@ public interface TargetingQueries {
   int TICK_MS = 50;
 
   /**
-   * How far a countdown the visit steps this visit, in milliseconds. Slowing or hastening a unit
-   * would change this; the standard answer is one tick.
+   * Scales a time step by the unit's status effects: the standard game raises it by the largest
+   * hastening percentage and lowers it by the largest slowing one. A unit carrying neither steps by
+   * the base amount, which is the standard answer.
+   *
+   * @param baseMs the unscaled step, in milliseconds
+   */
+  default int scaleTimeStep(int baseMs) {
+    return baseMs;
+  }
+
+  /**
+   * How far a countdown the visit steps this visit, in milliseconds: one tick, scaled by the unit's
+   * status effects.
    */
   default int timeStepMs() {
-    return TICK_MS;
+    return scaleTimeStep(TICK_MS);
   }
 
-  /** How far the attack timer advances on an attack tick, in milliseconds; one tick. */
-  default int attackTimerStepMs() {
-    return TICK_MS;
-  }
-
-  /** How far the burst timer advances on an attack tick, in milliseconds; nothing. */
-  default int burstTimerStepMs() {
-    return 0;
+  /**
+   * True when the battle holds every attack timer at zero. The standard battle answers false; what
+   * sets the hold is not established.
+   */
+  default boolean attackTimersHeld() {
+    return false;
   }
 
   /**

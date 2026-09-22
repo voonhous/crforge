@@ -264,16 +264,18 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName("the first hit lands 23 ticks after the unit locks on")
+  @DisplayName("the first hit lands 9 ticks after the unit locks on: the load is credited at once")
   void firstHitFollowsTheLock() throws IOException {
     Replay replay = load("knight_left");
     replay.replay();
 
     assertThat(replay.hitTicks).isEmpty();
 
-    replay.keepAttacking(258);
+    // Lock at 235 with a 700 ms load run down: the attack time starts at 700 and reaches the
+    // 1200 ms hit speed on the tenth attack tick, the reference run's tick 244.
+    replay.keepAttacking(244);
 
-    assertThat(replay.hitTicks).containsExactly(258);
+    assertThat(replay.hitTicks).containsExactly(244);
   }
 
   private static int firstAttackingTick(Replay replay) {

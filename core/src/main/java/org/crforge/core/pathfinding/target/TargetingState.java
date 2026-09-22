@@ -15,13 +15,18 @@ import org.crforge.core.pathfinding.GridEntity;
  * kept here is only what the targeting pass reads and writes.
  *
  * <p>All timers are milliseconds and advance in steps of 50, one per tick at 20 ticks per second.
- * The reset values are zero everywhere except the attack sequence index, which resets to -1.
+ * Every field starts at zero, false or empty; the attack sequence index starts at the first step
+ * and nothing resets it.
  */
 @Getter
 @Setter
 public class TargetingState {
 
-  /** Reset value of the attack sequence index: no step of the sequence is active. */
+  /**
+   * Index value meaning no step of the sequence is active: the range helpers read no step for it,
+   * and the attack-timer advance steps at the ordinary pace. The component never starts there; the
+   * value only arrives from outside.
+   */
   public static final int NO_SEQUENCE_STEP = -1;
 
   // -------------------------------------------------------------------------------------------
@@ -87,14 +92,34 @@ public class TargetingState {
   /** Countdown that blocks re-selection while it runs. */
   private int retargetCooldownMs;
 
-  /** Index of the active attack sequence step, or {@link #NO_SEQUENCE_STEP}. */
-  private int attackSequenceIndex = NO_SEQUENCE_STEP;
+  /** Index of the active attack sequence step, or {@link #NO_SEQUENCE_STEP}; the first step. */
+  private int attackSequenceIndex;
 
-  /** Elapsed attack time; a hit lands whenever it crosses a multiple of the hit speed. */
+  /**
+   * Elapsed attack time; a hit lands whenever it crosses a multiple of the hit speed. An attack
+   * that starts from zero is first credited the part of the wind-up that has already run down.
+   */
   private int attackTimerMs;
 
-  /** Remaining wind-up before the unit may attack. */
+  /**
+   * The load countdown: how much of the wind-up is still to run. It loses one tick per visit, every
+   * hit reloads it with the load time, and an attack starting from zero is credited the load time
+   * less what remains here. It starts at zero, so a fresh unit is credited its whole load.
+   */
   private int loadTimerMs;
+
+  /**
+   * Two flags a component restored from a saved battle may carry. Either one makes the next
+   * attack-timer advance round the attack time up to the next multiple of the hit speed instead of
+   * stepping it, and both are cleared by that advance. Nothing in a live battle sets them.
+   */
+  private boolean attackTimeRoundUpA;
+
+  /** The second of the two restore flags; see {@link #attackTimeRoundUpA}. */
+  private boolean attackTimeRoundUpB;
+
+  /** True when the last attack-timer advance rounded the attack time up. Read by nothing. */
+  private boolean attackTimeRoundedUp;
 
   /**
    * Flag raised together with the attack timer when the post-hit pause ends; its readers are not
