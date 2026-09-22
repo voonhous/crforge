@@ -1,1 +1,2603 @@
-{"card": "Knight", "deploy": [16500, 5000], "side": 0, "lane": 2, "records": [{"tick": 0, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 1, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 2, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 3, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 4, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 5, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 6, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 7, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 8, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 9, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 10, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 11, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 12, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 13, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 14, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 15, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 16, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 17, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 18, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 19, "x": 16500, "y": 5000, "state": 4, "ref": null, "route": 0}, {"tick": 20, "x": 16482, "y": 5056, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 21, "x": 16451, "y": 5107, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 22, "x": 16420, "y": 5158, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 23, "x": 16389, "y": 5209, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 24, "x": 16358, "y": 5260, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 25, "x": 16327, "y": 5311, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 26, "x": 16296, "y": 5362, "state": 1, "ref": "PrincessTower_1_2", "route": 37}, {"tick": 27, "x": 16265, "y": 5413, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 28, "x": 16244, "y": 5469, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 29, "x": 16223, "y": 5525, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 30, "x": 16202, "y": 5580, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 31, "x": 16181, "y": 5635, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 32, "x": 16160, "y": 5690, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 33, "x": 16139, "y": 5745, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 34, "x": 16118, "y": 5800, "state": 1, "ref": "PrincessTower_1_2", "route": 36}, {"tick": 35, "x": 16097, "y": 5855, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 36, "x": 16083, "y": 5913, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 37, "x": 16069, "y": 5971, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 38, "x": 16055, "y": 6029, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 39, "x": 16041, "y": 6087, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 40, "x": 16027, "y": 6145, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 41, "x": 16013, "y": 6203, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 42, "x": 15999, "y": 6261, "state": 1, "ref": "PrincessTower_1_2", "route": 35}, {"tick": 43, "x": 15985, "y": 6319, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 44, "x": 15976, "y": 6378, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 45, "x": 15967, "y": 6437, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 46, "x": 15958, "y": 6496, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 47, "x": 15949, "y": 6555, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 48, "x": 15940, "y": 6614, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 49, "x": 15931, "y": 6673, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 50, "x": 15922, "y": 6732, "state": 1, "ref": "PrincessTower_1_2", "route": 34}, {"tick": 51, "x": 15913, "y": 6791, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 52, "x": 15907, "y": 6850, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 53, "x": 15901, "y": 6909, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 54, "x": 15895, "y": 6968, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 55, "x": 15889, "y": 7027, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 56, "x": 15883, "y": 7086, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 57, "x": 15877, "y": 7145, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 58, "x": 15871, "y": 7204, "state": 1, "ref": "PrincessTower_1_2", "route": 33}, {"tick": 59, "x": 15865, "y": 7263, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 60, "x": 15843, "y": 7318, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 61, "x": 15821, "y": 7373, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 62, "x": 15799, "y": 7428, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 63, "x": 15777, "y": 7483, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 64, "x": 15755, "y": 7538, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 65, "x": 15733, "y": 7593, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 66, "x": 15711, "y": 7648, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 67, "x": 15689, "y": 7703, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 68, "x": 15666, "y": 7758, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 69, "x": 15643, "y": 7813, "state": 1, "ref": "PrincessTower_1_2", "route": 32}, {"tick": 70, "x": 15620, "y": 7868, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 71, "x": 15605, "y": 7925, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 72, "x": 15590, "y": 7982, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 73, "x": 15575, "y": 8039, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 74, "x": 15560, "y": 8096, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 75, "x": 15545, "y": 8153, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 76, "x": 15530, "y": 8210, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 77, "x": 15515, "y": 8267, "state": 1, "ref": "PrincessTower_1_2", "route": 31}, {"tick": 78, "x": 15500, "y": 8324, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 79, "x": 15490, "y": 8383, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 80, "x": 15480, "y": 8442, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 81, "x": 15470, "y": 8501, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 82, "x": 15460, "y": 8560, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 83, "x": 15450, "y": 8619, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 84, "x": 15440, "y": 8678, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 85, "x": 15430, "y": 8737, "state": 1, "ref": "PrincessTower_1_2", "route": 30}, {"tick": 86, "x": 15420, "y": 8796, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 87, "x": 15414, "y": 8855, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 88, "x": 15408, "y": 8914, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 89, "x": 15401, "y": 8973, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 90, "x": 15394, "y": 9032, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 91, "x": 15387, "y": 9091, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 92, "x": 15380, "y": 9150, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 93, "x": 15373, "y": 9209, "state": 1, "ref": "PrincessTower_1_2", "route": 29}, {"tick": 94, "x": 15366, "y": 9268, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 95, "x": 15362, "y": 9327, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 96, "x": 15358, "y": 9386, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 97, "x": 15354, "y": 9445, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 98, "x": 15350, "y": 9504, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 99, "x": 15346, "y": 9563, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 100, "x": 15342, "y": 9622, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 101, "x": 15338, "y": 9681, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 102, "x": 15334, "y": 9740, "state": 1, "ref": "PrincessTower_1_2", "route": 28}, {"tick": 103, "x": 15330, "y": 9799, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 104, "x": 15327, "y": 9858, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 105, "x": 15324, "y": 9917, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 106, "x": 15321, "y": 9976, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 107, "x": 15318, "y": 10035, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 108, "x": 15315, "y": 10094, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 109, "x": 15312, "y": 10153, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 110, "x": 15309, "y": 10212, "state": 1, "ref": "PrincessTower_1_2", "route": 27}, {"tick": 111, "x": 15306, "y": 10271, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 112, "x": 15304, "y": 10330, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 113, "x": 15302, "y": 10389, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 114, "x": 15300, "y": 10449, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 115, "x": 15298, "y": 10509, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 116, "x": 15296, "y": 10569, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 117, "x": 15294, "y": 10629, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 118, "x": 15292, "y": 10689, "state": 1, "ref": "PrincessTower_1_2", "route": 26}, {"tick": 119, "x": 15290, "y": 10749, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 120, "x": 15289, "y": 10809, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 121, "x": 15288, "y": 10869, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 122, "x": 15287, "y": 10929, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 123, "x": 15286, "y": 10989, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 124, "x": 15285, "y": 11049, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 125, "x": 15284, "y": 11109, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 126, "x": 15283, "y": 11169, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 127, "x": 15282, "y": 11229, "state": 1, "ref": "PrincessTower_1_2", "route": 25}, {"tick": 128, "x": 15281, "y": 11289, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 129, "x": 15280, "y": 11349, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 130, "x": 15279, "y": 11409, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 131, "x": 15278, "y": 11469, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 132, "x": 15277, "y": 11529, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 133, "x": 15276, "y": 11589, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 134, "x": 15275, "y": 11649, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 135, "x": 15274, "y": 11709, "state": 1, "ref": "PrincessTower_1_2", "route": 24}, {"tick": 136, "x": 15273, "y": 11769, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 137, "x": 15273, "y": 11829, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 138, "x": 15273, "y": 11889, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 139, "x": 15273, "y": 11949, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 140, "x": 15273, "y": 12009, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 141, "x": 15273, "y": 12069, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 142, "x": 15273, "y": 12129, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 143, "x": 15272, "y": 12189, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 144, "x": 15271, "y": 12249, "state": 1, "ref": "PrincessTower_1_2", "route": 23}, {"tick": 145, "x": 15270, "y": 12309, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 146, "x": 15270, "y": 12369, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 147, "x": 15270, "y": 12429, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 148, "x": 15270, "y": 12489, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 149, "x": 15270, "y": 12549, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 150, "x": 15270, "y": 12609, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 151, "x": 15270, "y": 12669, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 152, "x": 15270, "y": 12729, "state": 1, "ref": "PrincessTower_1_2", "route": 22}, {"tick": 153, "x": 15269, "y": 12789, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 154, "x": 15269, "y": 12849, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 155, "x": 15269, "y": 12909, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 156, "x": 15269, "y": 12969, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 157, "x": 15269, "y": 13029, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 158, "x": 15269, "y": 13089, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 159, "x": 15269, "y": 13149, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 160, "x": 15269, "y": 13209, "state": 1, "ref": "PrincessTower_1_2", "route": 21}, {"tick": 161, "x": 15269, "y": 13269, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 162, "x": 15269, "y": 13329, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 163, "x": 15269, "y": 13389, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 164, "x": 15269, "y": 13449, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 165, "x": 15269, "y": 13509, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 166, "x": 15269, "y": 13569, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 167, "x": 15269, "y": 13629, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 168, "x": 15269, "y": 13689, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 169, "x": 15269, "y": 13749, "state": 1, "ref": "PrincessTower_1_2", "route": 20}, {"tick": 170, "x": 15269, "y": 13809, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 171, "x": 15269, "y": 13869, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 172, "x": 15269, "y": 13929, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 173, "x": 15269, "y": 13989, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 174, "x": 15269, "y": 14049, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 175, "x": 15269, "y": 14109, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 176, "x": 15269, "y": 14169, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 177, "x": 15269, "y": 14229, "state": 1, "ref": "PrincessTower_1_2", "route": 19}, {"tick": 178, "x": 15269, "y": 14289, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 179, "x": 15250, "y": 14345, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 180, "x": 15231, "y": 14401, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 181, "x": 15212, "y": 14457, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 182, "x": 15192, "y": 14513, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 183, "x": 15172, "y": 14569, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 184, "x": 15152, "y": 14625, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 185, "x": 15132, "y": 14681, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 186, "x": 15112, "y": 14737, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 187, "x": 15092, "y": 14793, "state": 1, "ref": "PrincessTower_1_2", "route": 18}, {"tick": 188, "x": 15072, "y": 14849, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 189, "x": 15059, "y": 14907, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 190, "x": 15046, "y": 14965, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 191, "x": 15033, "y": 15023, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 192, "x": 15020, "y": 15081, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 193, "x": 15007, "y": 15139, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 194, "x": 14994, "y": 15197, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 195, "x": 14970, "y": 15251, "state": 1, "ref": "PrincessTower_1_2", "route": 17}, {"tick": 196, "x": 14958, "y": 15309, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 197, "x": 14950, "y": 15368, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 198, "x": 14942, "y": 15427, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 199, "x": 14934, "y": 15486, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 200, "x": 14926, "y": 15545, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 201, "x": 14918, "y": 15604, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 202, "x": 14910, "y": 15663, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 203, "x": 14902, "y": 15722, "state": 1, "ref": "PrincessTower_1_2", "route": 16}, {"tick": 204, "x": 14894, "y": 15781, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 205, "x": 14889, "y": 15840, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 206, "x": 14884, "y": 15899, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 207, "x": 14879, "y": 15958, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 208, "x": 14874, "y": 16017, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 209, "x": 14869, "y": 16076, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 210, "x": 14864, "y": 16135, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 211, "x": 14858, "y": 16194, "state": 1, "ref": "PrincessTower_1_2", "route": 15}, {"tick": 212, "x": 14852, "y": 16253, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 213, "x": 14849, "y": 16312, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 214, "x": 14846, "y": 16371, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 215, "x": 14843, "y": 16430, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 216, "x": 14840, "y": 16489, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 217, "x": 14836, "y": 16548, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 218, "x": 14832, "y": 16607, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 219, "x": 14828, "y": 16666, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 220, "x": 14824, "y": 16725, "state": 1, "ref": "PrincessTower_1_2", "route": 14}, {"tick": 221, "x": 14820, "y": 16784, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 222, "x": 14818, "y": 16843, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 223, "x": 14816, "y": 16902, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 224, "x": 14814, "y": 16961, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 225, "x": 14812, "y": 17020, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 226, "x": 14810, "y": 17079, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 227, "x": 14807, "y": 17138, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 228, "x": 14804, "y": 17197, "state": 1, "ref": "PrincessTower_1_2", "route": 13}, {"tick": 229, "x": 14801, "y": 17256, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 230, "x": 14800, "y": 17316, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 231, "x": 14799, "y": 17376, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 232, "x": 14797, "y": 17436, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 233, "x": 14795, "y": 17496, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 234, "x": 14793, "y": 17556, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 235, "x": 14791, "y": 17616, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 236, "x": 14789, "y": 17676, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 237, "x": 14787, "y": 17736, "state": 1, "ref": "PrincessTower_1_2", "route": 12}, {"tick": 238, "x": 14785, "y": 17796, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 239, "x": 14784, "y": 17856, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 240, "x": 14783, "y": 17916, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 241, "x": 14782, "y": 17976, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 242, "x": 14781, "y": 18036, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 243, "x": 14780, "y": 18096, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 244, "x": 14779, "y": 18156, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 245, "x": 14778, "y": 18216, "state": 1, "ref": "PrincessTower_1_2", "route": 11}, {"tick": 246, "x": 14777, "y": 18276, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 247, "x": 14777, "y": 18336, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 248, "x": 14777, "y": 18396, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 249, "x": 14776, "y": 18456, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 250, "x": 14775, "y": 18516, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 251, "x": 14774, "y": 18576, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 252, "x": 14773, "y": 18636, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 253, "x": 14772, "y": 18696, "state": 1, "ref": "PrincessTower_1_2", "route": 10}, {"tick": 254, "x": 14771, "y": 18756, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 255, "x": 14771, "y": 18816, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 256, "x": 14771, "y": 18876, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 257, "x": 14771, "y": 18936, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 258, "x": 14771, "y": 18996, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 259, "x": 14771, "y": 19056, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 260, "x": 14771, "y": 19116, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 261, "x": 14771, "y": 19176, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 262, "x": 14770, "y": 19236, "state": 1, "ref": "PrincessTower_1_2", "route": 9}, {"tick": 263, "x": 14769, "y": 19296, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 264, "x": 14769, "y": 19356, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 265, "x": 14769, "y": 19416, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 266, "x": 14769, "y": 19476, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 267, "x": 14769, "y": 19536, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 268, "x": 14769, "y": 19596, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 269, "x": 14769, "y": 19656, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 270, "x": 14769, "y": 19716, "state": 1, "ref": "PrincessTower_1_2", "route": 8}, {"tick": 271, "x": 14769, "y": 19776, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 272, "x": 14769, "y": 19836, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 273, "x": 14769, "y": 19896, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 274, "x": 14769, "y": 19956, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 275, "x": 14769, "y": 20016, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 276, "x": 14769, "y": 20076, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 277, "x": 14769, "y": 20136, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 278, "x": 14769, "y": 20196, "state": 1, "ref": "PrincessTower_1_2", "route": 7}, {"tick": 279, "x": 14769, "y": 20256, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 280, "x": 14769, "y": 20316, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 281, "x": 14769, "y": 20376, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 282, "x": 14769, "y": 20436, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 283, "x": 14769, "y": 20496, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 284, "x": 14769, "y": 20556, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 285, "x": 14769, "y": 20616, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 286, "x": 14769, "y": 20676, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 287, "x": 14769, "y": 20736, "state": 1, "ref": "PrincessTower_1_2", "route": 6}, {"tick": 288, "x": 14769, "y": 20796, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 289, "x": 14769, "y": 20856, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 290, "x": 14769, "y": 20916, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 291, "x": 14769, "y": 20976, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 292, "x": 14769, "y": 21036, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 293, "x": 14769, "y": 21096, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 294, "x": 14769, "y": 21156, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 295, "x": 14769, "y": 21216, "state": 1, "ref": "PrincessTower_1_2", "route": 5}, {"tick": 296, "x": 14769, "y": 21276, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 297, "x": 14769, "y": 21336, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 298, "x": 14769, "y": 21396, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 299, "x": 14769, "y": 21456, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 300, "x": 14769, "y": 21516, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 301, "x": 14769, "y": 21576, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 302, "x": 14769, "y": 21636, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 303, "x": 14769, "y": 21696, "state": 1, "ref": "PrincessTower_1_2", "route": 4}, {"tick": 304, "x": 14769, "y": 21756, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 305, "x": 14769, "y": 21816, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 306, "x": 14769, "y": 21876, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 307, "x": 14769, "y": 21936, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 308, "x": 14769, "y": 21996, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 309, "x": 14769, "y": 22056, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 310, "x": 14769, "y": 22116, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 311, "x": 14769, "y": 22176, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 312, "x": 14769, "y": 22236, "state": 1, "ref": "PrincessTower_1_2", "route": 3}, {"tick": 313, "x": 14769, "y": 22296, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 314, "x": 14769, "y": 22356, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 315, "x": 14769, "y": 22416, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 316, "x": 14769, "y": 22476, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 317, "x": 14769, "y": 22536, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 318, "x": 14769, "y": 22596, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 319, "x": 14769, "y": 22656, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 320, "x": 14769, "y": 22716, "state": 1, "ref": "PrincessTower_1_2", "route": 2}, {"tick": 321, "x": 14769, "y": 22776, "state": 1, "ref": "PrincessTower_1_2", "route": 1}, {"tick": 322, "x": 14769, "y": 22836, "state": 1, "ref": "PrincessTower_1_2", "route": 1}, {"tick": 323, "x": 14769, "y": 22836, "state": 2, "ref": "PrincessTower_1_2", "route": 0}]}
+{
+ "card": "Knight",
+ "deploy": [
+  16500,
+  5000
+ ],
+ "side": 0,
+ "lane": 2,
+ "records": [
+  {
+   "tick": 0,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 1,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 2,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 3,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 4,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 5,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 6,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 7,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 8,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 9,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 10,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 11,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 12,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 13,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 14,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 15,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 16,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 17,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 18,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 19,
+   "x": 16500,
+   "y": 5000,
+   "state": 4,
+   "ref": null,
+   "route": 0
+  },
+  {
+   "tick": 20,
+   "x": 16482,
+   "y": 5056,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 21,
+   "x": 16451,
+   "y": 5107,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 22,
+   "x": 16420,
+   "y": 5158,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 23,
+   "x": 16389,
+   "y": 5209,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 24,
+   "x": 16358,
+   "y": 5260,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 25,
+   "x": 16327,
+   "y": 5311,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 26,
+   "x": 16296,
+   "y": 5362,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 37
+  },
+  {
+   "tick": 27,
+   "x": 16265,
+   "y": 5413,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 28,
+   "x": 16244,
+   "y": 5469,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 29,
+   "x": 16223,
+   "y": 5525,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 30,
+   "x": 16202,
+   "y": 5580,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 31,
+   "x": 16181,
+   "y": 5635,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 32,
+   "x": 16160,
+   "y": 5690,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 33,
+   "x": 16139,
+   "y": 5745,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 34,
+   "x": 16118,
+   "y": 5800,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 36
+  },
+  {
+   "tick": 35,
+   "x": 16097,
+   "y": 5855,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 36,
+   "x": 16083,
+   "y": 5913,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 37,
+   "x": 16069,
+   "y": 5971,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 38,
+   "x": 16055,
+   "y": 6029,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 39,
+   "x": 16041,
+   "y": 6087,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 40,
+   "x": 16027,
+   "y": 6145,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 41,
+   "x": 16013,
+   "y": 6203,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 42,
+   "x": 15999,
+   "y": 6261,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 35
+  },
+  {
+   "tick": 43,
+   "x": 15985,
+   "y": 6319,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 44,
+   "x": 15976,
+   "y": 6378,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 45,
+   "x": 15967,
+   "y": 6437,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 46,
+   "x": 15958,
+   "y": 6496,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 47,
+   "x": 15949,
+   "y": 6555,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 48,
+   "x": 15940,
+   "y": 6614,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 49,
+   "x": 15931,
+   "y": 6673,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 50,
+   "x": 15922,
+   "y": 6732,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 34
+  },
+  {
+   "tick": 51,
+   "x": 15913,
+   "y": 6791,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 52,
+   "x": 15907,
+   "y": 6850,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 53,
+   "x": 15901,
+   "y": 6909,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 54,
+   "x": 15895,
+   "y": 6968,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 55,
+   "x": 15889,
+   "y": 7027,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 56,
+   "x": 15883,
+   "y": 7086,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 57,
+   "x": 15877,
+   "y": 7145,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 58,
+   "x": 15871,
+   "y": 7204,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 33
+  },
+  {
+   "tick": 59,
+   "x": 15865,
+   "y": 7263,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 60,
+   "x": 15843,
+   "y": 7318,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 61,
+   "x": 15821,
+   "y": 7373,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 62,
+   "x": 15799,
+   "y": 7428,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 63,
+   "x": 15777,
+   "y": 7483,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 64,
+   "x": 15755,
+   "y": 7538,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 65,
+   "x": 15733,
+   "y": 7593,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 66,
+   "x": 15711,
+   "y": 7648,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 67,
+   "x": 15689,
+   "y": 7703,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 68,
+   "x": 15666,
+   "y": 7758,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 69,
+   "x": 15643,
+   "y": 7813,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 32
+  },
+  {
+   "tick": 70,
+   "x": 15620,
+   "y": 7868,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 71,
+   "x": 15605,
+   "y": 7925,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 72,
+   "x": 15590,
+   "y": 7982,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 73,
+   "x": 15575,
+   "y": 8039,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 74,
+   "x": 15560,
+   "y": 8096,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 75,
+   "x": 15545,
+   "y": 8153,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 76,
+   "x": 15530,
+   "y": 8210,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 77,
+   "x": 15515,
+   "y": 8267,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 31
+  },
+  {
+   "tick": 78,
+   "x": 15500,
+   "y": 8324,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 79,
+   "x": 15490,
+   "y": 8383,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 80,
+   "x": 15480,
+   "y": 8442,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 81,
+   "x": 15470,
+   "y": 8501,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 82,
+   "x": 15460,
+   "y": 8560,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 83,
+   "x": 15450,
+   "y": 8619,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 84,
+   "x": 15440,
+   "y": 8678,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 85,
+   "x": 15430,
+   "y": 8737,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 30
+  },
+  {
+   "tick": 86,
+   "x": 15420,
+   "y": 8796,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 87,
+   "x": 15414,
+   "y": 8855,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 88,
+   "x": 15408,
+   "y": 8914,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 89,
+   "x": 15401,
+   "y": 8973,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 90,
+   "x": 15394,
+   "y": 9032,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 91,
+   "x": 15387,
+   "y": 9091,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 92,
+   "x": 15380,
+   "y": 9150,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 93,
+   "x": 15373,
+   "y": 9209,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 29
+  },
+  {
+   "tick": 94,
+   "x": 15366,
+   "y": 9268,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 95,
+   "x": 15362,
+   "y": 9327,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 96,
+   "x": 15358,
+   "y": 9386,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 97,
+   "x": 15354,
+   "y": 9445,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 98,
+   "x": 15350,
+   "y": 9504,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 99,
+   "x": 15346,
+   "y": 9563,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 100,
+   "x": 15342,
+   "y": 9622,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 101,
+   "x": 15338,
+   "y": 9681,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 102,
+   "x": 15334,
+   "y": 9740,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 28
+  },
+  {
+   "tick": 103,
+   "x": 15330,
+   "y": 9799,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 104,
+   "x": 15327,
+   "y": 9858,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 105,
+   "x": 15324,
+   "y": 9917,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 106,
+   "x": 15321,
+   "y": 9976,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 107,
+   "x": 15318,
+   "y": 10035,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 108,
+   "x": 15315,
+   "y": 10094,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 109,
+   "x": 15312,
+   "y": 10153,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 110,
+   "x": 15309,
+   "y": 10212,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 27
+  },
+  {
+   "tick": 111,
+   "x": 15306,
+   "y": 10271,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 112,
+   "x": 15304,
+   "y": 10330,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 113,
+   "x": 15302,
+   "y": 10389,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 114,
+   "x": 15300,
+   "y": 10449,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 115,
+   "x": 15298,
+   "y": 10509,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 116,
+   "x": 15296,
+   "y": 10569,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 117,
+   "x": 15294,
+   "y": 10629,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 118,
+   "x": 15292,
+   "y": 10689,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 26
+  },
+  {
+   "tick": 119,
+   "x": 15290,
+   "y": 10749,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 120,
+   "x": 15289,
+   "y": 10809,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 121,
+   "x": 15288,
+   "y": 10869,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 122,
+   "x": 15287,
+   "y": 10929,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 123,
+   "x": 15286,
+   "y": 10989,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 124,
+   "x": 15285,
+   "y": 11049,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 125,
+   "x": 15284,
+   "y": 11109,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 126,
+   "x": 15283,
+   "y": 11169,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 127,
+   "x": 15282,
+   "y": 11229,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 25
+  },
+  {
+   "tick": 128,
+   "x": 15281,
+   "y": 11289,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 129,
+   "x": 15280,
+   "y": 11349,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 130,
+   "x": 15279,
+   "y": 11409,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 131,
+   "x": 15278,
+   "y": 11469,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 132,
+   "x": 15277,
+   "y": 11529,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 133,
+   "x": 15276,
+   "y": 11589,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 134,
+   "x": 15275,
+   "y": 11649,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 135,
+   "x": 15274,
+   "y": 11709,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 24
+  },
+  {
+   "tick": 136,
+   "x": 15273,
+   "y": 11769,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 137,
+   "x": 15273,
+   "y": 11829,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 138,
+   "x": 15273,
+   "y": 11889,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 139,
+   "x": 15273,
+   "y": 11949,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 140,
+   "x": 15273,
+   "y": 12009,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 141,
+   "x": 15273,
+   "y": 12069,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 142,
+   "x": 15273,
+   "y": 12129,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 143,
+   "x": 15272,
+   "y": 12189,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 144,
+   "x": 15271,
+   "y": 12249,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 23
+  },
+  {
+   "tick": 145,
+   "x": 15270,
+   "y": 12309,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 146,
+   "x": 15270,
+   "y": 12369,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 147,
+   "x": 15270,
+   "y": 12429,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 148,
+   "x": 15270,
+   "y": 12489,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 149,
+   "x": 15270,
+   "y": 12549,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 150,
+   "x": 15270,
+   "y": 12609,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 151,
+   "x": 15270,
+   "y": 12669,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 152,
+   "x": 15270,
+   "y": 12729,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 22
+  },
+  {
+   "tick": 153,
+   "x": 15269,
+   "y": 12789,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 154,
+   "x": 15269,
+   "y": 12849,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 155,
+   "x": 15269,
+   "y": 12909,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 156,
+   "x": 15269,
+   "y": 12969,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 157,
+   "x": 15269,
+   "y": 13029,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 158,
+   "x": 15269,
+   "y": 13089,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 159,
+   "x": 15269,
+   "y": 13149,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 160,
+   "x": 15269,
+   "y": 13209,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 21
+  },
+  {
+   "tick": 161,
+   "x": 15269,
+   "y": 13269,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 162,
+   "x": 15269,
+   "y": 13329,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 163,
+   "x": 15269,
+   "y": 13389,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 164,
+   "x": 15269,
+   "y": 13449,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 165,
+   "x": 15269,
+   "y": 13509,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 166,
+   "x": 15269,
+   "y": 13569,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 167,
+   "x": 15269,
+   "y": 13629,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 168,
+   "x": 15269,
+   "y": 13689,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 169,
+   "x": 15269,
+   "y": 13749,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 20
+  },
+  {
+   "tick": 170,
+   "x": 15269,
+   "y": 13809,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 171,
+   "x": 15269,
+   "y": 13869,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 172,
+   "x": 15269,
+   "y": 13929,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 173,
+   "x": 15269,
+   "y": 13989,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 174,
+   "x": 15269,
+   "y": 14049,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 175,
+   "x": 15269,
+   "y": 14109,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 176,
+   "x": 15269,
+   "y": 14169,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 177,
+   "x": 15269,
+   "y": 14229,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 19
+  },
+  {
+   "tick": 178,
+   "x": 15269,
+   "y": 14289,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 179,
+   "x": 15250,
+   "y": 14345,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 180,
+   "x": 15231,
+   "y": 14401,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 181,
+   "x": 15212,
+   "y": 14457,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 182,
+   "x": 15192,
+   "y": 14513,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 183,
+   "x": 15172,
+   "y": 14569,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 184,
+   "x": 15152,
+   "y": 14625,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 185,
+   "x": 15132,
+   "y": 14681,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 186,
+   "x": 15112,
+   "y": 14737,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 187,
+   "x": 15092,
+   "y": 14793,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 18
+  },
+  {
+   "tick": 188,
+   "x": 15072,
+   "y": 14849,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 189,
+   "x": 15059,
+   "y": 14907,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 190,
+   "x": 15046,
+   "y": 14965,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 191,
+   "x": 15033,
+   "y": 15023,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 192,
+   "x": 15020,
+   "y": 15081,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 193,
+   "x": 15007,
+   "y": 15139,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 194,
+   "x": 14994,
+   "y": 15197,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 195,
+   "x": 14970,
+   "y": 15251,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 17
+  },
+  {
+   "tick": 196,
+   "x": 14958,
+   "y": 15309,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 197,
+   "x": 14950,
+   "y": 15368,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 198,
+   "x": 14942,
+   "y": 15427,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 199,
+   "x": 14934,
+   "y": 15486,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 200,
+   "x": 14926,
+   "y": 15545,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 201,
+   "x": 14918,
+   "y": 15604,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 202,
+   "x": 14910,
+   "y": 15663,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 203,
+   "x": 14902,
+   "y": 15722,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 16
+  },
+  {
+   "tick": 204,
+   "x": 14894,
+   "y": 15781,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 205,
+   "x": 14889,
+   "y": 15840,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 206,
+   "x": 14884,
+   "y": 15899,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 207,
+   "x": 14879,
+   "y": 15958,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 208,
+   "x": 14874,
+   "y": 16017,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 209,
+   "x": 14869,
+   "y": 16076,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 210,
+   "x": 14864,
+   "y": 16135,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 211,
+   "x": 14858,
+   "y": 16194,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 15
+  },
+  {
+   "tick": 212,
+   "x": 14852,
+   "y": 16253,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 213,
+   "x": 14849,
+   "y": 16312,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 214,
+   "x": 14846,
+   "y": 16371,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 215,
+   "x": 14843,
+   "y": 16430,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 216,
+   "x": 14840,
+   "y": 16489,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 217,
+   "x": 14836,
+   "y": 16548,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 218,
+   "x": 14832,
+   "y": 16607,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 219,
+   "x": 14828,
+   "y": 16666,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 220,
+   "x": 14824,
+   "y": 16725,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 14
+  },
+  {
+   "tick": 221,
+   "x": 14820,
+   "y": 16784,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 222,
+   "x": 14818,
+   "y": 16843,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 223,
+   "x": 14816,
+   "y": 16902,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 224,
+   "x": 14814,
+   "y": 16961,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 225,
+   "x": 14812,
+   "y": 17020,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 226,
+   "x": 14810,
+   "y": 17079,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 227,
+   "x": 14807,
+   "y": 17138,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 228,
+   "x": 14804,
+   "y": 17197,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 13
+  },
+  {
+   "tick": 229,
+   "x": 14801,
+   "y": 17256,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 230,
+   "x": 14800,
+   "y": 17316,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 231,
+   "x": 14799,
+   "y": 17376,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 232,
+   "x": 14797,
+   "y": 17436,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 233,
+   "x": 14795,
+   "y": 17496,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 234,
+   "x": 14793,
+   "y": 17556,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 235,
+   "x": 14791,
+   "y": 17616,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 236,
+   "x": 14789,
+   "y": 17676,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 237,
+   "x": 14787,
+   "y": 17736,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 12
+  },
+  {
+   "tick": 238,
+   "x": 14785,
+   "y": 17796,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 239,
+   "x": 14784,
+   "y": 17856,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 240,
+   "x": 14783,
+   "y": 17916,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 241,
+   "x": 14782,
+   "y": 17976,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 242,
+   "x": 14781,
+   "y": 18036,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 243,
+   "x": 14780,
+   "y": 18096,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 244,
+   "x": 14779,
+   "y": 18156,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 245,
+   "x": 14778,
+   "y": 18216,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 11
+  },
+  {
+   "tick": 246,
+   "x": 14777,
+   "y": 18276,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 247,
+   "x": 14777,
+   "y": 18336,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 248,
+   "x": 14777,
+   "y": 18396,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 249,
+   "x": 14776,
+   "y": 18456,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 250,
+   "x": 14775,
+   "y": 18516,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 251,
+   "x": 14774,
+   "y": 18576,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 252,
+   "x": 14773,
+   "y": 18636,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 253,
+   "x": 14772,
+   "y": 18696,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 10
+  },
+  {
+   "tick": 254,
+   "x": 14771,
+   "y": 18756,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 255,
+   "x": 14771,
+   "y": 18816,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 256,
+   "x": 14771,
+   "y": 18876,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 257,
+   "x": 14771,
+   "y": 18936,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 258,
+   "x": 14771,
+   "y": 18996,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 259,
+   "x": 14771,
+   "y": 19056,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 260,
+   "x": 14771,
+   "y": 19116,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 261,
+   "x": 14771,
+   "y": 19176,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 262,
+   "x": 14770,
+   "y": 19236,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 9
+  },
+  {
+   "tick": 263,
+   "x": 14769,
+   "y": 19296,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 264,
+   "x": 14769,
+   "y": 19356,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 265,
+   "x": 14769,
+   "y": 19416,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 266,
+   "x": 14769,
+   "y": 19476,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 267,
+   "x": 14769,
+   "y": 19536,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 268,
+   "x": 14769,
+   "y": 19596,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 269,
+   "x": 14769,
+   "y": 19656,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 270,
+   "x": 14769,
+   "y": 19716,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 8
+  },
+  {
+   "tick": 271,
+   "x": 14769,
+   "y": 19776,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 272,
+   "x": 14769,
+   "y": 19836,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 273,
+   "x": 14769,
+   "y": 19896,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 274,
+   "x": 14769,
+   "y": 19956,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 275,
+   "x": 14769,
+   "y": 20016,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 276,
+   "x": 14769,
+   "y": 20076,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 277,
+   "x": 14769,
+   "y": 20136,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 278,
+   "x": 14769,
+   "y": 20196,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 7
+  },
+  {
+   "tick": 279,
+   "x": 14769,
+   "y": 20256,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 280,
+   "x": 14769,
+   "y": 20316,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 281,
+   "x": 14769,
+   "y": 20376,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 282,
+   "x": 14769,
+   "y": 20436,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 283,
+   "x": 14769,
+   "y": 20496,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 284,
+   "x": 14769,
+   "y": 20556,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 285,
+   "x": 14769,
+   "y": 20616,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 286,
+   "x": 14769,
+   "y": 20676,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 287,
+   "x": 14769,
+   "y": 20736,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 6
+  },
+  {
+   "tick": 288,
+   "x": 14769,
+   "y": 20796,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 289,
+   "x": 14769,
+   "y": 20856,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 290,
+   "x": 14769,
+   "y": 20916,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 291,
+   "x": 14769,
+   "y": 20976,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 292,
+   "x": 14769,
+   "y": 21036,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 293,
+   "x": 14769,
+   "y": 21096,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 294,
+   "x": 14769,
+   "y": 21156,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 295,
+   "x": 14769,
+   "y": 21216,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 5
+  },
+  {
+   "tick": 296,
+   "x": 14769,
+   "y": 21276,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 297,
+   "x": 14769,
+   "y": 21336,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 298,
+   "x": 14769,
+   "y": 21396,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 299,
+   "x": 14769,
+   "y": 21456,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 300,
+   "x": 14769,
+   "y": 21516,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 301,
+   "x": 14769,
+   "y": 21576,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 302,
+   "x": 14769,
+   "y": 21636,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 303,
+   "x": 14769,
+   "y": 21696,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 4
+  },
+  {
+   "tick": 304,
+   "x": 14769,
+   "y": 21756,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 305,
+   "x": 14769,
+   "y": 21816,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 306,
+   "x": 14769,
+   "y": 21876,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 307,
+   "x": 14769,
+   "y": 21936,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 308,
+   "x": 14769,
+   "y": 21996,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 309,
+   "x": 14769,
+   "y": 22056,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 310,
+   "x": 14769,
+   "y": 22116,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 311,
+   "x": 14769,
+   "y": 22176,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 312,
+   "x": 14769,
+   "y": 22236,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 3
+  },
+  {
+   "tick": 313,
+   "x": 14769,
+   "y": 22296,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 314,
+   "x": 14769,
+   "y": 22356,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 315,
+   "x": 14769,
+   "y": 22416,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 316,
+   "x": 14769,
+   "y": 22476,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 317,
+   "x": 14769,
+   "y": 22536,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 318,
+   "x": 14769,
+   "y": 22596,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 319,
+   "x": 14769,
+   "y": 22656,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 320,
+   "x": 14769,
+   "y": 22716,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 2
+  },
+  {
+   "tick": 321,
+   "x": 14769,
+   "y": 22776,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 1
+  },
+  {
+   "tick": 322,
+   "x": 14769,
+   "y": 22836,
+   "state": 1,
+   "ref": "PrincessTower_1_2",
+   "route": 1
+  },
+  {
+   "tick": 323,
+   "x": 14769,
+   "y": 22836,
+   "state": 2,
+   "ref": "PrincessTower_1_2",
+   "route": 0
+  }
+ ]
+}
