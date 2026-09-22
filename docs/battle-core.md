@@ -68,7 +68,7 @@ Three consequences that everything else leans on: entities are visited in ascend
 
 ## What is covered today
 
-A ground character deployed on the standard arena walks its lane, picks its target, routes around buildings, is pushed and steered by other characters and locks onto a tower, tick for tick as the reference trajectories record it.
+A ground character deployed on the standard arena walks its lane, picks its target, routes around buildings, is pushed and steered by other characters and locks onto a tower, tick for tick as the reference trajectories record it. Its state changes carry what the standard game attaches to them: taking a target prepares the route at once, stopping empties it, and resuming prepares a new one before the next movement visit.
 
 - `BattleGoldenTrajectoryTest` replays the five Knight reference trajectories through `Battle` and asserts position, state, route length and target after every step. Reference tick `n` is battle step `n + 1`, and nothing is shifted to make that so: it is what running commands after the entity tick produces.
 - `BattleTrajectorySweepTest` replays 48 more reference trajectories the same way: sixteen ground units whose speed, attack range, sight range, collision radius and deploy time all differ, deployed at random points on both sides, two thirds of them switching from the king tower to a princess tower on the way. A change to a cell cost, the default target rule, the endpoint scan or lane assignment moves a route somewhere in here even when it leaves the five Knight walks alone.
@@ -86,7 +86,7 @@ Each milestone lands test first, against a reference it can be held to, and is d
 | Milestone | Content | Held to |
 | --- | --- | --- |
 | M1 (done) | The step, the entity tick, characters walking and locking on | five Knight trajectories, a 48-trajectory sweep over sixteen units and both sides, multi-unit parity with the grid mode |
-| M2 | Hits: level scaling, hit application, damage modifiers, hit points and shields, death and removal, a destroyed tower leaving the target lists | a Knight destroying a princess tower and then the king tower: the tick and remaining hit points of every hit, and every position of the 1281-tick run |
+| M2 | Hits: the attack timer and its load, level scaling, hit application, damage modifiers, hit points and shields, death and removal, a destroyed tower leaving the target lists | a Knight destroying a princess tower and then the king tower: the tick and remaining hit points of every hit, and every position of the 1253-tick run |
 | M3 | Buildings as attackers, projectiles from launch to impact, area damage, king tower activation | tower shots against a walking unit: lock, launch and impact ticks |
 | M4 | Deployment as a command: placement, the formation of a multi-unit card, the stagger, the states before the first move, placement validation | multi-unit deployments, including at the arena's edge |
 | M5 | The action interpreter behind `EntityActions`: scheduling, the three phases, the composites, then the leaf actions by how often the card data uses them; the expression evaluator, game tags and object filters; loaders for the data they need | per-action fixtures, then whole cards whose behaviour is only expressed as actions |

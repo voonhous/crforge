@@ -37,7 +37,6 @@ import org.crforge.core.pathfinding.move.SpeedConfig;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.ResumeHelper;
 import org.crforge.core.pathfinding.state.StateQueries;
-import org.crforge.core.pathfinding.state.StateSetter;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
@@ -280,7 +279,7 @@ public class GridPathfindingSystem {
             unit.stateConfig(),
             stateQueries(entity),
             new ArrayList<>(),
-            StateSetter.guarded());
+            chain.stateSetter());
       }
       writeCombat(troop, unit);
     }
@@ -304,17 +303,8 @@ public class GridPathfindingSystem {
       if (entity.getState() == GridEntityState.DEPLOYING) {
         continue;
       }
-      GridMovementQueries queries = new GridMovementQueries(unit, grid, costs, unitStates::get);
-      MovementChain chain =
-          new MovementChain(
-              unit.movement(),
-              entity,
-              grid,
-              unit.movementConfig(),
-              movementGlobals,
-              queries.reference(),
-              neighbourQuery,
-              queries);
+      GridMovementQueries queries = movementQueries(unit);
+      MovementChain chain = movementChain(unit, queries);
       MovementVisit.movementVisit(
           unit.movement(), entity, null, unit.movementConfig(), null, queries, false, chain);
       pushContributions.put(troop.getId(), chain.pushContributions());
@@ -334,7 +324,7 @@ public class GridPathfindingSystem {
           StateVisitGlobals.standard(),
           stateQueries(entity),
           new ArrayList<>(),
-          StateSetter.guarded());
+          unit.selection().stateSetter());
       troop.getPosition().set(entity.getX(), entity.getY());
       if (entity.getDirX() != 0 || entity.getDirY() != 0) {
         troop.getPosition().setRotation((float) Math.atan2(entity.getDirY(), entity.getDirX()));
@@ -523,16 +513,46 @@ public class GridPathfindingSystem {
     targeting.setMovementComponentActive(true);
     SelectionChain chain = new SelectionChain(index, targeting, tileMap.height());
     registerEnemyTowers(chain, troop.getTeam());
-    return new GridUnitState(
-        view,
-        movement,
-        targeting,
-        new StateTimers(),
-        MovementConfig.forGroundUnit(),
-        SpeedConfig.forGroundUnit(rawSpeed(troop.getMovement())),
-        StateVisitConfig.forGroundUnit(deployTimeMs(troop)),
-        chain,
-        targetViews.get(troop.getId()));
+    GridUnitState unit =
+        new GridUnitState(
+            view,
+            movement,
+            targeting,
+            new StateTimers(),
+            MovementConfig.forGroundUnit(),
+            SpeedConfig.forGroundUnit(rawSpeed(troop.getMovement())),
+            StateVisitConfig.forGroundUnit(deployTimeMs(troop)),
+            chain,
+            targetViews.get(troop.getId()));
+    // Every state change of the troop, and the route preparation that storing a reference asks
+    // for, goes through the troop's own setter.
+    GridStateSetter setter =
+        new GridStateSetter(view, movement, targeting, () -> movementChain(unit));
+    chain.setStateSetter(setter);
+    chain.getOutcome().setRoutePreparer(setter::prepareRoute);
+    return unit;
+  }
+
+  /** The movement pass's answers for one troop as it stands now, reference included. */
+  private GridMovementQueries movementQueries(GridUnitState unit) {
+    return new GridMovementQueries(unit, grid, costs, unitStates::get);
+  }
+
+  /** A movement chain over the troop's current reference, for one visit or one preparation. */
+  private MovementChain movementChain(GridUnitState unit) {
+    return movementChain(unit, movementQueries(unit));
+  }
+
+  private MovementChain movementChain(GridUnitState unit, GridMovementQueries queries) {
+    return new MovementChain(
+        unit.movement(),
+        unit.entity(),
+        grid,
+        unit.movementConfig(),
+        movementGlobals,
+        queries.reference(),
+        neighbourQuery,
+        queries);
   }
 
   /**

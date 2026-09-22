@@ -11,6 +11,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridMovementQueries;
+import org.crforge.core.pathfinding.GridStateSetter;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -22,7 +23,6 @@ import org.crforge.core.pathfinding.move.SpeedConfig;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.ResumeHelper;
 import org.crforge.core.pathfinding.state.StateQueries;
-import org.crforge.core.pathfinding.state.StateSetter;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
@@ -39,16 +39,23 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * for the tick before any character moves, and every character has moved before any character's
  * state visit runs. A character is created deploying and takes no decisions until its deploy
  * countdown, stepped by the state visit, runs out.
+ *
+ * <p>Every state change - the lock the targeting visit requests, the resume, the state visit's
+ * transitions - goes through the character's own {@link GridStateSetter}, so stopping empties the
+ * route and resuming prepares one at once; taking a reference prepares its route through the same
+ * setter, at the moment the reference is stored.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, and"
-            + " the deploy countdown stepping 50 ms per state visit. Supplied, not settled: both"
-            + " components return at once while the character is deploying. Not modelled yet:"
-            + " air, jumping and hovering units, hits landing on the target, status effects on"
-            + " the speed budget, the deployment's own lane flag, and the columns that restrict"
-            + " what a unit may target, such as buildings only, which its data does not carry.")
+        "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, the"
+            + " deploy countdown stepping 50 ms per state visit, and every state change and"
+            + " route preparation going through the unit's own setter. Supplied, not settled:"
+            + " both components return at once while the character is deploying. Not modelled"
+            + " yet: air, jumping and hovering units, hits landing on the target, status effects"
+            + " on the speed budget, the deployment's own lane flag, and the columns that"
+            + " restrict what a unit may target, such as buildings only, which its data does not"
+            + " carry.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -61,6 +68,9 @@ public class CharacterEntity extends WorldEntity {
 
   /** The working state of the character's two components and its state visit. */
   @Getter private final GridUnitState unit;
+
+  /** Applies every state change the character asks for, with the actions the change carries. */
+  private final GridStateSetter setter;
 
   /** True once the opposing side's towers have been registered as default targets. */
   private boolean towersRegistered;
@@ -96,6 +106,9 @@ public class CharacterEntity extends WorldEntity {
             StateVisitConfig.forGroundUnit(data.deployTimeMs()),
             new SelectionChain(world.getIndex(), targeting, world.getTileMap().height()),
             getTargetView());
+    this.setter = new GridStateSetter(view, unit.movement(), targeting, this::movementChain);
+    unit.selection().setStateSetter(setter);
+    unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
 
     attach(new TargetingComponent());
     attach(new MovementComponent());
@@ -181,6 +194,28 @@ public class CharacterEntity extends WorldEntity {
     return StateQueries.forUnitWithRoute(side() & 1);
   }
 
+  /** The movement pass's answers for the character as it stands now, reference included. */
+  private GridMovementQueries movementQueries() {
+    return new GridMovementQueries(unit, world.getGrid(), world.getCosts(), world::unitStateOf);
+  }
+
+  /** A movement chain over the character's current reference, for one visit or one preparation. */
+  private MovementChain movementChain() {
+    return movementChain(movementQueries());
+  }
+
+  private MovementChain movementChain(GridMovementQueries queries) {
+    return new MovementChain(
+        unit.movement(),
+        getView(),
+        world.getGrid(),
+        unit.movementConfig(),
+        world.getMovementGlobals(),
+        queries.reference(),
+        world.getNeighbourQuery(),
+        queries);
+  }
+
   /** The entity state visit: the deploy countdown and every other per-tick state transition. */
   @Override
   protected void postHook() {
@@ -192,7 +227,7 @@ public class CharacterEntity extends WorldEntity {
         StateVisitGlobals.standard(),
         stateQueries(),
         new ArrayList<>(),
-        StateSetter.guarded());
+        setter);
   }
 
   /** Chooses, keeps or drops the character's target and decides whether it attacks this tick. */
@@ -215,11 +250,7 @@ public class CharacterEntity extends WorldEntity {
           unit.targeting(), getView(), unit.movement(), selection, selection.getOutcome());
       if (selection.getOutcome().isResumeRequested()) {
         ResumeHelper.resume(
-            getView(),
-            unit.stateConfig(),
-            stateQueries(),
-            new ArrayList<>(),
-            StateSetter.guarded());
+            getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
       }
     }
   }
@@ -237,20 +268,16 @@ public class CharacterEntity extends WorldEntity {
       if (deploying()) {
         return;
       }
-      GridMovementQueries queries =
-          new GridMovementQueries(unit, world.getGrid(), world.getCosts(), world::unitStateOf);
-      MovementChain chain =
-          new MovementChain(
-              unit.movement(),
-              getView(),
-              world.getGrid(),
-              unit.movementConfig(),
-              world.getMovementGlobals(),
-              queries.reference(),
-              world.getNeighbourQuery(),
-              queries);
+      GridMovementQueries queries = movementQueries();
       MovementVisit.movementVisit(
-          unit.movement(), getView(), null, unit.movementConfig(), null, queries, false, chain);
+          unit.movement(),
+          getView(),
+          null,
+          unit.movementConfig(),
+          null,
+          queries,
+          false,
+          movementChain(queries));
     }
   }
 }

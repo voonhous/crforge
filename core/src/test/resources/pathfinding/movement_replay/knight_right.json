@@ -65,6 +65,22 @@
    "output": 0
   },
   {
+   "tick": 20,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 20,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1900592
+  },
+  {
    "tick": 21,
    "query": "attackRange",
    "inputs": [],
