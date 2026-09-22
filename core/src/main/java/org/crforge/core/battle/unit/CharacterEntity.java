@@ -26,6 +26,7 @@ import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
+import org.crforge.core.pathfinding.target.HitApplication;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
@@ -49,13 +50,14 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, the"
-            + " deploy countdown stepping 50 ms per state visit, and every state change and"
-            + " route preparation going through the unit's own setter. Supplied, not settled:"
-            + " both components return at once while the character is deploying. Not modelled"
-            + " yet: air, jumping and hovering units, hits landing on the target, status effects"
-            + " on the speed budget, the deployment's own lane flag, and the columns that"
-            + " restrict what a unit may target, such as buildings only, which its data does not"
-            + " carry.")
+            + " deploy countdown stepping 50 ms per state visit, every state change and route"
+            + " preparation going through the unit's own setter, and each hit recorded on the"
+            + " attacker. Supplied, not settled: both components return at once while the"
+            + " character is deploying. Not modelled yet: air, jumping and hovering units, hits"
+            + " landing on the target, status effects on the speed budget, the deployment's own"
+            + " lane flag, and the columns its data does not carry: the stop time after an"
+            + " attack and the ones that restrict what a unit may target, such as buildings"
+            + " only.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -109,6 +111,11 @@ public class CharacterEntity extends WorldEntity {
     this.setter = new GridStateSetter(view, unit.movement(), targeting, this::movementChain);
     unit.selection().setStateSetter(setter);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
+    // A hit is recorded on the attacker and lands on nothing yet: no miss is decided and no
+    // damage is dealt, so the sink answers that the hit was applied.
+    unit.selection()
+        .setHitSink(
+            (target, sequenceIndex, extraTargets, last) -> HitApplication.record(targeting, false));
 
     attach(new TargetingComponent());
     attach(new MovementComponent());

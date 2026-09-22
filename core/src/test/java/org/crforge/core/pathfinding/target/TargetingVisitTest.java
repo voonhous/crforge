@@ -134,6 +134,9 @@ class TargetingVisitTest {
   @Test
   @DisplayName("a countdown at zero stays at zero rather than going negative")
   void countdownsDoNotGoNegative() {
+    // No target, so no attack starts and nothing reloads the countdown behind the step.
+    queries.selection = null;
+
     visit();
 
     assertThat(knight.getLoadTimerMs()).isZero();
@@ -186,8 +189,8 @@ class TargetingVisitTest {
     visit();
 
     assertThat(queries.actionSawStep)
-        .as("the action saw the step the attack started on")
-        .containsExactly(TargetingState.NO_SEQUENCE_STEP);
+        .as("the action saw the step the attack started on, the first")
+        .containsExactly(0);
     assertThat(knight.getAttackSequenceIndex()).isEqualTo(1);
   }
 
@@ -222,30 +225,58 @@ class TargetingVisitTest {
   }
 
   @Test
-  @DisplayName("a unit in range attacks, enters the attacking state and advances its attack timer")
+  @DisplayName("a unit in range attacks, enters the attacking state and is credited its load")
   void aUnitInRangeAttacks() {
     knight.setReference(tower);
 
     visit();
 
     assertThat(unit.getState()).isEqualTo(GridEntityState.ATTACKING);
-    assertThat(knight.getAttackTimerMs()).isEqualTo(50);
+    // The whole 700 ms load has run down, so the attack time starts there and takes one step.
+    assertThat(knight.getAttackTimerMs()).isEqualTo(750);
+    assertThat(knight.getLoadTimerMs()).as("the load countdown is reloaded").isEqualTo(700);
     assertThat(queries.selectionCalls).isZero();
     assertThat(queries.hits).isEmpty();
   }
 
   @Test
-  @DisplayName("the first hit lands once the attack timer reaches the hit speed")
+  @DisplayName("the first hit lands on the tenth attack visit: hit speed less load, in ticks")
   void theFirstHitLandsAtTheHitSpeed() {
     knight.setReference(tower);
 
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < 9; i++) {
       visit();
     }
+    assertThat(knight.getAttackTimerMs()).as("nine visits").isEqualTo(1150);
+    assertThat(queries.hits).as("no hit before the hit speed is reached").isEmpty();
+
+    visit();
 
     assertThat(knight.getAttackTimerMs()).isEqualTo(1200);
     assertThat(queries.hits).hasSize(1);
     assertThat(queries.hits.get(0)).containsExactly(-1, 0, 1);
+  }
+
+  @Test
+  @DisplayName("a unit that hit a moment ago is credited only what has recharged since")
+  void aPartlyRechargedLoadIsCreditedOnlyThatPart() {
+    knight.setReference(tower);
+    // The visit's head steps the countdown to 500 before the attack, so 200 of the 700 have
+    // recharged when the attack time is loaded.
+    knight.setLoadTimerMs(550);
+
+    visit();
+
+    assertThat(knight.getAttackTimerMs()).isEqualTo(250);
+    for (int i = 0; i < 18; i++) {
+      visit();
+    }
+    assertThat(queries.hits).as("nineteen visits").isEmpty();
+
+    visit();
+
+    assertThat(knight.getAttackTimerMs()).isEqualTo(1200);
+    assertThat(queries.hits).hasSize(1);
   }
 
   @Test
@@ -259,24 +290,40 @@ class TargetingVisitTest {
 
     assertThat(requested).containsExactly(GridEntityState.ATTACKING);
     assertThat(unit.getState()).isEqualTo(GridEntityState.MOVING);
-    assertThat(knight.getAttackTimerMs()).isEqualTo(50);
+    assertThat(knight.getAttackTimerMs()).isEqualTo(750);
   }
 
   @Test
-  @DisplayName("a target that dies is given up and the unit is asked to resume")
+  @DisplayName(
+      "a target that dies mid-swing is given up; the swing lands on nothing, then the unit resumes")
   void aDeadTargetIsGivenUp() {
     knight.setReference(tower);
     visit();
     assertThat(unit.getState()).isEqualTo(GridEntityState.ATTACKING);
+    assertThat(knight.isHitInProgressWithoutReference())
+        .as("a fully loaded first swing counts as started")
+        .isTrue();
 
     tower.getEntity().setAlive(false);
     queries.selection = null;
-    unit.setState(GridEntityState.ATTACKING);
 
     visit();
 
+    // The reference is gone, but the swing that had started is carried through without one.
     assertThat(knight.getReference()).isNull();
-    assertThat(outcome.isResumeRequested()).isTrue();
+    assertThat(outcome.isResumeRequested()).isFalse();
+    assertThat(unit.getState()).isEqualTo(GridEntityState.ATTACKING);
+    assertThat(knight.getAttackTimerMs()).isEqualTo(800);
+
+    for (int i = 0; i < 8; i++) {
+      visit();
+    }
+    assertThat(queries.hits).as("the swing lands, on nothing").hasSize(1);
+    assertThat(knight.isHitInProgressWithoutReference()).isFalse();
+
+    visit();
+
+    assertThat(outcome.isResumeRequested()).as("with the swing over, the unit resumes").isTrue();
     assertThat(knight.getAttackTimerMs()).isZero();
   }
 

@@ -97,6 +97,10 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param hasHitEffect true when a dash hit and a missing extra target play an effect; the effect
  *     itself is out of scope here, so only its presence is carried
  * @param hitEffectVariant value passed along with that effect; its meaning is not documented
+ * @param burstAffectAnimation true when a running burst freezes the attack time, so the
+ *     attack-timer advance steps only the burst timer while one runs; no published row sets it
+ * @param stopTimeAfterAttack milliseconds a hit holds the unit still afterwards, stored into the
+ *     attack block timer by every hit; 0 for a unit that carries on at once
  */
 @Builder(toBuilder = true)
 public record TargetingConfig(
@@ -166,7 +170,9 @@ public record TargetingConfig(
     int jumpHeight,
     boolean hasOnStartingAttackAction,
     boolean hasHitEffect,
-    int hitEffectVariant) {
+    int hitEffectVariant,
+    boolean burstAffectAnimation,
+    int stopTimeAfterAttack) {
 
   /** Sight clip depth every ordinary character carries in the standard mode. */
   public static final int STANDARD_SIGHT_CLIP = 1000;

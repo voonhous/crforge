@@ -74,6 +74,23 @@ deploying tick is written as deploying although the visit that ends the deployme
 afterwards. A test that observes the unit only at the end of a whole tick has to allow for that one
 tick.
 
+## `golden/knight_left_kill.json` - the run that goes on to the end
+
+The left deployment, run past the lock until the king tower is destroyed: 1253 ticks, at level 11 on
+both sides. Beside the fields above it carries:
+
+- `level` and `damage` - the level everything is at and the damage of one Knight hit, 202.
+- `towers` - the six towers with their positions, sides and starting hit points: 3052 for a princess
+  tower, 4824 for the king tower.
+- `events` - every hit, with its tick, target, damage and the target's remaining hit points, and
+  every death. The first hit lands nine ticks after the lock: an attack that starts from zero is
+  credited the whole of a load that has run down, 700 ms of the 1200 ms hit speed, and takes one
+  50 ms step on top. Later hits follow at the hit speed, 24 ticks apart.
+- `fields` and `records` - one compact record per tick, in the order `fields` gives: the fields
+  above plus `speed`, the movement budget the tick was given, and `hp`, the hit points of the
+  reference after the tick. Both are null on the deploying ticks, which have no movement visit and
+  no reference.
+
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
 Every question the movement pass put to the routing grid during the same run, in order, with the

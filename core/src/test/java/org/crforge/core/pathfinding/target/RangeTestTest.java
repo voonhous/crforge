@@ -157,7 +157,7 @@ class RangeTestTest {
   void sequenceStepOverridesTheRange() {
     knight.setConfig(
         knight.getConfig().toBuilder()
-            .attackSequenceEntries(List.of(new AttackSequenceEntry(300, 900, -1)))
+            .attackSequenceEntries(List.of(new AttackSequenceEntry(300, 900, -1, 100)))
             .build());
     knight.setAttackSequenceIndex(0);
 
