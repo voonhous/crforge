@@ -83,7 +83,8 @@ both sides. Beside the fields above it carries:
 - `towers` - the six towers with their positions, sides and starting hit points: 3052 for a princess
   tower, 4824 for the king tower.
 - `events` - every hit, with its tick, target, damage and the target's remaining hit points, and
-  every death. The first hit lands nine ticks after the lock: an attack that starts from zero is
+  every death. The damage is what the hit dealt, which the hit that kills overshoots: the last hit
+  on the princess tower deals 202 against the 22 it has left. The first hit lands nine ticks after the lock: an attack that starts from zero is
   credited the whole of a load that has run down, 700 ms of the 1200 ms hit speed, and takes one
   50 ms step on top. Later hits follow at the hit speed, 24 ticks apart.
 - `fields` and `records` - one compact record per tick, in the order `fields` gives: the fields

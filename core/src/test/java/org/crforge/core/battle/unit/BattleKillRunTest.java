@@ -28,12 +28,11 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The reference records every hit with its tick, target, damage and the target's remaining hit
  * points, and both deaths. What this test holds the battle to grows with the milestone; today it is
- * the timing of the hits on the princess tower - the first lands nine ticks after the lock, because
- * the attack time is credited the whole load when the attack starts, and the rest follow at the hit
- * speed - and the hit points every tower and the Knight start the run with, and the damage of one
- * Knight hit, all at the reference's level. Nothing loses hit points yet, so the tower survives its
- * sixteenth hit at its full hit points and the unit keeps attacking it; the damage landing, the
- * death and the walk to the king tower are the next steps.
+ * the run as far as the princess tower's death: the timing of the hits on it - the first lands nine
+ * ticks after the lock, because the attack time is credited the whole load when the attack starts,
+ * and the rest follow at the hit speed - what the tower stands at after each of them, the hit
+ * points every tower and the Knight start the run with, and the damage of one Knight hit, all at
+ * the reference's level. The walk to the king tower and its death are the next step.
  *
  * <p>Reference tick {@code n} is battle step {@code n + 1}, as in {@link
  * BattleGoldenTrajectoryTest}.
@@ -44,6 +43,9 @@ class BattleKillRunTest {
 
   /** The tower the Knight attacks first, as the reference names it. */
   private static final String PRINCESS_TOWER = "PrincessTower_1_1";
+
+  /** Reference tick the first hit lands on. */
+  private static final int FIRST_HIT_TICK = 244;
 
   @Test
   @DisplayName("the Knight's hits on the princess tower land on the reference ticks")
@@ -105,6 +107,67 @@ class BattleKillRunTest {
   }
 
   @Test
+  @DisplayName("every hit takes the princess tower down to the reference's remaining hit points")
+  void everyHitTakesThePrincessTowerDown() {
+    JsonNode reference = load("/pathfinding/golden/knight_left_kill.json");
+    List<JsonNode> expected = new ArrayList<>();
+    for (JsonNode event : reference.get("events")) {
+      if (event.get("target").asText().equals(PRINCESS_TOWER)) {
+        expected.add(event);
+      }
+    }
+    int deathTick = expected.get(expected.size() - 1).get("tick").asInt();
+
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Battle battle = match.getBattle();
+    deployKnight(match, reference);
+
+    // Every tick the tower's hit points fall is one hit, recorded with the tick and what the tower
+    // stands at afterwards, as the reference records it. A tower that reaches zero is dead, which
+    // the reference records as a second event on the same tick. The reference's damage is what the
+    // hit dealt, which the last hit of the run overshoots, so it is not read back from the drop.
+    List<String> events = new ArrayList<>();
+    battle.step();
+    TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
+    int standing = tower.getHitPoints().getHitPoints();
+    for (int tick = 0; tick <= deathTick; tick++) {
+      battle.step();
+      int now = tower.getHitPoints().getHitPoints();
+      if (now != standing) {
+        events.add("%d hit %d".formatted(tick, now));
+        if (now == 0) {
+          events.add("%d death".formatted(tick));
+        }
+        standing = now;
+      }
+    }
+
+    assertThat(events)
+        .as("every hit on the princess tower, and its death")
+        .containsExactlyElementsOf(
+            expected.stream()
+                .map(
+                    event ->
+                        event.get("event").asText().equals("death")
+                            ? "%d death".formatted(event.get("tick").asInt())
+                            : "%d hit %d"
+                                .formatted(event.get("tick").asInt(), event.get("hp").asInt()))
+                .toList());
+    assertThat(tower.getView().isAlive()).as("the tower is dead").isFalse();
+    assertThat(tower.isRemovable()).as("a dead tower is dropped by the holder").isTrue();
+  }
+
+  /** The tower of the given name, as the battle holds it. */
+  private static TowerEntity towerNamed(Battle battle, String name) {
+    for (BattleEntity entity : battle.getHolder().entities()) {
+      if (entity instanceof TowerEntity tower && tower.name().equals(name)) {
+        return tower;
+      }
+    }
+    throw new IllegalStateException("No tower named " + name);
+  }
+
+  @Test
   @DisplayName("everything stands at the reference hit points, and the Knight hits for 202")
   void everythingStandsAtTheReferenceHitPoints() {
     JsonNode reference = load("/pathfinding/golden/knight_left_kill.json");
@@ -119,10 +182,9 @@ class BattleKillRunTest {
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 
-    // Run through the last hit on the princess tower: sixteen hits are recorded on the Knight and,
-    // as nothing lands yet, the tower is still at its maximum afterwards.
+    // Run up to the tick before the first hit lands, so everything still stands at its maximum.
     battle.step();
-    for (int tick = 0; tick <= 604; tick++) {
+    for (int tick = 0; tick < FIRST_HIT_TICK; tick++) {
       battle.step();
     }
 

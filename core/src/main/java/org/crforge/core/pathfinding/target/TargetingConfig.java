@@ -101,6 +101,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     attack-timer advance steps only the burst timer while one runs; no published row sets it
  * @param stopTimeAfterAttack milliseconds a hit holds the unit still afterwards, stored into the
  *     attack block timer by every hit; 0 for a unit that carries on at once
+ * @param crownTowerDamagePercent percentage, as a difference from the plain damage, that a hit
+ *     deals to a crown tower: 0 leaves the damage alone, -70 takes 70 percent off it
  */
 @Builder(toBuilder = true)
 public record TargetingConfig(
@@ -172,7 +174,8 @@ public record TargetingConfig(
     boolean hasHitEffect,
     int hitEffectVariant,
     boolean burstAffectAnimation,
-    int stopTimeAfterAttack) {
+    int stopTimeAfterAttack,
+    int crownTowerDamagePercent) {
 
   /** Sight clip depth every ordinary character carries in the standard mode. */
   public static final int STANDARD_SIGHT_CLIP = 1000;

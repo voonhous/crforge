@@ -44,6 +44,7 @@ public final class UnitDataMapper {
         .building(stats.getMovementType() == MovementType.BUILDING)
         .hitpoints(stats.getHealth())
         .damage(stats.getDamage())
+        .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .rarity(rarity)
         .build();
   }

@@ -62,6 +62,9 @@ public class BattleWorld implements HolderPasses {
   /** Every arena entity seen so far and not yet gone, keyed by its view. */
   private final Map<GridEntity, WorldEntity> known = new IdentityHashMap<>();
 
+  /** The battle's hit counter: every hit takes the next id from it. */
+  private int hitCounter;
+
   public BattleWorld(TileMap tileMap) {
     this.tileMap = tileMap;
     this.grid =
@@ -77,6 +80,16 @@ public class BattleWorld implements HolderPasses {
   /** This tick's arena entities in ascending id. */
   public List<WorldEntity> present() {
     return List.copyOf(present);
+  }
+
+  /** The arena entity behind a view, or null for one that has left the battle. */
+  public WorldEntity entityOf(GridEntity view) {
+    return known.get(view);
+  }
+
+  /** The id of the next hit, counted from one. */
+  public int nextHitId() {
+    return ++hitCounter;
   }
 
   /**
