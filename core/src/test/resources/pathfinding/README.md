@@ -92,6 +92,12 @@ both sides. Beside the fields above it carries:
   reference after the tick. Both are null on the deploying ticks, which have no movement visit and
   no reference.
 
+The engine writes this layout itself. `TrajectoryRecorder` in `org.crforge.core.battle.unit`,
+attached to a battle's world, records one character's run with the same header, tower lines, event
+lines and records, ticks counted from the character's first tick in the holder, and
+`TrajectoryRecorderTest` holds what it writes for the kill run to this file byte for byte. A run the
+engine plays can therefore be compared with a reference directly, or become a fixture here.
+
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
 Every question the movement pass put to the routing grid during the same run, in order, with the
