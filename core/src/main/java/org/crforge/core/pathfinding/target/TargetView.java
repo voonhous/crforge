@@ -77,6 +77,13 @@ public class TargetView {
   private int hiddenCountdownMs;
 
   /**
+   * The entity's own answer to "is my damage the crown-tower damage", which the direct hit asks
+   * before it chooses which of the two damages to deal. A crown tower answers yes; the answer is
+   * the entity's, not a configuration column, and what else would answer yes is not documented.
+   */
+  private boolean crownTowerTarget;
+
+  /**
    * The entity's own answer to "do I count as a summoner tower", which the validator's
    * do-not-target-towers and target-only-towers rules read. It is a per-entity answer and not the
    * configuration column of the same name, although an ordinary tower answers both the same way;

@@ -35,6 +35,10 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     not land
  * @param pendingDamageIgnoreIfDurationLess longest pending-damage duration, in milliseconds, that
  *     still lets the validator keep a dying target
+ * @param cancelHitFromLongDistance true when a hit whose target has left the attack range during
+ *     the wind-up is cancelled and lands on nothing
+ * @param cancelHitFromLongDistanceRange extra range, in game units, the cancel test allows on top
+ *     of the attack range before it cancels the hit
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -52,7 +56,9 @@ public record TargetingGlobals(
     boolean loadFirstHitResetTimerWhenZapped,
     boolean loadFirstHitResetTimerAfterAttack,
     boolean loadFirstHitKeepLoadedAfterDiscard,
-    int pendingDamageIgnoreIfDurationLess) {
+    int pendingDamageIgnoreIfDurationLess,
+    boolean cancelHitFromLongDistance,
+    int cancelHitFromLongDistanceRange) {
 
   /** The switches as published for the standard 1v1 mode. */
   public static TargetingGlobals standard1v1() {
@@ -67,6 +73,8 @@ public record TargetingGlobals(
         .loadFirstHitResetTimerAfterAttack(true)
         .loadFirstHitKeepLoadedAfterDiscard(true)
         .pendingDamageIgnoreIfDurationLess(600)
+        .cancelHitFromLongDistance(true)
+        .cancelHitFromLongDistanceRange(1500)
         .build();
   }
 }

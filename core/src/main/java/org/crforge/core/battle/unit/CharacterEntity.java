@@ -27,7 +27,9 @@ import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
 import org.crforge.core.pathfinding.target.HitApplication;
+import org.crforge.core.pathfinding.target.HitQueries;
 import org.crforge.core.pathfinding.target.SelectionChain;
+import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.core.pathfinding.target.TargetingVisit;
@@ -52,12 +54,12 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
         "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, the"
             + " deploy countdown stepping 50 ms per state visit, every state change and route"
             + " preparation going through the unit's own setter, each hit recorded on the"
-            + " attacker, and the hit points and damage at the character's level. Supplied, not"
-            + " settled: both components return at once while the character is deploying. Not"
-            + " modelled yet: air, jumping and hovering units, hits landing on the target, status"
+            + " attacker and landing on its target, and the hit points and damage at the"
+            + " character's level. Supplied, not settled: both components return at once while the"
+            + " character is deploying. Not modelled yet: air, jumping and hovering units, status"
             + " effects on the speed budget, the deployment's own lane flag, and the columns its"
-            + " data does not carry: the stop time after an attack and the ones that restrict"
-            + " what a unit may target, such as buildings only.")
+            + " data does not carry: the stop time after an attack and the ones that restrict what a"
+            + " unit may target, such as buildings only.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -114,11 +116,10 @@ public class CharacterEntity extends WorldEntity {
     this.setter = new GridStateSetter(view, unit.movement(), targeting, this::movementChain);
     unit.selection().setStateSetter(setter);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
-    // A hit is recorded on the attacker and lands on nothing yet: no miss is decided and no
-    // damage is dealt, so the sink answers that the hit was applied.
     unit.selection()
         .setHitSink(
-            (target, sequenceIndex, extraTargets, last) -> HitApplication.record(targeting, false));
+            (target, sequenceIndex, extraTargets, last) ->
+                HitApplication.apply(targeting, target, hitQueries()));
 
     attach(new TargetingComponent());
     attach(new MovementComponent());
@@ -162,6 +163,7 @@ public class CharacterEntity extends WorldEntity {
             data.attacksAir())
         .toBuilder()
         .configKey(data.name())
+        .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .build();
   }
 
@@ -224,6 +226,33 @@ public class CharacterEntity extends WorldEntity {
         queries.reference(),
         world.getNeighbourQuery(),
         queries);
+  }
+
+  /**
+   * What one of the character's hits needs from the battle: the damage of a hit at the character's
+   * level, the battle's hit ids, and the target the damage is dealt to.
+   */
+  private HitQueries hitQueries() {
+    return new HitQueries() {
+      @Override
+      public int damage() {
+        return getDamage();
+      }
+
+      @Override
+      public int nextHitId() {
+        return world.nextHitId();
+      }
+
+      @Override
+      public void dealDamage(
+          TargetView target, int damage, int hitId, int directionX, int directionY) {
+        WorldEntity hit = world.entityOf(target.getEntity());
+        if (hit != null) {
+          hit.takeDamage(damage, 0, directionX, directionY);
+        }
+      }
+    };
   }
 
   /** The state visit's removal request, raised for a unit that has no hit points to lose. */

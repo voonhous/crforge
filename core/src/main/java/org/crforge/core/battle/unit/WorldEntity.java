@@ -7,6 +7,9 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.combat.DamageApplication;
+import org.crforge.core.pathfinding.combat.DamageQueries;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
@@ -34,7 +37,8 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
             + " at that level, the alive answer and the removal test. Supplied, not settled: a"
             + " removable entity leaves the holder at the next cleanup and every selection at the"
             + " following pre-pass, and the side lists are taken to drop it in the same cleanup."
-            + " Not modelled yet: nothing lowers the hit points, and the shield.")
+            + " Not modelled yet: the shield's hit points at the level, and what a death does"
+            + " beyond the entity becoming removable.")
 public abstract class WorldEntity extends BattleEntity {
 
   /** Side of the player at the low end of the arena. */
@@ -92,9 +96,48 @@ public abstract class WorldEntity extends BattleEntity {
             data.king(),
             data.summonerTower(),
             null);
-    view.setAlive(HitPoints.alive(hitPoints));
     // A candidate advertises its current hit points to an attacker that prefers the weakest.
     targetView.setHitPointsPresent(hitPoints != null);
+    targetView.setCrownTowerTarget(data.king());
+    refreshHitPoints();
+  }
+
+  /**
+   * Takes one damage event.
+   *
+   * <p>An entity without hit points takes nothing. Everything the rest of the battle reads about
+   * this entity's hit points - whether it is alive, and what an attacker that prefers the weakest
+   * candidate sees - is brought back into step here, so no pass can read a stale answer.
+   *
+   * @param damage hit points the source is dealing, before the two sides' buffs
+   * @param dedupeId id of a source that must land on this entity only once; 0 for a direct hit
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   */
+  public DamageResult takeDamage(int damage, int dedupeId, int directionX, int directionY) {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    DamageResult result =
+        DamageApplication.damage(
+            hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
+    refreshHitPoints();
+    return result;
+  }
+
+  /** What the damage chain asks about this entity as a target. */
+  protected DamageQueries damageQueries() {
+    return new DamageQueries() {
+      @Override
+      public boolean crownTowerTarget() {
+        return targetView.isCrownTowerTarget();
+      }
+    };
+  }
+
+  /** Brings the alive answer and the advertised hit points back into step with the object. */
+  private void refreshHitPoints() {
+    view.setAlive(HitPoints.alive(hitPoints));
     targetView.setHitPoints(hitPoints == null ? 0 : hitPoints.getHitPoints());
   }
 

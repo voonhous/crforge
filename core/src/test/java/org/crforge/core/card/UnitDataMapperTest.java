@@ -34,6 +34,17 @@ class UnitDataMapperTest {
     assertThat(data.attacksAir()).isFalse();
     assertThat(data.air()).isFalse();
     assertThat(data.building()).isFalse();
+    assertThat(data.crownTowerDamagePercent())
+        .as("the Knight hits a crown tower for what it hits anything else for")
+        .isZero();
+  }
+
+  @Test
+  @DisplayName("a unit that spares crown towers carries its percentage")
+  void aUnitThatSparesCrownTowers() {
+    Card miner = Objects.requireNonNull(CardRegistry.get("miner"), "miner not found");
+
+    assertThat(UnitDataMapper.toUnitData(miner).crownTowerDamagePercent()).isEqualTo(-75);
   }
 
   @Test

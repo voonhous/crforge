@@ -28,6 +28,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param summonerTower whether the unit is a princess tower
  * @param hitpoints hit points at the first level
  * @param damage damage per hit at the first level
+ * @param crownTowerDamagePercent difference, in percent, between what a hit deals to a crown tower
+ *     and what it deals to anything else; 0 for a unit that hits both alike
  * @param rarity the rarity whose table scales the unit's stats by level
  */
 @Builder(toBuilder = true)
@@ -49,6 +51,7 @@ public record UnitData(
     boolean summonerTower,
     int hitpoints,
     int damage,
+    int crownTowerDamagePercent,
     RarityTable rarity) {
 
   /**
