@@ -35,6 +35,8 @@ org.crforge.core.battle/
 
 The movement, targeting and state rules themselves live in `org.crforge.core.pathfinding` and are shared with the original engine's grid mode; see [Troop Pathfinding](pathfinding.md). The battle core runs them directly. The original engine reaches them through `GridPathfindingSystem`, which has to split one tick into two calls around its own combat step and copy the result back into its own components.
 
+Level scaling and the hit-points object live beside those rules in `org.crforge.core.pathfinding.combat`: `RarityTable` (the published rows), `PackedLevel` (a level as an entity carries it), `ScalingGlobals` and `LevelScaling` (a stat at a level, under the card rule and the tower rule), and `HitPoints` (what damage lowers, with the alive and removal tests). Every arena entity is created at a level and scales its hit points and damage once, at creation.
+
 **The dependency rule.** `org.crforge.core.battle` and `org.crforge.core.pathfinding` may import each other, `org.crforge.core.fidelity` and `org.crforge.core.util`, and nothing else from this code base. The original engine may depend on them; they may not depend on it. `BattlePackageDependencyTest` enforces this, with `GridPathfindingSystem` as the one permitted exception because it is the original engine's adapter. Without the rule a single import would let guessed behaviour into a class that claims to be settled.
 
 ## One step
@@ -73,7 +75,8 @@ A ground character deployed on the standard arena walks its lane, picks its targ
 - `BattleGoldenTrajectoryTest` replays the five Knight reference trajectories through `Battle` and asserts position, state, route length and target after every step. Reference tick `n` is battle step `n + 1`, and nothing is shifted to make that so: it is what running commands after the entity tick produces.
 - `BattleTrajectorySweepTest` replays 48 more reference trajectories the same way: sixteen ground units whose speed, attack range, sight range, collision radius and deploy time all differ, deployed at random points on both sides, two thirds of them switching from the king tower to a princess tower on the way. A change to a cell cost, the default target rule, the endpoint scan or lane assignment moves a route somewhere in here even when it leaves the five Knight walks alone.
 - `BattleMultiUnitParityTest` runs multi-unit scenes through both engines and requires identical positions and states on every tick, which a single-unit trajectory cannot do, because with one unit a per-entity order and a per-pass order cannot be told apart.
-- `BattleKillRunTest` drives the kill run, a Knight destroying the princess tower and then the king tower, and holds the battle to as much of it as the milestone has reached: today the tick of every hit on the princess tower. An attack starting from zero is credited the whole of a run-down load, so the first hit lands nine ticks after the lock and the rest follow at the hit speed.
+- `BattleKillRunTest` drives the kill run, a Knight destroying the princess tower and then the king tower, and holds the battle to as much of it as the milestone has reached: today the tick of every hit on the princess tower, the hit points every tower and the Knight start the run with, and the damage of one Knight hit, all at the reference's level. An attack starting from zero is credited the whole of a run-down load, so the first hit lands nine ticks after the lock and the rest follow at the hit speed.
+- `LevelScalingTest` holds the two scaling rules to the published tables and percentages: for every level a card can have the card rule is the iterated floor of a tenth per step, and at the published values the tower rule is 1.07 (king hit points) or 1.08 per level up to the tournament cap and 1.10 from there.
 - `EntityHolderTest` and `BattleTest` pin the two orders above line by line.
 
 The reference trajectories are the output of a model of the game's rules, not captures of the game. What that means for a disagreement is set out in `core/src/test/resources/pathfinding/README.md`.
@@ -100,13 +103,14 @@ M5's interpreter, composites and evaluator do not depend on M2 to M4 and can pro
 
 **Ready for `main`** means: the original engine is gone or no longer the default, the bridge's tests pass on `Battle`, throughput is at least the original engine's, no class in the battle package is a guess, and the fidelity report says what is still partial and why.
 
-## Known assumptions carried by M1
+## Known assumptions carried today
 
 These are supplied answers, recorded on the classes that carry them and listed here so they are not mistaken for settled behaviour.
 
 - A deploying character's targeting and movement components return at once. The reference trajectories encode this; whether the components run and find nothing to do, or are not run, is not settled.
-- A tower has no components, so it never attacks.
-- Hits are timed and recorded on the attacker but land on nothing yet, so no entity loses hit points and nothing is removed.
+- A tower has no components, so it never attacks, and its damage column is not carried.
+- Every entity carries hit points and damage at its level, and the towers scale as Common. Hits are timed and recorded on the attacker but still land on nothing, so no entity loses hit points and nothing is removed.
+- A removable entity - one that has asked to be removed or has no hit points left - leaves the holder at the next cleanup and every character's selection at the following pre-pass, and the side lists are taken to drop it in the same cleanup. Whether the side lists drop it then, and whether anything else notices the removal, is not settled.
 - Both command passes read one queue with one rule, due when the command's tick is not after the battle's. Which commands belong to which pass is not settled.
 - The mode never ends the match and always lets the entity tick run.
 - The assumptions of the movement and targeting rules themselves are listed in [Troop Pathfinding](pathfinding.md#assumptions) and apply unchanged.
