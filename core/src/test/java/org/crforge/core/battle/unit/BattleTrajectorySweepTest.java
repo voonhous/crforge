@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.TroopStats;
 import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -53,7 +52,7 @@ class BattleTrajectorySweepTest {
     JsonNode sweep = load("/pathfinding/sweep/trajectories.json");
     List<String> towers = new ArrayList<>();
     sweep.get("towers").forEach(name -> towers.add(name.asText()));
-    Map<String, TroopStats> units = unitsByName();
+    Map<String, Card> units = unitsByName();
 
     List<JsonNode> cases = new ArrayList<>();
     sweep.get("cases").forEach(cases::add);
@@ -74,18 +73,18 @@ class BattleTrajectorySweepTest {
         trajectory.get("deploy").get(1).asInt());
   }
 
-  private static void replay(
-      JsonNode trajectory, List<String> towers, Map<String, TroopStats> units) {
-    String card = trajectory.get("card").asText();
-    TroopStats stats = units.get(card);
-    assertThat(stats).as("the card library has a unit called %s", card).isNotNull();
+  private static void replay(JsonNode trajectory, List<String> towers, Map<String, Card> units) {
+    String unitName = trajectory.get("card").asText();
+    Card card = units.get(unitName);
+    assertThat(card).as("the card library has a unit called %s", unitName).isNotNull();
 
     Standard1v1Battle match = new Standard1v1Battle();
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(
             0,
-            UnitDataMapper.toUnitData(stats),
+            UnitDataMapper.toUnitData(card),
+            Standard1v1Battle.DEFAULT_LEVEL,
             trajectory.get("side").asInt(),
             trajectory.get("deploy").get(0).asInt(),
             trajectory.get("deploy").get(1).asInt());
@@ -131,11 +130,12 @@ class BattleTrajectorySweepTest {
   }
 
   /** The card library's units by unit name. */
-  private static Map<String, TroopStats> unitsByName() {
-    Map<String, TroopStats> units = new HashMap<>();
+  /** Every unit of the card library by its unit name, with the first card that deploys it. */
+  private static Map<String, Card> unitsByName() {
+    Map<String, Card> units = new HashMap<>();
     for (Card card : CardRegistry.getAll()) {
       if (card.getUnitStats() != null) {
-        units.putIfAbsent(card.getUnitStats().getName(), card.getUnitStats());
+        units.putIfAbsent(card.getUnitStats().getName(), card);
       }
     }
     return units;

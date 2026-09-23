@@ -96,7 +96,8 @@ class BattleMultiUnitParityTest {
       units.add(
           standard.deploy(
               0,
-              UnitDataMapper.toUnitData(knight.getUnitStats()),
+              UnitDataMapper.toUnitData(knight),
+              LEVEL,
               placement.team() == Team.BLUE ? WorldEntity.SIDE_BOTTOM : WorldEntity.SIDE_TOP,
               placement.x(),
               placement.y()));

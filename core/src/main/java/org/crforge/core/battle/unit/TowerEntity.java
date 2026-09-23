@@ -13,8 +13,10 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: a tower occludes routing from its collision radius, takes no part in pushes or"
-            + " steering, and is a default target. Not modelled yet: the tower's own targeting"
-            + " component, so a tower does not attack, and king tower activation.")
+            + " steering, is a default target, and stands at its hit points at its level."
+            + " Supplied, not settled: the towers scale as Common. Not modelled yet: the tower's"
+            + " own targeting component and its damage column, so a tower does not attack, and"
+            + " king tower activation.")
 public class TowerEntity extends WorldEntity {
 
   /**
@@ -23,9 +25,10 @@ public class TowerEntity extends WorldEntity {
    * @param side the side that owns the tower
    * @param x position in game units
    * @param y position in game units
+   * @param level the tower's level, counted from 1
    */
-  public TowerEntity(UnitData data, String name, int side, int x, int y) {
-    super(data, createView(data, name, side, x, y), targetingConfig(data));
+  public TowerEntity(UnitData data, String name, int side, int x, int y, int level) {
+    super(data, createView(data, name, side, x, y), targetingConfig(data), level);
   }
 
   private static GridEntity createView(UnitData data, String name, int side, int x, int y) {
