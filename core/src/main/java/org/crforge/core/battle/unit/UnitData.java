@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import lombok.Builder;
+import org.crforge.core.pathfinding.combat.RarityTable;
 
 /**
  * The published columns of one unit or building that the battle reads, in the units the columns are
@@ -27,6 +28,7 @@ import lombok.Builder;
  * @param summonerTower whether the unit is a princess tower
  * @param hitpoints hit points at the first level
  * @param damage damage per hit at the first level
+ * @param rarity the rarity whose table scales the unit's stats by level
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -46,9 +48,13 @@ public record UnitData(
     boolean king,
     boolean summonerTower,
     int hitpoints,
-    int damage) {
+    int damage,
+    RarityTable rarity) {
 
-  /** The king tower's published columns. */
+  /**
+   * The king tower's published columns. The towers carry no rarity column; Common is the rarity
+   * they are scaled as.
+   */
   public static final UnitData KING_TOWER =
       UnitData.builder()
           .name("KingTower")
@@ -62,6 +68,7 @@ public record UnitData(
           .building(true)
           .king(true)
           .hitpoints(2400)
+          .rarity(RarityTable.COMMON)
           .build();
 
   /** The princess tower's published columns. */
@@ -77,5 +84,6 @@ public record UnitData(
           .building(true)
           .summonerTower(true)
           .hitpoints(1400)
+          .rarity(RarityTable.COMMON)
           .build();
 }

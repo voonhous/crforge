@@ -51,13 +51,13 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
     note =
         "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, the"
             + " deploy countdown stepping 50 ms per state visit, every state change and route"
-            + " preparation going through the unit's own setter, and each hit recorded on the"
-            + " attacker. Supplied, not settled: both components return at once while the"
-            + " character is deploying. Not modelled yet: air, jumping and hovering units, hits"
-            + " landing on the target, status effects on the speed budget, the deployment's own"
-            + " lane flag, and the columns its data does not carry: the stop time after an"
-            + " attack and the ones that restrict what a unit may target, such as buildings"
-            + " only.")
+            + " preparation going through the unit's own setter, each hit recorded on the"
+            + " attacker, and the hit points and damage at the character's level. Supplied, not"
+            + " settled: both components return at once while the character is deploying. Not"
+            + " modelled yet: air, jumping and hovering units, hits landing on the target, status"
+            + " effects on the speed budget, the deployment's own lane flag, and the columns its"
+            + " data does not carry: the stop time after an attack and the ones that restrict"
+            + " what a unit may target, such as buildings only.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -86,9 +86,12 @@ public class CharacterEntity extends WorldEntity {
    * @param side the side that owns the character
    * @param x deploy position in game units
    * @param y deploy position in game units
+   * @param level the character's level, counted from 1
    */
-  public CharacterEntity(BattleWorld world, UnitData data, String name, int side, int x, int y) {
-    super(data, createView(world.getTileMap(), data, name, side, x, y), targetingConfig(data));
+  public CharacterEntity(
+      BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    super(
+        data, createView(world.getTileMap(), data, name, side, x, y), targetingConfig(data), level);
     checkArgument(!data.air() && !data.building(), () -> data.name() + " is not a ground unit");
     this.world = world;
 
@@ -221,6 +224,12 @@ public class CharacterEntity extends WorldEntity {
         queries.reference(),
         world.getNeighbourQuery(),
         queries);
+  }
+
+  /** The state visit's removal request, raised for a unit that has no hit points to lose. */
+  @Override
+  protected boolean removalRequested() {
+    return unit.timers().isRemovalRequested();
   }
 
   /** The entity state visit: the deploy countdown and every other per-tick state transition. */
