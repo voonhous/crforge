@@ -54,9 +54,11 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
         "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, the"
             + " deploy countdown stepping 50 ms per state visit, every state change and route"
             + " preparation going through the unit's own setter, each hit recorded on the"
-            + " attacker and landing on its target, and the hit points and damage at the"
-            + " character's level. Supplied, not settled: both components return at once while the"
-            + " character is deploying. Not modelled yet: air, jumping and hovering units, status"
+            + " attacker and landing on its target, the hit points and damage at the"
+            + " character's level, and the resume that follows the loss of a target. Supplied, not"
+            + " settled: both components return at once while the character is deploying, and a"
+            + " target that died is forgotten at the next pre-pass, before the targeting visit"
+            + " could find it dead. Not modelled yet: air, jumping and hovering units, status"
             + " effects on the speed budget, the deployment's own lane flag, and the columns its"
             + " data does not carry: the stop time after an attack and the ones that restrict what a"
             + " unit may target, such as buildings only.")
@@ -78,6 +80,12 @@ public class CharacterEntity extends WorldEntity {
 
   /** True once the opposing side's towers have been registered as default targets. */
   private boolean towersRegistered;
+
+  /**
+   * The movement budget the last movement visit asked for, in game units per tick; zero when it
+   * asked for none, as a standing or deploying character's visit does.
+   */
+  @Getter private int speedBudget;
 
   /**
    * Creates a character at its deploy position, deploying.
@@ -247,10 +255,7 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
-        WorldEntity hit = world.entityOf(target.getEntity());
-        if (hit != null) {
-          hit.takeDamage(damage, 0, directionX, directionY);
-        }
+        world.dealDamage(target, damage, directionX, directionY);
       }
     };
   }
@@ -310,6 +315,7 @@ public class CharacterEntity extends WorldEntity {
 
     @Override
     public void visit() {
+      speedBudget = 0;
       if (deploying()) {
         return;
       }
@@ -323,6 +329,7 @@ public class CharacterEntity extends WorldEntity {
           queries,
           false,
           movementChain(queries));
+      speedBudget = queries.lastSpeedBudget();
     }
   }
 }

@@ -140,7 +140,7 @@ class BattleGoldenTrajectoryTest {
    * <p>Equal to the recorded state everywhere except on the last deploying tick, where the state
    * visit that ends the deployment has already run by the time the step returns.
    */
-  private static int expectedState(List<JsonNode> records, int index) {
+  static int expectedState(List<JsonNode> records, int index) {
     int recorded = records.get(index).get("state").asInt();
     if (recorded != GridEntityState.DEPLOYING) {
       return recorded;

@@ -12,6 +12,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.FootprintOverlay;
@@ -20,6 +21,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
+import org.crforge.core.pathfinding.target.TargetView;
 
 /**
  * What the entities of one battle share: the arena's routing grid with its building overlay, and
@@ -29,14 +31,20 @@ import org.crforge.core.pathfinding.move.NeighbourQuery;
  * entity is visited, in snapshot order, which is ascending entity id; the post-pass retires them.
  * An entity that moves during the tick is therefore found where it stood at the head of the tick,
  * while the shape tests that follow a lookup read its live position.
+ *
+ * <p>The world is also where a hit's damage reaches its target, and where anything outside the tick
+ * that wants to watch the arena attaches: an observer is told where the tick's visits begin and
+ * end, and about every hit that lands.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the index and the overlay are rebuilt in the pre-pass from the id-ordered"
             + " snapshot and retired in the post-pass, and the overlay's per-side change flags"
-            + " are copied once per tick. Not settled: how a destroyed tower leaves the default"
-            + " target lists; here it leaves them at the first pre-pass after its removal.")
+            + " are copied once per tick. Supplied, not settled: a dead entity leaves the holder"
+            + " in the closing cleanup of the tick it dies, as the reference run has it, and"
+            + " leaves the default target lists and every selection, clearing a reference still"
+            + " held to it, at the first pre-pass after that.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -65,6 +73,12 @@ public class BattleWorld implements HolderPasses {
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
 
+  /** Those watching the arena from outside the tick, in the order they were added. */
+  private final List<WorldObserver> observers = new ArrayList<>();
+
+  /** The tick the entity tick in progress belongs to, kept for the calls that are not handed it. */
+  private int tick;
+
   public BattleWorld(TileMap tileMap) {
     this.tileMap = tileMap;
     this.grid =
@@ -92,6 +106,33 @@ public class BattleWorld implements HolderPasses {
     return ++hitCounter;
   }
 
+  /** Attaches an observer; it is told about every tick and every hit from the next one on. */
+  public void addObserver(WorldObserver observer) {
+    observers.add(observer);
+  }
+
+  /**
+   * Deals the damage of one hit to the entity behind a target view, and tells every observer what
+   * it did. An entity that has left the battle takes nothing.
+   *
+   * @param target the view the hit resolved against
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   * @return what the damage did to the target
+   */
+  public DamageResult dealDamage(TargetView target, int damage, int directionX, int directionY) {
+    WorldEntity entity = known.get(target.getEntity());
+    if (entity == null) {
+      return DamageResult.NOTHING;
+    }
+    DamageResult result = entity.takeDamage(damage, 0, directionX, directionY);
+    for (WorldObserver observer : observers) {
+      observer.damageDealt(tick, entity, damage, result);
+    }
+    return result;
+  }
+
   /**
    * The grid state of another character, or null for an entity that has none, such as a tower. The
    * movement pass asks this about its neighbours.
@@ -102,6 +143,7 @@ public class BattleWorld implements HolderPasses {
 
   @Override
   public void prePass(int tick, List<BattleEntity> snapshot) {
+    this.tick = tick;
     present.clear();
     views.clear();
     for (BattleEntity entity : snapshot) {
@@ -123,6 +165,10 @@ public class BattleWorld implements HolderPasses {
     index.rebuild(views);
     FootprintOverlay.buildOverlay(grid, views);
     grid.setChangeFlags(grid.getChanged().clone());
+    List<WorldEntity> snapshotOfPresent = present();
+    for (WorldObserver observer : observers) {
+      observer.afterPrePass(tick, snapshotOfPresent);
+    }
   }
 
   /** Drops every entity that is no longer in the snapshot from every character's selection. */
@@ -144,7 +190,12 @@ public class BattleWorld implements HolderPasses {
   }
 
   @Override
-  public void afterPostHooks() {}
+  public void afterPostHooks() {
+    List<WorldEntity> snapshotOfPresent = present();
+    for (WorldObserver observer : observers) {
+      observer.afterPostHooks(tick, snapshotOfPresent);
+    }
+  }
 
   @Override
   public void postPass(int tick) {
