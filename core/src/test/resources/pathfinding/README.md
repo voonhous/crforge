@@ -24,7 +24,7 @@ model, not necessarily with the game.
   the top side's are the same mirrored along the arena's length. King towers have a collision radius
   of 1400 and princess towers 1000.
 - Levels and damage do not affect the path and are not carried here; no tower is destroyed in any of
-  the runs.
+  the five lock runs. The two kill runs below carry both and run to a tower's death.
 - A destroyed building would leave the entity list at the end of the tick in which it dies.
 - The follower advances to the next route node as soon as the remaining distance projected on its
   route direction drops to 1000 units, so the unit effectively aims two nodes ahead and clips the
@@ -100,6 +100,37 @@ attached to a battle's world, records one character's run with the same header, 
 lines and records, ticks counted from the character's first tick in the holder, and
 `TrajectoryRecorderTest` holds what it writes for the kill run to this file byte for byte. A run the
 engine plays can therefore be compared with a reference directly, or become a fixture here.
+
+## `golden/musketeer_left_kill.json` - a unit that fires
+
+The left deployment again, at level 11 on both sides, but a Musketeer, and the towers stand passive:
+they hold their references and never attack, so only the Musketeer's shots move anything. It runs
+457 ticks, to the closing cleanup of the tick the princess tower dies. The Musketeer walks the same
+lane as the Knight, stops at (3731, 18054) and locks on at tick 155; its first shot leaves at 168,
+the fourteenth attack visit after the lock (a load of 300 ms against a hit speed of 1000 ms), and
+one more every 20 ticks. A shot flies eight ticks and lands for 217; the fifteenth kills the tower
+at 456. The layout is the kill run's, with three additions:
+
+- `events` carries three kinds beside `hit` and `death`. A `launch` names the projectile
+  (`proj_` and its id), its row (`config`), its owner and target, where it starts (`x`, `y`, `z`:
+  450 units along the line to the target and 450 units up, the Musketeer's launch columns) and
+  where it is aimed (`aim`, `aim_z`: the tower's centre on the ground). An `impact` names the
+  projectile and its target, the damage, the target's remaining hit points and where the projectile
+  stands, which is its aim. A death follows the impact that kills, on the same tick.
+- `projectiles` lists one `[tick, id, x, y, z]` per projectile per tick it flew: the position
+  after each of its seven flight steps, the arrival tick excluded because the projectile is released
+  on it. The positions descend in a straight line, because the row's gravity is zero. A run without
+  projectiles has no such key.
+- `damage` is the unit's damage getter: the row's own damage at the level, which for a unit that
+  fires falls back to its projectile's, 217 here.
+
+Ids are the game's: the six towers are 5000000 to 5000005, the Musketeer 5000006, and every
+projectile 4000000 upward in launch order, so a projectile precedes every character in each pass.
+The shots are the only projectiles of the run, so their ids are consecutive from 4000000.
+
+`BattleMusketeerRunTest` holds the battle to the run as the Musketeer's outside shows it,
+`BattleProjectileFlightTest` to every launch, position and impact, and `TrajectoryRecorderTest`
+writes it out and holds the file to this one byte for byte.
 
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
