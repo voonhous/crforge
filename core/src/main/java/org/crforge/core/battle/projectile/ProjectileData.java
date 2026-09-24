@@ -1,6 +1,8 @@
 package org.crforge.core.battle.projectile;
 
 import lombok.Builder;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 
@@ -35,6 +37,13 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param circleScatter true for a row whose scatter pattern is the circle, which counts it among
  *     the projectiles that fly to a point rather than to a target
  */
+@Fidelity(
+    status = FidelityStatus.PARTIAL,
+    note =
+        "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
+            + " point from one flying to a target. Not carried yet: the constant height, the far"
+            + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
+            + " columns, the deflect behaviour, the chained hit and the on-impact spawns.")
 @Builder(toBuilder = true)
 public record ProjectileData(
     String name,
