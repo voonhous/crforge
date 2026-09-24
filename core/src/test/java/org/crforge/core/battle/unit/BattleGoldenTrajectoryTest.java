@@ -95,16 +95,20 @@ class BattleGoldenTrajectoryTest {
             golden.get("deploy").get(0).asInt(),
             golden.get("deploy").get(1).asInt());
 
-    // Step 0: the six towers are admitted and ticked, then the placement command runs.
+    // Step 0: the six towers are admitted and ticked, then the placement command runs, which
+    // hands the Knight to the holder: it has its id at once and is admitted by the next cleanup.
     battle.step();
-    assertThat(unit.getId()).as("the Knight waits for the next cleanup").isZero();
+    assertThat(unit.getId()).as("the seventh character").isEqualTo(5000006);
+    assertThat(battle.getHolder().entities()).as("not admitted yet").doesNotContain(unit);
 
     for (int i = 0; i < records.size(); i++) {
       battle.step();
       JsonNode record = records.get(i);
       String where = caseName + " reference tick " + record.get("tick").asInt();
 
-      assertThat(unit.getId()).as("%s: the Knight follows the six towers", where).isEqualTo(7);
+      assertThat(unit.getId())
+          .as("%s: the Knight follows the six towers in the character band", where)
+          .isEqualTo(5000006);
       assertThat(unit.getView().getX()).as("%s x", where).isEqualTo(record.get("x").asInt());
       assertThat(unit.getView().getY()).as("%s y", where).isEqualTo(record.get("y").asInt());
       assertThat(unit.getView().getState())

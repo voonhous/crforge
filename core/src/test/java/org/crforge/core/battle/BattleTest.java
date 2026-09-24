@@ -2,6 +2,7 @@ package org.crforge.core.battle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.BattleEntity.KIND_CHARACTER;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,10 @@ class BattleTest {
 
   /** An entity that records the tick its post-hook was handed through the holder. */
   private final class Witness extends BattleEntity {
+    Witness() {
+      super(KIND_CHARACTER);
+    }
+
     @Override
     protected void postHook() {
       log.add("entity tick");

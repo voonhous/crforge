@@ -4,8 +4,11 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -34,19 +37,22 @@ import org.crforge.core.fidelity.FidelityStatus;
  * </ol>
  *
  * <p>Three consequences that the rest of the simulation leans on. Entities are visited in ascending
- * id, which is creation order. An entity added during a tick is not visited until the next one,
- * because it is admitted by a cleanup and the snapshot is already taken. An entity that becomes
- * removable during a tick is still visited for the rest of that tick and is gone before the next
- * snapshot.
+ * id, which is creation order within a kind, with every kind's band of ids ahead of the next: a
+ * projectile created in the middle of a battle is still visited before every character. An entity
+ * added during a tick is not visited until the next one, because it is admitted by a cleanup and
+ * the snapshot is already taken. An entity that becomes removable during a tick is still visited
+ * for the rest of that tick and is gone before the next snapshot.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "The order of hooks, component passes and action passes within a tick is settled, and so"
-            + " are the snapshot, the id ordering, and that every remaining entity is told of a"
-            + " removal inside the cleanup that removes it, so a reference to a dead entity is"
-            + " dropped before the next visit. Not settled: whether the removed entity is told of"
-            + " its own removal, and whether anything reorders the live list between ticks.")
+            + " are the snapshot, the ids as the kind's band plus a per-kind counter taken when the"
+            + " entity is handed over, the live list sorted by id, and that every remaining entity"
+            + " is told of a removal inside the cleanup that removes it, so a reference to a dead"
+            + " entity is dropped before the next visit. Not settled: whether the removed entity is"
+            + " told of its own removal, and whether anything reorders the live list between"
+            + " ticks.")
 public class EntityHolder {
 
   private final HolderPasses passes;
@@ -57,7 +63,8 @@ public class EntityHolder {
   /** Entities handed over since the last cleanup, in the order they arrived. */
   private final List<BattleEntity> pendingAdditions = new ArrayList<>();
 
-  private int nextId = 1;
+  /** How many entities of each kind have been handed over so far, indexed by kind. */
+  private final Map<Integer, Integer> handedOverByKind = new HashMap<>();
 
   /** True while a tick is running, so a re-entrant tick fails loudly instead of corrupting it. */
   private boolean ticking;
@@ -67,13 +74,18 @@ public class EntityHolder {
   }
 
   /**
-   * Hands an entity to the holder. It waits, without an id, until the next cleanup admits it; an
-   * entity added during a tick therefore takes no part in that tick.
+   * Hands an entity to the holder. It is given its id at once - its kind's band plus how many of
+   * its kind came before it - and waits until the next cleanup admits it to the live list; an
+   * entity added during a tick therefore has its id in that tick but takes no part in it.
    */
   public void add(BattleEntity entity) {
     checkState(
         entity.getId() == BattleEntity.UNASSIGNED_ID,
         () -> "entity " + entity.getId() + " is already registered");
+    int kind = entity.getKind();
+    int counter = handedOverByKind.getOrDefault(kind, 0);
+    handedOverByKind.put(kind, counter + 1);
+    entity.assignId(kind * BattleEntity.IDS_PER_KIND + counter % BattleEntity.IDS_PER_KIND);
     pendingAdditions.add(entity);
   }
 
@@ -84,8 +96,9 @@ public class EntityHolder {
 
   /**
    * Drops every removable entity from both lists, telling every entity still listed and the passes
-   * of each removal in turn, then admits the pending additions in the order they arrived, giving
-   * each its id as it is admitted. Ids only ever grow, so appending keeps the live list sorted.
+   * of each removal in turn, then folds the pending additions into the live list, which stays
+   * sorted by id: an entity of a lower kind lands ahead of every entity of a higher one however
+   * late it arrived. The admitted entities are told of their registration in ascending id.
    */
   public void cleanup() {
     List<BattleEntity> removed = new ArrayList<>();
@@ -100,12 +113,17 @@ public class EntityHolder {
       }
       passes.entityRemoved(gone);
     }
-    for (BattleEntity entity : pendingAdditions) {
-      entity.assignId(nextId++);
-      live.add(entity);
+    if (pendingAdditions.isEmpty()) {
+      return;
+    }
+    List<BattleEntity> admitted = new ArrayList<>(pendingAdditions);
+    pendingAdditions.clear();
+    live.addAll(admitted);
+    live.sort(Comparator.comparingInt(BattleEntity::getId));
+    admitted.sort(Comparator.comparingInt(BattleEntity::getId));
+    for (BattleEntity entity : admitted) {
       entity.onRegistered();
     }
-    pendingAdditions.clear();
   }
 
   /** Moves every removable entity of a list, in list order, to the end of the removed list. */
