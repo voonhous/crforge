@@ -85,7 +85,7 @@ class BattleKillRunTest {
         .hasSize(16);
     int lastTick = expectedTicks.get(expectedTicks.size() - 1);
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 
@@ -148,7 +148,7 @@ class BattleKillRunTest {
     assertThat(expected).as("the reference records forty hits and two deaths").hasSize(42);
     int lastTick = reference.get("events").get(41).get("tick").asInt();
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     deployKnight(match, reference);
 
@@ -200,7 +200,7 @@ class BattleKillRunTest {
     List<JsonNode> records = records(reference);
     assertThat(records).as("the reference is the whole run").hasSize(1258);
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 
@@ -254,7 +254,7 @@ class BattleKillRunTest {
           + " time")
   void aDeadTowerLeavesTheHolderInTheTickItDiesAndTheKnightResumesAfterTheFinishTime() {
     JsonNode reference = load("/pathfinding/golden/knight_left_kill.json");
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 
@@ -375,7 +375,7 @@ class BattleKillRunTest {
     }
     assertThat(expectedTowerHitPoints).as("the reference lists the six towers").hasSize(6);
 
-    Standard1v1Battle match = new Standard1v1Battle(level);
+    Standard1v1Battle match = new Standard1v1Battle(level, false);
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 

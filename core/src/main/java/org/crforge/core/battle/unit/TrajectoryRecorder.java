@@ -5,12 +5,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.target.RangeTest;
 import org.crforge.core.pathfinding.target.TargetView;
 
 /**
@@ -35,6 +41,13 @@ import org.crforge.core.pathfinding.target.TargetView;
  * after the state visit. And the budget is what the movement visit asked for while the character
  * walks, and zero otherwise.
  *
+ * <p>A run in which the towers fight carries three things more. The header gives the towers' level
+ * and says that they fight, every record ends with the character's own hit points, and a list of
+ * the towers' own events follows the events: each time a tower's reference changes, with whether
+ * the new one is in range, each time a tower locks on, and, inside the closing cleanup that removes
+ * an entity, what the removal left each tower holding, then the removal itself. The towers' events
+ * go on after the character has left, for as long as the battle is played.
+ *
  * <p>The text is laid out as the committed fixtures are: one compact line per tower, event and
  * record, so that two runs diff by the values that moved.
  */
@@ -45,13 +58,18 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " reference format asks for. Supplied: ticks counted from the character's first tick"
             + " in the holder, a deploying tick recorded before the state visit, every hit,"
             + " launch and impact in the battle recorded whoever made it, a projectile's position"
-            + " recorded after its step unless that step arrived, and a reference's hit points"
-            + " read from what it advertises to attackers.")
+            + " recorded after its step unless that step arrived, a reference's hit points"
+            + " read from what it advertises to attackers, and a tower's reference and lock read"
+            + " after the tick's post-hooks, when the target has already moved.")
 public final class TrajectoryRecorder implements WorldObserver {
 
   /** The columns of a record, in the order a record lists them. */
   public static final List<String> FIELDS =
       List.of("tick", "x", "y", "state", "ref", "route", "speed", "hp");
+
+  /** The columns of a record in a run whose towers fight: the character's own hit points last. */
+  public static final List<String> FIGHTING_FIELDS =
+      List.of("tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp");
 
   private final CharacterEntity unit;
   private final int deployX;
@@ -65,6 +83,25 @@ public final class TrajectoryRecorder implements WorldObserver {
 
   /** One line per projectile position: the tick, the projectile's id and where it stands. */
   private final List<String> projectiles = new ArrayList<>();
+
+  /** True when the recorder first saw a tower that fights; the towers' level is then recorded. */
+  private boolean towersAttack;
+
+  private int towerLevel;
+
+  /** The towers that fight and are still standing, in ascending id. */
+  private final List<TowerEntity> fightingTowers = new ArrayList<>();
+
+  /** The name of each fighting tower's reference as last recorded; absent until it holds one. */
+  private final Map<TowerEntity, String> towerReferences = new HashMap<>();
+
+  /** The fighting towers that have locked on and not yet lost their reference. */
+  private final Set<TowerEntity> lockedTowers = new HashSet<>();
+
+  /** Each fighting tower's state as last recorded. */
+  private final Map<TowerEntity, Integer> towerStates = new HashMap<>();
+
+  private final List<String> towerEvents = new ArrayList<>();
 
   /** The battle tick of the character's first tick in the holder, or -1 before it. */
   private int firstTick = -1;
@@ -91,6 +128,11 @@ public final class TrajectoryRecorder implements WorldObserver {
       for (WorldEntity entity : present) {
         if (entity instanceof TowerEntity tower) {
           towers.add(towerLine(tower));
+          if (!tower.isHoldingFire()) {
+            towersAttack = true;
+            towerLevel = tower.level();
+            fightingTowers.add(tower);
+          }
         }
       }
     }
@@ -185,7 +227,13 @@ public final class TrajectoryRecorder implements WorldObserver {
 
   @Override
   public void afterPostHooks(int tick, List<WorldEntity> present, List<ProjectileEntity> inFlight) {
-    if (firstTick < 0 || !present.contains(unit)) {
+    if (firstTick < 0) {
+      return;
+    }
+    for (TowerEntity tower : fightingTowers) {
+      recordTowerVisit(tick, tower);
+    }
+    if (!present.contains(unit)) {
       return;
     }
     for (ProjectileEntity projectile : inFlight) {
@@ -206,8 +254,19 @@ public final class TrajectoryRecorder implements WorldObserver {
     }
     int x = unit.getView().getX();
     int y = unit.getView().getY();
+    Integer ownHitPoints = towersAttack ? unit.getHitPoints().getHitPoints() : null;
     if (deployingAtHead) {
-      records.add(record(tick - firstTick, x, y, GridEntityState.DEPLOYING, null, 0, null, null));
+      records.add(
+          record(
+              tick - firstTick,
+              x,
+              y,
+              GridEntityState.DEPLOYING,
+              null,
+              0,
+              null,
+              null,
+              ownHitPoints));
       return;
     }
     int state = unit.getView().getState();
@@ -221,7 +280,100 @@ public final class TrajectoryRecorder implements WorldObserver {
             reference == null ? null : reference.name(),
             unit.getUnit().movement().getRoute().size(),
             state == GridEntityState.MOVING ? unit.getSpeedBudget() : 0,
-            reference == null ? null : reference.getHitPoints()));
+            reference == null ? null : reference.getHitPoints(),
+            ownHitPoints));
+  }
+
+  /**
+   * What a tower's visit did this tick: a change of reference, with whether the new one is in
+   * range, then a lock, which is the tower entering the attacking state; or, when the visit gave
+   * the reference up after a lock, the drop. A tower still attacking after its reference was
+   * removed has not locked again.
+   */
+  private void recordTowerVisit(int tick, TowerEntity tower) {
+    TargetView reference = tower.getTargeting().getReference();
+    String name = reference == null ? null : reference.name();
+    if (!Objects.equals(name, towerReferences.get(tower))) {
+      towerReferences.put(tower, name);
+      String inRange =
+          reference == null
+              ? "null"
+              : RangeTest.referenceInRange(tower.getTargeting(), reference, 0) ? "1" : "0";
+      towerEvents.add(
+          towerEventHead(tick, "reference", tower)
+              + ", \"target\": "
+              + nameOrNull(name)
+              + ", \"in_range\": "
+              + inRange
+              + "}");
+    }
+    int state = tower.getView().getState();
+    Integer before = towerStates.put(tower, state);
+    boolean entered = before == null || before != GridEntityState.ATTACKING;
+    if (state == GridEntityState.ATTACKING && entered && lockedTowers.add(tower)) {
+      towerEvents.add(
+          towerEventHead(tick, "lock", tower) + ", \"target\": " + nameOrNull(name) + "}");
+    }
+    if (reference == null && lockedTowers.remove(tower)) {
+      towerEvents.add(towerEventHead(tick, "reference_dropped", tower) + "}");
+    }
+  }
+
+  /**
+   * What the removal of an entity left each fighting tower holding: a changed reference, with the
+   * target-lost countdown the removal started, and the drop of a reference a tower had locked on;
+   * then the removal itself.
+   */
+  @Override
+  public void entityRemoved(int tick, WorldEntity removed) {
+    if (firstTick < 0 || !towersAttack) {
+      return;
+    }
+    fightingTowers.remove(removed);
+    String removedName = quote(removed.name());
+    for (TowerEntity tower : fightingTowers) {
+      TargetView reference = tower.getTargeting().getReference();
+      String name = reference == null ? null : reference.name();
+      if (!Objects.equals(name, towerReferences.get(tower))) {
+        towerReferences.put(tower, name);
+        towerEvents.add(
+            towerEventHead(tick, "reference", tower)
+                + ", \"target\": "
+                + nameOrNull(name)
+                + ", \"removed\": "
+                + removedName
+                + ", \"target_lost_timer\": "
+                + tower.getTargeting().getTargetLostTimerMs()
+                + "}");
+      }
+      if (reference == null && lockedTowers.remove(tower)) {
+        towerEvents.add(
+            towerEventHead(tick, "reference_dropped", tower)
+                + ", \"removed\": "
+                + removedName
+                + "}");
+      }
+    }
+    towerEvents.add(
+        "  {\"tick\": "
+            + (tick - firstTick)
+            + ", \"event\": \"removed\", \"entity\": "
+            + removedName
+            + "}");
+  }
+
+  /** The opening of a tower event line, up to the tower's name. */
+  private String towerEventHead(int tick, String kind, TowerEntity tower) {
+    return "  {\"tick\": "
+        + (tick - firstTick)
+        + ", \"event\": "
+        + quote(kind)
+        + ", \"tower\": "
+        + quote(tower.name());
+  }
+
+  private static String nameOrNull(String name) {
+    return name == null ? "null" : quote(name);
   }
 
   /** The number of records written so far. */
@@ -239,11 +391,19 @@ public final class TrajectoryRecorder implements WorldObserver {
     out.append(" \"lane\": ").append(unit.getView().getLane()).append(",\n");
     out.append(" \"level\": ").append(unit.level()).append(",\n");
     out.append(" \"damage\": ").append(unit.getDamage()).append(",\n");
+    if (towersAttack) {
+      out.append(" \"tower_level\": ").append(towerLevel).append(",\n");
+      out.append(" \"towers_attack\": true,\n");
+    }
     appendList(out, "towers", towers).append(",\n");
     appendList(out, "events", events).append(",\n");
+    if (towersAttack) {
+      appendList(out, "tower_events", towerEvents).append(",\n");
+    }
+    List<String> fields = towersAttack ? FIGHTING_FIELDS : FIELDS;
     out.append(" \"fields\": [");
-    for (int i = 0; i < FIELDS.size(); i++) {
-      out.append(i == 0 ? "" : ", ").append(quote(FIELDS.get(i)));
+    for (int i = 0; i < fields.size(); i++) {
+      out.append(i == 0 ? "" : ", ").append(quote(fields.get(i)));
     }
     out.append("],\n");
     appendList(out, "records", records);
@@ -288,8 +448,17 @@ public final class TrajectoryRecorder implements WorldObserver {
         + "}";
   }
 
+  /** One record; the character's own hit points are written only when given. */
   private static String record(
-      int tick, int x, int y, int state, String ref, int route, Integer speed, Integer hp) {
+      int tick,
+      int x,
+      int y,
+      int state,
+      String ref,
+      int route,
+      Integer speed,
+      Integer hp,
+      Integer ownHitPoints) {
     return "  ["
         + tick
         + ", "
@@ -306,6 +475,7 @@ public final class TrajectoryRecorder implements WorldObserver {
         + (speed == null ? "null" : speed)
         + ", "
         + (hp == null ? "null" : hp)
+        + (ownHitPoints == null ? "" : ", " + ownHitPoints)
         + "]";
   }
 

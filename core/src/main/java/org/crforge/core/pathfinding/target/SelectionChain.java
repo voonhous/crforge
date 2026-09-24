@@ -69,6 +69,13 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
    */
   @Getter @Setter private StateSetter stateSetter = StateSetter.guarded();
 
+  /**
+   * Whether a building that holds no reference still resets its attack, as a walking unit always
+   * does: true for a building whose hit points at the first level are not zero. Only a building's
+   * visit asks.
+   */
+  @Setter private boolean buildingKeepsAttacking;
+
   /** Collects the route and resume requests the selection and the visit make. */
   @Getter private final TargetingOutcome outcome = new TargetingOutcome();
 
@@ -168,6 +175,11 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
   @Override
   public boolean validateReference(int mode) {
     return validate(state.getReference(), mode);
+  }
+
+  @Override
+  public boolean buildingKeepsAttacking() {
+    return buildingKeepsAttacking;
   }
 
   @Override

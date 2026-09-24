@@ -3,11 +3,8 @@ package org.crforge.core.battle.unit;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
-import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
-import org.crforge.core.battle.BattleEntity;
-import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -28,11 +25,7 @@ import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
-import org.crforge.core.pathfinding.target.HitApplication;
-import org.crforge.core.pathfinding.target.HitQueries;
-import org.crforge.core.pathfinding.target.RemovalNotice;
 import org.crforge.core.pathfinding.target.SelectionChain;
-import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.core.pathfinding.target.TargetingVisit;
@@ -73,16 +66,11 @@ public class CharacterEntity extends WorldEntity {
   /** Slot of the movement component. */
   public static final int MOVEMENT_SLOT = 1;
 
-  private final BattleWorld world;
-
   /** The working state of the character's two components and its state visit. */
   @Getter private final GridUnitState unit;
 
   /** Applies every state change the character asks for, with the actions the change carries. */
   private final GridStateSetter setter;
-
-  /** True once the opposing side's towers have been registered as default targets. */
-  private boolean towersRegistered;
 
   /**
    * The movement budget the last movement visit asked for, in game units per tick; zero when it
@@ -104,14 +92,15 @@ public class CharacterEntity extends WorldEntity {
   public CharacterEntity(
       BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
     super(
-        data, createView(world.getTileMap(), data, name, side, x, y), targetingConfig(data), level);
+        world,
+        data,
+        createView(world.getTileMap(), data, name, side, x, y),
+        targetingConfig(data),
+        level);
     checkArgument(!data.air() && !data.building(), () -> data.name() + " is not a ground unit");
-    this.world = world;
 
     GridEntity view = getView();
-    TargetingState targeting = new TargetingState();
-    targeting.setOwner(view);
-    targeting.setConfig(getTargetView().getConfig());
+    TargetingState targeting = getTargeting();
     targeting.setMovementComponentActive(true);
     this.unit =
         new GridUnitState(
@@ -122,15 +111,11 @@ public class CharacterEntity extends WorldEntity {
             MovementConfig.forGroundUnit(),
             SpeedConfig.forGroundUnit(data.speed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs()),
-            new SelectionChain(world.getIndex(), targeting, world.getTileMap().height()),
+            getSelection(),
             getTargetView());
     this.setter = new GridStateSetter(view, unit.movement(), targeting, this::movementChain);
     unit.selection().setStateSetter(setter);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
-    unit.selection()
-        .setHitSink(
-            (target, sequenceIndex, extraTargets, last) ->
-                HitApplication.apply(targeting, target, sequenceIndex, hitQueries()));
 
     attach(new TargetingComponent());
     attach(new MovementComponent());
@@ -179,45 +164,6 @@ public class CharacterEntity extends WorldEntity {
         .build();
   }
 
-  /**
-   * Makes every arena entity of this tick known to the character's selection. The first call also
-   * registers the opposing side's towers as the default targets, in creation order - king first,
-   * then the princess towers along the arena's width - and seeds the selection with the king.
-   */
-  void registerCandidates(List<WorldEntity> present) {
-    SelectionChain selection = unit.selection();
-    if (!towersRegistered) {
-      towersRegistered = true;
-      int enemy = opposing(side());
-      for (WorldEntity entity : present) {
-        if (entity instanceof TowerEntity tower && tower.side() == enemy) {
-          selection.registerTower(tower.getTargetView());
-          if (tower.getData().king() && selection.getSeed() == null) {
-            selection.setSeed(tower.getTargetView());
-          }
-        }
-      }
-    }
-    for (WorldEntity entity : present) {
-      if (selection.view(entity.getView()) == null) {
-        selection.register(entity.getTargetView());
-      }
-    }
-  }
-
-  /** Drops an entity that has left the battle from the character's default targets. */
-  void forget(GridEntity departed) {
-    unit.selection().unregister(departed);
-  }
-
-  /** The targeting component's notice: a reference to the entity that left is dropped at once. */
-  @Override
-  protected void entityRemoved(BattleEntity removed) {
-    if (removed instanceof WorldEntity gone) {
-      RemovalNotice.entityRemoved(unit.targeting(), gone.getTargetView(), null);
-    }
-  }
-
   private boolean deploying() {
     return getView().getState() == GridEntityState.DEPLOYING;
   }
@@ -246,36 +192,6 @@ public class CharacterEntity extends WorldEntity {
         queries.reference(),
         world.getNeighbourQuery(),
         queries);
-  }
-
-  /**
-   * What one of the character's hits needs from the battle: the damage of a hit at the character's
-   * level, the battle's hit ids, the target the damage is dealt to, and the launch of the
-   * projectiles of a character that fires.
-   */
-  private HitQueries hitQueries() {
-    return new HitQueries() {
-      @Override
-      public int damage() {
-        return getDamage();
-      }
-
-      @Override
-      public int nextHitId() {
-        return world.nextHitId();
-      }
-
-      @Override
-      public void dealDamage(
-          TargetView target, int damage, int hitId, int directionX, int directionY) {
-        world.dealDamage(target, damage, directionX, directionY);
-      }
-
-      @Override
-      public void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {
-        ProjectileLauncher.launch(CharacterEntity.this, t, target, sequenceIndex, world);
-      }
-    };
   }
 
   /** The state visit's removal request, raised for a unit that has no hit points to lose. */

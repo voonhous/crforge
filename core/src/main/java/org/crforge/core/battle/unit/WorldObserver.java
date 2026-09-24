@@ -6,8 +6,9 @@ import org.crforge.core.pathfinding.combat.DamageResult;
 
 /**
  * Something that watches one battle's arena from outside the tick: it is told where the tick's
- * entity visits begin and end, about every hit that lands, and about every projectile launched and
- * every projectile that arrives, and takes no part in any of it.
+ * entity visits begin and end, about every hit that lands, about every projectile launched and
+ * every projectile that arrives, and about every arena entity that leaves, and takes no part in any
+ * of it.
  *
  * <p>Both tick calls hand over the tick's arena entities in ascending id, the list the visits ran
  * over. An entity that became removable during the tick is still in it at the end, because the
@@ -60,4 +61,14 @@ public interface WorldObserver {
    */
   default void projectileImpacted(
       int tick, ProjectileEntity projectile, WorldEntity target, int damage, DamageResult result) {}
+
+  /**
+   * An arena entity left the battle. Every remaining entity has been told of it, so what the
+   * removal did to another entity's reference is already in place.
+   *
+   * @param tick the tick last run: the one whose closing cleanup removed the entity, which is where
+   *     an entity that dies during a tick leaves
+   * @param removed the entity that left
+   */
+  default void entityRemoved(int tick, WorldEntity removed) {}
 }

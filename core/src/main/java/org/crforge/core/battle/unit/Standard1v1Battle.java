@@ -21,8 +21,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
     note =
         "Settled: tower positions, the top side mirrored along the arena's length, the creation"
             + " order, and the towers standing at their hit points at the level they are"
-            + " created at. Not modelled yet: players, hands, elixir, the match clock and how a"
-            + " match ends; the mode never ends the battle.")
+            + " created at and fighting from the first tick. Not modelled yet: players, hands,"
+            + " elixir, the match clock and how a match ends; the mode never ends the battle.")
 public class Standard1v1Battle {
 
   /** The level the reference runs are played at, and the towers' level when none is given. */
@@ -40,11 +40,22 @@ public class Standard1v1Battle {
   }
 
   /**
-   * A battle whose towers stand at the given level.
+   * A battle whose towers stand at the given level and fight.
    *
    * @param towerLevel the level all six towers are created at, counted from 1
    */
   public Standard1v1Battle(int towerLevel) {
+    this(towerLevel, true);
+  }
+
+  /**
+   * A battle whose towers stand at the given level, fighting or passive.
+   *
+   * @param towerLevel the level all six towers are created at, counted from 1
+   * @param towersAttack false to keep every tower passive for the whole battle: none selects a
+   *     target or fires, as in the reference runs made without the towers fighting
+   */
+  public Standard1v1Battle(int towerLevel, boolean towersAttack) {
     TileMap tileMap = TileMap.standard1v1();
     this.world = new BattleWorld(tileMap);
     this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
@@ -55,11 +66,13 @@ public class Standard1v1Battle {
         int row = TOWER_CELLS[i][1];
         // The top side is the bottom side mirrored along the arena's length.
         int y = (side == WorldEntity.SIDE_TOP ? tileMap.height() - row : row) * TileMap.CELL_UNITS;
-        battle
-            .getHolder()
-            .add(
-                new TowerEntity(
-                    tileMap, data, data.name() + "_" + side + "_" + i, side, x, y, towerLevel));
+        TowerEntity tower =
+            new TowerEntity(
+                world, data, data.name() + "_" + side + "_" + i, side, x, y, towerLevel);
+        if (!towersAttack) {
+          tower.holdFire();
+        }
+        battle.getHolder().add(tower);
       }
     }
   }

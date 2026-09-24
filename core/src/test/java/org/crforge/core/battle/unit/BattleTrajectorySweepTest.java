@@ -78,7 +78,7 @@ class BattleTrajectorySweepTest {
     Card card = units.get(unitName);
     assertThat(card).as("the card library has a unit called %s", unitName).isNotNull();
 
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(
