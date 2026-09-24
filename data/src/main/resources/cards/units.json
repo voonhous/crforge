@@ -13,7 +13,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "Archer": {
     "name": "Archer",
@@ -29,8 +32,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "ArcherArrow",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "ArcherQueen": {
     "name": "ArcherQueen",
@@ -46,8 +52,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "ArcherQueenArrow",
-    "allowAreaDmgWhenInvisible": true
+    "allowAreaDmgWhenInvisible": true,
+    "projectileStartRadius": 1350,
+    "projectileStartZ": 800
   },
   "Assassin": {
     "name": "Assassin",
@@ -63,6 +72,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "abilities": [
       {
         "type": "DASH",
@@ -88,8 +98,31 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "AxeManProjectile",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 600,
+    "projectileStartZ": 600
+  },
+  "AxeMan_EV1": {
+    "name": "AxeMan_EV1",
+    "health": 500,
+    "damage": 0,
+    "speed": 60.0,
+    "mass": 4.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 4.5,
+    "attackCooldown": 0.9,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectile": "AxeMan_EV1_Projectile_Strong1",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 600,
+    "projectileStartZ": 600
   },
   "BabyDragon": {
     "name": "BabyDragon",
@@ -105,7 +138,32 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "BabyDragonProjectile"
+    "rarity": "Common",
+    "projectile": "BabyDragonProjectile",
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900
+  },
+  "BabyDragon_EV1": {
+    "name": "BabyDragon_EV1",
+    "health": 450,
+    "damage": 63,
+    "speed": 90.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 1.5,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "rarity": "Common",
+    "projectile": "BabyDragon_evo_projectile",
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900,
+    "ignoreBuff": [
+      "BabyDragon_EV1_wind_buff_positive"
+    ]
   },
   "Balloon": {
     "name": "Balloon",
@@ -121,7 +179,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "AIR",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathSpawn": [
       {
         "spawnCharacter": "BalloonBomb",
@@ -143,6 +204,9 @@
     "deployTime": 3.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathDamage": {
       "damage": 94,
       "radius": 3.0
@@ -165,7 +229,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "BarbarianHut": {
     "name": "BarbarianHut",
@@ -181,7 +248,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathSpawn": [
       {
         "spawnCharacter": "Barbarian",
@@ -210,8 +280,11 @@
     "deployTime": 3.5,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "BarbarianLauncherProjectile",
     "minimumRange": 3.5,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 1000,
     "lifeTime": 30.0
   },
   "Bat": {
@@ -228,8 +301,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
     "deployDelay": 0.4,
-    "attackDashTime": 0.15
+    "attackDashTime": 0.15,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
   },
   "BattleHealer": {
     "name": "BattleHealer",
@@ -245,7 +321,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "hovering": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "spawnAreaEffect": {
       "name": "BattleHealerSpawnHeal",
       "radius": 2.5,
@@ -283,6 +362,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "kamikaze": true,
     "ignoreResurrect": true,
@@ -320,6 +400,9 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "attackSequence": {
       "hits": [
         {
@@ -349,8 +432,31 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "BlowdartGoblinProjectile",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 1200,
+    "projectileStartZ": 1600
+  },
+  "BlowdartGoblin_EV1": {
+    "name": "BlowdartGoblin_EV1",
+    "health": 102,
+    "damage": 59,
+    "speed": 120.0,
+    "mass": 3.0,
+    "collisionRadius": 0.5,
+    "sightRange": 7.5,
+    "range": 6.5,
+    "attackCooldown": 0.8,
+    "loadTime": 0.45,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectile": "BlowdartGoblinEvoProjectile",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 1200,
+    "projectileStartZ": 1600
   },
   "BombTower": {
     "name": "BombTower",
@@ -366,8 +472,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
     "projectile": "BombTowerProjectile",
+    "projectileStartZ": 4500,
     "deathSpawn": [
       {
         "spawnCharacter": "BombTowerBomb",
@@ -390,6 +498,9 @@
     "deployTime": 3.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathDamage": {
       "damage": 87,
       "radius": 3.0
@@ -412,7 +523,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "projectile": "BombSkeletonProjectile"
+    "rarity": "Common",
+    "projectile": "BombSkeletonProjectile",
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
   },
   "BossBandit": {
     "name": "BossBandit",
@@ -428,6 +542,9 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 1500,
+    "projectileStartZ": 450,
     "abilities": [
       {
         "type": "DASH",
@@ -453,8 +570,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "BowlerProjectile",
-    "ignorePushback": true
+    "ignorePushback": true,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 1000
   },
   "BrokenCannon": {
     "name": "BrokenCannon",
@@ -470,10 +590,13 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "MovingCannonProjectile",
     "ignorePushback": true,
     "ignoreResurrect": true,
     "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "ignoreBuff": [
       "VoodooCurse",
       "GoblinCurse"
@@ -494,6 +617,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deployDelay": 0.4
   },
   "Cannon": {
@@ -510,8 +634,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
     "projectile": "TowerCannonball",
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 2500,
     "lifeTime": 30.0
   },
   "ChampionGuard": {
@@ -527,7 +654,8 @@
     "loadTime": 0.7,
     "deployTime": 0.3,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "rarity": "Common"
   },
   "DarkElixir_Bottle": {
     "name": "DarkElixir_Bottle",
@@ -543,6 +671,7 @@
     "deployTime": 0.5,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Champion",
     "deathAreaEffect": {
       "name": "DarkElixirAOE",
       "radius": 3.5,
@@ -568,9 +697,12 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
     "jumpEnabled": true,
     "areaDamageRadius": 1.1,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "shieldHitpoints": 94,
     "abilities": [
       {
@@ -595,6 +727,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deathSpawn": [
       {
         "spawnCharacter": "Bat",
@@ -625,8 +758,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
     "projectile": "DartBarrellProjectile",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 1500,
+    "projectileStartZ": 1300
   },
   "DeliveryRecruit": {
     "name": "DeliveryRecruit",
@@ -642,7 +778,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "shieldHitpoints": 94
   },
   "ElectroDragon": {
@@ -659,7 +798,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "ElectroDragonProjectile"
+    "rarity": "Common",
+    "projectile": "ElectroDragonProjectile",
+    "projectileStartRadius": 1250,
+    "projectileStartZ": 1900
   },
   "ElectroGiant": {
     "name": "ElectroGiant",
@@ -675,8 +817,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900,
     "abilities": [
       {
         "type": "REFLECT",
@@ -702,6 +847,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "ElectroSpiritProjectile",
     "kamikaze": true,
     "deployDelay": 0.4
@@ -720,7 +866,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "multipleTargets": 2,
+    "projectileStartRadius": 550,
+    "projectileStartZ": 1500,
     "buffOnDamage": {
       "buff": "ZapFreeze",
       "duration": 0.5
@@ -740,8 +889,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "EliteArcherArrow",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 800,
+    "projectileStartZ": 500
   },
   "ElixirBarrel": {
     "name": "ElixirBarrel",
@@ -757,6 +909,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "manaOnDeathForOpponent": 4000,
     "manaCollectAmount": 1,
     "manaGenerateTime": 3.0,
@@ -776,6 +929,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
     "manaOnDeath": 1,
     "manaCollectAmount": 1,
@@ -796,9 +950,12 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
     "ignoreResurrect": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathSpawn": [
       {
         "spawnCharacter": "ElixirGolem2",
@@ -825,8 +982,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignoreResurrect": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathSpawn": [
       {
         "spawnCharacter": "ElixirGolem4",
@@ -853,7 +1013,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "manaOnDeathForOpponent": 500
   },
   "FireSpirits": {
@@ -870,6 +1033,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "FireSpiritsProjectile",
     "kamikaze": true,
     "deployDelay": 0.4
@@ -888,8 +1052,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "FirecrackerProjectile",
-    "attackPushBack": 1000
+    "attackPushBack": 1000,
+    "projectileStartRadius": 200,
+    "projectileStartZ": 2500
   },
   "Fisherman": {
     "name": "Fisherman",
@@ -905,7 +1072,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deployDelay": 0.3,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "abilities": [
       {
         "type": "HOOK",
@@ -918,6 +1088,31 @@
         "buffDuration": 1.5
       }
     ]
+  },
+  "Furnace_EV1": {
+    "name": "Furnace_EV1",
+    "health": 284,
+    "damage": 70,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.6,
+    "sightRange": 6.0,
+    "range": 6.0,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectile": "Furnace_Evolution_Projectile",
+    "projectileStartRadius": 2000,
+    "projectileStartZ": 2000,
+    "liveSpawn": {
+      "spawnCharacter": "FireSpirits",
+      "spawnNumber": 1,
+      "spawnPauseTime": 7.0,
+      "spawnStartTime": 1.95
+    }
   },
   "Furnace_rework": {
     "name": "Furnace_rework",
@@ -933,7 +1128,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "Furnace_Rework_Projectile",
+    "projectileStartRadius": 2000,
+    "projectileStartZ": 2000,
     "liveSpawn": {
       "spawnCharacter": "FireSpirits",
       "spawnNumber": 1,
@@ -955,6 +1153,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "hovering": true,
     "allowAreaDmgWhenInvisible": true,
     "areaDamageRadius": 1.0,
@@ -962,6 +1161,25 @@
       "hideTimeMs": 400,
       "notAttackingTimeMs": 1800,
       "buff": "Invisibility"
+    }
+  },
+  "Ghost_EV1": {
+    "name": "Ghost_EV1",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "",
+    "stealth": {
+      "buff": "Ghost_EV1_Invisibility"
     }
   },
   "Giant": {
@@ -978,8 +1196,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
-    "ignorePushback": true
+    "ignorePushback": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "GiantBuffer": {
     "name": "GiantBuffer",
@@ -995,8 +1216,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "projectileStartZ": 2000,
     "abilities": [
       {
         "type": "BUFF_ALLY",
@@ -1074,7 +1297,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathSpawn": [
       {
         "spawnCharacter": "GiantSkeletonBomb",
@@ -1096,7 +1322,10 @@
     "deployTime": 3.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "crownTowerDamagePercent": 100,
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathDamage": {
       "damage": 209,
       "radius": 3.0,
@@ -1120,7 +1349,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
   },
   "GoblinBrawler": {
     "name": "GoblinBrawler",
@@ -1136,7 +1368,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
   },
   "GoblinCage": {
     "name": "GoblinCage",
@@ -1152,7 +1387,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathSpawn": [
       {
         "spawnCharacter": "GoblinBrawler",
@@ -1176,7 +1414,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
   },
   "GoblinDemolisher": {
     "name": "GoblinDemolisher",
@@ -1192,7 +1433,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "GoblinDemolisherProjectile",
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "deathSpawnProjectile": "GoblinDemolisherDeathProjectile",
     "transformation": {
       "transformCharacter": "GoblinDemolisher_kamikaze_form",
@@ -1213,6 +1457,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "kamikaze": true,
     "deathSpawnProjectile": "GoblinDemolisherDeathProjectile",
@@ -1232,6 +1477,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1,
     "deathSpawn": [
       {
@@ -1275,8 +1521,63 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "spawnPathfindSpeed": 300,
-    "spawnPathfindMorph": "GoblinDrill"
+    "spawnPathfindMorph": "GoblinDrill",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
+  },
+  "GoblinDrill_EV1": {
+    "name": "GoblinDrill_EV1",
+    "health": 513,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 0.5,
+    "sightRange": 2.0,
+    "range": 2.0,
+    "attackCooldown": 1.1,
+    "loadTime": 0.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "Goblin",
+        "spawnNumber": 2,
+        "spawnRadius": 0.5,
+        "spawnMinRadius": 0.5,
+        "deployTime": 0.5
+      }
+    ],
+    "lifeTime": 10.0,
+    "liveSpawn": {
+      "spawnCharacter": "Goblin",
+      "spawnNumber": 1,
+      "spawnPauseTime": 3.0,
+      "spawnStartTime": 1.0
+    }
+  },
+  "GoblinDrill_EV1_Dig": {
+    "name": "GoblinDrill_EV1_Dig",
+    "health": 1000,
+    "damage": 0,
+    "speed": 60.0,
+    "mass": 6.0,
+    "collisionRadius": 0.0,
+    "sightRange": 5.5,
+    "range": 1.3,
+    "attackCooldown": 1.2,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "spawnPathfindSpeed": 300,
+    "spawnPathfindMorph": "GoblinDrill_EV1",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "GoblinGiant": {
     "name": "GoblinGiant",
@@ -1292,10 +1593,39 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "liveSpawn": {
       "spawnCharacter": "SpearGoblinGiant",
+      "spawnNumber": 2,
+      "spawnRadius": 0.9,
+      "spawnAttach": true
+    }
+  },
+  "GoblinGiant_EV1": {
+    "name": "GoblinGiant_EV1",
+    "health": 1180,
+    "damage": 69,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 7.5,
+    "range": 1.2,
+    "attackCooldown": 1.5,
+    "loadTime": 0.7,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "targetOnlyBuildings": true,
+    "ignorePushback": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
+    "liveSpawn": {
+      "spawnCharacter": "SpearGoblinGiant_EV1",
       "spawnNumber": 2,
       "spawnRadius": 0.9,
       "spawnAttach": true
@@ -1315,6 +1645,9 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathSpawn": [
       {
         "spawnCharacter": "SpearGoblin",
@@ -1344,7 +1677,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900,
     "abilities": [
       {
         "type": "RANGED_ATTACK",
@@ -1372,7 +1708,9 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "BlowdartGoblinProjectileParty",
+    "projectileStartZ": 4500,
     "deathSpawn": [
       {
         "spawnCharacter": "SpearGoblin",
@@ -1402,7 +1740,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
   },
   "GoldenKnight": {
     "name": "GoldenKnight",
@@ -1418,6 +1759,9 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "abilities": [
       {
         "type": "DASH",
@@ -1445,9 +1789,12 @@
     "deployTime": 3.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
     "ignoreResurrect": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathDamage": {
       "damage": 88,
       "radius": 2.0,
@@ -1478,7 +1825,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "deathDamage": {
       "damage": 39,
       "radius": 2.0,
@@ -1499,6 +1849,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "HealSpiritProjectile",
     "kamikaze": true,
     "deployDelay": 0.4
@@ -1517,9 +1868,12 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "jumpEnabled": true,
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "Hunter": {
     "name": "Hunter",
@@ -1535,10 +1889,35 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "HunterProjectile",
     "deployDelay": 0.3,
     "areaDamageRadius": 0.07,
-    "multipleProjectiles": 10
+    "multipleProjectiles": 10,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 450
+  },
+  "Hunter_EV1": {
+    "name": "Hunter_EV1",
+    "health": 346,
+    "damage": 33,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 4.0,
+    "attackCooldown": 2.2,
+    "loadTime": 1.5,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectile": "Hunter_EV1_shotgun_projectile",
+    "deployDelay": 0.3,
+    "areaDamageRadius": 0.07,
+    "multipleProjectiles": 10,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 450
   },
   "IceGolemite": {
     "name": "IceGolemite",
@@ -1554,7 +1933,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "deathDamage": {
       "damage": 33,
       "radius": 2.0
@@ -1585,6 +1967,7 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "IceSpiritsProjectile",
     "kamikaze": true,
     "deployDelay": 0.4
@@ -1603,7 +1986,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "ice_wizardProjectile"
+    "rarity": "Common",
+    "projectile": "ice_wizardProjectile",
+    "projectileStartRadius": 550,
+    "projectileStartZ": 1500
   },
   "InfernoDragon": {
     "name": "InfernoDragon",
@@ -1619,6 +2005,63 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
+    "abilities": [
+      {
+        "type": "VARIABLE_DAMAGE",
+        "stages": [
+          {
+            "damage": 14,
+            "timeMs": 0
+          },
+          {
+            "damage": 47,
+            "timeMs": 2000
+          },
+          {
+            "damage": 165,
+            "timeMs": 2000
+          }
+        ]
+      }
+    ]
+  },
+  "InfernoDragon_EV1": {
+    "name": "InfernoDragon_EV1",
+    "health": 506,
+    "damage": 14,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 0.4,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
+    "attackSequence": {
+      "hits": [
+        {
+          "damage": 14
+        },
+        {
+          "damage": 47
+        },
+        {
+          "damage": 165
+        },
+        {
+          "damage": 330
+        }
+      ],
+      "mode": "Manual"
+    },
     "abilities": [
       {
         "type": "VARIABLE_DAMAGE",
@@ -1653,7 +2096,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 1000,
     "lifeTime": 30.0,
     "abilities": [
       {
@@ -1688,7 +2134,10 @@
     "loadTime": 0.7,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "LavaHound": {
     "name": "LavaHound",
@@ -1704,10 +2153,13 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
     "projectile": "LavaHoundProjectile",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
     "ignoreResurrect": true,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 1800,
     "deathSpawn": [
       {
         "spawnCharacter": "LavaPups",
@@ -1733,7 +2185,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "LavaPupProjectile"
+    "rarity": "Common",
+    "projectile": "LavaPupProjectile",
+    "projectileStartRadius": 500,
+    "projectileStartZ": 100
   },
   "LittlePrince": {
     "name": "LittlePrince",
@@ -1749,7 +2204,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "LittlePrinceProjectile"
+    "rarity": "Common",
+    "projectile": "LittlePrinceProjectile",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "MegaKnight": {
     "name": "MegaKnight",
@@ -1765,6 +2223,38 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "ignorePushback": true,
+    "areaDamageRadius": 1.3,
+    "abilities": [
+      {
+        "type": "DASH",
+        "damage": 210,
+        "minRange": 3.5,
+        "maxRange": 5.0,
+        "radius": 2.2,
+        "cooldown": 0.9,
+        "pushback": 1.0,
+        "landingTime": 0.3,
+        "constantTime": 0.8
+      }
+    ]
+  },
+  "MegaKnight_EV1": {
+    "name": "MegaKnight_EV1",
+    "health": 1560,
+    "damage": 105,
+    "speed": 60.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.5,
+    "range": 1.2,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
     "areaDamageRadius": 1.3,
     "abilities": [
@@ -1795,7 +2285,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "MegaMinionSpit"
+    "rarity": "Common",
+    "projectile": "MegaMinionSpit",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "MergeMaiden_Mounted": {
     "name": "MergeMaiden_Mounted",
@@ -1811,7 +2304,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "MergeMaidenProjectile_Mounted"
+    "rarity": "Common",
+    "projectile": "MergeMaidenProjectile_Mounted",
+    "projectileStartRadius": 1900,
+    "projectileStartZ": 3950
   },
   "MergeMaiden_Normal": {
     "name": "MergeMaiden_Normal",
@@ -1826,7 +2322,10 @@
     "loadTime": 0.8,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 2500,
+    "projectileStartZ": 2000
   },
   "MightyMiner": {
     "name": "MightyMiner",
@@ -1842,6 +2341,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
     "ingamePathfindSpeed": 650,
     "abilities": [
@@ -1878,6 +2378,9 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathDamage": {
       "damage": 130,
       "radius": 3.0,
@@ -1901,8 +2404,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "crownTowerDamagePercent": -75,
-    "spawnPathfindSpeed": 650
+    "spawnPathfindSpeed": 650,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "MiniPekka": {
     "name": "MiniPekka",
@@ -1917,7 +2423,10 @@
     "loadTime": 1.1,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "MiniZapMachine": {
     "name": "MiniZapMachine",
@@ -1933,6 +2442,9 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 1200,
+    "projectileStartZ": 1800,
     "buffOnDamage": {
       "buff": "ZapFreeze",
       "duration": 0.5
@@ -1952,8 +2464,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
     "projectile": "MinionSpit",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "Monk": {
     "name": "Monk",
@@ -1969,6 +2484,9 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "abilities": [
       {
         "type": "VARIABLE_DAMAGE",
@@ -2003,9 +2521,12 @@
     "deployTime": 3.5,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
     "projectile": "MortarProjectile",
     "minimumRange": 3.5,
+    "projectileStartRadius": 600,
+    "projectileStartZ": 2500,
     "lifeTime": 30.0
   },
   "MovingCannon": {
@@ -2022,10 +2543,13 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "MovingCannonProjectile",
     "ignorePushback": true,
     "ignoreResurrect": true,
     "deployDelay": 0.4,
+    "projectileStartRadius": 1100,
+    "projectileStartZ": 1800,
     "ignoreBuff": [
       "VoodooCurse",
       "GoblinCurse"
@@ -2049,8 +2573,43 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "MusketeerProjectile",
-    "deployDelay": 0.3
+    "deployDelay": 0.3,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
+  },
+  "Musketeer_EV1": {
+    "name": "Musketeer_EV1",
+    "health": 282,
+    "damage": 85,
+    "speed": 60.0,
+    "mass": 5.0,
+    "collisionRadius": 0.5,
+    "sightRange": 6.0,
+    "range": 6.0,
+    "attackCooldown": 1.0,
+    "loadTime": 0.3,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectile": "MusketeerProjectile",
+    "deployDelay": 0.3,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
+    "attackSequence": {
+      "hits": [
+        {
+          "projectile": "Musketeer_EV1_normal_projectile"
+        },
+        {
+          "projectile": "Musketeer_EV1_snipe_projectile",
+          "customRange": 30.0
+        }
+      ],
+      "mode": "None"
+    }
   },
   "Pekka": {
     "name": "Pekka",
@@ -2066,7 +2625,29 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "ignorePushback": true
+    "rarity": "Common",
+    "ignorePushback": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
+  },
+  "Pekka_EV1": {
+    "name": "Pekka_EV1",
+    "health": 1469,
+    "damage": 319,
+    "speed": 45.0,
+    "mass": 18.0,
+    "collisionRadius": 0.75,
+    "sightRange": 5.0,
+    "range": 1.2,
+    "attackCooldown": 1.8,
+    "loadTime": 1.3,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "ignorePushback": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "Phoenix": {
     "name": "Phoenix",
@@ -2082,6 +2663,9 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900,
     "deathSpawnProjectile": "PhoenixFireball"
   },
   "PhoenixEgg": {
@@ -2098,8 +2682,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignoreResurrect": true,
     "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "ignoreBuff": [
       "VoodooCurse"
     ],
@@ -2125,7 +2712,10 @@
     "loadTime": 0.5,
     "deployTime": 0.733,
     "targetType": "ALL",
-    "movementType": "AIR"
+    "movementType": "AIR",
+    "rarity": "Common",
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900
   },
   "Prince": {
     "name": "Prince",
@@ -2141,6 +2731,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
     "jumpEnabled": true,
     "abilities": [
@@ -2166,10 +2757,13 @@
     "deployTime": 1.2,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "PrincessProjectile",
     "deployDelay": 0.4,
     "areaDamageRadius": 2.5,
-    "multipleProjectiles": 5
+    "multipleProjectiles": 5,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "RageBarbarian": {
     "name": "RageBarbarian",
@@ -2185,7 +2779,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathSpawn": [
       {
         "spawnCharacter": "RageBarbarianBottle",
@@ -2214,6 +2811,7 @@
     "deployTime": 0.5,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignoreBuff": [
       "Event_Berserk_OnStartBuff"
     ],
@@ -2230,6 +2828,35 @@
       "buffDuration": 1.0
     }
   },
+  "RageBarbarian_EV1": {
+    "name": "RageBarbarian_EV1",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": "",
+    "deathSpawn": [
+      {
+        "spawnCharacter": "RageBarbarianBottleEvo",
+        "spawnNumber": 1
+      }
+    ],
+    "deathAreaEffect": {
+      "name": "RageBarbarianEvoDummyForSpawn",
+      "radius": 0.0,
+      "lifeDuration": 0.05,
+      "hitsGround": false,
+      "hitsAir": false
+    }
+  },
   "RageBottle": {
     "name": "RageBottle",
     "health": 0,
@@ -2244,6 +2871,7 @@
     "deployTime": 0.5,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deathAreaEffect": {
       "name": "Rage",
       "radius": 3.0,
@@ -2271,8 +2899,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "jumpEnabled": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "liveSpawn": {
       "spawnCharacter": "RamRider",
       "spawnNumber": 1,
@@ -2301,10 +2932,13 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "RamRiderBola",
     "targetOnlyTroops": true,
     "ignoreResurrect": true,
     "ignoreTargetsWithBuff": "BolaSnare",
+    "projectileStartRadius": 800,
+    "projectileStartZ": 500,
     "ignoreBuff": [
       "VoodooCurse"
     ]
@@ -2322,7 +2956,10 @@
     "loadTime": 1.1,
     "deployTime": 1.0,
     "targetType": "GROUND",
-    "movementType": "GROUND"
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "RascalGirl": {
     "name": "RascalGirl",
@@ -2338,8 +2975,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "RascalGirlProjectile",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "Recruit": {
     "name": "Recruit",
@@ -2355,7 +2995,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "shieldHitpoints": 94
   },
   "RoyalGiant": {
@@ -2372,9 +3015,12 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "RoyalGiantProjectile",
     "targetOnlyBuildings": true,
-    "ignorePushback": true
+    "ignorePushback": true,
+    "projectileStartRadius": 1200,
+    "projectileStartZ": 2900
   },
   "RoyalHog": {
     "name": "RoyalHog",
@@ -2390,9 +3036,58 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "jumpEnabled": true,
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
+  },
+  "RoyalHog_EV1": {
+    "name": "RoyalHog_EV1",
+    "health": 327,
+    "damage": 29,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.6,
+    "sightRange": 9.5,
+    "range": 0.75,
+    "attackCooldown": 1.2,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "AIR",
+    "rarity": "Common",
+    "targetOnlyBuildings": true,
+    "jumpEnabled": true,
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
+    "transformation": {
+      "transformCharacter": "RoyalHog_EV1_Grounded",
+      "healthPercent": 99
+    }
+  },
+  "RoyalHog_EV1_Grounded": {
+    "name": "RoyalHog_EV1_Grounded",
+    "health": 327,
+    "damage": 29,
+    "speed": 120.0,
+    "mass": 2.0,
+    "collisionRadius": 0.6,
+    "sightRange": 9.5,
+    "range": 0.75,
+    "attackCooldown": 1.2,
+    "loadTime": 0.8,
+    "deployTime": 1.0,
+    "targetType": "GROUND",
+    "movementType": "AIR",
+    "rarity": "Common",
+    "targetOnlyBuildings": true,
+    "jumpEnabled": true,
+    "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "Skeleton": {
     "name": "Skeleton",
@@ -2408,7 +3103,26 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
-    "deployDelay": 0.4
+    "rarity": "Common",
+    "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350
+  },
+  "SkeletonArmy_EV1_Soldier": {
+    "name": "SkeletonArmy_EV1_Soldier",
+    "health": 0,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": ""
   },
   "SkeletonBalloon": {
     "name": "SkeletonBalloon",
@@ -2424,9 +3138,12 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "AIR",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "kamikaze": true,
     "ignoreResurrect": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "deathSpawn": [
       {
         "spawnCharacter": "SkeletonContainerNew",
@@ -2436,6 +3153,22 @@
     "ignoreBuff": [
       "VoodooCurse"
     ]
+  },
+  "SkeletonBalloon_EV1": {
+    "name": "SkeletonBalloon_EV1",
+    "health": 260,
+    "damage": 0,
+    "speed": 0.0,
+    "mass": 0.0,
+    "collisionRadius": 1.0,
+    "sightRange": 0.0,
+    "range": 0.0,
+    "attackCooldown": 0.0,
+    "loadTime": 0.0,
+    "deployTime": 0.0,
+    "targetType": "GROUND",
+    "movementType": "GROUND",
+    "rarity": ""
   },
   "SkeletonContainerNew": {
     "name": "SkeletonContainerNew",
@@ -2451,6 +3184,7 @@
     "deployTime": 0.6,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deathDamage": {
       "damage": 57,
       "radius": 2.0,
@@ -2483,7 +3217,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
-    "projectile": "SkeletonDragonProjectile"
+    "rarity": "Common",
+    "projectile": "SkeletonDragonProjectile",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "SkeletonKing": {
     "name": "SkeletonKing",
@@ -2499,8 +3236,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "ignorePushback": true,
-    "areaDamageRadius": 1.3
+    "areaDamageRadius": 1.3,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "SkeletonWarrior": {
     "name": "SkeletonWarrior",
@@ -2516,7 +3256,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "deployDelay": 0.4,
+    "projectileStartRadius": 350,
+    "projectileStartZ": 350,
     "shieldHitpoints": 100
   },
   "SpearGoblin": {
@@ -2533,8 +3276,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "SpearGoblinProjectile",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartZ": 600
   },
   "SpearGoblinGiant": {
     "name": "SpearGoblinGiant",
@@ -2550,9 +3295,41 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "AIR",
+    "rarity": "Common",
     "projectile": "SpearGoblinGiantProjectile",
     "ignoreResurrect": true,
     "deployDelay": 0.4,
+    "projectileStartZ": 600,
+    "deathSpawn": [
+      {
+        "spawnCharacter": "SpearGoblin",
+        "spawnNumber": 1,
+        "deployTime": 0.7
+      }
+    ],
+    "ignoreBuff": [
+      "VoodooCurse"
+    ]
+  },
+  "SpearGoblinGiant_EV1": {
+    "name": "SpearGoblinGiant_EV1",
+    "health": 52,
+    "damage": 32,
+    "speed": 120.0,
+    "mass": 1.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.0,
+    "range": 5.0,
+    "attackCooldown": 1.7,
+    "loadTime": 1.2,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "rarity": "Common",
+    "projectile": "SpearGoblinGiantProjectile",
+    "ignoreResurrect": true,
+    "deployDelay": 0.4,
+    "projectileStartZ": 600,
     "deathSpawn": [
       {
         "spawnCharacter": "SpearGoblin",
@@ -2578,8 +3355,10 @@
     "deployTime": 0.5,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "SpearGoblinProjectile",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartZ": 600
   },
   "SuspiciousBush": {
     "name": "SuspiciousBush",
@@ -2595,6 +3374,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "kamikaze": true,
     "ignoreResurrect": true,
@@ -2645,7 +3425,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.0,
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 1000,
     "stealth": {
       "hidesWhenNotAttacking": true,
       "hideTimeMs": 800,
@@ -2667,8 +3450,11 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "ThreeMusketeer_Rework_Projectile",
     "deployDelay": 0.3,
+    "projectileStartRadius": 750,
+    "projectileStartZ": 1400,
     "attackSequence": {
       "hits": [
         {
@@ -2695,7 +3481,10 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
+    "projectileStartRadius": 400,
+    "projectileStartZ": 400,
     "deathSpawn": [
       {
         "spawnCharacter": "Skeleton",
@@ -2724,8 +3513,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "areaDamageRadius": 2.0,
-    "selfAsAoeCenter": true
+    "selfAsAoeCenter": true,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450
   },
   "VoodooHog": {
     "name": "VoodooHog",
@@ -2741,9 +3533,12 @@
     "deployTime": 0.2,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
     "jumpEnabled": true,
     "deployDelay": 0.4,
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "ignoreBuff": [
       "VoodooCurse"
     ]
@@ -2762,6 +3557,7 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "WallbreakerProjectile",
     "targetOnlyBuildings": true,
     "kamikaze": true,
@@ -2782,7 +3578,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "WitchProjectile",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
     "liveSpawn": {
       "spawnCharacter": "Skeleton",
       "spawnNumber": 4,
@@ -2805,10 +3604,39 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "VoodooProjectile",
+    "projectileStartRadius": 1600,
+    "projectileStartZ": 1000,
     "buffOnDamage": {
       "buff": "VoodooCurse",
       "duration": 5.0
+    }
+  },
+  "Witch_EV1": {
+    "name": "Witch_EV1",
+    "health": 328,
+    "damage": 53,
+    "speed": 60.0,
+    "mass": 8.0,
+    "collisionRadius": 0.5,
+    "sightRange": 5.5,
+    "range": 5.5,
+    "attackCooldown": 1.1,
+    "loadTime": 0.4,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "GROUND",
+    "rarity": "Common",
+    "projectile": "EV1_Witch_Projectile",
+    "projectileStartRadius": 450,
+    "projectileStartZ": 450,
+    "liveSpawn": {
+      "spawnCharacter": "Skeleton",
+      "spawnNumber": 4,
+      "spawnPauseTime": 7.0,
+      "spawnStartTime": 1.0,
+      "spawnRadius": 2.0
     }
   },
   "Wizard": {
@@ -2825,7 +3653,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
-    "projectile": "chr_wizardProjectile"
+    "rarity": "Common",
+    "projectile": "chr_wizardProjectile",
+    "projectileStartRadius": 550,
+    "projectileStartZ": 1500
   },
   "Xbow": {
     "name": "Xbow",
@@ -2841,8 +3672,11 @@
     "deployTime": 3.5,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "visualRadius": 1.5,
     "projectile": "xbow_projectile",
+    "projectileStartRadius": 1000,
+    "projectileStartZ": 2400,
     "lifeTime": 30.0
   },
   "ZapMachine": {
@@ -2859,9 +3693,38 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "ZapMachineProjectile",
     "ignorePushback": true,
-    "attackPushBack": 750
+    "attackPushBack": 750,
+    "projectileStartRadius": 1200,
+    "projectileStartZ": 1800
+  },
+  "electro_dragon_ev1": {
+    "name": "electro_dragon_ev1",
+    "health": 371,
+    "damage": 75,
+    "speed": 60.0,
+    "mass": 7.0,
+    "collisionRadius": 0.6,
+    "sightRange": 5.5,
+    "range": 3.5,
+    "attackCooldown": 2.1,
+    "loadTime": 1.4,
+    "deployTime": 1.0,
+    "targetType": "ALL",
+    "movementType": "AIR",
+    "rarity": "Common",
+    "projectile": "ElectroDragonProjectile",
+    "projectileStartRadius": 1250,
+    "projectileStartZ": 1900,
+    "attackSequence": {
+      "hits": [
+        {
+          "doAttackAction": "electro_dragon_ev1_attack_group"
+        }
+      ]
+    }
   },
   "goblinstein": {
     "name": "goblinstein",
@@ -2877,8 +3740,11 @@
     "deployTime": 1.0,
     "targetType": "GROUND",
     "movementType": "GROUND",
+    "rarity": "Common",
     "targetOnlyBuildings": true,
-    "ignorePushback": true
+    "ignorePushback": true,
+    "projectileStartRadius": 500,
+    "projectileStartZ": 1900
   },
   "goblinstein_doctor": {
     "name": "goblinstein_doctor",
@@ -2894,7 +3760,10 @@
     "deployTime": 1.0,
     "targetType": "ALL",
     "movementType": "GROUND",
+    "rarity": "Common",
     "projectile": "prj_goblinstein_doctor",
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "projectileStartRadius": 1500,
+    "projectileStartZ": 450
   }
 }

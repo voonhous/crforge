@@ -7,7 +7,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 60
+    "gravity": 60,
+    "rarity": "Common"
   },
   "ArcherQueenArrow": {
     "name": "ArcherQueenArrow",
@@ -17,7 +18,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 60
+    "gravity": 60,
+    "rarity": "Common"
   },
   "ArrowsSpell": {
     "name": "ArrowsSpell",
@@ -29,6 +31,7 @@
     "onlyEnemies": true,
     "radius": 1.4,
     "gravity": 50,
+    "rarity": "Common",
     "deflectBehaviours": [
       "CheckOnlyTargetPosition",
       "UseSpellsTowerDamageMul"
@@ -47,6 +50,22 @@
     "projectileRadius": 1.0,
     "projectileRange": 7.5,
     "minDistance": 4.5,
+    "rarity": "Common",
+    "pingpong": true
+  },
+  "AxeMan_EV1_Projectile_Strong1": {
+    "name": "AxeMan_EV1_Projectile_Strong1",
+    "damage": 0,
+    "speed": 550,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 1.0,
+    "projectileRadius": 1.0,
+    "projectileRange": 7.5,
+    "minDistance": 4.5,
+    "rarity": "Common",
     "pingpong": true
   },
   "BabyDragonProjectile": {
@@ -58,7 +77,20 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 1.5,
-    "gravity": 250
+    "gravity": 250,
+    "rarity": "Common"
+  },
+  "BabyDragon_evo_projectile": {
+    "name": "BabyDragon_evo_projectile",
+    "damage": 63,
+    "speed": 500,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 1.5,
+    "gravity": 250,
+    "rarity": "Common"
   },
   "BarbLogProjectile": {
     "name": "BarbLogProjectile",
@@ -72,6 +104,7 @@
     "radiusY": 0.6,
     "minDistance": 3.0,
     "gravity": 30,
+    "rarity": "Common",
     "spawnProjectile": "BarbLogProjectileRolling",
     "deflectBehaviours": [
       "NoDeflect"
@@ -89,6 +122,7 @@
     "projectileRadiusY": 0.6,
     "projectileRange": 4.5,
     "minDistance": 2.5,
+    "rarity": "Common",
     "deflectBehaviours": [
       "InvertDirection",
       "UseSpellsTowerDamageMul"
@@ -108,10 +142,22 @@
     "onlyEnemies": true,
     "radius": 2.0,
     "gravity": 60,
+    "rarity": "Common",
     "spawn": {
       "spawnCharacter": "Barbarian",
       "deployTime": 0.2
     }
+  },
+  "BlowdartGoblinEvoProjectile": {
+    "name": "BlowdartGoblinEvoProjectile",
+    "damage": 59,
+    "speed": 800,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "onlyEnemies": true,
+    "gravity": 120,
+    "rarity": "Common"
   },
   "BlowdartGoblinProjectile": {
     "name": "BlowdartGoblinProjectile",
@@ -121,7 +167,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 120
+    "gravity": 120,
+    "rarity": "Common"
   },
   "BlowdartGoblinProjectileParty": {
     "name": "BlowdartGoblinProjectileParty",
@@ -131,7 +178,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 120
+    "gravity": 120,
+    "rarity": "Common"
   },
   "BombSkeletonProjectile": {
     "name": "BombSkeletonProjectile",
@@ -142,7 +190,8 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 1.5,
-    "gravity": 200
+    "gravity": 200,
+    "rarity": "Common"
   },
   "BombTowerProjectile": {
     "name": "BombTowerProjectile",
@@ -153,7 +202,8 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 1.5,
-    "gravity": 200
+    "gravity": 200,
+    "rarity": "Common"
   },
   "BowlerProjectile": {
     "name": "BowlerProjectile",
@@ -166,6 +216,7 @@
     "radius": 1.8,
     "projectileRadius": 1.0,
     "projectileRange": 7.5,
+    "rarity": "Common",
     "pushback": 1000,
     "deflectBehaviours": [
       "InvertDirection"
@@ -179,7 +230,19 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 120
+    "gravity": 120,
+    "rarity": "Common"
+  },
+  "EV1_Witch_Projectile": {
+    "name": "EV1_Witch_Projectile",
+    "damage": 53,
+    "speed": 600,
+    "homing": true,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 1.5,
+    "rarity": "Common"
   },
   "ElectroDragonProjectile": {
     "name": "ElectroDragonProjectile",
@@ -194,6 +257,7 @@
     "chainedHitRadius": 4.0,
     "chainedHitCount": 3,
     "gravity": 400,
+    "rarity": "Common",
     "deflectBehaviours": [
       "NoDeflect"
     ]
@@ -210,6 +274,7 @@
     "buffDuration": 0.5,
     "chainedHitRadius": 4.0,
     "chainedHitCount": 9,
+    "rarity": "Common",
     "deflectBehaviours": [
       "NoDeflect"
     ]
@@ -224,7 +289,10 @@
     "onlyEnemies": true,
     "radius": 0.25,
     "projectileRadius": 0.25,
-    "projectileRange": 11.0
+    "projectileRange": 11.0,
+    "rarity": "Common",
+    "homingTime": 100,
+    "homingMinDistance": 5000
   },
   "FireSpiritsProjectile": {
     "name": "FireSpiritsProjectile",
@@ -236,6 +304,7 @@
     "onlyEnemies": true,
     "radius": 2.3,
     "gravity": 400,
+    "rarity": "Common",
     "deflectBehaviours": [
       "NoDeflect"
     ]
@@ -250,6 +319,7 @@
     "onlyEnemies": true,
     "radius": 2.5,
     "gravity": 50,
+    "rarity": "Common",
     "pushback": 1000,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
@@ -270,6 +340,7 @@
     "projectileRange": 5.0,
     "minDistance": 5.0,
     "gravity": 50,
+    "rarity": "Common",
     "spawnCount": 5,
     "spawnRadius": 0.08,
     "deflectBehaviours": [
@@ -286,7 +357,18 @@
     "onlyEnemies": true,
     "scatter": "Line",
     "gravity": 50,
+    "rarity": "Common",
     "spawnProjectile": "FirecrackerExplosion"
+  },
+  "Furnace_Evolution_Projectile": {
+    "name": "Furnace_Evolution_Projectile",
+    "damage": 70,
+    "speed": 600,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "gravity": 20,
+    "rarity": "Common"
   },
   "Furnace_Rework_Projectile": {
     "name": "Furnace_Rework_Projectile",
@@ -295,7 +377,8 @@
     "homing": false,
     "aoeToAir": false,
     "aoeToGround": false,
-    "gravity": 20
+    "gravity": 20,
+    "rarity": "Common"
   },
   "GiantBuffProjectile": {
     "name": "GiantBuffProjectile",
@@ -305,7 +388,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "onlyOwnTroops": true,
-    "radius": 0.001
+    "radius": 0.001,
+    "rarity": "Common"
   },
   "GoblinBarrelSpell": {
     "name": "GoblinBarrelSpell",
@@ -317,6 +401,7 @@
     "onlyEnemies": true,
     "radius": 1.5,
     "gravity": 40,
+    "rarity": "Common",
     "spawn": {
       "spawnCharacter": "Goblin",
       "spawnNumber": 3,
@@ -333,6 +418,7 @@
     "onlyEnemies": true,
     "radius": 2.5,
     "gravity": 200,
+    "rarity": "Common",
     "pushback": 2000,
     "deflectBehaviours": [
       "NoDeflect"
@@ -347,7 +433,8 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 1.5,
-    "gravity": 200
+    "gravity": 200,
+    "rarity": "Common"
   },
   "GoblinMachineRocketProjectile": {
     "name": "GoblinMachineRocketProjectile",
@@ -359,6 +446,7 @@
     "onlyEnemies": true,
     "radius": 1.5,
     "gravity": 44,
+    "rarity": "Common",
     "crownTowerDamagePercent": -50
   },
   "GoblinProjectile": {
@@ -368,6 +456,7 @@
     "homing": false,
     "aoeToAir": false,
     "aoeToGround": false,
+    "rarity": "Common",
     "spawn": {
       "spawnCharacter": "Goblin_Stab",
       "deployTime": 0.1
@@ -383,6 +472,7 @@
     "onlyEnemies": true,
     "radius": 1.5,
     "gravity": 400,
+    "rarity": "Common",
     "deflectBehaviours": [
       "NoDeflect"
     ],
@@ -409,6 +499,21 @@
     "projectileRadius": 0.3,
     "scatter": "Line",
     "projectileRange": 6.5,
+    "rarity": "Common",
+    "checkCollisions": true
+  },
+  "Hunter_EV1_shotgun_projectile": {
+    "name": "Hunter_EV1_shotgun_projectile",
+    "damage": 33,
+    "speed": 550,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "projectileRadius": 0.3,
+    "scatter": "Line",
+    "projectileRange": 6.5,
+    "rarity": "Common",
     "checkCollisions": true
   },
   "IceSpiritsProjectile": {
@@ -423,6 +528,7 @@
     "targetBuff": "Freeze",
     "buffDuration": 1.1,
     "gravity": 400,
+    "rarity": "Common",
     "deflectBehaviours": [
       "NoDeflect"
     ]
@@ -435,7 +541,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "onlyEnemies": true,
-    "gravity": 250
+    "gravity": 250,
+    "rarity": "Common"
   },
   "LavaPupProjectile": {
     "name": "LavaPupProjectile",
@@ -445,7 +552,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "onlyEnemies": true,
-    "gravity": 250
+    "gravity": 250,
+    "rarity": "Common"
   },
   "LittlePrinceProjectile": {
     "name": "LittlePrinceProjectile",
@@ -455,7 +563,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 120
+    "gravity": 120,
+    "rarity": "Common"
   },
   "LogProjectile": {
     "name": "LogProjectile",
@@ -469,6 +578,7 @@
     "radiusY": 0.6,
     "minDistance": 3.0,
     "gravity": 30,
+    "rarity": "Common",
     "spawnProjectile": "LogProjectileRolling",
     "spawnChain": 1,
     "deflectBehaviours": [
@@ -487,6 +597,7 @@
     "projectileRadiusY": 0.6,
     "projectileRange": 10.1,
     "minDistance": 2.5,
+    "rarity": "Common",
     "pushback": 700,
     "pushbackAll": true,
     "deflectBehaviours": [
@@ -504,6 +615,22 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 2.2,
+    "rarity": "Common",
+    "pushback": 1000,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ]
+  },
+  "MegaKnight_EV1_appear": {
+    "name": "MegaKnight_EV1_appear",
+    "damage": 168,
+    "speed": 1000,
+    "homing": false,
+    "aoeToAir": false,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 2.2,
+    "rarity": "Common",
     "pushback": 1000,
     "deflectBehaviours": [
       "NoDeflect"
@@ -516,7 +643,8 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "MergeMaidenProjectile_Mounted": {
     "name": "MergeMaidenProjectile_Mounted",
@@ -525,7 +653,8 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "MinionSpit": {
     "name": "MinionSpit",
@@ -534,7 +663,8 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "MortarProjectile": {
     "name": "MortarProjectile",
@@ -545,7 +675,8 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 2.0,
-    "gravity": 60
+    "gravity": 60,
+    "rarity": "Common"
   },
   "MovingCannonProjectile": {
     "name": "MovingCannonProjectile",
@@ -554,7 +685,8 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "MusketeerProjectile": {
     "name": "MusketeerProjectile",
@@ -563,7 +695,28 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
+  },
+  "Musketeer_EV1_normal_projectile": {
+    "name": "Musketeer_EV1_normal_projectile",
+    "damage": 85,
+    "speed": 1000,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "onlyEnemies": true,
+    "rarity": "Common"
+  },
+  "Musketeer_EV1_snipe_projectile": {
+    "name": "Musketeer_EV1_snipe_projectile",
+    "damage": 0,
+    "speed": 2650,
+    "homing": true,
+    "aoeToAir": false,
+    "aoeToGround": false,
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "PhoenixFireball": {
     "name": "PhoenixFireball",
@@ -575,6 +728,7 @@
     "onlyEnemies": true,
     "radius": 2.5,
     "gravity": 50,
+    "rarity": "Common",
     "pushback": 2000,
     "deflectBehaviours": [
       "NoDeflect"
@@ -592,7 +746,8 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 2.0,
-    "gravity": 90
+    "gravity": 90,
+    "rarity": "Common"
   },
   "RamRiderBola": {
     "name": "RamRiderBola",
@@ -604,6 +759,7 @@
     "onlyEnemies": true,
     "targetBuff": "BolaSnare",
     "buffDuration": 2.0,
+    "rarity": "Common",
     "pingpong": true,
     "pingpongMovingShooter": 0.2
   },
@@ -615,7 +771,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 120
+    "gravity": 120,
+    "rarity": "Common"
   },
   "RocketSpell": {
     "name": "RocketSpell",
@@ -627,6 +784,7 @@
     "onlyEnemies": true,
     "radius": 2.0,
     "gravity": 50,
+    "rarity": "Common",
     "pushback": 1800,
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
@@ -641,6 +799,7 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
+    "rarity": "Common",
     "deflectBehaviours": [
       "IgnoreHeight"
     ]
@@ -654,7 +813,8 @@
     "aoeToGround": true,
     "onlyEnemies": true,
     "radius": 0.8,
-    "gravity": 250
+    "gravity": 250,
+    "rarity": "Common"
   },
   "SnowballSpell": {
     "name": "SnowballSpell",
@@ -668,7 +828,43 @@
     "targetBuff": "IceWizardSlowDown",
     "buffDuration": 3.0,
     "gravity": 50,
+    "rarity": "Common",
     "pushback": 1800,
+    "deflectBehaviours": [
+      "UseSpellsTowerDamageMul"
+    ],
+    "crownTowerDamagePercent": -70
+  },
+  "SnowballSpell_EV1": {
+    "name": "SnowballSpell_EV1",
+    "damage": 0,
+    "speed": 800,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 2.5,
+    "minDistance": 4.5,
+    "gravity": 50,
+    "rarity": "Common",
+    "spawnProjectile": "SnowballSpell_EV1_Rolling",
+    "spawnChain": 1,
+    "deflectBehaviours": [
+      "NoDeflect"
+    ],
+    "crownTowerDamagePercent": -70
+  },
+  "SnowballSpell_EV1_Rolling": {
+    "name": "SnowballSpell_EV1_Rolling",
+    "damage": 70,
+    "speed": 800,
+    "homing": false,
+    "aoeToAir": true,
+    "aoeToGround": true,
+    "onlyEnemies": true,
+    "radius": 2.5,
+    "gravity": 50,
+    "rarity": "Common",
     "deflectBehaviours": [
       "UseSpellsTowerDamageMul"
     ],
@@ -682,7 +878,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 150
+    "gravity": 150,
+    "rarity": "Common"
   },
   "SpearGoblinProjectile": {
     "name": "SpearGoblinProjectile",
@@ -692,7 +889,8 @@
     "aoeToAir": false,
     "aoeToGround": false,
     "onlyEnemies": true,
-    "gravity": 150
+    "gravity": 150,
+    "rarity": "Common"
   },
   "ThreeMusketeer_Rework_Projectile": {
     "name": "ThreeMusketeer_Rework_Projectile",
@@ -701,7 +899,8 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "TowerCannonball": {
     "name": "TowerCannonball",
@@ -710,7 +909,8 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   },
   "VoodooProjectile": {
     "name": "VoodooProjectile",
@@ -722,7 +922,8 @@
     "onlyEnemies": true,
     "targetBuff": "VoodooCurse",
     "buffDuration": 5.0,
-    "gravity": 20
+    "gravity": 20,
+    "rarity": "Common"
   },
   "WallbreakerProjectile": {
     "name": "WallbreakerProjectile",
@@ -735,6 +936,7 @@
     "radius": 1.5,
     "projectileRange": 0.001,
     "gravity": 400,
+    "rarity": "Common",
     "deflectBehaviours": [
       "NoDeflect"
     ]
@@ -747,7 +949,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "onlyEnemies": true,
-    "radius": 1.5
+    "radius": 1.5,
+    "rarity": "Common"
   },
   "ZapMachineProjectile": {
     "name": "ZapMachineProjectile",
@@ -757,7 +960,8 @@
     "aoeToAir": false,
     "aoeToGround": true,
     "onlyEnemies": true,
-    "radius": 1.8
+    "radius": 1.8,
+    "rarity": "Common"
   },
   "chr_wizardProjectile": {
     "name": "chr_wizardProjectile",
@@ -767,7 +971,8 @@
     "aoeToAir": true,
     "aoeToGround": true,
     "onlyEnemies": true,
-    "radius": 1.5
+    "radius": 1.5,
+    "rarity": "Common"
   },
   "ice_wizardProjectile": {
     "name": "ice_wizardProjectile",
@@ -780,7 +985,8 @@
     "radius": 1.5,
     "targetBuff": "IceWizardSlowDown",
     "buffDuration": 2.5,
-    "gravity": 50
+    "gravity": 50,
+    "rarity": "Common"
   },
   "prj_goblinstein_doctor": {
     "name": "prj_goblinstein_doctor",
@@ -792,7 +998,8 @@
     "onlyEnemies": true,
     "targetBuff": "buff_goblinstein_doctor",
     "buffDuration": 0.5,
-    "gravity": 250
+    "gravity": 250,
+    "rarity": "Common"
   },
   "xbow_projectile": {
     "name": "xbow_projectile",
@@ -801,6 +1008,7 @@
     "homing": true,
     "aoeToAir": false,
     "aoeToGround": false,
-    "onlyEnemies": true
+    "onlyEnemies": true,
+    "rarity": "Common"
   }
 }

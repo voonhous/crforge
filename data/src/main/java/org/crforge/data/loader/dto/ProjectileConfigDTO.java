@@ -78,5 +78,18 @@ public class ProjectileConfigDTO {
   // Data-only fields (already handled by existing logic or visual-only)
   private boolean onlyEnemies;
   private int spawnChain;
+
+  // Ballistic arc: the flight's height follows a parabola under this gravity
   private int gravity;
+
+  // The row's own rarity: a projectile's damage is scaled at the launcher's level re-based on it
+  private String rarity;
+
+  // "KingTower" or "PrincessTower" when the damage scales as a crown tower's rather than a card's
+  private String damageScalingMode;
+
+  // Homing that lasts this many milliseconds, taken up only from at least homingMinDistance away
+  // (raw game units)
+  private int homingTime;
+  private int homingMinDistance;
 }

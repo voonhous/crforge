@@ -18,6 +18,22 @@ public class ProjectileStats {
   // Travel speed in game units per second (15,000 = 15 tiles per second)
   @Builder.Default private final float speed = 15000f;
 
+  // Travel speed as published: game units per 50 ms step. The battle core reads this directly.
+  @Builder.Default private final int rawSpeed = 0;
+
+  // Ballistic arc: the flight's height follows a parabola under this gravity; 0 flies straight
+  @Builder.Default private final int gravity = 0;
+
+  // The row's own rarity; a projectile's damage is scaled at the launcher's level re-based on it
+  @Builder.Default private final Rarity rarity = Rarity.UNKNOWN;
+
+  // "KingTower" or "PrincessTower" when the damage scales as a crown tower's, else null
+  private final String damageScalingMode;
+
+  // Homing that lasts this many milliseconds, taken up only from at least homingMinDistance away
+  @Builder.Default private final int homingTime = 0;
+  @Builder.Default private final int homingMinDistance = 0;
+
   // Spatial fields are in integer game units (1,000 per tile)
   @Builder.Default private final int radius = 0; // AOE radius
   @Builder.Default private final int radiusY = 0; // Elliptical AOE depth (Log/BarbLog)
@@ -105,6 +121,12 @@ public class ProjectileStats {
         .name(name)
         .damage(damage)
         .speed(speed)
+        .rawSpeed(rawSpeed)
+        .gravity(gravity)
+        .rarity(rarity)
+        .damageScalingMode(damageScalingMode)
+        .homingTime(homingTime)
+        .homingMinDistance(homingMinDistance)
         .radius(radius)
         .radiusY(radiusY)
         .homing(homing)

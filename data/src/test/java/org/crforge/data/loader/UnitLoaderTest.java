@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
@@ -58,6 +59,69 @@ class UnitLoaderTest {
     assertThat(knight.getLoadTime()).isCloseTo(0.7f, within(0.01f));
     assertThat(knight.getTargetType()).isEqualTo(TargetType.GROUND);
     assertThat(knight.getMovementType()).isEqualTo(MovementType.GROUND);
+  }
+
+  @Test
+  void loadUnits_shouldCarryTheLaunchColumnsAndTheRowsRarity() {
+    String json =
+        """
+        {
+          "KingTower": {
+            "name": "KingTower",
+            "health": 2400,
+            "damage": 0,
+            "speed": 0,
+            "mass": 0,
+            "collisionRadius": 1.4,
+            "sightRange": 7.0,
+            "range": 7.0,
+            "attackCooldown": 1.0,
+            "loadTime": 0.5,
+            "targetType": "ALL",
+            "movementType": "BUILDING",
+            "rarity": "Common",
+            "projectileStartRadius": 750,
+            "projectileStartZ": 3500,
+            "projectileYOffset": 400
+          }
+        }
+        """;
+
+    TroopStats king = UnitLoader.loadUnits(toStream(json), Map.of()).get("KingTower");
+
+    // Launch offsets are published in game units and kept as they are
+    assertThat(king.getProjectileStartRadius()).isEqualTo(750);
+    assertThat(king.getProjectileStartZ()).isEqualTo(3500);
+    assertThat(king.getProjectileYOffset()).isEqualTo(400);
+    assertThat(king.getRarity()).isEqualTo(Rarity.COMMON);
+  }
+
+  @Test
+  void loadUnits_shouldLeaveTheLaunchColumnsAndTheRarityUnset() {
+    String json =
+        """
+        {
+          "Knight": {
+            "name": "Knight",
+            "health": 690,
+            "damage": 79,
+            "speed": 60.0,
+            "mass": 6.0,
+            "sightRange": 5.5,
+            "range": 1.2,
+            "attackCooldown": 1.2,
+            "targetType": "GROUND",
+            "movementType": "GROUND"
+          }
+        }
+        """;
+
+    TroopStats knight = UnitLoader.loadUnits(toStream(json), Map.of()).get("Knight");
+
+    assertThat(knight.getProjectileStartRadius()).isZero();
+    assertThat(knight.getProjectileStartZ()).isZero();
+    assertThat(knight.getProjectileYOffset()).isZero();
+    assertThat(knight.getRarity()).isEqualTo(Rarity.UNKNOWN);
   }
 
   @Test

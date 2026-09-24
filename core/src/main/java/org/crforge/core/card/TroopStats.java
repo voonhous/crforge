@@ -53,6 +53,16 @@ public class TroopStats {
 
   private final ProjectileStats projectile;
 
+  // Where a projectile leaves the unit, in game units: this far along the line to the target, this
+  // high, and shifted this far along the arena (mirrored for the top side)
+  @Builder.Default private final int projectileStartRadius = 0;
+  @Builder.Default private final int projectileStartZ = 0;
+  @Builder.Default private final int projectileYOffset = 0;
+
+  // The row's own rarity, which the level a unit is created at is packed against. UNKNOWN when the
+  // data does not carry it; the deploying card's rarity stands in then.
+  @Builder.Default private final Rarity rarity = Rarity.UNKNOWN;
+
   // Building lifetime (seconds); 0 means no lifetime limit
   @Builder.Default private final float lifeTime = 0f;
 
