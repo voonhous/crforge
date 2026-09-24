@@ -137,7 +137,7 @@ public final class CandidateSelector {
           towerLike = true;
         }
       }
-      int extra = candidate.king() ? crownExtra : candidate.building() ? buildingExtra : 0;
+      int extra = candidate.crownTower() ? crownExtra : candidate.building() ? buildingExtra : 0;
       int total = extra + reach;
       int reduced = Math.max(squared - reduction, 0);
       if (Integer.compareUnsigned(reduced, total * total) > 0 && !useAll) {

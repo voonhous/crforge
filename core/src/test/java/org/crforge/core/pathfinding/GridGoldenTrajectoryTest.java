@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Test;
  * Each record holds the unit's position, its state, the tower it was heading for and how many nodes
  * of its route were left, at the point in the tick where the reference recorded it.
  *
- * <p>Two of the five - {@code knight_right_rear} and {@code knight_behind_king} - deploy the unit
+ * <p>Two of the six - {@code knight_right_rear} and {@code knight_behind_king} - deploy the unit
  * right beside one of its own towers, so that the passes which look at the unit's neighbours are
  * covered end to end and not only on trajectories that never come near a building.
  *
@@ -87,6 +87,14 @@ class GridGoldenTrajectoryTest {
   @DisplayName("a Knight deployed behind its king tower keeps the right lane and locks at tick 368")
   void behindKingDeployment() {
     replay("knight_behind_king", "PrincessTower_1_2", 368);
+  }
+
+  @Test
+  @DisplayName(
+      "a Knight deployed inside the left lane near the middle is kept to its lane's tower for its"
+          + " first ten walking ticks, then walks at the king until the princess tower is closer")
+  void innerLeftDeployment() {
+    replay("knight_left_inner", "PrincessTower_1_1", 259);
   }
 
   /**

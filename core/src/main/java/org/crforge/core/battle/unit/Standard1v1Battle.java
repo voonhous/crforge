@@ -57,7 +57,9 @@ public class Standard1v1Battle {
         int y = (side == WorldEntity.SIDE_TOP ? tileMap.height() - row : row) * TileMap.CELL_UNITS;
         battle
             .getHolder()
-            .add(new TowerEntity(data, data.name() + "_" + side + "_" + i, side, x, y, towerLevel));
+            .add(
+                new TowerEntity(
+                    tileMap, data, data.name() + "_" + side + "_" + i, side, x, y, towerLevel));
       }
     }
   }

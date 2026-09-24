@@ -43,7 +43,9 @@ final class StandardTowers {
     tower.setX(x);
     tower.setY(side == 0 ? y : ARENA_LENGTH_UNITS - y);
     tower.setCollisionRadius(radius);
-    tower.setKing(king);
+    // Every tower is a crown tower; only the king fills its side's tower slot.
+    tower.setCrownTower(true);
+    tower.setKingCandidate(king ? 1 : 0);
     tower.setBuilding(true);
     tower.setOccludes(true);
     return tower;

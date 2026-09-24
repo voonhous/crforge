@@ -138,9 +138,12 @@ public class TargetView {
     return entity.isBuilding();
   }
 
-  /** True for a king tower. Query results order king towers last. */
-  public boolean king() {
-    return entity.isKing();
+  /**
+   * True for a crown tower, the king tower and the princess towers alike. Query results order them
+   * last and the selector notices them from farther away.
+   */
+  public boolean crownTower() {
+    return entity.isCrownTower();
   }
 
   /** True for an air unit. */
@@ -154,8 +157,9 @@ public class TargetView {
   }
 
   /**
-   * A candidate flag the validator and the selector read. The crown towers answer it and several
-   * tower filters branch on it; its meaning beyond that is not documented.
+   * The tower slot answer: true for the king tower alone, the entity that fills its side's tower
+   * slot. The validator's tower filters branch on it; the crown-tower flag, which every tower
+   * answers, is a different question.
    */
   public boolean towerFlag() {
     return (entity.getKingCandidate() & 1) != 0;

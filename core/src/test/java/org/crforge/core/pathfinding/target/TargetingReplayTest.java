@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.grid.LaneAssignment;
+import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
@@ -64,6 +66,7 @@ class TargetingReplayTest {
     private final List<Record> records = new ArrayList<>();
     private final List<GridEntity> entities = new ArrayList<>();
     private final SpatialIndex index = new SpatialIndex(ARENA_CELLS_WIDE, ARENA_CELLS_HIGH);
+    private final TileMap arena = TileMap.standard1v1();
     private final TargetingState state = new TargetingState();
     private final SelectionChain chain;
     private final GridEntity unit = new GridEntity();
@@ -125,8 +128,18 @@ class TargetingReplayTest {
         tower.setY(fixtureTower.y());
         tower.setCollisionRadius(king ? 1400 : 1000);
         tower.setBuilding(true);
-        tower.setKing(king);
+        tower.setCrownTower(true);
         tower.setKingCandidate(king ? 1 : 0);
+        tower.setLane(
+            LaneAssignment.lane(
+                arena.width(),
+                arena.height(),
+                arena.width(),
+                tower.getX(),
+                tower.getY(),
+                -1,
+                0,
+                arena::bits));
         tower.setTargetable(1);
         entities.add(tower);
 
@@ -163,6 +176,9 @@ class TargetingReplayTest {
         unit.setState(GridEntityState.MOVING);
       }
       index.clear();
+      // The state visit that follows the targeting pass adds one step to the unit's elapsed time
+      // in every state the replay runs through; the default selection reads it on the next tick.
+      unit.setDelay(unit.getDelay() + TargetingQueries.TICK_MS);
     }
 
     /** Replays every recorded tick from the first moving one, checking the target and the state. */
@@ -212,6 +228,21 @@ class TargetingReplayTest {
 
     assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_1");
     assertThat(firstAttackingTick(replay)).isEqualTo(235);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit deployed inside the left lane near the middle takes its lane's tower for ten ticks,"
+          + " the king from tick 30 and the princess tower again from tick 68")
+  void innerLeftDeployment() throws IOException {
+    Replay replay = load("knight_left_inner");
+
+    replay.replay();
+
+    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_1");
+    assertThat(replay.records.get(30).reference()).isEqualTo("KingTower_1_0");
+    assertThat(replay.records.get(68).reference()).isEqualTo("PrincessTower_1_1");
+    assertThat(firstAttackingTick(replay)).isEqualTo(259);
   }
 
   @Test

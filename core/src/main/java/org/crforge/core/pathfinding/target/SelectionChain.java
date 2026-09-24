@@ -239,7 +239,7 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
         state.getOwner().getX(),
         state.getOwner().getY(),
         state.getOwner().getLane(),
-        AttackRange.attackRangeWithRadius(state),
+        state.getOwner().getDelay(),
         arenaHeightCells,
         seed,
         registeredTowers,

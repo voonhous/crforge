@@ -99,7 +99,7 @@ public abstract class WorldEntity extends BattleEntity {
             null);
     // A candidate advertises its current hit points to an attacker that prefers the weakest.
     targetView.setHitPointsPresent(hitPoints != null);
-    targetView.setCrownTowerTarget(data.king());
+    targetView.setCrownTowerTarget(data.king() || data.summonerTower());
     refreshHitPoints();
   }
 

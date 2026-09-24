@@ -23,15 +23,19 @@ class SpatialIndexTest {
   private GridEntity unit;
   private SpatialIndex index;
 
-  private static GridEntity tower(String name, int id, int side, int x, int y, boolean king) {
+  /**
+   * A tower for the ordering tests. Only the two kings are flagged as crown towers here, so that
+   * the list the queries answer mixes flagged and unflagged towers; in a battle every tower is one.
+   */
+  private static GridEntity tower(String name, int id, int side, int x, int y, boolean crown) {
     GridEntity e = new GridEntity();
     e.setName(name);
     e.setId(id);
     e.setSide(side);
     e.setX(x);
     e.setY(y);
-    e.setCollisionRadius(king ? 1400 : 1000);
-    e.setKing(king);
+    e.setCollisionRadius(crown ? 1400 : 1000);
+    e.setCrownTower(crown);
     e.setBuilding(true);
     return e;
   }
@@ -96,7 +100,7 @@ class SpatialIndexTest {
   }
 
   @Test
-  @DisplayName("the candidate query walks x outer and y inner and orders king towers last")
+  @DisplayName("the candidate query walks x outer and y inner and orders crown towers last")
   void candidateQueryOrder() {
     int radius = 2000 + 5500 + 500;
 
@@ -156,8 +160,8 @@ class SpatialIndexTest {
   }
 
   @Test
-  @DisplayName("the whole-list query returns every indexed entity once with king towers last")
-  void listQueryOrdersKingTowersLast() {
+  @DisplayName("the whole-list query returns every indexed entity once with crown towers last")
+  void listQueryOrdersCrownTowersLast() {
     List<GridEntity> all = index.listQuery(true);
 
     assertThat(all).hasSize(7);

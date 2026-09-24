@@ -73,12 +73,12 @@ class GridEntityTest {
     GridEntity tower = new GridEntity();
     tower.setBuilding(true);
     tower.setOccludes(true);
-    tower.setKing(true);
+    tower.setCrownTower(true);
     tower.setCollisionRadius(1400);
 
     assertThat(tower.isBuilding()).isTrue();
     assertThat(tower.isOccludes()).isTrue();
-    assertThat(tower.isKing()).isTrue();
+    assertThat(tower.isCrownTower()).isTrue();
     assertThat(tower.isAir()).isFalse();
     assertThat(tower.isMovementActive()).isFalse();
   }

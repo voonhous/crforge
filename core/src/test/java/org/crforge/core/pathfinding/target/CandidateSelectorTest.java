@@ -72,8 +72,8 @@ class CandidateSelectorTest {
     e.setY(y);
     e.setCollisionRadius(king ? 1400 : 1000);
     e.setBuilding(true);
-    e.setKing(king);
-    e.setKingCandidate(1);
+    e.setCrownTower(true);
+    e.setKingCandidate(king ? 1 : 0);
     e.setTargetable(1);
     return new TargetView(
         e,
@@ -140,7 +140,7 @@ class CandidateSelectorTest {
   }
 
   @Test
-  @DisplayName("a king tower is noticed 2000 units beyond the ordinary reach")
+  @DisplayName("a crown tower is noticed 2000 units beyond the ordinary reach")
   void crownTowersAreNoticedFurtherAway() {
     knight.getOwner().setX(9000);
     knight.getOwner().setY(20000);

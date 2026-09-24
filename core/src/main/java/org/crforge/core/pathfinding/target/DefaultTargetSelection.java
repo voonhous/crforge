@@ -24,25 +24,25 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "The published switches, the candidate filter, the smallest-offset rule and the"
-            + " ranking agree with the reference, and the 53 reference walks hold them, 32 of"
-            + " them through a switch from the king tower to a princess tower. Not settled,"
-            + " and shared with the reference walks themselves: the value compared against 500"
-            + " to skip a tower in another lane is fed the unit's attack range, where the"
-            + " standard game appears to read how long the unit has been in its state, and the"
-            + " seed threshold is the squared approximate distance where the standard game"
-            + " appears to use the true one. The alternate seed, the goal mode and the"
-            + " six-object branch are not held by any fixture.")
+        "The published switches, the candidate filter, the smallest-offset rule, the ranking"
+            + " and the lane rule's operand - the unit's elapsed time, so a unit is kept to its"
+            + " own lane's towers for its first ten walking visits - agree with the reference,"
+            + " and the 54 reference walks hold them, 32 of them through a switch from the king"
+            + " tower to a princess tower and one through the lane rule itself. Not settled, and"
+            + " shared with the reference walks: the seed threshold is the squared approximate"
+            + " distance where the standard game appears to use the true one. The alternate"
+            + " seed, the goal mode and the six-object branch are not held by any fixture.")
 public final class DefaultTargetSelection {
 
   /** Score no candidate can reach, used as the starting threshold. */
   private static final int NO_SCORE = Integer.MAX_VALUE;
 
   /**
-   * Attack range below which a unit is kept to the candidates of its own lane. A unit that reaches
-   * further than half a cell may cross to another lane's tower.
+   * Elapsed time, in milliseconds, below which a unit is kept to the candidates of its own lane.
+   * The elapsed time grows by one step per state visit outside the deploying states and starts at
+   * zero, so a fresh unit may only cross to another lane's tower from its eleventh walking visit.
    */
-  private static final int LANE_RESTRICTION_RANGE = 500;
+  private static final int LANE_RESTRICTION_TIME_MS = 500;
 
   /** Lane bonus given near the arena's two back lines. */
   private static final int LANE_BONUS_AT_BACK_LINE = 1000;
@@ -170,7 +170,8 @@ public final class DefaultTargetSelection {
    * @param unitX unit position along the arena's width
    * @param unitY unit position along the arena's length
    * @param unitLane lane the unit was assigned when it was created
-   * @param attackRange the unit's attack range including its own collision radius
+   * @param elapsedMs how long the unit has been out of its deploying states, in milliseconds, as it
+   *     stands at the targeting visit, before this tick's state visit adds its step
    * @param arenaHeightCells arena length in routing cells
    * @param seed the opposing side's king tower
    * @param candidates the opposing side's registered towers, in placement order, king included
@@ -182,7 +183,7 @@ public final class DefaultTargetSelection {
       int unitX,
       int unitY,
       int unitLane,
-      int attackRange,
+      int elapsedMs,
       int arenaHeightCells,
       TargetView seed,
       List<TargetView> candidates,
@@ -247,7 +248,7 @@ public final class DefaultTargetSelection {
       for (TargetView candidate : candidates) {
         boolean sameLane = candidate.getEntity().getLane() == unitLane;
         if (restrictToLane && !sameLane) {
-          if (attackRange < LANE_RESTRICTION_RANGE) {
+          if (elapsedMs < LANE_RESTRICTION_TIME_MS) {
             continue;
           }
           if (candidates.size() == 1) {
