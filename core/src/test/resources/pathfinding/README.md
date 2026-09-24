@@ -132,12 +132,13 @@ The shots are the only projectiles of the run, so their ids are consecutive from
 `BattleProjectileFlightTest` to every launch, position and impact, and `TrajectoryRecorderTest`
 writes it out and holds the file to this one byte for byte.
 
-## `golden/tower_vs_knight_left.json` and `golden/musketeer_vs_tower.json` - the towers fight back
+## `golden/tower_vs_knight_left.json`, `golden/musketeer_vs_tower.json` and `golden/wizard_vs_tower.json` - the towers fight back
 
-The left deployment of a Knight and of a Musketeer, at level 11 on both sides, with the towers fighting. Only the princess tower in front of the unit ever has it in range; neither king tower fights, because nothing damages a king tower and no princess tower falls, which is what would wake it.
+The left deployment of a Knight, of a Musketeer and of a Wizard, at level 11 on both sides, with the towers fighting. Only the princess tower in front of the unit ever has it in range; neither king tower fights, because nothing damages a king tower and no princess tower falls, which is what would wake it.
 
 - In the Knight's run the princess tower locks on at 130, when the Knight comes within its range of 7500 plus both radii, and fires its first arrow at 145, the sixteenth attack visit after the lock (no load, a hit speed of 800 ms), then one every 16 ticks. An arrow leaves 300 units along the line to its aim and 3000 units up, homes onto the Knight and lands for 128. The Knight still reaches the tower, locks on at 235 and lands five hits, from 244 to 340, before the fourteenth arrow kills it at 357.
 - In the Musketeer's run the tower locks on at 130 too; the Musketeer stops short at (3731, 18054), locks on at 155 and fires four shots, which land from 176 to 236, before the tower's sixth arrow kills it at 237.
+- In the Wizard's run the tower locks on at 130 as well. The Wizard fires from 170, every 28 ticks; its fireball is a row with a radius of 1500, so its impact damages everything in that circle around the aim rather than its target alone. Only the tower is inside it, and it takes 281 at 181, 209 and 237, when the Wizard dies to the tower's arrow in the same tick. The impact events of such a projectile are one per victim.
 
 Each file runs to the unit's removal, and the tower events go on for twenty ticks more. The layout is the Musketeer run's, with four additions:
 
@@ -146,7 +147,7 @@ Each file runs to the unit's removal, and the tower events go on for twenty tick
 - `tower_events` lists what the towers' own targeting did: a `reference` each time a tower's reference changes, with the new one and whether it is in range, a `lock` when a tower starts attacking, and, in the cleanup that removes an entity, the `reference` it left each tower holding with the target-lost countdown it started (`target_lost_timer`), a `reference_dropped` for a tower that had locked on, and the `removed` entity itself. Every tower holds the opposing tower its default selection gives from the first tick; once the unit has gone and the countdown has run out, the princess tower takes it again.
 - `fields` ends with `own_hp`, the unit's own hit points after the tick; a deploying tick carries it too.
 
-`BattleTowerRunTest` holds the battle to the records, the events and the projectile positions, `BattleTowerTargetingTest` to the tower events, and `TrajectoryRecorderTest` writes both runs out and holds each file to these byte for byte. The older runs above were made with the towers passive, and the tests play them that way.
+`BattleTowerRunTest` holds the battle to the records, the events and the projectile positions, `BattleTowerTargetingTest` to the tower events, and `TrajectoryRecorderTest` writes the three runs out and holds each file to these byte for byte. The older runs above were made with the towers passive, and the tests play them that way.
 
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
