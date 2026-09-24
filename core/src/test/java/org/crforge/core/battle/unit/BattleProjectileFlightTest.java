@@ -199,7 +199,7 @@ class BattleProjectileFlightTest {
       "a shot in flight precedes every character in the holder and leaves in the tick it arrives")
   void aShotPrecedesEveryCharacterAndLeavesWhenItArrives() {
     JsonNode reference = BattleMusketeerRunTest.load(BattleMusketeerRunTest.REFERENCE);
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity musketeer = BattleMusketeerRunTest.deployMusketeer(match, reference);
 
@@ -252,7 +252,7 @@ class BattleProjectileFlightTest {
   @DisplayName("a homing shot whose target left flies on to where it stood and lands on nothing")
   void aHomingShotWhoseTargetLeftLandsOnNothing() {
     JsonNode reference = BattleMusketeerRunTest.load(BattleMusketeerRunTest.REFERENCE);
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity musketeer = BattleMusketeerRunTest.deployMusketeer(match, reference);
     Recording recording = new Recording(musketeer);
@@ -301,7 +301,7 @@ class BattleProjectileFlightTest {
 
   /** Plays the run through the given reference tick with a recording observer attached. */
   private static Recording run(JsonNode reference, int lastTick) {
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity musketeer = BattleMusketeerRunTest.deployMusketeer(match, reference);
     Recording recording = new Recording(musketeer);

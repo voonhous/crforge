@@ -89,7 +89,7 @@ class BattleMultiUnitParityTest {
     }
 
     // The battle.
-    Standard1v1Battle standard = new Standard1v1Battle();
+    Standard1v1Battle standard = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = standard.getBattle();
     List<CharacterEntity> units = new ArrayList<>();
     for (Placement placement : placements) {

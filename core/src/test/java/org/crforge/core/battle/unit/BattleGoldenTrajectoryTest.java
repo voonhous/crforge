@@ -95,7 +95,7 @@ class BattleGoldenTrajectoryTest {
     UnitData knight =
         UnitDataMapper.toUnitData(
             Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(

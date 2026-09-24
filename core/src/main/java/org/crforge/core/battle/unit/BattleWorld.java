@@ -40,8 +40,8 @@ import org.crforge.core.pathfinding.target.TargetView;
  *
  * <p>The world is also where a hit's or an impact's damage reaches its target, and where anything
  * outside the tick that wants to watch the arena attaches: an observer is told where the tick's
- * visits begin and end, about every hit that lands, and about every projectile launched and
- * arrived.
+ * visits begin and end, about every hit that lands, about every projectile launched and arrived,
+ * and about every arena entity that leaves.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -50,8 +50,8 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " snapshot of the arena entities and retired in the post-pass, the overlay's per-side"
             + " change flags are copied once per tick, a projectile is in neither and is handed to"
             + " the holder in the tick of its launch, and a dead entity leaves the holder in the"
-            + " closing cleanup of the tick it dies, when every character is told at once and its"
-            + " default target lists lose it. Not modelled: the game mode's own per-tick work"
+            + " closing cleanup of the tick it dies, when every arena entity is told at once and"
+            + " its default target lists lose it. Not modelled: the game mode's own per-tick work"
             + " beside the index and the overlay.")
 public class BattleWorld implements HolderPasses {
 
@@ -224,9 +224,7 @@ public class BattleWorld implements HolderPasses {
       known.put(entity.getView(), entity);
     }
     for (WorldEntity entity : present) {
-      if (entity instanceof CharacterEntity character) {
-        character.registerCandidates(present);
-      }
+      entity.registerCandidates(present);
     }
     index.rebuild(views);
     FootprintOverlay.buildOverlay(grid, views);
@@ -238,8 +236,8 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The side lists' part of a removal: a removed entity leaves every character's default targets in
-   * the same cleanup, after each character's own notice has run.
+   * The side lists' part of a removal: a removed entity leaves every arena entity's default targets
+   * in the same cleanup, after each entity's own notice has run.
    */
   @Override
   public void entityRemoved(BattleEntity removed) {
@@ -248,9 +246,10 @@ public class BattleWorld implements HolderPasses {
     }
     known.remove(gone.getView());
     for (WorldEntity entity : known.values()) {
-      if (entity instanceof CharacterEntity character) {
-        character.forget(gone.getView());
-      }
+      entity.forget(gone.getView());
+    }
+    for (WorldObserver observer : observers) {
+      observer.entityRemoved(tick, gone);
     }
   }
 

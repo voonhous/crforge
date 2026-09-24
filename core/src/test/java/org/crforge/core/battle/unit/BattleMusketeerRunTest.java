@@ -77,7 +77,7 @@ class BattleMusketeerRunTest {
     assertThat(launchTicks).as("the reference records fifteen launches").hasSize(15);
     assertThat(launchTicks.get(0)).isEqualTo(FIRST_LAUNCH_TICK);
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity musketeer = deployMusketeer(match, reference);
 
@@ -163,7 +163,7 @@ class BattleMusketeerRunTest {
             "%d impact %s %d"
                 .formatted(FIRST_LAUNCH_TICK + FLIGHT_TICKS, PRINCESS_TOWER, 3052 - 217));
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     deployMusketeer(match, reference);
 
@@ -202,7 +202,7 @@ class BattleMusketeerRunTest {
     List<JsonNode> records = records(reference);
     assertThat(records).as("the reference is the whole run").hasSize(PRINCESS_DEATH_TICK + 1);
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity musketeer = deployMusketeer(match, reference);
 
@@ -254,7 +254,7 @@ class BattleMusketeerRunTest {
   @DisplayName("the Musketeer stands at its row's hit points and carries its row's damage")
   void theMusketeerStandsAtItsRowsHitPoints() {
     JsonNode reference = load(REFERENCE);
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
+    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     CharacterEntity musketeer = deployMusketeer(match, reference);
 
     // The row is Common although the card is Rare, so the level packs against the Common table:

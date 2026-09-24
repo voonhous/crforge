@@ -2,8 +2,10 @@ package org.crforge.core.battle.unit;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -14,8 +16,13 @@ import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.target.HitApplication;
+import org.crforge.core.pathfinding.target.HitQueries;
+import org.crforge.core.pathfinding.target.RemovalNotice;
+import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
+import org.crforge.core.pathfinding.target.TargetingState;
 
 /**
  * An entity that stands on the arena: it has a position, a collision circle and a side, the spatial
@@ -30,15 +37,25 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
  * scaled to that level once, at creation, and the level itself is kept packed against the entity's
  * rarity, as the scaling reads it. An entity whose hit points at its level are not positive carries
  * no hit-points object and counts as alive.
+ *
+ * <p>Every one of them, a tower as much as a troop, carries a targeting component: the working
+ * state of its target choice and its attack, and the selection chain that answers which target it
+ * should have. Whether the component runs, and what drives it, is the subclass's to decide; what
+ * the component needs from the battle is kept here once. Every arena entity of a tick is made known
+ * to it before any visit, the opposing side's towers become its default targets, a hit it lands
+ * goes through the hit application, and an entity that leaves the battle is dropped from it at
+ * once.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the level packed against the rarity at creation, the hit points and the damage"
             + " at that level, the alive answer, the removal test, and that a removable entity"
-            + " leaves the holder at the next cleanup, which tells every other entity at once."
-            + " Not modelled yet: the shield's hit points at the level, and what a death does"
-            + " beyond the entity becoming removable.")
+            + " leaves the holder at the next cleanup, which tells every other entity at once; a"
+            + " targeting component on every entity, seeded with the opposing side's towers, whose"
+            + " hits go through the hit application and whose reference to an entity that left is"
+            + " dropped by the removal notice. Not modelled yet: the shield's hit points at the"
+            + " level, and what a death does beyond the entity becoming removable.")
 public abstract class WorldEntity extends BattleEntity {
 
   /** Side of the player at the low end of the arena. */
@@ -46,6 +63,9 @@ public abstract class WorldEntity extends BattleEntity {
 
   /** Side of the player at the high end of the arena. */
   public static final int SIDE_TOP = 1;
+
+  /** The battle's shared arena state. */
+  protected final BattleWorld world;
 
   @Getter private final UnitData data;
 
@@ -64,19 +84,41 @@ public abstract class WorldEntity extends BattleEntity {
   /** Damage of one hit at the entity's level. */
   @Getter private final int damage;
 
+  /** The working state of the entity's targeting component: its reference and attack timing. */
+  @Getter private final TargetingState targeting;
+
+  /** Answers which target the targeting component should have now. */
+  @Getter private final SelectionChain selection;
+
+  /** True once the opposing side's towers have been registered as default targets. */
+  private boolean towersRegistered;
+
   /**
+   * @param world the battle's shared arena state
    * @param data the entity's published columns
    * @param view the entity as the grid sees it
    * @param targetingConfig the entity's targeting columns
    * @param level the entity's level, counted from 1
    */
   protected WorldEntity(
-      UnitData data, GridEntity view, TargetingConfig targetingConfig, int level) {
+      BattleWorld world,
+      UnitData data,
+      GridEntity view,
+      TargetingConfig targetingConfig,
+      int level) {
     super(KIND_CHARACTER);
     checkArgument(data.rarity() != null, () -> data.name() + " has no rarity to scale by");
+    this.world = world;
     this.data = data;
     this.view = view;
     this.targetView = new TargetView(view, targetingConfig);
+    this.targeting = new TargetingState();
+    targeting.setOwner(view);
+    targeting.setConfig(targetingConfig);
+    this.selection = new SelectionChain(world.getIndex(), targeting, world.getTileMap().height());
+    selection.setHitSink(
+        (target, sequenceIndex, extraTargets, last) ->
+            HitApplication.apply(targeting, target, sequenceIndex, hitQueries()));
     this.packedLevel = PackedLevel.fromLevel(level, data.rarity());
     ScalingGlobals globals = ScalingGlobals.standard();
     int maximum =
@@ -124,6 +166,74 @@ public abstract class WorldEntity extends BattleEntity {
             hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
     refreshHitPoints();
     return result;
+  }
+
+  /**
+   * Makes every arena entity of this tick known to the entity's selection. The first call also
+   * registers the opposing side's towers as the default targets, in creation order - king first,
+   * then the princess towers along the arena's width - and seeds the selection with the king.
+   */
+  void registerCandidates(List<WorldEntity> present) {
+    if (!towersRegistered) {
+      towersRegistered = true;
+      int enemy = opposing(side());
+      for (WorldEntity entity : present) {
+        if (entity instanceof TowerEntity tower && tower.side() == enemy) {
+          selection.registerTower(tower.getTargetView());
+          if (tower.getData().king() && selection.getSeed() == null) {
+            selection.setSeed(tower.getTargetView());
+          }
+        }
+      }
+    }
+    for (WorldEntity entity : present) {
+      if (selection.view(entity.getView()) == null) {
+        selection.register(entity.getTargetView());
+      }
+    }
+  }
+
+  /** Drops an entity that has left the battle from the entity's default targets. */
+  void forget(GridEntity departed) {
+    selection.unregister(departed);
+  }
+
+  /** The targeting component's notice: a reference to the entity that left is dropped at once. */
+  @Override
+  protected void entityRemoved(BattleEntity removed) {
+    if (removed instanceof WorldEntity gone) {
+      RemovalNotice.entityRemoved(targeting, gone.getTargetView(), null);
+    }
+  }
+
+  /**
+   * What one of the entity's hits needs from the battle: the damage of a hit at the entity's level,
+   * the battle's hit ids, the target the damage is dealt to, and the launch of the projectiles of
+   * an entity that fires.
+   */
+  private HitQueries hitQueries() {
+    return new HitQueries() {
+      @Override
+      public int damage() {
+        return getDamage();
+      }
+
+      @Override
+      public int nextHitId() {
+        return world.nextHitId();
+      }
+
+      @Override
+      public void dealDamage(
+          TargetView target, int damage, int hitId, int directionX, int directionY) {
+        world.dealDamage(target, damage, directionX, directionY);
+      }
+
+      @Override
+      public void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {
+        ProjectileLauncher.launch(WorldEntity.this, t, target, sequenceIndex, world);
+      }
+    };
   }
 
   /** What the damage chain asks about this entity as a target. */
