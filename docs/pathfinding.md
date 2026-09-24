@@ -100,7 +100,7 @@ The column itself is carried on `Movement.rawSpeed`, populated wherever a compon
 
 ## Reference trajectories
 
-Five golden cases pin a whole Knight deployment on the standard arena with nothing on it but the six crown towers.
+Six golden cases pin a whole Knight deployment on the standard arena with nothing on it but the six crown towers.
 
 | Case | Deploy | Target | Attack lock | Stops at |
 | --- | --- | --- | --- | --- |
@@ -109,8 +109,9 @@ Five golden cases pin a whole Knight deployment on the standard arena with nothi
 | `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245 | (14231, 22852) |
 | `knight_right_rear` | (16500, 5000) | PrincessTower_1_2 | tick 323 | (14769, 22836) |
 | `knight_behind_king` | (9000, 4600) | KingTower_1_0, then PrincessTower_1_2 from tick 73 | tick 368 | (14231, 22820) |
+| `knight_left_inner` | (8000, 10000) | PrincessTower_1_1 on ticks 20 to 29, KingTower_1_0 from tick 30, PrincessTower_1_1 from tick 68 | tick 259 | (3769, 22848) |
 
-The centre case is the interesting one: the king tower is closest in x from the deploy point, so the unit walks at it until a princess tower becomes closer in x at tick 82.
+The centre case is the interesting one: the king tower is closest in x from the deploy point, so the unit walks at it until a princess tower becomes closer in x at tick 82. The inner case pins the lane rule: for its first ten walking ticks a unit only considers the towers of its own lane, so from (8000, 10000) it takes the left princess tower before the king, which is closer in x, and returns to the princess tower once that is the closer.
 
 The last two cases put the unit right beside one of its own towers - behind the right princess tower and behind the king tower - so that the two passes which look at a unit's neighbours, the push pass and the avoidance handler, are covered on a trajectory that walks past a building. Without them a change to either pass could leave the first three cases untouched.
 
@@ -128,7 +129,7 @@ Each of these is a supplied answer or a deliberate choice, not something the tra
 - **End of deployment.** A unit with a movement component leaves the deployment countdown in the moving state; a unit without one stands.
 - **Default target candidates.** Default selection ranks the opposing side's towers in placement order, King first and then the two princess towers ordered by x, and the king tower is both the seed and a member of the candidate list. Excluding the king from the list changes the centre case's answer, so this detail is load bearing. Ordinary troops never enter these lists.
 - **Game-mode answers for the standard mode.** The alternate-seed branch, the alternate-goal branch and the special-object branch of default selection are all inactive; the x-position rule is the live path.
-- **Selector query.** Candidates come from a circle query around the unit whose radius is the sight range plus the 2000-unit crown-tower sight bonus plus the unit's own collision radius, with king towers ordered last.
+- **Selector query.** Candidates come from a circle query around the unit whose radius is the sight range plus the 2000-unit crown-tower sight bonus plus the unit's own collision radius, with crown towers ordered last. Every tower is a crown tower for the sight bonus, the ordering and the crown-tower damage; only the king fills its side's tower slot, which the tower filters of the validator read.
 - **Endpoint acceptance.** The endpoint scan accepts every in-bounds cell; water and building overlays only change a cell's preference rank and never reject it.
 - **The range an entity advertises.** The attack range a unit advertises to route preparation, to the flying waypoint rule and to default target selection is worked out as though the unit had no movement component, so the 500 units a continuous-damage attacker gives up while it walks are never subtracted from it. The unit itself still gives them up. This is what the reference trajectories encode; the shipped game reads the entity's real component list at that point, so the two would differ for a unit with an attack sequence. No such unit is grid-managed yet, and the Knight carries no attack sequence.
 - **Movement answers.** No game-mode goal, no touchdown edge separation, no charge-range alternative, no facing suppression, and the pushed-ground branch of the displacement is off. That branch is the only thing that marks a unit stuck on water and nudges it away from the river line, so with it off the grid move's water test is never armed either.

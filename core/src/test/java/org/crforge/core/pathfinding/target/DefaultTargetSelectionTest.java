@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 class DefaultTargetSelectionTest {
 
   private static final int ARENA_HEIGHT_CELLS = 64;
-  private static final int KNIGHT_ATTACK_RANGE = 1700;
+
+  /** An elapsed time well past the first ten walking visits, so the lane rule is over. */
+  private static final int LONG_ELAPSED_MS = 1700;
 
   private TargetView kingTower;
   private TargetView leftPrincessTower;
@@ -29,8 +31,8 @@ class DefaultTargetSelectionTest {
     e.setLane(lane);
     e.setCollisionRadius(king ? 1400 : 1000);
     e.setBuilding(true);
-    e.setKing(king);
-    e.setKingCandidate(1);
+    e.setCrownTower(true);
+    e.setKingCandidate(king ? 1 : 0);
     e.setTargetable(1);
     return new TargetView(
         e,
@@ -54,7 +56,7 @@ class DefaultTargetSelectionTest {
         unitX,
         unitY,
         unitLane,
-        KNIGHT_ATTACK_RANGE,
+        LONG_ELAPSED_MS,
         ARENA_HEIGHT_CELLS,
         kingTower,
         list,
@@ -103,7 +105,7 @@ class DefaultTargetSelectionTest {
             3500,
             10000,
             1,
-            KNIGHT_ATTACK_RANGE,
+            LONG_ELAPSED_MS,
             ARENA_HEIGHT_CELLS,
             kingTower,
             candidates,
@@ -115,22 +117,29 @@ class DefaultTargetSelectionTest {
   }
 
   @Test
-  @DisplayName("a short-ranged unit is kept to the candidates of its own lane")
-  void shortRangedUnitsStayInTheirLane() {
-    TargetView chosen =
-        DefaultTargetSelection.selectDefaultTarget(
-            9000,
-            12000,
-            1,
-            400,
-            ARENA_HEIGHT_CELLS,
-            kingTower,
-            candidates,
-            DefaultTargetSelection.Rules.standard(),
-            DefaultSelectionQueries.standard1v1(),
-            candidate -> true);
+  @DisplayName(
+      "a unit in its first ten walking visits is kept to the candidates of its own lane, and may"
+          + " cross from the eleventh")
+  void aFreshUnitStaysInItsLane() {
+    // From the middle the king tower is the closest in x, but it is in lane 2.
+    assertThat(selectAfter(450)).isSameAs(leftPrincessTower);
+    assertThat(selectAfter(0)).isSameAs(leftPrincessTower);
+    assertThat(selectAfter(500)).isSameAs(kingTower);
+  }
 
-    assertThat(chosen).isSameAs(leftPrincessTower);
+  /** The selection of a lane-1 unit in the middle after the given elapsed time. */
+  private TargetView selectAfter(int elapsedMs) {
+    return DefaultTargetSelection.selectDefaultTarget(
+        9000,
+        12000,
+        1,
+        elapsedMs,
+        ARENA_HEIGHT_CELLS,
+        kingTower,
+        candidates,
+        DefaultTargetSelection.Rules.standard(),
+        DefaultSelectionQueries.standard1v1(),
+        candidate -> true);
   }
 
   @Test

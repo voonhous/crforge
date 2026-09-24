@@ -420,23 +420,26 @@ public class GridPathfindingSystem {
     // A building takes no part in pushing: see GridEntity.pushEnabled for why this is answered
     // here rather than read from the entity.
     view.setPushEnabled(!building);
-    view.setKing(entity instanceof Tower tower && tower.isCrownTower());
+    // Every tower is a crown tower to the targeting rules; only the king fills the tower slot.
+    view.setCrownTower(entity instanceof Tower);
     view.setAir(entity.getMovementType() == MovementType.AIR);
-    view.setKingCandidate(view.isKing() ? 1 : 0);
+    view.setKingCandidate(entity instanceof Tower tower && tower.isCrownTower() ? 1 : 0);
     view.setTargetable(1);
     view.setX(entity.getPosition().getX());
     view.setY(entity.getPosition().getY());
+    // Every character, the towers included, is given the lane of the road nearest to it; the
+    // default selection compares a unit's lane with its candidates'.
+    view.setLane(
+        LaneAssignment.lane(
+            tileMap.width(),
+            tileMap.height(),
+            tileMap.width(),
+            view.getX(),
+            view.getY(),
+            -1,
+            0,
+            tileMap::bits));
     if (entity instanceof Troop) {
-      view.setLane(
-          LaneAssignment.lane(
-              tileMap.width(),
-              tileMap.height(),
-              tileMap.width(),
-              view.getX(),
-              view.getY(),
-              -1,
-              0,
-              tileMap::bits));
       view.setState(GridEntityState.DEPLOYING);
       view.setDeployCountdown(deployTimeMs(entity));
       view.setDirX(0);

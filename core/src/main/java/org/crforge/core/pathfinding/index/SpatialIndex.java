@@ -167,8 +167,8 @@ public final class SpatialIndex {
 
   /**
    * Answers the entities accepted by the given query, in bucket order with x outer and y inner and
-   * each bucket in insertion order, each entity at most once. King towers are moved to the end when
-   * the query asks for it. Answers null when no result list is free.
+   * each bucket in insertion order, each entity at most once. Crown towers are moved to the end
+   * when the query asks for it. Answers null when no result list is free.
    */
   public List<GridEntity> query(SpatialQuery query) {
     if (freeResultLists <= 0) {
@@ -220,8 +220,8 @@ public final class SpatialIndex {
 
   /**
    * Answers every indexed entity once, bucket by bucket with x outer and y inner. When {@code
-   * kingsLast} is set the entities that are not king towers come first, then the king towers, each
-   * group keeping its bucket order. Answers null when no result list is free.
+   * kingsLast} is set the entities that are not crown towers come first, then the crown towers,
+   * each group keeping its bucket order. Answers null when no result list is free.
    */
   public List<GridEntity> listQuery(boolean kingsLast) {
     if (freeResultLists <= 0) {
@@ -244,12 +244,12 @@ public final class SpatialIndex {
     if (kingsLast) {
       List<GridEntity> partitioned = new ArrayList<>(result.size());
       for (GridEntity entity : result) {
-        if (!entity.isKing()) {
+        if (!entity.isCrownTower()) {
           partitioned.add(entity);
         }
       }
       for (GridEntity entity : result) {
-        if (entity.isKing()) {
+        if (entity.isCrownTower()) {
           partitioned.add(entity);
         }
       }
@@ -279,13 +279,13 @@ public final class SpatialIndex {
   }
 
   /**
-   * Moves the king towers to the end of the result. The list is scanned from its last entry down to
-   * its first, so a king tower found nearer the front ends up after one found nearer the back.
+   * Moves the crown towers to the end of the result. The list is scanned from its last entry down
+   * to its first, so a crown tower found nearer the front ends up after one found nearer the back.
    */
   private static void moveKingsLast(List<GridEntity> result) {
     for (int i = result.size() - 1; i >= 0; i--) {
       GridEntity entity = result.get(i);
-      if (entity.isKing()) {
+      if (entity.isCrownTower()) {
         result.remove(i);
         result.add(entity);
       }

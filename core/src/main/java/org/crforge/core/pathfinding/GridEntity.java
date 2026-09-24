@@ -95,8 +95,12 @@ public class GridEntity {
   /** Mass, which decides how far a push moves this entity relative to the one pushing it. */
   private int mass;
 
-  /** True for a king tower. Query results order king towers last. */
-  private boolean king;
+  /**
+   * True for a crown tower: the king tower and the princess towers alike. Query results order crown
+   * towers last, a unit notices them from farther away, and a hit on one deals the crown-tower
+   * damage.
+   */
+  private boolean crownTower;
 
   /** True for a building, which stands still and occludes cells. */
   private boolean building;
@@ -161,8 +165,8 @@ public class GridEntity {
   private int movingMarker;
 
   /**
-   * Candidate flag the target selector and the validator read, set from the crown-tower flag when
-   * the entity's view is built. Its meaning beyond the crown towers is not established.
+   * The tower slot: set for the king tower alone, the entity that fills its side's tower slot. The
+   * validator's tower filters read it, apart from the crown-tower flag, which every tower answers.
    */
   private int kingCandidate;
 
