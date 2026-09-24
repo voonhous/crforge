@@ -81,6 +81,15 @@ public abstract class BattleEntity {
    */
   protected void onRegistered() {}
 
+  /**
+   * Runs when the holder removes another entity, inside the cleanup that removes it and before the
+   * cleanup admits any waiting entity, so nothing here ever holds on to an entity that has left.
+   * The removed entity keeps its id.
+   *
+   * @param removed the entity that has just left the holder
+   */
+  protected void entityRemoved(BattleEntity removed) {}
+
   /** Runs once per tick before any component of any entity. */
   protected void preHook() {}
 

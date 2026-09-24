@@ -76,7 +76,7 @@ tick.
 
 ## `golden/knight_left_kill.json` - the run that goes on to the end
 
-The left deployment, run past the lock until the king tower is destroyed: 1253 ticks, at level 11 on
+The left deployment, run past the lock until the king tower is destroyed: 1258 ticks, at level 11 on
 both sides. Beside the fields above it carries:
 
 - `level` and `damage` - the level everything is at and the damage of one Knight hit, 202.
@@ -86,7 +86,10 @@ both sides. Beside the fields above it carries:
   every death. The damage is what the hit dealt, which the hit that kills overshoots: the last hit
   on the princess tower deals 202 against the 22 it has left. The first hit lands nine ticks after the lock: an attack that starts from zero is
   credited the whole of a load that has run down, 700 ms of the 1200 ms hit speed, and takes one
-  50 ms step on top. Later hits follow at the hit speed, 24 ticks apart.
+  50 ms step on top. Later hits follow at the hit speed, 24 ticks apart. When the princess tower
+  dies its removal takes the Knight's reference with it, and the Knight stands five more ticks
+  without a target while the attack finish time runs down, so the walk to the king tower starts on
+  tick 610.
 - `fields` and `records` - one compact record per tick, in the order `fields` gives: the fields
   above plus `speed`, the movement budget the tick was given, and `hp`, the hit points of the
   reference after the tick. Both are null on the deploying ticks, which have no movement visit and

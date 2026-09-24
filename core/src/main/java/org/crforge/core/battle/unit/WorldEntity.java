@@ -34,9 +34,8 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the level packed against the rarity at creation, the hit points and the damage"
-            + " at that level, the alive answer and the removal test. Supplied, not settled: a"
-            + " removable entity leaves the holder at the next cleanup and every selection at the"
-            + " following pre-pass, and the side lists are taken to drop it in the same cleanup."
+            + " at that level, the alive answer, the removal test, and that a removable entity"
+            + " leaves the holder at the next cleanup, which tells every other entity at once."
             + " Not modelled yet: the shield's hit points at the level, and what a death does"
             + " beyond the entity becoming removable.")
 public abstract class WorldEntity extends BattleEntity {
