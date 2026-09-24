@@ -32,6 +32,11 @@ class EntityHolderTest {
         public void postPass(int tick) {
           log.add("postPass " + tick);
         }
+
+        @Override
+        public void entityRemoved(BattleEntity removed) {
+          log.add("passes told " + removed.getId() + " left");
+        }
       };
 
   /** An entity whose every hook, component and action pass records itself. */
@@ -64,6 +69,11 @@ class EntityHolderTest {
               }
             });
       }
+    }
+
+    @Override
+    protected void entityRemoved(BattleEntity removed) {
+      log.add(name + " told " + ((RecordingEntity) removed).name + " left");
     }
 
     @Override
@@ -199,6 +209,31 @@ class EntityHolderTest {
     // Still in the snapshot for phase 3, gone from the live list before the end-of-tick countdown.
     assertThat(log).contains("doomed pending 3").doesNotContain("doomed endOfTick");
     assertThat(holder.entities()).containsExactly(witness);
+  }
+
+  @Test
+  @DisplayName("each removal is told to every remaining entity and the passes before any admission")
+  void removalIsAnnouncedBeforeAdmission() {
+    EntityHolder holder = new EntityHolder(recordingPasses);
+    RecordingEntity doomed = new RecordingEntity("doomed");
+    RecordingEntity witness = new RecordingEntity("witness");
+    RecordingEntity newcomer = new RecordingEntity("newcomer");
+    holder.add(doomed);
+    holder.add(witness);
+    holder.tick(0);
+    log.clear();
+
+    doomed.removable = true;
+    holder.add(newcomer);
+    holder.cleanup();
+
+    assertThat(log)
+        .containsExactly(
+            "witness told doomed left",
+            "newcomer told doomed left",
+            "passes told 1 left",
+            "newcomer registered as 3");
+    assertThat(holder.entities()).containsExactly(witness, newcomer);
   }
 
   @Test

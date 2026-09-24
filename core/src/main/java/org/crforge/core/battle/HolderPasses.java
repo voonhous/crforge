@@ -29,6 +29,12 @@ public interface HolderPasses {
   /** Runs after the tick's snapshot is taken and before any entity hook. */
   void prePass(int tick, List<BattleEntity> snapshot);
 
+  /**
+   * Runs when a cleanup removes an entity, after every remaining entity has been told and before
+   * any waiting entity is admitted.
+   */
+  default void entityRemoved(BattleEntity removed) {}
+
   /** Runs after every entity's post-hook and before the phase 3 action pass. */
   void afterPostHooks();
 

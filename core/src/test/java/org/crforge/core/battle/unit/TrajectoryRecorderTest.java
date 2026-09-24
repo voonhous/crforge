@@ -37,12 +37,13 @@ class TrajectoryRecorderTest {
   @DisplayName("the exported kill run is the committed reference, byte for byte")
   void theExportIsTheReferenceByteForByte(@TempDir Path directory) throws IOException {
     String expected = reference();
-    TrajectoryRecorder recorder = record(MAPPER.readTree(expected), 0);
+    JsonNode reference = MAPPER.readTree(expected);
+    TrajectoryRecorder recorder = record(reference, 0);
 
     Path file = directory.resolve("knight_left_kill.json");
     recorder.writeTo(file);
 
-    assertThat(recorder.recordCount()).isEqualTo(1253);
+    assertThat(recorder.recordCount()).isEqualTo(reference.get("records").size());
     assertSameText(Files.readString(file, StandardCharsets.UTF_8), expected);
   }
 

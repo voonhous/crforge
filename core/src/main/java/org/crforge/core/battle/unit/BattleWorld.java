@@ -41,10 +41,10 @@ import org.crforge.core.pathfinding.target.TargetView;
     note =
         "Settled: the index and the overlay are rebuilt in the pre-pass from the id-ordered"
             + " snapshot and retired in the post-pass, and the overlay's per-side change flags"
-            + " are copied once per tick. Supplied, not settled: a dead entity leaves the holder"
-            + " in the closing cleanup of the tick it dies, as the reference run has it, and"
-            + " leaves the default target lists and every selection, clearing a reference still"
-            + " held to it, at the first pre-pass after that.")
+            + " are copied once per tick, and a dead entity leaves the holder in the closing"
+            + " cleanup of the tick it dies, when every character is told at once and its default"
+            + " target lists lose it. Not modelled: the game mode's own per-tick work beside the"
+            + " index and the overlay.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -67,7 +67,10 @@ public class BattleWorld implements HolderPasses {
   /** This tick's views in the same order: what the index and the overlay are built from. */
   private final List<GridEntity> views = new ArrayList<>();
 
-  /** Every arena entity seen so far and not yet gone, keyed by its view. */
+  /**
+   * Every arena entity admitted so far and not yet gone, keyed by its view. An entity joins at its
+   * first pre-pass and leaves at the cleanup that removes it.
+   */
   private final Map<GridEntity, WorldEntity> known = new IdentityHashMap<>();
 
   /** The battle's hit counter: every hit takes the next id from it. */
@@ -153,7 +156,6 @@ public class BattleWorld implements HolderPasses {
         views.add(worldEntity.getView());
       }
     }
-    forgetDeparted();
     for (WorldEntity entity : present) {
       known.put(entity.getView(), entity);
     }
@@ -171,20 +173,19 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** Drops every entity that is no longer in the snapshot from every character's selection. */
-  private void forgetDeparted() {
-    List<GridEntity> departed = new ArrayList<>();
-    for (GridEntity view : known.keySet()) {
-      if (!views.contains(view)) {
-        departed.add(view);
-      }
+  /**
+   * The side lists' part of a removal: a removed entity leaves every character's default targets in
+   * the same cleanup, after each character's own notice has run.
+   */
+  @Override
+  public void entityRemoved(BattleEntity removed) {
+    if (!(removed instanceof WorldEntity gone)) {
+      return;
     }
-    for (GridEntity view : departed) {
-      known.remove(view);
-      for (WorldEntity entity : present) {
-        if (entity instanceof CharacterEntity character) {
-          character.forget(view);
-        }
+    known.remove(gone.getView());
+    for (WorldEntity entity : known.values()) {
+      if (entity instanceof CharacterEntity character) {
+        character.forget(gone.getView());
       }
     }
   }

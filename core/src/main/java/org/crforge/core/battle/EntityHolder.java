@@ -4,6 +4,7 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -15,7 +16,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>The order is the point of this class. One tick is:
  *
  * <ol>
- *   <li>cleanup: drop removable entities, then admit the entities added since the last cleanup;
+ *   <li>cleanup: drop removable entities, telling every remaining entity and the holder's passes of
+ *       each removal, then admit the entities added since the last cleanup;
  *   <li>take a snapshot of the live list, which every entity loop below runs over;
  *   <li>the holder pre-pass;
  *   <li>every entity's pre-hook;
@@ -41,9 +43,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "The order of hooks, component passes and action passes within a tick is settled, and so"
-            + " are the snapshot and the id ordering. Not settled: what removal does to an entity"
-            + " that other entities still refer to, and whether anything reorders the live list"
-            + " between ticks.")
+            + " are the snapshot, the id ordering, and that every remaining entity is told of a"
+            + " removal inside the cleanup that removes it, so a reference to a dead entity is"
+            + " dropped before the next visit. Not settled: whether the removed entity is told of"
+            + " its own removal, and whether anything reorders the live list between ticks.")
 public class EntityHolder {
 
   private final HolderPasses passes;
@@ -80,19 +83,40 @@ public class EntityHolder {
   }
 
   /**
-   * Drops every removable entity from both lists, then admits the pending additions in the order
-   * they arrived, giving each its id as it is admitted. Ids only ever grow, so appending keeps the
-   * live list sorted.
+   * Drops every removable entity from both lists, telling every entity still listed and the passes
+   * of each removal in turn, then admits the pending additions in the order they arrived, giving
+   * each its id as it is admitted. Ids only ever grow, so appending keeps the live list sorted.
    */
   public void cleanup() {
-    live.removeIf(BattleEntity::isRemovable);
-    pendingAdditions.removeIf(BattleEntity::isRemovable);
+    List<BattleEntity> removed = new ArrayList<>();
+    drainRemovable(live, removed);
+    drainRemovable(pendingAdditions, removed);
+    for (BattleEntity gone : removed) {
+      for (BattleEntity entity : live) {
+        entity.entityRemoved(gone);
+      }
+      for (BattleEntity entity : pendingAdditions) {
+        entity.entityRemoved(gone);
+      }
+      passes.entityRemoved(gone);
+    }
     for (BattleEntity entity : pendingAdditions) {
       entity.assignId(nextId++);
       live.add(entity);
       entity.onRegistered();
     }
     pendingAdditions.clear();
+  }
+
+  /** Moves every removable entity of a list, in list order, to the end of the removed list. */
+  private static void drainRemovable(List<BattleEntity> list, List<BattleEntity> removed) {
+    for (Iterator<BattleEntity> it = list.iterator(); it.hasNext(); ) {
+      BattleEntity entity = it.next();
+      if (entity.isRemovable()) {
+        it.remove();
+        removed.add(entity);
+      }
+    }
   }
 
   /**

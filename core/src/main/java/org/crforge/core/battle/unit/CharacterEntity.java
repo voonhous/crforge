@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -28,6 +29,7 @@ import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
 import org.crforge.core.pathfinding.target.HitApplication;
 import org.crforge.core.pathfinding.target.HitQueries;
+import org.crforge.core.pathfinding.target.RemovalNotice;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
@@ -55,10 +57,10 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " deploy countdown stepping 50 ms per state visit, every state change and route"
             + " preparation going through the unit's own setter, each hit recorded on the"
             + " attacker and landing on its target, the hit points and damage at the"
-            + " character's level, and the resume that follows the loss of a target. Supplied, not"
-            + " settled: both components return at once while the character is deploying, and a"
-            + " target that died is forgotten at the next pre-pass, before the targeting visit"
-            + " could find it dead. Not modelled yet: air, jumping and hovering units, status"
+            + " character's level, the removal notice dropping a reference to an entity that left"
+            + " and starting the target-lost countdown, and the resume that follows. Supplied, not"
+            + " settled: both components return at once while the character is deploying. Not"
+            + " modelled yet: air, jumping and hovering units, status"
             + " effects on the speed budget, the deployment's own lane flag, and the columns its"
             + " data does not carry: the stop time after an attack and the ones that restrict what a"
             + " unit may target, such as buildings only.")
@@ -201,9 +203,17 @@ public class CharacterEntity extends WorldEntity {
     }
   }
 
-  /** Drops an entity that has left the battle from the character's selection. */
+  /** Drops an entity that has left the battle from the character's default targets. */
   void forget(GridEntity departed) {
     unit.selection().unregister(departed);
+  }
+
+  /** The targeting component's notice: a reference to the entity that left is dropped at once. */
+  @Override
+  protected void entityRemoved(BattleEntity removed) {
+    if (removed instanceof WorldEntity gone) {
+      RemovalNotice.entityRemoved(unit.targeting(), gone.getTargetView(), null);
+    }
   }
 
   private boolean deploying() {
