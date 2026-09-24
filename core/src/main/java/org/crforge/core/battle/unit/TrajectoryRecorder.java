@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -19,9 +20,12 @@ import org.crforge.core.pathfinding.target.TargetView;
  * <p>Attached to the battle's world as an observer before the first step, it writes one record per
  * tick the character spends in the holder - its position, state, reference, route length, movement
  * budget and the reference's remaining hit points - one event per hit landed in the battle, with
- * the damage dealt and what the target stands at afterwards, and one per death. The header carries
- * the deployment, the level, the damage of one of the character's hits, and the towers standing
- * when the recorder first saw the battle, with their starting hit points.
+ * the damage dealt and what the target stands at afterwards, one per projectile launched, with its
+ * start and aim, one per projectile arrived, with the damage dealt and what the target stands at
+ * afterwards, and one per death. A run with projectiles also lists every projectile's position
+ * after each of its flight steps, which a run without has no line for. The header carries the
+ * deployment, the level, the damage of one of the character's hits, and the towers standing when
+ * the recorder first saw the battle, with their starting hit points.
  *
  * <p>Ticks are counted from the character's first tick in the holder, as the reference counts them,
  * so a placement on a later tick records the same run. Two more conventions of the reference are
@@ -39,9 +43,10 @@ import org.crforge.core.pathfinding.target.TargetView;
     note =
         "Nothing here is a rule of the game: the recorder reads the battle and writes what the"
             + " reference format asks for. Supplied: ticks counted from the character's first tick"
-            + " in the holder, a deploying tick recorded before the state visit, every hit in the"
-            + " battle recorded whoever landed it, and a reference's hit points read from what it"
-            + " advertises to attackers.")
+            + " in the holder, a deploying tick recorded before the state visit, every hit,"
+            + " launch and impact in the battle recorded whoever made it, a projectile's position"
+            + " recorded after its step unless that step arrived, and a reference's hit points"
+            + " read from what it advertises to attackers.")
 public final class TrajectoryRecorder implements WorldObserver {
 
   /** The columns of a record, in the order a record lists them. */
@@ -57,6 +62,9 @@ public final class TrajectoryRecorder implements WorldObserver {
 
   private final List<String> events = new ArrayList<>();
   private final List<String> records = new ArrayList<>();
+
+  /** One line per projectile position: the tick, the projectile's id and where it stands. */
+  private final List<String> projectiles = new ArrayList<>();
 
   /** The battle tick of the character's first tick in the holder, or -1 before it. */
   private int firstTick = -1;
@@ -97,7 +105,7 @@ public final class TrajectoryRecorder implements WorldObserver {
     if (firstTick < 0 || !result.landed()) {
       return;
     }
-    String head = "  {\"tick\": " + (tick - firstTick) + ", \"event\": ";
+    String head = eventHead(tick);
     String targetName = quote(target.name());
     events.add(
         head
@@ -114,9 +122,87 @@ public final class TrajectoryRecorder implements WorldObserver {
   }
 
   @Override
-  public void afterPostHooks(int tick, List<WorldEntity> present) {
+  public void projectileLaunched(int tick, ProjectileEntity projectile) {
+    if (firstTick < 0) {
+      return;
+    }
+    WorldEntity owner = projectile.getOwner();
+    WorldEntity target = projectile.getTarget();
+    events.add(
+        eventHead(tick)
+            + "\"launch\", \"projectile\": "
+            + quote(projectile.name())
+            + ", \"config\": "
+            + quote(projectile.getData().name())
+            + ", \"owner\": "
+            + (owner == null ? "null" : quote(owner.name()))
+            + ", \"target\": "
+            + (target == null ? "null" : quote(target.name()))
+            + ", \"x\": "
+            + projectile.getX()
+            + ", \"y\": "
+            + projectile.getY()
+            + ", \"z\": "
+            + projectile.getZ()
+            + ", \"aim\": ["
+            + projectile.getAimX()
+            + ", "
+            + projectile.getAimY()
+            + "], \"aim_z\": "
+            + projectile.getAimZ()
+            + "}");
+  }
+
+  @Override
+  public void projectileImpacted(
+      int tick, ProjectileEntity projectile, WorldEntity target, int damage, DamageResult result) {
+    if (firstTick < 0) {
+      return;
+    }
+    String head = eventHead(tick);
+    String targetName = quote(target.name());
+    events.add(
+        head
+            + "\"impact\", \"projectile\": "
+            + quote(projectile.name())
+            + ", \"target\": "
+            + targetName
+            + ", \"damage\": "
+            + damage
+            + ", \"hp\": "
+            + target.getTargetView().getHitPoints()
+            + ", \"x\": "
+            + projectile.getX()
+            + ", \"y\": "
+            + projectile.getY()
+            + ", \"z\": "
+            + projectile.getZ()
+            + "}");
+    if (result.died()) {
+      events.add(head + "\"death\", \"target\": " + targetName + "}");
+    }
+  }
+
+  @Override
+  public void afterPostHooks(int tick, List<WorldEntity> present, List<ProjectileEntity> inFlight) {
     if (firstTick < 0 || !present.contains(unit)) {
       return;
+    }
+    for (ProjectileEntity projectile : inFlight) {
+      if (!projectile.isReleased()) {
+        projectiles.add(
+            "  ["
+                + (tick - firstTick)
+                + ", "
+                + projectile.getId()
+                + ", "
+                + projectile.getX()
+                + ", "
+                + projectile.getY()
+                + ", "
+                + projectile.getZ()
+                + "]");
+      }
     }
     int x = unit.getView().getX();
     int y = unit.getView().getY();
@@ -160,9 +246,18 @@ public final class TrajectoryRecorder implements WorldObserver {
       out.append(i == 0 ? "" : ", ").append(quote(FIELDS.get(i)));
     }
     out.append("],\n");
-    appendList(out, "records", records).append("\n");
-    out.append("}\n");
+    appendList(out, "records", records);
+    if (!projectiles.isEmpty()) {
+      out.append(",\n");
+      appendList(out, "projectiles", projectiles);
+    }
+    out.append("\n}\n");
     return out.toString();
+  }
+
+  /** The opening of an event line, up to its kind. */
+  private String eventHead(int tick) {
+    return "  {\"tick\": " + (tick - firstTick) + ", \"event\": ";
   }
 
   /** Writes the run so far to a file, replacing what is there. */

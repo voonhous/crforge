@@ -1,11 +1,13 @@
 package org.crforge.core.battle.unit;
 
 import java.util.List;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
 
 /**
  * Something that watches one battle's arena from outside the tick: it is told where the tick's
- * entity visits begin and end, and about every hit that lands, and takes no part in any of it.
+ * entity visits begin and end, about every hit that lands, and about every projectile launched and
+ * every projectile that arrives, and takes no part in any of it.
  *
  * <p>Both tick calls hand over the tick's arena entities in ascending id, the list the visits ran
  * over. An entity that became removable during the tick is still in it at the end, because the
@@ -20,12 +22,19 @@ public interface WorldObserver {
 
   /**
    * After every entity's post-hook and before the closing cleanup: every position and state of the
-   * tick is final, and an entity that died this tick is still present.
+   * tick is final, an entity that died this tick is still present, and every projectile the tick
+   * visited has taken its step.
+   *
+   * @param tick the tick
+   * @param present the tick's arena entities in ascending id
+   * @param projectiles the projectiles the tick visited in ascending id, those that arrived
+   *     included; the ones launched during the tick are not among them
    */
-  default void afterPostHooks(int tick, List<WorldEntity> present) {}
+  default void afterPostHooks(
+      int tick, List<WorldEntity> present, List<ProjectileEntity> projectiles) {}
 
   /**
-   * The damage of one hit was dealt to an entity.
+   * The damage of one direct hit was dealt to an entity.
    *
    * @param tick the tick the hit landed in
    * @param target the entity the damage was dealt to
@@ -33,4 +42,22 @@ public interface WorldObserver {
    * @param result what the damage did to the target
    */
   default void damageDealt(int tick, WorldEntity target, int damage, DamageResult result) {}
+
+  /**
+   * A projectile was launched and handed to the holder; it has its id and its start and aim, and
+   * first flies on the next tick.
+   */
+  default void projectileLaunched(int tick, ProjectileEntity projectile) {}
+
+  /**
+   * A projectile arrived and dealt its damage to its target.
+   *
+   * @param tick the tick of the arrival
+   * @param projectile the projectile, standing at its aim
+   * @param target the entity the damage was dealt to
+   * @param damage hit points the impact dealt, before the target's guards and the clamp to zero
+   * @param result what the damage did to the target
+   */
+  default void projectileImpacted(
+      int tick, ProjectileEntity projectile, WorldEntity target, int damage, DamageResult result) {}
 }

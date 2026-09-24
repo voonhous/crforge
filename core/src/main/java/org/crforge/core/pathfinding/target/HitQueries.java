@@ -42,4 +42,16 @@ public interface HitQueries {
    * @param directionY direction of the hit along the arena's length
    */
   void dealDamage(TargetView target, int damage, int hitId, int directionX, int directionY);
+
+  /**
+   * Launches the projectiles of one hit of a unit that fires rather than hits directly: as many as
+   * its column says, aimed at where the reference stood at the start of the visit. A battle that
+   * has no projectiles launches nothing.
+   *
+   * @param t the attacker's targeting component, whose stored reference position is the aim
+   * @param target what the hit is aimed at, or null when the attacker has given it up
+   * @param sequenceIndex which hit of the attack this is: -1 for a single-target attack, otherwise
+   *     the index within the burst or the multi-target list, which fans the projectiles out
+   */
+  default void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {}
 }
