@@ -317,7 +317,7 @@ class BattleMusketeerRunTest {
     return reference == null ? null : reference.name();
   }
 
-  private static Integer referenceHitPoints(CharacterEntity unit) {
+  static Integer referenceHitPoints(CharacterEntity unit) {
     TargetView reference = unit.getUnit().targeting().getReference();
     return reference == null ? null : reference.getHitPoints();
   }

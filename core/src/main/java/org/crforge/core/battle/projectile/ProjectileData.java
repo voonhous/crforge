@@ -28,6 +28,10 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     tower rows as a king or princess tower
  * @param radius the radius of the area the impact damages; 0 for a projectile that hits its one
  *     target
+ * @param aoeToAir whether the area the impact damages reaches air units
+ * @param aoeToGround whether the area the impact damages reaches ground units and buildings
+ * @param onlyEnemies true when the area spares the launcher's own side; without it the launcher's
+ *     own units in the area are damaged too
  * @param projectileRadius the radius of the flying body of a projectile that hits what it passes; 0
  *     for one that only hits at its aim
  * @param projectileRange how far a projectile without a target flies from its launcher; 0 for one
@@ -57,6 +61,9 @@ public record ProjectileData(
     int crownTowerDamagePercent,
     ScalingMode damageMode,
     int radius,
+    boolean aoeToAir,
+    boolean aoeToGround,
+    boolean onlyEnemies,
     int projectileRadius,
     int projectileRange,
     boolean checkCollisions,

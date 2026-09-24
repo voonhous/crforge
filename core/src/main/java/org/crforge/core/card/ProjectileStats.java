@@ -48,6 +48,9 @@ public class ProjectileStats {
   @Builder.Default private final boolean aoeToAir = false;
   @Builder.Default private final boolean aoeToGround = false;
 
+  // The area damage spares the owner's own side; without it the owner's side is hit too
+  @Builder.Default private final boolean onlyEnemies = false;
+
   // Non-homing scatter projectiles expire at this range
   @Builder.Default private final int projectileRange = 0;
 

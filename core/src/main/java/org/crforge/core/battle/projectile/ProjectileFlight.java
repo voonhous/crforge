@@ -1,12 +1,17 @@
 package org.crforge.core.battle.projectile;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.unit.BattleWorld;
+import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
+import org.crforge.core.pathfinding.target.ValidatorQueries;
 
 /**
  * One step of a projectile's flight, and the arrival that ends it.
@@ -23,6 +28,10 @@ import org.crforge.core.pathfinding.target.TargetView;
  * or its crown-tower share for a crown tower, dealt once to a target that still has hit points,
  * from the direction of the flight. The damage carries a fresh hit id but no dedupe id, so a second
  * projectile lands on the same target again.
+ *
+ * <p>The impact of a row with a radius does not look at the target at all: everything the area
+ * damage collects in the circle around the aim takes the damage, or the crown-tower share, and the
+ * launcher's own side is spared only when the row says so.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -30,10 +39,13 @@ import org.crforge.core.pathfinding.target.TargetView;
         "Settled: the countdowns' order, the homing re-aim, the remaining distance, the arrival"
             + " test against the speed, the advance along the line with the arc height, the"
             + " release and the placement at the aim on arrival, the single impact with the"
-            + " crown-tower choice, and that a projectile whose target left lands on nothing. Held"
-            + " by every projectile position and impact of the Musketeer run. Supplied, not"
-            + " settled: the deflection pass answers nothing, the projectile's own radius is zero."
-            + " Not modelled: the area impact, the hits along a flying body's path, the height"
+            + " crown-tower choice, the area impact around the aim, and that a projectile whose"
+            + " target left lands on nothing. Held by every projectile position and impact of the"
+            + " Musketeer and Wizard runs. Supplied, not settled: the deflection pass answers"
+            + " nothing, the projectile's own radius is zero, and the row's target limit, which is"
+            + " not carried, is none. Not modelled: the area impact of a projectile that flies to"
+            + " a point and of one that only heals, the area buff, the hits along a flying body's"
+            + " path, the height"
             + " toward a moving target under the z-distance column, the delays, the pingpong"
             + " sweep, the ring, the drag-back hook, the hit effects and the on-impact spawns.")
 final class ProjectileFlight {
@@ -136,8 +148,7 @@ final class ProjectileFlight {
     int towerDamage = p.towerDamage();
     int hitId = world.nextHitId();
     if (data.radius() >= 1) {
-      // The area impact damages everything in the radius; it is not modelled yet, so a projectile
-      // with a radius arrives and deals nothing.
+      areaImpact(p, world, damage, towerDamage, hitId);
       return;
     }
     TargetView target = p.targetView();
@@ -145,6 +156,50 @@ final class ProjectileFlight {
       return;
     }
     singleImpact(p, world, target, damage, towerDamage, hitId);
+  }
+
+  /**
+   * The impact of a projectile with a radius: everything in the circle around the aim takes the
+   * damage, or the crown-tower damage, and the launcher's own side too unless the row spares it.
+   */
+  private static void areaImpact(
+      ProjectileEntity p, BattleWorld world, int damage, int towerDamage, int hitId) {
+    ProjectileData data = p.getData();
+    if (data.homingLike()) {
+      // A projectile that flies to a point has hit along its way already, and only runs that pass
+      // once more at its aim; no row carried here does.
+      return;
+    }
+    if (damage <= 0) {
+      // Without damage only a heal is delivered to the area; no row carried here heals.
+      return;
+    }
+    List<TargetView> entities = new ArrayList<>();
+    for (WorldEntity entity : world.present()) {
+      entities.add(entity.getTargetView());
+    }
+    AreaDamage.Area area =
+        new AreaDamage.Area(
+            p.getAimX(),
+            p.getAimY(),
+            data.radius(),
+            damage,
+            towerDamage,
+            hitId,
+            // The row's target limit is not carried; no row the reference runs use has one.
+            0,
+            !data.onlyEnemies(),
+            data.aoeToAir(),
+            data.aoeToGround(),
+            false);
+    AreaDamage.damage(
+        p.areaOwner(),
+        entities,
+        area,
+        ValidatorQueries.standard1v1(),
+        (victim, dealt, id) ->
+            // The area hands the damage on without a direction.
+            world.dealProjectileDamage(p, world.entityOf(victim.getEntity()), dealt, id, 0, 0));
   }
 
   /** The hit on the one target: nothing without damage or a target without hit points. */

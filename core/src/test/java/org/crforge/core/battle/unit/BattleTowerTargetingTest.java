@@ -30,7 +30,11 @@ class BattleTowerTargetingTest {
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {BattleTowerRunTest.KNIGHT_REFERENCE, BattleTowerRunTest.MUSKETEER_REFERENCE})
+      strings = {
+        BattleTowerRunTest.KNIGHT_REFERENCE,
+        BattleTowerRunTest.MUSKETEER_REFERENCE,
+        BattleTowerRunTest.WIZARD_REFERENCE
+      })
   void everyTowerHoldsTheReferenceTheReferenceGivesOnEveryTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     int lastTick = 0;
@@ -74,7 +78,11 @@ class BattleTowerTargetingTest {
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {BattleTowerRunTest.KNIGHT_REFERENCE, BattleTowerRunTest.MUSKETEER_REFERENCE})
+      strings = {
+        BattleTowerRunTest.KNIGHT_REFERENCE,
+        BattleTowerRunTest.MUSKETEER_REFERENCE,
+        BattleTowerRunTest.WIZARD_REFERENCE
+      })
   void theRemovalOfItsTargetLeavesThePrincessTowerWithTheTargetLostCountdownStarted(
       String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);

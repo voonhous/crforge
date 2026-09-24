@@ -101,6 +101,35 @@ class ProjectileLoaderTest {
     assertThat(arrow.getDamageScalingMode()).isNull();
     assertThat(arrow.getHomingTime()).isZero();
     assertThat(arrow.getHomingMinDistance()).isZero();
+    assertThat(arrow.isOnlyEnemies()).isFalse();
+  }
+
+  @Test
+  void loadProjectiles_shouldCarryTheAreaColumns() {
+    String json =
+        """
+        {
+          "chr_wizardProjectile": {
+            "name": "chr_wizardProjectile",
+            "damage": 110,
+            "speed": 600,
+            "homing": true,
+            "aoeToAir": true,
+            "aoeToGround": true,
+            "onlyEnemies": true,
+            "radius": 1.5,
+            "rarity": "Common"
+          }
+        }
+        """;
+
+    ProjectileStats fireball =
+        ProjectileLoader.loadProjectiles(toStream(json)).get("chr_wizardProjectile");
+
+    assertThat(fireball.getRadius()).isEqualTo(1500);
+    assertThat(fireball.isAoeToAir()).isTrue();
+    assertThat(fireball.isAoeToGround()).isTrue();
+    assertThat(fireball.isOnlyEnemies()).isTrue();
   }
 
   @Test
