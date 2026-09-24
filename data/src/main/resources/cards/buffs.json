@@ -49,6 +49,10 @@
     "hitSpeedMultiplier": -100,
     "spawnSpeedMultiplier": -100
   },
+  "Ghost_EV1_Invisibility": {
+    "name": "Ghost_EV1_Invisibility",
+    "invisible": true
+  },
   "GoblinCurse": {
     "name": "GoblinCurse",
     "deathSpawnCount": 1,

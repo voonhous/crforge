@@ -19,7 +19,8 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
 
 /**
  * An entity that stands on the arena: it has a position, a collision circle and a side, the spatial
- * index lists it, the building overlay may stamp it, and other entities may target it.
+ * index lists it, the building overlay may stamp it, and other entities may target it. Every troop
+ * and every building is one, so they are all of the character kind and share one band of ids.
  *
  * <p>The entity's position and state live in its {@link GridEntity}; there is no second copy to
  * keep in step. Its {@link TargetView} is the identity other entities hold a reference by, so it is
@@ -71,6 +72,7 @@ public abstract class WorldEntity extends BattleEntity {
    */
   protected WorldEntity(
       UnitData data, GridEntity view, TargetingConfig targetingConfig, int level) {
+    super(KIND_CHARACTER);
     checkArgument(data.rarity() != null, () -> data.name() + " has no rarity to scale by");
     this.data = data;
     this.view = view;

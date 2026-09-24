@@ -4,7 +4,6 @@ import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleMode;
-import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -48,7 +47,7 @@ public class Standard1v1Battle {
   public Standard1v1Battle(int towerLevel) {
     TileMap tileMap = TileMap.standard1v1();
     this.world = new BattleWorld(tileMap);
-    this.battle = new Battle(new EntityHolder(world), BattleMode.ENDLESS);
+    this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
     for (int side : new int[] {WorldEntity.SIDE_BOTTOM, WorldEntity.SIDE_TOP}) {
       for (int i = 0; i < TOWER_CELLS.length; i++) {
         UnitData data = i == 0 ? UnitData.KING_TOWER : UnitData.PRINCESS_TOWER;

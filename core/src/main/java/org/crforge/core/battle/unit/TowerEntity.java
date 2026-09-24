@@ -15,8 +15,8 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
         "Settled: a tower occludes routing from its collision radius, takes no part in pushes or"
             + " steering, is a default target, and stands at its hit points at its level."
             + " Supplied, not settled: the towers scale as Common. Not modelled yet: the tower's"
-            + " own targeting component and its damage column, so a tower does not attack, and"
-            + " king tower activation.")
+            + " own targeting component, so a tower does not attack although its projectile and"
+            + " launch columns are carried, and king tower activation.")
 public class TowerEntity extends WorldEntity {
 
   /**

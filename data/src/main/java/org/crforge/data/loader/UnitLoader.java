@@ -35,6 +35,7 @@ import org.crforge.core.card.DeathSpawnEntry;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.LiveSpawnConfig;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.card.TransformationConfig;
 import org.crforge.core.card.TroopStats;
 import org.crforge.core.combat.TargetSelectAlgorithm;
@@ -204,6 +205,11 @@ public class UnitLoader {
             // Combat modifiers
             .multipleTargets(dto.getMultipleTargets())
             .multipleProjectiles(dto.getMultipleProjectiles())
+            // Launch offsets are published in game units and kept as they are
+            .projectileStartRadius(dto.getProjectileStartRadius())
+            .projectileStartZ(dto.getProjectileStartZ())
+            .projectileYOffset(dto.getProjectileYOffset())
+            .rarity(Rarity.fromString(dto.getRarity()))
             .selfAsAoeCenter(dto.isSelfAsAoeCenter())
             // Targeting and combat modifiers
             .targetOnlyBuildings(dto.isTargetOnlyBuildings())

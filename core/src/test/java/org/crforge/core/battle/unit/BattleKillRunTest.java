@@ -211,7 +211,9 @@ class BattleKillRunTest {
       JsonNode record = records.get(i);
       String where = "reference tick " + record.get("tick").asInt();
 
-      assertThat(knight.getId()).as("%s: the Knight follows the six towers", where).isEqualTo(7);
+      assertThat(knight.getId())
+          .as("%s: the Knight follows the six towers in the character band", where)
+          .isEqualTo(5000006);
       assertThat(knight.getView().getX()).as("%s x", where).isEqualTo(record.get("x").asInt());
       assertThat(knight.getView().getY()).as("%s y", where).isEqualTo(record.get("y").asInt());
       assertThat(knight.getView().getState())

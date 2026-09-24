@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -56,14 +57,14 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
         "Settled: targeting in slot 0, movement in slot 1, the state visit as the post-hook, the"
             + " deploy countdown stepping 50 ms per state visit, every state change and route"
             + " preparation going through the unit's own setter, each hit recorded on the"
-            + " attacker and landing on its target, the hit points and damage at the"
-            + " character's level, the removal notice dropping a reference to an entity that left"
-            + " and starting the target-lost countdown, and the resume that follows. Supplied, not"
-            + " settled: both components return at once while the character is deploying. Not"
-            + " modelled yet: air, jumping and hovering units, status"
-            + " effects on the speed budget, the deployment's own lane flag, and the columns its"
-            + " data does not carry: the stop time after an attack and the ones that restrict what a"
-            + " unit may target, such as buildings only.")
+            + " attacker and landing on its target directly or as the projectiles it launches in"
+            + " the same tick, the hit points and damage at the character's level, the removal"
+            + " notice dropping a reference to an entity that left and starting the target-lost"
+            + " countdown, and the resume that follows. Supplied, not settled: both components"
+            + " return at once while the character is deploying. Not modelled yet: air, jumping"
+            + " and hovering units, status effects on the speed budget, the deployment's own lane"
+            + " flag, and the columns its data does not carry: the stop time after an attack and"
+            + " the ones that restrict what a unit may target, such as buildings only.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -129,7 +130,7 @@ public class CharacterEntity extends WorldEntity {
     unit.selection()
         .setHitSink(
             (target, sequenceIndex, extraTargets, last) ->
-                HitApplication.apply(targeting, target, hitQueries()));
+                HitApplication.apply(targeting, target, sequenceIndex, hitQueries()));
 
     attach(new TargetingComponent());
     attach(new MovementComponent());
@@ -174,6 +175,7 @@ public class CharacterEntity extends WorldEntity {
         .toBuilder()
         .configKey(data.name())
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
+        .hasProjectile(data.hasProjectile())
         .build();
   }
 
@@ -248,7 +250,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * What one of the character's hits needs from the battle: the damage of a hit at the character's
-   * level, the battle's hit ids, and the target the damage is dealt to.
+   * level, the battle's hit ids, the target the damage is dealt to, and the launch of the
+   * projectiles of a character that fires.
    */
   private HitQueries hitQueries() {
     return new HitQueries() {
@@ -266,6 +269,11 @@ public class CharacterEntity extends WorldEntity {
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
         world.dealDamage(target, damage, directionX, directionY);
+      }
+
+      @Override
+      public void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {
+        ProjectileLauncher.launch(CharacterEntity.this, t, target, sequenceIndex, world);
       }
     };
   }

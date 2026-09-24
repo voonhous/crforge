@@ -769,7 +769,8 @@
         -0.854,
         -0.854
       ]
-    ]
+    ],
+    "summonDeployDelaySecond": 0.1
   },
   {
     "id": "movingcannon",
@@ -2717,7 +2718,8 @@
     "unit": "RascalBoy",
     "secondaryUnit": "RascalGirl",
     "secondaryCount": 2,
-    "summonRadius": 3000.0
+    "summonRadius": 3000.0,
+    "summonDeployDelaySecond": 0.1
   },
   {
     "id": "movingcannon_hero",

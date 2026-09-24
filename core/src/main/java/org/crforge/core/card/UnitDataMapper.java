@@ -1,31 +1,39 @@
 package org.crforge.core.card;
 
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.entity.base.MovementType;
 import org.crforge.core.entity.base.TargetType;
 import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 
 /**
- * Turns the card library's unit stats into the raw columns the battle reads.
+ * Turns the card library's unit and projectile stats into the raw columns the battle reads.
  *
  * <p>The card library stores durations as float seconds and the battle reads whole milliseconds.
  * Every published duration is a whole number of milliseconds, so rounding the product recovers the
- * column exactly. The speed column is carried through untouched as {@link TroopStats#getRawSpeed}.
+ * column exactly. The speed columns are carried through untouched as the raw speeds.
  *
- * <p>The card library keeps the rarity on the card, not on the unit, so the unit is scaled by the
- * rarity of the card that deploys it. A unit's own rarity column is not carried by the library; for
- * a unit another unit spawns, the two may differ.
+ * <p>A unit is scaled by its own row's rarity, which is what the level it is created at is packed
+ * against; the level a card is played at is counted against the card's rarity, and re-basing it on
+ * the row's gives the steps above the first level that the row's stats are published at. Only when
+ * the row carries no rarity does the deploying card's stand in.
  */
 public final class UnitDataMapper {
 
   private UnitDataMapper() {}
 
-  /** The battle's view of the unit a card deploys, scaled by the card's rarity. */
+  /**
+   * The battle's view of the unit a card deploys, scaled by the unit's own rarity, or by the card's
+   * when its row carries none.
+   */
   public static UnitData toUnitData(Card card) {
-    return toUnitData(card.getUnitStats(), rarityTable(card.getRarity()));
+    TroopStats stats = card.getUnitStats();
+    Rarity rarity = stats.getRarity() != Rarity.UNKNOWN ? stats.getRarity() : card.getRarity();
+    return toUnitData(stats, rarityTable(rarity));
   }
 
-  /** The battle's view of one unit of the card library. */
+  /** The battle's view of one unit of the card library, scaled by the given rarity. */
   public static UnitData toUnitData(TroopStats stats, RarityTable rarity) {
     TargetType targets = stats.getTargetType();
     return UnitData.builder()
@@ -46,6 +54,40 @@ public final class UnitDataMapper {
         .damage(stats.getDamage())
         .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
         .rarity(rarity)
+        .projectile(toProjectileData(stats.getProjectile()))
+        .projectileStartRadius(stats.getProjectileStartRadius())
+        .projectileStartZ(stats.getProjectileStartZ())
+        .projectileYOffset(stats.getProjectileYOffset())
+        .multipleProjectiles(stats.getMultipleProjectiles())
+        .areaDamageRadius(stats.getAoeRadius())
+        .build();
+  }
+
+  /**
+   * The battle's view of one projectile of the card library, or null for none. A projectile row
+   * without a rarity is scaled as a Common one.
+   */
+  public static ProjectileData toProjectileData(ProjectileStats stats) {
+    if (stats == null) {
+      return null;
+    }
+    return ProjectileData.builder()
+        .name(stats.getName())
+        .rarity(rarityTable(stats.getRarity()))
+        .speed(stats.getRawSpeed())
+        .gravity(stats.getGravity())
+        .homing(stats.isHoming())
+        .homingTimeMs(stats.getHomingTime())
+        .homingMinDistance(stats.getHomingMinDistance())
+        .damage(stats.getDamage())
+        .crownTowerDamagePercent(stats.getCrownTowerDamagePercent())
+        .damageMode(damageMode(stats.getDamageScalingMode()))
+        .radius(stats.getRadius())
+        .projectileRadius(stats.getProjectileRadius())
+        .projectileRange(stats.getProjectileRange())
+        .checkCollisions(stats.isCheckCollisions())
+        .minDistance(stats.getMinDistance())
+        .circleScatter("Circle".equals(stats.getScatter()))
         .build();
   }
 
@@ -61,6 +103,20 @@ public final class UnitDataMapper {
       case LEGENDARY -> RarityTable.LEGENDARY;
       case CHAMPION -> RarityTable.CHAMPION;
     };
+  }
+
+  /**
+   * The scaling rule a projectile's damage column names: the king tower's or the princess towers'
+   * for the two tower modes, the card rule for everything else.
+   */
+  static ScalingMode damageMode(String damageScalingMode) {
+    if ("KingTower".equals(damageScalingMode)) {
+      return ScalingMode.KING_DAMAGE;
+    }
+    if ("PrincessTower".equals(damageScalingMode)) {
+      return ScalingMode.TOWER_DAMAGE;
+    }
+    return ScalingMode.CARD_DAMAGE;
   }
 
   private static int toMs(float seconds) {

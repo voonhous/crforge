@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.effect.StatusEffectType;
 import org.junit.jupiter.api.Test;
 
@@ -46,6 +47,60 @@ class ProjectileLoaderTest {
     assertThat(arrow.isHoming()).isTrue();
     assertThat(arrow.isAoeToAir()).isFalse();
     assertThat(arrow.isAoeToGround()).isFalse();
+  }
+
+  @Test
+  void loadProjectiles_shouldCarryTheBattleColumns() {
+    String json =
+        """
+        {
+          "TowerPrincessProjectile": {
+            "name": "TowerPrincessProjectile",
+            "damage": 50,
+            "speed": 600,
+            "homing": true,
+            "gravity": 60,
+            "rarity": "Common",
+            "damageScalingMode": "PrincessTower",
+            "homingTime": 100,
+            "homingMinDistance": 500
+          }
+        }
+        """;
+
+    ProjectileStats arrow =
+        ProjectileLoader.loadProjectiles(toStream(json)).get("TowerPrincessProjectile");
+
+    // The published speed is kept beside the converted one, as the units keep theirs
+    assertThat(arrow.getRawSpeed()).isEqualTo(600);
+    assertThat(arrow.getGravity()).isEqualTo(60);
+    assertThat(arrow.getRarity()).isEqualTo(Rarity.COMMON);
+    assertThat(arrow.getDamageScalingMode()).isEqualTo("PrincessTower");
+    assertThat(arrow.getHomingTime()).isEqualTo(100);
+    assertThat(arrow.getHomingMinDistance()).isEqualTo(500);
+  }
+
+  @Test
+  void loadProjectiles_shouldLeaveTheBattleColumnsAtTheirDefaults() {
+    String json =
+        """
+        {
+          "ArcherArrow": {
+            "name": "ArcherArrow",
+            "damage": 44,
+            "speed": 600
+          }
+        }
+        """;
+
+    ProjectileStats arrow = ProjectileLoader.loadProjectiles(toStream(json)).get("ArcherArrow");
+
+    assertThat(arrow.getRawSpeed()).isEqualTo(600);
+    assertThat(arrow.getGravity()).isZero();
+    assertThat(arrow.getRarity()).isEqualTo(Rarity.UNKNOWN);
+    assertThat(arrow.getDamageScalingMode()).isNull();
+    assertThat(arrow.getHomingTime()).isZero();
+    assertThat(arrow.getHomingMinDistance()).isZero();
   }
 
   @Test

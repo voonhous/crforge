@@ -22,25 +22,28 @@ import org.crforge.core.fidelity.FidelityStatus;
  *       of a unit without a charge counts itself in the same field;
  *   <li>the damage of one hit at the owner's level, the special one for a special hit;
  *   <li>a unit with a stop time after its attack has its attack block timer set to it;
- *   <li>the hit itself, which for a unit without a projectile is the direct hit;
+ *   <li>the hit itself: the direct hit for a unit without a projectile, and for a unit with one the
+ *       launch of its projectiles, which a cancelled hit skips;
  *   <li>a pending special load is cleared.
  * </ul>
  *
- * <p>A unit that fires a projectile gets as far as its own bookkeeping: nothing is launched and
- * nothing takes damage, because projectiles are not modelled yet.
+ * <p>The damage chosen here reaches the target only through the direct hit. A projectile computes
+ * its own damage from its row when it arrives, so for a unit that fires the damage is chosen and
+ * not used, as the standard game has it.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the order above, the component writes, the long-distance cancel and the direct"
-            + " hit of a unit without a projectile. Held by the kill run's hit cadence and by every"
-            + " hit landing on the reference's remaining hit points. Supplied, not settled: the"
-            + " owner may always attack. Not modelled: the projectile launch, special hits by"
-            + " interval or while hidden and the columns they read, the attack sequence step's own"
-            + " damage, the charged hit, the targeted hit effect and its pushback, the attack"
-            + " counter and the attacking flag on the owner, the buff a hit applies, the actions"
-            + " an attack runs and the notifications it ends with, and the dasher's exception to the"
-            + " long-distance cancel, whose column is not carried.")
+        "Settled: the order above, the component writes, the long-distance cancel, the direct"
+            + " hit of a unit without a projectile and the launch for a unit with one. Held by the"
+            + " kill run's hit cadence, by every hit landing on the reference's remaining hit"
+            + " points and by the Musketeer run's launch ticks. Supplied, not settled: the owner"
+            + " may always attack. Not modelled: special hits by interval or while hidden and the"
+            + " columns they read, the attack sequence step's own damage and projectile, the"
+            + " charged hit, the projectile a buff substitutes, the targeted hit effect and its"
+            + " pushback, the attack counter and the attacking flag on the owner, the buff a hit"
+            + " applies, the actions an attack runs and the notifications it ends with, and the"
+            + " dasher's exception to the long-distance cancel, whose column is not carried.")
 public final class HitApplication {
 
   private HitApplication() {
@@ -48,19 +51,31 @@ public final class HitApplication {
   }
 
   /**
+   * Applies one hit of a single-target attack.
+   *
+   * @see #apply(TargetingState, TargetView, int, HitQueries)
+   */
+  public static boolean apply(TargetingState t, TargetView target, HitQueries queries) {
+    return apply(t, target, -1, queries);
+  }
+
+  /**
    * Applies one hit.
    *
-   * <p>The sink's other arguments - which hit of a burst or multi-target attack this is, the extra
-   * targets the owner's buffs add and whether this is the last hit - are read only by the
-   * projectile placement and the notifications, neither of which is modelled, so they are not taken
+   * <p>Of the sink's other arguments, the extra targets the owner's buffs add and whether this is
+   * the last hit are read only by the notifications, which are not modelled, so they are not taken
    * here.
    *
    * @param t the attacker's targeting component
    * @param target what the hit is aimed at, or null when the attacker has given it up
+   * @param sequenceIndex which hit of the attack this is: -1 for a single-target attack, otherwise
+   *     the index within the burst or the multi-target list, which only the projectile placement
+   *     reads
    * @param queries the damage at the owner's level, the battle's hit ids and where damage goes
    * @return true when <b>nothing landed</b>, which is what the visit's sink answers
    */
-  public static boolean apply(TargetingState t, TargetView target, HitQueries queries) {
+  public static boolean apply(
+      TargetingState t, TargetView target, int sequenceIndex, HitQueries queries) {
     TargetingConfig cfg = t.getConfig();
     TargetingGlobals globals = t.getGlobals();
     t.setHitStarted(true);
@@ -84,6 +99,8 @@ public final class HitApplication {
     }
     if (!cfg.hasProjectile()) {
       DirectHit.resolve(t, target, damage, missed, queries);
+    } else if (!missed) {
+      queries.launchProjectiles(t, target, sequenceIndex);
     }
     t.setSpecialLoadPending(false);
     return missed;

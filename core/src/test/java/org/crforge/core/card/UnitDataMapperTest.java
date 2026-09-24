@@ -3,8 +3,10 @@ package org.crforge.core.card;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Objects;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,9 +61,77 @@ class UnitDataMapperTest {
   }
 
   @Test
-  @DisplayName("a card's rarity reaches the unit it deploys")
-  void aCardsRarityReachesItsUnit() {
+  @DisplayName(
+      "a unit is scaled by its own row's rarity, not the rarity of the card that deploys it")
+  void aUnitIsScaledByItsOwnRowsRarity() {
+    // The Musketeer's and the Mini P.E.K.K.A.'s rows are Common although both cards are Rare: the
+    // row's stats are published at the first level and the card's rarity only positions the level.
+    Card musketeer = Objects.requireNonNull(CardRegistry.get("musketeer"), "musketeer not found");
     Card miniPekka = Objects.requireNonNull(CardRegistry.get("minipekka"), "minipekka not found");
-    assertThat(UnitDataMapper.toUnitData(miniPekka).rarity()).isEqualTo(RarityTable.RARE);
+    assertThat(musketeer.getRarity()).isEqualTo(Rarity.RARE);
+    assertThat(UnitDataMapper.toUnitData(musketeer).rarity()).isEqualTo(RarityTable.COMMON);
+    assertThat(UnitDataMapper.toUnitData(miniPekka).rarity()).isEqualTo(RarityTable.COMMON);
+  }
+
+  @Test
+  @DisplayName("a unit whose row carries no rarity is scaled by the card's")
+  void aRowWithoutARarityTakesTheCards() {
+    Card miniPekka = Objects.requireNonNull(CardRegistry.get("minipekka"), "minipekka not found");
+    TroopStats withoutRarity =
+        TroopStats.builder().name("Nameless").rawSpeed(60).rarity(Rarity.UNKNOWN).build();
+    Card card = miniPekka.toBuilder().unitStats(withoutRarity).build();
+
+    assertThat(UnitDataMapper.toUnitData(card).rarity()).isEqualTo(RarityTable.RARE);
+  }
+
+  @Test
+  @DisplayName("a unit that fires carries its projectile's columns and its launch columns")
+  void aUnitThatFiresCarriesItsProjectile() {
+    Card musketeer = Objects.requireNonNull(CardRegistry.get("musketeer"), "musketeer not found");
+
+    UnitData data = UnitDataMapper.toUnitData(musketeer);
+
+    assertThat(data.hasProjectile()).isTrue();
+    ProjectileData shot = data.projectile();
+    assertThat(shot.name()).isEqualTo("MusketeerProjectile");
+    assertThat(shot.speed()).as("game units per step").isEqualTo(1000);
+    assertThat(shot.gravity()).isZero();
+    assertThat(shot.homing()).isTrue();
+    assertThat(shot.homingTimeMs()).isZero();
+    assertThat(shot.damage()).isEqualTo(85);
+    assertThat(shot.crownTowerDamagePercent()).isZero();
+    assertThat(shot.rarity()).isEqualTo(RarityTable.COMMON);
+    assertThat(shot.damageMode()).isEqualTo(ScalingMode.CARD_DAMAGE);
+    assertThat(shot.radius()).isZero();
+    assertThat(shot.homingLike()).isFalse();
+    assertThat(data.projectileStartRadius()).isEqualTo(450);
+    assertThat(data.projectileStartZ()).isEqualTo(450);
+    assertThat(data.projectileYOffset()).isZero();
+    assertThat(data.multipleProjectiles()).isZero();
+    assertThat(data.areaDamageRadius()).isZero();
+  }
+
+  @Test
+  @DisplayName("a unit that hits directly carries no projectile, but still its launch columns")
+  void aUnitThatHitsDirectlyCarriesNoProjectile() {
+    Card knight = Objects.requireNonNull(CardRegistry.get("knight"), "knight not found");
+
+    UnitData data = UnitDataMapper.toUnitData(knight);
+
+    assertThat(data.hasProjectile()).isFalse();
+    assertThat(data.projectile()).isNull();
+    assertThat(data.projectileStartRadius()).isEqualTo(450);
+    assertThat(data.projectileStartZ()).isEqualTo(450);
+  }
+
+  @Test
+  @DisplayName(
+      "a projectile row's scaling mode names the tower rules, everything else the card rule")
+  void theDamageModes() {
+    assertThat(UnitDataMapper.damageMode(null)).isEqualTo(ScalingMode.CARD_DAMAGE);
+    assertThat(UnitDataMapper.damageMode("")).isEqualTo(ScalingMode.CARD_DAMAGE);
+    assertThat(UnitDataMapper.damageMode("Default")).isEqualTo(ScalingMode.CARD_DAMAGE);
+    assertThat(UnitDataMapper.damageMode("KingTower")).isEqualTo(ScalingMode.KING_DAMAGE);
+    assertThat(UnitDataMapper.damageMode("PrincessTower")).isEqualTo(ScalingMode.TOWER_DAMAGE);
   }
 }

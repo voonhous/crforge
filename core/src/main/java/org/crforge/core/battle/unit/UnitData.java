@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import lombok.Builder;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.pathfinding.combat.RarityTable;
 
 /**
@@ -30,7 +31,16 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param damage damage per hit at the first level
  * @param crownTowerDamagePercent difference, in percent, between what a hit deals to a crown tower
  *     and what it deals to anything else; 0 for a unit that hits both alike
- * @param rarity the rarity whose table scales the unit's stats by level
+ * @param rarity the rarity whose table scales the unit's stats by level: the unit's own row's,
+ *     which is what the level a unit is created at is packed against
+ * @param projectile the projectile the unit fires instead of hitting directly, or null for a unit
+ *     that hits directly
+ * @param projectileStartRadius how far along the line to the target a projectile leaves the unit
+ * @param projectileStartZ how high above the unit a projectile leaves it
+ * @param projectileYOffset how far along the arena's length a projectile's start is shifted; the
+ *     top side's is mirrored
+ * @param multipleProjectiles how many projectiles one attack launches; 0 and 1 both mean one
+ * @param areaDamageRadius the spread of a multi-projectile attack; 0 for a single projectile
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -52,7 +62,13 @@ public record UnitData(
     int hitpoints,
     int damage,
     int crownTowerDamagePercent,
-    RarityTable rarity) {
+    RarityTable rarity,
+    ProjectileData projectile,
+    int projectileStartRadius,
+    int projectileStartZ,
+    int projectileYOffset,
+    int multipleProjectiles,
+    int areaDamageRadius) {
 
   /**
    * The king tower's published columns. The towers carry no rarity column; Common is the rarity
@@ -72,6 +88,10 @@ public record UnitData(
           .king(true)
           .hitpoints(2400)
           .rarity(RarityTable.COMMON)
+          .projectile(ProjectileData.KING_PROJECTILE)
+          .projectileStartRadius(750)
+          .projectileStartZ(3500)
+          .projectileYOffset(400)
           .build();
 
   /** The princess tower's published columns. */
@@ -88,5 +108,13 @@ public record UnitData(
           .summonerTower(true)
           .hitpoints(1400)
           .rarity(RarityTable.COMMON)
+          .projectile(ProjectileData.TOWER_PRINCESS_PROJECTILE)
+          .projectileStartRadius(300)
+          .projectileStartZ(3000)
           .build();
+
+  /** True for a unit that fires a projectile rather than hitting its target directly. */
+  public boolean hasProjectile() {
+    return projectile != null;
+  }
 }

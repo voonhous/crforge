@@ -36,6 +36,16 @@ public class UnitConfigDTO {
   // Projectile reference (string name into projectiles.json)
   private String projectile;
 
+  // Where a projectile leaves the unit, in raw game units (1000 = one tile): this far along the
+  // line to the target, this high, and shifted this far along the arena (mirrored for the top side)
+  private int projectileStartRadius;
+  private int projectileStartZ;
+  private int projectileYOffset;
+
+  // The row's own rarity, which the level a unit is created at is packed against; it differs from
+  // the deploying card's rarity for some spawned units
+  private String rarity;
+
   // Targeting and combat modifiers
   private boolean targetOnlyBuildings;
   private float minimumRange;

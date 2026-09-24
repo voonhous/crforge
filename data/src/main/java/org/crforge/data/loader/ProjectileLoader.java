@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.card.EffectStats;
 import org.crforge.core.card.ProjectileStats;
+import org.crforge.core.card.Rarity;
 import org.crforge.core.effect.StatusEffectType;
 import org.crforge.core.util.GameUnits;
 import org.crforge.data.loader.dto.ProjectileConfigDTO;
@@ -90,6 +91,13 @@ public class ProjectileLoader {
             .name(dto.getName())
             .damage(dto.getDamage())
             .speed(effectiveSpeed)
+            // The published speed is kept as it is: game units per step, for the battle core
+            .rawSpeed(Math.round(dto.getSpeed()))
+            .gravity(dto.getGravity())
+            .rarity(Rarity.fromString(dto.getRarity()))
+            .damageScalingMode(dto.getDamageScalingMode())
+            .homingTime(dto.getHomingTime())
+            .homingMinDistance(dto.getHomingMinDistance())
             .radius(tiles(dto.getRadius()))
             .radiusY(tiles(dto.getRadiusY()))
             .homing(dto.getHoming() != null ? dto.getHoming() : true)

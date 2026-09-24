@@ -12,16 +12,38 @@ import lombok.Getter;
  * in its slots, by which of them are switched on, and by the two hooks a subclass overrides: the
  * pre-hook that runs before any component of any entity, and the post-hook that runs after all of
  * them.
+ *
+ * <p>Every entity is of a kind, and its id is built from that kind: a kind's entities occupy one
+ * band of a million ids, so the holder's id-sorted list runs every area effect before every
+ * projectile and every projectile before every character in each of its passes.
  */
 public abstract class BattleEntity {
 
   /** Number of component slots, and therefore of whole-list component passes per tick. */
   public static final int COMPONENT_SLOTS = 4;
 
-  /** Id of an entity the holder has not registered yet. */
+  /** Id of an entity the holder has not been handed yet. */
   public static final int UNASSIGNED_ID = 0;
 
-  /** Position in the holder's id-sorted list; assigned on registration and never reused. */
+  /** The kind of an area effect. */
+  public static final int KIND_AREA_EFFECT = 3;
+
+  /** The kind of a projectile. */
+  public static final int KIND_PROJECTILE = 4;
+
+  /** The kind of a character: every troop and every building, the crown towers included. */
+  public static final int KIND_CHARACTER = 5;
+
+  /** Which band of ids the entity's kind occupies: one million per kind. */
+  public static final int IDS_PER_KIND = 1_000_000;
+
+  /** The entity's kind, which selects the holder's counter its id is taken from. */
+  @Getter private final int kind;
+
+  /**
+   * Position in the holder's id-sorted list: the kind times a million plus the kind's counter at
+   * the moment the entity was handed to the holder. Assigned once and never reused.
+   */
   @Getter private int id = UNASSIGNED_ID;
 
   private final BattleComponent[] components = new BattleComponent[COMPONENT_SLOTS];
@@ -29,9 +51,17 @@ public abstract class BattleEntity {
   /** Bit {@code n} is set while the component in slot {@code n} is switched on. */
   private int activeBits;
 
-  /** Called by the holder when it registers the entity. */
+  /**
+   * @param kind the entity's kind, one of the {@code KIND_} constants
+   */
+  protected BattleEntity(int kind) {
+    checkArgument(kind >= 0, () -> "an entity's kind is not negative: " + kind);
+    this.kind = kind;
+  }
+
+  /** Called by the holder when the entity is handed to it. */
   void assignId(int id) {
-    checkState(this.id == UNASSIGNED_ID, () -> "entity " + this.id + " is already registered");
+    checkState(this.id == UNASSIGNED_ID, () -> "entity " + this.id + " already has its id");
     this.id = id;
   }
 
@@ -76,8 +106,9 @@ public abstract class BattleEntity {
   }
 
   /**
-   * Runs once, when the holder admits the entity and has just given it its id. Everything admitted
-   * before it, in this cleanup or an earlier one, is already registered.
+   * Runs once, when the holder admits the entity to its live list. The entity has had its id since
+   * it was handed to the holder; everything admitted before it, in this cleanup or an earlier one,
+   * is already registered.
    */
   protected void onRegistered() {}
 

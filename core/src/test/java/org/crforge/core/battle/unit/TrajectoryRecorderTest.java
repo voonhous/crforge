@@ -20,12 +20,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Writes the kill run out through {@link TrajectoryRecorder} and holds the file to the committed
- * reference byte for byte. One comparison checks the export's layout and replays the whole run:
- * every record, every event and the header.
+ * Writes the kill run and the Musketeer run out through {@link TrajectoryRecorder} and holds each
+ * file to its committed reference byte for byte. One comparison checks the export's layout and
+ * replays the whole run: every record, every event, every projectile position and the header.
  *
- * <p>The reference's ticks count from the Knight's first tick in the holder, so the placement tick
- * does not show in the file; the second test moves it and expects the same text.
+ * <p>The reference's ticks count from the character's first tick in the holder, so the placement
+ * tick does not show in the file; one test moves it and expects the same text.
  */
 class TrajectoryRecorderTest {
 
@@ -33,10 +33,12 @@ class TrajectoryRecorderTest {
 
   private static final String REFERENCE = "/pathfinding/golden/knight_left_kill.json";
 
+  private static final String MUSKETEER_REFERENCE = "/pathfinding/golden/musketeer_left_kill.json";
+
   @Test
   @DisplayName("the exported kill run is the committed reference, byte for byte")
   void theExportIsTheReferenceByteForByte(@TempDir Path directory) throws IOException {
-    String expected = reference();
+    String expected = reference(REFERENCE);
     JsonNode reference = MAPPER.readTree(expected);
     TrajectoryRecorder recorder = record(reference, 0);
 
@@ -48,31 +50,55 @@ class TrajectoryRecorderTest {
   }
 
   @Test
+  @DisplayName(
+      "the exported Musketeer run, launches, impacts and projectile positions included, is the"
+          + " committed reference byte for byte")
+  void theExportedMusketeerRunIsTheReferenceByteForByte(@TempDir Path directory)
+      throws IOException {
+    String expected = reference(MUSKETEER_REFERENCE);
+    JsonNode reference = MAPPER.readTree(expected);
+    assertThat(reference.get("projectiles"))
+        .as("the reference lists projectile positions")
+        .hasSize(105);
+    TrajectoryRecorder recorder = record(reference, 0);
+
+    Path file = directory.resolve("musketeer_left_kill.json");
+    recorder.writeTo(file);
+
+    assertThat(recorder.recordCount()).isEqualTo(reference.get("records").size());
+    assertSameText(Files.readString(file, StandardCharsets.UTF_8), expected);
+  }
+
+  @Test
   @DisplayName("a placement on a later tick records the same run, counted from its first tick")
   void aLaterPlacementRecordsTheSameRun() throws IOException {
-    String expected = reference();
+    String expected = reference(REFERENCE);
     TrajectoryRecorder recorder = record(MAPPER.readTree(expected), 3);
     assertSameText(recorder.text(), expected);
   }
 
-  /** Plays the reference's Knight placed on the given tick through the whole run, recording it. */
+  /**
+   * Plays the reference's character placed on the given tick through the whole run, recording it.
+   * The reference names the unit; its card is the unit's name in lower case.
+   */
   private static TrajectoryRecorder record(JsonNode reference, int placementTick) {
     int ticks = reference.get("records").size();
+    String cardId = reference.get("card").asText().toLowerCase();
     Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt());
     Battle battle = match.getBattle();
-    CharacterEntity knight =
+    CharacterEntity unit =
         match.deploy(
             placementTick,
             UnitDataMapper.toUnitData(
-                Objects.requireNonNull(CardRegistry.get("knight"), "knight not found")),
+                Objects.requireNonNull(CardRegistry.get(cardId), cardId + " not found")),
             reference.get("level").asInt(),
             reference.get("side").asInt(),
             reference.get("deploy").get(0).asInt(),
             reference.get("deploy").get(1).asInt());
-    TrajectoryRecorder recorder = new TrajectoryRecorder(knight);
+    TrajectoryRecorder recorder = new TrajectoryRecorder(unit);
     match.getWorld().addObserver(recorder);
 
-    // Run until the recorder has the whole run: which step the Knight is first visited in depends
+    // Run until the recorder has the whole run: which step the unit is first visited in depends
     // on which of the two command passes admits it, and the recorder counts from that tick.
     while (recorder.recordCount() < ticks) {
       battle.step();
@@ -92,14 +118,14 @@ class TrajectoryRecorderTest {
         .isEqualTo(expected.getBytes(StandardCharsets.UTF_8));
   }
 
-  private static String reference() {
-    try (InputStream stream = TrajectoryRecorderTest.class.getResourceAsStream(REFERENCE)) {
+  private static String reference(String resource) {
+    try (InputStream stream = TrajectoryRecorderTest.class.getResourceAsStream(resource)) {
       if (stream == null) {
-        throw new IllegalStateException("Missing test resource " + REFERENCE);
+        throw new IllegalStateException("Missing test resource " + resource);
       }
       return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
     } catch (IOException e) {
-      throw new UncheckedIOException("Failed to read " + REFERENCE, e);
+      throw new UncheckedIOException("Failed to read " + resource, e);
     }
   }
 }
