@@ -24,7 +24,7 @@ model, not necessarily with the game.
   the top side's are the same mirrored along the arena's length. King towers have a collision radius
   of 1400 and princess towers 1000.
 - Levels and damage do not affect the path and are not carried here; no tower is destroyed in any of
-  the five lock runs. The two kill runs below carry both and run to a tower's death.
+  the six lock runs. The two kill runs below carry both and run to a tower's death.
 - A destroyed building would leave the entity list at the end of the tick in which it dies.
 - The follower advances to the next route node as soon as the remaining distance projected on its
   route direction drops to 1000 units, so the unit effectively aims two nodes ahead and clips the
@@ -198,13 +198,22 @@ reference and no goal that preparation asks the grid nothing and leaves no entry
 | `knight_centre`      | (9000, 12000)  | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245    |
 | `knight_right_rear`  | (16500, 5000)  | PrincessTower_1_2                                  | tick 323    |
 | `knight_behind_king` | (9000, 4600)   | KingTower_1_0, then PrincessTower_1_2 from tick 73 | tick 368    |
+| `knight_left_inner`  | (8000, 10000)  | PrincessTower_1_1 on ticks 20 to 29, KingTower_1_0 from tick 30, PrincessTower_1_1 from tick 68 | tick 259 |
 
 The centre case is the interesting one: the king tower is the closest in x from the deploy point, so
 the unit walks at it until a princess tower becomes closer in x, which happens at tick 82.
 
+The inner case pins the lane rule of the default selection. A unit is kept to the towers of its own
+lane while its elapsed time, which starts at zero and grows by one step per state visit outside the
+deploying states, is below 500 ms: its first ten walking ticks. From (8000, 10000) the king tower is
+the closest in x but lies in the other lane, so the unit takes the left princess tower on tick 20,
+switches to the king on tick 30 when the rule lets go, and comes back to the princess tower on tick
+68 when it is the closer in x. In the other five cases the closest tower in x is in the unit's own
+lane, so the rule never shows.
+
 The last two cases deploy the unit beside one of its own towers - behind the right princess tower
 and behind the king tower - so that the trajectory runs through the part of the arena where a
-building is a neighbour. `knight_behind_king` is the sharpest of the five: the unit starts inside
+building is a neighbour. `knight_behind_king` is the sharpest of the six: the unit starts inside
 its own king tower's collision circle, and a change to how a building takes part in pushing or
 steering sends it down the other lane. Only `knight_left`, `knight_right` and `knight_centre` have a
 `movement_replay` file; the two new cases are replayed through the engine only.
