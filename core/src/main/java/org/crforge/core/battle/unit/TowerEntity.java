@@ -2,6 +2,14 @@ package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
 import org.crforge.core.battle.BattleComponent;
+import org.crforge.core.battle.EntityActions;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.PresentationAction;
+import org.crforge.core.battle.action.WaitToActivate;
+import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -30,9 +38,13 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * visit, which steps its elapsed time from its first tick, and at its end the combat gate, which
  * switches the targeting component off while the tower is inactive.
  *
- * <p>A king tower is inactive from creation until it is activated. The component is switched on
- * when the tower is created, so the king is visited once, on its first tick, before the gate
- * switches it off.
+ * <p>A king tower sleeps until its side loses a princess tower or it loses hit points itself. Its
+ * placement queues a wait that sets the inactive tag; the first tick's first pending pass starts
+ * it, after that tick's tags were folded, so the king is visited on its first two ticks before the
+ * gate switches it off. The run pass that first sees the condition ends the wait, which queues a
+ * 3300 ms activating run that the same tick's second pending pass starts. That run keeps the tag
+ * that holds the component off until the run pass after it finishes removes it, so the king's first
+ * visit falls seventy ticks after the tick that saw the condition.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -42,13 +54,23 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " tower and as the tower slot only when king, and stands at its hit points at its"
             + " level; it carries the targeting component in slot 0 and no movement component,"
             + " the building branches of the targeting visit, the state visit as its post-hook"
-            + " with the combat gate at its end, and a king tower inactive from creation, visited"
-            + " once before the gate first runs. Supplied, not settled: the towers scale as"
-            + " Common. Not modelled yet: king tower activation, so a king never fights.")
+            + " with the combat gate at its end, and a king tower asleep from creation, visited"
+            + " on its first two ticks, the wait its placement queues and its condition, the"
+            + " activating run that follows and the tags both set, which the pre-hook folds in and"
+            + " the gate reads. Supplied, not settled: the towers scale as Common, and the"
+            + " enabling side of the gate answers for a standing, living tower. Not modelled: the"
+            + " rest of the king's own state visit, and the starting group around its wait, whose"
+            + " own body is empty.")
 public class TowerEntity extends WorldEntity {
 
   /** Slot of the targeting component, the same slot a troop's is in. */
   public static final int TARGETING_SLOT = 0;
+
+  /** How long a king tower takes to wake once its wait has ended, in milliseconds. */
+  public static final int ACTIVATION_MS = 3300;
+
+  /** Princess towers a side must keep for its king to sleep on. */
+  private static final int PRINCESS_TOWERS_TO_SLEEP = 2;
 
   /** Applies every state change the tower asks for; a tower has no route to act on. */
   private final GridStateSetter setter;
@@ -61,6 +83,18 @@ public class TowerEntity extends WorldEntity {
 
   /** True for a tower placed to stand passive: its targeting component never runs. */
   private boolean holdingFire;
+
+  /** The king's scheduled actions; null for a princess tower, which has none. */
+  private final ActionHolder actionHolder;
+
+  /** The activating run the king's wait schedules when it ends; null for a princess tower. */
+  private final BattleAction activating;
+
+  /** The effect shown alongside the activating run; null for a princess tower. */
+  private final BattleAction activationEffect;
+
+  /** The tags folded in at the last pre-hook. */
+  private long tags;
 
   /**
    * @param world the battle's shared arena state, whose arena assigns the tower its lane from the
@@ -88,6 +122,76 @@ public class TowerEntity extends WorldEntity {
     // level; every tower does.
     selection.setBuildingKeepsAttacking(data.hitpoints() != 0);
     attach(new TargetingComponent());
+
+    if (data.king()) {
+      this.actionHolder = new ActionHolder();
+      this.activationEffect = new PresentationAction("KingTowerActivationEffect");
+      this.activating =
+          new WithDuration(
+              "WaitForKingTowerActivation.OnActivateAction",
+              ACTIVATION_MS,
+              GameTags.ACTIVATING,
+              activationEffect);
+      actionHolder.setListener(new ActivationListener());
+      // The placement queues the wait; with no pending pass running it waits for the first one.
+      actionHolder.schedule(
+          new WaitToActivate(
+              "WaitForKingTowerActivation",
+              this::activationCondition,
+              activating,
+              GameTags.INACTIVE),
+          0);
+    } else {
+      this.actionHolder = null;
+      this.activating = null;
+      this.activationEffect = null;
+    }
+  }
+
+  /**
+   * What ends the king's wait: the king has lost hit points, or its side has fewer than two
+   * princess towers left. Asked by the wait's step in every run pass.
+   */
+  private boolean activationCondition() {
+    boolean damaged =
+        getHitPoints() != null && getHitPoints().getHitPoints() < getHitPoints().getMaximum();
+    boolean towerDestroyed = world.princessTowerCount(side()) < PRINCESS_TOWERS_TO_SLEEP;
+    if (damaged || towerDestroyed) {
+      world.activation(
+          this, new ActivationEvent(ActivationEvent.Kind.CONDITION, 0, damaged, towerDestroyed));
+      return true;
+    }
+    return false;
+  }
+
+  /** Turns the king's action steps into the activation events observers are told. */
+  private final class ActivationListener implements ActionHolder.Listener {
+
+    @Override
+    public void started(BattleAction action, int phase) {
+      if (action == activating) {
+        world.activation(
+            TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_STARTED, phase));
+      } else if (action == activationEffect) {
+        world.activation(TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.EFFECT, phase));
+      }
+    }
+
+    @Override
+    public void finished(ActionInstance instance) {
+      if (instance.getAction() == activating) {
+        world.activation(
+            TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_FINISHED, 0));
+      }
+    }
+
+    @Override
+    public void removed(ActionInstance instance) {
+      if (instance.getAction() == activating) {
+        world.activation(
+            TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_REMOVED, 0));
+      }
+    }
   }
 
   /**
@@ -149,12 +253,22 @@ public class TowerEntity extends WorldEntity {
   }
 
   /**
-   * Whether the tower is inactive, which keeps its targeting component off. A king tower is
-   * inactive from creation; its activation is not modelled yet, so it stays inactive. A princess
-   * tower never is.
+   * Whether the tags folded in at the last pre-hook keep the targeting component off: a sleeping or
+   * waking king. A princess tower never is.
    */
   public boolean isInactive() {
-    return getData().king();
+    return (tags & GameTags.KEEPS_TARGETING_OFF) != 0;
+  }
+
+  @Override
+  public EntityActions actions() {
+    return actionHolder == null ? EntityActions.NONE : actionHolder;
+  }
+
+  /** The tag fold: the entity's tags are the tags of every action instance it lists. */
+  @Override
+  protected void preHook() {
+    tags = actionHolder == null ? 0 : actionHolder.tags();
   }
 
   private StateQueries stateQueries() {

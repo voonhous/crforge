@@ -46,7 +46,8 @@ import org.crforge.core.pathfinding.target.TargetView;
  * the towers' own events follows the events: each time a tower's reference changes, with whether
  * the new one is in range, each time a tower locks on, and, inside the closing cleanup that removes
  * an entity, what the removal left each tower holding, then the removal itself. The towers' events
- * go on after the character has left, for as long as the battle is played.
+ * go on after the character has left, for as long as the battle is played. The steps of a king
+ * tower's activation are among them, written after the tick's visits, as they happen after them.
  *
  * <p>The text is laid out as the committed fixtures are: one compact line per tower, event and
  * record, so that two runs diff by the values that moved.
@@ -102,6 +103,12 @@ public final class TrajectoryRecorder implements WorldObserver {
   private final Map<TowerEntity, Integer> towerStates = new HashMap<>();
 
   private final List<String> towerEvents = new ArrayList<>();
+
+  /**
+   * The activation steps of the tick in progress. They happen in the run pass and a pending pass,
+   * after the towers' visits, so they are written after the visits' events at the tick's end.
+   */
+  private final List<String> activationEvents = new ArrayList<>();
 
   /** The battle tick of the character's first tick in the holder, or -1 before it. */
   private int firstTick = -1;
@@ -233,6 +240,8 @@ public final class TrajectoryRecorder implements WorldObserver {
     for (TowerEntity tower : fightingTowers) {
       recordTowerVisit(tick, tower);
     }
+    towerEvents.addAll(activationEvents);
+    activationEvents.clear();
     if (!present.contains(unit)) {
       return;
     }
@@ -360,6 +369,30 @@ public final class TrajectoryRecorder implements WorldObserver {
             + ", \"event\": \"removed\", \"entity\": "
             + removedName
             + "}");
+  }
+
+  /** A step of a king tower's activation, held until the tick's visits have been written. */
+  @Override
+  public void activation(int tick, TowerEntity king, ActivationEvent event) {
+    if (firstTick < 0 || !towersAttack) {
+      return;
+    }
+    String line =
+        switch (event.kind()) {
+          case CONDITION ->
+              towerEventHead(tick, "activation_condition", king)
+                  + ", \"damaged\": "
+                  + (event.damaged() ? 1 : 0)
+                  + ", \"tower_destroyed\": "
+                  + (event.towerDestroyed() ? 1 : 0);
+          case ACTIVATING_STARTED ->
+              towerEventHead(tick, "activating_started", king) + ", \"phase\": " + event.phase();
+          case EFFECT ->
+              towerEventHead(tick, "activation_effect", king) + ", \"phase\": " + event.phase();
+          case ACTIVATING_FINISHED -> towerEventHead(tick, "activating_finished", king);
+          case ACTIVATING_REMOVED -> towerEventHead(tick, "activating_removed", king);
+        };
+    activationEvents.add(line + "}");
   }
 
   /** The opening of a tower event line, up to the tower's name. */
