@@ -40,7 +40,7 @@
   },
   "AxeManProjectile": {
     "name": "AxeManProjectile",
-    "damage": 66,
+    "damage": 70,
     "speed": 550,
     "homing": false,
     "aoeToAir": true,

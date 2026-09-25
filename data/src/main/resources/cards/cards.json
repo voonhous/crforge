@@ -1709,7 +1709,7 @@
       "buffDuration": 2.0,
       "targetCount": 3,
       "targetSelectionMode": "HighestCurrentHpIncludeShields",
-      "initialDelay": 0.4,
+      "initialDelay": 0.9,
       "targetDelays": [
         0.0,
         0.05,

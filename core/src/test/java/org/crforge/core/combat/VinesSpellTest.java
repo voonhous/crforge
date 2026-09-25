@@ -47,8 +47,8 @@ class VinesSpellTest {
   // Placement sync delay (1.0s)
   private static final int SYNC_DELAY_TICKS = GameEngine.TICKS_PER_SECOND;
 
-  // Initial delay before first target selection (0.4s)
-  private static final int INITIAL_DELAY_TICKS = (int) (0.4f * GameEngine.TICKS_PER_SECOND);
+  // Initial delay before first target selection (0.9s)
+  private static final int INITIAL_DELAY_TICKS = (int) (0.9f * GameEngine.TICKS_PER_SECOND);
 
   // Buff hit frequency (1.0s)
   private static final int HIT_FREQUENCY_TICKS = GameEngine.TICKS_PER_SECOND;
@@ -95,8 +95,8 @@ class VinesSpellTest {
         .hasSize(3);
     assertThat(VINES.getAreaEffect().isAirToGround()).as("airToGround should be true").isTrue();
     assertThat(VINES.getAreaEffect().getInitialDelay())
-        .as("initialDelay should be 0.4")
-        .isEqualTo(0.4f);
+        .as("initialDelay should be 0.9")
+        .isEqualTo(0.9f);
   }
 
   @Test
@@ -195,7 +195,7 @@ class VinesSpellTest {
 
     deployVines(DEPLOY_X, DEPLOY_Y);
 
-    // Tick just past sync delay but before initial delay expires (0.4s = 12 ticks)
+    // Tick just past sync delay but before initial delay expires (0.9s = 18 ticks)
     engine.tick(SYNC_DELAY_TICKS + 5);
 
     assertThat(enemy.getAppliedEffects())
