@@ -12,14 +12,16 @@ model, not necessarily with the game.
 
 ## Conditions the trajectories were produced under
 
-- One unit and the six crown towers are the only things on the arena. With a single unit the push
-  and avoidance rules have nothing else to act on, so no run here exercises unit-to-unit pushing or
-  steering. Two of the runs do walk the unit right past one of its own towers, which is what pins
-  how a building takes part in those two passes.
+- One unit and the six crown towers are the only things on the arena, so no run here exercises
+  unit-to-unit pushing or steering. The towers do take part in both: a tower is a static neighbour
+  of the push pass, with a mass of 0, and an obstacle of the avoidance handler. Two of the runs are
+  the ones that reaches: `knight_right_rear` is steered around its own right princess tower from
+  tick 40, and `knight_behind_king` is pushed 1 unit a tick by its own king while it deploys.
 - The unit is a Knight: speed 60 units per tick, attack range 1200, sight range 5500, collision
   radius 500, hit speed 1200 ms, wind-up 700 ms, deploy time 1000 ms. It attacks the ground only.
-- The deployment lasts twenty ticks. Ticks 0 to 19 are the deploying state at the deploy position,
-  and the unit leaves the countdown in the moving state, because it has a movement component.
+- The deployment lasts twenty ticks. Ticks 0 to 19 are the deploying state, at the deploy position
+  unless a tower pushes the unit, and the unit leaves the countdown in the moving state, because it
+  has a movement component.
 - The towers of the bottom side stand at (9000, 3000), (3500, 6500) and (14500, 6500) in game units;
   the top side's are the same mirrored along the arena's length. King towers have a collision radius
   of 1400 and princess towers 1000.
@@ -178,7 +180,7 @@ Units placed the way a player places them: by a place-card command carrying the 
 
 Each file lists its `commands`: the play's name, card, side, requested `point` and `tick`, the `outcome` and its `code`, and for a placed play the `placed` point, the `interval` along the length its units are clamped into, the `origin_lane` of the placed point, and each unit's name, id, row, index, `formation` offset, position, lane, starting `state` (4 deploying, 11 waiting), its wait (`delay`, 0 for none) and its deploy time. The units' records follow in `unit_records`, one per tick from their placement; there is no single unit, so `records` is empty. The `towers` list of these files also carries the placed units, with their positions at the end of the run.
 
-`CardPlacementTest` works every play out and holds it to its command.
+`CardPlacementTest` works every play out and holds it to its command. `BattlePlacementRunTest` plays each file through the battle and holds it to every unit record, every event and every projectile position. A shot still in flight when the run ends is recorded past the last unit record and event, so the run goes on to the last projectile position.
 
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
@@ -244,8 +246,8 @@ reference and no goal that preparation asks the grid nothing and leaves no entry
 | `knight_left`        | (3500, 10000)  | PrincessTower_1_1                                  | tick 235    |
 | `knight_right`       | (14500, 10000) | PrincessTower_1_2                                  | tick 235    |
 | `knight_centre`      | (9000, 12000)  | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245    |
-| `knight_right_rear`  | (16500, 5000)  | PrincessTower_1_2                                  | tick 323    |
-| `knight_behind_king` | (9000, 4600)   | KingTower_1_0, then PrincessTower_1_2 from tick 73 | tick 368    |
+| `knight_right_rear`  | (16500, 5000)  | PrincessTower_1_2                                  | tick 326    |
+| `knight_behind_king` | (9000, 4600)   | KingTower_1_0, then PrincessTower_1_2 from tick 85 | tick 361    |
 | `knight_left_inner`  | (8000, 10000)  | PrincessTower_1_1 on ticks 20 to 29, KingTower_1_0 from tick 30, PrincessTower_1_1 from tick 68 | tick 259 |
 
 The centre case is the interesting one: the king tower is the closest in x from the deploy point, so
