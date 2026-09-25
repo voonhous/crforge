@@ -25,6 +25,9 @@ public class ProjectileConfigDTO {
   private boolean aoeToAir;
   private boolean aoeToGround;
 
+  // The area damage spares the owner's own side (e.g. Wizard fireball)
+  private boolean onlyEnemies;
+
   // Chain lightning (ElectroDragon, ElectroSpirit)
   private float chainedHitRadius;
   private int chainedHitCount;
@@ -76,7 +79,6 @@ public class ProjectileConfigDTO {
   private float minDistance;
 
   // Data-only fields (already handled by existing logic or visual-only)
-  private boolean onlyEnemies;
   private int spawnChain;
 
   // Ballistic arc: the flight's height follows a parabola under this gravity

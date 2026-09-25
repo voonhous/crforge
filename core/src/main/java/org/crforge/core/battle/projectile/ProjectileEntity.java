@@ -13,6 +13,7 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
+import org.crforge.core.pathfinding.target.TargetingState;
 
 /**
  * A projectile in flight: an entity of its own kind in the same holder as the characters, so that
@@ -23,7 +24,8 @@ import org.crforge.core.pathfinding.target.TargetView;
  * id is given the moment its launcher hands it to the holder, in the attack tick, and it enters the
  * live list at that tick's closing cleanup, so it first flies on the tick after its launch and
  * arrives when the distance left to its aim is no more than one step of its speed. On arrival it is
- * released, which is what makes it removable, and its impact deals its damage to its target.
+ * released, which is what makes it removable, and its impact deals its damage to its target, or,
+ * for a row with a radius, to everything in the circle around its aim.
  *
  * <p>The launch fixes the start and the aim; a homing projectile re-pins its aim onto its target
  * every step, and, when the target leaves the battle, the removal notice leaves the aim where the
@@ -37,15 +39,15 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " re-based on the projectile row's rarity, the homing re-aim, the straight flight"
             + " with the arc height, the arrival on the step that reaches the aim, the release"
             + " that makes it removable, the single impact on a target that still has hit points"
-            + " with the crown-tower damage for a crown tower, and the removal notice for a target,"
-            + " a homing target, an owner and a root owner that left. Held by the Musketeer run's"
-            + " launches, positions and impacts. Supplied, not settled: the deflection pass finds"
-            + " nothing, the projectile's own collision radius is zero, and no buff changes its"
-            + " damage. Not modelled: the area impact of a projectile with a radius, the hits on"
-            + " what a flying body passes, the pushback on impact, the on-impact spawns and the"
-            + " chained hop, the limited-time homing beyond the columns carried, the pingpong sweep,"
-            + " the ring scatter, the drag-back hook, the delays before the flight, the custom"
-            + " movement, and the far-distance clamp with its cell pull.")
+            + " with the crown-tower damage for a crown tower, the area impact of a row with a"
+            + " radius, and the removal notice for a target, a homing target, an owner and a root"
+            + " owner that left. Held by the Musketeer and Wizard runs' launches, positions and"
+            + " impacts. Supplied, not settled: the deflection pass finds nothing, the projectile's"
+            + " own collision radius is zero, and no buff changes its damage. Not modelled: the"
+            + " hits on what a flying body passes, the pushback on impact, the on-impact spawns"
+            + " and the chained hop, the limited-time homing beyond the columns carried, the"
+            + " pingpong sweep, the ring scatter, the drag-back hook, the delays before the flight,"
+            + " the custom movement, and the far-distance clamp with its cell pull.")
 public class ProjectileEntity extends BattleEntity {
 
   /** Game time one flight step advances, in milliseconds. */
@@ -260,6 +262,20 @@ public class ProjectileEntity extends BattleEntity {
   /** What a crown tower takes from the projectile, as the impact computes it. */
   public int towerDamage() {
     return ProjectileAmounts.towerDamage(scalingGlobals(), data, packedLevel);
+  }
+
+  /**
+   * The projectile as the owner of the area its impact damages: an entity of the projectile's kind
+   * on its side, which is all the validator asks of an owner that is not a character.
+   */
+  TargetingState areaOwner() {
+    GridEntity view = new GridEntity();
+    view.setName(name());
+    view.setType(KIND_PROJECTILE);
+    view.setSide(side);
+    TargetingState owner = new TargetingState();
+    owner.setOwner(view);
+    return owner;
   }
 
   /**

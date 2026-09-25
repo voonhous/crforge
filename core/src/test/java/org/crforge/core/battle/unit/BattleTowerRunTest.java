@@ -19,12 +19,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Drives the runs in which the towers fight back through {@link Battle} and compares them with the
  * reference runs, tick for tick.
  *
- * <p>Two references. In the first a Knight walks up the left lane: the princess tower in front of
+ * <p>Three references. In the first a Knight walks up the left lane: the princess tower in front of
  * it locks on at 130, fires its first arrow at 145 and one every sixteen ticks after, each arrow
  * taking 128 off the Knight, which reaches the tower, lands five hits of its own and dies to the
  * fourteenth arrow at 357. In the second a Musketeer stops short of the same tower and fires four
- * shots before the tower's sixth arrow kills it at 237. The king towers stay out of both: nothing
- * damages a king tower and no princess tower falls, so neither king is activated.
+ * shots before the tower's sixth arrow kills it at 237. In the third a Wizard fires three
+ * fireballs, whose impacts damage everything within their radius - the tower alone, as the other
+ * towers stand outside it - before the tower kills it at 237. The king towers stay out of all
+ * three: nothing damages a king tower and no princess tower falls, so neither king is activated.
  *
  * <p>Reference tick {@code n} is battle step {@code n + 1}, as in {@link BattleKillRunTest}, and
  * the same one-tick deploying correction and end-of-step reference allowance apply. The towers are
@@ -39,8 +41,11 @@ class BattleTowerRunTest {
   /** A Musketeer on the left lane, trading shots with the princess tower in front of it. */
   static final String MUSKETEER_REFERENCE = "/pathfinding/golden/musketeer_vs_tower.json";
 
+  /** A Wizard on the left lane, whose fireballs damage everything in their radius. */
+  static final String WIZARD_REFERENCE = "/pathfinding/golden/wizard_vs_tower.json";
+
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE})
+  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE})
   void theWholeRunMatchesTheReferenceTickForTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<JsonNode> records = BattleMusketeerRunTest.records(reference);
@@ -70,6 +75,12 @@ class BattleTowerRunTest {
             .as("%s movement budget", where)
             .isEqualTo(record.get("speed").asInt());
       }
+      assertThat(BattleMusketeerRunTest.referenceHitPoints(unit))
+          .as("%s hit points of the reference", where)
+          .isEqualTo(
+              BattleMusketeerRunTest.expectedReference(record) == null
+                  ? null
+                  : record.get("hp").asInt());
       assertThat(unit.getHitPoints().getHitPoints())
           .as("%s the unit's own hit points", where)
           .isEqualTo(record.get("own_hp").asInt());
@@ -82,7 +93,7 @@ class BattleTowerRunTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE})
+  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE})
   void everyLaunchImpactHitAndDeathFallsOnTheReferenceTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<String> expected = new ArrayList<>();
@@ -111,7 +122,7 @@ class BattleTowerRunTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE})
+  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE})
   void everyProjectileFliesThroughTheReferencePositions(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<String> expected = new ArrayList<>();

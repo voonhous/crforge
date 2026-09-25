@@ -104,6 +104,7 @@ public class ProjectileLoader {
             .hitEffects(hitEffects)
             .aoeToAir(dto.isAoeToAir())
             .aoeToGround(dto.isAoeToGround())
+            .onlyEnemies(dto.isOnlyEnemies())
             .chainedHitRadius(tiles(dto.getChainedHitRadius()))
             .chainedHitCount(dto.getChainedHitCount())
             .projectileRange(tiles(dto.getProjectileRange()))

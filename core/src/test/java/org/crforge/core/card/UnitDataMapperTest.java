@@ -112,6 +112,20 @@ class UnitDataMapperTest {
   }
 
   @Test
+  @DisplayName("a unit whose projectile damages an area carries the area's columns")
+  void aUnitWhoseProjectileDamagesAnAreaCarriesTheAreasColumns() {
+    Card wizard = Objects.requireNonNull(CardRegistry.get("wizard"), "wizard not found");
+
+    ProjectileData fireball = UnitDataMapper.toUnitData(wizard).projectile();
+
+    assertThat(fireball.name()).isEqualTo("chr_wizardProjectile");
+    assertThat(fireball.radius()).as("game units").isEqualTo(1500);
+    assertThat(fireball.aoeToAir()).isTrue();
+    assertThat(fireball.aoeToGround()).isTrue();
+    assertThat(fireball.onlyEnemies()).isTrue();
+  }
+
+  @Test
   @DisplayName("a unit that hits directly carries no projectile, but still its launch columns")
   void aUnitThatHitsDirectlyCarriesNoProjectile() {
     Card knight = Objects.requireNonNull(CardRegistry.get("knight"), "knight not found");

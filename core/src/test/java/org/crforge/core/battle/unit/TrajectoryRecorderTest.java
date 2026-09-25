@@ -80,7 +80,11 @@ class TrajectoryRecorderTest {
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {BattleTowerRunTest.KNIGHT_REFERENCE, BattleTowerRunTest.MUSKETEER_REFERENCE})
+      strings = {
+        BattleTowerRunTest.KNIGHT_REFERENCE,
+        BattleTowerRunTest.MUSKETEER_REFERENCE,
+        BattleTowerRunTest.WIZARD_REFERENCE
+      })
   void theExportedRunWithTheTowersFightingIsTheReferenceByteForByte(
       String resource, @TempDir Path directory) throws IOException {
     String expected = reference(resource);
