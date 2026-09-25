@@ -186,7 +186,7 @@ Crown Towers. This system is not yet implemented in crforge.
 | Sub-entity | 9       | Internal entities, not playable cards       |
 | **Total**  | **128** | Playable cards (excluding sub-entities)     |
 
-Data source: season 80 (202602)
+Data source: game version 14.593.11
 
 ### Partial cards breakdown
 
