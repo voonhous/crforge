@@ -37,7 +37,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * <p>Because the holder runs one whole-list pass per slot, every character has chosen its target
  * for the tick before any character moves, and every character has moved before any character's
  * state visit runs. A character is created deploying and takes no decisions until its deploy
- * countdown, stepped by the state visit, runs out.
+ * countdown, stepped by the state visit, runs out: its targeting component is not visited, and its
+ * movement component is, but asks for no route and gets no speed, so only a push can move it.
  *
  * <p>Every state change - the lock the targeting visit requests, the resume, the state visit's
  * transitions - goes through the character's own {@link GridStateSetter}, so stopping empties the
@@ -53,8 +54,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " attacker and landing on its target directly or as the projectiles it launches in"
             + " the same tick, the hit points and damage at the character's level, the removal"
             + " notice dropping a reference to an entity that left and starting the target-lost"
-            + " countdown, and the resume that follows. Supplied, not settled: both components"
-            + " return at once while the character is deploying. Not modelled yet: air, jumping"
+            + " countdown, and the resume that follows; while deploying, no targeting visit, and a"
+            + " movement visit that asks for no route and no speed, so only a push moves it. Not"
+            + " modelled yet: the registration visit of a new unit's components, air, jumping"
             + " and hovering units, status effects on the speed budget, the deployment's own lane"
             + " flag, and the columns its data does not carry: the stop time after an attack and"
             + " the ones that restrict what a unit may target, such as buildings only.")
@@ -254,9 +256,8 @@ public class CharacterEntity extends WorldEntity {
     @Override
     public void visit() {
       speedBudget = 0;
-      if (deploying()) {
-        return;
-      }
+      // A deploying unit is visited too: it asks for no route and gets no speed, so only a push
+      // from another unit can move it.
       GridMovementQueries queries = movementQueries();
       MovementVisit.movementVisit(
           unit.movement(),

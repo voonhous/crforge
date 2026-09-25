@@ -26,10 +26,9 @@ import org.junit.jupiter.api.Test;
  * <p>The reference trajectories are the same five the grid pathfinding mode is held to; see {@code
  * core/src/test/resources/pathfinding/README.md} for what they are and are not.
  *
- * <p>Tick alignment: the placement is a command due on tick 0. Commands run at the tail of a step,
- * so the Knight is handed to the holder after the entity tick of step 0 and is first visited in
- * step 1. Reference tick {@code n} is therefore battle step {@code n + 1}. Nothing is shifted to
- * make that so; it is what running commands after the entity tick produces.
+ * <p>Tick alignment: the placement is a command due on tick 0. Commands run at the head of a step,
+ * before the entity tick, whose opening cleanup admits the Knight, so it is first visited on tick
+ * 0. Reference tick {@code n} is therefore battle tick {@code n}, with nothing shifted.
  *
  * <p>One state offset is corrected for here rather than hidden: the reference records a deploying
  * unit <b>before</b> its state visit and every other unit after it, while this test looks at the
@@ -106,14 +105,14 @@ class BattleGoldenTrajectoryTest {
             golden.get("deploy").get(0).asInt(),
             golden.get("deploy").get(1).asInt());
 
-    // Step 0: the six towers are admitted and ticked, then the placement command runs, which
-    // hands the Knight to the holder: it has its id at once and is admitted by the next cleanup.
-    battle.step();
-    assertThat(unit.getId()).as("the seventh character").isEqualTo(5000006);
-    assertThat(battle.getHolder().entities()).as("not admitted yet").doesNotContain(unit);
-
+    // The placement command runs at the head of the first step and hands the Knight to the holder,
+    // whose opening cleanup admits it: reference tick n is battle step n.
     for (int i = 0; i < records.size(); i++) {
       battle.step();
+      if (i == 0) {
+        assertThat(unit.getId()).as("the seventh character").isEqualTo(5000006);
+        assertThat(battle.getHolder().entities()).as("admitted and visited").contains(unit);
+      }
       JsonNode record = records.get(i);
       String where = caseName + " reference tick " + record.get("tick").asInt();
 
@@ -135,8 +134,8 @@ class BattleGoldenTrajectoryTest {
 
     JsonNode last = records.get(records.size() - 1);
     assertThat(last.get("tick").asInt()).as("%s lock tick", caseName).isEqualTo(lockTick);
-    assertThat(battle.getTick()).as("%s battle tick", caseName).isEqualTo(lockTick + 2);
-    assertThat(battle.getClockMs()).isEqualTo((lockTick + 2) * Battle.STEP_MS);
+    assertThat(battle.getTick()).as("%s battle tick", caseName).isEqualTo(lockTick + 1);
+    assertThat(battle.getClockMs()).isEqualTo((lockTick + 1) * Battle.STEP_MS);
     assertThat(unit.getView().getState())
         .as("%s stands in the attacking state", caseName)
         .isEqualTo(GridEntityState.ATTACKING);

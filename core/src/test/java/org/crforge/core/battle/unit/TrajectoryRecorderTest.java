@@ -143,8 +143,8 @@ class TrajectoryRecorderTest {
     TrajectoryRecorder recorder = new TrajectoryRecorder(unit);
     match.getWorld().addObserver(recorder);
 
-    // Run until the recorder has the whole run: which step the unit is first visited in depends
-    // on which of the two command passes admits it, and the recorder counts from that tick.
+    // Run until the recorder has the whole run: the unit is first visited in the step of its
+    // placement's tick, and the recorder counts from that tick.
     stepUntilRecorded(battle, recorder, ticks);
     return recorder;
   }

@@ -51,7 +51,6 @@ class BattleTowerTargetingTest {
     Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     CharacterEntity unit = BattleTowerRunTest.deploy(match, reference);
-    battle.step();
 
     Map<String, String> held = new HashMap<>();
     Map<String, Integer> states = new HashMap<>();
@@ -124,7 +123,6 @@ class BattleTowerTargetingTest {
     Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     BattleTowerRunTest.deploy(match, reference);
-    battle.step();
     for (int tick = 0; tick <= removalTick; tick++) {
       battle.step();
     }
@@ -203,12 +201,15 @@ class BattleTowerTargetingTest {
     Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     BattleTowerRunTest.deploy(match, reference);
-    battle.step();
     TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
     for (int tick = 0; tick <= condition + 70; tick++) {
       battle.step();
       String where = "reference tick " + tick;
-      if (tick < condition + 69) {
+      if (tick == 0) {
+        // The wait starts in the first tick's first pending pass, after that tick's fold.
+        assertThat(king.isInactive()).as(where).isFalse();
+        assertThat(king.isActive(TowerEntity.TARGETING_SLOT)).as(where).isTrue();
+      } else if (tick < condition + 69) {
         // Inactive until the condition, then activating; the finished run's tag still counts at
         // the fold before the run pass that removes it.
         assertThat(king.isInactive()).as(where).isTrue();

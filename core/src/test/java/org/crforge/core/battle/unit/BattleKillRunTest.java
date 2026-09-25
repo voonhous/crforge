@@ -42,11 +42,11 @@ import org.junit.jupiter.api.Test;
  * TrajectoryRecorderTest} writes the same run out and holds the file to the reference byte for
  * byte.
  *
- * <p>Reference tick {@code n} is battle step {@code n + 1}, as in {@link
- * BattleGoldenTrajectoryTest}, and the one-tick deploying correction is the same. One more offset
- * of the same kind: a record is written before the tick's closing cleanup, so the record of the
- * tick a target dies on still names it, while the step has dropped the reference by the time it
- * returns. {@link #expectedReference} allows for that.
+ * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleGoldenTrajectoryTest},
+ * and the one-tick deploying correction is the same. One more offset of the same kind: a record is
+ * written before the tick's closing cleanup, so the record of the tick a target dies on still names
+ * it, while the step has dropped the reference by the time it returns. {@link #expectedReference}
+ * allows for that.
  */
 class BattleKillRunTest {
 
@@ -103,7 +103,6 @@ class BattleKillRunTest {
           return inner.hit(target, sequenceIndex, extraTargets, last);
         });
 
-    battle.step();
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
       battle.step();
@@ -158,7 +157,6 @@ class BattleKillRunTest {
     // hit dealt, which the hit that kills overshoots, so it is not read back from the drop. Both
     // towers are taken from the holder before the run, because a dead tower leaves it in the tick
     // it dies.
-    battle.step();
     List<TowerEntity> towers =
         List.of(towerNamed(battle, PRINCESS_TOWER), towerNamed(battle, KING_TOWER));
     Map<String, Integer> standing = new HashMap<>();
@@ -204,7 +202,6 @@ class BattleKillRunTest {
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 
-    battle.step();
     TowerEntity king = towerNamed(battle, KING_TOWER);
     for (int i = 0; i < records.size(); i++) {
       battle.step();
@@ -239,7 +236,7 @@ class BattleKillRunTest {
           .isEqualTo(expectedReference(record) == null ? null : record.get("hp").asInt());
     }
 
-    assertThat(battle.getTick()).isEqualTo(records.size() + 1);
+    assertThat(battle.getTick()).isEqualTo(records.size());
     assertThat(knight.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
     assertThat(referenceName(knight)).as("dropped by the king tower's removal").isNull();
     assertThat(king.getHitPoints().getHitPoints()).as("the king tower is at zero").isZero();
@@ -258,7 +255,6 @@ class BattleKillRunTest {
     Battle battle = match.getBattle();
     CharacterEntity knight = deployKnight(match, reference);
 
-    battle.step();
     TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
     GridEntity towerView = tower.getView();
     for (int tick = 0; tick < PRINCESS_DEATH_TICK; tick++) {
@@ -380,7 +376,6 @@ class BattleKillRunTest {
     CharacterEntity knight = deployKnight(match, reference);
 
     // Run up to the tick before the first hit lands, so everything still stands at its maximum.
-    battle.step();
     for (int tick = 0; tick < FIRST_HIT_TICK; tick++) {
       battle.step();
     }

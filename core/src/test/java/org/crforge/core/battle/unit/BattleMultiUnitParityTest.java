@@ -34,7 +34,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The comparison stops before the older engine's combat can remove a unit: from then on the two
  * diverge for a reason that has nothing to do with movement, because hits do not land in the battle
- * yet.
+ * yet. No scene deploys two units within reach of each other's push: the battle pushes a deploying
+ * unit and the older engine does not, so such a scene diverges from the first tick.
  */
 class BattleMultiUnitParityTest {
 
@@ -43,13 +44,15 @@ class BattleMultiUnitParityTest {
   private record Placement(Team team, int x, int y) {}
 
   @Test
-  @DisplayName("three Knights deployed in one lane push apart identically")
+  @DisplayName("three Knights deployed apart in one lane crowd together and push identically")
   void threeKnightsInOneLane() {
+    // Deployed beyond the push pass's reach of each other: the older engine does not push a
+    // deploying unit, which the battle does, so the scenes compared start once they walk.
     compare(
         200,
         new Placement(Team.BLUE, 3500, 10000),
-        new Placement(Team.BLUE, 3500, 10400),
-        new Placement(Team.BLUE, 3900, 10000));
+        new Placement(Team.BLUE, 3500, 11200),
+        new Placement(Team.BLUE, 4700, 10000));
   }
 
   @Test
@@ -102,7 +105,6 @@ class BattleMultiUnitParityTest {
               placement.x(),
               placement.y()));
     }
-    battle.step();
 
     for (int tick = 0; tick < ticks; tick++) {
       engine.tick();
