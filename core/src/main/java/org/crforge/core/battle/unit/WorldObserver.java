@@ -7,8 +7,8 @@ import org.crforge.core.pathfinding.combat.DamageResult;
 /**
  * Something that watches one battle's arena from outside the tick: it is told where the tick's
  * entity visits begin and end, about every hit that lands, about every projectile launched and
- * every projectile that arrives, and about every arena entity that leaves, and takes no part in any
- * of it.
+ * every projectile that arrives, about every arena entity that leaves, and about each step of a
+ * king tower's activation, and takes no part in any of it.
  *
  * <p>Both tick calls hand over the tick's arena entities in ascending id, the list the visits ran
  * over. An entity that became removable during the tick is still in it at the end, because the
@@ -71,4 +71,10 @@ public interface WorldObserver {
    * @param removed the entity that left
    */
   default void entityRemoved(int tick, WorldEntity removed) {}
+
+  /**
+   * A step of a king tower's activation happened: the condition in the run pass, the activating
+   * run's start and the effect in a pending pass, its end and its removal in later run passes.
+   */
+  default void activation(int tick, TowerEntity king, ActivationEvent event) {}
 }

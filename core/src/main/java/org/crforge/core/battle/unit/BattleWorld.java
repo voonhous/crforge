@@ -198,6 +198,29 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * How many princess towers of a side are still in the battle. A destroyed one counts until the
+   * cleanup that removes it.
+   */
+  public int princessTowerCount(int side) {
+    int count = 0;
+    for (WorldEntity entity : known.values()) {
+      if (entity instanceof TowerEntity tower
+          && tower.getData().summonerTower()
+          && tower.side() == side) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /** Tells every observer of one step of a king tower's activation. */
+  void activation(TowerEntity king, ActivationEvent event) {
+    for (WorldObserver observer : observers) {
+      observer.activation(tick, king, event);
+    }
+  }
+
+  /**
    * The grid state of another character, or null for an entity that has none, such as a tower. The
    * movement pass asks this about its neighbours.
    */

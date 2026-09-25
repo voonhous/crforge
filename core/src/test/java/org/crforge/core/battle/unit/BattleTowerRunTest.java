@@ -44,8 +44,15 @@ class BattleTowerRunTest {
   /** A Wizard on the left lane, whose fireballs damage everything in their radius. */
   static final String WIZARD_REFERENCE = "/pathfinding/golden/wizard_vs_tower.json";
 
+  /**
+   * The Knight again with the towers at the first level: it destroys the princess tower, which
+   * wakes the king tower, and dies under the fire of three towers.
+   */
+  static final String LEVEL_ONE_REFERENCE = "/pathfinding/golden/tower_vs_knight_left_level1.json";
+
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE})
+  @ValueSource(
+      strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE, LEVEL_ONE_REFERENCE})
   void theWholeRunMatchesTheReferenceTickForTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<JsonNode> records = BattleMusketeerRunTest.records(reference);
@@ -93,7 +100,8 @@ class BattleTowerRunTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE})
+  @ValueSource(
+      strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE, LEVEL_ONE_REFERENCE})
   void everyLaunchImpactHitAndDeathFallsOnTheReferenceTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<String> expected = new ArrayList<>();
@@ -122,7 +130,8 @@ class BattleTowerRunTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE})
+  @ValueSource(
+      strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE, LEVEL_ONE_REFERENCE})
   void everyProjectileFliesThroughTheReferencePositions(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<String> expected = new ArrayList<>();

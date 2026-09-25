@@ -83,7 +83,8 @@ class TrajectoryRecorderTest {
       strings = {
         BattleTowerRunTest.KNIGHT_REFERENCE,
         BattleTowerRunTest.MUSKETEER_REFERENCE,
-        BattleTowerRunTest.WIZARD_REFERENCE
+        BattleTowerRunTest.WIZARD_REFERENCE,
+        BattleTowerRunTest.LEVEL_ONE_REFERENCE
       })
   void theExportedRunWithTheTowersFightingIsTheReferenceByteForByte(
       String resource, @TempDir Path directory) throws IOException {
