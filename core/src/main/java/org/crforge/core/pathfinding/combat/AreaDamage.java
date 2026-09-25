@@ -38,8 +38,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
         "Settled: the collection in id order through the shared validator, the air and ground"
             + " gates, the building-aware circle test, one tower-slot entity per area, the limit,"
             + " the even split rounded up, the crown-tower damage for a crown tower and the floor"
-            + " of one. Held by the Wizard run's three impacts. Supplied, not settled: nothing is"
-            + " untouchable. Not modelled: the second circle and the dedupe list of a chained"
+            + " of one, with a projectile or a character as the owner. Held by the Wizard run's"
+            + " three impacts and the Valkyrie runs' areas, the owner's own side among them."
+            + " Supplied, not settled: nothing is untouchable. Not modelled: the second circle and the dedupe list of a chained"
             + " projectile, the area objects of their own kind, the heal of the owner's side,"
             + " the pushback and its visuals, and the death presentation.")
 public final class AreaDamage {
@@ -76,6 +77,21 @@ public final class AreaDamage {
       boolean hitsGround,
       boolean split) {}
 
+  /**
+   * What one area did.
+   *
+   * @param inCircle every entity whose shape lies in the circle, in id order, whether or not it may
+   *     be hit
+   * @param validated those of them the validator accepts
+   * @param victims the entities the collection kept
+   * @param damaged the victims that were dealt an amount
+   */
+  public record Outcome(
+      List<TargetView> inCircle,
+      List<TargetView> validated,
+      List<TargetView> victims,
+      List<TargetView> damaged) {}
+
   /** What the area asks of the battle about a victim. */
   public interface Queries {
 
@@ -103,19 +119,31 @@ public final class AreaDamage {
    * @param area the area
    * @param validatorQueries the game mode's answers to the validator
    * @param queries what the area asks of the battle
-   * @return the victims, in the order they were collected
+   * @return what the area did
    */
-  public static List<TargetView> damage(
+  public static Outcome damage(
       TargetingState owner,
       List<TargetView> entities,
       Area area,
       ValidatorQueries validatorQueries,
       Queries queries) {
     List<TargetView> victims = new ArrayList<>();
+    List<TargetView> inCircle = new ArrayList<>();
+    List<TargetView> validated = new ArrayList<>();
     boolean towerSlotTaken = false;
     for (TargetView entity : entities) {
-      if (!ReferenceValidator.sharedValidate(
-          owner, entity, area.ownSide(), false, true, false, validatorQueries)) {
+      boolean accepted =
+          ReferenceValidator.sharedValidate(
+              owner, entity, area.ownSide(), false, true, false, validatorQueries);
+      // Who stood in the circle and what the validator made of each, for the report only: the
+      // collection below tests the circle after the validator and the gates, as the rule runs.
+      if (ShapeTests.withinCircleShape(entity.getEntity(), area.x(), area.y(), area.radius())) {
+        inCircle.add(entity);
+        if (accepted) {
+          validated.add(entity);
+        }
+      }
+      if (!accepted) {
         continue;
       }
       if (entity.air() && !area.hitsAir()) {
@@ -149,6 +177,7 @@ public final class AreaDamage {
       damage = (damage + n - 1) / n;
       towerDamage = (towerDamage + n - 1) / n;
     }
+    List<TargetView> damaged = new ArrayList<>();
     for (TargetView victim : victims) {
       if (!victim.isHitPointsPresent()) {
         continue;
@@ -156,8 +185,9 @@ public final class AreaDamage {
       int dealt = victim.isCrownTowerTarget() ? towerDamage : damage;
       if (dealt >= 1) {
         queries.damage(victim, dealt, area.hitId());
+        damaged.add(victim);
       }
     }
-    return victims;
+    return new Outcome(inCircle, validated, victims, damaged);
   }
 }

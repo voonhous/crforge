@@ -90,7 +90,25 @@ public class Standard1v1Battle {
    * @return the character, which has no id until the holder admits it
    */
   public CharacterEntity deploy(int tick, UnitData data, int level, int side, int x, int y) {
-    CharacterEntity character = new CharacterEntity(world, data, data.name(), side, x, y, level);
+    return deploy(tick, data, level, side, x, y, data.name());
+  }
+
+  /**
+   * Queues the placement of one character under a name of its own, for a battle with more than one
+   * character of the same row.
+   *
+   * @param tick the tick the placement is due on
+   * @param data the character's published columns
+   * @param level the character's level, counted from 1
+   * @param side the side that owns the character
+   * @param x deploy position in game units
+   * @param y deploy position in game units
+   * @param name the character's unique name within the battle
+   * @return the character, which has no id until the holder admits it
+   */
+  public CharacterEntity deploy(
+      int tick, UnitData data, int level, int side, int x, int y, String name) {
+    CharacterEntity character = new CharacterEntity(world, data, name, side, x, y, level);
     battle.queue(
         new BattleCommand() {
           @Override

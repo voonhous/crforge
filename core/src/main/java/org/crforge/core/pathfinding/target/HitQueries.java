@@ -54,4 +54,18 @@ public interface HitQueries {
    *     the index within the burst or the multi-target list, which fans the projectiles out
    */
   default void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {}
+
+  /**
+   * Deals the damage of a landed hit to everything in a circle rather than to its target alone,
+   * with the owner as the area's owner: its own side is spared and its own columns decide what it
+   * may hit. A battle without an area to damage does nothing.
+   *
+   * @param x centre of the circle along the arena's width
+   * @param y centre of the circle along the arena's length
+   * @param radius radius of the circle
+   * @param damage what an ordinary victim takes
+   * @param towerDamage what a crown tower takes
+   * @param hitId the id this hit carries
+   */
+  default void areaDamage(int x, int y, int radius, int damage, int towerDamage, int hitId) {}
 }

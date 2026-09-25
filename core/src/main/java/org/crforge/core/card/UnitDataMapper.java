@@ -60,6 +60,9 @@ public final class UnitDataMapper {
         .projectileYOffset(stats.getProjectileYOffset())
         .multipleProjectiles(stats.getMultipleProjectiles())
         .areaDamageRadius(stats.getAoeRadius())
+        .selfAsAoeCenter(stats.isSelfAsAoeCenter())
+        .overrideAttackFinishTime(stats.isOverrideAttackFinishTime())
+        .attackFinishTimeMs(stats.getAttackFinishTime())
         .build();
   }
 

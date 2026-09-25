@@ -219,7 +219,9 @@ class EntityHolderTest {
   }
 
   @Test
-  @DisplayName("each removal is told to every remaining entity and the passes before any admission")
+  @DisplayName(
+      "each removal is told to the entities handed over this tick, then the live list, then the"
+          + " passes, before any admission")
   void removalIsAnnouncedBeforeAdmission() {
     EntityHolder holder = new EntityHolder(recordingPasses);
     RecordingEntity doomed = new RecordingEntity("doomed");
@@ -234,10 +236,11 @@ class EntityHolderTest {
     holder.add(newcomer);
     holder.cleanup();
 
+    // The newcomer, handed over but not yet admitted, hears of the removal before the live list.
     assertThat(log)
         .containsExactly(
-            "witness told doomed left",
             "newcomer told doomed left",
+            "witness told doomed left",
             "passes told 5000000 left",
             "newcomer registered as 5000002");
     assertThat(holder.entities()).containsExactly(witness, newcomer);

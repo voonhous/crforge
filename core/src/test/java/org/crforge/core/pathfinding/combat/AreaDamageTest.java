@@ -84,8 +84,8 @@ class AreaDamageTest {
   private List<String> damage(AreaDamage.Area area, TargetView... entities) {
     List<String> names = new ArrayList<>();
     for (TargetView victim :
-        AreaDamage.damage(
-            owner, List.of(entities), area, ValidatorQueries.standard1v1(), queries)) {
+        AreaDamage.damage(owner, List.of(entities), area, ValidatorQueries.standard1v1(), queries)
+            .victims()) {
       names.add(victim.name());
     }
     return names;

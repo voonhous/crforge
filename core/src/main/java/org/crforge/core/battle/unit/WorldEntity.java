@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
@@ -9,6 +10,7 @@ import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageApplication;
 import org.crforge.core.pathfinding.combat.DamageQueries;
 import org.crforge.core.pathfinding.combat.DamageResult;
@@ -23,6 +25,7 @@ import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
+import org.crforge.core.pathfinding.target.ValidatorQueries;
 
 /**
  * An entity that stands on the arena: it has a position, a collision circle and a side, the spatial
@@ -53,7 +56,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " at that level, the alive answer, the removal test, and that a removable entity"
             + " leaves the holder at the next cleanup, which tells every other entity at once; a"
             + " targeting component on every entity, seeded with the opposing side's towers, whose"
-            + " hits go through the hit application and whose reference to an entity that left is"
+            + " hits go through the hit application, whose area, for a row with an area radius,"
+            + " takes the entity as its owner, and whose reference to an entity that left is"
             + " dropped by the removal notice. Not modelled yet: the shield's hit points at the"
             + " level, and what a death does beyond the entity becoming removable.")
 public abstract class WorldEntity extends BattleEntity {
@@ -233,7 +237,35 @@ public abstract class WorldEntity extends BattleEntity {
       public void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {
         ProjectileLauncher.launch(WorldEntity.this, t, target, sequenceIndex, world);
       }
+
+      @Override
+      public void areaDamage(int x, int y, int radius, int damage, int towerDamage, int hitId) {
+        damageArea(x, y, radius, damage, towerDamage, hitId);
+      }
     };
+  }
+
+  /**
+   * The area of one of the entity's hits: every arena entity in the circle that the entity's own
+   * targeting may hit, its own side spared, takes the damage or the crown-tower damage, with no
+   * limit and no split.
+   */
+  private void damageArea(int x, int y, int radius, int damage, int towerDamage, int hitId) {
+    List<TargetView> entities = new ArrayList<>();
+    for (WorldEntity entity : world.present()) {
+      entities.add(entity.getTargetView());
+    }
+    AreaDamage.Area area =
+        new AreaDamage.Area(x, y, radius, damage, towerDamage, hitId, 0, false, true, true, false);
+    AreaDamage.Outcome outcome =
+        AreaDamage.damage(
+            targeting,
+            entities,
+            area,
+            ValidatorQueries.standard1v1(),
+            (victim, dealt, id) ->
+                world.dealAreaDamage(this, world.entityOf(victim.getEntity()), dealt, id));
+    world.areaDamaged(this, area, outcome);
   }
 
   /** What the damage chain asks about this entity as a target. */

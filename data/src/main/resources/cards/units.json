@@ -573,6 +573,8 @@
     "rarity": "Common",
     "projectile": "BowlerProjectile",
     "ignorePushback": true,
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 150,
     "projectileStartRadius": 1000,
     "projectileStartZ": 1000
   },
@@ -800,6 +802,8 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "ElectroDragonProjectile",
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 0,
     "projectileStartRadius": 1250,
     "projectileStartZ": 1900
   },
@@ -867,6 +871,8 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "rarity": "Common",
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 0,
     "multipleTargets": 2,
     "projectileStartRadius": 550,
     "projectileStartZ": 1500,
@@ -2206,6 +2212,8 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "projectile": "LittlePrinceProjectile",
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 0,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -2443,6 +2451,8 @@
     "targetType": "ALL",
     "movementType": "GROUND",
     "rarity": "Common",
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 0,
     "projectileStartRadius": 1200,
     "projectileStartZ": 1800,
     "buffOnDamage": {
@@ -2761,6 +2771,8 @@
     "projectile": "PrincessProjectile",
     "deployDelay": 0.4,
     "areaDamageRadius": 2.5,
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 200,
     "multipleProjectiles": 5,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
@@ -3516,6 +3528,8 @@
     "rarity": "Common",
     "areaDamageRadius": 2.0,
     "selfAsAoeCenter": true,
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 100,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -3716,6 +3730,8 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "ElectroDragonProjectile",
+    "overrideAttackFinishTime": true,
+    "attackFinishTime": 0,
     "projectileStartRadius": 1250,
     "projectileStartZ": 1900,
     "attackSequence": {

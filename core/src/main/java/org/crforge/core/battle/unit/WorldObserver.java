@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import java.util.List;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 
 /**
@@ -77,4 +78,29 @@ public interface WorldObserver {
    * run's start and the effect in a pending pass, its end and its removal in later run passes.
    */
   default void activation(int tick, TowerEntity king, ActivationEvent event) {}
+
+  /**
+   * One victim of the area of an entity's hit took its share.
+   *
+   * @param tick the tick of the hit
+   * @param attacker the entity whose hit made the area
+   * @param victim the entity the area collected
+   * @param damage hit points dealt, before the victim's guards and the clamp to zero
+   * @param hitId the id the hit carries
+   * @param result what the damage did to the victim
+   */
+  default void areaHit(
+      int tick,
+      WorldEntity attacker,
+      WorldEntity victim,
+      int damage,
+      int hitId,
+      DamageResult result) {}
+
+  /**
+   * The area of an entity's hit is done: who stood in it, whom the validator accepted, and whom it
+   * damaged. Told after every victim's own hit.
+   */
+  default void areaDamaged(
+      int tick, WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {}
 }

@@ -84,7 +84,10 @@ class TrajectoryRecorderTest {
         BattleTowerRunTest.KNIGHT_REFERENCE,
         BattleTowerRunTest.MUSKETEER_REFERENCE,
         BattleTowerRunTest.WIZARD_REFERENCE,
-        BattleTowerRunTest.LEVEL_ONE_REFERENCE
+        BattleTowerRunTest.LEVEL_ONE_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_TWO_VICTIMS_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_OWN_TOWER_REFERENCE
       })
   void theExportedRunWithTheTowersFightingIsTheReferenceByteForByte(
       String resource, @TempDir Path directory) throws IOException {
@@ -93,8 +96,9 @@ class TrajectoryRecorderTest {
     int ticks = reference.get("records").size();
     Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
-    CharacterEntity unit = BattleTowerRunTest.deploy(match, reference);
-    TrajectoryRecorder recorder = new TrajectoryRecorder(unit);
+    List<CharacterEntity> units = BattleTowerRunTest.deployAll(match, reference);
+    TrajectoryRecorder recorder =
+        new TrajectoryRecorder(units.get(0), units.subList(1, units.size()));
     match.getWorld().addObserver(recorder);
 
     // The run ends with the unit's removal; the reference plays twenty ticks more to show what the

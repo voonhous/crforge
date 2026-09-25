@@ -109,6 +109,10 @@ public class TroopStats {
   @Builder.Default private final int multipleProjectiles = 0;
   @Builder.Default private final boolean selfAsAoeCenter = false;
 
+  // Own target-lost wait in milliseconds instead of the global one (e.g. Valkyrie 100)
+  @Builder.Default private final boolean overrideAttackFinishTime = false;
+  @Builder.Default private final int attackFinishTime = 0;
+
   // Buff applied to target when dealing damage (e.g. EWiz stun, Mother Witch curse)
   private final EffectStats buffOnDamage;
 
