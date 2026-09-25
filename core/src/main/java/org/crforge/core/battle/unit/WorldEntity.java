@@ -169,8 +169,18 @@ public abstract class WorldEntity extends BattleEntity {
         DamageApplication.damage(
             hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
     refreshHitPoints();
+    if (result.died()) {
+      died();
+    }
     return result;
   }
+
+  /**
+   * Runs when a hit takes the entity's hit points to zero, in the pass that lands it. The entity is
+   * still visited by the rest of the tick and leaves the holder only in its closing cleanup; its
+   * own death handler switches off what it no longer does.
+   */
+  protected void died() {}
 
   /**
    * Makes every arena entity of this tick known to the entity's selection. The first call also
