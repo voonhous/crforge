@@ -10,6 +10,10 @@ import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.PresentationAction;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
+import org.crforge.core.battle.expression.BattleFunctions;
+import org.crforge.core.battle.expression.Expression;
+import org.crforge.core.battle.expression.ExpressionCompiler;
+import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -69,8 +73,8 @@ public class TowerEntity extends WorldEntity {
   /** How long a king tower takes to wake once its wait has ended, in milliseconds. */
   public static final int ACTIVATION_MS = 3300;
 
-  /** Princess towers a side must keep for its king to sleep on. */
-  private static final int PRINCESS_TOWERS_TO_SLEEP = 2;
+  /** The king's wake-up condition, compiled once; null for a princess tower. */
+  private final Expression activationExpression;
 
   /** Applies every state change the tower asks for; a tower has no route to act on. */
   private final GridStateSetter setter;
@@ -124,6 +128,9 @@ public class TowerEntity extends WorldEntity {
     attach(new TargetingComponent());
 
     if (data.king()) {
+      this.activationExpression =
+          ExpressionCompiler.compile(
+              ACTIVATION_CONDITION, new BattleExpressionEnvironment(this, world));
       this.actionHolder = new ActionHolder();
       this.activationEffect = new PresentationAction("KingTowerActivationEffect");
       this.activating =
@@ -142,6 +149,7 @@ public class TowerEntity extends WorldEntity {
               GameTags.INACTIVE),
           0);
     } else {
+      this.activationExpression = null;
       this.actionHolder = null;
       this.activating = null;
       this.activationEffect = null;
@@ -149,19 +157,29 @@ public class TowerEntity extends WorldEntity {
   }
 
   /**
-   * What ends the king's wait: the king has lost hit points, or its side has fewer than two
-   * princess towers left. Asked by the wait's step in every run pass.
+   * What ends the king's wait, as the data writes it: the king has lost hit points, or its side has
+   * fewer than two princess towers left, or the same of a co-op side. Every part is evaluated, as
+   * the language never skips the right side of an or.
+   */
+  static final String ACTIVATION_CONDITION =
+      "king_tower_damaged() || coop_king_tower_damaged() || tower_destroyed()"
+          + " || coop_tower_destroyed()";
+
+  /**
+   * The wait's condition, evaluated by the wait's step in every run pass. When it holds, observers
+   * are told which part did.
    */
   private boolean activationCondition() {
-    boolean damaged =
-        getHitPoints() != null && getHitPoints().getHitPoints() < getHitPoints().getMaximum();
-    boolean towerDestroyed = world.princessTowerCount(side()) < PRINCESS_TOWERS_TO_SLEEP;
-    if (damaged || towerDestroyed) {
-      world.activation(
-          this, new ActivationEvent(ActivationEvent.Kind.CONDITION, 0, damaged, towerDestroyed));
-      return true;
+    BattleExpressionEnvironment environment = new BattleExpressionEnvironment(this, world);
+    if (ExpressionEvaluator.evaluate(activationExpression, environment) == 0) {
+      return false;
     }
-    return false;
+    boolean damaged = environment.call(BattleFunctions.id("king_tower_damaged"), new int[0]) != 0;
+    boolean towerDestroyed =
+        environment.call(BattleFunctions.id("tower_destroyed"), new int[0]) != 0;
+    world.activation(
+        this, new ActivationEvent(ActivationEvent.Kind.CONDITION, 0, damaged, towerDestroyed));
+    return true;
   }
 
   /** Turns the king's action steps into the activation events observers are told. */
