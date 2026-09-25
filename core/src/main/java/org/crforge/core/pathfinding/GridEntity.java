@@ -149,16 +149,6 @@ public class GridEntity {
   private int blockCountdownMs;
 
   /**
-   * A per-entity enable bit the push pass checks before it considers the entity at all, both for
-   * the pushing entity and for each neighbour. Its writers are not established, so the answer is a
-   * supplied one: a troop answers enabled, and an entity whose {@link #building} flag is raised
-   * answers disabled, so that a tower or a building never pushes a unit standing beside it and a
-   * lone unit walking past one keeps the trajectory the standard game gives it. Troop-to-troop
-   * pushes are unaffected.
-   */
-  private boolean pushEnabled = true;
-
-  /**
    * Byte the follower and the displacement helper write while the entity moves. Its readers are not
    * established.
    */

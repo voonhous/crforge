@@ -8,11 +8,10 @@ import org.junit.jupiter.api.Test;
 class GridEntityTest {
 
   @Test
-  void aNewEntityIsAliveOfTypeFiveAndPushEnabled() {
+  void aNewEntityIsAliveOfTypeFive() {
     GridEntity entity = new GridEntity();
     assertThat(entity.isAlive()).isTrue();
     assertThat(entity.getType()).isEqualTo(5);
-    assertThat(entity.isPushEnabled()).isTrue();
     assertThat(entity.getState()).isEqualTo(GridEntityState.STANDING);
     assertThat(entity.getFlags()).isZero();
     assertThat(entity.getPendingFlags()).isZero();

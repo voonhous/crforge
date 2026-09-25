@@ -17,13 +17,19 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * adds it to its step.
  *
  * <p>Reach is the neighbour's collision radius plus the unit's own, except that a neighbour with no
- * movement component of its own - a building - only ever reaches as far as 500 units of the unit's
- * radius. Two units sharing a position separate along the arena's length, each toward its own side.
+ * movement component of its own - a building or a tower - only ever reaches as far as 500 units of
+ * the unit's radius. Two units sharing a position separate along the arena's length, each toward
+ * its own side.
  *
- * <p>The unit is not pushed at all when it has no collision radius, when pushing is disabled for
- * it, or when it carries the flags that take it out of physical interaction entirely. Individual
- * neighbours are skipped when they are on a different height layer, are not alive, or carry the
- * flag that forbids pushing this unit from their side.
+ * <p>A crown tower is such a neighbour. Its mass is 0, so its share of a push is the smallest one,
+ * a single unit before the per-axis division, but it still counts in the push count the
+ * displacement divides by. A tower is never pushed itself: it has no movement visit.
+ *
+ * <p>The unit is not pushed at all when it has no collision radius, when it takes no part in
+ * contact ({@link ContactRule#collides}), or when it carries the flags that take it out of physical
+ * interaction entirely. Individual neighbours are skipped when they are on a different height
+ * layer, take no part in contact, are not alive, or carry the flag that forbids pushing this unit
+ * from their side.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -33,7 +39,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " Held: two and three equal units pushing apart, and the multi-unit parity"
             + " scenes. Not held by any fixture: unequal masses, a radius above 500, the"
             + " height layers, the no-pushed-by flags, edge separation and the single-axis"
-            + " copy. Supplied: a building never pushes and is never pushed.")
+            + " copy. A crown tower as a static, massless neighbour is held by the tower-contact"
+            + " run, the walks past a unit's own tower and the placement runs.")
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */
@@ -73,8 +80,8 @@ public final class PushPass {
     if (radius == 0) {
       return;
     }
-    chain.mark("owner_push_enabled");
-    if (!queries.ownerPushEnabled()) {
+    chain.mark("owner_collides");
+    if ((ContactRule.collides(owner) & 1) == 0) {
       return;
     }
     if ((owner.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {
@@ -105,8 +112,8 @@ public final class PushPass {
       if ((ownerHeight > 0) == (other.getZTotal() < 1)) {
         continue;
       }
-      chain.mark("neighbour_push_enabled");
-      if (!other.isPushEnabled()) {
+      chain.mark("neighbour_collides");
+      if ((ContactRule.collides(other) & 1) == 0) {
         continue;
       }
       if ((other.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {

@@ -162,11 +162,6 @@ public interface MovementQueries {
     return new int[] {0, 0};
   }
 
-  /** True when the entity takes part in pushing at all. Supplied as true. */
-  default boolean ownerPushEnabled() {
-    return true;
-  }
-
   /**
    * 1 when a push along a single axis may be copied onto the other axis after the pass has seen a
    * static neighbour. Supplied as 0; what writes it is not documented.
@@ -237,13 +232,12 @@ public interface MovementQueries {
   // ---------------------------------------------------------------------------------------------
 
   /**
-   * A per-neighbour enable bit the avoidance handler reads before it considers that neighbour at
-   * all: the neighbour is asked whether it accepts physical contact from the entity looking around,
-   * and is dropped when it does not. Only the low bit is tested. Its writers are not documented, so
-   * the name describes only where it is read; supplied as accepting.
+   * Whether the avoidance handler considers a neighbour at all: the neighbour is dropped when it
+   * takes no part in contact. Only the low bit is tested. Every entity answers by {@link
+   * ContactRule#avoidable}, crown towers and other buildings included.
    */
   default int neighbourAcceptsContact(GridEntity other) {
-    return 1;
+    return ContactRule.avoidable(other);
   }
 
   /**

@@ -259,20 +259,6 @@ public final class GridMovementQueries implements MovementQueries {
   }
 
   /**
-   * Whether a neighbour accepts physical contact from the troop looking around, which is what lets
-   * the avoidance handler steer around it.
-   *
-   * <p>Nothing in the simulator writes this bit and what would is not documented, so the answer is
-   * a supplied one: a troop accepts contact, a building or a tower does not. A unit therefore
-   * steers around other units but walks past a tower on the trajectory the standard game gives it;
-   * the tower is still routed around through the cost overlay its footprint stamps.
-   */
-  @Override
-  public int neighbourAcceptsContact(GridEntity other) {
-    return other.isBuilding() ? 0 : 1;
-  }
-
-  /**
    * The blend of a neighbour this system also drives. A neighbour it does not drive - an air unit,
    * a jumping unit, a building - has no blend of its own and answers zero, which makes the
    * avoidance handler fall back to the side the neighbour stands on.

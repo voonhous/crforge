@@ -53,8 +53,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: a tower occludes routing from its collision radius, takes no part in pushes or"
-            + " steering, is a default target, answers as a crown tower whether king or princess"
+        "Settled: a tower occludes routing from its collision radius, takes part in pushes and"
+            + " steering as a static neighbour with a mass of 0, is a default target, answers as a crown tower whether king or princess"
             + " tower and as the tower slot only when king, and stands at its hit points at its"
             + " level; it carries the targeting component in slot 0 and no movement component,"
             + " the building branches of the targeting visit, the state visit as its post-hook"
@@ -229,8 +229,6 @@ public class TowerEntity extends WorldEntity {
     view.setBuilding(true);
     view.setOccludes(true);
     view.setMovementActive(false);
-    // A building takes no part in pushing; the routing overlay is what keeps units off it.
-    view.setPushEnabled(false);
     // Both tower kinds are crown towers: noticed from farther away, ordered last by the index and
     // dealt the crown-tower damage. Only the king tower fills its side's tower slot.
     view.setCrownTower(data.king() || data.summonerTower());

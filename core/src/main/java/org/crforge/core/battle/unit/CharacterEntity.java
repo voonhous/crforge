@@ -55,10 +55,12 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " the same tick, the hit points and damage at the character's level, the removal"
             + " notice dropping a reference to an entity that left and starting the target-lost"
             + " countdown, and the resume that follows; while deploying, no targeting visit, and a"
-            + " movement visit that asks for no route and no speed, so only a push moves it. Not"
-            + " modelled yet: the registration visit of a new unit's components, air, jumping"
-            + " and hovering units, status effects on the speed budget, the deployment's own lane"
-            + " flag, and the columns its data does not carry: the stop time after an attack and"
+            + " movement visit that asks for no route and no speed, so only a push moves it; while"
+            + " waiting its turn to deploy, neither visit, the state visit counting the wait down"
+            + " into the deploying state, which starts the deploy countdown; the lane its"
+            + " placement works out. Not modelled yet: the registration visit of a new unit's"
+            + " components, air, jumping and hovering units, status effects on the speed budget,"
+            + " and the columns its data does not carry: the stop time after an attack and"
             + " the ones that restrict what a unit may target, such as buildings only.")
 public class CharacterEntity extends WorldEntity {
 
@@ -93,6 +95,33 @@ public class CharacterEntity extends WorldEntity {
    */
   public CharacterEntity(
       BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    this(world, data, name, side, x, y, level, -1, -1);
+  }
+
+  /**
+   * Creates a character as a card play places it: in the lane the play gives it, and either
+   * deploying or waiting its turn to deploy.
+   *
+   * @param world the battle's shared arena state
+   * @param data the character's published columns; only ground units are supported
+   * @param name the character's unique name within the battle
+   * @param side the side that owns the character
+   * @param x position in game units
+   * @param y position in game units
+   * @param level the character's level, counted from 1
+   * @param lane the lane the play gives it, or -1 for the lane of the road nearest to it
+   * @param waitMs how long it waits before it starts deploying, or -1 to deploy at once
+   */
+  public CharacterEntity(
+      BattleWorld world,
+      UnitData data,
+      String name,
+      int side,
+      int x,
+      int y,
+      int level,
+      int lane,
+      int waitMs) {
     super(
         world,
         data,
@@ -115,7 +144,19 @@ public class CharacterEntity extends WorldEntity {
             StateVisitConfig.forGroundUnit(data.deployTimeMs()),
             getSelection(),
             getTargetView());
-    this.setter = new GridStateSetter(view, unit.movement(), targeting, this::movementChain);
+    this.setter =
+        new GridStateSetter(
+            view, unit.movement(), targeting, this::movementChain, data.deployTimeMs());
+    if (lane >= 0) {
+      view.setLane(lane);
+    }
+    if (waitMs >= 0) {
+      // Waiting its turn: the elapsed-time field holds the wait, which the state visit counts
+      // down; at zero the unit enters the deploying state, whose countdown the setter seeds.
+      view.setState(GridEntityState.WAITING_TO_DEPLOY);
+      view.setDeployCountdown(0);
+      view.setDelay(waitMs);
+    }
     unit.selection().setStateSetter(setter);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
 
@@ -135,7 +176,6 @@ public class CharacterEntity extends WorldEntity {
     view.setCollisionRadius(data.collisionRadius());
     view.setMass(data.mass());
     view.setMovementActive(true);
-    view.setPushEnabled(true);
     view.setTargetable(1);
     view.setX(x);
     view.setY(y);
@@ -172,6 +212,11 @@ public class CharacterEntity extends WorldEntity {
 
   private boolean deploying() {
     return getView().getState() == GridEntityState.DEPLOYING;
+  }
+
+  /** True while the character waits its turn to deploy: none of its components is visited. */
+  private boolean waiting() {
+    return getView().getState() == GridEntityState.WAITING_TO_DEPLOY;
   }
 
   private StateQueries stateQueries() {
@@ -230,7 +275,7 @@ public class CharacterEntity extends WorldEntity {
 
     @Override
     public void visit() {
-      if (deploying()) {
+      if (deploying() || waiting()) {
         return;
       }
       unit.targeting().setRouteLeadsAway(unit.movement().getRouteLeadsAway() != 0);
@@ -256,6 +301,9 @@ public class CharacterEntity extends WorldEntity {
     @Override
     public void visit() {
       speedBudget = 0;
+      if (waiting()) {
+        return;
+      }
       // A deploying unit is visited too: it asks for no route and gets no speed, so only a push
       // from another unit can move it.
       GridMovementQueries queries = movementQueries();
