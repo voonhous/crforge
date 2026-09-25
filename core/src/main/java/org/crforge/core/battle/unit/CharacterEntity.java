@@ -57,7 +57,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " countdown, and the resume that follows; while deploying, no targeting visit, and a"
             + " movement visit that asks for no route and no speed, so only a push moves it; while"
             + " waiting its turn to deploy, neither visit, the state visit counting the wait down"
-            + " into the deploying state, which starts the deploy countdown; the lane its"
+            + " into the deploying state, which starts the deploy countdown; its death switching"
+            + " its movement component off for the rest of the tick; the lane its"
             + " placement works out. Not modelled yet: the registration visit of a new unit's"
             + " components, air, jumping and hovering units, status effects on the speed budget,"
             + " and the columns its data does not carry: the stop time after an attack and"
@@ -217,6 +218,16 @@ public class CharacterEntity extends WorldEntity {
     return getView().getState() == GridEntityState.DEPLOYING;
   }
 
+  /**
+   * A character's death switches its movement component off, so the rest of the tick skips its
+   * movement visit. Its targeting component stays on, so a hit it has due in the same tick still
+   * lands; the standard game switches that off too only under a global setting it leaves off.
+   */
+  @Override
+  protected void died() {
+    getView().setMovementActive(false);
+  }
+
   /** True while the character waits its turn to deploy: none of its components is visited. */
   private boolean waiting() {
     return getView().getState() == GridEntityState.WAITING_TO_DEPLOY;
@@ -304,7 +315,8 @@ public class CharacterEntity extends WorldEntity {
     @Override
     public void visit() {
       speedBudget = 0;
-      if (waiting()) {
+      // Switched off while the unit waits its turn to deploy, and from its death on.
+      if (!getView().isMovementActive()) {
         return;
       }
       // A deploying unit is visited too: it asks for no route and gets no speed, so only a push

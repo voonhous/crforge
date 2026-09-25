@@ -41,7 +41,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * projectile created in the middle of a battle is still visited before every character. An entity
  * added during a tick is not visited until the next one, because it is admitted by a cleanup and
  * the snapshot is already taken. An entity that becomes removable during a tick is still visited
- * for the rest of that tick and is gone before the next snapshot.
+ * for the rest of that tick, each of its components as long as that component is switched on, and
+ * is gone before the next snapshot; a character's death switches its movement component off.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -51,7 +52,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " entity is handed over, the live list sorted by id, and that every remaining entity"
             + " is told of a removal inside the cleanup that removes it, the entities handed over"
             + " that tick before the live list, so a reference to a dead entity is dropped before"
-            + " the next visit. Not settled: whether the removed entity is"
+            + " the next visit; and that an entity killed during a tick is visited by the rest of"
+            + " it, less the components its death switches off. Not settled: whether the removed entity is"
             + " told of its own removal, and whether anything reorders the live list between"
             + " ticks.")
 public class EntityHolder {
