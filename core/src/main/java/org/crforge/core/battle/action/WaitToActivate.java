@@ -13,7 +13,7 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled: the condition evaluated once per run-pass step, the activation action scheduled"
             + " and the run finished on the step it holds, and the tags the run sets. The condition"
-            + " is supplied as code rather than an expression.")
+            + " is what its owner evaluates: the king tower's is its row's expression.")
 public final class WaitToActivate implements BattleAction {
 
   private final String name;

@@ -244,6 +244,16 @@ public class BattleWorld implements HolderPasses {
     return count;
   }
 
+  /** The king tower of a side still in the battle, or null. */
+  public TowerEntity kingTower(int side) {
+    for (WorldEntity entity : known.values()) {
+      if (entity instanceof TowerEntity tower && tower.getData().king() && tower.side() == side) {
+        return tower;
+      }
+    }
+    return null;
+  }
+
   /** Tells every observer of one step of a king tower's activation. */
   void activation(TowerEntity king, ActivationEvent event) {
     for (WorldObserver observer : observers) {
