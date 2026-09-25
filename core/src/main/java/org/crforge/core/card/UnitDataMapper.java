@@ -1,5 +1,6 @@
 package org.crforge.core.card;
 
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.entity.base.MovementType;
@@ -33,6 +34,38 @@ public final class UnitDataMapper {
     return toUnitData(stats, rarityTable(rarity));
   }
 
+  /**
+   * The battle's view of a troop card's placement: the units it summons, its formation and where it
+   * may be placed. The card's rows publish the stagger in seconds; the battle reads milliseconds.
+   */
+  public static DeployCard toDeployCard(Card card) {
+    TroopStats second = card.getSecondaryUnitStats();
+    UnitData secondary = null;
+    if (second != null) {
+      Rarity rarity = second.getRarity() != Rarity.UNKNOWN ? second.getRarity() : card.getRarity();
+      secondary = toUnitData(second, rarityTable(rarity));
+    }
+    return new DeployCard(
+        card.getName(),
+        toUnitData(card),
+        Math.max(card.getUnitCount(), 1),
+        secondary,
+        second == null ? 0 : card.getSecondaryUnitCount(),
+        Math.round(card.getSummonRadius()),
+        card.getSummonWidth(),
+        Math.round(card.getSummonDeployDelay() * 1000),
+        card.getSummonDeployDelaySecondMs(),
+        card.isCanDeployOnEnemySide(),
+        card.isCanPlaceOnBuildings(),
+        card.isCanPlaceOnWater(),
+        card.isFullLaneDeploy(),
+        card.isTouchdownLimitedDeploy(),
+        card.getDeployWTileMargin(),
+        // No row of the data limits the rows a card may be placed in.
+        0,
+        0);
+  }
+
   /** The battle's view of one unit of the card library, scaled by the given rarity. */
   public static UnitData toUnitData(TroopStats stats, RarityTable rarity) {
     TargetType targets = stats.getTargetType();
@@ -63,6 +96,10 @@ public final class UnitDataMapper {
         .selfAsAoeCenter(stats.isSelfAsAoeCenter())
         .overrideAttackFinishTime(stats.isOverrideAttackFinishTime())
         .attackFinishTimeMs(stats.getAttackFinishTime())
+        .spawnRadius(stats.getSpawnRadius())
+        .spawnAngleShift(stats.getSpawnAngleShift())
+        .flyingHeight(stats.getFlyingHeight())
+        .spawnPathfindSpeed(Math.round(stats.getSpawnPathfindSpeed()))
         .build();
   }
 

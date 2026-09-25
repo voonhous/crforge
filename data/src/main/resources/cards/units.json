@@ -140,6 +140,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "BabyDragonProjectile",
+    "flyingHeight": 3500,
     "projectileStartRadius": 500,
     "projectileStartZ": 1900
   },
@@ -159,6 +160,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "BabyDragon_evo_projectile",
+    "flyingHeight": 3500,
     "projectileStartRadius": 500,
     "projectileStartZ": 1900,
     "ignoreBuff": [
@@ -181,6 +183,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "targetOnlyBuildings": true,
+    "flyingHeight": 3000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "deathSpawn": [
@@ -304,6 +307,8 @@
     "rarity": "Common",
     "deployDelay": 0.4,
     "attackDashTime": 0.15,
+    "spawnAngleShift": 45,
+    "flyingHeight": 2000,
     "projectileStartRadius": 350,
     "projectileStartZ": 350
   },
@@ -366,6 +371,7 @@
     "targetOnlyBuildings": true,
     "kamikaze": true,
     "ignoreResurrect": true,
+    "spawnAngleShift": 180,
     "deathSpawn": [
       {
         "spawnCharacter": "Barbarian",
@@ -730,6 +736,8 @@
     "targetType": "GROUND",
     "movementType": "GROUND",
     "rarity": "Common",
+    "spawnRadius": 1500,
+    "spawnAngleShift": 90,
     "deathSpawn": [
       {
         "spawnCharacter": "Bat",
@@ -763,6 +771,7 @@
     "rarity": "Common",
     "projectile": "DartBarrellProjectile",
     "deployDelay": 0.4,
+    "flyingHeight": 4000,
     "projectileStartRadius": 1500,
     "projectileStartZ": 1300
   },
@@ -782,6 +791,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "deployDelay": 0.4,
+    "spawnRadius": 800,
     "projectileStartRadius": 350,
     "projectileStartZ": 350,
     "shieldHitpoints": 94
@@ -802,6 +812,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "ElectroDragonProjectile",
+    "flyingHeight": 3500,
     "overrideAttackFinishTime": true,
     "attackFinishTime": 0,
     "projectileStartRadius": 1250,
@@ -854,7 +865,8 @@
     "rarity": "Common",
     "projectile": "ElectroSpiritProjectile",
     "kamikaze": true,
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "spawnRadius": 650
   },
   "ElectroWizard": {
     "name": "ElectroWizard",
@@ -1042,7 +1054,8 @@
     "rarity": "Common",
     "projectile": "FireSpiritsProjectile",
     "kamikaze": true,
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "spawnRadius": 650
   },
   "Firecracker": {
     "name": "Firecracker",
@@ -1080,6 +1093,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "deployDelay": 0.3,
+    "spawnRadius": 800,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "abilities": [
@@ -1602,6 +1616,7 @@
     "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "spawnRadius": 900,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "liveSpawn": {
@@ -1628,6 +1643,7 @@
     "rarity": "Common",
     "targetOnlyBuildings": true,
     "ignorePushback": true,
+    "spawnRadius": 900,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "liveSpawn": {
@@ -1858,7 +1874,8 @@
     "rarity": "Common",
     "projectile": "HealSpiritProjectile",
     "kamikaze": true,
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "spawnRadius": 650
   },
   "HogRider": {
     "name": "HogRider",
@@ -1941,6 +1958,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "targetOnlyBuildings": true,
+    "spawnRadius": 1000,
     "projectileStartRadius": 350,
     "projectileStartZ": 350,
     "deathDamage": {
@@ -1976,7 +1994,8 @@
     "rarity": "Common",
     "projectile": "IceSpiritsProjectile",
     "kamikaze": true,
-    "deployDelay": 0.4
+    "deployDelay": 0.4,
+    "spawnRadius": 650
   },
   "IceWizard": {
     "name": "IceWizard",
@@ -2012,6 +2031,7 @@
     "targetType": "ALL",
     "movementType": "AIR",
     "rarity": "Common",
+    "flyingHeight": 4000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "abilities": [
@@ -2049,6 +2069,7 @@
     "targetType": "ALL",
     "movementType": "AIR",
     "rarity": "Common",
+    "flyingHeight": 4000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "attackSequence": {
@@ -2164,6 +2185,7 @@
     "targetOnlyBuildings": true,
     "ignorePushback": true,
     "ignoreResurrect": true,
+    "flyingHeight": 4000,
     "projectileStartRadius": 1000,
     "projectileStartZ": 1800,
     "deathSpawn": [
@@ -2193,6 +2215,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "LavaPupProjectile",
+    "flyingHeight": 3500,
     "projectileStartRadius": 500,
     "projectileStartZ": 100
   },
@@ -2295,6 +2318,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "MegaMinionSpit",
+    "flyingHeight": 1500,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -2314,6 +2338,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "MergeMaidenProjectile_Mounted",
+    "flyingHeight": 3500,
     "projectileStartRadius": 1900,
     "projectileStartZ": 3950
   },
@@ -2477,6 +2502,7 @@
     "rarity": "Common",
     "projectile": "MinionSpit",
     "deployDelay": 0.4,
+    "flyingHeight": 1500,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -2586,6 +2612,7 @@
     "rarity": "Common",
     "projectile": "MusketeerProjectile",
     "deployDelay": 0.3,
+    "spawnRadius": 800,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -2606,6 +2633,7 @@
     "rarity": "Common",
     "projectile": "MusketeerProjectile",
     "deployDelay": 0.3,
+    "spawnRadius": 800,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "attackSequence": {
@@ -2674,6 +2702,7 @@
     "targetType": "ALL",
     "movementType": "AIR",
     "rarity": "Common",
+    "flyingHeight": 3000,
     "projectileStartRadius": 500,
     "projectileStartZ": 1900,
     "deathSpawnProjectile": "PhoenixFireball"
@@ -2724,6 +2753,7 @@
     "targetType": "ALL",
     "movementType": "AIR",
     "rarity": "Common",
+    "flyingHeight": 3000,
     "projectileStartRadius": 500,
     "projectileStartZ": 1900
   },
@@ -3009,6 +3039,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "deployDelay": 0.4,
+    "spawnRadius": 800,
     "projectileStartRadius": 350,
     "projectileStartZ": 350,
     "shieldHitpoints": 94
@@ -3073,6 +3104,7 @@
     "targetOnlyBuildings": true,
     "jumpEnabled": true,
     "deployDelay": 0.4,
+    "flyingHeight": 4000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "transformation": {
@@ -3098,6 +3130,7 @@
     "targetOnlyBuildings": true,
     "jumpEnabled": true,
     "deployDelay": 0.4,
+    "flyingHeight": 4000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -3154,6 +3187,7 @@
     "targetOnlyBuildings": true,
     "kamikaze": true,
     "ignoreResurrect": true,
+    "flyingHeight": 3100,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "deathSpawn": [
@@ -3231,6 +3265,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "SkeletonDragonProjectile",
+    "flyingHeight": 2500,
     "projectileStartRadius": 450,
     "projectileStartZ": 450
   },
@@ -3270,6 +3305,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "deployDelay": 0.4,
+    "spawnRadius": 800,
     "projectileStartRadius": 350,
     "projectileStartZ": 350,
     "shieldHitpoints": 100
@@ -3311,6 +3347,8 @@
     "projectile": "SpearGoblinGiantProjectile",
     "ignoreResurrect": true,
     "deployDelay": 0.4,
+    "spawnAngleShift": -22,
+    "flyingHeight": 4000,
     "projectileStartZ": 600,
     "deathSpawn": [
       {
@@ -3341,6 +3379,8 @@
     "projectile": "SpearGoblinGiantProjectile",
     "ignoreResurrect": true,
     "deployDelay": 0.4,
+    "spawnAngleShift": -22,
+    "flyingHeight": 4000,
     "projectileStartZ": 600,
     "deathSpawn": [
       {
@@ -3465,6 +3505,7 @@
     "rarity": "Common",
     "projectile": "ThreeMusketeer_Rework_Projectile",
     "deployDelay": 0.3,
+    "spawnRadius": 800,
     "projectileStartRadius": 750,
     "projectileStartZ": 1400,
     "attackSequence": {
@@ -3594,6 +3635,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "projectile": "WitchProjectile",
+    "spawnRadius": 2000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "liveSpawn": {
@@ -3643,6 +3685,7 @@
     "movementType": "GROUND",
     "rarity": "Common",
     "projectile": "EV1_Witch_Projectile",
+    "spawnRadius": 2000,
     "projectileStartRadius": 450,
     "projectileStartZ": 450,
     "liveSpawn": {
@@ -3730,6 +3773,7 @@
     "movementType": "AIR",
     "rarity": "Common",
     "projectile": "ElectroDragonProjectile",
+    "flyingHeight": 3500,
     "overrideAttackFinishTime": true,
     "attackFinishTime": 0,
     "projectileStartRadius": 1250,

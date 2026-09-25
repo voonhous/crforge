@@ -84,6 +84,18 @@ public class CardConfigDTO {
   // Whether this spell can be placed at a location where a building entity exists
   private boolean canPlaceOnBuildings;
 
+  // Placement columns of a card play (deployment as a command)
+  private boolean canPlaceOnWater;
+  private boolean fullLaneDeploy;
+  private boolean touchdownLimitedDeploy;
+  private int deployWTileMargin;
+
+  // Width of a line formation, in tiles (e.g. Royal Recruits 14)
+  private float summonWidth;
+
+  // Stagger between the units of the secondary group, in seconds
+  private float summonDeployDelaySecond;
+
   // Variant definitions for dual-form cards (e.g. MergeMaiden mounted/normal)
   private List<VariantConfigDTO> variants;
 

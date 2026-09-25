@@ -117,6 +117,24 @@ public class Card {
   /** Whether this spell can be placed at a location where a building entity exists. */
   @Builder.Default private final boolean canPlaceOnBuildings = true;
 
+  /** Whether the card may be placed on water. */
+  @Builder.Default private final boolean canPlaceOnWater = false;
+
+  /** Whether the card's placement keeps only the rows open across the arena's whole width. */
+  @Builder.Default private final boolean fullLaneDeploy = false;
+
+  /** Whether the card's placement is limited in a touchdown mode (e.g. Miner, Goblin Barrel). */
+  @Builder.Default private final boolean touchdownLimitedDeploy = false;
+
+  /** Tiles kept free of placement at each side of the arena's width (e.g. Royal Recruits 6). */
+  @Builder.Default private final int deployWTileMargin = 0;
+
+  /** Width of a line formation in game units, 0 for the ring (e.g. Royal Recruits 14000). */
+  @Builder.Default private final int summonWidth = 0;
+
+  /** Stagger between the units of the secondary group, in milliseconds (e.g. Rascals 100). */
+  @Builder.Default private final int summonDeployDelaySecondMs = 0;
+
   /** Variant definitions for dual-form cards (e.g. MergeMaiden mounted/normal). */
   private final List<CardVariant> variants;
 

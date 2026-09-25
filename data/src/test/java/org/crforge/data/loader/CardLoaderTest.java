@@ -158,6 +158,48 @@ class CardLoaderTest {
   }
 
   @Test
+  void loadCards_shouldCarryThePlacementColumns() {
+    TroopStats recruit =
+        TroopStats.builder()
+            .name("Recruit")
+            .movementType(MovementType.GROUND)
+            .targetType(TargetType.GROUND)
+            .build();
+
+    String json =
+        """
+        [
+          {
+            "id": "royalrecruits",
+            "name": "RoyalRecruits",
+            "type": "TROOP",
+            "cost": 7,
+            "unit": "Recruit",
+            "count": 6,
+            "summonRadius": 500.0,
+            "summonDeployDelay": 0.1,
+            "summonDeployDelaySecond": 0.1,
+            "summonWidth": 14.0,
+            "fullLaneDeploy": true,
+            "deployWTileMargin": 6,
+            "canPlaceOnWater": true,
+            "touchdownLimitedDeploy": true
+          }
+        ]
+        """;
+
+    Card card = CardLoader.loadCards(toStream(json), unitMap(recruit), Map.of()).get(0);
+
+    // The width is published in tiles and the stagger in seconds
+    assertThat(card.getSummonWidth()).isEqualTo(14000);
+    assertThat(card.getSummonDeployDelaySecondMs()).isEqualTo(100);
+    assertThat(card.isFullLaneDeploy()).isTrue();
+    assertThat(card.getDeployWTileMargin()).isEqualTo(6);
+    assertThat(card.isCanPlaceOnWater()).isTrue();
+    assertThat(card.isTouchdownLimitedDeploy()).isTrue();
+  }
+
+  @Test
   void loadCards_shouldParseBuildingCard() {
     TroopStats cannon =
         TroopStats.builder()
