@@ -182,6 +182,10 @@ Each file lists its `commands`: the play's name, card, side, requested `point` a
 
 `CardPlacementTest` works every play out and holds it to its command. `BattlePlacementRunTest` plays each file through the battle and holds it to every unit record, every event and every projectile position. A shot still in flight when the run ends is recorded past the last unit record and event, so the run goes on to the last projectile position.
 
+## `golden/two_knights.json` - two units that kill each other
+
+The same layout: a Knight of the bottom side requested at (3500, 12000) and one of the top side at (3500, 20000), both on tick 0, at level 11 with the towers fighting. They meet on the left lane, lock onto each other on tick 70 and hit on the same ticks from 79, every 24 ticks. On tick 271 the bottom Knight, visited first, kills the other, whose hit is due on the same tick and still lands, and both leave the battle in that tick's cleanup; the run ends at 291. On ticks 66 and 68 each holds an empty route for one tick while walking at the other, as the follower empties it.
+
 ## `golden/skeleton_army_bridge.json` and `golden/skeleton_army_corner.json` - several units at once
 
 The same layout, two Skeleton Army plays of the bottom side on tick 0, at level 11 with the towers fighting, each run until 20 ticks after its last skeleton leaves: one requested at (3500, 10000) and placed at (3499, 10500), in front of the left bridge, and one requested at (500, 1500) and placed at (499, 1500), near the corner. The skeletons walk up the left lane as a crowd, push each other and are steered around each other and the towers, and fight the enemy princess tower, which dies on tick 256 (bridge) and 393 (corner). They hold what a crowd does in the standard game: at the bridge a skeleton pushed sideways walks on the water beside it from tick 60, and at the tower the crowd presses some of its own inside the tower's collision circle from tick 153; the corner run passes its own princess tower close enough to push a skeleton inside that one too, on tick 57.
