@@ -182,6 +182,10 @@ Each file lists its `commands`: the play's name, card, side, requested `point` a
 
 `CardPlacementTest` works every play out and holds it to its command. `BattlePlacementRunTest` plays each file through the battle and holds it to every unit record, every event and every projectile position. A shot still in flight when the run ends is recorded past the last unit record and event, so the run goes on to the last projectile position.
 
+## `golden/skeleton_army_bridge.json` and `golden/skeleton_army_corner.json` - several units at once
+
+The same layout, two Skeleton Army plays of the bottom side on tick 0, at level 11 with the towers fighting, each run until 20 ticks after its last skeleton leaves: one requested at (3500, 10000) and placed at (3499, 10500), in front of the left bridge, and one requested at (500, 1500) and placed at (499, 1500), near the corner. The skeletons walk up the left lane as a crowd, push each other and are steered around each other and the towers, and fight the enemy princess tower, which dies on tick 256 (bridge) and 393 (corner). They hold what a crowd does in the standard game: at the bridge a skeleton pushed sideways walks on the water beside it from tick 60, and at the tower the crowd presses some of its own inside the tower's collision circle from tick 153; the corner run passes its own princess tower close enough to push a skeleton inside that one too, on tick 57.
+
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
 Every question the movement pass put to the routing grid during the same run, in order, with the
