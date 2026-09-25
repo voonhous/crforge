@@ -211,6 +211,8 @@ public class UnitLoader {
             .projectileYOffset(dto.getProjectileYOffset())
             .rarity(Rarity.fromString(dto.getRarity()))
             .selfAsAoeCenter(dto.isSelfAsAoeCenter())
+            .overrideAttackFinishTime(dto.isOverrideAttackFinishTime())
+            .attackFinishTime(dto.getAttackFinishTime())
             // Targeting and combat modifiers
             .targetOnlyBuildings(dto.isTargetOnlyBuildings())
             .targetOnlyTroops(dto.isTargetOnlyTroops())

@@ -126,6 +126,34 @@ class UnitDataMapperTest {
   }
 
   @Test
+  @DisplayName(
+      "a unit that splashes with a direct hit carries its radius, its centre and its own"
+          + " target-lost wait")
+  void aUnitThatSplashesCarriesItsAreaColumns() {
+    Card valkyrie = Objects.requireNonNull(CardRegistry.get("valkyrie"), "valkyrie not found");
+
+    UnitData data = UnitDataMapper.toUnitData(valkyrie);
+
+    assertThat(data.hasProjectile()).isFalse();
+    assertThat(data.areaDamageRadius()).as("game units").isEqualTo(2000);
+    assertThat(data.selfAsAoeCenter()).isTrue();
+    assertThat(data.overrideAttackFinishTime()).isTrue();
+    assertThat(data.attackFinishTimeMs()).isEqualTo(100);
+  }
+
+  @Test
+  @DisplayName("a unit without its own target-lost wait keeps the global one")
+  void aUnitWithoutItsOwnWaitKeepsTheGlobalOne() {
+    Card knight = Objects.requireNonNull(CardRegistry.get("knight"), "knight not found");
+
+    UnitData data = UnitDataMapper.toUnitData(knight);
+
+    assertThat(data.overrideAttackFinishTime()).isFalse();
+    assertThat(data.attackFinishTimeMs()).isZero();
+    assertThat(data.areaDamageRadius()).isZero();
+  }
+
+  @Test
   @DisplayName("a unit that hits directly carries no projectile, but still its launch columns")
   void aUnitThatHitsDirectlyCarriesNoProjectile() {
     Card knight = Objects.requireNonNull(CardRegistry.get("knight"), "knight not found");

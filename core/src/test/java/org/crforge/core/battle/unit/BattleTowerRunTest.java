@@ -3,14 +3,20 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.card.UnitDataMapper;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -35,6 +41,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class BattleTowerRunTest {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   /** A Knight on the left lane, shot down by the princess tower in front of it. */
   static final String KNIGHT_REFERENCE = "/pathfinding/golden/tower_vs_knight_left.json";
 
@@ -44,6 +52,18 @@ class BattleTowerRunTest {
   /** A Wizard on the left lane, whose fireballs damage everything in their radius. */
   static final String WIZARD_REFERENCE = "/pathfinding/golden/wizard_vs_tower.json";
 
+  /** A Valkyrie on the left lane, whose every hit damages the circle around herself. */
+  static final String VALKYRIE_REFERENCE = "/pathfinding/golden/valkyrie_vs_tower.json";
+
+  /** The Valkyrie with an enemy Knight joining her at the tower: two victims in each circle. */
+  static final String VALKYRIE_TWO_VICTIMS_REFERENCE =
+      "/pathfinding/golden/valkyrie_two_victims.json";
+
+  /**
+   * The Valkyrie fighting an enemy Knight beside her own princess tower, which her circle spares.
+   */
+  static final String VALKYRIE_OWN_TOWER_REFERENCE = "/pathfinding/golden/valkyrie_own_tower.json";
+
   /**
    * The Knight again with the towers at the first level: it destroys the princess tower, which
    * wakes the king tower, and dies under the fire of three towers.
@@ -52,18 +72,31 @@ class BattleTowerRunTest {
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE, LEVEL_ONE_REFERENCE})
+      strings = {
+        KNIGHT_REFERENCE,
+        MUSKETEER_REFERENCE,
+        WIZARD_REFERENCE,
+        LEVEL_ONE_REFERENCE,
+        VALKYRIE_REFERENCE,
+        VALKYRIE_TWO_VICTIMS_REFERENCE,
+        VALKYRIE_OWN_TOWER_REFERENCE
+      })
   void theWholeRunMatchesTheReferenceTickForTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<JsonNode> records = BattleMusketeerRunTest.records(reference);
     Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
-    CharacterEntity unit = deploy(match, reference);
+    List<CharacterEntity> units = deployAll(match, reference);
+    CharacterEntity unit = units.get(0);
+    Map<Integer, List<JsonNode>> otherRecords = otherRecordsByTick(reference);
 
     battle.step();
     for (int i = 0; i < records.size(); i++) {
       battle.step();
       JsonNode record = records.get(i);
+      for (JsonNode other : otherRecords.getOrDefault(record.get("tick").asInt(), List.of())) {
+        assertOtherUnit(battle, units, other, record.get("tick").asInt());
+      }
       String where = "reference tick " + record.get("tick").asInt();
 
       assertThat(unit.getView().getX()).as("%s x", where).isEqualTo(record.get("x").asInt());
@@ -101,7 +134,15 @@ class BattleTowerRunTest {
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE, LEVEL_ONE_REFERENCE})
+      strings = {
+        KNIGHT_REFERENCE,
+        MUSKETEER_REFERENCE,
+        WIZARD_REFERENCE,
+        LEVEL_ONE_REFERENCE,
+        VALKYRIE_REFERENCE,
+        VALKYRIE_TWO_VICTIMS_REFERENCE,
+        VALKYRIE_OWN_TOWER_REFERENCE
+      })
   void everyLaunchImpactHitAndDeathFallsOnTheReferenceTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<String> expected = new ArrayList<>();
@@ -131,7 +172,15 @@ class BattleTowerRunTest {
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {KNIGHT_REFERENCE, MUSKETEER_REFERENCE, WIZARD_REFERENCE, LEVEL_ONE_REFERENCE})
+      strings = {
+        KNIGHT_REFERENCE,
+        MUSKETEER_REFERENCE,
+        WIZARD_REFERENCE,
+        LEVEL_ONE_REFERENCE,
+        VALKYRIE_REFERENCE,
+        VALKYRIE_TWO_VICTIMS_REFERENCE,
+        VALKYRIE_OWN_TOWER_REFERENCE
+      })
   void everyProjectileFliesThroughTheReferencePositions(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<String> expected = new ArrayList<>();
@@ -181,6 +230,67 @@ class BattleTowerRunTest {
         .containsExactlyElementsOf(expected);
   }
 
+  /**
+   * The records of the further units, each tagged with its unit's name and keyed by tick, from the
+   * layout's compact rows.
+   */
+  static Map<Integer, List<JsonNode>> otherRecordsByTick(JsonNode reference) {
+    Map<Integer, List<JsonNode>> byTick = new HashMap<>();
+    if (!reference.has("unit_records")) {
+      return byTick;
+    }
+    List<String> fields = new ArrayList<>();
+    reference.get("unit_fields").forEach(field -> fields.add(field.asText()));
+    reference
+        .get("unit_records")
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              for (JsonNode row : entry.getValue()) {
+                ObjectNode record = MAPPER.createObjectNode();
+                record.put("name", entry.getKey());
+                for (int i = 0; i < fields.size(); i++) {
+                  record.set(fields.get(i), row.get(i));
+                }
+                byTick
+                    .computeIfAbsent(record.get("tick").asInt(), t -> new ArrayList<>())
+                    .add(record);
+              }
+            });
+    return byTick;
+  }
+
+  /**
+   * Holds a further unit to its record: position, state, reference and its own hit points. The
+   * reference is the recorded one unless the entity it names has left the holder in the step's
+   * closing cleanup, which the record, taken before the cleanup, does not show.
+   */
+  private static void assertOtherUnit(
+      Battle battle, List<CharacterEntity> units, JsonNode record, int tick) {
+    CharacterEntity other =
+        units.stream()
+            .filter(u -> u.name().equals(record.get("name").asText()))
+            .findFirst()
+            .orElseThrow();
+    String where = "reference tick " + tick + ": " + other.name();
+    assertThat(other.getView().getX()).as("%s x", where).isEqualTo(record.get("x").asInt());
+    assertThat(other.getView().getY()).as("%s y", where).isEqualTo(record.get("y").asInt());
+    assertThat(other.getView().getState())
+        .as("%s state", where)
+        .isEqualTo(record.get("state").asInt());
+    String recorded = record.get("ref").isNull() ? null : record.get("ref").asText();
+    boolean stillThere =
+        battle.getHolder().entities().stream()
+            .anyMatch(e -> e instanceof WorldEntity w && w.name().equals(recorded));
+    String expectedReference = stillThere ? recorded : null;
+    assertThat(BattleMusketeerRunTest.referenceName(other))
+        .as("%s reference", where)
+        .isEqualTo(expectedReference);
+    assertThat(other.getHitPoints().getHitPoints())
+        .as("%s own hit points", where)
+        .isEqualTo(record.get("own_hp").asInt());
+  }
+
   /** Collects every launch, impact, hit and death as the reference lists them. */
   static WorldObserver eventCollector(int[] currentTick, List<String> events) {
     return new WorldObserver() {
@@ -196,6 +306,53 @@ class BattleTowerRunTest {
         if (result.died()) {
           events.add("%d death %s".formatted(currentTick[0], target.name()));
         }
+      }
+
+      @Override
+      public void areaHit(
+          int tick,
+          WorldEntity attacker,
+          WorldEntity victim,
+          int damage,
+          int hitId,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area_hit %s %s %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    attacker.name(),
+                    victim.name(),
+                    damage,
+                    victim.getTargetView().getHitPoints(),
+                    hitId));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], victim.name()));
+        }
+      }
+
+      @Override
+      public void areaDamaged(
+          int tick, WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area %s %d %d r%d %d %d %d %s %s %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    area.x(),
+                    area.y(),
+                    area.radius(),
+                    area.damage(),
+                    area.towerDamage(),
+                    area.hitId(),
+                    names(outcome.inCircle()),
+                    names(outcome.validated()),
+                    names(outcome.damaged())));
       }
 
       @Override
@@ -247,6 +404,16 @@ class BattleTowerRunTest {
     };
   }
 
+  private static List<String> names(List<TargetView> views) {
+    return views.stream().map(TargetView::name).toList();
+  }
+
+  private static List<String> jsonNames(JsonNode list) {
+    List<String> names = new ArrayList<>();
+    list.forEach(name -> names.add(name.asText()));
+    return names;
+  }
+
   /** One reference event in the collector's layout. */
   static String eventLine(JsonNode event) {
     int tick = event.get("tick").asInt();
@@ -285,19 +452,79 @@ class BattleTowerRunTest {
                   event.get("x").asInt(),
                   event.get("y").asInt(),
                   event.get("z").asInt());
+      case "area_hit" ->
+          "%d area_hit %s %s %d %d %d"
+              .formatted(
+                  tick,
+                  event.get("attacker").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("hit_id").asInt());
+      case "area" ->
+          "%d area %s %d %d r%d %d %d %d %s %s %s"
+              .formatted(
+                  tick,
+                  event.get("owner").asText(),
+                  event.get("centre").get(0).asInt(),
+                  event.get("centre").get(1).asInt(),
+                  event.get("radius").asInt(),
+                  event.get("damage").asInt(),
+                  event.get("tower_damage").asInt(),
+                  event.get("hit_id").asInt(),
+                  jsonNames(event.get("in_circle")),
+                  jsonNames(event.get("validated")),
+                  jsonNames(event.get("victims")));
       default -> throw new IllegalStateException("unknown event " + kind);
     };
   }
 
   /** Places the reference's unit at the reference's level, side and position on tick 0. */
   static CharacterEntity deploy(Standard1v1Battle match, JsonNode reference) {
-    String card = reference.get("card").asText().toLowerCase(Locale.ROOT);
-    return match.deploy(
-        0,
-        UnitDataMapper.toUnitData(Objects.requireNonNull(CardRegistry.get(card), card)),
-        reference.get("level").asInt(),
-        reference.get("side").asInt(),
-        reference.get("deploy").get(0).asInt(),
-        reference.get("deploy").get(1).asInt());
+    return deployAll(match, reference).get(0);
+  }
+
+  /**
+   * Places the reference's unit on tick 0 and every further unit the reference lists on its own
+   * tick, under its own name, at the reference's level.
+   *
+   * <p>The reference counts ticks from its unit's first tick, which is the battle's tick 1: a
+   * placement due on tick 0 runs at the tail of the first step and is first visited in the second.
+   * A placement due on a later tick runs in the second command pass of the step before it, against
+   * the advanced counter, so a further unit the reference places on its tick {@code n} is due on
+   * battle tick {@code n + 1}.
+   *
+   * @return the reference's unit first, then the further units in the order the reference lists
+   *     them
+   */
+  static List<CharacterEntity> deployAll(Standard1v1Battle match, JsonNode reference) {
+    List<CharacterEntity> units = new ArrayList<>();
+    units.add(
+        match.deploy(
+            0,
+            unitData(reference.get("card").asText()),
+            reference.get("level").asInt(),
+            reference.get("side").asInt(),
+            reference.get("deploy").get(0).asInt(),
+            reference.get("deploy").get(1).asInt()));
+    if (reference.has("units")) {
+      for (JsonNode unit : reference.get("units")) {
+        units.add(
+            match.deploy(
+                unit.get("tick").asInt() + 1,
+                unitData(unit.get("card").asText()),
+                reference.get("level").asInt(),
+                unit.get("side").asInt(),
+                unit.get("deploy").get(0).asInt(),
+                unit.get("deploy").get(1).asInt(),
+                unit.get("name").asText()));
+      }
+    }
+    return units;
+  }
+
+  private static UnitData unitData(String cardName) {
+    String card = cardName.toLowerCase(Locale.ROOT);
+    return UnitDataMapper.toUnitData(Objects.requireNonNull(CardRegistry.get(card), card));
   }
 }

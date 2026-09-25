@@ -36,7 +36,10 @@ class BattleTowerTargetingTest {
         BattleTowerRunTest.KNIGHT_REFERENCE,
         BattleTowerRunTest.MUSKETEER_REFERENCE,
         BattleTowerRunTest.WIZARD_REFERENCE,
-        BattleTowerRunTest.LEVEL_ONE_REFERENCE
+        BattleTowerRunTest.LEVEL_ONE_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_TWO_VICTIMS_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_OWN_TOWER_REFERENCE
       })
   void everyTowerHoldsTheReferenceTheReferenceGivesOnEveryTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
@@ -100,7 +103,10 @@ class BattleTowerTargetingTest {
         BattleTowerRunTest.KNIGHT_REFERENCE,
         BattleTowerRunTest.MUSKETEER_REFERENCE,
         BattleTowerRunTest.WIZARD_REFERENCE,
-        BattleTowerRunTest.LEVEL_ONE_REFERENCE
+        BattleTowerRunTest.LEVEL_ONE_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_TWO_VICTIMS_REFERENCE,
+        BattleTowerRunTest.VALKYRIE_OWN_TOWER_REFERENCE
       })
   void theRemovalOfTheUnitLeavesEveryTowerThatHeldItWithTheTargetLostCountdownStarted(
       String resource) {

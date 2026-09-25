@@ -150,6 +150,22 @@ Each file runs to the unit's removal, and the tower events go on for twenty tick
 
 `BattleTowerRunTest` holds the battle to the records, the events and the projectile positions, `BattleTowerTargetingTest` to the tower events, and `TrajectoryRecorderTest` writes the four runs out and holds each file to these byte for byte. The older runs above were made with the towers passive, and the tests play them that way.
 
+## `golden/valkyrie_vs_tower.json`, `golden/valkyrie_two_victims.json` and `golden/valkyrie_own_tower.json` - a unit that splashes with a direct hit
+
+A Valkyrie at level 11, with the towers fighting. She has no projectile; every hit she lands damages the circle of 2000 around herself, and the validator, run with her own columns, spares her and her side.
+
+- `valkyrie_vs_tower`: the left deployment. She locks on at 235 at (3731, 22854) and hits from 236 every 30 ticks; the circle holds the princess tower and herself, and the tower alone takes 266 each time, down to 1722 after five hits. Fifteen arrows kill her at 373.
+- `valkyrie_two_victims`: the same, with an enemy Knight placed on tick 190 at (6000, 26000). She turns to the Knight and stands at (3822, 22944); the hits at 238, 268 and 298 damage the tower and then the Knight, 266 each, in id order. She dies at 309.
+- `valkyrie_own_tower`: the Valkyrie at (7500, 4500) and an enemy Knight at (3500, 17500), both on tick 0. They meet beside her own princess tower, which stands in her circle on all three hits (122, 152, 182) and takes nothing; the Knight falls to 1116, 594 and 72, and her tower's arrow finishes it at 190. She walks on to the enemy tower, hits it three times and dies at 491.
+
+The layout is the Musketeer run's with three additions:
+
+- `units` lists the further units: name, row (`card`), side, deploy position, the tick they are placed on, id, lane and starting hit points. The reference's own unit is 5000006 and a further unit 5000007.
+- `unit_fields` and `unit_records` give each further unit one compact record per tick it is in the holder, from its placement: position, state, reference and its own hit points, taken after its state visit.
+- `events` carries two more kinds. An `area_hit` is one victim's share: the attacker, the victim, the damage, the victim's remaining hit points and the hit's id; a death follows it when the share kills. An `area` follows a hit's shares: its owner, centre, radius, damage and crown-tower damage, the hit's id, the push (0, as no row of the data pushes with a hit), and the entities in the circle, those the validator accepted, and those it damaged.
+
+The two runs with two units are the first where a unit walks at a unit that moves: the enemy Knight steers at the Valkyrie where she stands at the moment of its movement visit, after hers. Neither run has two units close enough to push or steer around each other.
+
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
 Every question the movement pass put to the routing grid during the same run, in order, with the

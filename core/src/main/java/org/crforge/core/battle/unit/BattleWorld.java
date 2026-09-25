@@ -14,6 +14,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -164,6 +165,36 @@ public class BattleWorld implements HolderPasses {
     holder.add(projectile);
     for (WorldObserver observer : observers) {
       observer.projectileLaunched(tick, projectile);
+    }
+  }
+
+  /**
+   * Deals one victim's share of the area of an entity's hit, and tells every observer what it did.
+   * A victim that has left the battle takes nothing.
+   *
+   * @param attacker the entity whose hit made the area
+   * @param victim the entity the area collected
+   * @param damage hit points the area deals it, before its guards and the clamp to zero
+   * @param hitId the id the hit carries
+   * @return what the damage did to the victim
+   */
+  public DamageResult dealAreaDamage(
+      WorldEntity attacker, WorldEntity victim, int damage, int hitId) {
+    if (victim == null || known.get(victim.getView()) != victim) {
+      return DamageResult.NOTHING;
+    }
+    // A character's area carries no dedupe id and no direction.
+    DamageResult result = victim.takeDamage(damage, 0, 0, 0);
+    for (WorldObserver observer : observers) {
+      observer.areaHit(tick, attacker, victim, damage, hitId, result);
+    }
+    return result;
+  }
+
+  /** Tells every observer what the area of an entity's hit did, once its victims are dealt. */
+  void areaDamaged(WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+    for (WorldObserver observer : observers) {
+      observer.areaDamaged(tick, owner, area, outcome);
     }
   }
 

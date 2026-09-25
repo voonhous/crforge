@@ -40,7 +40,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param projectileYOffset how far along the arena's length a projectile's start is shifted; the
  *     top side's is mirrored
  * @param multipleProjectiles how many projectiles one attack launches; 0 and 1 both mean one
- * @param areaDamageRadius the spread of a multi-projectile attack; 0 for a single projectile
+ * @param areaDamageRadius for a unit that hits directly, the radius of the circle each hit damages,
+ *     0 for one that hits its target alone; for a unit that fires several projectiles, their spread
+ * @param selfAsAoeCenter true when the circle a hit damages is centred on the unit itself rather
+ *     than on its target
+ * @param overrideAttackFinishTime true when the unit waits its own time, not the global one, before
+ *     it takes a new target after losing one
+ * @param attackFinishTimeMs that own wait
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -68,7 +74,10 @@ public record UnitData(
     int projectileStartZ,
     int projectileYOffset,
     int multipleProjectiles,
-    int areaDamageRadius) {
+    int areaDamageRadius,
+    boolean selfAsAoeCenter,
+    boolean overrideAttackFinishTime,
+    int attackFinishTimeMs) {
 
   /**
    * The king tower's published columns. The towers carry no rarity column; Common is the rarity

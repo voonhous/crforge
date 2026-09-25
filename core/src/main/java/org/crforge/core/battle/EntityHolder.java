@@ -49,8 +49,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "The order of hooks, component passes and action passes within a tick is settled, and so"
             + " are the snapshot, the ids as the kind's band plus a per-kind counter taken when the"
             + " entity is handed over, the live list sorted by id, and that every remaining entity"
-            + " is told of a removal inside the cleanup that removes it, so a reference to a dead"
-            + " entity is dropped before the next visit. Not settled: whether the removed entity is"
+            + " is told of a removal inside the cleanup that removes it, the entities handed over"
+            + " that tick before the live list, so a reference to a dead entity is dropped before"
+            + " the next visit. Not settled: whether the removed entity is"
             + " told of its own removal, and whether anything reorders the live list between"
             + " ticks.")
 public class EntityHolder {
@@ -105,10 +106,12 @@ public class EntityHolder {
     drainRemovable(live, removed);
     drainRemovable(pendingAdditions, removed);
     for (BattleEntity gone : removed) {
-      for (BattleEntity entity : live) {
+      // The entities handed over this tick hear of it first, then the live list, so a projectile
+      // launched on the tick its target dies loses the target in the same cleanup.
+      for (BattleEntity entity : pendingAdditions) {
         entity.entityRemoved(gone);
       }
-      for (BattleEntity entity : pendingAdditions) {
+      for (BattleEntity entity : live) {
         entity.entityRemoved(gone);
       }
       passes.entityRemoved(gone);

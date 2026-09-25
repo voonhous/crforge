@@ -103,6 +103,10 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     attack block timer by every hit; 0 for a unit that carries on at once
  * @param crownTowerDamagePercent percentage, as a difference from the plain damage, that a hit
  *     deals to a crown tower: 0 leaves the damage alone, -70 takes 70 percent off it
+ * @param areaDamageRadius for a unit without a projectile, the radius of the circle each landed hit
+ *     damages instead of its target alone; 0 for one that hits its target alone
+ * @param selfAsAoeCenter true when that circle is centred on the unit itself rather than on where
+ *     its reference stood at the start of the visit
  */
 @Builder(toBuilder = true)
 public record TargetingConfig(
@@ -175,7 +179,9 @@ public record TargetingConfig(
     int hitEffectVariant,
     boolean burstAffectAnimation,
     int stopTimeAfterAttack,
-    int crownTowerDamagePercent) {
+    int crownTowerDamagePercent,
+    int areaDamageRadius,
+    boolean selfAsAoeCenter) {
 
   /** Sight clip depth every ordinary character carries in the standard mode. */
   public static final int STANDARD_SIGHT_CLIP = 1000;

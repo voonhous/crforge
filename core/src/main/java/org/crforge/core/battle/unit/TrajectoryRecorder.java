@@ -15,6 +15,7 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.target.RangeTest;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -68,11 +69,25 @@ public final class TrajectoryRecorder implements WorldObserver {
   public static final List<String> FIELDS =
       List.of("tick", "x", "y", "state", "ref", "route", "speed", "hp");
 
+  /** The columns of a record of every other character the recorder follows. */
+  public static final List<String> UNIT_FIELDS =
+      List.of("tick", "x", "y", "state", "ref", "own_hp");
+
   /** The columns of a record in a run whose towers fight: the character's own hit points last. */
   public static final List<String> FIGHTING_FIELDS =
       List.of("tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp");
 
   private final CharacterEntity unit;
+
+  /** The other characters the recorder follows, in the order they were given. */
+  private final List<CharacterEntity> others;
+
+  /** Each other character's header line, once it has been seen in the holder. */
+  private final Map<CharacterEntity, String> otherHeaders = new HashMap<>();
+
+  /** Each other character's records, from the tick it was first seen in the holder. */
+  private final Map<CharacterEntity, List<String>> otherRecords = new HashMap<>();
+
   private final int deployX;
   private final int deployY;
 
@@ -124,7 +139,19 @@ public final class TrajectoryRecorder implements WorldObserver {
    * @param unit the character to record
    */
   public TrajectoryRecorder(CharacterEntity unit) {
+    this(unit, List.of());
+  }
+
+  /**
+   * Prepares to record a character's run and, beside it, the positions, states, references and hit
+   * points of other characters of the same battle, each from its own first tick in the holder.
+   *
+   * @param unit the character to record
+   * @param others the other characters to follow
+   */
+  public TrajectoryRecorder(CharacterEntity unit, List<CharacterEntity> others) {
     this.unit = unit;
+    this.others = List.copyOf(others);
     this.deployX = unit.getView().getX();
     this.deployY = unit.getView().getY();
   }
@@ -242,6 +269,11 @@ public final class TrajectoryRecorder implements WorldObserver {
     }
     towerEvents.addAll(activationEvents);
     activationEvents.clear();
+    for (CharacterEntity other : others) {
+      if (present.contains(other)) {
+        recordOther(tick, other);
+      }
+    }
     if (!present.contains(unit)) {
       return;
     }
@@ -371,6 +403,125 @@ public final class TrajectoryRecorder implements WorldObserver {
             + "}");
   }
 
+  /**
+   * One tick of another character, after its state visit: where it stands, its state, its reference
+   * and its own hit points. Its header is written the first time it is seen.
+   */
+  private void recordOther(int tick, CharacterEntity other) {
+    otherHeaders.computeIfAbsent(
+        other,
+        o ->
+            "  {\"name\": "
+                + quote(o.name())
+                + ", \"card\": "
+                + quote(o.getData().name())
+                + ", \"side\": "
+                + o.side()
+                + ", \"deploy\": ["
+                + o.getView().getX()
+                + ", "
+                + o.getView().getY()
+                + "], \"tick\": "
+                + (tick - firstTick)
+                + ", \"id\": "
+                + o.getId()
+                + ", \"lane\": "
+                + o.getView().getLane()
+                + ", \"hp\": "
+                + (o.getHitPoints() == null ? 0 : o.getHitPoints().getMaximum())
+                + "}");
+    TargetView reference = other.getTargeting().getReference();
+    otherRecords
+        .computeIfAbsent(other, o -> new ArrayList<>())
+        .add(
+            "   ["
+                + (tick - firstTick)
+                + ", "
+                + other.getView().getX()
+                + ", "
+                + other.getView().getY()
+                + ", "
+                + other.getView().getState()
+                + ", "
+                + (reference == null ? "null" : quote(reference.name()))
+                + ", "
+                + (other.getHitPoints() == null ? "null" : other.getHitPoints().getHitPoints())
+                + "]");
+  }
+
+  /** One victim of the area of a character's hit. */
+  @Override
+  public void areaHit(
+      int tick,
+      WorldEntity attacker,
+      WorldEntity victim,
+      int damage,
+      int hitId,
+      DamageResult result) {
+    if (firstTick < 0) {
+      return;
+    }
+    String head = eventHead(tick);
+    events.add(
+        head
+            + "\"area_hit\", \"attacker\": "
+            + quote(attacker.name())
+            + ", \"target\": "
+            + quote(victim.name())
+            + ", \"damage\": "
+            + damage
+            + ", \"hp\": "
+            + victim.getTargetView().getHitPoints()
+            + ", \"hit_id\": "
+            + hitId
+            + "}");
+    if (result.died()) {
+      events.add(head + "\"death\", \"target\": " + quote(victim.name()) + "}");
+    }
+  }
+
+  /** The area of a character's hit: who stood in it, whom it accepted and whom it damaged. */
+  @Override
+  public void areaDamaged(
+      int tick, WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+    if (firstTick < 0) {
+      return;
+    }
+    events.add(
+        eventHead(tick)
+            + "\"area\", \"owner\": "
+            + quote(owner.name())
+            + ", \"centre\": ["
+            + area.x()
+            + ", "
+            + area.y()
+            + "], \"radius\": "
+            + area.radius()
+            + ", \"damage\": "
+            + area.damage()
+            + ", \"tower_damage\": "
+            + area.towerDamage()
+            + ", \"hit_id\": "
+            + area.hitId()
+            // No row of the data pushes with a hit, so the area pushes nothing.
+            + ", \"push\": 0, \"push_flag\": 0, \"in_circle\": "
+            + names(outcome.inCircle())
+            + ", \"validated\": "
+            + names(outcome.validated())
+            + ", \"victims\": "
+            + names(outcome.damaged())
+            + ", \"pushed\": []}");
+  }
+
+  /** The names of a list of entities as a JSON list. */
+  private static String names(List<TargetView> views) {
+    StringBuilder out = new StringBuilder("[");
+    for (int i = 0; i < views.size(); i++) {
+      out.append(i == 0 ? "" : ", ").append(quote(views.get(i).name()));
+    }
+    return out.append("]").toString();
+  }
+
   /** A step of a king tower's activation, held until the tick's visits have been written. */
   @Override
   public void activation(int tick, TowerEntity king, ActivationEvent event) {
@@ -429,6 +580,15 @@ public final class TrajectoryRecorder implements WorldObserver {
       out.append(" \"towers_attack\": true,\n");
     }
     appendList(out, "towers", towers).append(",\n");
+    List<String> unitLines = new ArrayList<>();
+    for (CharacterEntity other : others) {
+      if (otherHeaders.containsKey(other)) {
+        unitLines.add(otherHeaders.get(other));
+      }
+    }
+    if (!unitLines.isEmpty()) {
+      appendList(out, "units", unitLines).append(",\n");
+    }
     appendList(out, "events", events).append(",\n");
     if (towersAttack) {
       appendList(out, "tower_events", towerEvents).append(",\n");
@@ -439,6 +599,25 @@ public final class TrajectoryRecorder implements WorldObserver {
       out.append(i == 0 ? "" : ", ").append(quote(fields.get(i)));
     }
     out.append("],\n");
+    if (!unitLines.isEmpty()) {
+      out.append(" \"unit_fields\": [");
+      for (int i = 0; i < UNIT_FIELDS.size(); i++) {
+        out.append(i == 0 ? "" : ", ").append(quote(UNIT_FIELDS.get(i)));
+      }
+      out.append("],\n \"unit_records\": {\n");
+      List<String> blocks = new ArrayList<>();
+      for (CharacterEntity other : others) {
+        if (otherRecords.containsKey(other)) {
+          blocks.add(
+              "  "
+                  + quote(other.name())
+                  + ": [\n"
+                  + String.join(",\n", otherRecords.get(other))
+                  + "\n  ]");
+        }
+      }
+      out.append(String.join(",\n", blocks)).append("\n },\n");
+    }
     appendList(out, "records", records);
     if (!projectiles.isEmpty()) {
       out.append(",\n");

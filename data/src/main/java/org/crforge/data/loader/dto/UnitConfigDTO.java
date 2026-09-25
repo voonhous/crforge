@@ -60,6 +60,10 @@ public class UnitConfigDTO {
   private int multipleTargets;
   private int multipleProjectiles;
   private boolean selfAsAoeCenter;
+
+  // Own target-lost wait in milliseconds instead of the global one (e.g. Valkyrie 100)
+  private boolean overrideAttackFinishTime;
+  private int attackFinishTime;
   private BuffOnDamageConfigDTO buffOnDamage;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)

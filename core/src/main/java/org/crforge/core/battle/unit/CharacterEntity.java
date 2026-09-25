@@ -161,6 +161,10 @@ public class CharacterEntity extends WorldEntity {
         .configKey(data.name())
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .hasProjectile(data.hasProjectile())
+        .areaDamageRadius(data.areaDamageRadius())
+        .selfAsAoeCenter(data.selfAsAoeCenter())
+        .overrideAttackFinishTime(data.overrideAttackFinishTime())
+        .attackFinishTime(data.attackFinishTimeMs())
         .build();
   }
 
