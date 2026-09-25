@@ -65,25 +65,28 @@ class BattleTest {
   }
 
   @Test
-  @DisplayName("a due command runs after the entity tick of its step and before the tick counter")
-  void commandsRunAtTheTailOfTheStep() {
+  @DisplayName("a due command runs at the head of its step, before the entity tick")
+  void commandsRunBeforeTheEntityTick() {
     Battle battle = battleWithWitness(BattleMode.ENDLESS);
     battle.queue(command(0, "deploy"));
 
     battle.step();
 
-    assertThat(log).containsExactly("entity tick", "deploy at tick 0");
+    assertThat(log).containsExactly("deploy at tick 0", "entity tick");
   }
 
   @Test
-  @DisplayName("a command due on the next tick runs in the second pass, after the counter advances")
-  void secondCommandPassSeesTheAdvancedCounter() {
+  @DisplayName("a command due on the next tick waits for the next step: one pass per step")
+  void aCommandRunsInTheStepOfItsTick() {
     Battle battle = battleWithWitness(BattleMode.ENDLESS);
-    battle.queue(command(1, "early"));
+    battle.queue(command(1, "later"));
 
     battle.step();
+    assertThat(log).containsExactly("entity tick");
 
-    assertThat(log).containsExactly("entity tick", "early at tick 1");
+    log.clear();
+    battle.step();
+    assertThat(log).containsExactly("later at tick 1", "entity tick");
   }
 
   @Test
@@ -109,12 +112,12 @@ class BattleTest {
     battle.step();
 
     assertThat(log)
-        .containsExactly("entity tick", "first", "second at tick 0", "queued by first at tick 0");
+        .containsExactly("first", "second at tick 0", "queued by first at tick 0", "entity tick");
   }
 
   @Test
-  @DisplayName("what a command creates takes part in the following tick, not the current one")
-  void entityCreatedByCommandStartsNextTick() {
+  @DisplayName("what a command creates takes part in the entity tick of its own step")
+  void entityCreatedByCommandTakesPartInItsStep() {
     EntityHolder holder = new EntityHolder(HolderPasses.NONE);
     Battle battle = new Battle(holder, BattleMode.ENDLESS);
     battle.queue(
@@ -129,9 +132,6 @@ class BattleTest {
             target.getHolder().add(new Witness());
           }
         });
-
-    battle.step();
-    assertThat(log).isEmpty();
 
     battle.step();
     assertThat(log).containsExactly("entity tick");

@@ -75,6 +75,8 @@ public class Standard1v1Battle {
         battle.getHolder().add(tower);
       }
     }
+    // The setup places the towers straight into the live list, so they stand from the first tick.
+    battle.getHolder().cleanup();
   }
 
   /**

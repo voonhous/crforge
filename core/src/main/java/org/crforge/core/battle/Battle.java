@@ -17,11 +17,14 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <ol>
  *   <li>nothing at all when the mode says the match is over, not even the tick counter;
  *   <li>the clock advances by {@link #STEP_MS};
+ *   <li>the due commands, before any entity is visited;
  *   <li>the mode update, and inside it the entity tick, which is handed the current tick;
- *   <li>the due commands, at the tail of the step and therefore after every entity visit;
- *   <li>the tick counter advances;
- *   <li>the due commands once more, against the advanced counter.
+ *   <li>the tick counter advances.
  * </ol>
+ *
+ * <p>So what a command creates is handed to the holder before the entity tick of its own step,
+ * whose opening cleanup admits it: a unit placed on tick {@code n} is first visited on tick {@code
+ * n}.
  *
  * <p>Time is never a float here. Every duration in the simulation is whole milliseconds, stepped by
  * exactly 50, so a duration of {@code ms} lasts {@code ceil(ms / 50)} steps with no rounding drift.
@@ -29,10 +32,10 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: 50 ms per step as an integer, the entity tick before the commands, the tick"
-            + " counter advancing after both, a finished match skipping the step and the counter,"
-            + " and a second command pass after the counter. Not settled: which commands belong"
-            + " to which of the two passes, the exact due rule for a late command, and the match"
+        "Settled: 50 ms per step as an integer, one command pass before the entity tick, over"
+            + " one queue in the order the commands arrived, a late command running at once, the"
+            + " tick counter advancing after both, and a finished match skipping the step and the"
+            + " counter. Not modelled: the replay regime that drops a late command, and the match"
             + " clock, which the mode will own.")
 public class Battle {
 
@@ -76,14 +79,13 @@ public class Battle {
       return;
     }
     clockMs += STEP_MS;
+    executeDueCommands();
     if (mode.update(this)) {
       holder.tick(tick);
     } else {
       holder.cleanup();
     }
-    executeDueCommands();
     tick++;
-    executeDueCommands();
   }
 
   /**

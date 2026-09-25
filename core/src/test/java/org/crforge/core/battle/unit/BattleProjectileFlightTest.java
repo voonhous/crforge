@@ -21,8 +21,8 @@ import org.junit.jupiter.api.Test;
  * away mid-flight and holds the shot to what the removal notice says: it flies on to where the
  * tower stood and lands on nothing.
  *
- * <p>Ticks are the reference's: battle tick {@code n + 1} is reference tick {@code n}, so an
- * observer's tick is one more than the reference's.
+ * <p>Ticks are the reference's: a placement runs at the head of its step, so battle tick {@code n}
+ * is reference tick {@code n}.
  */
 class BattleProjectileFlightTest {
 
@@ -203,7 +203,6 @@ class BattleProjectileFlightTest {
     Battle battle = match.getBattle();
     CharacterEntity musketeer = BattleMusketeerRunTest.deployMusketeer(match, reference);
 
-    battle.step();
     for (int tick = 0; tick <= IN_FLIGHT_TICK; tick++) {
       battle.step();
     }
@@ -258,7 +257,6 @@ class BattleProjectileFlightTest {
     Recording recording = new Recording(musketeer);
     match.getWorld().addObserver(recording);
 
-    battle.step();
     for (int tick = 0; tick <= IN_FLIGHT_TICK; tick++) {
       battle.step();
     }
@@ -306,7 +304,6 @@ class BattleProjectileFlightTest {
     CharacterEntity musketeer = BattleMusketeerRunTest.deployMusketeer(match, reference);
     Recording recording = new Recording(musketeer);
     match.getWorld().addObserver(recording);
-    battle.step();
     for (int tick = 0; tick <= lastTick; tick++) {
       battle.step();
     }

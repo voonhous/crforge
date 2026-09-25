@@ -90,8 +90,7 @@ class BattleTrajectorySweepTest {
             trajectory.get("deploy").get(1).asInt());
     assertThat(unit.getView().getLane()).as("lane").isEqualTo(trajectory.get("lane").asInt());
 
-    // Step 0 admits the towers and runs the placement; reference tick n is battle step n + 1.
-    battle.step();
+    // The placement runs at the head of the first step, so reference tick n is battle step n.
     JsonNode records = trajectory.get("records");
     for (int tick = 0; tick < records.size(); tick++) {
       battle.step();

@@ -5,8 +5,9 @@ package org.crforge.core.battle;
  * ability press, a scripted spawn.
  *
  * <p>A command is stamped with the battle tick it is due on. It never runs in the middle of an
- * entity tick: the battle executes due commands at the tail of the step, after every entity has
- * been visited, so what a command creates first takes part in the following tick.
+ * entity tick: the battle executes due commands at the head of the step, before any entity is
+ * visited, so what a command creates takes part in the entity tick of that same step. A command
+ * whose tick has passed runs at the next step.
  */
 public interface BattleCommand {
 

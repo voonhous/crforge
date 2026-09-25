@@ -34,10 +34,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * towers stand outside it - before the tower kills it at 237. The king towers stay out of all
  * three: nothing damages a king tower and no princess tower falls, so neither king is activated.
  *
- * <p>Reference tick {@code n} is battle step {@code n + 1}, as in {@link BattleKillRunTest}, and
- * the same one-tick deploying correction and end-of-step reference allowance apply. The towers are
- * in the holder from the first step, one step before the unit's first tick, so they are visited
- * once more than the reference visits them; nothing is in any tower's range on that step.
+ * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleKillRunTest}, and the
+ * same one-tick deploying correction and end-of-step reference allowance apply. The towers and the
+ * unit are visited from the same first tick, as in the reference.
  */
 class BattleTowerRunTest {
 
@@ -90,7 +89,6 @@ class BattleTowerRunTest {
     CharacterEntity unit = units.get(0);
     Map<Integer, List<JsonNode>> otherRecords = otherRecordsByTick(reference);
 
-    battle.step();
     for (int i = 0; i < records.size(); i++) {
       battle.step();
       JsonNode record = records.get(i);
@@ -157,7 +155,6 @@ class BattleTowerRunTest {
     List<String> events = new ArrayList<>();
     match.getWorld().addObserver(eventCollector(currentTick, events));
 
-    battle.step();
     int lastTick = BattleMusketeerRunTest.records(reference).size() - 1;
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
@@ -218,7 +215,6 @@ class BattleTowerRunTest {
               }
             });
 
-    battle.step();
     int lastTick = BattleMusketeerRunTest.records(reference).size() - 1;
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
@@ -488,11 +484,8 @@ class BattleTowerRunTest {
    * Places the reference's unit on tick 0 and every further unit the reference lists on its own
    * tick, under its own name, at the reference's level.
    *
-   * <p>The reference counts ticks from its unit's first tick, which is the battle's tick 1: a
-   * placement due on tick 0 runs at the tail of the first step and is first visited in the second.
-   * A placement due on a later tick runs in the second command pass of the step before it, against
-   * the advanced counter, so a further unit the reference places on its tick {@code n} is due on
-   * battle tick {@code n + 1}.
+   * <p>A placement runs at the head of the step of its tick, so a unit placed on the reference's
+   * tick {@code n} is first visited in battle step {@code n}, as in the reference.
    *
    * @return the reference's unit first, then the further units in the order the reference lists
    *     them
@@ -511,7 +504,7 @@ class BattleTowerRunTest {
       for (JsonNode unit : reference.get("units")) {
         units.add(
             match.deploy(
-                unit.get("tick").asInt() + 1,
+                unit.get("tick").asInt(),
                 unitData(unit.get("card").asText()),
                 reference.get("level").asInt(),
                 unit.get("side").asInt(),

@@ -36,8 +36,8 @@ import org.junit.jupiter.api.Test;
  * themselves, and {@link TrajectoryRecorderTest} writes the run out and holds the file to the
  * reference byte for byte.
  *
- * <p>Reference tick {@code n} is battle step {@code n + 1}, as in {@link BattleKillRunTest}, and
- * the same one-tick deploying correction and end-of-step reference allowance apply.
+ * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleKillRunTest}, and the
+ * same one-tick deploying correction and end-of-step reference allowance apply.
  */
 class BattleMusketeerRunTest {
 
@@ -88,7 +88,6 @@ class BattleMusketeerRunTest {
     int[] currentTick = {-1};
     SelectionChain selection = musketeer.getUnit().selection();
     HitSink inner = selection.getHitSink();
-    battle.step();
     TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
     selection.setHitSink(
         (target, sequenceIndex, extraTargets, last) -> {
@@ -169,7 +168,6 @@ class BattleMusketeerRunTest {
 
     // Every tick the tower's hit points fall is one impact, recorded with the tick and what the
     // tower stands at afterwards; reaching zero is its death, a second event on the same tick.
-    battle.step();
     TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
     int standing = tower.getHitPoints().getHitPoints();
     List<String> events = new ArrayList<>();
@@ -206,7 +204,6 @@ class BattleMusketeerRunTest {
     Battle battle = match.getBattle();
     CharacterEntity musketeer = deployMusketeer(match, reference);
 
-    battle.step();
     TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
     for (int i = 0; i < records.size(); i++) {
       battle.step();
@@ -239,7 +236,7 @@ class BattleMusketeerRunTest {
           .isEqualTo(expectedReference(record) == null ? null : record.get("hp").asInt());
     }
 
-    assertThat(battle.getTick()).isEqualTo(records.size() + 1);
+    assertThat(battle.getTick()).isEqualTo(records.size());
     assertThat(tower.getHitPoints().getHitPoints()).as("the tower is at zero").isZero();
     assertThat(battle.getHolder().entities())
         .as("the tower has left the holder in the tick it died")
