@@ -166,6 +166,20 @@ The layout is the Musketeer run's with three additions:
 
 The two runs with two units are the first where a unit walks at a unit that moves: the enemy Knight steers at the Valkyrie where she stands at the moment of its movement visit, after hers. Neither run has two units close enough to push or steer around each other.
 
+## `golden/barbarians_left.json`, `golden/barbarians_edge.json`, `golden/skeleton_army_edge.json`, `golden/knight_side1.json` and `golden/deploy_refused.json` - placing a card
+
+Units placed the way a player places them: by a place-card command carrying the card, the requested point, the side and the tick it runs on, at level 11 with the towers fighting. The requested point is not where a unit stands: the play clamps it to the arena, snaps it to a tile, moves it to the nearest tile the card may be placed on, and lays the card's units out around it.
+
+- `barbarians_left`: Barbarians requested at (3500, 10000) for the bottom side on tick 0 are placed at (3499, 10500) - the tile centre, then one unit left of it, as a unit left of the arena's middle is - and stand in a ring of five around it. The first starts deploying at once; each later one waits 100 ms more than the one before.
+- `barbarians_edge`: the same card requested in the corner at (0, 1000), placed at (499, 1500); two units are moved in to 250 from the edge, and one lands on another that is still waiting and is pushed off it on its first tick.
+- `skeleton_army_edge`: fifteen Skeletons requested in the corner; the spiral puts three on the placed point and the inset puts two more on one spot, and every stack is split on the first tick.
+- `knight_side1`: a Knight of the top side requested at (14500, 22000) on tick 7, placed at (14500, 22499): the top side's point is one unit short of the tile centre along the length.
+- `deploy_refused`: a Knight requested on the river is refused with code 0x13, one right of the arena with 0x11, and neither creates anything or takes an id; one requested in the enemy half is moved to the nearest tile of its own half, (8500, 14500).
+
+Each file lists its `commands`: the play's name, card, side, requested `point` and `tick`, the `outcome` and its `code`, and for a placed play the `placed` point, the `interval` along the length its units are clamped into, the `origin_lane` of the placed point, and each unit's name, id, row, index, `formation` offset, position, lane, starting `state` (4 deploying, 11 waiting), its wait (`delay`, 0 for none) and its deploy time. The units' records follow in `unit_records`, one per tick from their placement; there is no single unit, so `records` is empty. The `towers` list of these files also carries the placed units, with their positions at the end of the run.
+
+`CardPlacementTest` works every play out and holds it to its command.
+
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
 Every question the movement pass put to the routing grid during the same run, in order, with the
