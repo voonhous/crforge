@@ -414,6 +414,7 @@ public class GridPathfindingSystem {
     boolean building = entity.getMovementType() == MovementType.BUILDING;
     view.setBuilding(building);
     view.setOccludes(building);
+    view.setMovementComponent(!building);
     view.setMovementActive(!building);
     // Every tower is a crown tower to the targeting rules; only the king fills the tower slot.
     view.setCrownTower(entity instanceof Tower);

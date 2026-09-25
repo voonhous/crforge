@@ -166,6 +166,21 @@ public final class MovementChain {
   }
 
   /**
+   * Asks the aligned static neighbours check over the entities within {@link
+   * AlignedStaticCheck#QUERY_RADIUS} of the entity's own position, as the push pass does after it
+   * has counted a static neighbour.
+   */
+  public int alignedStaticNeighbours() {
+    List<GridEntity> near =
+        neighbours.near(owner.getX(), owner.getY(), AlignedStaticCheck.QUERY_RADIUS);
+    try {
+      return AlignedStaticCheck.answer(owner, near);
+    } finally {
+      neighbours.release(near);
+    }
+  }
+
+  /**
    * The largest number of neighbours the push pass accumulated a push from in one run during this
    * visit. The displacement zeroes the accumulators as it spends them, so this is the only record
    * left of whether the entity was pushed at all this tick.

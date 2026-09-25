@@ -153,9 +153,11 @@ public class CharacterEntity extends WorldEntity {
     if (waitMs >= 0) {
       // Waiting its turn: the elapsed-time field holds the wait, which the state visit counts
       // down; at zero the unit enters the deploying state, whose countdown the setter seeds.
+      // Its movement component is switched off until then.
       view.setState(GridEntityState.WAITING_TO_DEPLOY);
       view.setDeployCountdown(0);
       view.setDelay(waitMs);
+      view.setMovementActive(false);
     }
     unit.selection().setStateSetter(setter);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
@@ -175,6 +177,7 @@ public class CharacterEntity extends WorldEntity {
     view.setSide(side);
     view.setCollisionRadius(data.collisionRadius());
     view.setMass(data.mass());
+    view.setMovementComponent(true);
     view.setMovementActive(true);
     view.setTargetable(1);
     view.setX(x);

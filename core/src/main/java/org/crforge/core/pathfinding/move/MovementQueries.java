@@ -163,24 +163,18 @@ public interface MovementQueries {
   }
 
   /**
-   * 1 when a push along a single axis may be copied onto the other axis after the pass has seen a
-   * static neighbour. Supplied as 0; what writes it is not documented.
-   */
-  default int singleAxisPushCopyAllowed() {
-    return 0;
-  }
-
-  /**
    * 1 while the match runs a touchdown mode, which enables both the push pass's edge separation and
-   * the waypoint selector's x override. Supplied as 0.
+   * the waypoint selector's x override. It is the mode's touchdown-target setting, which none of
+   * the standard game's modes sets, so it answers 0.
    */
   default int touchdownModeActive() {
     return 0;
   }
 
   /**
-   * 1 when a pushed ground unit's displacement honours the push at all. Supplied as 0, so the
-   * pushed-ground branch of the displacement stays shut.
+   * 1 when a pushed ground unit's displacement takes the pushed-ground branch. It answers 1 only in
+   * a mode that names a capturable building, while one of those stands on the arena; none of the
+   * standard game's modes names one, so it answers 0 and the branch stays shut.
    */
   default int pushDisplacementEnabled() {
     return 0;

@@ -36,7 +36,9 @@ class BattlePlacementRunTest {
           "barbarians_edge",
           "skeleton_army_edge",
           "knight_side1",
-          "deploy_refused");
+          "deploy_refused",
+          "skeleton_army_bridge",
+          "skeleton_army_corner");
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
@@ -45,7 +47,9 @@ class BattlePlacementRunTest {
         "barbarians_edge",
         "skeleton_army_edge",
         "knight_side1",
-        "deploy_refused"
+        "deploy_refused",
+        "skeleton_army_bridge",
+        "skeleton_army_corner"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

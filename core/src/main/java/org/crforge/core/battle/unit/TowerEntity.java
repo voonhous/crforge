@@ -228,6 +228,7 @@ public class TowerEntity extends WorldEntity {
     view.setMass(data.mass());
     view.setBuilding(true);
     view.setOccludes(true);
+    view.setMovementComponent(false);
     view.setMovementActive(false);
     // Both tower kinds are crown towers: noticed from farther away, ordered last by the index and
     // dealt the crown-tower damage. Only the king tower fills its side's tower slot.

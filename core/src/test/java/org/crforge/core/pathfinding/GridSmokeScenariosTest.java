@@ -56,9 +56,12 @@ import org.junit.jupiter.api.Test;
  * anomaly 4 below. Every run but scenario 6 asserts that the record is empty, so the bound is held
  * just as tightly everywhere the anomaly does not reach.
  *
- * <p>Four further invariants the brief asks for do not hold today. They are recorded on every run
- * and asserted in the {@link Disabled} tests at the bottom of this class, which name the anomaly
- * each is waiting on; the live tests assert what does hold, never a weakened form of the invariant:
+ * <p>Four further invariants the brief asks for do not hold. They are recorded on every run and
+ * asserted in the {@link Disabled} tests at the bottom of this class, which name the anomaly behind
+ * each; the live tests assert what does hold, never a weakened form of the invariant. The first
+ * three are settled as the standard game's behaviour, not defects: the battle engine reproduces
+ * them tick for tick in its own reference runs, so those invariants are not the game's. The fourth
+ * is this engine's own defect, which the battle engine does not share:
  *
  * <ul>
  *   <li>anomaly 1 - a walking troop with a target has an empty route for the one tick between its
@@ -68,7 +71,8 @@ import org.junit.jupiter.api.Test;
  *       walk back onto the bridge;
  *   <li>anomaly 3 - a troop pushed by a crowd ends up inside a tower's collision circle;
  *   <li>anomaly 4 - a formation deployed at an arena corner puts part of itself outside the arena
- *       and leaves it there, which scenario 6 is written around.
+ *       and leaves it there, which scenario 6 is written around. The standard game insets every
+ *       unit of a play 250 units inside the arena; this engine's deployment does not.
  * </ul>
  */
 class GridSmokeScenariosTest {
@@ -334,9 +338,9 @@ class GridSmokeScenariosTest {
 
   @Test
   @Disabled(
-      "anomaly 1: the follower consumes the last route node and route preparation only rebuilds"
-          + " the route on the next visit, so a walking troop with a target has no route for that"
-          + " one tick")
+      "anomaly 1, the standard game's behaviour: the follower consumes the last route node and"
+          + " route preparation only rebuilds the route on the next visit, so a walking troop with"
+          + " a target has no route for that one tick")
   @DisplayName("a walking troop with a target always has a route")
   void aWalkingTroopAlwaysHasARoute() {
     Run run =
@@ -350,8 +354,8 @@ class GridSmokeScenariosTest {
 
   @Test
   @Disabled(
-      "anomaly 2: a pushed ground unit is not moved off water, because the displacement's"
-          + " pushed-ground branch is shut, so a unit pushed off a bridge walks over the river")
+      "anomaly 2, the standard game's behaviour: the displacement's pushed-ground branch is"
+          + " shut in the standard modes, so a unit pushed off a bridge walks over the river")
   @DisplayName("no troop ever stands on a water cell")
   void noTroopEverStandsOnWater() {
     Run run = new Run("skeleton army").play(Team.BLUE, "skeletonarmy", 3500, 10_000).go();
@@ -361,8 +365,9 @@ class GridSmokeScenariosTest {
 
   @Test
   @Disabled(
-      "anomaly 3: nothing stops a push from moving a unit into a building's footprint, so a"
-          + " crowded swarm presses one of its own inside a tower's collision circle")
+      "anomaly 3, the standard game's behaviour: nothing stops a push from moving a unit into a"
+          + " building's footprint, so a crowded swarm presses one of its own inside a tower's"
+          + " collision circle")
   @DisplayName("no troop ever stands inside a tower's footprint")
   void noTroopEverStandsInsideATower() {
     Run run = new Run("skeleton army").play(Team.BLUE, "skeletonarmy", 3500, 10_000).go();
@@ -372,9 +377,9 @@ class GridSmokeScenariosTest {
 
   @Test
   @Disabled(
-      "anomaly 4: a formation is placed at its raw offsets from the deploy point with no test"
-          + " against the arena, and no pass clamps a grid-driven troop back inside it, so a"
-          + " corner deployment leaves part of the formation outside the arena for the whole run")
+      "anomaly 4, this engine's defect: a formation is placed at its raw offsets from the deploy"
+          + " point with no inset into the arena, and no pass clamps a grid-driven troop back"
+          + " inside it, so a corner deployment leaves part of the formation outside the arena")
   @DisplayName("no troop ever stands outside the arena")
   void noTroopEverStandsOutsideTheArena() {
     Run run = new Run("corner swarm").play(Team.BLUE, "skeletonarmy", 500, 1500).go();

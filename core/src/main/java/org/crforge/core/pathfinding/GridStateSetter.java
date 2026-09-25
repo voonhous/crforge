@@ -162,6 +162,11 @@ public final class GridStateSetter implements StateSetter {
           resetRoute();
       case GridEntityState.MOVING -> prepareRoute();
       case GridEntityState.DEPLOYING -> {
+        // Entering the deploying state switches the movement component on, which a unit that
+        // waited its turn had off.
+        if (movement != null) {
+          owner.setMovementActive(true);
+        }
         if (deployTimeMs >= 0) {
           // The entry keeps the larger of the running countdown and the deploy time. The guard
           // refuses this state while the countdown is 1 or more, so here it is the deploy time.

@@ -37,10 +37,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "Agrees with the reference line for line: early outs, skip order, the box and"
             + " circle rejects, the coincident case, the magnitude chain and the write order."
             + " Held: two and three equal units pushing apart, and the multi-unit parity"
-            + " scenes. Not held by any fixture: unequal masses, a radius above 500, the"
-            + " height layers, the no-pushed-by flags, edge separation and the single-axis"
-            + " copy. A crown tower as a static, massless neighbour is held by the tower-contact"
-            + " run, the walks past a unit's own tower and the placement runs.")
+            + " scenes. Not held by any reference run: unequal masses, the height layers, the"
+            + " no-pushed-by flags and edge separation. A crown tower as a static, massless"
+            + " neighbour is held by the tower-contact run, the walks past a unit's own tower and"
+            + " the placement runs, the swarms among them; the static test (no movement"
+            + " component), a radius above 500 and the single-axis copy by its own tests.")
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */
@@ -139,7 +140,8 @@ public final class PushPass {
         mask = EntityFlags.NO_PUSHED_BY_ALLY;
       }
       int massTerm = (other.getFlags() & mask) != 0 ? -1 : otherMass;
-      boolean neighbourMoves = other.isMovementActive();
+      // Static means without a movement component at all: a unit waiting to deploy is not static.
+      boolean neighbourMoves = other.isMovementComponent();
       int radiusTerm = neighbourMoves ? radius : staticRadiusTerm;
       if (!neighbourMoves) {
         staticNeighbours++;
@@ -193,8 +195,8 @@ public final class PushPass {
 
     chain.mark("release");
     if (staticNeighbours > 0) {
-      chain.mark("single_axis_push_copy");
-      if ((queries.singleAxisPushCopyAllowed() & 1) != 0) {
+      chain.mark("aligned_static_check");
+      if ((chain.alignedStaticNeighbours() & 1) != 0) {
         int pushX = component.getPushX();
         int pushY = component.getPushY();
         if (pushX != 0 && pushY != 0) {
