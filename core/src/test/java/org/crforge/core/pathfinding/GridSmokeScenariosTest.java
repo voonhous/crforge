@@ -210,8 +210,8 @@ class GridSmokeScenariosTest {
     assertThat(run.oscillating).isEmpty();
     assertThat(run.lockTick).as("the swarm reached a tower").isNotNegative();
     // Anomalies 2 and 3 show here; their presence is pinned so a change in behaviour is noticed.
-    // Anomaly 1 does not: a tower no longer pushes the swarm, so no skeleton of this run ever
-    // consumes its last route node and finds itself still walking on the next tick.
+    // Anomaly 1 does not: no skeleton of this run ever consumes its last route node and finds
+    // itself still walking on the next tick.
     assertThat(run.emptyRoute).isEmpty();
     assertThat(run.onWater).as("anomaly 2: pushed off the bridge").isNotEmpty();
     assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").isNotEmpty();
@@ -273,12 +273,12 @@ class GridSmokeScenariosTest {
    * check.
    *
    * <p>Reproduction: play {@code skeletonarmy} from BLUE's hand at (500, 1500) in grid mode and run
-   * 391 ticks. Seven of the fifteen formation places land outside the arena and stay there for the
-   * whole run - anomaly 4. Those seven are also the seven entries of the run's hard invariant list:
-   * a troop standing off the routing grid gets no route at all, so from tick 42 each of them is in
-   * the walking state, holding a target, with an empty route for more than one tick. The counts and
-   * the positions are pinned here exactly, so a change in either is noticed; the strict invariant
-   * is held by the disabled test at the bottom of this class.
+   * 391 ticks. Five of the fifteen formation places are outside the arena for the whole run -
+   * anomaly 4. Four of them are also the four entries of the run's hard invariant list: a troop
+   * standing off the routing grid gets no route at all, so from tick 42 each of them is in the
+   * walking state, holding a target, with an empty route for more than one tick. The counts and the
+   * positions are pinned here exactly, so a change in either is noticed; the strict invariant is
+   * held by the disabled test at the bottom of this class.
    */
   @Test
   @DisplayName("scenario 6: a Skeleton Army played at the arena corner spills outside the arena")
@@ -292,37 +292,32 @@ class GridSmokeScenariosTest {
     assertThat(run.stuck).isEmpty();
     assertThat(run.oscillating).isEmpty();
     assertThat(run.onWater).isEmpty();
-    // Anomaly 3 reaches this scenario as well: the crowd presses two of its own into the tower
-    // they are attacking. The count is pinned so a change in behaviour is noticed.
-    assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").hasSize(59);
+    // Anomaly 3 no longer reaches this scenario: the tower the crowd attacks takes part in contact,
+    // so the skeletons are steered around it and pushed off it instead of into it.
+    assertThat(run.insideTowerFootprint).as("anomaly 3: pushed into a tower").isEmpty();
     assertThat(run.pushedTicks).as("the skeletons inside the arena crowd each other").isPositive();
-    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(282);
+    assertThat(run.lockTick).as("one of them reached a tower").isEqualTo(276);
 
-    // Anomaly 4: six formation places are outside the arena, because nothing on the deploy path
+    // Anomaly 4: five formation places are outside the arena, because nothing on the deploy path
     // keeps a formation inside it. Four of them stand off the routing grid outright and never
-    // move. The other two stand within one cell of the left edge, which the cell conversion still
-    // reports as the leftmost column: they hold a route, and the first step either of them takes
-    // to the left snaps it to the cell's lower edge, which for a unit standing off the grid is
-    // ahead of it, inside the arena. Skeleton#8 then drifts back out and is listed a second time.
+    // move. Skeleton#8 stands within one cell of the left edge, which the cell conversion still
+    // reports as the leftmost column, so it holds a route. Skeleton#10 is placed outside too, 378
+    // units past the left edge, but a deploying troop is visited by the movement pass, and the
+    // grid move's snap to the cell's lower edge carries it onto the arena before it is first
+    // sampled, so neither this record nor the distance check below sees it.
     assertThat(run.outsideArena)
         .containsExactly(
             "Skeleton#8 at (-63, 2766)",
             "Skeleton#9 at (-1561, 3355)",
-            "Skeleton#10 at (-378, 1785)",
             "Skeleton#11 at (-1797, 1259)",
             "Skeleton#13 at (-587, 5)",
-            "Skeleton#16 at (2130, -743)",
-            "Skeleton#8 at (-15, 2841)");
-    assertThat(run.leftArena).hasSize(1489);
+            "Skeleton#16 at (2130, -743)");
+    assertThat(run.leftArena).hasSize(1425);
 
     // The four off the grid cannot be routed, which is what the hard invariant sees from tick 42.
-    // The fifth violation is the snap itself: Skeleton#10 is carried 391 units in one tick, from
-    // 378 units outside the left edge onto it. The snap is the grid move's own rule and is kept;
-    // what is wrong is that a unit was ever placed where the rule could carry it that far.
     assertThat(run.emptyRoute).hasSize(4);
     assertThat(run.violations)
         .containsExactly(
-            "corner swarm tick 41 Skeleton#10: covered 391 units on a budget of 90 plus a push",
             "corner swarm tick 42 Skeleton#9: walking toward a target with no route two ticks"
                 + " running at (-1561, 3355)",
             "corner swarm tick 42 Skeleton#11: walking toward a target with no route two ticks"

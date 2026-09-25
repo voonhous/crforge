@@ -82,7 +82,7 @@ class MovementVisitTest {
             "avoidance_gate",
             "push_gate",
             "owner_radius",
-            "owner_push_enabled",
+            "owner_collides",
             "neighbour_query",
             "owner_side",
             "release",

@@ -33,14 +33,17 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p>A unit without a movement component skips every route action, and one without a targeting
  * component skips the target-lost clear; either may be null.
  *
+ * <p>A setter given the unit's deploy time seeds the deploy countdown on entering the deploying
+ * state with the larger of the countdown and the deploy time, which is how a unit that waited its
+ * turn starts deploying.
+ *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
- * change, seeds the deploy countdown on entering the deploying state, the morph countdown on
- * entering the morphing state and the ability countdowns on entering the casting state, raises the
- * dashing flag and stops the unit on entering the dashing state, chains a further dash on leaving
- * it, clears the movement component's destination on leaving clone setup, relocates a unit leaving
- * a following state to a free cell, makes a building asked to follow stand instead, and ends every
- * change with two notifications. None of that is reachable from a plain ground unit, which is all
- * the grid drives.
+ * change, seeds the morph countdown on entering the morphing state and the ability countdowns on
+ * entering the casting state, raises the dashing flag and stops the unit on entering the dashing
+ * state, chains a further dash on leaving it, clears the movement component's destination on
+ * leaving clone setup, relocates a unit leaving a following state to a free cell, makes a building
+ * asked to follow stand instead, and ends every change with two notifications. None of that is
+ * reachable from a plain ground unit, which is all the grid drives.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -48,9 +51,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
         "Settled: the interrupt guard; the route emptied on entering the standing, attacking,"
             + " clone-setup and casting states; the route prepared on entering the moving"
             + " state; the target-lost timer cleared on leaving the attacking state; the deploy"
-            + " countdown cleared on leaving the deploying and pathfinding states. Held by the"
-            + " 53 reference walks, whose route empties at the lock. Not modelled: switching"
-            + " components, the countdowns seeded on entering the deploying, morphing and"
+            + " countdown cleared on leaving the deploying and pathfinding states and raised to"
+            + " the unit's deploy time on entering the deploying state. Held by the 53 reference"
+            + " walks, whose route empties at the lock, and the staggered placements. Not"
+            + " modelled: switching components, the countdowns seeded on entering the morphing and"
             + " casting states, the dash entry and exit, the following-state rewrites and the"
             + " two notifications every change ends with.")
 public final class GridStateSetter implements StateSetter {
@@ -59,6 +63,9 @@ public final class GridStateSetter implements StateSetter {
   private final MovementState movement;
   private final TargetingState targeting;
   private final Supplier<MovementChain> chains;
+
+  /** The deploy countdown entering the deploying state seeds; -1 for a setter that seeds none. */
+  private final int deployTimeMs;
 
   /**
    * Creates the setter of one unit.
@@ -74,10 +81,30 @@ public final class GridStateSetter implements StateSetter {
       MovementState movement,
       TargetingState targeting,
       Supplier<MovementChain> chains) {
+    this(owner, movement, targeting, chains, -1);
+  }
+
+  /**
+   * Creates the setter of one unit that seeds its deploy countdown on entering the deploying state.
+   *
+   * @param owner the unit whose state this sets
+   * @param movement the unit's movement component, or null when it has none
+   * @param targeting the unit's targeting component, or null when it has none
+   * @param chains builds a movement chain over the unit's current reference
+   * @param deployTimeMs the unit's deploy time, which entering the deploying state seeds the
+   *     countdown with; -1 to seed nothing
+   */
+  public GridStateSetter(
+      GridEntity owner,
+      MovementState movement,
+      TargetingState targeting,
+      Supplier<MovementChain> chains,
+      int deployTimeMs) {
     this.owner = owner;
     this.movement = movement;
     this.targeting = targeting;
     this.chains = chains;
+    this.deployTimeMs = deployTimeMs;
   }
 
   @Override
@@ -134,6 +161,13 @@ public final class GridStateSetter implements StateSetter {
           GridEntityState.CASTING ->
           resetRoute();
       case GridEntityState.MOVING -> prepareRoute();
+      case GridEntityState.DEPLOYING -> {
+        if (deployTimeMs >= 0) {
+          // The entry keeps the larger of the running countdown and the deploy time. The guard
+          // refuses this state while the countdown is 1 or more, so here it is the deploy time.
+          owner.setDeployCountdown(Math.max(owner.getDeployCountdown(), deployTimeMs));
+        }
+      }
       default -> {
         // No ported action.
       }

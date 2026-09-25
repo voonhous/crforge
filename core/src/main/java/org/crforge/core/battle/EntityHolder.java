@@ -90,6 +90,11 @@ public class EntityHolder {
     pendingAdditions.add(entity);
   }
 
+  /** The entities handed over since the last cleanup, in the order they arrived. */
+  public List<BattleEntity> queued() {
+    return Collections.unmodifiableList(pendingAdditions);
+  }
+
   /** The registered entities in ascending id. Entities still waiting for a cleanup are absent. */
   public List<BattleEntity> entities() {
     return Collections.unmodifiableList(live);

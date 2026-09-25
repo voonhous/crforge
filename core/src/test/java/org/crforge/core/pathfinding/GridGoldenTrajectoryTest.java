@@ -78,15 +78,17 @@ class GridGoldenTrajectoryTest {
   }
 
   @Test
-  @DisplayName("a Knight deployed behind the right tower walks past it and locks on at tick 323")
+  @DisplayName(
+      "a Knight deployed behind the right tower is steered around it and locks on at tick 326")
   void rightRearDeployment() {
-    replay("knight_right_rear", "PrincessTower_1_2", 323);
+    replay("knight_right_rear", "PrincessTower_1_2", 326);
   }
 
   @Test
-  @DisplayName("a Knight deployed behind its king tower keeps the right lane and locks at tick 368")
+  @DisplayName(
+      "a Knight deployed behind its king tower is pushed while deploying and locks at tick 361")
   void behindKingDeployment() {
-    replay("knight_behind_king", "PrincessTower_1_2", 368);
+    replay("knight_behind_king", "PrincessTower_1_2", 361);
   }
 
   @Test

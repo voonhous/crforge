@@ -1,9 +1,17 @@
 package org.crforge.core.battle.unit;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleMode;
+import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.deploy.InitialDelay;
+import org.crforge.core.battle.deploy.MaskEntity;
+import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -21,8 +29,12 @@ import org.crforge.core.pathfinding.grid.TileMap;
     note =
         "Settled: tower positions, the top side mirrored along the arena's length, the creation"
             + " order, and the towers standing at their hit points at the level they are"
-            + " created at and fighting from the first tick. Not modelled yet: players, hands,"
-            + " elixir, the match clock and how a match ends; the mode never ends the battle.")
+            + " created at and fighting from the first tick; a card play run as a command at the"
+            + " head of its step, stamped with the battle's tick counter and run 20 ticks later,"
+            + " its placement worked out against every character, live or queued, and its units"
+            + " created in formation order, each deploying at once or waiting its turn. Not"
+            + " modelled yet: players, hands, elixir, the match clock and how a match ends; the"
+            + " mode never ends the battle.")
 public class Standard1v1Battle {
 
   /** The level the reference runs are played at, and the towers' level when none is given. */
@@ -77,6 +89,125 @@ public class Standard1v1Battle {
     }
     // The setup places the towers straight into the live list, so they stand from the first tick.
     battle.getHolder().cleanup();
+  }
+
+  /** Whether the symmetrical snap of a placement applies: on in the standard game. */
+  public static final boolean SYMMETRICAL_DEPLOY_SNAP = true;
+
+  /** Whether the formation's lane sequence applies: on in the standard game. */
+  public static final boolean LANE_BASED_DEPLOY_SEQUENCE = true;
+
+  /** Ticks between a player's play and the step it runs in. */
+  public static final int PLAY_DELAY_TICKS = 20;
+
+  /** Every card play run so far, in the order they ran. */
+  @Getter private final List<Play> plays = new ArrayList<>();
+
+  /**
+   * One card play that has run.
+   *
+   * @param name the play's name, which its units are named after
+   * @param side the placing side
+   * @param x the requested point
+   * @param y the requested point
+   * @param tick the tick it ran on
+   * @param result what the play came to
+   * @param units the units it created, in creation order
+   */
+  public record Play(
+      String name,
+      int side,
+      int x,
+      int y,
+      int tick,
+      CardPlacement.Result result,
+      List<CharacterEntity> units) {}
+
+  /**
+   * Queues a card play as a player makes it, between two steps: the play is stamped with the
+   * battle's tick counter, the number of the next step, or 1 while the counter is still 0, and runs
+   * {@link #PLAY_DELAY_TICKS} ticks after that stamp.
+   *
+   * @see #play(int, DeployCard, int, int, int, int, String)
+   */
+  public void submit(DeployCard card, int level, int side, int x, int y, String name) {
+    int given = Math.max(battle.getTick(), 1);
+    play(given + PLAY_DELAY_TICKS, card, level, side, x, y, name);
+  }
+
+  /**
+   * Queues a card play to run on the given tick: at the head of that step the play is worked out
+   * against the battle as it stands, and its units are handed to the holder in creation order, so
+   * the tick's entity tick admits and visits them. A refused play creates nothing.
+   *
+   * @param tick the tick the play runs on
+   * @param card the card
+   * @param level the level of its units, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void play(int tick, DeployCard card, int level, int side, int x, int y, String name) {
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            runPlay(target, card, level, side, x, y, name);
+          }
+        });
+  }
+
+  private void runPlay(
+      Battle target, DeployCard card, int level, int side, int x, int y, String name) {
+    // The mask reads every character of the battle: the live list, then the ones still queued.
+    List<MaskEntity> entities = new ArrayList<>();
+    List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
+    all.addAll(target.getHolder().queued());
+    for (BattleEntity entity : all) {
+      if (entity instanceof WorldEntity w) {
+        entities.add(
+            PlacementSearch.maskEntity(
+                w.getData(),
+                w.side(),
+                w.getView().getX(),
+                w.getView().getY(),
+                w.getView().isAlive()));
+      }
+    }
+    CardPlacement.Result result =
+        CardPlacement.place(
+            world.getTileMap(),
+            card,
+            x,
+            y,
+            side,
+            entities,
+            SYMMETRICAL_DEPLOY_SNAP,
+            LANE_BASED_DEPLOY_SEQUENCE);
+    List<CharacterEntity> units = new ArrayList<>();
+    for (CardPlacement.Unit unit : result.units()) {
+      boolean waits = unit.start().state() == InitialDelay.WAITING;
+      CharacterEntity character =
+          new CharacterEntity(
+              world,
+              unit.unit(),
+              name + "_" + unit.index(),
+              side,
+              unit.x(),
+              unit.y(),
+              level,
+              unit.lane(),
+              waits ? unit.start().waitMs() : -1);
+      target.getHolder().add(character);
+      units.add(character);
+    }
+    plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units)));
   }
 
   /**

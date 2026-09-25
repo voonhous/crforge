@@ -300,9 +300,7 @@ public class GridPathfindingSystem {
     for (Troop troop : managedTroops) {
       GridUnitState unit = troop.getGridUnitState();
       GridEntity entity = unit.entity();
-      if (entity.getState() == GridEntityState.DEPLOYING) {
-        continue;
-      }
+      // A deploying troop is visited too: its speed is zero, but it is pushed and steered.
       GridMovementQueries queries = movementQueries(unit);
       MovementChain chain = movementChain(unit, queries);
       MovementVisit.movementVisit(
@@ -417,9 +415,6 @@ public class GridPathfindingSystem {
     view.setBuilding(building);
     view.setOccludes(building);
     view.setMovementActive(!building);
-    // A building takes no part in pushing: see GridEntity.pushEnabled for why this is answered
-    // here rather than read from the entity.
-    view.setPushEnabled(!building);
     // Every tower is a crown tower to the targeting rules; only the king fills the tower slot.
     view.setCrownTower(entity instanceof Tower);
     view.setAir(entity.getMovementType() == MovementType.AIR);

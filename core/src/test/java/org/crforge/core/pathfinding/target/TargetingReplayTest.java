@@ -271,27 +271,27 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName("a unit deployed behind the right tower keeps it in sight and locks on at tick 323")
+  @DisplayName("a unit deployed behind the right tower keeps it in sight and locks on at tick 326")
   void rightRearDeployment() throws IOException {
     Replay replay = load("knight_right_rear");
 
     replay.replay();
 
     assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(firstAttackingTick(replay)).isEqualTo(323);
+    assertThat(firstAttackingTick(replay)).isEqualTo(326);
   }
 
   @Test
-  @DisplayName("a unit deployed behind its king tower starts at the king tower and switches at 73")
+  @DisplayName("a unit deployed behind its king tower starts at the king tower and switches at 85")
   void behindKingDeployment() throws IOException {
     Replay replay = load("knight_behind_king");
 
     replay.replay();
 
     assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("KingTower_1_0");
-    assertThat(replay.records.get(72).reference()).isEqualTo("KingTower_1_0");
-    assertThat(replay.records.get(73).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(firstAttackingTick(replay)).isEqualTo(368);
+    assertThat(replay.records.get(84).reference()).isEqualTo("KingTower_1_0");
+    assertThat(replay.records.get(85).reference()).isEqualTo("PrincessTower_1_2");
+    assertThat(firstAttackingTick(replay)).isEqualTo(361);
   }
 
   @Test
