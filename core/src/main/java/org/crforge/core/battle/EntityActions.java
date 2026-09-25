@@ -6,8 +6,7 @@ package org.crforge.core.battle;
  * <p>The holder calls into every entity's actions five times per tick, always in the same order:
  * the pending pass for phase 1 before any component runs, the run pass after the component passes,
  * the pending pass for phase 2, the pending pass for phase 3 after the entity post-hooks, and the
- * end-of-tick countdown last of all. The interpreter that gives these calls a body is a later
- * slice; the spine already calls them at the right points so that adding it changes no order.
+ * end-of-tick countdown last of all. {@code ActionHolder} gives these calls their body.
  */
 public interface EntityActions {
 

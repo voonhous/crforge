@@ -45,13 +45,18 @@ public final class WithDuration implements BattleAction {
   }
 
   @Override
+  public long tags() {
+    return tags;
+  }
+
+  @Override
   public BattleAction nextAction() {
     return nextAction;
   }
 
   @Override
   public ActionInstance start(ActionHolder holder) {
-    return new ActionInstance(this, tags) {
+    return new ActionInstance(this) {
       private long counter;
 
       @Override

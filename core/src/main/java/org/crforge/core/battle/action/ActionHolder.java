@@ -2,6 +2,8 @@ package org.crforge.core.battle.action;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntSupplier;
+import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.fidelity.Fidelity;
@@ -15,44 +17,74 @@ import org.crforge.core.fidelity.FidelityStatus;
  * due entries of that phase, the run pass after the component passes steps every listed instance,
  * and the end pass takes a tick off every waiting delay.
  *
- * <p>Scheduling an action with no delay starts it at once only inside a pending pass. Scheduled
- * anywhere else - at placement, from a component pass, from the run pass or a post-hook - it is
- * queued with no ticks left and started by the next pending pass whose phase it matches.
+ * <p><b>Scheduling.</b> A delay is in milliseconds; {@link #OWN_DELAY} stands for the row's own.
+ * Whether the action starts now is decided on the milliseconds, and the queue keeps the delay as
+ * whole ticks, so a delay under one tick is still queued, with no ticks left, and starts at the
+ * next pending pass. A delay of zero or less starts the action at once only when the schedule asks
+ * for it or a pending pass is in progress; anywhere else - at placement, from a component pass,
+ * from the run pass or a post-hook - it is queued with no ticks left. Either way the row is told it
+ * was scheduled, and a next action that does not wait is scheduled alongside, its delay the one
+ * carried in less the row's own plus its own, and never below zero.
+ *
+ * <p><b>Starting.</b> A singleton row with a run already listed re-triggers that run and starts
+ * nothing. Otherwise a start gate that answers 0 ends the start; the action then does what it does,
+ * its run, if it lasts, is listed carrying the row's tags, and a next action that waits is
+ * scheduled with its own delay.
+ *
+ * <p><b>The passes.</b> A pending pass takes each due entry of its phase whose pause gate does not
+ * hold it, and a held entry keeps counting down past zero. The run pass removes an instance that
+ * finished in an earlier step; otherwise it asks the stop gate, and a run it stops is removed in
+ * the same pass; otherwise it steps the run. An instance that finishes in its own step therefore
+ * stays listed, and keeps setting its tags, until the next run pass.
  *
  * <p>Two orders are the standard game's and are kept. A pending pass takes the entry it finds and
  * moves the last entry into its place, then looks at that place again, so four due entries {@code a
- * b c d} start as {@code a d c b}. The run pass removes an instance that finished in an earlier
- * step the same way, before it would step it; an instance that finishes in its own step therefore
- * stays listed, and keeps setting its tags, until the next run pass.
+ * b c d} start as {@code a d c b}. The run pass removes an instance the same way.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the three pending passes and where zero-delay actions start, the swap-with-last"
-            + " order of a pending pass, the run pass after the component passes stepping every"
-            + " listed instance and removing a finished one at its next pass, the tags of every"
-            + " listed instance folded in whether finished or not, the delay taken off in the end"
-            + " pass, and a next action scheduled alongside with the same delay. Not modelled: the"
-            + " delay columns beyond zero, the pause and stop expressions, the execute condition,"
-            + " a singleton re-trigger, a group's sub-actions and the removal notice to an"
-            + " action's instigator.")
+        "Settled: the three pending passes and where an action with no delay starts, delays in"
+            + " milliseconds queued as whole ticks, the row's own delay standing in for none, the"
+            + " swap-with-last order of a pending pass, the pause, start and stop gates, the"
+            + " singleton re-trigger, the next action scheduled after the run or alongside with"
+            + " the carried delay, the row's tags on the run, the run pass removing a finished run"
+            + " at its next pass and a stopped one at once, the tags of every listed run folded in,"
+            + " and the delay taken off in the end pass. Held by the recorded runtime cases. Not"
+            + " modelled: the row hook asked when an action is scheduled and when its run starts,"
+            + " the instigator and target an entry carries, and the notice to an action's"
+            + " instigator.")
 public class ActionHolder implements EntityActions {
+
+  /** The delay that stands for the row's own. */
+  public static final int OWN_DELAY = -1;
 
   /** Milliseconds one tick takes off a queued delay. */
   private static final int TICK_MS = 50;
 
-  /** What an observer of the holder is told as its actions start, finish and leave. */
+  /** What an observer of the holder is told as its actions start, stop, finish and leave. */
   public interface Listener {
 
-    /** An action started, in the pending pass of the given phase. */
+    /** An action started, in the pending pass of the given phase, or 0 outside every pass. */
     default void started(BattleAction action, int phase) {}
 
     /** An instance finished during its step in the run pass. */
     default void finished(ActionInstance instance) {}
 
-    /** The run pass removed an instance that had finished. */
+    /** The run pass stopped an instance whose stop gate held. */
+    default void forceStopped(ActionInstance instance) {}
+
+    /** The run pass removed an instance that had finished or was stopped. */
     default void removed(ActionInstance instance) {}
   }
+
+  /**
+   * One queued action as it stands.
+   *
+   * @param action the action
+   * @param ticks the ticks left before it is due, below zero for an entry held past its due tick
+   */
+  public record Queued(BattleAction action, int ticks) {}
 
   /** One queued action and the ticks left before it is due. */
   private static final class Entry {
@@ -71,23 +103,71 @@ public class ActionHolder implements EntityActions {
   /** The phase of the pending pass in progress, or 0 outside every pending pass. */
   private int passPhase;
 
+  /** The tick of the last run pass. */
+  @Getter private int lastTick;
+
   @Setter private Listener listener = new Listener() {};
 
   /**
-   * Schedules an action, and the action scheduled alongside it.
+   * Schedules an action as the battle does outside a request to start it now: with no delay it
+   * starts at once only inside a pending pass.
    *
    * @param action the action
-   * @param delayMs the delay before it is due; 0 or less for none
+   * @param delayMs the delay in milliseconds, or {@link #OWN_DELAY} for the row's own
    */
   public void schedule(BattleAction action, int delayMs) {
-    if (delayMs <= 0 && passPhase != 0) {
-      start(action, passPhase);
+    schedule(action, delayMs, false);
+  }
+
+  /**
+   * Schedules an action, and the next action alongside it when that one does not wait.
+   *
+   * @param action the action
+   * @param delayMs the delay in milliseconds, or {@link #OWN_DELAY} for the row's own
+   * @param immediate true to start the action at once when its delay is zero or less, wherever the
+   *     schedule is made
+   */
+  public void schedule(BattleAction action, int delayMs, boolean immediate) {
+    int delay = delayMs == OWN_DELAY ? action.delayMs() : delayMs;
+    if (delay <= 0 && (immediate || passPhase != 0)) {
+      start(action);
     } else {
-      pending.add(new Entry(action, Math.max(delayMs, 0) / TICK_MS));
+      pending.add(new Entry(action, Math.max(delay, 0) / TICK_MS));
     }
-    if (action.nextAction() != null) {
-      // Scheduled alongside, not after: with no delay columns carried the delay carries over.
-      schedule(action.nextAction(), delayMs);
+    action.scheduled(this, delay);
+    BattleAction next = action.nextAction();
+    if (next != null && !action.nextActionWait()) {
+      schedule(next, Math.max(delay - action.delayMs() + next.delayMs(), 0), immediate);
+    }
+  }
+
+  /**
+   * Starts an action now: re-triggers a singleton's listed run, or passes the start gate, does what
+   * the action does, lists its run and chains a next action that waits.
+   *
+   * @param action the action
+   */
+  public void start(BattleAction action) {
+    if (action.singleton()) {
+      for (ActionInstance instance : running) {
+        if (instance.getAction() == action) {
+          instance.retrigger(this);
+          return;
+        }
+      }
+    }
+    if (!holds(action.executeIf(), true)) {
+      return;
+    }
+    ActionInstance instance = action.start(this);
+    listener.started(action, passPhase);
+    if (instance != null) {
+      instance.addTags(action.tags());
+      running.add(instance);
+    }
+    BattleAction next = action.nextAction();
+    if (next != null && action.nextActionWait()) {
+      schedule(next, OWN_DELAY);
     }
   }
 
@@ -105,6 +185,11 @@ public class ActionHolder implements EntityActions {
     return List.copyOf(running);
   }
 
+  /** The queued actions, in queue order. */
+  public List<Queued> queued() {
+    return pending.stream().map(e -> new Queued(e.action, e.ticks)).toList();
+  }
+
   @Override
   public void pendingPass(int phase) {
     passPhase = phase;
@@ -113,9 +198,11 @@ public class ActionHolder implements EntityActions {
       while (i < pending.size()) {
         Entry entry = pending.get(i);
         int wanted = entry.action.phase();
-        if (entry.ticks <= 0 && (wanted == BattleAction.ANY_PHASE || wanted == phase)) {
+        if (entry.ticks <= 0
+            && (wanted == BattleAction.ANY_PHASE || wanted == phase)
+            && !holds(entry.action.pausedIf(), false)) {
           removeBySwap(pending, i);
-          start(entry.action, phase);
+          start(entry.action);
         } else {
           i++;
         }
@@ -127,10 +214,18 @@ public class ActionHolder implements EntityActions {
 
   @Override
   public void runPass(int tick) {
+    lastTick = tick;
     int i = 0;
     while (i < running.size()) {
       ActionInstance instance = running.get(i);
       if (instance.isFinished()) {
+        removeBySwap(running, i);
+        listener.removed(instance);
+        continue;
+      }
+      if (holds(instance.getAction().forceStopIf(), false)) {
+        instance.finish();
+        listener.forceStopped(instance);
         removeBySwap(running, i);
         listener.removed(instance);
         continue;
@@ -151,12 +246,9 @@ public class ActionHolder implements EntityActions {
     }
   }
 
-  private void start(BattleAction action, int phase) {
-    ActionInstance instance = action.start(this);
-    listener.started(action, phase);
-    if (instance != null) {
-      running.add(instance);
-    }
+  /** The value of a gate as a truth, or the given answer for a row without the gate. */
+  private static boolean holds(IntSupplier gate, boolean absent) {
+    return gate == null ? absent : gate.getAsInt() != 0;
   }
 
   /** Removes an element by moving the last one into its place. */
