@@ -113,6 +113,12 @@ public class TroopStats {
   @Builder.Default private final boolean overrideAttackFinishTime = false;
   @Builder.Default private final int attackFinishTime = 0;
 
+  // Placement of a summoned unit, raw game units: the radius and angle shift of its formation,
+  // and its flying height (0 for a ground unit)
+  @Builder.Default private final int spawnRadius = 0;
+  @Builder.Default private final int spawnAngleShift = 0;
+  @Builder.Default private final int flyingHeight = 0;
+
   // Buff applied to target when dealing damage (e.g. EWiz stun, Mother Witch curse)
   private final EffectStats buffOnDamage;
 

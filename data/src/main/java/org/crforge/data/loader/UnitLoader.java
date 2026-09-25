@@ -213,6 +213,9 @@ public class UnitLoader {
             .selfAsAoeCenter(dto.isSelfAsAoeCenter())
             .overrideAttackFinishTime(dto.isOverrideAttackFinishTime())
             .attackFinishTime(dto.getAttackFinishTime())
+            .spawnRadius(dto.getSpawnRadius())
+            .spawnAngleShift(dto.getSpawnAngleShift())
+            .flyingHeight(dto.getFlyingHeight())
             // Targeting and combat modifiers
             .targetOnlyBuildings(dto.isTargetOnlyBuildings())
             .targetOnlyTroops(dto.isTargetOnlyTroops())

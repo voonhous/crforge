@@ -215,6 +215,14 @@ public class CardLoader {
     // Spell targeting flags
     builder.onlyEnemies(dto.isOnlyEnemies());
     builder.canPlaceOnBuildings(dto.isCanPlaceOnBuildings());
+    builder.canPlaceOnWater(dto.isCanPlaceOnWater());
+    builder.fullLaneDeploy(dto.isFullLaneDeploy());
+    builder.touchdownLimitedDeploy(dto.isTouchdownLimitedDeploy());
+    builder.deployWTileMargin(dto.getDeployWTileMargin());
+    // The width is published in tiles and the stagger in seconds; the battle reads game units and
+    // whole milliseconds.
+    builder.summonWidth(Math.round(dto.getSummonWidth() * 1000));
+    builder.summonDeployDelaySecondMs(Math.round(dto.getSummonDeployDelaySecond() * 1000));
 
     // Spell wave configuration (e.g. Arrows)
     builder.spellRadius(tiles(dto.getRadius()));

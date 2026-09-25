@@ -47,6 +47,17 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param overrideAttackFinishTime true when the unit waits its own time, not the global one, before
  *     it takes a new target after losing one
  * @param attackFinishTimeMs that own wait
+ * @param spawnRadius the radius of the formation a card places the unit in, when the card sets
+ *     none; 0 for none, which falls back to the collision radius
+ * @param spawnAngleShift degrees the formation is turned by
+ * @param flyingHeight how high the unit flies; 0 for a ground unit
+ * @param spawnPathfindSpeed the speed of a unit that walks to its placement; 0 for one placed at
+ *     once
+ * @param tileSizeOverride the tiles a building's footprint spans, when not derived from its
+ *     collision radius; 0 for none
+ * @param noDeploySizeW the width, in tiles, of the box around a building that the other side may
+ *     not place in; 0 for none
+ * @param noDeploySizeH the height of that box, in tiles
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -77,7 +88,14 @@ public record UnitData(
     int areaDamageRadius,
     boolean selfAsAoeCenter,
     boolean overrideAttackFinishTime,
-    int attackFinishTimeMs) {
+    int attackFinishTimeMs,
+    int spawnRadius,
+    int spawnAngleShift,
+    int flyingHeight,
+    int spawnPathfindSpeed,
+    int tileSizeOverride,
+    int noDeploySizeW,
+    int noDeploySizeH) {
 
   /**
    * The king tower's published columns. The towers carry no rarity column; Common is the rarity
@@ -95,6 +113,9 @@ public record UnitData(
           .attacksAir(true)
           .building(true)
           .king(true)
+          .tileSizeOverride(2)
+          .noDeploySizeW(18)
+          .noDeploySizeH(16)
           .hitpoints(2400)
           .rarity(RarityTable.COMMON)
           .projectile(ProjectileData.KING_PROJECTILE)
@@ -115,6 +136,8 @@ public record UnitData(
           .attacksAir(true)
           .building(true)
           .summonerTower(true)
+          .noDeploySizeW(11)
+          .noDeploySizeH(21)
           .hitpoints(1400)
           .rarity(RarityTable.COMMON)
           .projectile(ProjectileData.TOWER_PRINCESS_PROJECTILE)

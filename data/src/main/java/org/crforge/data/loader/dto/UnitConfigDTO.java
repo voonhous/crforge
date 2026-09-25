@@ -64,6 +64,11 @@ public class UnitConfigDTO {
   // Own target-lost wait in milliseconds instead of the global one (e.g. Valkyrie 100)
   private boolean overrideAttackFinishTime;
   private int attackFinishTime;
+
+  // Placement of a summoned unit, raw game units: formation radius, angle shift, flying height
+  private int spawnRadius;
+  private int spawnAngleShift;
+  private int flyingHeight;
   private BuffOnDamageConfigDTO buffOnDamage;
 
   // Kamikaze: unit dies after delivering its attack (e.g. Battle Ram)
