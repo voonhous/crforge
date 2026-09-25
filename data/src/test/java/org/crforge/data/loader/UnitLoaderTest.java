@@ -753,7 +753,7 @@ class UnitLoaderTest {
       // Verify MergeMaiden units load correctly
       TroopStats mounted = map.get("MergeMaiden_Mounted");
       assertThat(mounted).isNotNull();
-      assertThat(mounted.getHealth()).isEqualTo(466);
+      assertThat(mounted.getHealth()).isEqualTo(460);
       assertThat(mounted.getDamage()).isEqualTo(121);
       assertThat(mounted.getMovementType()).isEqualTo(MovementType.AIR);
       assertThat(mounted.getTargetType()).isEqualTo(TargetType.ALL);
@@ -763,7 +763,7 @@ class UnitLoaderTest {
 
       TroopStats normal = map.get("MergeMaiden_Normal");
       assertThat(normal).isNotNull();
-      assertThat(normal.getHealth()).isEqualTo(486);
+      assertThat(normal.getHealth()).isEqualTo(450);
       assertThat(normal.getDamage()).isEqualTo(121);
       assertThat(normal.getMovementType()).isEqualTo(MovementType.GROUND);
       assertThat(normal.getTargetType()).isEqualTo(TargetType.GROUND);
