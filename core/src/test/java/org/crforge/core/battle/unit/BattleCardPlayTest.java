@@ -6,6 +6,7 @@ import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.card.UnitDataMapper;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,5 +61,31 @@ class BattleCardPlayTest {
     battle.step();
     assertThat(match.getPlays()).hasSize(1);
     assertThat(match.getPlays().get(0).tick()).isEqualTo(50);
+  }
+
+  @Test
+  @DisplayName("a unit waiting its turn has its movement switched off until it starts deploying")
+  void aWaitingUnitsMovementIsOffUntilItDeploys() {
+    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Battle battle = match.getBattle();
+    DeployCard barbarians =
+        UnitDataMapper.toDeployCard(
+            Objects.requireNonNull(CardRegistry.get("barbarians"), "barbarians not found"));
+    match.play(0, barbarians, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Barbarians");
+
+    battle.step();
+    CharacterEntity first = match.getPlays().get(0).units().get(0);
+    CharacterEntity second = match.getPlays().get(0).units().get(1);
+    assertThat(first.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(first.getView().isMovementActive()).isTrue();
+    assertThat(second.getView().getState()).isEqualTo(GridEntityState.WAITING_TO_DEPLOY);
+    assertThat(second.getView().isMovementActive()).as("waiting: switched off").isFalse();
+    assertThat(second.getView().isMovementComponent()).as("but still there").isTrue();
+
+    // The second unit waits 100 ms: two state visits count it down into the deploying state.
+    battle.step();
+    battle.step();
+    assertThat(second.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(second.getView().isMovementActive()).isTrue();
   }
 }

@@ -135,9 +135,18 @@ public class GridEntity {
 
   /**
    * True when the entity has an active movement component. The spatial index widens a moving
-   * entity's bucket footprint by half a cell so a query still finds it after it has stepped.
+   * entity's bucket footprint by half a cell so a query still finds it after it has stepped, and
+   * the avoidance handler treats a neighbour without one as a static obstacle. A unit waiting its
+   * turn to deploy has its component switched off until it starts deploying.
    */
   private boolean movementActive;
+
+  /**
+   * True when the entity has a movement component at all, switched on or not. The push pass and the
+   * aligned static neighbours check count a neighbour without one as static; a tower or a building
+   * has none.
+   */
+  private boolean movementComponent;
 
   /**
    * Countdown in milliseconds that blocks movement while it is positive, for example the delay

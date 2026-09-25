@@ -29,6 +29,7 @@ class PushPassTest {
     entity.setSide(side);
     entity.setMass(mass);
     entity.setCollisionRadius(radius);
+    entity.setMovementComponent(moving);
     entity.setMovementActive(moving);
     return entity;
   }
@@ -117,5 +118,42 @@ class PushPassTest {
     run(List.of(neighbour(2, 5000, 10000, 0, 6, 500, true)));
 
     assertThat(component.getPushCount()).isZero();
+  }
+
+  @Test
+  void aNeighbourWithAnInactiveMovementComponentIsNotStatic() {
+    // A unit waiting to deploy keeps its movement component, switched off. The push pass tests
+    // whether the component exists, so the neighbour reaches with the unit's whole radius of 700,
+    // not the 500 a static neighbour is clamped to: 500 + 700 covers the 1100 between them.
+    owner.setCollisionRadius(700);
+    GridEntity waiting = neighbour(2, 4600, 10000, 0, 6, 500, true);
+    waiting.setMovementActive(false);
+
+    run(List.of(waiting));
+
+    assertThat(component.getPushCount()).isEqualTo(1);
+    assertThat(component.getPushX()).isNegative();
+  }
+
+  @Test
+  void twoAlignedStaticNeighboursCopyASingleAxisPushOntoTheOtherAxis() {
+    // Two buildings of mass 0 on the unit's x each push it 1 unit away along the length; with a
+    // second static entity on its x the aligned check answers 1 and the push is copied across.
+    run(
+        List.of(
+            neighbour(2, 3500, 10900, 0, 0, 500, false),
+            neighbour(3, 3500, 11000, 0, 0, 500, false)));
+
+    assertThat(component.getPushY()).isEqualTo(-2);
+    assertThat(component.getPushX()).isEqualTo(-2);
+    assertThat(component.getPushCount()).isEqualTo(2);
+  }
+
+  @Test
+  void oneStaticNeighbourLeavesASingleAxisPushAlone() {
+    run(List.of(neighbour(2, 3500, 10900, 0, 0, 500, false)));
+
+    assertThat(component.getPushY()).isEqualTo(-1);
+    assertThat(component.getPushX()).isZero();
   }
 }
