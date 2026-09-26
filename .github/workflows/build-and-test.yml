@@ -10,8 +10,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      # The game tables are not in this repository. When a private repository of them and a
+      # read-only deploy key for it are configured, the tests that need them run; otherwise they
+      # are skipped, as they are on a pull request from a fork, which gets no secrets.
+      # Only whether the key is set, not the key: every step sees the job's environment.
+      HAS_GAME_TABLES_KEY: ${{ secrets.GAME_TABLES_KEY != '' }}
+
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check out the game tables
+        if: env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != ''
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.GAME_TABLES_REPOSITORY }}
+          ssh-key: ${{ secrets.GAME_TABLES_KEY }}
+          path: game-tables
+
+      - name: Point the tests at the game tables
+        if: env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != ''
+        run: echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ vars.GAME_TABLES_VERSION }}" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6

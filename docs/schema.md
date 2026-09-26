@@ -9,6 +9,14 @@ cards.json  ->  units.json  ->  projectiles.json
 
 ---
 
+## The game tables
+
+The files below are the original engine's, converted: tiles instead of game units, seconds instead of milliseconds, their own field names, a chosen subset of rows and columns. The battle core moves to the game's own tables instead, which this repository does not ship.
+
+A folder of game tables holds one JSON file per table of the game's data - `characters`, `buildings`, `projectiles`, `character_buffs`, `area_effect_objects`, the spells tables, `rarities`, `character_abilities`, `game_object_filters`, `variables`, `damage_types`, `shapes`, `globals`, `locations`, `game_tags` - and `actions.json`, all of one data version. A table file is a header (`table`, `id`, `version`, `content_sha`) and its `rows` by name in creation order, each with its `index`, its `class` and its `columns` under the game's own names. Values are as the game reads them: integer milliseconds, game units (1000 per tile), the published speed column, references as row names. A game tag's `index` is its bit in an object's tag word.
+
+`org.crforge.data.game.GameTables` reads such a folder. It is named by the Gradle property `crforge.gameTables` (`./gradlew test -Pcrforge.gameTables=<dir>`, or a line in `~/.gradle/gradle.properties`) or the environment variable `CRFORGE_GAME_TABLES`; the tests that need the real tables are skipped when neither is set. In CI a private repository of them is checked out when the repository variable `GAME_TABLES_REPOSITORY` and the secret `GAME_TABLES_KEY` - the private half of a read-only deploy key on that repository - are set, and `GAME_TABLES_VERSION` names the version folder in it. A pull request from a fork gets no secrets, so its run skips those tests.
+
 ## Loading Pipeline
 
 Four JSON resource files in `data/src/main/resources/cards/`, loaded in strict dependency order:

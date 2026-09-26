@@ -1,0 +1,10 @@
+{
+ "table": "game_tags",
+ "id": "game tags/0",
+ "version": "0.0.1",
+ "content_sha": "0000000000000000000000000000000000000000",
+ "rows": {
+  "MOVING": {"index": 0, "class": null, "columns": {"Name": "MOVING"}},
+  "SLEEPING": {"index": 1, "class": null, "columns": {"Name": "SLEEPING"}}
+ }
+}
