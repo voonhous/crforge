@@ -9,6 +9,7 @@ import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -56,7 +57,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the level packed against the rarity at creation, the hit points and the damage"
-            + " at that level, the alive answer, the removal test, and that a removable entity"
+            + " at that level, the alive answer, the removal test, the tag word recomputed at the"
+            + " pre-hook from the one-step word and the actions' tags, and that a removable entity"
             + " leaves the holder at the next cleanup, which tells every other entity at once; a"
             + " targeting component on every entity, seeded with the opposing side's towers, whose"
             + " hits go through the hit application, whose area, for a row with an area radius,"
@@ -338,6 +340,29 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
    * @param aimY where the projectile is aimed
    */
   public void launched(int aimX, int aimY) {}
+
+  /**
+   * The tag recompute every entity runs first thing in its pre-hook: the tag word every reader sees
+   * becomes the one-step word handlers wrote since the last recompute, which is then cleared,
+   * together with the tags of every action the entity runs. A tag a handler sets therefore lasts
+   * one step, and a tag an action sets lasts as long as the action is listed.
+   */
+  @Override
+  protected void preHook() {
+    GridEntity view = getView();
+    view.setFlags(view.getPendingFlags() | actionTags());
+    view.setPendingFlags(0);
+  }
+
+  /** The tags of every action the entity lists, finished ones included; none by default. */
+  protected long actionTags() {
+    return 0;
+  }
+
+  /** The entity as a game object filter asks about it. */
+  public FilterSubject filterSubject() {
+    return new EntityFilterSubject(this);
+  }
 
   @Override
   public HitPoints actionHitPoints() {

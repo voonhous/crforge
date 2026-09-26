@@ -97,9 +97,6 @@ public class TowerEntity extends WorldEntity {
   /** The effect shown alongside the activating run; null for a princess tower. */
   private final BattleAction activationEffect;
 
-  /** The tags folded in at the last pre-hook. */
-  private long tags;
-
   /**
    * @param world the battle's shared arena state, whose arena assigns the tower its lane from the
    *     road nearest to it
@@ -274,7 +271,7 @@ public class TowerEntity extends WorldEntity {
    * waking king. A princess tower never is.
    */
   public boolean isInactive() {
-    return (tags & GameTags.KEEPS_TARGETING_OFF) != 0;
+    return (getView().getFlags() & GameTags.KEEPS_TARGETING_OFF) != 0;
   }
 
   @Override
@@ -282,10 +279,9 @@ public class TowerEntity extends WorldEntity {
     return actionHolder == null ? EntityActions.NONE : actionHolder;
   }
 
-  /** The tag fold: the entity's tags are the tags of every action instance it lists. */
   @Override
-  protected void preHook() {
-    tags = actionHolder == null ? 0 : actionHolder.tags();
+  protected long actionTags() {
+    return actionHolder == null ? 0 : actionHolder.tags();
   }
 
   private StateQueries stateQueries() {
