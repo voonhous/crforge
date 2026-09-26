@@ -5,13 +5,21 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.data.ActionBinding;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.expression.Expression;
+import org.crforge.core.battle.expression.ExpressionCompiler;
+import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -162,7 +170,6 @@ public class BattleWorld implements HolderPasses {
     this.holder = new EntityHolder(this);
   }
 
-  /** This tick's arena entities in ascending id. */
   /**
    * Makes a variable nameable in the battle's expressions. The data declares its variables; until
    * it is loaded they are registered here.
@@ -177,6 +184,60 @@ public class BattleWorld implements HolderPasses {
   /** The key of a variable an expression may name, or null for a name that is none. */
   Integer variableKey(String name) {
     return variableKeys.get(name);
+  }
+
+  /**
+   * Declares every variable and game tag of the game's tables, so the battle's expressions may name
+   * them and its actions write them: a variable keyed by its row's index, a game tag as the bit its
+   * row's index gives in an entity's tag word.
+   *
+   * @param tables the game tables of one data version
+   */
+  public void declare(GameTables tables) {
+    for (GameRow row : tables.table("variables").rows()) {
+      registerVariable(row.name(), row.index());
+    }
+    for (GameRow row : tables.table("game_tags").rows()) {
+      registerGameTag(row.name(), 1L << row.index());
+    }
+  }
+
+  /**
+   * What an action row built for an arena entity reads from it: its expressions compiled for it and
+   * evaluated afresh each time, the battle's variable keys, and its tag word.
+   *
+   * @param owner the entity the row is built for
+   */
+  public ActionBinding binding(WorldEntity owner) {
+    BattleWorld world = this;
+    return new ActionBinding() {
+      @Override
+      public IntSupplier expression(String text) {
+        Expression expression =
+            ExpressionCompiler.compile(text, new BattleExpressionEnvironment(owner, world));
+        return () ->
+            ExpressionEvaluator.evaluate(expression, new BattleExpressionEnvironment(owner, world));
+      }
+
+      @Override
+      public int variableKey(String name) {
+        return declaredVariable(name);
+      }
+
+      @Override
+      public LongSupplier tags() {
+        return () -> owner.getView().getFlags();
+      }
+    };
+  }
+
+  /** The key of a declared variable; fails for a name the battle does not declare. */
+  int declaredVariable(String name) {
+    Integer key = variableKeys.get(name);
+    if (key == null) {
+      throw new IllegalArgumentException("the battle declares no variable " + name);
+    }
+    return key;
   }
 
   /**
