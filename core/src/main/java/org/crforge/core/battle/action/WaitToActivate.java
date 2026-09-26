@@ -41,8 +41,13 @@ public final class WaitToActivate implements BattleAction {
   }
 
   @Override
+  public long tags() {
+    return tags;
+  }
+
+  @Override
   public ActionInstance start(ActionHolder holder) {
-    return new ActionInstance(this, tags) {
+    return new ActionInstance(this) {
       @Override
       protected void update(ActionHolder h) {
         if (condition.getAsBoolean()) {
