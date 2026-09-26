@@ -82,6 +82,27 @@ class BattleExpressionEnvironmentTest {
   }
 
   @Test
+  @DisplayName("x and y read the context entity's position as it stands when evaluated")
+  void thePosition() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.getBattle().step();
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    BattleExpressionEnvironment environment =
+        new BattleExpressionEnvironment(king, match.getWorld());
+    Expression right = ExpressionCompiler.compile("x + 1000", environment);
+    Expression down = ExpressionCompiler.compile("y - 1000", environment);
+
+    assertThat(ExpressionEvaluator.evaluate(right, environment))
+        .isEqualTo(king.getView().getX() + 1000);
+    assertThat(ExpressionEvaluator.evaluate(down, environment))
+        .isEqualTo(king.getView().getY() - 1000);
+    king.getView().setX(4000);
+    king.getView().setY(7000);
+    assertThat(ExpressionEvaluator.evaluate(right, environment)).isEqualTo(5000);
+    assertThat(ExpressionEvaluator.evaluate(down, environment)).isEqualTo(6000);
+  }
+
+  @Test
   @DisplayName("a function the battle does not answer yet fails rather than guess")
   void anUnportedFunctionFails() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());

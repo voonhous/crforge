@@ -21,17 +21,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the three runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the five runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
- * <p>The rows are the game's own, built from its action rows. No object the battle has yet runs
- * them from its hooks, so each run gives the battle an action owner: an entity with an action
- * holder, a position, a side and a level and nothing else, on which the row is scheduled in the
- * command pass of its tick. In {@code bush_goblins} a group spawns two Bush Goblins to either side
- * of a bottom-side owner a tick apart, the second pushed one unit off the first as it is
- * registered. In {@code brawler_goblins} a top-side owner spawns four Goblin Brawlers, the side
- * flipping both axes of the location. In {@code gift_knight} the owner spawns a Knight on itself
- * that walks at once: its registration visit takes its target and a first step.
+ * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
+ * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
+ * the row is scheduled in the command pass of its tick. In {@code witch_hooks} a Witch placed
+ * directly runs its row's own starting action, whose rounds spawn Skeletons around it and link each
+ * into its group. In {@code bush_goblins} a group spawns two Bush Goblins to either side of a
+ * bottom-side owner a tick apart, the second pushed one unit off the first as it is registered. In
+ * {@code brawler_goblins} a top-side owner spawns four Goblin Brawlers, the side flipping both axes
+ * of the location. In {@code gift_knight} the owner spawns a Knight on itself that walks at once:
+ * its registration visit takes its target and a first step. {@code abort_instigator} drops a spawn
+ * that Knight caused when it dies.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
@@ -40,7 +42,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 class BattleActionSpawnRunTest {
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {"bush_goblins", "brawler_goblins", "gift_knight", "abort_instigator"})
+  @ValueSource(
+      strings = {
+        "bush_goblins",
+        "brawler_goblins",
+        "gift_knight",
+        "abort_instigator",
+        "witch_hooks"
+      })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
     Standard1v1Battle match =
@@ -53,7 +62,23 @@ class BattleActionSpawnRunTest {
     List<String> actions = new ArrayList<>();
     List<String> spawns = new ArrayList<>();
     List<String> dropping = new ArrayList<>();
-    for (JsonNode o : reference.get("action_owners")) {
+    // A run without action owners places its units directly, each of which starts its row's own
+    // starting action as it is placed.
+    if (!reference.has("action_owners")) {
+      for (JsonNode u : reference.get("units")) {
+        CharacterEntity unit =
+            match.deploy(
+                u.get("tick").asInt(),
+                GameData.unit(u.get("card").asText()),
+                reference.get("level").asInt(),
+                u.get("side").asInt(),
+                u.get("deploy").get(0).asInt(),
+                u.get("deploy").get(1).asInt(),
+                u.get("name").asText());
+        unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
+      }
+    }
+    for (JsonNode o : reference.path("action_owners")) {
       ActionOwnerEntity owner =
           match.addActionOwner(
               o.get("name").asText(),
@@ -61,24 +86,7 @@ class BattleActionSpawnRunTest {
               o.get("x").asInt(),
               o.get("y").asInt(),
               o.get("level").asInt());
-      owner
-          .actionHolder()
-          .setListener(
-              new ActionHolder.Listener() {
-                @Override
-                public void started(BattleAction action, int phase) {
-                  actions.add(
-                      "%d run %s %s %d"
-                          .formatted(currentTick[0], owner.name(), action.name(), phase));
-                }
-
-                @Override
-                public void dropped(BattleAction action, int ticksLeft) {
-                  dropping.add(
-                      "%d dropped %s %s %d"
-                          .formatted(currentTick[0], owner.name(), action.name(), ticksLeft));
-                }
-              });
+      owner.actionHolder().setListener(listener(owner.name(), currentTick, actions, dropping));
       for (JsonNode s : o.get("schedule")) {
         // The row is built from the game's own action rows, for the owner it runs on. A schedule
         // may name another entity as its cause, which is found by name when the schedule is made.
@@ -108,6 +116,7 @@ class BattleActionSpawnRunTest {
 
     List<String> events = new ArrayList<>();
     List<String> positions = new ArrayList<>();
+    List<String> groups = new ArrayList<>();
     Map<String, Integer> spawnTicks = new HashMap<>();
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
     match
@@ -134,6 +143,16 @@ class BattleActionSpawnRunTest {
                             child.getView().getX(),
                             child.getView().getY(),
                             child.getView().getState()));
+              }
+
+              @Override
+              public void groupLinked(int tick, CharacterEntity source, CharacterEntity child) {
+                groups.add(groupLine(currentTick[0], "group_link", source, child));
+              }
+
+              @Override
+              public void groupUnlinked(int tick, CharacterEntity source, CharacterEntity child) {
+                groups.add(groupLine(currentTick[0], "group_unlink", source, child));
               }
 
               @Override
@@ -233,6 +252,25 @@ class BattleActionSpawnRunTest {
         .as("every pending action dropped as its instigator left")
         .containsExactlyElementsOf(expectedDrops);
     assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
+    List<String> expectedGroups = new ArrayList<>();
+    for (JsonNode a : reference.get("actions")) {
+      String kind = a.get("event").asText();
+      if (kind.equals("group_link") || kind.equals("group_unlink")) {
+        List<String> chain = new ArrayList<>();
+        a.get("chain").forEach(linked -> chain.add(linked.asText()));
+        expectedGroups.add(
+            "%d %s %s %s %s"
+                .formatted(
+                    a.get("tick").asInt(),
+                    kind,
+                    a.get("owner").asText(),
+                    a.get("unit").asText(),
+                    chain));
+      }
+    }
+    assertThat(groups)
+        .as("every child linked into its source's group and unlinked as it leaves")
+        .containsExactlyElementsOf(expectedGroups);
 
     List<String> expectedLocks = new ArrayList<>();
     for (JsonNode event : reference.get("tower_events")) {
@@ -264,11 +302,11 @@ class BattleActionSpawnRunTest {
   }
 
   /**
-   * Holds a spawned unit to its record, taken as the step ends: position, state, reference, its own
-   * hit points, its elapsed time and deploy countdown, whether it is still immune, and whether it
-   * was spawned in this tick. A reference to an entity that left in the step's closing cleanup is
-   * not shown by the record, which is taken before it; the reference of a unit leaving in that
-   * cleanup is not compared.
+   * Holds a unit to its record, taken as the step ends: position, state, reference and its own hit
+   * points, and for a spawned child its elapsed time and deploy countdown, whether it is still
+   * immune, and whether it was spawned in this tick. A reference to an entity that left in the
+   * step's closing cleanup is not shown by the record, which is taken before it; the reference of a
+   * unit leaving in that cleanup is not compared.
    */
   private static void assertRecord(
       Battle battle,
@@ -294,6 +332,10 @@ class BattleActionSpawnRunTest {
     assertThat(unit.getHitPoints().getHitPoints())
         .as("%s own hit points", where)
         .isEqualTo(record.get("own_hp").asInt());
+    if (record.get("delay").isNull()) {
+      // A unit the run places itself, not a spawned child, has only its outside recorded.
+      return;
+    }
     assertThat(unit.getView().getDelay())
         .as("%s elapsed time", where)
         .isEqualTo(record.get("delay").asInt());
@@ -306,6 +348,30 @@ class BattleActionSpawnRunTest {
     assertThat(spawnTicks.get(unit.name()) == tick)
         .as("%s spawned this tick", where)
         .isEqualTo(record.get("pending").asBoolean());
+  }
+
+  /** Records the runs and drops of one holder's actions, named after its owner. */
+  private static ActionHolder.Listener listener(
+      String owner, int[] currentTick, List<String> actions, List<String> dropping) {
+    return new ActionHolder.Listener() {
+      @Override
+      public void started(BattleAction action, int phase) {
+        actions.add("%d run %s %s %d".formatted(currentTick[0], owner, action.name(), phase));
+      }
+
+      @Override
+      public void dropped(BattleAction action, int ticksLeft) {
+        dropping.add(
+            "%d dropped %s %s %d".formatted(currentTick[0], owner, action.name(), ticksLeft));
+      }
+    };
+  }
+
+  /** A link or unlink with the source's group as it stands after it, newest first. */
+  private static String groupLine(
+      int tick, String kind, CharacterEntity source, CharacterEntity child) {
+    List<String> chain = source.group().stream().map(CharacterEntity::name).toList();
+    return "%d %s %s %s %s".formatted(tick, kind, source.name(), child.name(), chain);
   }
 
   /** The arena entity of the given name. */

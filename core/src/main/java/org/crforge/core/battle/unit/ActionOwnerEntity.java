@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -122,7 +123,7 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
   }
 
   @Override
-  public int spawnCharacters(SpawnArguments arguments) {
+  public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
     return world.spawnCharacters(this, arguments);
   }
 

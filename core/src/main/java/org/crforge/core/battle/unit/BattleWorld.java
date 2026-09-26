@@ -522,6 +522,22 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.entityRemoved(tick, gone);
     }
+    // A child leaves its source's group as it is released, after every notice of the removal.
+    if (gone instanceof CharacterEntity child) {
+      CharacterEntity source = child.leaveGroup();
+      if (source != null) {
+        for (WorldObserver observer : observers) {
+          observer.groupUnlinked(tick, source, child);
+        }
+      }
+    }
+  }
+
+  /** Tells the observers a child was linked into its source's group. */
+  void groupLinked(CharacterEntity source, CharacterEntity child) {
+    for (WorldObserver observer : observers) {
+      observer.groupLinked(tick, source, child);
+    }
   }
 
   /**
@@ -614,16 +630,17 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
    * pushback, a ring around a character source, which reads its own spawn columns, a unit that
-   * paths to its spawn point, a unit without hit points, and a creation that ignores effects.
+   * paths to its spawn point, a unit without hit points, a creation that ignores effects, and a
+   * unit with a starting action of its own, which a child starts as it joins the live list.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
-   * @return how many children were spawned
+   * @return the children, in the order they were made
    */
-  public int spawnCharacters(SpawnHost source, SpawnArguments arguments) {
+  public List<SpawnHost> spawnCharacters(SpawnHost source, SpawnArguments arguments) {
     UnitData data = arguments.configuration();
     refuseUnestablished(source, arguments, data);
-    int made = 0;
+    List<SpawnHost> made = new ArrayList<>();
     for (int i = 0; i < arguments.count(); i++) {
       int[] at =
           SpawnPlacement.position(
@@ -666,7 +683,7 @@ public class BattleWorld implements HolderPasses {
             .actionHolder()
             .schedule(arguments.action(), ActionHolder.OWN_DELAY, false, source.actionHolder());
       }
-      made++;
+      made.add(child);
     }
     return made;
   }
@@ -698,6 +715,8 @@ public class BattleWorld implements HolderPasses {
       refused = "a unit that paths to its spawn point";
     } else if (data.hitpoints() <= 0) {
       refused = "a unit without hit points";
+    } else if (data.onStartingAction() != null) {
+      refused = "a child with a starting action, started as it joins the live list";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(

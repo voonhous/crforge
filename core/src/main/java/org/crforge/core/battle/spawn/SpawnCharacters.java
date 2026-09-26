@@ -11,20 +11,21 @@ import org.crforge.core.fidelity.FidelityStatus;
 /**
  * An action that spawns characters: a spawn row of either class, with its spawn type the character
  * one. When it starts, its perform works out the block from the owner and the entity that caused
- * it, and the battle's spawner creates the children; it does not last.
+ * it, the battle's spawner creates the children, and each child is linked into its source's group
+ * when the row asks and the source is a character; it does not last.
  *
  * <p>Refused rather than guessed: a row that asks for a building's placement, a row with no source,
- * and a row whose spawn would make any of the calls after it - the shared-target schedule, the
- * group link or the clone - none of which is modelled. The champion hand-over is not asked for: the
- * battle's units carry no ability to tell a champion by.
+ * and a row whose spawn would make any other call after it - the shared-target schedule or the
+ * clone - neither of which is modelled. The champion hand-over is not asked for: the battle's units
+ * carry no ability to tell a champion by.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the perform's block from the owner and the cause, handed to the battle's"
-            + " spawner. Not modelled: the action's target, the building placement search, the"
-            + " calls after the spawn and the champion hand-over; a row that needs one is refused,"
-            + " but a champion is not recognised.")
+            + " spawner, and the group link after the spawn. Not modelled: the action's target,"
+            + " the building placement search, the other calls after the spawn and the champion"
+            + " hand-over; a row that needs one is refused, but a champion is not recognised.")
 public final class SpawnCharacters extends RowAction {
 
   private final SpawnRow spawn;
@@ -58,14 +59,23 @@ public final class SpawnCharacters extends RowAction {
     if (arguments.source() == null) {
       throw new UnsupportedOperationException(name() + " has no source to spawn from");
     }
-    List<SpawnPerform.AfterSpawnCall> after =
+    List<SpawnPerform.AfterSpawnCall> unmodelled =
         SpawnPerform.afterSpawn(
-            spawn, arguments.source(), false, false, Math.max(arguments.count(), 0));
-    if (!after.isEmpty()) {
+                spawn, arguments.source(), false, false, Math.max(arguments.count(), 0))
+            .stream()
+            .filter(call -> call.kind() != SpawnPerform.AfterSpawnKind.GROUP_LINK)
+            .toList();
+    if (!unmodelled.isEmpty()) {
       throw new UnsupportedOperationException(
-          name() + " would make calls after the spawn, which are not modelled: " + after);
+          name() + " would make calls after the spawn, which are not modelled: " + unmodelled);
     }
-    ((SpawnHost) arguments.source()).spawnCharacters(arguments);
+    SpawnHost source = (SpawnHost) arguments.source();
+    List<SpawnHost> children = source.spawnCharacters(arguments);
+    // The calls after the spawn run over the children it made, once every one is in the battle.
+    for (SpawnPerform.AfterSpawnCall call :
+        SpawnPerform.afterSpawn(spawn, source, false, false, children.size())) {
+      source.linkIntoGroup(children.get(call.child()));
+    }
     return null;
   }
 }

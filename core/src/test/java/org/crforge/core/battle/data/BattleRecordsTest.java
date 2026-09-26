@@ -164,4 +164,14 @@ class BattleRecordsTest {
     assertThat(knight.onDeathAction()).isNull();
     assertThat(knight.onKilledAction()).isNull();
   }
+
+  @Test
+  @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
+  void anInlineHookIsRefused() {
+    assertThatThrownBy(() -> records.unit("Berserker"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Berserker")
+        .hasMessageContaining("OnStartingAction")
+        .hasMessageContaining("ActionBerserk");
+  }
 }

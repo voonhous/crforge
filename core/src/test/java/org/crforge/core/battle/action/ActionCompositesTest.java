@@ -221,6 +221,7 @@ class ActionCompositesTest {
     assertThat(queue(h)).as("nothing fired yet").isEmpty();
     h.runPass(2);
     assertThat(queue(h)).as("reaching zero fires the action").containsExactly("t1 0");
+    assertThat(h.queuedInstigators()).as("with its owner as the cause").containsExactly(h);
     assertThat(counter(run)).as("and reloads by adding the interval").isEqualTo(150);
     assertThat(run.isFinished()).as("never ends on its own").isFalse();
 
