@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import java.util.List;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -130,4 +131,17 @@ public interface WorldObserver {
    * @param toY where it was moved to
    */
   default void relocated(int tick, WorldEntity unit, int x, int y, int toX, int toY) {}
+
+  /**
+   * A spawn created a child and registered it, inside the pass that ran the spawn: its registration
+   * visit is done and its first-tick immunity set.
+   *
+   * @param tick the tick the spawn ran on
+   * @param source the object the child was spawned from
+   * @param child the child
+   * @param createdX where the child was created, inside the arena
+   * @param createdY where the child was created, inside the arena
+   */
+  default void characterSpawned(
+      int tick, SpawnHost source, CharacterEntity child, int createdX, int createdY) {}
 }

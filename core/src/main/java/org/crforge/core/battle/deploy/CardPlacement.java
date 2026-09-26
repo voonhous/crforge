@@ -30,7 +30,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
 public final class CardPlacement {
 
   /** How far from every edge of the arena a unit is created. */
-  private static final int CREATION_INSET = 250;
+  public static final int CREATION_INSET = 250;
 
   private CardPlacement() {
     // Utility class

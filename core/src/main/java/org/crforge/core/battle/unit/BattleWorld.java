@@ -11,7 +11,13 @@ import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.spawn.SpawnArguments;
+import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.battle.spawn.SpawnPassable;
+import org.crforge.core.battle.spawn.SpawnPlacement;
+import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
@@ -20,6 +26,7 @@ import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -96,6 +103,15 @@ public class BattleWorld implements HolderPasses {
 
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
+
+  /**
+   * The published global that makes a death spawn's children untargetable at first: on in the
+   * standard game.
+   */
+  static final boolean DEATH_SPAWN_IMMUNE_FIRST_TICK = true;
+
+  /** How many children each source has spawned so far, by the source's name. */
+  private final Map<String, Integer> spawnCounts = new HashMap<>();
 
   /** Those watching the arena from outside the tick, in the order they were added. */
   private final List<WorldObserver> observers = new ArrayList<>();
@@ -500,6 +516,112 @@ public class BattleWorld implements HolderPasses {
     boolean present = !source.isLeft();
     RarityTable rarity = present ? source.getData().rarity() : RarityTable.COMMON;
     return hit.type().pipeline(hit.amount(), noDamage, present, rarity, source.getPackedLevel());
+  }
+
+  /**
+   * The spawner: creates the children a spawn row's block describes, each one after the other.
+   *
+   * <p>For each child, in order: where it stands (on the point, one unit right of it over water, or
+   * on the ring), kept 250 inside the arena; its creation, for the source's side, in the lane of
+   * its own position; its level, the row's or the source's, re-based on the child's own rarity;
+   * walking at once as the level setter leaves it, or deploying when the row asks, for the row's
+   * own deploy time when it has one; its id and its registration visit at once, inside the pass
+   * that runs the spawn, over this tick's index, so a push from a unit already standing there moves
+   * it; its first-tick immunity; and the action it runs as it is spawned, which starts at once when
+   * it has no delay, since a pending pass is in progress. It joins the live list at the tick's
+   * closing cleanup and is first visited on the next tick.
+   *
+   * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
+   * pushback, a ring around a character source, which reads its own spawn columns, a unit that
+   * paths to its spawn point, a unit without hit points, and a creation that ignores effects.
+   *
+   * @param source the object the children are spawned from
+   * @param arguments the block the row's perform works out
+   * @return how many children were spawned
+   */
+  public int spawnCharacters(SpawnHost source, SpawnArguments arguments) {
+    UnitData data = arguments.configuration();
+    refuseUnestablished(source, arguments, data);
+    int made = 0;
+    for (int i = 0; i < arguments.count(); i++) {
+      int[] at =
+          SpawnPlacement.position(
+              arguments.x(),
+              arguments.y(),
+              i,
+              arguments.count(),
+              arguments.noOffset(),
+              arguments.radius(),
+              (x, y) -> SpawnPassable.passable(tileMap, x, y, data.collisionRadius()));
+      int x = inset(at[0], tileMap.width());
+      int y = inset(at[1], tileMap.height());
+      int level =
+          arguments.level() == SpawnRow.SOURCE_LEVEL ? source.packedLevel() : arguments.level();
+      int count = spawnCounts.merge(source.name(), 1, Integer::sum) - 1;
+      CharacterEntity child =
+          CharacterEntity.spawned(
+              this,
+              data,
+              source.name() + "_" + count,
+              source.side(),
+              x,
+              y,
+              PackedLevel.level(PackedLevel.pack(level, data.rarity())));
+      if (arguments.useDeploy()) {
+        child.startDeploying();
+      }
+      if (arguments.deployTimeMs() != 0) {
+        child.deployFor(arguments.deployTimeMs());
+      }
+      holder.addRegistered(child);
+      if (arguments.deathSpawn() && DEATH_SPAWN_IMMUNE_FIRST_TICK) {
+        child.startSpawnImmunity();
+      }
+      for (WorldObserver observer : observers) {
+        observer.characterSpawned(tick, source, child, x, y);
+      }
+      if (arguments.action() != null) {
+        child
+            .actionHolder()
+            .schedule(arguments.action(), ActionHolder.OWN_DELAY, false, source.actionHolder());
+      }
+      made++;
+    }
+    return made;
+  }
+
+  /** A position kept the creation's inset inside one axis of the arena. */
+  private static int inset(int value, int cells) {
+    return Math.min(
+        Math.max(value, CardPlacement.CREATION_INSET),
+        cells * TileMap.CELL_UNITS - CardPlacement.CREATION_INSET);
+  }
+
+  /** Refuses the parts of a spawn whose behaviour is not established. */
+  private static void refuseUnestablished(
+      SpawnHost source, SpawnArguments arguments, UnitData data) {
+    String refused = null;
+    if (arguments.morph()) {
+      refused = "a morph";
+    } else if (arguments.enemy()) {
+      refused = "a spawn for the other side";
+    } else if (arguments.constPriority()) {
+      refused = "the ring's lane mirror and fixed priority";
+    } else if (arguments.ignoreEffects()) {
+      refused = "a creation that ignores effects";
+    } else if (arguments.radius() != 0 && arguments.spawnPushback()) {
+      refused = "the pushback of a ring";
+    } else if (arguments.radius() != 0 && source.isCharacter()) {
+      refused = "a ring around a character, which reads the character's own spawn columns";
+    } else if (data.spawnPathfindSpeed() != 0) {
+      refused = "a unit that paths to its spawn point";
+    } else if (data.hitpoints() <= 0) {
+      refused = "a unit without hit points";
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(
+          "spawning " + data.name() + " asks for " + refused + ", which is not established");
+    }
   }
 
   @Override

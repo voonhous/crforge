@@ -19,12 +19,18 @@ import org.crforge.core.pathfinding.GridEntity;
 public final class StateTimers {
 
   /**
-   * True while the entity is finishing an attack, which advances {@link #attackFinishElapsedMs}.
+   * True while a spawned entity may not be targeted: a death spawn's children start with it, and
+   * while it is set the entity refuses every character that asks to target it. It advances {@link
+   * #spawnImmuneElapsedMs}.
+   *
+   * <p>This pair was first read as an attack-finish latch, because the limit that clears it is the
+   * attack-finish time. The spawner is what sets it, and the validator is what reads it, so it is
+   * the first-tick immunity of a spawned unit.
    */
-  private boolean attackFinishing;
+  private boolean spawnImmune;
 
-  /** Milliseconds since the attack finish started; past the configured limit it clears the flag. */
-  private int attackFinishElapsedMs;
+  /** Milliseconds the immunity has lasted; once past the attack-finish time it clears the flag. */
+  private int spawnImmuneElapsedMs;
 
   /** Milliseconds of pending damage still to be applied, counted down 50 per visit. */
   private int pendingDamageDurationMs;

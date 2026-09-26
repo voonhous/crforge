@@ -18,7 +18,8 @@ import org.crforge.core.pathfinding.move.MovementState;
  *
  * <ol>
  *   <li>a unit that has run out of route while pathfinding arrives at its destination;
- *   <li>the elapsed-time accumulators advance, except in the three states that hold their own;
+ *   <li>the elapsed time advances, except in the three states that hold their own, and a spawned
+ *       unit's first-tick immunity advances in every state;
  *   <li>a staggered unit counts its stagger down and nothing else happens this visit;
  *   <li>a landed dash releases the unit back into movement;
  *   <li>the pending-damage duration counts down and a unit with no hit points asks to be removed;
@@ -114,14 +115,15 @@ public final class EntityStateVisit {
       }
     }
 
-    // 2. Elapsed time. Deploying, spawn pathfinding and waiting to deploy hold their own timers.
+    // 2. Elapsed time. Deploying, spawn pathfinding and waiting to deploy hold their own timers;
+    // a spawned unit's first-tick immunity advances whatever the state.
     if (GridEntityState.inMask(word, GridEntityState.DELAY_SKIP_MASK)) {
-      if (timers.isAttackFinishing()) {
+      if (timers.isSpawnImmune()) {
         accumulate(timers, globals);
       }
     } else {
       entity.setDelay(entity.getDelay() + TICK_MS);
-      if (timers.isAttackFinishing()) {
+      if (timers.isSpawnImmune()) {
         accumulate(timers, globals);
       }
     }
@@ -342,11 +344,14 @@ public final class EntityStateVisit {
     return state;
   }
 
-  /** Advances the attack-finish timer and clears the flag once it passes the configured limit. */
+  /**
+   * Advances a spawned unit's first-tick immunity and clears it once it has lasted longer than the
+   * attack-finish time: the sixth visit.
+   */
   static void accumulate(StateTimers timers, StateVisitGlobals globals) {
-    timers.setAttackFinishElapsedMs(timers.getAttackFinishElapsedMs() + TICK_MS);
-    if (timers.getAttackFinishElapsedMs() > globals.attackFinishTimeMs()) {
-      timers.setAttackFinishing(false);
+    timers.setSpawnImmuneElapsedMs(timers.getSpawnImmuneElapsedMs() + TICK_MS);
+    if (timers.getSpawnImmuneElapsedMs() > globals.attackFinishTimeMs()) {
+      timers.setSpawnImmune(false);
     }
   }
 

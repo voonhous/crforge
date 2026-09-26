@@ -106,6 +106,25 @@ public abstract class BattleEntity {
   }
 
   /**
+   * The registration visit an entity handed over inside a pending pass is given at once: the visit
+   * of each of its active components, in slot order, and nothing else.
+   */
+  void registrationVisit() {
+    beforeRegistrationVisit();
+    for (int slot = 0; slot < COMPONENT_SLOTS; slot++) {
+      if (isActive(slot)) {
+        components[slot].visit();
+      }
+    }
+  }
+
+  /**
+   * Runs at the head of the registration visit, with the entity's id already given: what its
+   * components need from the battle before they are visited for the first time.
+   */
+  protected void beforeRegistrationVisit() {}
+
+  /**
    * Runs once, when the holder admits the entity to its live list. The entity has had its id since
    * it was handed to the holder; everything admitted before it, in this cleanup or an earlier one,
    * is already registered.
