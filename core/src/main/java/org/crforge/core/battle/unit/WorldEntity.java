@@ -370,6 +370,33 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
   }
 
   @Override
+  public boolean kingTower() {
+    return getData().king();
+  }
+
+  @Override
+  public void killBy(ActionOwner killer) {
+    world.kill(this, killer instanceof WorldEntity entity ? entity : null);
+  }
+
+  /**
+   * Takes a kill: the whole hit points as one hit that ignores the battle's holds.
+   *
+   * @return what the kill did
+   */
+  DamageResult takeKill() {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    DamageResult result = DamageApplication.kill(hitPoints, damageQueries());
+    refreshHitPoints();
+    if (result.died()) {
+      died();
+    }
+    return result;
+  }
+
+  @Override
   public int variable(int key) {
     return variables.getOrDefault(key, 0);
   }

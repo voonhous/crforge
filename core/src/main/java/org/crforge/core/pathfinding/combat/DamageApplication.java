@@ -32,7 +32,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "Settled: the guards, the order the two sides' percentages apply in, the floor at one, the"
             + " dedupe list, the shield before the hit points, the overkill removed from the"
             + " amount reported, the death test and the clamp to zero. Held by every hit of the"
-            + " kill run. Supplied, not settled: nothing is untouchable or immune, no buff changes"
+            + " kill run; a kill as that hit of the whole hit points ignoring the holds, held by"
+            + " the worked kills. Supplied, not settled: nothing is untouchable or immune, no buff changes"
             + " the amount and the battle holds nothing. Not modelled: the death handler, the"
             + " credit to the attacker, the reflected attack, an absorber, the shield break, a"
             + " target both sides may damage, the presentation and the actions a hit runs on"
@@ -80,6 +81,18 @@ public final class DamageApplication {
     return bookkeeping(hitPoints, damage, dedupeId, directionX, directionY, queries);
   }
 
+  /**
+   * Kills a hit-points object: an ordinary hit of its whole hit points that ignores the battle's
+   * holds and lists no dedupe id. A shield that is up takes it and the object lives; otherwise it
+   * dies. Only an entity attached to a parent is spared, and nothing is attached yet.
+   *
+   * @param hitPoints the object
+   * @param queries what the chain asks about the target and the battle
+   */
+  public static DamageResult kill(HitPoints hitPoints, DamageQueries queries) {
+    return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true);
+  }
+
   /** A percentage of the damage, truncated and floored at one. */
   private static int scale(int damage, int percent) {
     return Math.max(FixedMath.divOrZero(percent * damage, 100), 1);
@@ -104,13 +117,18 @@ public final class DamageApplication {
       }
       hitPoints.listDedupe(dedupeId, queries.battleTick());
     }
-    return subtract(hitPoints, damage, directionX, directionY, queries);
+    return subtract(hitPoints, damage, directionX, directionY, queries, false);
   }
 
-  /** The shield, then the hit points. */
+  /** The shield, then the hit points; a kill ignores the battle's hold. */
   private static DamageResult subtract(
-      HitPoints hitPoints, int damage, int directionX, int directionY, DamageQueries queries) {
-    if (queries.battleEnded()) {
+      HitPoints hitPoints,
+      int damage,
+      int directionX,
+      int directionY,
+      DamageQueries queries,
+      boolean ignoreHolds) {
+    if (!ignoreHolds && queries.battleEnded()) {
       return DamageResult.NOTHING;
     }
     if (hitPoints.getHitPoints() < 1) {

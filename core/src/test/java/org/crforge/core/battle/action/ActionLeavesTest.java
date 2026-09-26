@@ -16,10 +16,22 @@ import org.junit.jupiter.api.Test;
  */
 class ActionLeavesTest {
 
-  /** An owner with a variable map and, when given, hit points. */
+  /** An owner with a variable map and, when given, hit points; it records the kills it takes. */
   private static final class Owner implements ActionOwner {
     private final Map<Integer, Integer> variables = new HashMap<>();
     private final HitPoints hitPoints;
+    private final List<String> log = new ArrayList<>();
+    private boolean king;
+
+    @Override
+    public boolean kingTower() {
+      return king;
+    }
+
+    @Override
+    public void killBy(ActionOwner killer) {
+      log.add("killed by " + (killer == null ? null : killer == this ? "itself" : "another"));
+    }
 
     private Owner(HitPoints hitPoints) {
       this.hitPoints = hitPoints;
@@ -224,5 +236,66 @@ class ActionLeavesTest {
     h3.runPass(2);
     assertThat(queue(h3)).as("healing does not re-arm the entry").containsExactly("T1");
     assertThat(run3.isFinished()).isFalse();
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Heal and Kill
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("a heal raises its owner's hit points by its value, a king never back to full")
+  void heal() {
+    HitPoints hp = hitPoints(600, 1000);
+    new ActionHolder(new Owner(hp)).start(new Heal(ActionRow.named("heal"), () -> 120, 0));
+    assertThat(hp.getHitPoints()).isEqualTo(720);
+
+    HitPoints kingHp = hitPoints(900, 1000);
+    Owner king = new Owner(kingHp);
+    king.king = true;
+    new ActionHolder(king).start(new Heal(ActionRow.named("heal"), () -> 400, 0));
+    assertThat(kingHp.getHitPoints()).isEqualTo(999);
+
+    new ActionHolder(new Owner(null)).start(new Heal(ActionRow.named("heal"), () -> 400, 0));
+  }
+
+  @Test
+  @DisplayName(
+      "a kill schedules its action on its owner first, then kills it with the cause as killer")
+  void kill() {
+    Owner owner = new Owner(hitPoints(452, 1000));
+    ActionHolder holder = new ActionHolder(owner);
+    ActionHolder cause = new ActionHolder(new Owner(hitPoints(100, 100)));
+    BattleAction onKill =
+        new BattleAction() {
+          @Override
+          public String name() {
+            return "on_kill";
+          }
+
+          @Override
+          public void scheduled(
+              ActionHolder h, int delayMs, boolean immediate, ActionHolder instigator) {
+            owner.log.add("scheduled on_kill");
+          }
+
+          @Override
+          public ActionInstance start(ActionHolder h) {
+            return null;
+          }
+        };
+
+    holder.start(new Kill(ActionRow.named("kill"), onKill), cause);
+    assertThat(owner.log).containsExactly("scheduled on_kill", "killed by another");
+    assertThat(queue(holder)).containsExactly("on_kill");
+
+    Owner alone = new Owner(hitPoints(452, 1000));
+    new ActionHolder(alone).start(new Kill(ActionRow.named("kill"), null));
+    assertThat(alone.log).as("no cause, no killer").containsExactly("killed by null");
+
+    Owner noHitPoints = new Owner(null);
+    ActionHolder h2 = new ActionHolder(noHitPoints);
+    h2.start(new Kill(ActionRow.named("kill"), onKill));
+    assertThat(noHitPoints.log).as("without hit points nothing, the action included").isEmpty();
+    assertThat(queue(h2)).isEmpty();
   }
 }

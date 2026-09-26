@@ -222,6 +222,21 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * Kills an entity, and tells every observer what the kill did as they are told of a hit of its
+   * whole hit points.
+   *
+   * @param target the entity
+   * @param killer the entity that caused it, or null for none
+   */
+  public void kill(WorldEntity target, WorldEntity killer) {
+    int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
+    DamageResult result = target.takeKill();
+    for (WorldObserver observer : observers) {
+      observer.damageDealt(tick, target, before, result);
+    }
+  }
+
   /** Tells every observer a unit asked to push itself back after a launch. */
   void pushbackRequested(
       WorldEntity unit, boolean started, int fromX, int fromY, MovementState pushback) {
