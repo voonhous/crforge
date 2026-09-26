@@ -23,6 +23,7 @@ import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunOnInstigator;
 import org.crforge.core.battle.action.Select;
+import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.WaitToActivate;
@@ -114,6 +115,8 @@ public final class ActionRows {
           Map.entry("ActionRunActionAtHealth", Set.of("HealthPercentages", "Actions")),
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
+          Map.entry(
+              "ActionSetCharacterLevel", Set.of("RelativeLevelAdjustment", "AbsoluteLevelToSet")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
           // The effect-playing and forced-animation rows only show something: their own columns
           // reach the view alone, but for the two effect flags that keep a run.
@@ -296,6 +299,11 @@ public final class ActionRows {
             case "ActionHeal" ->
                 new Heal(shared, expression(f.get("Value")), integer(f, "MaxOverHealPercent"));
             case "ActionKill" -> new Kill(shared, action(f.get("OnKillAction")));
+            case "ActionSetCharacterLevel" ->
+                new SetCharacterLevel(
+                    shared,
+                    integer(f, "RelativeLevelAdjustment"),
+                    f.path("AbsoluteLevelToSet").asInt(1));
             case "ActionDealDamage" ->
                 new DealDamage(
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));
