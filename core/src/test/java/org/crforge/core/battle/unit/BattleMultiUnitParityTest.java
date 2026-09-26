@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.card.Card;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -99,7 +98,7 @@ class BattleMultiUnitParityTest {
       units.add(
           standard.deploy(
               0,
-              UnitDataMapper.toUnitData(knight),
+              GameData.unit("Knight"),
               LEVEL,
               placement.team() == Team.BLUE ? WorldEntity.SIDE_BOTTOM : WorldEntity.SIDE_TOP,
               placement.x(),

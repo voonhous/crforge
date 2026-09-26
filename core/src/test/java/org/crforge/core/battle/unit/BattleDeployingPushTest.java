@@ -2,11 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,8 +14,7 @@ import org.junit.jupiter.api.Test;
 class BattleDeployingPushTest {
 
   private static UnitData knight() {
-    return UnitDataMapper.toUnitData(
-        Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    return GameData.unit("Knight");
   }
 
   @Test

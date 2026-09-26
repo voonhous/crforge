@@ -2,11 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -22,9 +19,7 @@ class BattleTowerContactTest {
   @DisplayName(
       "a Knight deployed against its king tower is pushed off it 1 unit a tick while it deploys")
   void theKingPushesADeployingKnight() {
-    UnitData knight =
-        UnitDataMapper.toUnitData(
-            Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    UnitData knight = GameData.unit("Knight");
     Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit = match.deploy(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 4600);

@@ -1,15 +1,14 @@
 package org.crforge.data.game;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The real game tables, when a folder of them is configured; skipped otherwise. They hold the
- * game's own values in its own units.
+ * The real game tables, which must be configured: without them this test fails, naming the setting.
+ * They hold the game's own values in its own units.
  */
 class ShippedGameTablesTest {
 
@@ -17,7 +16,6 @@ class ShippedGameTablesTest {
 
   @BeforeAll
   static void load() {
-    assumeTrue(GameTables.configuredDirectory().isPresent(), "no game tables configured");
     tables = GameTables.loadConfigured();
   }
 

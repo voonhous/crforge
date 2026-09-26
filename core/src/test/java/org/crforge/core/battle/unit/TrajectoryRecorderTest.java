@@ -11,10 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.card.UnitDataMapper;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -128,14 +125,12 @@ class TrajectoryRecorderTest {
    */
   private static TrajectoryRecorder record(JsonNode reference, int placementTick) {
     int ticks = reference.get("records").size();
-    String cardId = reference.get("card").asText().toLowerCase();
     Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(
             placementTick,
-            UnitDataMapper.toUnitData(
-                Objects.requireNonNull(CardRegistry.get(cardId), cardId + " not found")),
+            GameData.unit(reference.get("card").asText()),
             reference.get("level").asInt(),
             reference.get("side").asInt(),
             reference.get("deploy").get(0).asInt(),

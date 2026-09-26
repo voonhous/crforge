@@ -8,17 +8,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.projectile.ProjectileEntity;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.TargetView;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -569,7 +565,6 @@ class BattleTowerRunTest {
   }
 
   private static UnitData unitData(String cardName) {
-    String card = cardName.toLowerCase(Locale.ROOT);
-    return UnitDataMapper.toUnitData(Objects.requireNonNull(CardRegistry.get(card), card));
+    return GameData.unit(cardName);
   }
 }
