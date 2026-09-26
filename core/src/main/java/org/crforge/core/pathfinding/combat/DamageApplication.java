@@ -33,7 +33,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " dedupe list, the shield before the hit points, the overkill removed from the"
             + " amount reported, the death test and the clamp to zero. Held by every hit of the"
             + " kill run; a kill as that hit of the whole hit points ignoring the holds, held by"
-            + " the worked kills. Supplied, not settled: nothing is untouchable or immune, no buff changes"
+            + " the worked kills; a typed hit's entry, its refusals, its id listed without a"
+            + " refresh and what it answers. Supplied, not settled: nothing is untouchable or immune, no buff changes"
             + " the amount and the battle holds nothing. Not modelled: the death handler, the"
             + " credit to the attacker, the reflected attack, an absorber, the shield break, a"
             + " target both sides may damage, the presentation and the actions a hit runs on"
@@ -91,6 +92,46 @@ public final class DamageApplication {
    */
   public static DamageResult kill(HitPoints hitPoints, DamageQueries queries) {
     return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true);
+  }
+
+  /**
+   * Deals a typed hit, the pipeline already run: refused while the battle holds damage, when the
+   * target is untouchable and when its id is already listed, which leaves that id's tick as it was;
+   * otherwise the id is listed and the shield and the hit points are lowered as by an ordinary hit.
+   *
+   * @param hitPoints the target's hit points
+   * @param amount the amount after the type's pipeline
+   * @param damageId the hit's damage id; 0 lists nothing
+   * @param directionX direction of the hit along the arena's width, stored on a death
+   * @param directionY direction of the hit along the arena's length, stored on a death
+   * @param queries what the chain asks about the target and the battle
+   * @return what the hit did, whose amount is what the shield lost when a shield was up before the
+   *     hit, else what the hit points lost
+   */
+  public static DamageResult typedHit(
+      HitPoints hitPoints,
+      int amount,
+      int damageId,
+      int directionX,
+      int directionY,
+      DamageQueries queries) {
+    if (queries.damageHeld() || queries.untouchable()) {
+      return DamageResult.NOTHING;
+    }
+    if (damageId != 0 && hitPoints.isDedupeListed(damageId)) {
+      return DamageResult.NOTHING;
+    }
+    int shieldBefore = hitPoints.getShield();
+    int hitPointsBefore = hitPoints.getHitPoints();
+    if (damageId != 0) {
+      hitPoints.listDedupe(damageId, queries.battleTick());
+    }
+    DamageResult result = subtract(hitPoints, amount, directionX, directionY, queries, false);
+    int lost =
+        shieldBefore > 0
+            ? shieldBefore - hitPoints.getShield()
+            : hitPointsBefore - hitPoints.getHitPoints();
+    return new DamageResult(result.landed(), lost, result.died());
   }
 
   /** A percentage of the damage, truncated and floored at one. */

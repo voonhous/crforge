@@ -60,6 +60,9 @@ public final class EntityFlags {
   /** The entity refuses a pushback unless the request lifts the gates. */
   public static final long NO_PUSHBACK = 1L << 41;
 
+  /** The entity takes no damage: the damage entry and a typed hit's pipeline answer zero. */
+  public static final long NO_DAMAGE = 1L << 42;
+
   /** The entity has been captured by the other side. */
   public static final long CAPTURED = 1L << 46;
 
