@@ -101,6 +101,8 @@ org.crforge.core.battle/
     ProjectileAmounts the damage and the crown-tower damage at the projectile's level
 ```
 
+The battle core reads its units and projectiles as the game's own rows: `org.crforge.data.game.BattleRecords` builds them from the game tables, and the tests that play the reference runs take their units from it, so they need the tables configured and fail without them. A unit that fires and has no damage of its own deals its projectile's damage at its level, as the game's damage getter falls back. The two crown towers are still built by hand, with their projectiles on the card damage rule: that is what the reference runs were made with, while the towers' rows name the tower rules, whose shot is 109 at level 11 rather than 128. The towers move to their rows when the references are made again with those rules. Card plays still take their cards from the original engine's library.
+
 Every entity is of a kind - area effect, projectile, character - and its id is its kind's band of a
 million plus a per-kind counter taken the moment it is handed to the holder, so a projectile
 launched in the middle of a battle is still ahead of every character in the holder's id-sorted
