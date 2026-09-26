@@ -71,6 +71,11 @@ org.crforge.core.battle/
     DealDamage        queues a typed hit on its owner, with the cause as its source
     PresentationAction shows something and changes nothing the simulation reads
     GameTags          the tag bits an action sets, bits of the entity's one tag word
+  data/
+    GameTables        a folder of the game's own tables, one data version, and its action graph
+    GameTable         one table's rows by name, in creation order
+    GameRow           one row: its index, its class and its columns under the game's own names
+    BattleRecords     the battle's units, projectiles and troop cards built from those rows
   spawn/
     SpawnRow          the columns of a character spawn row, at its source or to a location
     SpawnPerform      the row's perform: its source, its point, the block the spawner is handed,
@@ -101,7 +106,7 @@ org.crforge.core.battle/
     ProjectileAmounts the damage and the crown-tower damage at the projectile's level
 ```
 
-The battle core reads its units and projectiles as the game's own rows: `org.crforge.data.game.BattleRecords` builds them from the game tables, and the tests that play the reference runs take their units from it, so they need the tables configured and fail without them. A unit that fires and has no damage of its own deals its projectile's damage at its level, as the game's damage getter falls back. The two crown towers are still built by hand, with their projectiles on the card damage rule: that is what the reference runs were made with, while the towers' rows name the tower rules, whose shot is 109 at level 11 rather than 128. The towers move to their rows when the references are made again with those rules. A card play's card comes from its row too: the units it summons, how many, its formation and where it may be placed. A card's level index, which the game never reads, is not read here either; a card that summons a list of characters, places them at offsets of its own, has a deploy time of its own or deploys as a spell is refused.
+The battle core reads its units and projectiles as the game's own rows: `org.crforge.core.battle.data.BattleRecords` builds them from the game tables, and the tests that play the reference runs take their units from it, so they need the tables configured and fail without them. A unit that fires and has no damage of its own deals its projectile's damage at its level, as the game's damage getter falls back. The two crown towers are still built by hand, with their projectiles on the card damage rule: that is what the reference runs were made with, while the towers' rows name the tower rules, whose shot is 109 at level 11 rather than 128. The towers move to their rows when the references are made again with those rules. A card play's card comes from its row too: the units it summons, how many, its formation and where it may be placed. A card's level index, which the game never reads, is not read here either; a card that summons a list of characters, places them at offsets of its own, has a deploy time of its own or deploys as a spell is refused.
 
 Every entity is of a kind - area effect, projectile, character - and its id is its kind's band of a
 million plus a per-kind counter taken the moment it is handed to the holder, so a projectile

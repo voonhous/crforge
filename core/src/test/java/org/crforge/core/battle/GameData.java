@@ -1,9 +1,9 @@
 package org.crforge.core.battle;
 
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.unit.UnitData;
-import org.crforge.data.game.BattleRecords;
-import org.crforge.data.game.GameTables;
 
 /**
  * The battle's records, built from the configured game tables, for the tests that play units and

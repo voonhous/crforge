@@ -3,6 +3,9 @@ plugins {
 }
 
 dependencies {
+    // The battle core reads the game's own tables, which are JSON
+    implementation(libs.jackson.databind)
+
     // Tests need access to CardRegistry to build decks
     testImplementation(project(":data"))
 
