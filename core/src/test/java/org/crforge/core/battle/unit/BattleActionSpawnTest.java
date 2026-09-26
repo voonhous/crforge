@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
@@ -14,8 +13,6 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.RowAction;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnRow;
-import org.crforge.core.card.UnitDataMapper;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +27,7 @@ class BattleActionSpawnTest {
   private final List<String> log = new ArrayList<>();
 
   private static UnitData knight() {
-    return UnitDataMapper.toUnitData(Objects.requireNonNull(CardRegistry.get("knight")));
+    return GameData.unit("Knight");
   }
 
   @Test

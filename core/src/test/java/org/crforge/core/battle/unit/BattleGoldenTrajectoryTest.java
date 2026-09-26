@@ -9,12 +9,9 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -93,9 +90,7 @@ class BattleGoldenTrajectoryTest {
     List<JsonNode> records = new ArrayList<>();
     golden.get("records").forEach(records::add);
 
-    UnitData knight =
-        UnitDataMapper.toUnitData(
-            Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    UnitData knight = GameData.unit("Knight");
     Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit =

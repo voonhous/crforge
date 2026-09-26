@@ -3,9 +3,6 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,13 +17,8 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.spawn.SpawnRow;
-import org.crforge.core.card.TroopStats;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.target.TargetView;
-import org.crforge.data.loader.ProjectileLoader;
-import org.crforge.data.loader.UnitLoader;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -49,23 +41,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class BattleActionSpawnRunTest {
 
-  /** The units of the data, by row name. */
-  private static final Map<String, TroopStats> UNITS = loadUnits();
-
-  private static Map<String, TroopStats> loadUnits() {
-    try (InputStream projectiles =
-            BattleActionSpawnRunTest.class.getResourceAsStream("/cards/projectiles.json");
-        InputStream units =
-            BattleActionSpawnRunTest.class.getResourceAsStream("/cards/units.json")) {
-      return UnitLoader.loadUnits(units, ProjectileLoader.loadProjectiles(projectiles));
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
-  /** A unit row as the battle reads it, at its own Common rarity. */
+  /** A unit row as the battle reads it. */
   private static UnitData unit(String name) {
-    return UnitDataMapper.toUnitData(UNITS.get(name), RarityTable.COMMON);
+    return GameData.unit(name);
   }
 
   /** A spawn to a location half tiles from the source, starting to deploy. */

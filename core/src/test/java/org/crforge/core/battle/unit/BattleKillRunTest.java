@@ -12,16 +12,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.HitSink;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -433,8 +430,7 @@ class BattleKillRunTest {
   private static CharacterEntity deployKnight(Standard1v1Battle match, JsonNode reference) {
     return match.deploy(
         0,
-        UnitDataMapper.toUnitData(
-            Objects.requireNonNull(CardRegistry.get("knight"), "knight not found")),
+        GameData.unit("Knight"),
         reference.get("level").asInt(),
         reference.get("side").asInt(),
         reference.get("deploy").get(0).asInt(),

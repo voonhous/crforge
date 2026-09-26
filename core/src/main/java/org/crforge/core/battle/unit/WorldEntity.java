@@ -13,6 +13,8 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.filter.FilterSubject;
+import org.crforge.core.battle.projectile.ProjectileAmounts;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -62,7 +64,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the level packed against the rarity at creation, the hit points and the damage"
-            + " at that level, the alive answer, the removal test, the tag word recomputed at the"
+            + " at that level, a unit that fires with no damage of its own taking its projectile's"
+            + " damage at its level, the alive answer, the removal test, the tag word recomputed at the"
             + " pre-hook from the one-step word and the actions' tags, and that a removable entity"
             + " leaves the holder at the next cleanup, which tells every other entity at once; a"
             + " targeting component on every entity, seeded with the opposing side's towers, whose"
@@ -156,6 +159,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             data.king(),
             data.summonerTower());
     this.hitPoints = maximum > 0 ? new HitPoints(maximum) : null;
+    // A unit that fires and has no damage of its own deals its projectile's damage at its level.
+    ProjectileData projectile = data.projectile();
+    int unitLevel = packedLevel;
     this.damage =
         LevelScaling.damage(
             globals,
@@ -164,7 +170,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             data.rarity(),
             data.king(),
             data.summonerTower(),
-            null);
+            projectile == null
+                ? null
+                : () -> ProjectileAmounts.damage(globals, projectile, unitLevel));
     // A candidate advertises its current hit points to an attacker that prefers the weakest.
     targetView.setHitPointsPresent(hitPoints != null);
     targetView.setCrownTowerTarget(data.king() || data.summonerTower());

@@ -8,16 +8,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.card.Card;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -52,7 +47,6 @@ class BattleTrajectorySweepTest {
     JsonNode sweep = load("/pathfinding/sweep/trajectories.json");
     List<String> towers = new ArrayList<>();
     sweep.get("towers").forEach(name -> towers.add(name.asText()));
-    Map<String, Card> units = unitsByName();
 
     List<JsonNode> cases = new ArrayList<>();
     sweep.get("cases").forEach(cases::add);
@@ -60,8 +54,7 @@ class BattleTrajectorySweepTest {
     return cases.stream()
         .map(
             trajectory ->
-                DynamicTest.dynamicTest(
-                    describe(trajectory), () -> replay(trajectory, towers, units)));
+                DynamicTest.dynamicTest(describe(trajectory), () -> replay(trajectory, towers)));
   }
 
   private static String describe(JsonNode trajectory) {
@@ -73,17 +66,15 @@ class BattleTrajectorySweepTest {
         trajectory.get("deploy").get(1).asInt());
   }
 
-  private static void replay(JsonNode trajectory, List<String> towers, Map<String, Card> units) {
+  private static void replay(JsonNode trajectory, List<String> towers) {
     String unitName = trajectory.get("card").asText();
-    Card card = units.get(unitName);
-    assertThat(card).as("the card library has a unit called %s", unitName).isNotNull();
 
     Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(
             0,
-            UnitDataMapper.toUnitData(card),
+            GameData.unit(unitName),
             Standard1v1Battle.DEFAULT_LEVEL,
             trajectory.get("side").asInt(),
             trajectory.get("deploy").get(0).asInt(),
@@ -130,16 +121,6 @@ class BattleTrajectorySweepTest {
 
   /** The card library's units by unit name. */
   /** Every unit of the card library by its unit name, with the first card that deploys it. */
-  private static Map<String, Card> unitsByName() {
-    Map<String, Card> units = new HashMap<>();
-    for (Card card : CardRegistry.getAll()) {
-      if (card.getUnitStats() != null) {
-        units.putIfAbsent(card.getUnitStats().getName(), card);
-      }
-    }
-    return units;
-  }
-
   private static JsonNode load(String resource) {
     try (InputStream stream = BattleTrajectorySweepTest.class.getResourceAsStream(resource)) {
       if (stream == null) {
