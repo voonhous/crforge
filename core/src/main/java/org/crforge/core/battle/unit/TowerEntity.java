@@ -131,7 +131,7 @@ public class TowerEntity extends WorldEntity {
       this.activationExpression =
           ExpressionCompiler.compile(
               ACTIVATION_CONDITION, new BattleExpressionEnvironment(this, world));
-      this.actionHolder = new ActionHolder();
+      this.actionHolder = new ActionHolder(this);
       this.activationEffect = new PresentationAction("KingTowerActivationEffect");
       this.activating =
           new WithDuration(

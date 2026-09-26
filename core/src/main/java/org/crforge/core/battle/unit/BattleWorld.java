@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +96,9 @@ public class BattleWorld implements HolderPasses {
   /** Those watching the arena from outside the tick, in the order they were added. */
   private final List<WorldObserver> observers = new ArrayList<>();
 
+  /** The variables the battle's expressions may name, by name, each with its key. */
+  private final Map<String, Integer> variableKeys = new HashMap<>();
+
   /** The tick the entity tick in progress belongs to, kept for the calls that are not handed it. */
   private int tick;
 
@@ -112,6 +116,22 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** This tick's arena entities in ascending id. */
+  /**
+   * Makes a variable nameable in the battle's expressions. The data declares its variables; until
+   * it is loaded they are registered here.
+   *
+   * @param name the name an expression uses
+   * @param key the variable's key, which the actions that write it use
+   */
+  public void registerVariable(String name, int key) {
+    variableKeys.put(name, key);
+  }
+
+  /** The key of a variable an expression may name, or null for a name that is none. */
+  Integer variableKey(String name) {
+    return variableKeys.get(name);
+  }
+
   public List<WorldEntity> present() {
     return List.copyOf(present);
   }

@@ -3,9 +3,12 @@ package org.crforge.core.battle.unit;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -60,7 +63,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " takes the entity as its owner, and whose reference to an entity that left is"
             + " dropped by the removal notice. Not modelled yet: the shield's hit points at the"
             + " level, and what a death does beyond the entity becoming removable.")
-public abstract class WorldEntity extends BattleEntity {
+public abstract class WorldEntity extends BattleEntity implements ActionOwner {
 
   /** Side of the player at the low end of the arena. */
   public static final int SIDE_BOTTOM = 0;
@@ -84,6 +87,9 @@ public abstract class WorldEntity extends BattleEntity {
 
   /** The entity's hit points, or null when its hit points at its level are not positive. */
   @Getter private final HitPoints hitPoints;
+
+  /** The entity's variables, which its actions write and expressions from it read. */
+  private final Map<Integer, Integer> variables = new HashMap<>();
 
   /** Damage of one hit at the entity's level. */
   @Getter private final int damage;
@@ -332,6 +338,21 @@ public abstract class WorldEntity extends BattleEntity {
    * @param aimY where the projectile is aimed
    */
   public void launched(int aimX, int aimY) {}
+
+  @Override
+  public HitPoints actionHitPoints() {
+    return hitPoints;
+  }
+
+  @Override
+  public int variable(int key) {
+    return variables.getOrDefault(key, 0);
+  }
+
+  @Override
+  public void setVariable(int key, int value) {
+    variables.put(key, value);
+  }
 
   /** True once the entity has asked to be removed regardless of its hit points. */
   protected boolean removalRequested() {
