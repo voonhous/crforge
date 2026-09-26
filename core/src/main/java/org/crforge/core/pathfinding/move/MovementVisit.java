@@ -29,9 +29,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line. Held: the ordinary visit of a walking"
-            + " ground unit. Not held by any fixture: attached placement and its limited"
-            + " rotation, the pushback visit's relocation ladder and end action, the block"
-            + " countdown. Both callers fix the parent to none and collision checks to on.")
+            + " ground unit, and the pushback visit of a unit's own recoil with its relocation off"
+            + " the river, by the Sparky run. Not held by any fixture: attached placement and its"
+            + " limited rotation, the pushback visit's end action, the block countdown. Both callers fix the parent to none and collision checks to on.")
 public final class MovementVisit {
 
   /** The x value that marks an entity's position as never having been written. */
@@ -159,7 +159,8 @@ public final class MovementVisit {
    * One visit of an in-flight pushback: the entity is pushed, moved off an unusable cell, then
    * displaced toward the pushback's target with a budget that falls 25 per visit.
    *
-   * <p>Not exercised by tests: no pushback occurs in the recorded trajectories.
+   * <p>Held by the Sparky run: its recoil after each launch flies here, and on the tick it stands
+   * on the river the relocation moves it off before the displacement.
    */
   static void pushbackVisit(
       MovementState component,

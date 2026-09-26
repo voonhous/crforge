@@ -18,6 +18,8 @@ import org.crforge.core.pathfinding.move.MovementChain;
 import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.MovementVisit;
+import org.crforge.core.pathfinding.move.PushbackQueries;
+import org.crforge.core.pathfinding.move.PushbackRequest;
 import org.crforge.core.pathfinding.move.SpeedConfig;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.ResumeHelper;
@@ -73,6 +75,9 @@ public class CharacterEntity extends WorldEntity {
 
   /** The working state of the character's two components and its state visit. */
   @Getter private final GridUnitState unit;
+
+  /** What a pushback request asks of the character: whether its row ignores pushback. */
+  private final PushbackQueries pushbackQueries = () -> getData().ignorePushback();
 
   /** Applies every state change the character asks for, with the actions the change carries. */
   private final GridStateSetter setter;
@@ -228,6 +233,36 @@ public class CharacterEntity extends WorldEntity {
     getView().setMovementActive(false);
   }
 
+  /**
+   * After each projectile it launches, a unit whose row pushes it back asks for that pushback, away
+   * from the projectile's aim: with the gates lifted, so even a unit whose row ignores pushback
+   * recoils, as an attack's pushback, the whole distance whatever the separation, and refused only
+   * while a pushback is still in flight. The pushback visit then flies it from the movement pass.
+   */
+  @Override
+  public void launched(int aimX, int aimY) {
+    int distance = getData().attackPushBack();
+    if (distance < 1) {
+      return;
+    }
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            aimX,
+            aimY,
+            distance,
+            true,
+            true,
+            false,
+            false,
+            false);
+    world.pushbackRequested(
+        this, ran == 1 && movement.getPushbackInFlight() == 1, aimX, aimY, movement);
+  }
+
   /** True while the character waits its turn to deploy: none of its components is visited. */
   private boolean waiting() {
     return getView().getState() == GridEntityState.WAITING_TO_DEPLOY;
@@ -332,6 +367,9 @@ public class CharacterEntity extends WorldEntity {
           false,
           movementChain(queries));
       speedBudget = queries.lastSpeedBudget();
+      for (int[] r : queries.relocations()) {
+        world.relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
+      }
     }
   }
 }

@@ -100,6 +100,8 @@ public final class UnitDataMapper {
         .spawnAngleShift(stats.getSpawnAngleShift())
         .flyingHeight(stats.getFlyingHeight())
         .spawnPathfindSpeed(Math.round(stats.getSpawnPathfindSpeed()))
+        .attackPushBack(stats.getAttackPushBack())
+        .ignorePushback(stats.isIgnorePushback())
         .build();
   }
 

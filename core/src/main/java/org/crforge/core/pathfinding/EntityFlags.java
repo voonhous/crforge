@@ -57,6 +57,9 @@ public final class EntityFlags {
   /** The entity may not use its special attack. */
   public static final long NO_SPECIAL_ATTACK = 1L << 35;
 
+  /** The entity refuses a pushback unless the request lifts the gates. */
+  public static final long NO_PUSHBACK = 1L << 41;
+
   /** The entity has been captured by the other side. */
   public static final long CAPTURED = 1L << 46;
 

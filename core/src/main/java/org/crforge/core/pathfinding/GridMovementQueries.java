@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -41,6 +43,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " an acceptable endpoint, no status effects in the speed inputs, and a unit that"
             + " always carries both components.")
 public final class GridMovementQueries implements MovementQueries {
+
+  /** Every relocation this visit asked for, in order. */
+  private final List<int[]> relocations = new ArrayList<>();
 
   private final GridUnitState unit;
   private final CellGrid grid;
@@ -133,7 +138,14 @@ public final class GridMovementQueries implements MovementQueries {
 
   @Override
   public int relocate(int x, int y) {
-    return Relocation.relocate(grid.getWidth(), grid.getHeight(), x, y, -1, grid::water);
+    int packed = Relocation.relocate(grid.getWidth(), grid.getHeight(), x, y, -1, grid::water);
+    relocations.add(new int[] {x, y, packed & 0xffff, packed >> 16});
+    return packed;
+  }
+
+  /** Every relocation this visit asked for, in order, as {@code {x, y, toX, toY}}. */
+  public List<int[]> relocations() {
+    return relocations;
   }
 
   @Override

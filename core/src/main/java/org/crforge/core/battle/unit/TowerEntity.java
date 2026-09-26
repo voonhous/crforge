@@ -61,7 +61,7 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " with the combat gate at its end, and a king tower asleep from creation, visited"
             + " on its first two ticks, the wait its placement queues and its condition, the"
             + " activating run that follows and the tags both set, which the pre-hook folds in and"
-            + " the gate reads. Supplied, not settled: the towers scale as Common, and the"
+            + " the gate reads; a king tower never removable, so it stays in the holder dead. Supplied, not settled: the towers scale as Common, and the"
             + " enabling side of the gate answers for a standing, living tower. Not modelled: the"
             + " rest of the king's own state visit, and the starting group around its wait, whose"
             + " own body is empty.")
@@ -297,6 +297,16 @@ public class TowerEntity extends WorldEntity {
    * The entity state visit, which for a standing tower steps its elapsed time and nothing else, and
    * at its end the combat gate: the targeting component runs while the tower is not inactive.
    */
+  /**
+   * A king tower is never removable: it stays in the holder after its hit points run out, and an
+   * entity that held it drops it by its own targeting, not by a removal notice. A princess tower
+   * leaves in the cleanup of the tick it dies.
+   */
+  @Override
+  public boolean isRemovable() {
+    return !getData().king() && super.isRemovable();
+  }
+
   @Override
   protected void postHook() {
     EntityStateVisit.stateVisit(

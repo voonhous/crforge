@@ -324,6 +324,15 @@ public abstract class WorldEntity extends BattleEntity {
     view.setPrevZ(view.getZ());
   }
 
+  /**
+   * Runs after each projectile the entity launches, with that projectile's aim. By default nothing;
+   * a character whose row pushes it back asks for its pushback here.
+   *
+   * @param aimX where the projectile is aimed
+   * @param aimY where the projectile is aimed
+   */
+  public void launched(int aimX, int aimY) {}
+
   /** True once the entity has asked to be removed regardless of its hit points. */
   protected boolean removalRequested() {
     return false;
