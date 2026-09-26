@@ -73,12 +73,15 @@ public interface BattleAction {
 
   /**
    * Runs every time the action is scheduled, whether it starts at once or is queued. The actions
-   * that schedule other actions do their work here.
+   * that schedule other actions when they are scheduled do their work here.
    *
    * @param holder the holder it was scheduled on
-   * @param delayMs the delay it was scheduled with
+   * @param delayMs the delay it was scheduled with, the row's own already put in for none
+   * @param immediate whether the schedule asked a due action to start at once
+   * @param instigator the holder of the entity that caused it, or null for none
    */
-  default void scheduled(ActionHolder holder, int delayMs) {}
+  default void scheduled(
+      ActionHolder holder, int delayMs, boolean immediate, ActionHolder instigator) {}
 
   /**
    * Starts the action on its holder: what the action does, and its run if it lasts.
@@ -86,4 +89,15 @@ public interface BattleAction {
    * @return the running instance of an action that lasts, or null for one that is done
    */
   ActionInstance start(ActionHolder holder);
+
+  /**
+   * Starts the action on its holder, knowing what caused it. By default the cause does not matter.
+   *
+   * @param holder the holder it starts on
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @return the running instance of an action that lasts, or null for one that is done
+   */
+  default ActionInstance start(ActionHolder holder, ActionHolder instigator) {
+    return start(holder);
+  }
 }

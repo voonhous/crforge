@@ -92,7 +92,8 @@ class ActionRuntimeTest {
     }
 
     @Override
-    public void scheduled(ActionHolder holder, int delayMs) {
+    public void scheduled(
+        ActionHolder holder, int delayMs, boolean immediate, ActionHolder instigator) {
       log.add("scheduled " + name);
     }
 

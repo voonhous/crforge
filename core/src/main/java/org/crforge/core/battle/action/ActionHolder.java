@@ -52,8 +52,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " at its next pass and a stopped one at once, the tags of every listed run folded in,"
             + " and the delay taken off in the end pass. Held by the recorded runtime cases. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
-            + " the instigator and target an entry carries, and the notice to an action's"
-            + " instigator.")
+            + " the target an entry carries, and the notice to an action's instigator. The cause"
+            + " an entry carries is the holder of the entity that caused it.")
 public class ActionHolder implements EntityActions {
 
   /** The delay that stands for the row's own. */
@@ -86,13 +86,15 @@ public class ActionHolder implements EntityActions {
    */
   public record Queued(BattleAction action, int ticks) {}
 
-  /** One queued action and the ticks left before it is due. */
+  /** One queued action, what caused it and the ticks left before it is due. */
   private static final class Entry {
     private final BattleAction action;
+    private final ActionHolder instigator;
     private int ticks;
 
-    private Entry(BattleAction action, int ticks) {
+    private Entry(BattleAction action, ActionHolder instigator, int ticks) {
       this.action = action;
+      this.instigator = instigator;
       this.ticks = ticks;
     }
   }
@@ -128,16 +130,30 @@ public class ActionHolder implements EntityActions {
    *     schedule is made
    */
   public void schedule(BattleAction action, int delayMs, boolean immediate) {
+    schedule(action, delayMs, immediate, null);
+  }
+
+  /**
+   * Schedules an action that an entity caused, and the next action alongside it when that one does
+   * not wait; the cause goes with both.
+   *
+   * @param action the action
+   * @param delayMs the delay in milliseconds, or {@link #OWN_DELAY} for the row's own
+   * @param immediate true to start the action at once when its delay is zero or less
+   * @param instigator the holder of the entity that caused it, or null for none
+   */
+  public void schedule(
+      BattleAction action, int delayMs, boolean immediate, ActionHolder instigator) {
     int delay = delayMs == OWN_DELAY ? action.delayMs() : delayMs;
     if (delay <= 0 && (immediate || passPhase != 0)) {
-      start(action);
+      start(action, instigator);
     } else {
-      pending.add(new Entry(action, Math.max(delay, 0) / TICK_MS));
+      pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS));
     }
-    action.scheduled(this, delay);
+    action.scheduled(this, delay, immediate, instigator);
     BattleAction next = action.nextAction();
     if (next != null && !action.nextActionWait()) {
-      schedule(next, Math.max(delay - action.delayMs() + next.delayMs(), 0), immediate);
+      schedule(next, Math.max(delay - action.delayMs() + next.delayMs(), 0), immediate, instigator);
     }
   }
 
@@ -148,6 +164,17 @@ public class ActionHolder implements EntityActions {
    * @param action the action
    */
   public void start(BattleAction action) {
+    start(action, null);
+  }
+
+  /**
+   * Starts an action an entity caused, as {@link #start(BattleAction)} does; a next action that
+   * waits goes with the same cause.
+   *
+   * @param action the action
+   * @param instigator the holder of the entity that caused it, or null for none
+   */
+  public void start(BattleAction action, ActionHolder instigator) {
     if (action.singleton()) {
       for (ActionInstance instance : running) {
         if (instance.getAction() == action) {
@@ -159,7 +186,7 @@ public class ActionHolder implements EntityActions {
     if (!holds(action.executeIf(), true)) {
       return;
     }
-    ActionInstance instance = action.start(this);
+    ActionInstance instance = action.start(this, instigator);
     listener.started(action, passPhase);
     if (instance != null) {
       instance.addTags(action.tags());
@@ -167,7 +194,7 @@ public class ActionHolder implements EntityActions {
     }
     BattleAction next = action.nextAction();
     if (next != null && action.nextActionWait()) {
-      schedule(next, OWN_DELAY);
+      schedule(next, OWN_DELAY, false, instigator);
     }
   }
 
@@ -190,6 +217,15 @@ public class ActionHolder implements EntityActions {
     return pending.stream().map(e -> new Queued(e.action, e.ticks)).toList();
   }
 
+  /** What caused each queued action, in queue order; null for none. */
+  public List<ActionHolder> queuedInstigators() {
+    List<ActionHolder> out = new ArrayList<>();
+    for (Entry entry : pending) {
+      out.add(entry.instigator);
+    }
+    return out;
+  }
+
   @Override
   public void pendingPass(int phase) {
     passPhase = phase;
@@ -202,7 +238,7 @@ public class ActionHolder implements EntityActions {
             && (wanted == BattleAction.ANY_PHASE || wanted == phase)
             && !holds(entry.action.pausedIf(), false)) {
           removeBySwap(pending, i);
-          start(entry.action);
+          start(entry.action, entry.instigator);
         } else {
           i++;
         }
