@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.card.Card;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;

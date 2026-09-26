@@ -6,15 +6,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.projectile.ProjectileEntity;
-import org.crforge.core.card.UnitDataMapper;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -149,9 +146,7 @@ class BattlePlacementRunTest {
   /** Queues every card play of the reference on its tick. */
   static void playAll(Standard1v1Battle match, JsonNode reference) {
     for (JsonNode command : reference.get("commands")) {
-      String cardId = command.get("card").asText().toLowerCase(Locale.ROOT);
-      DeployCard card =
-          UnitDataMapper.toDeployCard(Objects.requireNonNull(CardRegistry.get(cardId), cardId));
+      DeployCard card = GameData.card(command.get("card").asText());
       match.play(
           command.get("tick").asInt(),
           card,

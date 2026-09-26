@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;

@@ -8,13 +8,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
-import org.crforge.core.card.UnitDataMapper;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -58,9 +55,7 @@ class CardPlacementTest {
 
     for (JsonNode command : reference.get("commands")) {
       String where = name + " " + command.get("name").asText();
-      String cardId = command.get("card").asText().toLowerCase(Locale.ROOT);
-      DeployCard card =
-          UnitDataMapper.toDeployCard(Objects.requireNonNull(CardRegistry.get(cardId), cardId));
+      DeployCard card = GameData.card(command.get("card").asText());
       CardPlacement.Result result =
           CardPlacement.place(
               match.getWorld().getTileMap(),

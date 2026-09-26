@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionRow;
@@ -15,10 +15,8 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.deploy.DeployCard;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.RarityTable;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -64,14 +62,7 @@ class BattleDealDamageTest {
                 hits.add(tick + " " + target.name() + " " + damage + " " + result.applied());
               }
             });
-    match.play(
-        0,
-        UnitDataMapper.toDeployCard(Objects.requireNonNull(CardRegistry.get("knight"))),
-        Standard1v1Battle.DEFAULT_LEVEL,
-        0,
-        3500,
-        10000,
-        "Blue");
+    match.play(0, GameData.card("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Blue");
     for (int tick = 0; tick < 30; tick++) {
       battle.step();
     }
@@ -109,7 +100,7 @@ class BattleDealDamageTest {
   }
 
   private static DeployCard knight() {
-    return UnitDataMapper.toDeployCard(Objects.requireNonNull(CardRegistry.get("knight")));
+    return GameData.card("Knight");
   }
 
   /** The card with its unit on another rarity row. */

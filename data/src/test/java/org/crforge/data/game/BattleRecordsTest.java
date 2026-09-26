@@ -3,6 +3,7 @@ package org.crforge.data.game;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -99,5 +100,52 @@ class BattleRecordsTest {
     assertThatThrownBy(() -> records.projectile("NoSuchProjectile"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NoSuchProjectile");
+  }
+
+  @Test
+  @DisplayName("a card's placement is its row's columns, its units built from their own rows")
+  void aCardIsItsColumns() {
+    DeployCard barbarians = records.card("Barbarians");
+    assertThat(barbarians.name()).isEqualTo("Barbarians");
+    assertThat(barbarians.unit().name()).isEqualTo("Barbarian");
+    assertThat(barbarians.count()).isEqualTo(5);
+    assertThat(barbarians.summonRadius()).isEqualTo(700);
+    assertThat(barbarians.summonDeployDelayMs()).isEqualTo(100);
+    assertThat(barbarians.secondary()).isNull();
+    assertThat(barbarians.secondaryCount()).isZero();
+    assertThat(barbarians.canDeployOnEnemySide()).isFalse();
+
+    DeployCard knight = records.card("Knight");
+    assertThat(knight.count()).as("a card without a count summons one").isEqualTo(1);
+    assertThat(knight.summonRadius()).isZero();
+
+    assertThat(records.card("Miner").canDeployOnEnemySide()).isTrue();
+    assertThat(records.card("RoyalRecruits").fullLaneDeploy()).isTrue();
+
+    DeployCard rascals = records.card("Rascals");
+    assertThat(rascals.secondary()).as("a second group from its own row").isNotNull();
+    assertThat(rascals.secondaryCount()).isPositive();
+  }
+
+  @Test
+  @DisplayName("a level index on a card is not read: the summoned unit keeps the card's level")
+  void theLevelIndexIsNotRead() {
+    DeployCard army = records.card("SkeletonArmy");
+    assertThat(army.unit().name()).isEqualTo("Skeleton");
+    assertThat(army.count()).isEqualTo(15);
+  }
+
+  @Test
+  @DisplayName("a card whose placement the battle does not model is refused, naming the column")
+  void unmodelledCardsAreRefused() {
+    assertThatThrownBy(() -> records.card("ThreeMusketeers"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("SummonCharactersList");
+    assertThatThrownBy(() -> records.card("IceWizard"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("SpellAsDeploy");
+    assertThatThrownBy(() -> records.card("NoSuchCard"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("NoSuchCard");
   }
 }
