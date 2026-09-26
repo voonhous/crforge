@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import java.util.List;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -164,4 +165,34 @@ public interface WorldObserver {
    */
   default void characterSpawned(
       int tick, SpawnHost source, CharacterEntity child, int createdX, int createdY) {}
+
+  /**
+   * A dying entity scheduled its death hooks on itself, as its death handler does: its row's death
+   * action, then, for a kill by another entity, its killed action. Neither has run yet unless it
+   * was scheduled inside a pending pass.
+   *
+   * @param tick the battle tick
+   * @param dying the entity that died
+   * @param attacker what killed it: an arena entity, a projectile, or null for nothing
+   * @param side the side the kill is credited to
+   * @param hooks the names of the rows scheduled, in order
+   * @param inPendingPass true when they were scheduled inside a pending pass
+   */
+  default void deathHooksScheduled(
+      int tick,
+      WorldEntity dying,
+      BattleEntity attacker,
+      int side,
+      List<String> hooks,
+      boolean inPendingPass) {}
+
+  /**
+   * A spawn handed a champion it made to its side's champion controllers. Nothing about the child
+   * changes.
+   *
+   * @param tick the battle tick
+   * @param source the object the child was spawned from
+   * @param child the champion
+   */
+  default void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {}
 }

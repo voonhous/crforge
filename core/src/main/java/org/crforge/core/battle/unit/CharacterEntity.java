@@ -39,7 +39,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
 
 /**
  * A walking ground unit: a targeting component in slot 0, a movement component in slot 1 and the
- * entity state visit as its post-hook.
+ * entity state visit as its post-hook. A building is one too, without the movement component: it
+ * stands where it is placed, and other units treat it as the obstacle a tower is.
  *
  * <p>Because the holder runs one whole-list pass per slot, every character has chosen its target
  * for the tick before any character moves, and every character has moved before any character's
@@ -67,7 +68,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " into the deploying state, which starts the deploy countdown; its death switching"
             + " its movement component off for the rest of the tick; the lane its"
             + " placement works out; a spawned child walking at once or set deploying, its"
-            + " registration visit inside the spawning pass and its first-tick immunity. Not"
+            + " registration visit inside the spawning pass and its first-tick immunity; a"
+            + " building standing without a movement component while it deploys, held by the"
+            + " Tombstone killed while deploying. Refused: a building past its deploy. Not"
             + " modelled yet: the registration visit of a unit a card play creates, which meets an"
             + " empty index, air, jumping and hovering units, status effects on the speed budget,"
             + " and the columns its data does not carry: the stop time after an attack and"
@@ -105,7 +108,7 @@ public class CharacterEntity extends WorldEntity {
    * Creates a character at its deploy position, deploying.
    *
    * @param world the battle's shared arena state
-   * @param data the character's published columns; only ground units are supported
+   * @param data the character's published columns; only ground units and buildings are supported
    * @param name the character's unique name within the battle
    * @param side the side that owns the character
    * @param x deploy position in game units
@@ -122,7 +125,7 @@ public class CharacterEntity extends WorldEntity {
    * deploying or waiting its turn to deploy.
    *
    * @param world the battle's shared arena state
-   * @param data the character's published columns; only ground units are supported
+   * @param data the character's published columns; only ground units and buildings are supported
    * @param name the character's unique name within the battle
    * @param side the side that owns the character
    * @param x position in game units
@@ -147,11 +150,11 @@ public class CharacterEntity extends WorldEntity {
         createView(world.getTileMap(), data, name, side, x, y),
         targetingConfig(data),
         level);
-    checkArgument(!data.air() && !data.building(), () -> data.name() + " is not a ground unit");
+    checkArgument(!data.air(), () -> data.name() + " is not a ground unit or a building");
 
     GridEntity view = getView();
     TargetingState targeting = getTargeting();
-    targeting.setMovementComponentActive(true);
+    targeting.setMovementComponentActive(!data.building());
     this.unit =
         new GridUnitState(
             view,
@@ -178,11 +181,16 @@ public class CharacterEntity extends WorldEntity {
       view.setDelay(waitMs);
       view.setMovementActive(false);
     }
+    checkArgument(
+        !data.building() || waitMs < 0,
+        () -> data.name() + " is a building, whose wait to deploy is not modelled");
     unit.selection().setStateSetter(setter);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
 
     attach(new TargetingComponent());
-    attach(new MovementComponent());
+    if (!data.building()) {
+      attach(new MovementComponent());
+    }
   }
 
   /**
@@ -285,7 +293,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The character's view at placement: deploying, facing up the arena from the bottom side and down
-   * it from the top side, in the lane of the road nearest to the deploy position.
+   * it from the top side, in the lane of the road nearest to the deploy position; a building has no
+   * movement component and occludes the cells it stands on.
    */
   private static GridEntity createView(
       TileMap tileMap, UnitData data, String name, int side, int x, int y) {
@@ -294,8 +303,11 @@ public class CharacterEntity extends WorldEntity {
     view.setSide(side);
     view.setCollisionRadius(data.collisionRadius());
     view.setMass(data.mass());
-    view.setMovementComponent(true);
-    view.setMovementActive(true);
+    // A building has no movement component, and stands in the overlay as an obstacle.
+    view.setBuilding(data.building());
+    view.setOccludes(data.building());
+    view.setMovementComponent(!data.building());
+    view.setMovementActive(!data.building());
     view.setTargetable(1);
     view.setX(x);
     view.setY(y);
@@ -414,6 +426,10 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The entity state visit: the deploy countdown and every other per-tick state transition. A
    * spawned child's immunity is counted here, and once it clears the child accepts attackers again.
+   *
+   * <p>A building is followed only while it deploys: what it does once deployed - its attacks, its
+   * lifetime running down and the units it spawns - is not modelled, so a building whose deploy
+   * ends is refused.
    */
   @Override
   protected void postHook() {
@@ -427,6 +443,12 @@ public class CharacterEntity extends WorldEntity {
         new ArrayList<>(),
         setter);
     getTargetView().setAcceptsAttacker(!unit.timers().isSpawnImmune());
+    if (getData().building() && !deploying()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " is a building whose deploy has ended; what a deployed building does is not"
+              + " modelled");
+    }
   }
 
   /** Chooses, keeps or drops the character's target and decides whether it attacks this tick. */

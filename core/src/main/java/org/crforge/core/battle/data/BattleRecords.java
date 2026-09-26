@@ -15,10 +15,11 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *
  * <p>Units, projectiles and troop cards. Every field is the column of the same name, in the
  * column's own units - milliseconds, game units, the published speed - and nothing is converted or
- * chosen. A column the row leaves empty is 0 or false. Only three fields are not a column: a unit
- * flies when its flying height is above 0; a projectile's damage scaling rule is named by its
- * scaling mode column, the king tower's or the princess towers', and is the card rule otherwise;
- * and a rarity is the published row of that name.
+ * chosen. A column the row leaves empty is 0 or false. Only five fields are not a column: a unit
+ * flies when its flying height is above 0; a unit is a champion when its ability row makes it one;
+ * a unit lists the columns of its death that its row sets and the battle does not model; a
+ * projectile's damage scaling rule is named by its scaling mode column, the king tower's or the
+ * princess towers', and is the card rule otherwise; and a rarity is the published row of that name.
  */
 public final class BattleRecords {
 
@@ -35,6 +36,23 @@ public final class BattleRecords {
           "SummonCharactersOffsetsY",
           "CustomDeployTime",
           "SpellAsDeploy");
+
+  private static final String CHARACTER_ABILITIES = "character_abilities";
+
+  /**
+   * The columns of what a unit does as it dies that the battle does not model, beyond its death
+   * damage: a unit whose row sets one is refused when it dies.
+   */
+  private static final List<String> UNMODELLED_DEATH_COLUMNS =
+      List.of(
+          "DeathSpawnCharacter",
+          "DeathSpawnCharacter2",
+          "DeathSpawnCharacter3",
+          "DeathSpawnProjectile",
+          "DeathAreaEffect",
+          "DeathPushBack",
+          "ManaOnDeath",
+          "ManaOnDeathForOpponent");
 
   private final GameTables tables;
 
@@ -95,7 +113,47 @@ public final class BattleRecords {
         .onStartingAction(actionName(row, "OnStartingAction"))
         .onDeathAction(actionName(row, "OnDeathAction"))
         .onKilledAction(actionName(row, "OnKilledAction"))
+        .deathDamage(row.intValue("DeathDamage"))
+        .deathDamageRadius(row.intValue("DeathDamageRadius"))
+        .unmodelledDeathColumns(
+            UNMODELLED_DEATH_COLUMNS.stream().filter(column -> sets(row, column)).toList())
+        .champion(champion(row))
         .build();
+  }
+
+  /** True when a row sets a column: a value other than empty, 0 or false. */
+  private static boolean sets(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    if (value == null || value.isNull()) {
+      return false;
+    }
+    if (value.isTextual()) {
+      return !value.asText().isEmpty();
+    }
+    if (value.isBoolean()) {
+      return value.asBoolean();
+    }
+    if (value.isArray()) {
+      return !value.isEmpty();
+    }
+    return value.asInt() != 0;
+  }
+
+  /**
+   * Whether a unit is a champion: its ability row says so, and an ability row that says nothing
+   * makes it one. A unit without an ability is none.
+   */
+  private boolean champion(GameRow row) {
+    String ability = row.string("Ability");
+    if (ability.isEmpty()) {
+      return false;
+    }
+    GameTable abilities = tables.table(CHARACTER_ABILITIES);
+    checkArgument(
+        abilities.has(ability),
+        () -> row.name() + " names the ability " + ability + ", which the game tables lack");
+    GameRow abilityRow = abilities.row(ability);
+    return !abilityRow.has("IsChampion") || abilityRow.bool("IsChampion");
   }
 
   /**

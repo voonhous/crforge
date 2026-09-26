@@ -1,5 +1,6 @@
 package org.crforge.core.battle.unit;
 
+import java.util.List;
 import lombok.Builder;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -64,6 +65,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onStartingAction the action row the unit runs when it joins the battle, or null
  * @param onDeathAction the action row the unit runs when it dies, or null
  * @param onKilledAction the action row the unit runs when it is killed, or null
+ * @param deathDamage damage the unit deals around itself as it dies, at the first level; 0 for none
+ * @param deathDamageRadius the radius of that damage
+ * @param unmodelledDeathColumns the columns of what the unit does as it dies, beyond its death
+ *     damage and its hooks, that its row sets and the battle does not model: its death spawns, its
+ *     death projectile, its death area effect, its death pushback and the elixir it gives
+ * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
+ *     unless it says otherwise
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -106,7 +114,16 @@ public record UnitData(
     boolean ignorePushback,
     String onStartingAction,
     String onDeathAction,
-    String onKilledAction) {
+    String onKilledAction,
+    int deathDamage,
+    int deathDamageRadius,
+    List<String> unmodelledDeathColumns,
+    boolean champion) {
+
+  public UnitData {
+    unmodelledDeathColumns =
+        unmodelledDeathColumns == null ? List.of() : List.copyOf(unmodelledDeathColumns);
+  }
 
   /** True for a unit that fires a projectile rather than hitting its target directly. */
   public boolean hasProjectile() {

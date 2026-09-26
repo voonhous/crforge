@@ -127,6 +127,11 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
     return world.spawnCharacters(this, arguments);
   }
 
+  @Override
+  public void handOverChampion(SpawnHost child) {
+    world.handOverChampion(this, child);
+  }
+
   /**
    * What an action row built for the owner reads from it: the battle's variable keys and an empty
    * tag word. It answers no expression, as it stands in for objects whose functions are not

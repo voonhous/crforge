@@ -79,6 +79,9 @@ public class EntityHolder {
    */
   private boolean inPendingPass;
 
+  /** True from the end of the tick's last pending pass, that of phase 3, to the end of the tick. */
+  private boolean pendingPassesDone;
+
   public EntityHolder(HolderPasses passes) {
     this.passes = passes;
   }
@@ -118,6 +121,14 @@ public class EntityHolder {
   /** True while a pending pass of the tick is running, over any entity. */
   public boolean isInPendingPass() {
     return inPendingPass;
+  }
+
+  /**
+   * True while a tick is running and its last pending pass, that of phase 3, has not finished: an
+   * action queued now with no delay on an entity of the snapshot still starts in this tick.
+   */
+  public boolean hasPendingPassAhead() {
+    return ticking && !pendingPassesDone;
   }
 
   /** The registered entities in ascending id. Entities still waiting for a cleanup are absent. */
@@ -194,6 +205,7 @@ public class EntityHolder {
   public void tick(int tick) {
     checkState(!ticking, "the entity tick is not re-entrant");
     ticking = true;
+    pendingPassesDone = false;
     try {
       cleanup();
       List<BattleEntity> snapshot = new ArrayList<>(live);
@@ -223,6 +235,7 @@ public class EntityHolder {
       }
       passes.afterPostHooks();
       pendingPass(snapshot, EntityActions.PHASE_POST_GAME_OBJECT_TICK);
+      pendingPassesDone = true;
       passes.postPass(tick);
       cleanup();
       for (BattleEntity entity : live) {

@@ -75,8 +75,14 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " change flags are copied once per tick, a projectile is in neither and is handed to"
             + " the holder in the tick of its launch, and a dead entity leaves the holder in the"
             + " closing cleanup of the tick it dies - the king tower excepted, which never does -"
-            + " when every arena entity is told at once and its default target lists lose it. Not modelled: the game mode's own per-tick work"
-            + " beside the index and the overlay.")
+            + " when every arena entity is told at once and its default target lists lose it; the"
+            + " death handler scheduling the death action and, unless the entity killed itself,"
+            + " the killed action on the dying entity with its killer as the cause, and a"
+            + " champion handed over after its spawn with no effect on it. Refused: a death"
+            + " whose death damage would find an enemy or whose row sets another column of its"
+            + " death, and a death hook with no attacker or no pending pass ahead of it. Not"
+            + " modelled: the game mode's own per-tick work beside the index and the overlay, and"
+            + " the copy of the attacker the game makes as a death hook's cause.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -312,8 +318,8 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals the damage of one hit to the entity behind a target view, and tells every observer what
-   * it did. An entity that has left the battle takes nothing.
+   * Deals the damage of one hit with no attacker to the entity behind a target view, and tells
+   * every observer what it did. An entity that has left the battle takes nothing.
    *
    * @param target the view the hit resolved against
    * @param damage hit points the hit deals, before the target's guards and the clamp to zero
@@ -322,11 +328,27 @@ public class BattleWorld implements HolderPasses {
    * @return what the damage did to the target
    */
   public DamageResult dealDamage(TargetView target, int damage, int directionX, int directionY) {
+    return dealDamage(null, target, damage, directionX, directionY);
+  }
+
+  /**
+   * Deals the damage of one entity's direct hit to the entity behind a target view, and tells every
+   * observer what it did. An entity that has left the battle takes nothing.
+   *
+   * @param attacker the entity whose hit it is, or null for none
+   * @param target the view the hit resolved against
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   * @return what the damage did to the target
+   */
+  public DamageResult dealDamage(
+      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
     WorldEntity entity = known.get(target.getEntity());
     if (entity == null) {
       return DamageResult.NOTHING;
     }
-    DamageResult result = entity.takeDamage(damage, 0, directionX, directionY);
+    DamageResult result = entity.takeDamage(attacker, damage, 0, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
     }
@@ -353,7 +375,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void kill(WorldEntity target, WorldEntity killer) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
-    DamageResult result = target.takeKill();
+    DamageResult result = target.takeKill(killer);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, target, before, result);
     }
@@ -390,7 +412,7 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     // A character's area carries no dedupe id and no direction.
-    DamageResult result = victim.takeDamage(damage, 0, 0, 0);
+    DamageResult result = victim.takeDamage(attacker, damage, 0, 0, 0);
     for (WorldObserver observer : observers) {
       observer.areaHit(tick, attacker, victim, damage, hitId, result);
     }
@@ -427,7 +449,7 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     // A projectile carries no dedupe id unless it belongs to a group, which none here does.
-    DamageResult result = target.takeDamage(damage, 0, directionX, directionY);
+    DamageResult result = target.takeDamage(projectile, damage, 0, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.projectileImpacted(tick, projectile, target, damage, result);
     }
@@ -541,6 +563,109 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The death handler: runs when a hit takes an arena entity's hit points to zero, in the pass that
+   * lands it, once the entity has switched off what it no longer does.
+   *
+   * <p>What the entity's row does as it dies comes first. Its death damage is not modelled, and a
+   * death whose damage would find an enemy - one standing within the damage's radius plus its own
+   * collision radius - is refused; so is the death of a unit whose row sets any other column of its
+   * death, a death spawn among them.
+   *
+   * <p>Then the death hooks: the row's death action and, unless the entity killed itself, its
+   * killed action, each built for the entity and scheduled on its own holder with the row's own
+   * delay, what killed it as the cause: the unit for a direct hit or its area, the projectile
+   * itself for an impact, the source of a typed hit, the killer of a kill. The entity stays in the
+   * tick's snapshot until the closing cleanup, so a hook with no delay runs in the next pending
+   * pass of the same tick: phase 2 after a hit in a component pass, phase 3 after an impact or a
+   * typed hit, and at once, the death action before the killed action is scheduled, after a kill
+   * inside a pending pass.
+   *
+   * <p>Refused rather than guessed: a death hook with no cause, which the game gives a cause that
+   * carries only a side, and one scheduled after the tick's last pending pass, which would leave
+   * with the entity. The cause is the attacker's own holder, where the game hands the hook a copy
+   * of the attacker made at the kill; no hook built here reads it beyond its presence.
+   *
+   * @param dying the entity that died
+   * @param attacker what killed it: an arena entity, a projectile, or null for nothing
+   */
+  void entityDied(WorldEntity dying, BattleEntity attacker) {
+    UnitData data = dying.getData();
+    refuseUnmodelledDeath(dying, data);
+    if (data.onDeathAction() == null && data.onKilledAction() == null) {
+      return;
+    }
+    ActionHolder cause;
+    int side;
+    if (attacker instanceof WorldEntity entity) {
+      cause = entity.actionHolder();
+      side = entity.side();
+    } else if (attacker instanceof ProjectileEntity projectile) {
+      cause = projectile.actionHolder();
+      side = projectile.getSide();
+    } else {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died with no attacker; the cause its death hooks would carry, a side alone, is"
+              + " not modelled");
+    }
+    if (!holder.hasPendingPassAhead()) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died after the tick's last pending pass, where its death hooks would leave with"
+              + " it; such a death is not established");
+    }
+    // A unit that killed itself runs its death action alone.
+    boolean selfKill = attacker == dying && side == dying.side();
+    List<String> hooks = new ArrayList<>();
+    if (data.onDeathAction() != null) {
+      hooks.add(data.onDeathAction());
+    }
+    if (!selfKill && data.onKilledAction() != null) {
+      hooks.add(data.onKilledAction());
+    }
+    boolean inPendingPass = holder.isInPendingPass();
+    for (WorldObserver observer : observers) {
+      observer.deathHooksScheduled(tick, dying, attacker, side, List.copyOf(hooks), inPendingPass);
+    }
+    for (String hook : hooks) {
+      // Built one at a time: inside a pending pass the death action runs before the killed action
+      // is even scheduled.
+      dying
+          .actionHolder()
+          .schedule(actions.build(hook, binding(dying)), ActionHolder.OWN_DELAY, false, cause);
+    }
+  }
+
+  /** Refuses a death whose row does something as the entity dies that is not modelled. */
+  private void refuseUnmodelledDeath(WorldEntity dying, UnitData data) {
+    if (!data.unmodelledDeathColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died, and what its row does as it dies is not modelled: "
+              + data.unmodelledDeathColumns());
+    }
+    if (data.deathDamage() < 1) {
+      return;
+    }
+    GridEntity view = dying.getView();
+    for (WorldEntity entity : known.values()) {
+      if (entity == dying || entity.side() == dying.side()) {
+        continue;
+      }
+      long dx = entity.getView().getX() - view.getX();
+      long dy = entity.getView().getY() - view.getY();
+      long reach = data.deathDamageRadius() + entity.getView().getCollisionRadius();
+      if (dx * dx + dy * dy <= reach * reach) {
+        throw new UnsupportedOperationException(
+            dying.name()
+                + "'s death damage would reach "
+                + entity.name()
+                + "; death damage is not modelled");
+      }
+    }
+  }
+
+  /**
    * Queues a typed hit, which the drain deals after the post-hooks of the tick; one queued after
    * that lands on the next tick.
    *
@@ -570,8 +695,10 @@ public class BattleWorld implements HolderPasses {
       }
       int amount = pipeline(hit);
       int damageId = hit.type().acquireDamageId() ? nextHitId() : 0;
+      // A source that has left the battle kills as nothing does.
+      WorldEntity source = hit.source() == null || hit.source().isLeft() ? null : hit.source();
       DamageResult result =
-          target.takeTypedHit(amount, damageId, hit.directionX(), hit.directionY());
+          target.takeTypedHit(source, amount, damageId, hit.directionX(), hit.directionY());
       if (hit.source() != null && hit.type().actionOnSource() != null) {
         hit.source()
             .actionHolder()
@@ -686,6 +813,20 @@ public class BattleWorld implements HolderPasses {
       made.add(child);
     }
     return made;
+  }
+
+  /**
+   * Hands a champion a spawn made to its side's champion controllers. The observers are told, and
+   * nothing about the unit changes: no ability is modelled, so no controller acts on it.
+   *
+   * @param source the object the champion was spawned from
+   * @param child the champion
+   */
+  void handOverChampion(SpawnHost source, SpawnHost child) {
+    CharacterEntity champion = (CharacterEntity) child;
+    for (WorldObserver observer : observers) {
+      observer.championHandedOver(tick, source, champion);
+    }
   }
 
   /** A position kept the creation's inset inside one axis of the arena. */

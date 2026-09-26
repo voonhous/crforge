@@ -4,11 +4,16 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.EntityActions;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -30,6 +35,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p>The launch fixes the start and the aim; a homing projectile re-pins its aim onto its target
  * every step, and, when the target leaves the battle, the removal notice leaves the aim where the
  * target last stood and forgets the target, so the projectile flies on and lands on nothing.
+ *
+ * <p>A projectile that kills something is the cause of the death hooks it runs, so it has an action
+ * holder too, made the first time it causes one, which carries its level and nothing else.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -42,13 +50,15 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " with the crown-tower damage for a crown tower, the area impact of a row with a"
             + " radius, and the removal notice for a target, a homing target, an owner and a root"
             + " owner that left. Held by the Musketeer and Wizard runs' launches, positions and"
-            + " impacts. Supplied, not settled: the deflection pass finds nothing, the projectile's"
+            + " impacts; an action holder, made when the projectile first causes an action, as the"
+            + " cause of the death hooks of what it kills, held by the Tombstone's death."
+            + " Supplied, not settled: the deflection pass finds nothing, the projectile's"
             + " own collision radius is zero, and no buff changes its damage. Not modelled: the"
             + " hits on what a flying body passes, the pushback on impact, the on-impact spawns"
             + " and the chained hop, the limited-time homing beyond the columns carried, the"
             + " pingpong sweep, the ring scatter, the drag-back hook, the delays before the flight,"
             + " the custom movement, and the far-distance clamp with its cell pull.")
-public class ProjectileEntity extends BattleEntity {
+public class ProjectileEntity extends BattleEntity implements ActionOwner {
 
   /** Game time one flight step advances, in milliseconds. */
   static final int STEP_MS = 50;
@@ -107,6 +117,9 @@ public class ProjectileEntity extends BattleEntity {
 
   /** True until the first flight step has run. */
   private boolean firstVisit = true;
+
+  /** The projectile's action holder, made the first time it causes an action; null until then. */
+  private ActionHolder actionHolder;
 
   /**
    * Creates an unlaunched projectile. The launch places it; see {@link ProjectileLauncher}.
@@ -325,5 +338,51 @@ public class ProjectileEntity extends BattleEntity {
   @Override
   public boolean isRemovable() {
     return released;
+  }
+
+  /**
+   * The projectile's action holder, made on first use: what an action it causes names as its cause.
+   */
+  public ActionHolder actionHolder() {
+    if (actionHolder == null) {
+      actionHolder = new ActionHolder(this, world.getHolder()::isInPendingPass);
+    }
+    return actionHolder;
+  }
+
+  @Override
+  public EntityActions actions() {
+    return actionHolder == null ? EntityActions.NONE : actionHolder;
+  }
+
+  /** A projectile has no hit points, so it counts as alive. */
+  @Override
+  public HitPoints actionHitPoints() {
+    return null;
+  }
+
+  @Override
+  public int actionPackedLevel() {
+    return packedLevel;
+  }
+
+  @Override
+  public int variable(int key) {
+    throw new UnsupportedOperationException("a projectile's variables are not modelled");
+  }
+
+  @Override
+  public void setVariable(int key, int value) {
+    throw new UnsupportedOperationException("a projectile's variables are not modelled");
+  }
+
+  @Override
+  public void killBy(ActionOwner killer) {
+    throw new UnsupportedOperationException("killing a projectile is not modelled");
+  }
+
+  @Override
+  public void queueTypedHit(ActionOwner source, int amount, DamageType type) {
+    throw new UnsupportedOperationException("a typed hit on a projectile is not modelled");
   }
 }
