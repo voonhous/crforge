@@ -5,14 +5,11 @@ import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.GameTags;
-import org.crforge.core.battle.action.PresentationAction;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.expression.BattleFunctions;
-import org.crforge.core.battle.expression.Expression;
-import org.crforge.core.battle.expression.ExpressionCompiler;
-import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -42,12 +39,13 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * switches the targeting component off while the tower is inactive.
  *
  * <p>A king tower sleeps until its side loses a princess tower or it loses hit points itself. Its
- * placement queues a wait that sets the inactive tag; the first tick's first pending pass starts
- * it, after that tick's tags were folded, so the king is visited on its first two ticks before the
- * gate switches it off. The run pass that first sees the condition ends the wait, which queues a
- * 3300 ms activating run that the same tick's second pending pass starts. That run keeps the tag
- * that holds the component off until the run pass after it finishes removes it, so the king's first
- * visit falls seventy ticks after the tick that saw the condition.
+ * placement queues its starting action, built from its row: a group around a wait that sets the
+ * inactive tag; the first tick's first pending pass starts it, after that tick's tags were folded,
+ * so the king is visited on its first two ticks before the gate switches it off. The run pass that
+ * first sees the condition ends the wait, which queues a 3300 ms activating run that the same
+ * tick's second pending pass starts. That run keeps the tag that holds the component off until the
+ * run pass after it finishes removes it, so the king's first visit falls seventy ticks after the
+ * tick that saw the condition.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -60,20 +58,15 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " with the combat gate at its end, and a king tower asleep from creation, visited"
             + " on its first two ticks, the wait its placement queues and its condition, the"
             + " activating run that follows and the tags both set, which the pre-hook folds in and"
-            + " the gate reads; a king tower never removable, so it stays in the holder dead. Supplied, not settled: the towers scale as Common, and the"
+            + " the gate reads, all built from the king's own starting row; a king tower never"
+            + " removable, so it stays in the holder dead. Supplied, not settled: the towers scale"
+            + " as Common, and the"
             + " enabling side of the gate answers for a standing, living tower. Not modelled: the"
-            + " rest of the king's own state visit, and the starting group around its wait, whose"
-            + " own body is empty.")
+            + " rest of the king's own state visit.")
 public class TowerEntity extends WorldEntity {
 
   /** Slot of the targeting component, the same slot a troop's is in. */
   public static final int TARGETING_SLOT = 0;
-
-  /** How long a king tower takes to wake once its wait has ended, in milliseconds. */
-  public static final int ACTIVATION_MS = 3300;
-
-  /** The king's wake-up condition, compiled once; null for a princess tower. */
-  private final Expression activationExpression;
 
   /** Applies every state change the tower asks for; a tower has no route to act on. */
   private final GridStateSetter setter;
@@ -86,12 +79,6 @@ public class TowerEntity extends WorldEntity {
 
   /** True for a tower placed to stand passive: its targeting component never runs. */
   private boolean holdingFire;
-
-  /** The activating run the king's wait schedules when it ends; null for a princess tower. */
-  private final BattleAction activating;
-
-  /** The effect shown alongside the activating run; null for a princess tower. */
-  private final BattleAction activationEffect;
 
   /**
    * @param world the battle's shared arena state, whose arena assigns the tower its lane from the
@@ -120,76 +107,48 @@ public class TowerEntity extends WorldEntity {
     selection.setBuildingKeepsAttacking(data.hitpoints() != 0);
     attach(new TargetingComponent());
 
-    if (data.king()) {
-      this.activationExpression =
-          ExpressionCompiler.compile(
-              ACTIVATION_CONDITION, new BattleExpressionEnvironment(this, world));
-      this.activationEffect = new PresentationAction("KingTowerActivationEffect");
-      this.activating =
-          new WithDuration(
-              "WaitForKingTowerActivation.OnActivateAction",
-              ACTIVATION_MS,
-              GameTags.ACTIVATING,
-              activationEffect);
+    if (data.king() && data.onStartingAction() != null) {
+      // The king's starting action is its row's: a group around the wait for its activation.
+      // The placement queues it; with no pending pass running it waits for the first one.
+      BattleAction starting =
+          world.getActions().build(data.onStartingAction(), world.binding(this));
       actionHolder().setListener(new ActivationListener());
-      // The placement queues the wait; with no pending pass running it waits for the first one.
-      actionHolder()
-          .schedule(
-              new WaitToActivate(
-                  "WaitForKingTowerActivation",
-                  this::activationCondition,
-                  activating,
-                  GameTags.INACTIVE),
-              0);
-    } else {
-      this.activationExpression = null;
-      this.activating = null;
-      this.activationEffect = null;
+      actionHolder().schedule(starting, ActionHolder.OWN_DELAY);
     }
   }
 
-  /**
-   * What ends the king's wait, as the data writes it: the king has lost hit points, or its side has
-   * fewer than two princess towers left, or the same of a co-op side. Every part is evaluated, as
-   * the language never skips the right side of an or.
-   */
-  static final String ACTIVATION_CONDITION =
-      "king_tower_damaged() || coop_king_tower_damaged() || tower_destroyed()"
-          + " || coop_tower_destroyed()";
-
-  /**
-   * The wait's condition, evaluated by the wait's step in every run pass. When it holds, observers
-   * are told which part did.
-   */
-  private boolean activationCondition() {
+  /** Tells observers which part of the king's condition held when its wait ended. */
+  private void conditionHeld() {
     BattleExpressionEnvironment environment = new BattleExpressionEnvironment(this, world);
-    if (ExpressionEvaluator.evaluate(activationExpression, environment) == 0) {
-      return false;
-    }
     boolean damaged = environment.call(BattleFunctions.id("king_tower_damaged"), new int[0]) != 0;
     boolean towerDestroyed =
         environment.call(BattleFunctions.id("tower_destroyed"), new int[0]) != 0;
     world.activation(
         this, new ActivationEvent(ActivationEvent.Kind.CONDITION, 0, damaged, towerDestroyed));
-    return true;
   }
 
-  /** Turns the king's action steps into the activation events observers are told. */
+  /**
+   * Turns the king's action steps into the activation events observers are told. The steps are told
+   * apart by their classes, each of which its starting action holds once: the wait, the activating
+   * duration and the filter that shows the effect.
+   */
   private final class ActivationListener implements ActionHolder.Listener {
 
     @Override
     public void started(BattleAction action, int phase) {
-      if (action == activating) {
+      if (action instanceof WithDuration) {
         world.activation(
             TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_STARTED, phase));
-      } else if (action == activationEffect) {
+      } else if (action instanceof Filter) {
         world.activation(TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.EFFECT, phase));
       }
     }
 
     @Override
     public void finished(ActionInstance instance) {
-      if (instance.getAction() == activating) {
+      if (instance.getAction() instanceof WaitToActivate) {
+        conditionHeld();
+      } else if (instance.getAction() instanceof WithDuration) {
         world.activation(
             TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_FINISHED, 0));
       }
@@ -197,7 +156,7 @@ public class TowerEntity extends WorldEntity {
 
     @Override
     public void removed(ActionInstance instance) {
-      if (instance.getAction() == activating) {
+      if (instance.getAction() instanceof WithDuration) {
         world.activation(
             TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_REMOVED, 0));
       }

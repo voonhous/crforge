@@ -32,7 +32,7 @@ class ActionHolderTest {
   void thePendingPassSwapsTheLastEntryIn() {
     ActionHolder holder = holder();
     for (String name : List.of("a", "b", "c", "d")) {
-      holder.schedule(new PresentationAction(name), 0);
+      holder.schedule(new InertAction(ActionRow.named(name)), 0);
     }
 
     holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
@@ -46,7 +46,7 @@ class ActionHolderTest {
           + " outside it")
   void aZeroDelayActionStartsAtOnceOnlyInsideAPendingPass() {
     ActionHolder holder = holder();
-    BattleAction later = new PresentationAction("later");
+    BattleAction later = new InertAction(ActionRow.named("later"));
     BattleAction scheduler =
         new BattleAction() {
           @Override
@@ -78,7 +78,7 @@ class ActionHolderTest {
   @DisplayName("a delayed entry waits out its ticks in the end passes")
   void aDelayedEntryWaitsOutItsTicks() {
     ActionHolder holder = holder();
-    holder.schedule(new PresentationAction("delayed"), 100);
+    holder.schedule(new InertAction(ActionRow.named("delayed")), 100);
 
     holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
     holder.endOfTick();
@@ -120,7 +120,7 @@ class ActionHolderTest {
   void aWaitEndsOnTheStepItsConditionHolds() {
     ActionHolder holder = holder();
     boolean[] condition = {false};
-    BattleAction effect = new PresentationAction("effect");
+    BattleAction effect = new InertAction(ActionRow.named("effect"));
     BattleAction activating = new WithDuration("activating", 3300, GameTags.ACTIVATING, effect);
     holder.schedule(
         new WaitToActivate("wait", () -> condition[0], activating, GameTags.INACTIVE), 0);

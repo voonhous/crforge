@@ -42,7 +42,13 @@ class BattleExpressionEnvironmentTest {
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
     Expression condition =
-        ExpressionCompiler.compile(TowerEntity.ACTIVATION_CONDITION, environment);
+        ExpressionCompiler.compile(
+            GameData.tables()
+                .action("WaitForKingTowerActivation")
+                .fields()
+                .get("Condition")
+                .asText(),
+            environment);
 
     assertThat(ExpressionEvaluator.evaluate(condition, environment)).isZero();
 

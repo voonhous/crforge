@@ -93,9 +93,49 @@ class ActionRowsTest {
   @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
   void anUnmodelledClassIsRefused() {
-    assertThatThrownBy(() -> GameData.actions().build("KingTower_StartingGroup", INERT_BINDING))
+    assertThatThrownBy(
+            () ->
+                GameData.actions().build("GoblinDemolisher_kamikaze_transformation", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionPlayEffect");
+        .hasMessageContaining("ActionChangeGameObjectData");
+  }
+
+  @Test
+  @DisplayName("an effect row that loops keeps a run that never finishes by itself")
+  void aLoopingEffectLasts() {
+    BattleAction effect = GameData.actions().build("goblin_machine_signal_core", INERT_BINDING);
+    ActionHolder holder = new ActionHolder();
+    holder.start(effect);
+    assertThat(holder.running()).hasSize(1);
+    for (int tick = 1; tick <= 100; tick++) {
+      holder.runPass(tick);
+    }
+    assertThat(holder.running()).as("still listed after a hundred steps").hasSize(1);
+    assertThat(holder.running().get(0).isFinished()).isFalse();
+  }
+
+  @Test
+  @DisplayName("an effect row without a lasting flag has no run, so a tag it names never applies")
+  void aPlainEffectHasNoRun() {
+    ActionHolder plain = new ActionHolder();
+    plain.start(GameData.actions().build("GoblinQueen_ActivationEffect", INERT_BINDING));
+    assertThat(plain.running()).isEmpty();
+
+    ActionHolder tagged = new ActionHolder();
+    tagged.start(
+        GameData.actions().build("GoblinHero_Flag_About_To_Disappear_Effect", INERT_BINDING));
+    assertThat(tagged.running()).isEmpty();
+    assertThat(tagged.tags()).as("the row's tag never reaches its owner").isZero();
+  }
+
+  @Test
+  @DisplayName("the king's starting group builds from its rows, the effect filter included")
+  void theKingsStartingGroupBuilds() {
+    BattleAction group = GameData.actions().build("KingTower_StartingGroup", INERT_BINDING);
+    ActionHolder holder = new ActionHolder();
+    holder.schedule(group, ActionHolder.OWN_DELAY);
+    assertThat(queue(holder))
+        .containsExactly("KingTower_StartingGroup 0", "WaitForKingTowerActivation 0");
   }
 
   @Test
@@ -128,11 +168,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 207 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 425 are built; the
     // rest are refused for their class, a column the battle does not model or a spawn type other
     // than characters.
-    assertThat(built).as("rows built").isEqualTo(207);
+    assertThat(built).as("rows built").isEqualTo(425);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 506, "column", 51, "spawn type", 182));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 251, "column", 76, "spawn type", 194));
   }
 }

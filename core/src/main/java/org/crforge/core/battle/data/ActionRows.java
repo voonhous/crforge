@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntSupplier;
@@ -113,6 +114,25 @@ public final class ActionRows {
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
+          // The effect-playing and forced-animation rows only show something: their own columns
+          // reach the view alone, but for the two effect flags that keep a run.
+          Map.entry(
+              "ActionPlayEffect",
+              Set.of(
+                  "Effect",
+                  "EffectFlags",
+                  "OverrideDuration",
+                  "OverrideScale",
+                  "SpriteName",
+                  "SpriteVisibility",
+                  "PrefabAsset",
+                  "OffsetZ",
+                  "TargetOffsetZ",
+                  "PauseIfTrue")),
+          Map.entry(
+              "ActionRunForcedAnimationOnce",
+              Set.of(
+                  "PlaybackDuration", "CustomStateNumber", "PointToInstigator", "ForcedDuration")),
           Map.entry("ActionSpawn", spawnColumns()),
           Map.entry("ActionSpawnToLocation", spawnColumns()));
 
@@ -280,6 +300,8 @@ public final class ActionRows {
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));
             case "ActionSpawn", "ActionSpawnToLocation" ->
                 new SpawnCharacters(shared, spawn(name, type, f));
+            case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
+            case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
             default -> {
               if (INERT.contains(type)) {
                 yield new InertAction(shared);
@@ -441,6 +463,40 @@ public final class ActionRows {
       }
       return out;
     }
+  }
+
+  /** The effect flag that loops an effect. */
+  private static final String LOOPING = "looping";
+
+  /** The effect flag that ties an effect's life to its run's. */
+  private static final String LINK_LIFE = "linklifetoactionlife";
+
+  /**
+   * True when an effect row's flags keep a run: Looping or LinkLifeToActionLife among them. The
+   * flags are a comma list, trimmed and in any case; a list written as an array is read as its one
+   * string; none is the default, which keeps no run.
+   */
+  private static boolean lasting(String row, JsonNode flags) {
+    if (flags == null || flags.isNull()) {
+      return false;
+    }
+    String text;
+    if (flags.isArray()) {
+      if (flags.size() != 1) {
+        throw new UnsupportedOperationException(
+            row + " writes its effect flags as an array of " + flags.size() + ", not modelled");
+      }
+      text = flags.get(0).asText();
+    } else {
+      text = flags.asText();
+    }
+    for (String flag : text.split(",")) {
+      String name = flag.trim().toLowerCase(Locale.ROOT);
+      if (name.equals(LOOPING) || name.equals(LINK_LIFE)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static int integer(JsonNode fields, String column) {
