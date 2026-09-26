@@ -17,6 +17,25 @@ public interface ActionOwner {
   /** Writes a variable for the owner, replacing what it held. */
   void setVariable(int key, int value);
 
+  /** True while the owner is alive; an owner without hit points counts as alive. */
+  default boolean actionAlive() {
+    return HitPoints.alive(actionHitPoints());
+  }
+
+  /** The owner's level, packed against its rarity. */
+  default int actionPackedLevel() {
+    throw new UnsupportedOperationException("this owner has no level");
+  }
+
+  /**
+   * Changes the owner's level, as a level-changing action does.
+   *
+   * @param packed the new level, packed
+   */
+  default void changeLevel(int packed) {
+    throw new UnsupportedOperationException("this owner's level cannot change");
+  }
+
   /** True for a king tower, whose heals stop one short of its maximum. */
   default boolean kingTower() {
     return false;

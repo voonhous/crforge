@@ -68,6 +68,13 @@ class BattleTowerRunTest {
    */
   static final String LEVEL_ONE_REFERENCE = "/pathfinding/golden/tower_vs_knight_left_level1.json";
 
+  /**
+   * The Knight run again with the Royal Chef's level-up row scheduled on the Knight on tick 250:
+   * its hit points keep their share of the higher maximum and its hits deal the next level's
+   * damage.
+   */
+  static final String LEVEL_UP_REFERENCE = "/pathfinding/golden/knight_level_up.json";
+
   @ParameterizedTest(name = "{0}")
   @ValueSource(
       strings = {
@@ -77,7 +84,8 @@ class BattleTowerRunTest {
         LEVEL_ONE_REFERENCE,
         VALKYRIE_REFERENCE,
         VALKYRIE_TWO_VICTIMS_REFERENCE,
-        VALKYRIE_OWN_TOWER_REFERENCE
+        VALKYRIE_OWN_TOWER_REFERENCE,
+        LEVEL_UP_REFERENCE
       })
   void theWholeRunMatchesTheReferenceTickForTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
@@ -550,7 +558,9 @@ class BattleTowerRunTest {
 
   /**
    * Places the reference's unit on tick 0 and every further unit the reference lists on its own
-   * tick, under its own name, at the reference's level.
+   * tick, under its own name, at the reference's level, then schedules each row the reference lists
+   * on its unit in the command pass of its tick, the unit as its cause, as a buff's starting action
+   * or an ability's activation would.
    *
    * <p>A placement runs at the head of the step of its tick, so a unit placed on the reference's
    * tick {@code n} is first visited in battle step {@code n}, as in the reference.
@@ -580,6 +590,16 @@ class BattleTowerRunTest {
                 unit.get("deploy").get(1).asInt(),
                 unit.get("name").asText()));
       }
+    }
+    for (JsonNode schedule : reference.path("unit_schedules")) {
+      String name = schedule.get("unit").asText();
+      CharacterEntity unit =
+          units.stream().filter(u -> u.name().equals(name)).findFirst().orElseThrow();
+      match.scheduleAction(
+          schedule.get("tick").asInt(),
+          unit,
+          GameData.actions()
+              .build(schedule.get("action").asText(), match.getWorld().binding(unit)));
     }
     return units;
   }

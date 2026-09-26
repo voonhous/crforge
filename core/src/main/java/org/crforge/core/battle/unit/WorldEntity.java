@@ -48,9 +48,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * created once and kept for the entity's whole life.
  *
  * <p>An entity is created at a level. Its hit points and its damage are the published columns
- * scaled to that level once, at creation, and the level itself is kept packed against the entity's
- * rarity, as the scaling reads it. An entity whose hit points at its level are not positive carries
- * no hit-points object and counts as alive.
+ * scaled to that level at creation, and again when an action changes its level; the level itself is
+ * kept packed against the entity's rarity, as the scaling reads it. An entity whose hit points at
+ * its level are not positive carries no hit-points object and counts as alive.
  *
  * <p>Every one of them, a tower as much as a troop, carries a targeting component: the working
  * state of its target choice and its attack, and the selection chain that answers which target it
@@ -71,7 +71,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " targeting component on every entity, seeded with the opposing side's towers, whose"
             + " hits go through the hit application, whose area, for a row with an area radius,"
             + " takes the entity as its owner, and whose reference to an entity that left is"
-            + " dropped by the removal notice. Not modelled yet: the shield's hit points at the"
+            + " dropped by the removal notice; a level change moving the level, the damage from"
+            + " the next hit, the maxima and, on a rise only, the hit points by their share. Not"
+            + " modelled yet: the shield's hit points at the"
             + " level, and what a death does beyond the entity becoming removable.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -93,7 +95,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Getter private final TargetView targetView;
 
   /** The entity's level, packed against its rarity; see {@link PackedLevel}. */
-  @Getter private final int packedLevel;
+  @Getter private int packedLevel;
 
   /** The entity's hit points, or null when its hit points at its level are not positive. */
   @Getter private final HitPoints hitPoints;
@@ -110,8 +112,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The entity's variables, which its actions write and expressions from it read. */
   private final Map<Integer, Integer> variables = new HashMap<>();
 
-  /** Damage of one hit at the entity's level. */
-  @Getter private final int damage;
+  /** Damage of one hit at the entity's level, which a level change moves. */
+  @Getter private int damage;
 
   /** The working state of the entity's targeting component: its reference and attack timing. */
   @Getter private final TargetingState targeting;
@@ -159,20 +161,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             data.king(),
             data.summonerTower());
     this.hitPoints = maximum > 0 ? new HitPoints(maximum) : null;
-    // A unit that fires and has no damage of its own deals its projectile's damage at its level.
-    ProjectileData projectile = data.projectile();
-    int unitLevel = packedLevel;
-    this.damage =
-        LevelScaling.damage(
-            globals,
-            data.damage(),
-            packedLevel,
-            data.rarity(),
-            data.king(),
-            data.summonerTower(),
-            projectile == null
-                ? null
-                : () -> ProjectileAmounts.damage(globals, projectile, unitLevel));
+    this.damage = damageAt(packedLevel);
     // A candidate advertises its current hit points to an attacker that prefers the weakest.
     targetView.setHitPointsPresent(hitPoints != null);
     targetView.setCrownTowerTarget(data.king() || data.summonerTower());
@@ -459,6 +448,88 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public HitPoints actionHitPoints() {
     return hitPoints;
+  }
+
+  @Override
+  public int actionPackedLevel() {
+    return packedLevel;
+  }
+
+  /**
+   * Takes a new level, as a level-changing action gives it. Nothing happens when the level it
+   * stands for is the one the entity has. Otherwise the level is re-based on the entity's rarity,
+   * its damage follows from the next hit on, and its hit points take the change: the maximum and
+   * both team pools are the new level's, and on a rise the hit points keep their share of the old
+   * maximum, in hundred-thousandths and truncated, but are never lowered; on a fall they are kept
+   * as they stand, even above the new maximum. A projectile already in flight keeps the level it
+   * was launched at. Nothing else of the entity changes.
+   *
+   * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
+   * and an entity carrying a shield, whose maximum at the level is not modelled. The growth
+   * percentage the share is taken at is the usual 100, as no unit that grows is modelled.
+   *
+   * @param packed the new level, packed
+   */
+  @Override
+  public void changeLevel(int packed) {
+    int delta = effectiveLevel(packed) - effectiveLevel(packedLevel);
+    if (delta == 0) {
+      return;
+    }
+    if (data.king() || data.summonerTower()) {
+      throw new UnsupportedOperationException(
+          "changing the level of " + name() + ", a tower, is not established");
+    }
+    if (hitPoints != null && (hitPoints.getShield() != 0 || hitPoints.getShieldMaximum() != 0)) {
+      throw new UnsupportedOperationException(
+          "changing the level of " + name() + ", which carries a shield, is not modelled");
+    }
+    packedLevel = PackedLevel.pack(packed, data.rarity());
+    damage = damageAt(packedLevel);
+    if (hitPoints == null) {
+      return;
+    }
+    int oldMaximum = hitPoints.getMaximum();
+    int maximum =
+        LevelScaling.hitpoints(
+            ScalingGlobals.standard(),
+            data.hitpoints(),
+            packedLevel,
+            data.rarity(),
+            data.king(),
+            data.summonerTower());
+    hitPoints.setMaximum(maximum);
+    hitPoints.setTeamPool(0, maximum);
+    hitPoints.setTeamPool(1, maximum);
+    if (delta >= 1) {
+      // Both steps are 32-bit and truncate, as the game's own arithmetic does.
+      int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;
+      int rescaled = maximum * share / 100_000;
+      hitPoints.setHitPoints(Math.max(hitPoints.getHitPoints(), rescaled));
+    }
+    refreshHitPoints();
+  }
+
+  /** The level a packed value stands for: the relative level plus the signed steps. */
+  private static int effectiveLevel(int packed) {
+    return ((packed >> 8) & 0xff) + (byte) packed;
+  }
+
+  /**
+   * Damage of one hit at a level. A unit that fires and has no damage of its own deals its
+   * projectile's damage at its level.
+   */
+  private int damageAt(int packed) {
+    ScalingGlobals globals = ScalingGlobals.standard();
+    ProjectileData projectile = data.projectile();
+    return LevelScaling.damage(
+        globals,
+        data.damage(),
+        packed,
+        data.rarity(),
+        data.king(),
+        data.summonerTower(),
+        projectile == null ? null : () -> ProjectileAmounts.damage(globals, projectile, packed));
   }
 
   @Override
