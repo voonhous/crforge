@@ -140,4 +140,41 @@ class ActionHolderTest {
     holder.runPass(2);
     assertThat(holder.tags()).isEqualTo(GameTags.ACTIVATING);
   }
+
+  @Test
+  @DisplayName(
+      "an instigator leaving drops the pending entries it caused and that abort, swapping the last in")
+  void anInstigatorLeavingDropsItsPendingEntries() {
+    ActionHolder holder = new ActionHolder();
+    ActionHolder leaving = new ActionHolder();
+    ActionHolder other = new ActionHolder();
+    List<String> dropped = new ArrayList<>();
+    holder.setListener(
+        new ActionHolder.Listener() {
+          @Override
+          public void dropped(BattleAction action, int ticksLeft) {
+            dropped.add(action.name() + " " + ticksLeft);
+          }
+        });
+    // The recorded case: A and D caused by the leaving object with the flag, B by another, C by the
+    // leaving object with the flag off.
+    holder.schedule(new InertAction(ActionRow.named("A")), 100, false, leaving);
+    holder.schedule(new InertAction(ActionRow.named("B")), 100, false, other);
+    holder.schedule(
+        new InertAction(ActionRow.named("C").toBuilder().abortIfInstigatorDies(false).build()),
+        100,
+        false,
+        leaving);
+    holder.schedule(new InertAction(ActionRow.named("D")), 150, false, leaving);
+
+    holder.instigatorLeft(leaving);
+
+    assertThat(dropped).containsExactly("A 2", "D 3");
+    assertThat(holder.queued().stream().map(q -> q.action().name()).toList())
+        .as("the last swapped into each dropped place, and looked at again")
+        .containsExactly("C", "B");
+
+    holder.instigatorLeft(EntityActions.NONE);
+    assertThat(holder.queued()).as("an entity without actions caused nothing").hasSize(2);
+  }
 }

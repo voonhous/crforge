@@ -70,7 +70,8 @@ public final class ActionRows {
           "GameTagsToSet",
           "ExecuteIfTrue",
           "ForceStopIfTrue",
-          "ActionPausedIfTrue");
+          "ActionPausedIfTrue",
+          "AbortIfInstigatorDies");
 
   /** Columns that only show something, which the simulation never reads. */
   private static final Set<String> PRESENTATION = Set.of("StatsTags");
@@ -350,6 +351,7 @@ public final class ActionRows {
           .executeIf(expression(f.get("ExecuteIfTrue")))
           .forceStopIf(expression(f.get("ForceStopIfTrue")))
           .pausedIf(expression(f.get("ActionPausedIfTrue")))
+          .abortIfInstigatorDies(f.path("AbortIfInstigatorDies").asBoolean(true))
           .build();
     }
 

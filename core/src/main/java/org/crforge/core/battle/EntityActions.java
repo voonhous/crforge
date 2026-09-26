@@ -40,4 +40,12 @@ public interface EntityActions {
 
   /** Takes one tick off every queued delay. Runs for the live list, not the tick's snapshot. */
   void endOfTick();
+
+  /**
+   * An entity has left the battle: the queued actions it caused, and whose rows abort when their
+   * cause does, are dropped. Running actions are left as they are.
+   *
+   * @param left the actions of the entity that left
+   */
+  default void instigatorLeft(EntityActions left) {}
 }

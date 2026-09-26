@@ -62,4 +62,9 @@ public abstract class RowAction implements BattleAction {
   public IntSupplier pausedIf() {
     return row.pausedIf();
   }
+
+  @Override
+  public boolean abortIfInstigatorDies() {
+    return row.abortIfInstigatorDies();
+  }
 }

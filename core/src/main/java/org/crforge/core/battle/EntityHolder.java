@@ -138,11 +138,15 @@ public class EntityHolder {
     for (BattleEntity gone : removed) {
       // The entities handed over this tick hear of it first, then the live list, so a projectile
       // launched on the tick its target dies loses the target in the same cleanup.
+      // Each entity's components hear first, then its action holder drops what the leaving
+      // entity caused and still waits; the side lists and the level re-read come after all of them.
       for (BattleEntity entity : pendingAdditions) {
         entity.entityRemoved(gone);
+        entity.actions().instigatorLeft(gone.actions());
       }
       for (BattleEntity entity : live) {
         entity.entityRemoved(gone);
+        entity.actions().instigatorLeft(gone.actions());
       }
       passes.entityRemoved(gone);
     }
