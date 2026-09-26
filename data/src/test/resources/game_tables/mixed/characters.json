@@ -1,0 +1,35 @@
+{
+ "table": "characters",
+ "id": 34,
+ "version": "0.0.1",
+ "content_sha": "0000000000000000000000000000000000000000",
+ "rows": {
+  "Alpha": {
+   "index": 0,
+   "class": "LogicCharacterData",
+   "columns": {
+    "Name": "Alpha",
+    "Hitpoints": 700,
+    "HitSpeed": 1200,
+    "AttacksAir": true,
+    "Projectile": "",
+    "Rarity": "Common",
+    "DeployTime": null,
+    "Tags": ["A", "B"]
+   }
+  },
+  "Beta": {
+   "index": 1,
+   "class": "LogicCharacterData",
+   "columns": {
+    "Name": "Beta",
+    "Hitpoints": 250,
+    "HitSpeed": 900,
+    "AttacksAir": false,
+    "Projectile": "BetaShot",
+    "Rarity": "Rare",
+    "DeployTime": 1000
+   }
+  }
+ }
+}

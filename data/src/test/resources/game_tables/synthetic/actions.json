@@ -1,0 +1,9 @@
+{
+ "table": "actions",
+ "version": "0.0.1",
+ "content_sha": "0000000000000000000000000000000000000000",
+ "actions": {
+  "Alpha_Wait": {"class": "LogicActionWaitToActivateData", "ClassType": "ActionWaitToActivate", "fields": {"ClassType": "ActionWaitToActivate", "Condition": "1"}}
+ },
+ "references": [["34", "Alpha", "OnStartingAction", null, "Alpha_Wait", "name"]]
+}
