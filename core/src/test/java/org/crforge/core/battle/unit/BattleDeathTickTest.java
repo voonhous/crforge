@@ -2,11 +2,9 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
-import org.crforge.core.card.UnitDataMapper;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -21,9 +19,7 @@ class BattleDeathTickTest {
   @Test
   @DisplayName("two Knights that land their last hits on one tick both die, their movement off")
   void twoKnightsKillEachOtherOnOneTick() {
-    DeployCard knight =
-        UnitDataMapper.toDeployCard(
-            Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    DeployCard knight = GameData.card("Knight");
     Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL);
     Battle battle = match.getBattle();
     match.play(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12000, "Blue");

@@ -2,10 +2,8 @@ package org.crforge.core.battle.deploy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Objects;
-import org.crforge.core.card.UnitDataMapper;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -16,8 +14,7 @@ class MapCheckTest {
   private static final TileMap MAP = TileMap.standard1v1();
 
   private static DeployCard knight() {
-    return UnitDataMapper.toDeployCard(
-        Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    return GameData.card("Knight");
   }
 
   @ParameterizedTest(name = "({0}, {1}) -> {2}")

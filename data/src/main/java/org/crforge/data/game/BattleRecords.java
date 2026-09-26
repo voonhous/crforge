@@ -2,6 +2,9 @@ package org.crforge.data.game;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -10,17 +13,28 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
 /**
  * The battle's records built from the game's own rows.
  *
- * <p>Every field is the column of the same name, in the column's own units - milliseconds, game
- * units, the published speed - and nothing is converted or chosen. A column the row leaves empty is
- * 0 or false. Only three fields are not a column: a unit flies when its flying height is above 0; a
- * projectile's damage scaling rule is named by its scaling mode column, the king tower's or the
- * princess towers', and is the card rule otherwise; and a rarity is the published row of that name.
+ * <p>Units, projectiles and troop cards. Every field is the column of the same name, in the
+ * column's own units - milliseconds, game units, the published speed - and nothing is converted or
+ * chosen. A column the row leaves empty is 0 or false. Only three fields are not a column: a unit
+ * flies when its flying height is above 0; a projectile's damage scaling rule is named by its
+ * scaling mode column, the king tower's or the princess towers', and is the card rule otherwise;
+ * and a rarity is the published row of that name.
  */
 public final class BattleRecords {
 
   private static final String CHARACTERS = "characters";
   private static final String BUILDINGS = "buildings";
   private static final String PROJECTILES = "projectiles";
+  private static final String SPELLS_CHARACTERS = "spells_characters";
+
+  /** The card columns the placement does not model; a card that sets one is refused. */
+  private static final List<String> UNMODELLED_CARD_COLUMNS =
+      List.of(
+          "SummonCharactersList",
+          "SummonCharactersOffsetsX",
+          "SummonCharactersOffsetsY",
+          "CustomDeployTime",
+          "SpellAsDeploy");
 
   private final GameTables tables;
 
@@ -111,6 +125,67 @@ public final class BattleRecords {
         .minDistance(row.intValue("MinDistance"))
         .circleScatter("Circle".equals(row.string("Scatter")))
         .build();
+  }
+
+  /**
+   * A troop card's placement as the battle reads it, from the spells characters table: the units it
+   * summons, built from their own rows, how many, its formation and where it may be placed.
+   *
+   * <p>A card with no count summons one. The level index a card may carry is not read, as the game
+   * never reads it: the summoned units take the level the card is played at. A card that summons a
+   * list of characters, places them at offsets of its own, has a deploy time of its own or deploys
+   * as a spell is refused, naming the column: the placement does not model those.
+   *
+   * @param name the card row's name
+   */
+  public DeployCard card(String name) {
+    GameTable table = tables.table(SPELLS_CHARACTERS);
+    checkArgument(table.has(name), () -> "the game tables have no troop card " + name);
+    GameRow row = table.row(name);
+    for (String column : UNMODELLED_CARD_COLUMNS) {
+      if (set(row, column)) {
+        throw new UnsupportedOperationException(
+            name + " sets " + column + ", which the card placement does not model");
+      }
+    }
+    checkArgument(!row.string("SummonCharacter").isEmpty(), () -> name + " summons no character");
+    String second = row.string("SummonCharacterSecond");
+    return new DeployCard(
+        row.name(),
+        unit(row.string("SummonCharacter")),
+        Math.max(row.intValue("SummonNumber"), 1),
+        second.isEmpty() ? null : unit(second),
+        second.isEmpty() ? 0 : row.intValue("SummonCharacterSecondCount"),
+        row.intValue("SummonRadius"),
+        row.intValue("SummonWidth"),
+        row.intValue("SummonDeployDelay"),
+        row.intValue("SummonDeployDelaySecond"),
+        row.bool("CanDeployOnEnemySide"),
+        row.bool("CanPlaceOnBuildings"),
+        row.bool("CanPlaceOnWater"),
+        row.bool("FullLaneDeploy"),
+        row.bool("TouchdownLimitedDeploy"),
+        row.intValue("DeployWTileMargin"),
+        row.intValue("DeployStartY"),
+        row.intValue("DeployEndY"));
+  }
+
+  /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */
+  private static boolean set(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    if (value == null || value.isNull()) {
+      return false;
+    }
+    if (value.isTextual()) {
+      return !value.asText().isEmpty();
+    }
+    if (value.isBoolean()) {
+      return value.asBoolean();
+    }
+    if (value.isNumber()) {
+      return value.asInt() != 0;
+    }
+    return !value.isEmpty();
   }
 
   /** The row of a unit: the characters table's, else the buildings table's. */

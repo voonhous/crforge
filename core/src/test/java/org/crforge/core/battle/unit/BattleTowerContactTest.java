@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

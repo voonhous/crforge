@@ -10,6 +10,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;

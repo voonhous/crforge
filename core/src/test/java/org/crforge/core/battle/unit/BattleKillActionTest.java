@@ -4,15 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.deploy.DeployCard;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -24,8 +22,7 @@ import org.junit.jupiter.api.Test;
 class BattleKillActionTest {
 
   private static DeployCard knight() {
-    return UnitDataMapper.toDeployCard(
-        Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    return GameData.card("Knight");
   }
 
   @Test

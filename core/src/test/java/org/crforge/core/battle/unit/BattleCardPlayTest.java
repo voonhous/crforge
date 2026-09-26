@@ -2,12 +2,10 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Objects;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
-import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,8 +16,7 @@ import org.junit.jupiter.api.Test;
 class BattleCardPlayTest {
 
   private static DeployCard knight() {
-    return UnitDataMapper.toDeployCard(
-        Objects.requireNonNull(CardRegistry.get("knight"), "knight not found"));
+    return GameData.card("Knight");
   }
 
   @Test
@@ -68,9 +65,7 @@ class BattleCardPlayTest {
   void aWaitingUnitsMovementIsOffUntilItDeploys() {
     Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
-    DeployCard barbarians =
-        UnitDataMapper.toDeployCard(
-            Objects.requireNonNull(CardRegistry.get("barbarians"), "barbarians not found"));
+    DeployCard barbarians = GameData.card("Barbarians");
     match.play(0, barbarians, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Barbarians");
 
     battle.step();
