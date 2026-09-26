@@ -274,9 +274,7 @@ public final class TrajectoryRecorder implements WorldObserver {
         recordOther(tick, other);
       }
     }
-    if (!present.contains(unit)) {
-      return;
-    }
+    // A projectile is recorded wherever it is in flight, even after the unit it came from has left.
     for (ProjectileEntity projectile : inFlight) {
       if (!projectile.isReleased()) {
         projectiles.add(
@@ -292,6 +290,9 @@ public final class TrajectoryRecorder implements WorldObserver {
                 + projectile.getZ()
                 + "]");
       }
+    }
+    if (!present.contains(unit)) {
+      return;
     }
     int x = unit.getView().getX();
     int y = unit.getView().getY();

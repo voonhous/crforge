@@ -21,7 +21,8 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.TileMap;
 
 /**
- * A battle on the standard arena with the six crown towers in place.
+ * A battle on the standard arena with the six crown towers in place, each built from its row of the
+ * game's tables.
  *
  * <p>The towers are created side by side and, within a side, king first and then the two princess
  * towers from the low end of the arena's width to the high end. That order is their id order, and
@@ -85,7 +86,8 @@ public class Standard1v1Battle {
     this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
     for (int side : new int[] {WorldEntity.SIDE_BOTTOM, WorldEntity.SIDE_TOP}) {
       for (int i = 0; i < TOWER_CELLS.length; i++) {
-        UnitData data = i == 0 ? UnitData.KING_TOWER : UnitData.PRINCESS_TOWER;
+        // Both towers are the game's own rows: the king tower and the princess tower.
+        UnitData data = world.getRecords().unit(i == 0 ? "KingTower" : "PrincessTower");
         int x = TOWER_CELLS[i][0] * TileMap.CELL_UNITS;
         int row = TOWER_CELLS[i][1];
         // The top side is the bottom side mirrored along the arena's length.
