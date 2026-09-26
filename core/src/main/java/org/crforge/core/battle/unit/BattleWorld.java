@@ -20,6 +20,7 @@ import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.FootprintOverlay;
@@ -417,6 +418,7 @@ public class BattleWorld implements HolderPasses {
       return;
     }
     known.remove(gone.getView());
+    gone.leave();
     for (WorldEntity entity : known.values()) {
       entity.forget(gone.getView());
     }
@@ -453,12 +455,7 @@ public class BattleWorld implements HolderPasses {
       if (target.getHitPoints() == null) {
         continue;
       }
-      int amount =
-          hit.type()
-              .pipeline(
-                  hit.amount(),
-                  (target.getView().getFlags() & EntityFlags.NO_DAMAGE) != 0,
-                  hit.source() != null);
+      int amount = pipeline(hit);
       int damageId = hit.type().acquireDamageId() ? nextHitId() : 0;
       DamageResult result =
           target.takeTypedHit(amount, damageId, hit.directionX(), hit.directionY());
@@ -481,6 +478,28 @@ public class BattleWorld implements HolderPasses {
         observer.damageDealt(tick, target, amount, result);
       }
     }
+  }
+
+  /**
+   * A typed hit's amount after its type's pipeline. The level scaling reads the source's own rarity
+   * row and packed level while the source is in the battle; once it has left, the level it had and
+   * the Common row, and the multiplier no longer counts it as a source.
+   */
+  private static int pipeline(TypedHit hit) {
+    WorldEntity source = hit.source();
+    boolean noDamage = (hit.target().getView().getFlags() & EntityFlags.NO_DAMAGE) != 0;
+    if (source == null) {
+      if (hit.type().enableLevelScaling()) {
+        throw new UnsupportedOperationException(
+            "the level of a typed hit without a source is not established; "
+                + hit.type().name()
+                + " asks for it");
+      }
+      return hit.type().pipeline(hit.amount(), noDamage, false, null, 0);
+    }
+    boolean present = !source.isLeft();
+    RarityTable rarity = present ? source.getData().rarity() : RarityTable.COMMON;
+    return hit.type().pipeline(hit.amount(), noDamage, present, rarity, source.getPackedLevel());
   }
 
   @Override

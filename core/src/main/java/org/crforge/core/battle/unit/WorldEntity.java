@@ -93,6 +93,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
   /** The entity's hit points, or null when its hit points at its level are not positive. */
   @Getter private final HitPoints hitPoints;
 
+  /**
+   * True once the entity has left the battle. A reference that outlives it, such as a typed hit's
+   * source, then answers the level it had but no longer its own rarity row.
+   */
+  @Getter private boolean left;
+
   /** The entity's action holder, made the first time anything schedules on it; null until then. */
   private ActionHolder actionHolder;
 
@@ -376,6 +382,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
   @Override
   public EntityActions actions() {
     return actionHolder == null ? EntityActions.NONE : actionHolder;
+  }
+
+  /** Marks the entity as gone from the battle, at the cleanup that removes it. */
+  void leave() {
+    left = true;
   }
 
   /** The entity as a game object filter asks about it. */

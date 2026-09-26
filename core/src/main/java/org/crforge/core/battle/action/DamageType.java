@@ -3,6 +3,11 @@ package org.crforge.core.battle.action;
 import lombok.Builder;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 
 /**
  * A damage type: switches over the modifiers an ordinary hit applies, which a typed hit runs as its
@@ -10,9 +15,16 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>The pipeline gives nothing to a target that takes no damage, then runs four stages, each
  * behind its own switch: the level scaling, the target's protection and the source's damage
- * multiplier, each floored at zero - the multiplier skipped without a source - and the target's
- * on-hit damage, with no floor. With no buffs modelled, the protection and the multiplier only
- * floor the amount at zero and the on-hit damage adds nothing.
+ * multiplier, each floored at zero - the multiplier skipped without a source object - and the
+ * target's on-hit damage, with no floor. With no buffs modelled, the protection and the multiplier
+ * only floor the amount at zero and the on-hit damage adds nothing.
+ *
+ * <p>The level scaling is the card damage scaling: the amount times the rarity row's multiplier for
+ * the packed level's step, over 100, on a 32-bit product, with step 0 and a missing row leaving the
+ * amount as it is. The level is not re-based on the row first. The amount it is given is therefore
+ * a first-level value, as a deal-damage action's base amount is. The row and level are the source's
+ * own while the source is in the battle, and the Common row at the level the source had once it has
+ * left.
  *
  * @param name the row's name
  * @param enableLevelScaling whether the source's level scales the amount
@@ -27,9 +39,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the switches and their defaults, the no-damage target, the order of the stages,"
-            + " their floors and the two actions. Supplied: no buff protects, multiplies or adds on"
-            + " hit. Not modelled: the level-scaling stage, which is not established and is refused,"
-            + " and the damage effect a hit shows.")
+            + " the level scaling with the row and level it is given, the floors and the two"
+            + " actions. Supplied: no buff protects, multiplies or adds on hit. Not modelled: the"
+            + " damage effect a hit shows.")
 @Builder(toBuilder = true)
 public record DamageType(
     String name,
@@ -56,20 +68,28 @@ public record DamageType(
    *
    * @param amount the amount it was dealt with
    * @param targetTakesNoDamage true when the target carries the no-damage tag
-   * @param hasSource true when the hit has a source object
+   * @param hasSourceObject true when the hit's source is still in the battle
+   * @param rarity the rarity row the level scaling reads, or null for none
+   * @param packedLevel the level the level scaling reads, see {@link PackedLevel}
    */
-  public int pipeline(int amount, boolean targetTakesNoDamage, boolean hasSource) {
+  public int pipeline(
+      int amount,
+      boolean targetTakesNoDamage,
+      boolean hasSourceObject,
+      RarityTable rarity,
+      int packedLevel) {
     if (targetTakesNoDamage) {
       return 0;
     }
     if (enableLevelScaling) {
-      throw new UnsupportedOperationException(
-          "the level scaling of a typed hit is not established; " + name + " asks for it");
+      amount =
+          LevelScaling.scale(
+              ScalingGlobals.standard(), amount, packedLevel, ScalingMode.CARD_DAMAGE, rarity);
     }
     if (enableProtection) {
       amount = Math.max(amount, 0);
     }
-    if (enableDamageMultiplier && hasSource) {
+    if (enableDamageMultiplier && hasSourceObject) {
       amount = Math.max(amount, 0);
     }
     return amount;
