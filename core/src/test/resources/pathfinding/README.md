@@ -190,6 +190,14 @@ The same layout: a Knight of the bottom side requested at (3500, 12000) and one 
 
 The same layout, two Skeleton Army plays of the bottom side on tick 0, at level 11 with the towers fighting, each run until 20 ticks after its last skeleton leaves: one requested at (3500, 10000) and placed at (3499, 10500), in front of the left bridge, and one requested at (500, 1500) and placed at (499, 1500), near the corner. The skeletons walk up the left lane as a crowd, push each other and are steered around each other and the towers, and fight the enemy princess tower, which dies on tick 256 (bridge) and 393 (corner). They hold what a crowd does in the standard game: at the bridge a skeleton pushed sideways walks on the water beside it from tick 60, and at the tower the crowd presses some of its own inside the tower's collision circle from tick 153; the corner run passes its own princess tower close enough to push a skeleton inside that one too, on tick 57.
 
+## `golden/sparky_river.json` - a unit's own recoil, and the relocation off the river
+
+The same layout. A Knight of the top side requested at (3500, 20000) on tick 0 walks down the left lane and hits PrincessTower_0_1 from tick 219. A Sparky of the bottom side requested at (1500, 14500) on tick 190 is placed at (1499, 14500), locks onto the Knight on 210 and launches on 229. After the launch it asks for its own pushback away from the aim: target (1264, 15212), budget 200, then displacements of 175, 150, 125 and 100 over the next visits. On 232 it stands on a river cell, and on 233 the pushback visit moves it off to (1079, 14770) before that visit's step. Later it walks across the river cells beside the bridge and nothing moves it; its pushes on 365 and 444 end on land, and it dies on 492. Besides the usual events, the file lists each `pushback` request (the point pushed away from, where the unit stood, the target, the budget and whether it started) and each `relocate` (where the unit stood and where it was moved to).
+
+## `golden/barbarians_pocket.json` - units created on the river
+
+The same layout. The Barbarians of `barbarians_left` destroy PrincessTower_1_1 on tick 367. A second Barbarians card requested at (3500, 16000) on tick 400 is placed at (3499, 16500), on the bridge: with the tower gone, the pocket behind it leaves no column interval to clamp the formation into, and two of its units are created on river cells, at (4745, 16904) and (2253, 16904). They stay on the water through waiting, deploying and their first steps, and walk off it; nothing moves them. The king tower dies on 733 and stays in the holder: the units attacking it drop it through their own targeting and walk on, and it keeps firing at them to the end of the run.
+
 ## `movement_replay/<case>.json` - the routing answers of the same run
 
 Every question the movement pass put to the routing grid during the same run, in order, with the
