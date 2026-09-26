@@ -58,6 +58,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param noDeploySizeW the width, in tiles, of the box around a building that the other side may
  *     not place in; 0 for none
  * @param noDeploySizeH the height of that box, in tiles
+ * @param attackPushBack how far the unit pushes itself back, in game units, away from the aim of
+ *     each projectile it launches; 0 for none
+ * @param ignorePushback true when the unit's row ignores pushback
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -95,7 +98,9 @@ public record UnitData(
     int spawnPathfindSpeed,
     int tileSizeOverride,
     int noDeploySizeW,
-    int noDeploySizeH) {
+    int noDeploySizeH,
+    int attackPushBack,
+    boolean ignorePushback) {
 
   /**
    * The king tower's published columns. The towers carry no rarity column; Common is the rarity

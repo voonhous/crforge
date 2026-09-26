@@ -26,8 +26,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Agrees with the reference line for line: the clamp, the three row sets, both"
-            + " skip tests and the distance rule. Held by its own tests; no reference walk"
-            + " puts a unit on water.")
+            + " skip tests and the distance rule. Held by its own tests and by the Sparky run,"
+            + " whose recoil puts it on the river where the pushback visit moves it off. Live"
+            + " through the pushback visit; the other places that relocate come with spells, area"
+            + " effects, dashes, hooks and spawns. No card play relocates a unit it creates.")
 public final class Relocation {
 
   /** Distance kept from every arena edge when the point is clamped. */

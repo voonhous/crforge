@@ -45,8 +45,9 @@ import org.junit.jupiter.api.Test;
  * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleGoldenTrajectoryTest},
  * and the one-tick deploying correction is the same. One more offset of the same kind: a record is
  * written before the tick's closing cleanup, so the record of the tick a target dies on still names
- * it, while the step has dropped the reference by the time it returns. {@link #expectedReference}
- * allows for that.
+ * it, while the step has dropped the reference by the time it returns - for a princess tower, which
+ * leaves the holder in that cleanup. The king tower is never removable: it stays in the holder, and
+ * the Knight still holds it when the run ends. {@link #expectedReference} allows for that.
  */
 class BattleKillRunTest {
 
@@ -184,10 +185,19 @@ class BattleKillRunTest {
     for (TowerEntity tower : towers) {
       assertThat(tower.getHitPoints().getHitPoints()).as("%s is at zero", tower.name()).isZero();
       assertThat(tower.getView().isAlive()).as("%s is dead", tower.name()).isFalse();
-      assertThat(tower.isRemovable()).as("%s is dropped by the holder", tower.name()).isTrue();
-      assertThat(battle.getHolder().entities())
-          .as("%s has left the holder", tower.name())
-          .doesNotContain(tower);
+      boolean king = tower.getData().king();
+      assertThat(tower.isRemovable())
+          .as("%s is dropped by the holder unless it is the king", tower.name())
+          .isEqualTo(!king);
+      if (king) {
+        assertThat(battle.getHolder().entities())
+            .as("%s stays in the holder", tower.name())
+            .contains(tower);
+      } else {
+        assertThat(battle.getHolder().entities())
+            .as("%s has left the holder", tower.name())
+            .doesNotContain(tower);
+      }
     }
   }
 
@@ -238,11 +248,13 @@ class BattleKillRunTest {
 
     assertThat(battle.getTick()).isEqualTo(records.size());
     assertThat(knight.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
-    assertThat(referenceName(knight)).as("dropped by the king tower's removal").isNull();
+    assertThat(referenceName(knight))
+        .as("the king tower is never removed, so no notice drops it")
+        .isEqualTo(KING_TOWER);
     assertThat(king.getHitPoints().getHitPoints()).as("the king tower is at zero").isZero();
     assertThat(battle.getHolder().entities())
-        .as("the king tower has left the holder in the tick it died")
-        .doesNotContain(king);
+        .as("the king tower stays in the holder after it dies")
+        .contains(king);
   }
 
   @Test
@@ -329,13 +341,15 @@ class BattleKillRunTest {
 
   /**
    * The reference the unit holds at the end of the step that produced the given record: the
-   * recorded one, except on the tick it dies, when the closing cleanup has already dropped it.
+   * recorded one, except on the tick a princess tower dies, when the closing cleanup has already
+   * dropped it. The king tower is never removed, so the unit still holds it.
    */
   private static String expectedReference(JsonNode record) {
-    if (record.get("ref").isNull() || record.get("hp").asInt() == 0) {
+    if (record.get("ref").isNull()) {
       return null;
     }
-    return record.get("ref").asText();
+    String ref = record.get("ref").asText();
+    return record.get("hp").asInt() == 0 && !ref.equals(KING_TOWER) ? null : ref;
   }
 
   /** The tower of the given name, as the battle holds it. */

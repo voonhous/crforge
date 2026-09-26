@@ -4,6 +4,7 @@ import java.util.List;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.move.MovementState;
 
 /**
  * Something that watches one battle's arena from outside the tick: it is told where the tick's
@@ -103,4 +104,30 @@ public interface WorldObserver {
    */
   default void areaDamaged(
       int tick, WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {}
+
+  /**
+   * A unit asked to push itself back after a launch, away from the launch's aim.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param started true when the request aimed a pushback now in flight
+   * @param fromX the point pushed away from
+   * @param fromY the point pushed away from
+   * @param pushback the unit's movement component after the request
+   */
+  default void pushbackRequested(
+      int tick, WorldEntity unit, boolean started, int fromX, int fromY, MovementState pushback) {}
+
+  /**
+   * A unit on a cell it may not stand on was moved to the nearest one it may, by its pushback
+   * visit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param x where it stood
+   * @param y where it stood
+   * @param toX where it was moved to
+   * @param toY where it was moved to
+   */
+  default void relocated(int tick, WorldEntity unit, int x, int y, int toX, int toY) {}
 }

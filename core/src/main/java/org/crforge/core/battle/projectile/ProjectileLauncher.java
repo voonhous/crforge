@@ -32,8 +32,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " answers zero, and the start radius and height are the unit's columns without an"
             + " attack sequence step's override. Not modelled: the first-projectile and special"
             + " projectile columns, the projectile a buff substitutes, a building target's edge"
-            + " adjustment, a burst that keeps its aim, the fan of a scattering first projectile"
-            + " and the pushback a launch gives the owner.")
+            + " adjustment, a burst that keeps its aim and the fan of a scattering first"
+            + " projectile. The pushback a launch gives its owner is asked for after each launch.")
 public final class ProjectileLauncher {
 
   private ProjectileLauncher() {
@@ -80,6 +80,7 @@ public final class ProjectileLauncher {
       int hy = t.getLastReferenceY() + offset[1];
       launchOne(projectile, launcher, unit, targetEntity, hx, hy, angleBase, k + half);
       world.launch(projectile);
+      launcher.launched(hx, hy);
     }
   }
 

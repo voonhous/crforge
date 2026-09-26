@@ -23,6 +23,7 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.move.MovementGlobals;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
 import org.crforge.core.pathfinding.target.TargetView;
 
@@ -51,8 +52,8 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " snapshot of the arena entities and retired in the post-pass, the overlay's per-side"
             + " change flags are copied once per tick, a projectile is in neither and is handed to"
             + " the holder in the tick of its launch, and a dead entity leaves the holder in the"
-            + " closing cleanup of the tick it dies, when every arena entity is told at once and"
-            + " its default target lists lose it. Not modelled: the game mode's own per-tick work"
+            + " closing cleanup of the tick it dies - the king tower excepted, which never does -"
+            + " when every arena entity is told at once and its default target lists lose it. Not modelled: the game mode's own per-tick work"
             + " beside the index and the overlay.")
 public class BattleWorld implements HolderPasses {
 
@@ -165,6 +166,21 @@ public class BattleWorld implements HolderPasses {
     holder.add(projectile);
     for (WorldObserver observer : observers) {
       observer.projectileLaunched(tick, projectile);
+    }
+  }
+
+  /** Tells every observer a unit asked to push itself back after a launch. */
+  void pushbackRequested(
+      WorldEntity unit, boolean started, int fromX, int fromY, MovementState pushback) {
+    for (WorldObserver observer : observers) {
+      observer.pushbackRequested(tick, unit, started, fromX, fromY, pushback);
+    }
+  }
+
+  /** Tells every observer a unit's pushback visit moved it off a cell it may not stand on. */
+  void relocated(WorldEntity unit, int x, int y, int toX, int toY) {
+    for (WorldObserver observer : observers) {
+      observer.relocated(tick, unit, x, y, toX, toY);
     }
   }
 

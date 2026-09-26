@@ -16,6 +16,7 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.card.UnitDataMapper;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -373,6 +374,35 @@ class BattleTowerRunTest {
       }
 
       @Override
+      public void pushbackRequested(
+          int tick,
+          WorldEntity unit,
+          boolean started,
+          int fromX,
+          int fromY,
+          MovementState pushback) {
+        events.add(
+            "%d pushback %s %d from %d %d at %d %d target %d %d budget %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    started ? 1 : 0,
+                    fromX,
+                    fromY,
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    pushback.getTargetX(),
+                    pushback.getTargetY(),
+                    pushback.getPushbackBudget()));
+      }
+
+      @Override
+      public void relocated(int tick, WorldEntity unit, int x, int y, int toX, int toY) {
+        events.add(
+            "%d relocate %s %d %d to %d %d".formatted(currentTick[0], unit.name(), x, y, toX, toY));
+      }
+
+      @Override
       public void projectileImpacted(
           int tick,
           ProjectileEntity projectile,
@@ -423,6 +453,28 @@ class BattleTowerRunTest {
                   event.get("damage").asInt(),
                   event.get("hp").asInt());
       case "death" -> "%d death %s".formatted(tick, event.get("target").asText());
+      case "pushback" ->
+          "%d pushback %s %d from %d %d at %d %d target %d %d budget %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("started").asInt(),
+                  event.get("frm").get(0).asInt(),
+                  event.get("frm").get(1).asInt(),
+                  event.get("x").asInt(),
+                  event.get("y").asInt(),
+                  event.get("target").get(0).asInt(),
+                  event.get("target").get(1).asInt(),
+                  event.get("budget").asInt());
+      case "relocate" ->
+          "%d relocate %s %d %d to %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("x").asInt(),
+                  event.get("y").asInt(),
+                  event.get("to").get(0).asInt(),
+                  event.get("to").get(1).asInt());
       case "launch" ->
           "%d launch %s %s %s %s %d %d %d aim %d %d %d"
               .formatted(
