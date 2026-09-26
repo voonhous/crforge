@@ -32,4 +32,13 @@ public interface SpawnHost extends SpawnObject {
   default void linkIntoGroup(SpawnHost child) {
     throw new UnsupportedOperationException(name() + " keeps no group");
   }
+
+  /**
+   * Hands a champion this object spawned to its side's champion controllers.
+   *
+   * @param child the champion
+   */
+  default void handOverChampion(SpawnHost child) {
+    throw new UnsupportedOperationException(name() + " cannot hand over a champion");
+  }
 }

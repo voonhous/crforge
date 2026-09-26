@@ -166,6 +166,34 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "a unit carries its death damage and lists the columns of its death the battle does not"
+          + " model")
+  void deathColumns() {
+    UnitData tombstone = records.unit("Tombstone_crazy_1");
+    assertThat(tombstone.deathDamage()).isEqualTo(500);
+    assertThat(tombstone.deathDamageRadius()).isEqualTo(3000);
+    assertThat(tombstone.unmodelledDeathColumns()).isEmpty();
+    assertThat(records.unit("Golem").unmodelledDeathColumns())
+        .containsExactly("DeathSpawnCharacter", "DeathPushBack");
+    assertThat(records.unit("ElixirGolem1").unmodelledDeathColumns())
+        .containsExactly("DeathSpawnCharacter", "ManaOnDeathForOpponent");
+    UnitData knight = records.unit("Knight");
+    assertThat(knight.deathDamage()).isZero();
+    assertThat(knight.unmodelledDeathColumns()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose ability row says nothing of it is a champion, unless the row says it is not;"
+          + " one without an ability is none")
+  void champion() {
+    assertThat(records.unit("SkeletonKing").champion()).isTrue();
+    assertThat(records.unit("GiantBuffer").champion()).isFalse();
+    assertThat(records.unit("Knight").champion()).isFalse();
+  }
+
+  @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
   void anInlineHookIsRefused() {
     assertThatThrownBy(() -> records.unit("Berserker"))

@@ -21,7 +21,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the five runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the six runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -33,7 +33,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * {@code brawler_goblins} a top-side owner spawns four Goblin Brawlers, the side flipping both axes
  * of the location. In {@code gift_knight} the owner spawns a Knight on itself that walks at once:
  * its registration visit takes its target and a first step. {@code abort_instigator} drops a spawn
- * that Knight caused when it dies.
+ * that Knight caused when it dies. In {@code tombstone_death_hook} a Wizard's projectile kills a
+ * Tombstone while it deploys, and the Tombstone's death action, scheduled as it dies with the
+ * projectile as its cause, runs in its phase-3 pass and spawns SkeletonKing on it, a champion
+ * handed over to its side.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
@@ -48,7 +51,8 @@ class BattleActionSpawnRunTest {
         "brawler_goblins",
         "gift_knight",
         "abort_instigator",
-        "witch_hooks"
+        "witch_hooks",
+        "tombstone_death_hook"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -70,7 +74,7 @@ class BattleActionSpawnRunTest {
             match.deploy(
                 u.get("tick").asInt(),
                 GameData.unit(u.get("card").asText()),
-                reference.get("level").asInt(),
+                u.path("level").asInt(reference.get("level").asInt()),
                 u.get("side").asInt(),
                 u.get("deploy").get(0).asInt(),
                 u.get("deploy").get(1).asInt(),
@@ -117,6 +121,7 @@ class BattleActionSpawnRunTest {
     List<String> events = new ArrayList<>();
     List<String> positions = new ArrayList<>();
     List<String> groups = new ArrayList<>();
+    List<String> deaths = new ArrayList<>();
     Map<String, Integer> spawnTicks = new HashMap<>();
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
     match
@@ -153,6 +158,32 @@ class BattleActionSpawnRunTest {
               @Override
               public void groupUnlinked(int tick, CharacterEntity source, CharacterEntity child) {
                 groups.add(groupLine(currentTick[0], "group_unlink", source, child));
+              }
+
+              @Override
+              public void deathHooksScheduled(
+                  int tick,
+                  WorldEntity dying,
+                  BattleEntity attacker,
+                  int side,
+                  List<String> hooks,
+                  boolean inPendingPass) {
+                deaths.add(
+                    "%d death_hooks %s %s %d %s %s"
+                        .formatted(
+                            currentTick[0],
+                            dying.name(),
+                            attackerName(attacker),
+                            side,
+                            hooks,
+                            inPendingPass));
+              }
+
+              @Override
+              public void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {
+                deaths.add(
+                    "%d champion_handover %s %s"
+                        .formatted(currentTick[0], source.name(), child.name()));
               }
 
               @Override
@@ -271,6 +302,30 @@ class BattleActionSpawnRunTest {
     assertThat(groups)
         .as("every child linked into its source's group and unlinked as it leaves")
         .containsExactlyElementsOf(expectedGroups);
+    List<String> expectedDeaths = new ArrayList<>();
+    for (JsonNode a : reference.get("actions")) {
+      String kind = a.get("event").asText();
+      if (kind.equals("death_hooks")) {
+        List<String> hooks = new ArrayList<>();
+        a.get("actions").forEach(hook -> hooks.add(hook.asText()));
+        expectedDeaths.add(
+            "%d death_hooks %s %s %d %s %s"
+                .formatted(
+                    a.get("tick").asInt(),
+                    a.get("owner").asText(),
+                    a.get("attacker").asText(),
+                    a.get("side").asInt(),
+                    hooks,
+                    a.get("in_pending").asBoolean()));
+      } else if (kind.equals("champion_handover")) {
+        expectedDeaths.add(
+            "%d champion_handover %s %s"
+                .formatted(a.get("tick").asInt(), a.get("owner").asText(), a.get("unit").asText()));
+      }
+    }
+    assertThat(deaths)
+        .as("every death's hooks as they are scheduled, and every champion handed over")
+        .containsExactlyElementsOf(expectedDeaths);
 
     List<String> expectedLocks = new ArrayList<>();
     for (JsonNode event : reference.get("tower_events")) {
@@ -372,6 +427,14 @@ class BattleActionSpawnRunTest {
       int tick, String kind, CharacterEntity source, CharacterEntity child) {
     List<String> chain = source.group().stream().map(CharacterEntity::name).toList();
     return "%d %s %s %s %s".formatted(tick, kind, source.name(), child.name(), chain);
+  }
+
+  /** An attacker as the reference names it: a projectile by its id. */
+  private static String attackerName(BattleEntity attacker) {
+    if (attacker instanceof WorldEntity entity) {
+      return entity.name();
+    }
+    return attacker instanceof ProjectileEntity ? "proj_" + attacker.getId() : null;
   }
 
   /** The arena entity of the given name. */

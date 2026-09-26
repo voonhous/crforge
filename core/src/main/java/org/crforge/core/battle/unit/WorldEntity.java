@@ -72,9 +72,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " hits go through the hit application, whose area, for a row with an area radius,"
             + " takes the entity as its owner, and whose reference to an entity that left is"
             + " dropped by the removal notice; a level change moving the level, the damage from"
-            + " the next hit, the maxima and, on a rise only, the hit points by their share. Not"
-            + " modelled yet: the shield's hit points at the"
-            + " level, and what a death does beyond the entity becoming removable.")
+            + " the next hit, the maxima and, on a rise only, the hit points by their share; a"
+            + " death handing what killed it - the unit, the projectile, the typed hit's source"
+            + " still in the battle, the killer - to the battle's death handler. Not modelled yet:"
+            + " the shield's hit points at the level.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -175,12 +176,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * this entity's hit points - whether it is alive, and what an attacker that prefers the weakest
    * candidate sees - is brought back into step here, so no pass can read a stale answer.
    *
+   * @param attacker what deals it: the unit for a direct hit or its area, the projectile for an
+   *     impact, or null for nothing
    * @param damage hit points the source is dealing, before the two sides' buffs
    * @param dedupeId id of a source that must land on this entity only once; 0 for a direct hit
    * @param directionX direction of the hit along the arena's width
    * @param directionY direction of the hit along the arena's length
    */
-  public DamageResult takeDamage(int damage, int dedupeId, int directionX, int directionY) {
+  public DamageResult takeDamage(
+      BattleEntity attacker, int damage, int dedupeId, int directionX, int directionY) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -189,7 +193,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
     refreshHitPoints();
     if (result.died()) {
-      died();
+      die(attacker);
     }
     return result;
   }
@@ -200,6 +204,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * own death handler switches off what it no longer does.
    */
   protected void died() {}
+
+  /**
+   * The death of the entity, in the pass whose hit took its hit points to zero: first what the
+   * entity itself switches off, then the battle's death handler, which schedules its death hooks.
+   *
+   * @param attacker what killed it, or null for nothing
+   */
+  private void die(BattleEntity attacker) {
+    died();
+    world.entityDied(this, attacker);
+  }
 
   /**
    * Makes every arena entity of this tick known to the entity's selection. The first call also
@@ -259,7 +274,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
-        world.dealDamage(target, damage, directionX, directionY);
+        world.dealDamage(WorldEntity.this, target, damage, directionX, directionY);
       }
 
       @Override
@@ -419,6 +434,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return world.spawnCharacters(this, arguments);
   }
 
+  @Override
+  public void handOverChampion(SpawnHost child) {
+    world.handOverChampion(this, child);
+  }
+
   /**
    * Before its registration visit, a spawned entity takes its id into its view and learns this
    * tick's arena entities as its candidates, the opposing towers among them, as the pre-pass would
@@ -550,15 +570,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Takes a typed hit from the drain, its pipeline already run.
    *
+   * @param source the entity that dealt it while it is still in the battle, or null
    * @return what the hit did
    */
-  DamageResult takeTypedHit(int amount, int damageId, int directionX, int directionY) {
+  DamageResult takeTypedHit(
+      BattleEntity source, int amount, int damageId, int directionX, int directionY) {
     DamageResult result =
         DamageApplication.typedHit(
             hitPoints, amount, damageId, directionX, directionY, damageQueries());
     refreshHitPoints();
     if (result.died()) {
-      died();
+      die(source);
     }
     return result;
   }
@@ -566,16 +588,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Takes a kill: the whole hit points as one hit that ignores the battle's holds.
    *
+   * @param killer the entity that caused it, or null for none
    * @return what the kill did
    */
-  DamageResult takeKill() {
+  DamageResult takeKill(BattleEntity killer) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     DamageResult result = DamageApplication.kill(hitPoints, damageQueries());
     refreshHitPoints();
     if (result.died()) {
-      died();
+      die(killer);
     }
     return result;
   }

@@ -14,18 +14,21 @@ import org.crforge.core.fidelity.FidelityStatus;
  * it, the battle's spawner creates the children, and each child is linked into its source's group
  * when the row asks and the source is a character; it does not last.
  *
+ * <p>A champion it spawns is then handed to its side's champion controllers, which changes nothing
+ * about the unit: no ability is modelled.
+ *
  * <p>Refused rather than guessed: a row that asks for a building's placement, a row with no source,
  * and a row whose spawn would make any other call after it - the shared-target schedule or the
- * clone - neither of which is modelled. The champion hand-over is not asked for: the battle's units
- * carry no ability to tell a champion by.
+ * clone - neither of which is modelled.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the perform's block from the owner and the cause, handed to the battle's"
-            + " spawner, and the group link after the spawn. Not modelled: the action's target,"
-            + " the building placement search, the other calls after the spawn and the champion"
-            + " hand-over; a row that needs one is refused, but a champion is not recognised.")
+            + " spawner, the group link after the spawn and the champion hand-over after it. Not"
+            + " modelled: the action's target, the building placement search, the other calls"
+            + " after the spawn, and what the champion controllers do with a champion; a row that"
+            + " needs one of the first three is refused.")
 public final class SpawnCharacters extends RowAction {
 
   private final SpawnRow spawn;
@@ -59,11 +62,15 @@ public final class SpawnCharacters extends RowAction {
     if (arguments.source() == null) {
       throw new UnsupportedOperationException(name() + " has no source to spawn from");
     }
+    boolean champion = arguments.configuration().champion();
     List<SpawnPerform.AfterSpawnCall> unmodelled =
         SpawnPerform.afterSpawn(
-                spawn, arguments.source(), false, false, Math.max(arguments.count(), 0))
+                spawn, arguments.source(), false, champion, Math.max(arguments.count(), 0))
             .stream()
-            .filter(call -> call.kind() != SpawnPerform.AfterSpawnKind.GROUP_LINK)
+            .filter(
+                call ->
+                    call.kind() != SpawnPerform.AfterSpawnKind.GROUP_LINK
+                        && call.kind() != SpawnPerform.AfterSpawnKind.CHAMPION)
             .toList();
     if (!unmodelled.isEmpty()) {
       throw new UnsupportedOperationException(
@@ -73,8 +80,13 @@ public final class SpawnCharacters extends RowAction {
     List<SpawnHost> children = source.spawnCharacters(arguments);
     // The calls after the spawn run over the children it made, once every one is in the battle.
     for (SpawnPerform.AfterSpawnCall call :
-        SpawnPerform.afterSpawn(spawn, source, false, false, children.size())) {
-      source.linkIntoGroup(children.get(call.child()));
+        SpawnPerform.afterSpawn(spawn, source, false, champion, children.size())) {
+      SpawnHost child = children.get(call.child());
+      if (call.kind() == SpawnPerform.AfterSpawnKind.GROUP_LINK) {
+        source.linkIntoGroup(child);
+      } else {
+        source.handOverChampion(child);
+      }
     }
     return null;
   }
