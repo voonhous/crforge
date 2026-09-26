@@ -99,6 +99,12 @@ public class BattleWorld implements HolderPasses {
   /** The variables the battle's expressions may name, by name, each with its key. */
   private final Map<String, Integer> variableKeys = new HashMap<>();
 
+  /** The game tags the battle's expressions may name, by name, each with its index. */
+  private final Map<String, Integer> gameTagIndex = new HashMap<>();
+
+  /** The bits of each game tag, by index. */
+  private final List<Long> gameTagMasks = new ArrayList<>();
+
   /** The tick the entity tick in progress belongs to, kept for the calls that are not handed it. */
   private int tick;
 
@@ -130,6 +136,33 @@ public class BattleWorld implements HolderPasses {
   /** The key of a variable an expression may name, or null for a name that is none. */
   Integer variableKey(String name) {
     return variableKeys.get(name);
+  }
+
+  /**
+   * Makes a game tag nameable in the battle's expressions. The data declares its tags; until it is
+   * loaded they are registered here, each taking the next index.
+   *
+   * @param name the name an expression uses
+   * @param mask the tag's bits in an entity's tag word
+   */
+  public void registerGameTag(String name, long mask) {
+    Integer index = gameTagIndex.get(name);
+    if (index != null) {
+      gameTagMasks.set(index, mask);
+      return;
+    }
+    gameTagIndex.put(name, gameTagMasks.size());
+    gameTagMasks.add(mask);
+  }
+
+  /** The index of a game tag an expression may name, or null for a name that is none. */
+  Integer gameTagIndex(String name) {
+    return gameTagIndex.get(name);
+  }
+
+  /** The bits of the game tag of the given index. */
+  long gameTagMask(int index) {
+    return gameTagMasks.get(index);
   }
 
   public List<WorldEntity> present() {

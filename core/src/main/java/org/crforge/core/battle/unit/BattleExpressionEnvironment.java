@@ -19,8 +19,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " points, and tower_destroyed as that side down to fewer than two princess towers."
             + " Supplied, not settled: the two co-op functions answer 0 in a battle of two"
             + " players; a name the table does not know naming one of the battle's variables, read"
-            + " from the context entity, 0 for one never written. Not modelled: the other 43"
-            + " functions, which fail when called, and names of game tags and data rows.")
+            + " from the context entity, 0 for one never written, and then one of its game tags,"
+            + " true when the context entity carries every bit of it. Not modelled: the other 43"
+            + " functions, which fail when called, and names of data rows.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   private static final int KING_TOWER_DAMAGED = BattleFunctions.id("king_tower_damaged");
@@ -28,8 +29,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int TOWER_DESTROYED = BattleFunctions.id("tower_destroyed");
   private static final int COOP_TOWER_DESTROYED = BattleFunctions.id("coop_tower_destroyed");
 
-  /** The id a variable's key is added to: every function id lies below it. */
+  /** The id a variable's key is added to: every function and tag id lies below it. */
   static final int VARIABLE_BASE = 20_000;
+
+  /** The id a game tag's index is added to: every function id lies below it. */
+  static final int GAME_TAG_BASE = 10_000;
 
   /** Princess towers a side must keep for tower_destroyed to answer false. */
   private static final int PRINCESS_TOWERS_KEPT = 2;
@@ -52,15 +56,25 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (entry != null) {
       return new Function(entry.id(), entry.minArguments(), entry.maxArguments());
     }
-    // A name the function table does not know may be one of the battle's variables.
+    // A name the function table does not know may be one of the battle's variables, and then one
+    // of its game tags.
     Integer key = world.variableKey(name);
-    return key == null ? null : new Function(VARIABLE_BASE + key, 0, 0);
+    if (key != null) {
+      return new Function(VARIABLE_BASE + key, 0, 0);
+    }
+    Integer tag = world.gameTagIndex(name);
+    return tag == null ? null : new Function(GAME_TAG_BASE + tag, 0, 0);
   }
 
   @Override
   public int call(int id, int[] arguments) {
     if (id >= VARIABLE_BASE) {
       return context.variable(id - VARIABLE_BASE);
+    }
+    if (id >= GAME_TAG_BASE) {
+      // True when the context entity carries every bit of the tag.
+      long mask = world.gameTagMask(id - GAME_TAG_BASE);
+      return (mask & ~context.getView().getFlags()) == 0 ? 1 : 0;
     }
     if (id == KING_TOWER_DAMAGED) {
       TowerEntity king = world.kingTower(context.side());
