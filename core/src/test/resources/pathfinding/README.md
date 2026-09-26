@@ -168,6 +168,12 @@ The layout is the Musketeer run's with three additions:
 
 The two runs with two units are the first where a unit walks at a unit that moves: the enemy Knight steers at the Valkyrie where she stands at the moment of its movement visit, after hers. Neither run has two units close enough to push or steer around each other.
 
+## `golden/knight_level_up.json` - a level change on a standing unit
+
+The Knight's run with the towers fighting, `tower_vs_knight_left`, with the Royal Chef's level-up row, `ChefTower_increase_level_action` (a relative adjustment of 1), scheduled on the Knight on tick 250. `unit_schedules` lists it: the unit, the tick and the row, scheduled in the command pass of that tick on the unit's own action holder, the unit as its cause, as a buff's starting action would. The run is the Knight's through 249. In phase 1 of 250 the Knight goes from level 11 to 12 and its hit points from 1003 of 1766 to 1100 of 1938, keeping their share; its hits from 268 deal 221, not 202, and it dies on 421 instead of 405. `actions` records the schedule, the run and the level change with the levels, hit points and maxima before and after.
+
+`BattleTowerRunTest` plays it with the other tower runs.
+
 ## `golden/barbarians_left.json`, `golden/barbarians_edge.json`, `golden/skeleton_army_edge.json`, `golden/knight_side1.json` and `golden/deploy_refused.json` - placing a card
 
 Units placed the way a player places them: by a place-card command carrying the card, the requested point, the side and the tick it runs on, at level 11 with the towers fighting. The requested point is not where a unit stands: the play clamps it to the arena, snaps it to a tile, moves it to the nearest tile the card may be placed on, and lays the card's units out around it.
