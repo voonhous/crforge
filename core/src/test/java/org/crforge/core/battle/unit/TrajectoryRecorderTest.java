@@ -92,7 +92,8 @@ class TrajectoryRecorderTest {
     String expected = reference(resource);
     JsonNode reference = MAPPER.readTree(expected);
     int ticks = reference.get("records").size();
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     List<CharacterEntity> units = BattleTowerRunTest.deployAll(match, reference);
     TrajectoryRecorder recorder =
@@ -126,7 +127,8 @@ class TrajectoryRecorderTest {
    */
   private static TrajectoryRecorder record(JsonNode reference, int placementTick) {
     int ticks = reference.get("records").size();
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("level").asInt(), false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("level").asInt(), false);
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(

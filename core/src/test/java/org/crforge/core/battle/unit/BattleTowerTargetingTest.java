@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -48,7 +49,8 @@ class BattleTowerTargetingTest {
       lastTick = Math.max(lastTick, event.get("tick").asInt());
     }
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     CharacterEntity unit = BattleTowerRunTest.deploy(match, reference);
 
@@ -120,7 +122,8 @@ class BattleTowerTargetingTest {
     }
     assertThat(removalTick).as("the reference removes the unit").isNotNegative();
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     BattleTowerRunTest.deploy(match, reference);
     for (int tick = 0; tick <= removalTick; tick++) {
@@ -152,7 +155,7 @@ class BattleTowerTargetingTest {
       "a king tower is visited on its first two ticks, takes its default reference, and is then"
           + " kept out of the fight")
   void aKingTowerIsVisitedOnItsFirstTwoTicksAndThenSwitchedOff() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     Battle battle = match.getBattle();
 
     // The wait that keeps the king inactive starts in the first tick's first pending pass, after
@@ -198,7 +201,8 @@ class BattleTowerTargetingTest {
     assertThat(timeline.get("activating_finished")).isEqualTo(condition + 67);
     assertThat(timeline.get("activating_removed")).isEqualTo(condition + 68);
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     BattleTowerRunTest.deploy(match, reference);
     TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
@@ -232,7 +236,7 @@ class BattleTowerTargetingTest {
   @DisplayName(
       "a tower's elapsed time steps by 50 on each of its state visits, from its first tick")
   void aTowersElapsedTimeStepsFromItsFirstTick() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     Battle battle = match.getBattle();
 
     for (int step = 1; step <= 10; step++) {
@@ -245,7 +249,8 @@ class BattleTowerTargetingTest {
   @Test
   @DisplayName("a passive tower never selects a target")
   void aPassiveTowerNeverSelects() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
 
     for (int tick = 0; tick < 5; tick++) {

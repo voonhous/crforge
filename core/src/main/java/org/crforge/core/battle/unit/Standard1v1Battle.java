@@ -9,6 +9,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.InitialDelay;
@@ -49,30 +50,38 @@ public class Standard1v1Battle {
   @Getter private final BattleWorld world;
   @Getter private final Battle battle;
 
-  /** A battle whose towers stand at {@link #DEFAULT_LEVEL}. */
-  public Standard1v1Battle() {
-    this(DEFAULT_LEVEL);
+  /**
+   * A battle on the game's tables whose towers stand at {@link #DEFAULT_LEVEL}.
+   *
+   * @param tables the game tables the battle reads its rows from
+   */
+  public Standard1v1Battle(GameTables tables) {
+    this(tables, DEFAULT_LEVEL);
   }
 
   /**
-   * A battle whose towers stand at the given level and fight.
+   * A battle on the game's tables whose towers stand at the given level and fight.
    *
+   * @param tables the game tables the battle reads its rows from
    * @param towerLevel the level all six towers are created at, counted from 1
    */
-  public Standard1v1Battle(int towerLevel) {
-    this(towerLevel, true);
+  public Standard1v1Battle(GameTables tables, int towerLevel) {
+    this(tables, towerLevel, true);
   }
 
   /**
-   * A battle whose towers stand at the given level, fighting or passive.
+   * A battle on the game's tables whose towers stand at the given level, fighting or passive.
    *
+   * @param tables the game tables the battle reads its rows from: its variables and game tags are
+   *     declared, and its records and action rows are kept for the entities
    * @param towerLevel the level all six towers are created at, counted from 1
    * @param towersAttack false to keep every tower passive for the whole battle: none selects a
    *     target or fires, as in the reference runs made without the towers fighting
    */
-  public Standard1v1Battle(int towerLevel, boolean towersAttack) {
+  public Standard1v1Battle(GameTables tables, int towerLevel, boolean towersAttack) {
     TileMap tileMap = TileMap.standard1v1();
     this.world = new BattleWorld(tileMap);
+    world.load(tables);
     this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
     for (int side : new int[] {WorldEntity.SIDE_BOTTOM, WorldEntity.SIDE_TOP}) {
       for (int i = 0; i < TOWER_CELLS.length; i++) {

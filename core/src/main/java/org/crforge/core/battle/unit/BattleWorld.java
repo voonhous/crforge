@@ -14,6 +14,8 @@ import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.ActionBinding;
+import org.crforge.core.battle.data.ActionRows;
+import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
@@ -184,6 +186,24 @@ public class BattleWorld implements HolderPasses {
   /** The key of a variable an expression may name, or null for a name that is none. */
   Integer variableKey(String name) {
     return variableKeys.get(name);
+  }
+
+  /** The battle's unit, projectile and card records, from the tables it was loaded with. */
+  @Getter private BattleRecords records;
+
+  /** The battle's action rows, from the tables it was loaded with. */
+  @Getter private ActionRows actions;
+
+  /**
+   * Loads the game's tables into the battle: declares their variables and game tags and keeps the
+   * records and action rows built from them, which the battle's entities build their actions from.
+   *
+   * @param tables the game tables of one data version
+   */
+  public void load(GameTables tables) {
+    declare(tables);
+    this.records = new BattleRecords(tables);
+    this.actions = new ActionRows(tables, records);
   }
 
   /**

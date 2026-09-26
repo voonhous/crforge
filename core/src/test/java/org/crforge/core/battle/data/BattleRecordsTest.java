@@ -148,4 +148,20 @@ class BattleRecordsTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NoSuchCard");
   }
+
+  @Test
+  @DisplayName("a unit carries the names of its row's three hook actions, null for none")
+  void hookNames() {
+    UnitData king = records.unit("KingTower");
+    assertThat(king.onStartingAction()).isEqualTo("KingTower_StartingGroup");
+    assertThat(king.onDeathAction()).isNull();
+    assertThat(records.unit("Witch_crazy_1").onStartingAction())
+        .isEqualTo("Witch_crazy_1_start_action_group");
+    assertThat(records.unit("Tombstone_crazy_1").onDeathAction())
+        .isEqualTo("Tombstone_crazy_1_OnDeathAction");
+    UnitData knight = records.unit("Knight");
+    assertThat(knight.onStartingAction()).isNull();
+    assertThat(knight.onDeathAction()).isNull();
+    assertThat(knight.onKilledAction()).isNull();
+  }
 }

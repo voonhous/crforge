@@ -28,7 +28,8 @@ class BattleKillActionTest {
   @Test
   @DisplayName("a killed Knight dies as from a hit, and a shield that is up takes the kill")
   void aKillActionKillsAUnit() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     List<String> deaths = new ArrayList<>();
     match

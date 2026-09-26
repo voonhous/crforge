@@ -22,7 +22,8 @@ class BattleCardPlayTest {
   @Test
   @DisplayName("a play submitted before the first step is stamped 1 and runs on tick 21")
   void aPlayBeforeTheFirstStepRunsOnTick21() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     match.submit(knight(), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Knight");
 
@@ -43,7 +44,8 @@ class BattleCardPlayTest {
   @Test
   @DisplayName("a play submitted after 30 steps is stamped 30 and runs on tick 50")
   void aPlayAfterThirtyStepsRunsOnTick50() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     for (int tick = 0; tick < 30; tick++) {
       battle.step();
@@ -63,7 +65,8 @@ class BattleCardPlayTest {
   @Test
   @DisplayName("a unit waiting its turn has its movement switched off until it starts deploying")
   void aWaitingUnitsMovementIsOffUntilItDeploys() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     DeployCard barbarians = GameData.card("Barbarians");
     match.play(0, barbarians, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Barbarians");

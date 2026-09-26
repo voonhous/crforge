@@ -21,7 +21,7 @@ class BattleDeployingPushTest {
   @Test
   @DisplayName("a unit deploying alone stays where it was placed")
   void aLoneDeployingUnitStaysPut() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     Battle battle = match.getBattle();
     CharacterEntity knight = match.deploy(0, knight(), 11, 0, 3500, 10000);
 
@@ -36,7 +36,7 @@ class BattleDeployingPushTest {
   @Test
   @DisplayName("two units placed on one point are pushed apart while both are still deploying")
   void twoUnitsOnOnePointSplitWhileDeploying() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     Battle battle = match.getBattle();
     CharacterEntity first = match.deploy(0, knight(), 11, 0, 3500, 10000, "Knight_a");
     CharacterEntity second = match.deploy(0, knight(), 11, 0, 3500, 10000, "Knight_b");

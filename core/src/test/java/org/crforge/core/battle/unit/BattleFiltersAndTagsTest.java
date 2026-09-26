@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
@@ -30,7 +31,8 @@ class BattleFiltersAndTagsTest {
   @Test
   @DisplayName("an enemy-towers filter passes the other side's towers and nothing of its own side")
   void aFilterAsksAboutTheTowers() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     GameObjectFilter enemyTowers =
         GameObjectFilter.builder().matchTeamEnemy(true).matchTowers(true).filterDead(false).build();
     GameObjectFilter enemyPrincesses = enemyTowers.toBuilder().filterSummoner(true).build();
@@ -51,7 +53,8 @@ class BattleFiltersAndTagsTest {
   @DisplayName(
       "the king's sleeping tag, set by its wait, is in its tag word from the next pre-hook")
   void anExpressionReadsATagAnActionSet() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     BattleWorld world = match.getWorld();
     world.registerGameTag("INACTIVE", GameTags.INACTIVE);

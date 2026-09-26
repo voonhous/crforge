@@ -61,6 +61,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param attackPushBack how far the unit pushes itself back, in game units, away from the aim of
  *     each projectile it launches; 0 for none
  * @param ignorePushback true when the unit's row ignores pushback
+ * @param onStartingAction the action row the unit runs when it joins the battle, or null
+ * @param onDeathAction the action row the unit runs when it dies, or null
+ * @param onKilledAction the action row the unit runs when it is killed, or null
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -100,7 +103,10 @@ public record UnitData(
     int noDeploySizeW,
     int noDeploySizeH,
     int attackPushBack,
-    boolean ignorePushback) {
+    boolean ignorePushback,
+    String onStartingAction,
+    String onDeathAction,
+    String onKilledAction) {
 
   /**
    * The king tower's published columns. The towers carry no rarity column; Common is the rarity

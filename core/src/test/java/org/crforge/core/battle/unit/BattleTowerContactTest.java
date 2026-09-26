@@ -21,7 +21,8 @@ class BattleTowerContactTest {
       "a Knight deployed against its king tower is pushed off it 1 unit a tick while it deploys")
   void theKingPushesADeployingKnight() {
     UnitData knight = GameData.unit("Knight");
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit = match.deploy(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 4600);
 

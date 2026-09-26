@@ -35,7 +35,8 @@ class BattleActionSpawnTest {
   @DisplayName(
       "a zero-delay action scheduled onto another entity inside a pending pass starts at once")
   void aScheduleOntoAnotherEntityInsideAPassStartsAtOnce() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     ActionOwnerEntity first = match.addActionOwner("First", 0, 3500, 21500, 10);
     ActionOwnerEntity second = match.addActionOwner("Second", 0, 14500, 21500, 10);
@@ -70,7 +71,8 @@ class BattleActionSpawnTest {
   @Test
   @DisplayName("a child's action to run on spawned runs in the spawning pass, before it is live")
   void theActionToRunOnSpawnedRunsAtOnce() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     ActionOwnerEntity owner = match.addActionOwner("Gift", 0, 14500, 12000, 10);
     BattleAction onSpawned =
@@ -126,7 +128,8 @@ class BattleActionSpawnTest {
       SpawnRow.builder().spawnData(knight()).deployTimeMs(0).spawnLevelIndex(3).build()
     };
     for (int i = 0; i < refused.length; i++) {
-      Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+      Standard1v1Battle match =
+          new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
       ActionOwnerEntity owner = match.addActionOwner("Owner", 0, 14500, 12000, 10);
       match.scheduleAction(0, owner, new SpawnCharacters(ActionRow.named("spawn"), refused[i]));
       if (i < refused.length - 1) {

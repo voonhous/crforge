@@ -49,7 +49,8 @@ class BattleDealDamageTest {
   @Test
   @DisplayName("typed hits land at the next drain, in order, and run the type's two actions")
   void typedHitsLandAtTheDrain() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     List<String> hits = new ArrayList<>();
     match
@@ -129,7 +130,8 @@ class BattleDealDamageTest {
   @DisplayName(
       "a typed hit scales by its source's row and level, by the Common row once the source left")
   void typedHitsScaleByTheirSource() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     List<String> hits = new ArrayList<>();
     match
@@ -180,7 +182,8 @@ class BattleDealDamageTest {
   @Test
   @DisplayName("a scaling typed hit with no source at all is refused: its level is not established")
   void aScalingHitWithoutASourceIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     match.play(0, knight(), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Blue");
     for (int tick = 0; tick < 30; tick++) {

@@ -79,8 +79,8 @@ class ActionRowsTest {
   @Test
   @DisplayName("a set-variable row writes its value to the variable the battle declares")
   void aVariableRow() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
-    match.getWorld().declare(GameData.tables());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     TowerEntity tower = (TowerEntity) match.getBattle().getHolder().entities().get(0);
     BattleAction row =
         GameData.actions()
