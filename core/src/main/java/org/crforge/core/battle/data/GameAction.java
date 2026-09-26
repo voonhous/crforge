@@ -1,4 +1,4 @@
-package org.crforge.data.game;
+package org.crforge.core.battle.data;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
