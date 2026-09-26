@@ -70,30 +70,6 @@ public record ProjectileData(
     int minDistance,
     boolean circleScatter) {
 
-  /** The princess tower's arrow, as published; the towers' rows are not in the card library. */
-  public static final ProjectileData TOWER_PRINCESS_PROJECTILE =
-      ProjectileData.builder()
-          .name("TowerPrincessProjectile")
-          .rarity(RarityTable.COMMON)
-          .speed(600)
-          .gravity(60)
-          .homing(true)
-          .damage(50)
-          .damageMode(ScalingMode.CARD_DAMAGE)
-          .build();
-
-  /** The king tower's cannon ball, as published. */
-  public static final ProjectileData KING_PROJECTILE =
-      ProjectileData.builder()
-          .name("KingProjectile")
-          .rarity(RarityTable.COMMON)
-          .speed(1000)
-          .gravity(50)
-          .homing(true)
-          .damage(50)
-          .damageMode(ScalingMode.CARD_DAMAGE)
-          .build();
-
   public ProjectileData {
     if (damageMode == null) {
       damageMode = ScalingMode.CARD_DAMAGE;

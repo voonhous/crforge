@@ -25,11 +25,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  *
  * <p>Three references. In the first a Knight walks up the left lane: the princess tower in front of
  * it locks on at 130, fires its first arrow at 145 and one every sixteen ticks after, each arrow
- * taking 128 off the Knight, which reaches the tower, lands five hits of its own and dies to the
- * fourteenth arrow at 357. In the second a Musketeer stops short of the same tower and fires four
- * shots before the tower's sixth arrow kills it at 237. In the third a Wizard fires three
+ * taking 109 off the Knight, which reaches the tower, lands seven hits of its own and dies to the
+ * seventeenth arrow at 405. In the second a Musketeer stops short of the same tower and fires five
+ * shots before the tower's seventh arrow kills it at 253; its last shot lands after it has left, so
+ * each run is played to its last event and projectile position. In the third a Wizard fires three
  * fireballs, whose impacts damage everything within their radius - the tower alone, as the other
- * towers stand outside it - before the tower kills it at 237. The king towers stay out of all
+ * towers stand outside it - before the tower kills it at 253. The king towers stay out of all
  * three: nothing damages a king tower and no princess tower falls, so neither king is activated.
  *
  * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleKillRunTest}, and the
@@ -155,7 +156,7 @@ class BattleTowerRunTest {
     List<String> events = new ArrayList<>();
     match.getWorld().addObserver(eventCollector(currentTick, events));
 
-    int lastTick = BattleMusketeerRunTest.records(reference).size() - 1;
+    int lastTick = lastTick(reference);
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
       battle.step();
@@ -216,7 +217,7 @@ class BattleTowerRunTest {
               }
             });
 
-    int lastTick = BattleMusketeerRunTest.records(reference).size() - 1;
+    int lastTick = lastTick(reference);
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
       battle.step();
@@ -438,6 +439,21 @@ class BattleTowerRunTest {
     List<String> names = new ArrayList<>();
     list.forEach(name -> names.add(name.asText()));
     return names;
+  }
+
+  /**
+   * The last tick the reference shows anything on: its unit's last record, or a later event or
+   * projectile position, as when a shot is still in flight after the unit that fired it has left.
+   */
+  static int lastTick(JsonNode reference) {
+    int last = BattleMusketeerRunTest.records(reference).size() - 1;
+    for (JsonNode event : reference.get("events")) {
+      last = Math.max(last, event.get("tick").asInt());
+    }
+    for (JsonNode position : reference.path("projectiles")) {
+      last = Math.max(last, position.get(0).asInt());
+    }
+    return last;
   }
 
   /** One reference event in the collector's layout. */

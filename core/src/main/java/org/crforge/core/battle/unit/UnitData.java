@@ -108,54 +108,6 @@ public record UnitData(
     String onDeathAction,
     String onKilledAction) {
 
-  /**
-   * The king tower's published columns. The towers carry no rarity column; Common is the rarity
-   * they are scaled as.
-   */
-  public static final UnitData KING_TOWER =
-      UnitData.builder()
-          .name("KingTower")
-          .range(7000)
-          .sightRange(7000)
-          .collisionRadius(1400)
-          .hitSpeedMs(1000)
-          .loadTimeMs(500)
-          .attacksGround(true)
-          .attacksAir(true)
-          .building(true)
-          .king(true)
-          .tileSizeOverride(2)
-          .noDeploySizeW(18)
-          .noDeploySizeH(16)
-          .hitpoints(2400)
-          .rarity(RarityTable.COMMON)
-          .projectile(ProjectileData.KING_PROJECTILE)
-          .projectileStartRadius(750)
-          .projectileStartZ(3500)
-          .projectileYOffset(400)
-          .build();
-
-  /** The princess tower's published columns. */
-  public static final UnitData PRINCESS_TOWER =
-      UnitData.builder()
-          .name("PrincessTower")
-          .range(7500)
-          .sightRange(7500)
-          .collisionRadius(1000)
-          .hitSpeedMs(800)
-          .attacksGround(true)
-          .attacksAir(true)
-          .building(true)
-          .summonerTower(true)
-          .noDeploySizeW(11)
-          .noDeploySizeH(21)
-          .hitpoints(1400)
-          .rarity(RarityTable.COMMON)
-          .projectile(ProjectileData.TOWER_PRINCESS_PROJECTILE)
-          .projectileStartRadius(300)
-          .projectileStartZ(3000)
-          .build();
-
   /** True for a unit that fires a projectile rather than hitting its target directly. */
   public boolean hasProjectile() {
     return projectile != null;
