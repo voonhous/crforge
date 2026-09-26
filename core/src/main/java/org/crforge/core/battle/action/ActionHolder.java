@@ -108,6 +108,23 @@ public class ActionHolder implements EntityActions {
   /** The tick of the last run pass. */
   @Getter private int lastTick;
 
+  /** The entity the holder belongs to, which the leaves that act on their owner act on. */
+  @Getter private final ActionOwner owner;
+
+  /** A holder with no owner: its actions act on nothing but each other. */
+  public ActionHolder() {
+    this(null);
+  }
+
+  /**
+   * A holder that belongs to an entity.
+   *
+   * @param owner the entity, or null for none
+   */
+  public ActionHolder(ActionOwner owner) {
+    this.owner = owner;
+  }
+
   @Setter private Listener listener = new Listener() {};
 
   /**

@@ -38,8 +38,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the grammar and its precedence, the opcodes each level emits, literals and"
             + " their wrap, whitespace, identifiers, the order symbols are resolved in, argument"
             + " counts, the fold and its exception for a division by zero, the refusals and the"
-            + " stack depth, on every recorded case. Not modelled: data references - variables,"
-            + " game tags and data rows by name - which need the loaded data. Not settled: whether"
+            + " stack depth, on every recorded case. Variables resolve through the environment,"
+            + " which offers them after its functions. Not modelled: game tags and data rows by"
+            + " name, which need the loaded data. Not settled: whether"
             + " true and false are matched without regard to case.")
 public final class ExpressionCompiler {
 
