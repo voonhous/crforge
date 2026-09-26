@@ -426,7 +426,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   @Override
-  public int spawnCharacters(SpawnArguments arguments) {
+  public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
     return world.spawnCharacters(this, arguments);
   }
 

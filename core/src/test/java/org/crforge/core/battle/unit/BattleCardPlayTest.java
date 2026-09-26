@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
@@ -85,5 +86,22 @@ class BattleCardPlayTest {
     battle.step();
     assertThat(second.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
     assertThat(second.getView().isMovementActive()).isTrue();
+  }
+
+  @Test
+  @DisplayName("a card whose unit has a starting action is refused, its start by a play not held")
+  void aUnitWithAStartingActionIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.play(
+        0, GameData.card("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
+    assertThatThrownBy(
+            () -> {
+              // The play runs twenty ticks after its stamp.
+              for (int tick = 0; tick <= 21; tick++) {
+                match.getBattle().step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("starting action");
   }
 }

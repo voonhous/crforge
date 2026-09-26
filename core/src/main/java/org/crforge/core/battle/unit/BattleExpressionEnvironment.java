@@ -15,12 +15,14 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: king_tower_damaged as the context side's king tower below its maximum hit"
-            + " points, and tower_destroyed as that side down to fewer than two princess towers."
+        "Settled: x and y as the context entity's position as it stands when the expression"
+            + " is evaluated; king_tower_damaged as the context side's king tower below its"
+            + " maximum hit points, and tower_destroyed as that side down to fewer than two"
+            + " princess towers."
             + " Supplied, not settled: the two co-op functions answer 0 in a battle of two"
             + " players; a name the table does not know naming one of the battle's variables, read"
             + " from the context entity, 0 for one never written, and then one of its game tags,"
-            + " true when the context entity carries every bit of it. Not modelled: the other 43"
+            + " true when the context entity carries every bit of it. Not modelled: the other 41"
             + " functions, which fail when called, and names of data rows.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -29,6 +31,8 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int TOWER_DESTROYED = BattleFunctions.id("tower_destroyed");
   private static final int COOP_TOWER_DESTROYED = BattleFunctions.id("coop_tower_destroyed");
   private static final int IS_NPC_BATTLE = BattleFunctions.id("is_npc_battle");
+  private static final int X = BattleFunctions.id("x");
+  private static final int Y = BattleFunctions.id("y");
 
   /** The id a variable's key is added to: every function and tag id lies below it. */
   static final int VARIABLE_BASE = 20_000;
@@ -76,6 +80,14 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       // True when the context entity carries every bit of the tag.
       long mask = world.gameTagMask(id - GAME_TAG_BASE);
       return (mask & ~context.getView().getFlags()) == 0 ? 1 : 0;
+    }
+    if (id == X) {
+      // The context entity's position as it stands, so a spawn row's position expression reads
+      // where its owner is when the spawn runs.
+      return context.getView().getX();
+    }
+    if (id == Y) {
+      return context.getView().getY();
     }
     if (id == KING_TOWER_DAMAGED) {
       TowerEntity king = world.kingTower(context.side());

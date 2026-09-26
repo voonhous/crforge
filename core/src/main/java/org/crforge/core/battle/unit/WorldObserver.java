@@ -76,6 +76,26 @@ public interface WorldObserver {
   default void entityRemoved(int tick, WorldEntity removed) {}
 
   /**
+   * A spawned child was linked into its source's group, right after the source, so the group reads
+   * newest first.
+   *
+   * @param tick the tick the spawn ran on
+   * @param source the character the child was spawned from
+   * @param child the child
+   */
+  default void groupLinked(int tick, CharacterEntity source, CharacterEntity child) {}
+
+  /**
+   * A child left the battle and was unlinked from its source's group, in the cleanup that removed
+   * it.
+   *
+   * @param tick the tick whose closing cleanup removed the child
+   * @param source the character whose group it was in
+   * @param child the child
+   */
+  default void groupUnlinked(int tick, CharacterEntity source, CharacterEntity child) {}
+
+  /**
    * A step of a king tower's activation happened: the condition in the run pass, the activating
    * run's start and the effect in a pending pass, its end and its removal in later run passes.
    */

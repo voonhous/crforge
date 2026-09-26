@@ -191,11 +191,24 @@ public final class BattleRecords {
     return !value.isEmpty();
   }
 
-  /** The action row a hook column names, written inline or by name; null for none. */
+  /**
+   * The action row a hook column names, as a reference or by its name; null for none. A hook
+   * written as an inline row of its own, with no name to build it by, is refused, so it is never
+   * read as no hook at all.
+   */
   private static String actionName(GameRow row, String column) {
     JsonNode value = row.value(column);
     if (value == null || value.isNull()) {
       return null;
+    }
+    if (value.isObject() && !value.has("action")) {
+      throw new UnsupportedOperationException(
+          row.name()
+              + " writes its "
+              + column
+              + " inline, as "
+              + value.path("ClassType").asText("an unnamed row")
+              + ", which is not modelled");
     }
     String name = value.isObject() ? value.path("action").asText("") : value.asText();
     return name.isEmpty() ? null : name;

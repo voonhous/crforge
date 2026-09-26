@@ -3,8 +3,13 @@ package org.crforge.core.battle.unit;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -89,6 +94,12 @@ public class CharacterEntity extends WorldEntity {
    * asked for none, as a standing or deploying character's visit does.
    */
   @Getter private int speedBudget;
+
+  /** The children linked into this character's group, newest first. */
+  private final List<CharacterEntity> group = new ArrayList<>();
+
+  /** The character whose group this one is linked into, or null for none. */
+  private CharacterEntity groupSource;
 
   /**
    * Creates a character at its deploy position, deploying.
@@ -224,6 +235,52 @@ public class CharacterEntity extends WorldEntity {
   /** True while the character is a spawned child that may not be targeted yet. */
   public boolean isSpawnImmune() {
     return unit.timers().isSpawnImmune();
+  }
+
+  /**
+   * Starts the character as a direct placement does: its row's starting action, when it has one,
+   * built for it and scheduled with the row's own delay, the character as its cause. The placement
+   * is outside every pending pass, so an action with no delay waits for the character's phase-1
+   * pending pass of the tick, which runs before its first component visit.
+   */
+  public void start() {
+    if (getData().onStartingAction() == null) {
+      return;
+    }
+    BattleAction starting =
+        world.getActions().build(getData().onStartingAction(), world.binding(this));
+    actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
+  }
+
+  /** The children linked into this character's group, newest first. */
+  public List<CharacterEntity> group() {
+    return Collections.unmodifiableList(group);
+  }
+
+  /**
+   * Links a child into this character's group right after the character, ahead of every child
+   * linked before it.
+   */
+  @Override
+  public void linkIntoGroup(SpawnHost child) {
+    CharacterEntity linked = (CharacterEntity) child;
+    group.add(0, linked);
+    linked.groupSource = this;
+    world.groupLinked(this, linked);
+  }
+
+  /**
+   * Unlinks the character from the group it was linked into, as it is released.
+   *
+   * @return the character whose group it left, or null when it was in none
+   */
+  CharacterEntity leaveGroup() {
+    CharacterEntity source = groupSource;
+    if (source != null) {
+      source.group.remove(this);
+      groupSource = null;
+    }
+    return source;
   }
 
   /**

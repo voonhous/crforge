@@ -125,6 +125,7 @@ class BattleActionSpawnTest {
       SpawnRow.builder().spawnData(knight()).validatePlacementAsBuilding(true).build(),
       SpawnRow.builder().spawnData(knight()).count(2).build(),
       SpawnRow.builder().spawnData(knight()).spawnAsClone(true).build(),
+      SpawnRow.builder().spawnData(GameData.unit("Witch_crazy_1")).build(),
       SpawnRow.builder().spawnData(knight()).deployTimeMs(0).spawnLevelIndex(3).build()
     };
     for (int i = 0; i < refused.length; i++) {

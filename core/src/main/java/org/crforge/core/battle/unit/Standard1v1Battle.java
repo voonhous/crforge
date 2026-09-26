@@ -206,6 +206,10 @@ public class Standard1v1Battle {
             LANE_BASED_DEPLOY_SEQUENCE);
     List<CharacterEntity> units = new ArrayList<>();
     for (CardPlacement.Unit unit : result.units()) {
+      if (unit.unit().onStartingAction() != null) {
+        throw new UnsupportedOperationException(
+            unit.unit().name() + " has a starting action, whose start by a card play is not held");
+      }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
       CharacterEntity character =
           new CharacterEntity(
@@ -225,8 +229,10 @@ public class Standard1v1Battle {
   }
 
   /**
-   * Queues the placement of one character on the given tick. The command runs at the tail of that
-   * tick's step, so the character's first deploy countdown step is the following tick.
+   * Queues the placement of one character on the given tick. The command runs at the head of that
+   * tick's step, so the step's opening cleanup admits the character and its first deploy countdown
+   * step is that same tick. The placement starts the character: its row's starting action, when it
+   * has one, runs in its phase-1 pending pass of the step, before its first component visit.
    *
    * @param tick the tick the placement is due on
    * @param data the character's published columns
@@ -266,6 +272,8 @@ public class Standard1v1Battle {
           @Override
           public void execute(Battle target) {
             target.getHolder().add(character);
+            // The placement starts it: its starting action waits for its first pending pass.
+            character.start();
           }
         });
     return character;

@@ -1,5 +1,6 @@
 package org.crforge.core.battle.spawn;
 
+import java.util.List;
 import org.crforge.core.battle.action.ActionHolder;
 
 /**
@@ -18,7 +19,17 @@ public interface SpawnHost extends SpawnObject {
    * Spawns the children the block describes, in the battle this object belongs to.
    *
    * @param arguments the block a spawn row's perform works out
-   * @return how many children were spawned
+   * @return the children spawned, in the order they were made
    */
-  int spawnCharacters(SpawnArguments arguments);
+  List<SpawnHost> spawnCharacters(SpawnArguments arguments);
+
+  /**
+   * Links a child this object spawned into its group, right after itself, so the group reads newest
+   * first. Only a character keeps a group.
+   *
+   * @param child the child
+   */
+  default void linkIntoGroup(SpawnHost child) {
+    throw new UnsupportedOperationException(name() + " keeps no group");
+  }
 }
