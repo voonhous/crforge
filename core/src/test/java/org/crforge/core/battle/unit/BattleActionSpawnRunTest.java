@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
@@ -39,7 +40,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class BattleActionSpawnRunTest {
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {"bush_goblins", "brawler_goblins", "gift_knight"})
+  @ValueSource(strings = {"bush_goblins", "brawler_goblins", "gift_knight", "abort_instigator"})
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
     Standard1v1Battle match =
@@ -51,6 +52,7 @@ class BattleActionSpawnRunTest {
     // made, so the runs and the spawns are compared as two lists, each in order.
     List<String> actions = new ArrayList<>();
     List<String> spawns = new ArrayList<>();
+    List<String> dropping = new ArrayList<>();
     for (JsonNode o : reference.get("action_owners")) {
       ActionOwnerEntity owner =
           match.addActionOwner(
@@ -69,13 +71,38 @@ class BattleActionSpawnRunTest {
                       "%d run %s %s %d"
                           .formatted(currentTick[0], owner.name(), action.name(), phase));
                 }
+
+                @Override
+                public void dropped(BattleAction action, int ticksLeft) {
+                  dropping.add(
+                      "%d dropped %s %s %d"
+                          .formatted(currentTick[0], owner.name(), action.name(), ticksLeft));
+                }
               });
       for (JsonNode s : o.get("schedule")) {
-        // The row is built from the game's own action rows, for the owner it runs on.
-        match.scheduleAction(
-            s.get("tick").asInt(),
-            owner,
-            GameData.actions().build(s.get("action").asText(), owner.binding()));
+        // The row is built from the game's own action rows, for the owner it runs on. A schedule
+        // may name another entity as its cause, which is found by name when the schedule is made.
+        BattleAction row = GameData.actions().build(s.get("action").asText(), owner.binding());
+        if (s.has("instigator")) {
+          String cause = s.get("instigator").asText();
+          battle.queue(
+              new BattleCommand() {
+                @Override
+                public int tick() {
+                  return s.get("tick").asInt();
+                }
+
+                @Override
+                public void execute(Battle target) {
+                  WorldEntity instigator = named(target, cause);
+                  owner
+                      .actionHolder()
+                      .schedule(row, ActionHolder.OWN_DELAY, false, instigator.actionHolder());
+                }
+              });
+        } else {
+          match.scheduleAction(s.get("tick").asInt(), owner, row);
+        }
       }
     }
 
@@ -190,6 +217,21 @@ class BattleActionSpawnRunTest {
       }
     }
     assertThat(actions).as("every run of an action").containsExactlyElementsOf(expectedActions);
+    List<String> expectedDrops = new ArrayList<>();
+    for (JsonNode a : reference.get("actions")) {
+      if (a.get("event").asText().equals("dropped")) {
+        expectedDrops.add(
+            "%d dropped %s %s %d"
+                .formatted(
+                    a.get("tick").asInt(),
+                    a.get("owner").asText(),
+                    a.get("action").asText(),
+                    a.get("ticks_left").asInt()));
+      }
+    }
+    assertThat(dropping)
+        .as("every pending action dropped as its instigator left")
+        .containsExactlyElementsOf(expectedDrops);
     assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
 
     List<String> expectedLocks = new ArrayList<>();
@@ -264,6 +306,15 @@ class BattleActionSpawnRunTest {
     assertThat(spawnTicks.get(unit.name()) == tick)
         .as("%s spawned this tick", where)
         .isEqualTo(record.get("pending").asBoolean());
+  }
+
+  /** The arena entity of the given name. */
+  private static WorldEntity named(Battle battle, String name) {
+    return battle.getHolder().entities().stream()
+        .filter(e -> e instanceof WorldEntity w && w.name().equals(name))
+        .map(WorldEntity.class::cast)
+        .findFirst()
+        .orElseThrow();
   }
 
   private static String referenceName(TowerEntity tower) {

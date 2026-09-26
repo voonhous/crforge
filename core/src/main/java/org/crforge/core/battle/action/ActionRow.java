@@ -18,6 +18,8 @@ import lombok.Builder;
  * @param executeIf the start gate, or null for none
  * @param forceStopIf the stop gate, or null for none
  * @param pausedIf the queue gate, or null for none
+ * @param abortIfInstigatorDies true when a queued run of the row is dropped as its cause leaves the
+ *     battle; on unless the row turns it off
  */
 @Builder(toBuilder = true)
 public record ActionRow(
@@ -30,9 +32,15 @@ public record ActionRow(
     long tags,
     IntSupplier executeIf,
     IntSupplier forceStopIf,
-    IntSupplier pausedIf) {
+    IntSupplier pausedIf,
+    boolean abortIfInstigatorDies) {
 
   /** A row with a name and every other column left out. */
+  /** A builder with the row's defaults: a queued run aborts when its cause leaves. */
+  public static ActionRowBuilder builder() {
+    return new ActionRowBuilder().abortIfInstigatorDies(true);
+  }
+
   public static ActionRow named(String name) {
     return builder().name(name).build();
   }

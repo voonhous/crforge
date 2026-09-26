@@ -198,15 +198,16 @@ The same layout. A Knight of the top side requested at (3500, 20000) on tick 0 w
 
 The same layout. The Barbarians of `barbarians_left` destroy PrincessTower_1_1 on tick 363. A second Barbarians card requested at (3500, 16000) on tick 400 is placed at (3499, 16500), on the bridge: with the tower gone, the pocket behind it leaves no column interval to clamp the formation into, and two of its units are created on river cells, at (4745, 16904) and (2253, 16904). They stay on the water through waiting, deploying and their first steps, and walk off it; nothing moves them. The king tower dies on 708 and stays in the holder: the units attacking it drop it through their own targeting and walk on, and it keeps firing at them to the end of the run.
 
-## `golden/bush_goblins.json`, `golden/brawler_goblins.json` and `golden/gift_knight.json` - characters an action spawns
+## `golden/bush_goblins.json`, `golden/brawler_goblins.json`, `golden/gift_knight.json` and `golden/abort_instigator.json` - characters an action spawns
 
 The towers fight at level 11. No object the battle has yet runs these rows from its hooks, so each file lists its `action_owners`: an object with a name, id (3000000, the area-effect band), side, position and packed level, and the rows scheduled on it in the command pass of their tick. `actions` lists every schedule, every run of an action with the pending pass it ran in, and every spawn: the child's name, id, where it was created, its state, deploy countdown, lane and hit points, and its position and state after its registration visit. The children's records follow in `unit_records`, with each one's elapsed time (`delay`), deploy countdown (`deploy`), whether it is still untargetable (`immune`), and `pending` on the record of the tick it was spawned in; `records` is empty.
 
 - `bush_goblins`: a group on a bottom-side owner at (3500, 21500), scheduled on tick 0, spawns a Bush Goblin at (3000, 21500) on tick 12 and one at (4000, 21500) on tick 13, both deploying. The second is pushed to (4001, 21500) as it is registered. Each stays untargetable for six ticks, so PrincessTower_1_1 locks on the first on tick 19; they die on 70 and 127.
 - `brawler_goblins`: the same on a top-side owner at (14500, 10500), four Goblin Brawlers on ticks 12 to 15 at (15000, 10500), (14000, 10500), (15000, 10000) and (14000, 10000): the side flips both axes of the location. The last two are pushed 150 as they are registered.
 - `gift_knight`: a Knight spawned on its owner at (14500, 12000) on tick 5, walking at once: its registration visit takes PrincessTower_1_2 as its target and steps to (14518, 12056). The tower locks on 81, the Knight hits seven times from 195 and dies on 356.
+- `abort_instigator`: the `gift_knight` run with three more `SpawnBrawler` schedules on the owner, two of them caused by the Knight (`instigator` on the schedule). The one scheduled on 346 runs on 356 before the Knight's cleanup and spawns a Goblin Brawler; the one the Knight caused on 347 is still waiting when the Knight dies on 356 and is dropped in that cleanup with one tick left (a `dropped` action event, with `ticks_left` and the queue after it); the owner's own, also from 347, runs on 357.
 
-`BattleActionSpawnRunTest` plays each file through the battle and holds it to every action run and spawn, every unit record, every tower's lock, every event and every projectile position.
+`BattleActionSpawnRunTest` plays each file through the battle and holds it to every action run, spawn and drop, every unit record, every tower's lock, every event and every projectile position.
 
 ## `movement_replay/<case>.json` - the routing answers of the same run
 

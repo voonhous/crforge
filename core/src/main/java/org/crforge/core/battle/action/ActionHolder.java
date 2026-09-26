@@ -80,6 +80,13 @@ public class ActionHolder implements EntityActions {
 
     /** The run pass removed an instance that had finished or was stopped. */
     default void removed(ActionInstance instance) {}
+
+    /**
+     * A queued action was dropped because the entity that caused it left the battle.
+     *
+     * @param ticksLeft the ticks it still had to wait
+     */
+    default void dropped(BattleAction action, int ticksLeft) {}
   }
 
   /**
@@ -316,6 +323,28 @@ public class ActionHolder implements EntityActions {
         listener.finished(instance);
       }
       i++;
+    }
+  }
+
+  /**
+   * Drops every queued entry the leaving entity caused whose row aborts when its cause leaves. The
+   * walk takes the last entry into a dropped one's place and looks at that place again, as the
+   * pending pass does; running instances are left alone.
+   */
+  @Override
+  public void instigatorLeft(EntityActions left) {
+    if (!(left instanceof ActionHolder cause)) {
+      return;
+    }
+    int i = 0;
+    while (i < pending.size()) {
+      Entry entry = pending.get(i);
+      if (entry.instigator == cause && entry.action.abortIfInstigatorDies()) {
+        listener.dropped(entry.action, entry.ticks);
+        removeBySwap(pending, i);
+      } else {
+        i++;
+      }
     }
   }
 

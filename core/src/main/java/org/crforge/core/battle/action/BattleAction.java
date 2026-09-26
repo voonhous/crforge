@@ -66,6 +66,11 @@ public interface BattleAction {
     return null;
   }
 
+  /** True when a queued run is dropped as the entity that caused it leaves the battle. */
+  default boolean abortIfInstigatorDies() {
+    return true;
+  }
+
   /** The queue gate: a due entry stays queued while its value is non-zero. Null for no gate. */
   default IntSupplier pausedIf() {
     return null;
