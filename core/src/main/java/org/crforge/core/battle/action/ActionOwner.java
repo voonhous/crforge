@@ -16,4 +16,16 @@ public interface ActionOwner {
 
   /** Writes a variable for the owner, replacing what it held. */
   void setVariable(int key, int value);
+
+  /** True for a king tower, whose heals stop one short of its maximum. */
+  default boolean kingTower() {
+    return false;
+  }
+
+  /**
+   * Kills the owner, as a hit of its whole hit points that ignores the battle's holds.
+   *
+   * @param killer the entity that caused it, or null for none
+   */
+  void killBy(ActionOwner killer);
 }
