@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.SetVariable;
+import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
@@ -33,7 +35,8 @@ class BattleVariablesTest {
   @Test
   @DisplayName("an expression reads back the variable an action wrote, per entity, 0 until written")
   void anExpressionReadsTheVariableAnActionWrote() {
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     BattleWorld world = match.getWorld();
     world.registerVariable("V1", 41);
     TowerEntity king = tower(match, "KingTower_0_0");
@@ -56,5 +59,24 @@ class BattleVariablesTest {
             () -> ExpressionCompiler.compile("V2", new BattleExpressionEnvironment(king, world)))
         .as("a name that is neither a function nor a variable is refused")
         .isInstanceOf(ExpressionException.class);
+  }
+
+  @Test
+  @DisplayName("a battle on the game's tables declares their variables and game tags")
+  void theTablesAreDeclared() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    TowerEntity tower = (TowerEntity) match.getBattle().getHolder().entities().get(0);
+    ActionBinding binding = match.getWorld().binding(tower);
+    int key = binding.variableKey("MiniPekkaHero_levelStack");
+    tower.setVariable(key, 3);
+    assertThat(binding.expression("MiniPekkaHero_levelStack + 1").getAsInt()).isEqualTo(4);
+    // The king's wait starts in tick 0; its tag word shows the tag from the next pre-hook on.
+    match.getBattle().step();
+    match.getBattle().step();
+    assertThat(binding.expression("INACTIVE").getAsInt())
+        .as("the king carries INACTIVE until it wakes")
+        .isEqualTo(1);
+    assertThat(match.getWorld().getActions()).isNotNull();
+    assertThat(match.getWorld().getRecords()).isNotNull();
   }
 }

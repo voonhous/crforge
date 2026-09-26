@@ -39,7 +39,8 @@ class CardPlacementTest {
         CardPlacementTest.class.getResourceAsStream("/pathfinding/golden/" + name + ".json")) {
       reference = MAPPER.readTree(stream);
     }
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     List<MaskEntity> towers = new ArrayList<>();
     for (BattleEntity entity : match.getBattle().getHolder().entities()) {
       if (entity instanceof TowerEntity tower) {

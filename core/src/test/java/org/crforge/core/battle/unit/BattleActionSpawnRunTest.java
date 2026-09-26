@@ -42,7 +42,8 @@ class BattleActionSpawnRunTest {
   @ValueSource(strings = {"bush_goblins", "brawler_goblins", "gift_knight"})
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
 
     int[] currentTick = {-1};

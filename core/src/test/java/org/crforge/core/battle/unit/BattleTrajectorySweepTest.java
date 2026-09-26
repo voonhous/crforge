@@ -70,7 +70,8 @@ class BattleTrajectorySweepTest {
   private static void replay(JsonNode trajectory, List<String> towers) {
     String unitName = trajectory.get("card").asText();
 
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     CharacterEntity unit =
         match.deploy(

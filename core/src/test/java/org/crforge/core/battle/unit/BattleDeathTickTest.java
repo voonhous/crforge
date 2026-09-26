@@ -20,7 +20,8 @@ class BattleDeathTickTest {
   @DisplayName("two Knights that land their last hits on one tick both die, their movement off")
   void twoKnightsKillEachOtherOnOneTick() {
     DeployCard knight = GameData.card("Knight");
-    Standard1v1Battle match = new Standard1v1Battle(Standard1v1Battle.DEFAULT_LEVEL);
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL);
     Battle battle = match.getBattle();
     match.play(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12000, "Blue");
     match.play(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 1, 3500, 20000, "Red");

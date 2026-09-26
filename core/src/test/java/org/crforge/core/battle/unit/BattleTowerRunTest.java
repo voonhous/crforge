@@ -81,7 +81,8 @@ class BattleTowerRunTest {
   void theWholeRunMatchesTheReferenceTickForTick(String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     List<JsonNode> records = BattleMusketeerRunTest.records(reference);
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     List<CharacterEntity> units = deployAll(match, reference);
     CharacterEntity unit = units.get(0);
@@ -146,7 +147,8 @@ class BattleTowerRunTest {
       expected.add(eventLine(event));
     }
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     CharacterEntity unit = deploy(match, reference);
     int[] currentTick = {-1};
@@ -183,7 +185,8 @@ class BattleTowerRunTest {
       expected.add(position.toString());
     }
 
-    Standard1v1Battle match = new Standard1v1Battle(reference.get("tower_level").asInt());
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     deploy(match, reference);
     int[] currentTick = {-1};

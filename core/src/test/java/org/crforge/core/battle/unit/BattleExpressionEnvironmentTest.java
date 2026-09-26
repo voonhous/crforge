@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
@@ -17,7 +18,7 @@ class BattleExpressionEnvironmentTest {
   @Test
   @DisplayName("every one of the 47 names resolves, so every expression of the data compiles")
   void everyNameResolves() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
     TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =
@@ -33,7 +34,7 @@ class BattleExpressionEnvironmentTest {
   @Test
   @DisplayName("the king's condition follows its side's king and princess towers")
   void theKingsCondition() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     Battle battle = match.getBattle();
     battle.step();
     TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
@@ -62,7 +63,7 @@ class BattleExpressionEnvironmentTest {
   @Test
   @DisplayName("the king's own hit points below the maximum wake it too")
   void theKingDamaged() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
     TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =
@@ -77,7 +78,7 @@ class BattleExpressionEnvironmentTest {
   @Test
   @DisplayName("a function the battle does not answer yet fails rather than guess")
   void anUnportedFunctionFails() {
-    Standard1v1Battle match = new Standard1v1Battle();
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
     TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =

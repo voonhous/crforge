@@ -92,6 +92,9 @@ public final class BattleRecords {
         .noDeploySizeH(row.intValue("NoDeploySizeH"))
         .attackPushBack(row.intValue("AttackPushBack"))
         .ignorePushback(row.bool("IgnorePushback"))
+        .onStartingAction(actionName(row, "OnStartingAction"))
+        .onDeathAction(actionName(row, "OnDeathAction"))
+        .onKilledAction(actionName(row, "OnKilledAction"))
         .build();
   }
 
@@ -186,6 +189,16 @@ public final class BattleRecords {
       return value.asInt() != 0;
     }
     return !value.isEmpty();
+  }
+
+  /** The action row a hook column names, written inline or by name; null for none. */
+  private static String actionName(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    if (value == null || value.isNull()) {
+      return null;
+    }
+    String name = value.isObject() ? value.path("action").asText("") : value.asText();
+    return name.isEmpty() ? null : name;
   }
 
   /** The row of a unit: the characters table's, else the buildings table's. */
