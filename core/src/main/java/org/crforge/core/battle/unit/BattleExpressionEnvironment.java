@@ -28,6 +28,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int COOP_KING_TOWER_DAMAGED = BattleFunctions.id("coop_king_tower_damaged");
   private static final int TOWER_DESTROYED = BattleFunctions.id("tower_destroyed");
   private static final int COOP_TOWER_DESTROYED = BattleFunctions.id("coop_tower_destroyed");
+  private static final int IS_NPC_BATTLE = BattleFunctions.id("is_npc_battle");
 
   /** The id a variable's key is added to: every function and tag id lies below it. */
   static final int VARIABLE_BASE = 20_000;
@@ -89,6 +90,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     if (id == COOP_KING_TOWER_DAMAGED || id == COOP_TOWER_DESTROYED) {
       // A battle of two players has no co-op side.
+      return 0;
+    }
+    if (id == IS_NPC_BATTLE) {
+      // A battle of two players is not played against the game's own opponent.
       return 0;
     }
     throw new UnsupportedOperationException(
