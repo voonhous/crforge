@@ -29,6 +29,17 @@ class ActionLeavesTest {
     }
 
     @Override
+    public void queueTypedHit(ActionOwner source, int amount, DamageType type) {
+      log.add(
+          "typed hit "
+              + amount
+              + " "
+              + type.name()
+              + " from "
+              + (source == null ? null : source == this ? "itself" : "another"));
+    }
+
+    @Override
     public void killBy(ActionOwner killer) {
       log.add("killed by " + (killer == null ? null : killer == this ? "itself" : "another"));
     }
@@ -297,5 +308,17 @@ class ActionLeavesTest {
     h2.start(new Kill(ActionRow.named("kill"), onKill));
     assertThat(noHitPoints.log).as("without hit points nothing, the action included").isEmpty();
     assertThat(queue(h2)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("a deal-damage action queues its base hit on its owner, from the cause")
+  void dealDamage() {
+    Owner owner = new Owner(hitPoints(500, 1000));
+    DamageType type = DamageType.builder().name("D").build();
+    ActionHolder cause = new ActionHolder(new Owner(hitPoints(100, 100)));
+    new ActionHolder(owner).start(new DealDamage(ActionRow.named("deal"), 120, type), cause);
+    new ActionHolder(owner).start(new DealDamage(ActionRow.named("deal"), 30, type));
+    assertThat(owner.log)
+        .containsExactly("typed hit 120 D from another", "typed hit 30 D from null");
   }
 }

@@ -28,4 +28,13 @@ public interface ActionOwner {
    * @param killer the entity that caused it, or null for none
    */
   void killBy(ActionOwner killer);
+
+  /**
+   * Queues a typed hit on the owner, which the battle deals once per tick after the post-hooks.
+   *
+   * @param source the entity that deals it, or null for none
+   * @param amount the amount, before the type's pipeline
+   * @param type the hit's damage type
+   */
+  void queueTypedHit(ActionOwner source, int amount, DamageType type);
 }

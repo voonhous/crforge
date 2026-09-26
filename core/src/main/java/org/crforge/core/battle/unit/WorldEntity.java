@@ -8,7 +8,10 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.EntityActions;
+import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
@@ -89,6 +92,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
 
   /** The entity's hit points, or null when its hit points at its level are not positive. */
   @Getter private final HitPoints hitPoints;
+
+  /** The entity's action holder, made the first time anything schedules on it; null until then. */
+  private ActionHolder actionHolder;
 
   /** The entity's variables, which its actions write and expressions from it read. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -354,9 +360,22 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
     view.setPendingFlags(0);
   }
 
-  /** The tags of every action the entity lists, finished ones included; none by default. */
+  /** The tags of every action the entity lists, finished ones included. */
   protected long actionTags() {
-    return 0;
+    return actionHolder == null ? 0 : actionHolder.tags();
+  }
+
+  /** The entity's action holder, made on first use as the standard game makes it. */
+  public ActionHolder actionHolder() {
+    if (actionHolder == null) {
+      actionHolder = new ActionHolder(this);
+    }
+    return actionHolder;
+  }
+
+  @Override
+  public EntityActions actions() {
+    return actionHolder == null ? EntityActions.NONE : actionHolder;
   }
 
   /** The entity as a game object filter asks about it. */
@@ -377,6 +396,27 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
   @Override
   public void killBy(ActionOwner killer) {
     world.kill(this, killer instanceof WorldEntity entity ? entity : null);
+  }
+
+  @Override
+  public void queueTypedHit(ActionOwner source, int amount, DamageType type) {
+    world.queueTypedHit(source instanceof WorldEntity entity ? entity : null, this, type, amount);
+  }
+
+  /**
+   * Takes a typed hit from the drain, its pipeline already run.
+   *
+   * @return what the hit did
+   */
+  DamageResult takeTypedHit(int amount, int damageId, int directionX, int directionY) {
+    DamageResult result =
+        DamageApplication.typedHit(
+            hitPoints, amount, damageId, directionX, directionY, damageQueries());
+    refreshHitPoints();
+    if (result.died()) {
+      died();
+    }
+    return result;
   }
 
   /**

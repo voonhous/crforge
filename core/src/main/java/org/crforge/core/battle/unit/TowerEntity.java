@@ -2,7 +2,6 @@ package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
 import org.crforge.core.battle.BattleComponent;
-import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BattleAction;
@@ -88,9 +87,6 @@ public class TowerEntity extends WorldEntity {
   /** True for a tower placed to stand passive: its targeting component never runs. */
   private boolean holdingFire;
 
-  /** The king's scheduled actions; null for a princess tower, which has none. */
-  private final ActionHolder actionHolder;
-
   /** The activating run the king's wait schedules when it ends; null for a princess tower. */
   private final BattleAction activating;
 
@@ -128,7 +124,6 @@ public class TowerEntity extends WorldEntity {
       this.activationExpression =
           ExpressionCompiler.compile(
               ACTIVATION_CONDITION, new BattleExpressionEnvironment(this, world));
-      this.actionHolder = new ActionHolder(this);
       this.activationEffect = new PresentationAction("KingTowerActivationEffect");
       this.activating =
           new WithDuration(
@@ -136,18 +131,18 @@ public class TowerEntity extends WorldEntity {
               ACTIVATION_MS,
               GameTags.ACTIVATING,
               activationEffect);
-      actionHolder.setListener(new ActivationListener());
+      actionHolder().setListener(new ActivationListener());
       // The placement queues the wait; with no pending pass running it waits for the first one.
-      actionHolder.schedule(
-          new WaitToActivate(
-              "WaitForKingTowerActivation",
-              this::activationCondition,
-              activating,
-              GameTags.INACTIVE),
-          0);
+      actionHolder()
+          .schedule(
+              new WaitToActivate(
+                  "WaitForKingTowerActivation",
+                  this::activationCondition,
+                  activating,
+                  GameTags.INACTIVE),
+              0);
     } else {
       this.activationExpression = null;
-      this.actionHolder = null;
       this.activating = null;
       this.activationEffect = null;
     }
@@ -272,16 +267,6 @@ public class TowerEntity extends WorldEntity {
    */
   public boolean isInactive() {
     return (getView().getFlags() & GameTags.KEEPS_TARGETING_OFF) != 0;
-  }
-
-  @Override
-  public EntityActions actions() {
-    return actionHolder == null ? EntityActions.NONE : actionHolder;
-  }
-
-  @Override
-  protected long actionTags() {
-    return actionHolder == null ? 0 : actionHolder.tags();
   }
 
   private StateQueries stateQueries() {

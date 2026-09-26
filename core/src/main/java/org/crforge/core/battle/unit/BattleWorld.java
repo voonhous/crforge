@@ -9,9 +9,12 @@ import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
@@ -98,6 +101,27 @@ public class BattleWorld implements HolderPasses {
 
   /** The variables the battle's expressions may name, by name, each with its key. */
   private final Map<String, Integer> variableKeys = new HashMap<>();
+
+  /**
+   * One typed hit waiting for the drain.
+   *
+   * @param source the entity that deals it, or null for none
+   * @param target the entity it lands on
+   * @param type its damage type
+   * @param amount its amount, before the type's pipeline
+   * @param directionX the target's position less the source's, along the width
+   * @param directionY the same along the length
+   */
+  private record TypedHit(
+      WorldEntity source,
+      WorldEntity target,
+      DamageType type,
+      int amount,
+      int directionX,
+      int directionY) {}
+
+  /** The typed hits dealt this tick, in the order they were dealt. */
+  private final List<TypedHit> typedHits = new ArrayList<>();
 
   /** The game tags the battle's expressions may name, by name, each with its index. */
   private final Map<String, Integer> gameTagIndex = new HashMap<>();
@@ -401,8 +425,68 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * Queues a typed hit, which the drain deals after the post-hooks of the tick; one queued after
+   * that lands on the next tick.
+   *
+   * @param source the entity that deals it, or null for none
+   * @param target the entity it lands on
+   * @param type its damage type
+   * @param amount its amount, before the type's pipeline
+   */
+  public void queueTypedHit(WorldEntity source, WorldEntity target, DamageType type, int amount) {
+    int directionX = source == null ? 0 : target.getView().getX() - source.getView().getX();
+    int directionY = source == null ? 0 : target.getView().getY() - source.getView().getY();
+    typedHits.add(new TypedHit(source, target, type, amount, directionX, directionY));
+  }
+
+  /**
+   * Deals every queued typed hit, in the order they were queued: the type's pipeline, a damage id
+   * from the battle's hit counter when the type takes one, the typed hit's entry, then the type's
+   * action on the source and its action on the target, and the observers are told.
+   */
+  private void drainTypedHits() {
+    List<TypedHit> due = new ArrayList<>(typedHits);
+    typedHits.clear();
+    for (TypedHit hit : due) {
+      WorldEntity target = hit.target();
+      if (target.getHitPoints() == null) {
+        continue;
+      }
+      int amount =
+          hit.type()
+              .pipeline(
+                  hit.amount(),
+                  (target.getView().getFlags() & EntityFlags.NO_DAMAGE) != 0,
+                  hit.source() != null);
+      int damageId = hit.type().acquireDamageId() ? nextHitId() : 0;
+      DamageResult result =
+          target.takeTypedHit(amount, damageId, hit.directionX(), hit.directionY());
+      if (hit.source() != null && hit.type().actionOnSource() != null) {
+        hit.source()
+            .actionHolder()
+            .schedule(
+                hit.type().actionOnSource(), ActionHolder.OWN_DELAY, false, target.actionHolder());
+      }
+      if (hit.type().actionOnTarget() != null) {
+        target
+            .actionHolder()
+            .schedule(
+                hit.type().actionOnTarget(),
+                ActionHolder.OWN_DELAY,
+                false,
+                hit.source() == null ? null : hit.source().actionHolder());
+      }
+      for (WorldObserver observer : observers) {
+        observer.damageDealt(tick, target, amount, result);
+      }
+    }
+  }
+
   @Override
   public void afterPostHooks() {
+    // The typed hits land after every post-hook and before phase 3; the observers see them landed.
+    drainTypedHits();
     List<WorldEntity> snapshotOfPresent = present();
     List<ProjectileEntity> snapshotOfProjectiles = projectiles();
     for (WorldObserver observer : observers) {
