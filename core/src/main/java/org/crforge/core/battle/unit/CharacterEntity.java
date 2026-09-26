@@ -61,8 +61,10 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " waiting its turn to deploy, neither visit, the state visit counting the wait down"
             + " into the deploying state, which starts the deploy countdown; its death switching"
             + " its movement component off for the rest of the tick; the lane its"
-            + " placement works out. Not modelled yet: the registration visit of a new unit's"
-            + " components, air, jumping and hovering units, status effects on the speed budget,"
+            + " placement works out; a spawned child walking at once or set deploying, its"
+            + " registration visit inside the spawning pass and its first-tick immunity. Not"
+            + " modelled yet: the registration visit of a unit a card play creates, which meets an"
+            + " empty index, air, jumping and hovering units, status effects on the speed budget,"
             + " and the columns its data does not carry: the stop time after an attack and"
             + " the ones that restrict what a unit may target, such as buildings only.")
 public class CharacterEntity extends WorldEntity {
@@ -170,6 +172,58 @@ public class CharacterEntity extends WorldEntity {
 
     attach(new TargetingComponent());
     attach(new MovementComponent());
+  }
+
+  /**
+   * Creates a character as a spawn creates it: in the lane of its own position and, as the level
+   * setter leaves a unit with a speed, walking at once with every component on. The spawner then
+   * sets it deploying when its row asks.
+   *
+   * @param world the battle's shared arena state
+   * @param data the child's published columns; only ground units are supported
+   * @param name the child's unique name within the battle
+   * @param side the side that owns the child, its source's
+   * @param x position in game units, already inside the arena
+   * @param y position in game units, already inside the arena
+   * @param level the child's level, counted from 1
+   */
+  static CharacterEntity spawned(
+      BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level);
+    child.getView().setState(GridEntityState.MOVING);
+    child.getView().setDeployCountdown(0);
+    return child;
+  }
+
+  /** Sets the character deploying through its own setter, with its row's deploy time. */
+  void startDeploying() {
+    setter.setState(getView(), GridEntityState.DEPLOYING);
+  }
+
+  /**
+   * Gives the character a deploy time of the spawn row's own: deploying, unless it is being set up
+   * as a clone, and the countdown set to that time exactly.
+   */
+  void deployFor(int deployTimeMs) {
+    if (getView().getState() != GridEntityState.CLONE_SETUP) {
+      setter.setState(getView(), GridEntityState.DEPLOYING);
+    }
+    getView().setDeployCountdown(deployTimeMs);
+  }
+
+  /**
+   * Starts the first-tick immunity of a spawned child: until its state visit has counted past the
+   * attack-finish time, the sixth visit, it refuses every character that asks to target it.
+   */
+  void startSpawnImmunity() {
+    unit.timers().setSpawnImmune(true);
+    unit.timers().setSpawnImmuneElapsedMs(0);
+    getTargetView().setAcceptsAttacker(false);
+  }
+
+  /** True while the character is a spawned child that may not be targeted yet. */
+  public boolean isSpawnImmune() {
+    return unit.timers().isSpawnImmune();
   }
 
   /**
@@ -300,7 +354,10 @@ public class CharacterEntity extends WorldEntity {
     return unit.timers().isRemovalRequested();
   }
 
-  /** The entity state visit: the deploy countdown and every other per-tick state transition. */
+  /**
+   * The entity state visit: the deploy countdown and every other per-tick state transition. A
+   * spawned child's immunity is counted here, and once it clears the child accepts attackers again.
+   */
   @Override
   protected void postHook() {
     EntityStateVisit.stateVisit(
@@ -312,6 +369,7 @@ public class CharacterEntity extends WorldEntity {
         stateQueries(),
         new ArrayList<>(),
         setter);
+    getTargetView().setAcceptsAttacker(!unit.timers().isSpawnImmune());
   }
 
   /** Chooses, keeps or drops the character's target and decides whether it attacks this tick. */

@@ -69,25 +69,23 @@ class EntityStateVisitTest {
   }
 
   @Test
-  void theAttackFinishLatchSurvivesFiveVisitsAndClearsOnTheSixth() {
+  void theFirstTickImmunitySurvivesFiveVisitsAndClearsOnTheSixth() {
     entity.setState(GridEntityState.MOVING);
-    timers.setAttackFinishing(true);
+    timers.setSpawnImmune(true);
 
     int[] expectedElapsed = {50, 100, 150, 200, 250};
     for (int visit = 0; visit < expectedElapsed.length; visit++) {
       visit();
-      assertThat(timers.getAttackFinishElapsedMs())
+      assertThat(timers.getSpawnImmuneElapsedMs())
           .as("elapsed after visit %d", visit + 1)
           .isEqualTo(expectedElapsed[visit]);
-      assertThat(timers.isAttackFinishing())
-          .as("still finishing after visit %d", visit + 1)
-          .isTrue();
+      assertThat(timers.isSpawnImmune()).as("still immune after visit %d", visit + 1).isTrue();
     }
 
     visit();
 
-    assertThat(timers.getAttackFinishElapsedMs()).isEqualTo(300);
-    assertThat(timers.isAttackFinishing()).isFalse();
+    assertThat(timers.getSpawnImmuneElapsedMs()).isEqualTo(300);
+    assertThat(timers.isSpawnImmune()).isFalse();
   }
 
   @Test

@@ -2,6 +2,7 @@ package org.crforge.core.battle.action;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,9 +23,11 @@ import org.crforge.core.fidelity.FidelityStatus;
  * whole ticks, so a delay under one tick is still queued, with no ticks left, and starts at the
  * next pending pass. A delay of zero or less starts the action at once only when the schedule asks
  * for it or a pending pass is in progress; anywhere else - at placement, from a component pass,
- * from the run pass or a post-hook - it is queued with no ticks left. Either way the row is told it
- * was scheduled, and a next action that does not wait is scheduled alongside, its delay the one
- * carried in less the row's own plus its own, and never below zero.
+ * from the run pass or a post-hook - it is queued with no ticks left. In a battle the pending
+ * passes run over every entity together, so an action scheduled onto another entity from inside a
+ * pending pass starts at once too. Either way the row is told it was scheduled, and a next action
+ * that does not wait is scheduled alongside, its delay the one carried in less the row's own plus
+ * its own, and never below zero.
  *
  * <p><b>Starting.</b> A singleton row with a run already listed re-triggers that run and starts
  * nothing. Otherwise a start gate that answers 0 ends the start; the action then does what it does,
@@ -44,7 +47,8 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the three pending passes and where an action with no delay starts, delays in"
+        "Settled: the three pending passes and where an action with no delay starts - inside any"
+            + " entity's pending pass, as the battle's one flag says - delays in"
             + " milliseconds queued as whole ticks, the row's own delay standing in for none, the"
             + " swap-with-last order of a pending pass, the pause, start and stop gates, the"
             + " singleton re-trigger, the next action scheduled after the run or alongside with"
@@ -105,6 +109,12 @@ public class ActionHolder implements EntityActions {
   /** The phase of the pending pass in progress, or 0 outside every pending pass. */
   private int passPhase;
 
+  /**
+   * Whether a pending pass is in progress, as the battle answers it for every entity at once, or
+   * null for a holder outside a battle, which answers for its own passes alone.
+   */
+  private final BooleanSupplier battleInPendingPass;
+
   /** The tick of the last run pass. */
   @Getter private int lastTick;
 
@@ -122,7 +132,20 @@ public class ActionHolder implements EntityActions {
    * @param owner the entity, or null for none
    */
   public ActionHolder(ActionOwner owner) {
+    this(owner, null);
+  }
+
+  /**
+   * A holder that belongs to an entity of a battle, whose pending passes the battle runs over every
+   * entity together: while any of them runs, an action with no delay scheduled here starts at once.
+   *
+   * @param owner the entity, or null for none
+   * @param battleInPendingPass whether the battle is inside a pending pass, or null for a holder
+   *     that answers for its own passes
+   */
+  public ActionHolder(ActionOwner owner, BooleanSupplier battleInPendingPass) {
     this.owner = owner;
+    this.battleInPendingPass = battleInPendingPass;
   }
 
   @Setter private Listener listener = new Listener() {};
@@ -162,7 +185,7 @@ public class ActionHolder implements EntityActions {
   public void schedule(
       BattleAction action, int delayMs, boolean immediate, ActionHolder instigator) {
     int delay = delayMs == OWN_DELAY ? action.delayMs() : delayMs;
-    if (delay <= 0 && (immediate || passPhase != 0)) {
+    if (delay <= 0 && (immediate || inPendingPass())) {
       start(action, instigator);
     } else {
       pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS));
@@ -213,6 +236,11 @@ public class ActionHolder implements EntityActions {
     if (next != null && action.nextActionWait()) {
       schedule(next, OWN_DELAY, false, instigator);
     }
+  }
+
+  /** Whether a pending pass is in progress: the battle's, or this holder's own outside a battle. */
+  private boolean inPendingPass() {
+    return battleInPendingPass != null ? battleInPendingPass.getAsBoolean() : passPhase != 0;
   }
 
   /** The tags of every listed instance, finished ones included. */

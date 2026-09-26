@@ -72,6 +72,13 @@ public class EntityHolder {
   /** True while a tick is running, so a re-entrant tick fails loudly instead of corrupting it. */
   private boolean ticking;
 
+  /**
+   * True while one of the three pending passes runs over the snapshot. An action with no delay that
+   * anything schedules meanwhile, on any entity, starts at once instead of waiting for the next
+   * pending pass.
+   */
+  private boolean inPendingPass;
+
   public EntityHolder(HolderPasses passes) {
     this.passes = passes;
   }
@@ -92,9 +99,25 @@ public class EntityHolder {
     pendingAdditions.add(entity);
   }
 
+  /**
+   * Hands an entity to the holder and registers it on the spot, as a spawn inside a pending pass
+   * does: it is given its id, waits for the next cleanup like any other, and is given its
+   * registration visit at once - the visit of each of its active components - over the tick's index
+   * as the pre-pass built it. It is not visited again in this tick.
+   */
+  public void addRegistered(BattleEntity entity) {
+    add(entity);
+    entity.registrationVisit();
+  }
+
   /** The entities handed over since the last cleanup, in the order they arrived. */
   public List<BattleEntity> queued() {
     return Collections.unmodifiableList(pendingAdditions);
+  }
+
+  /** True while a pending pass of the tick is running, over any entity. */
+  public boolean isInPendingPass() {
+    return inPendingPass;
   }
 
   /** The registered entities in ascending id. Entities still waiting for a cleanup are absent. */
@@ -136,6 +159,18 @@ public class EntityHolder {
     }
   }
 
+  /** One pending pass over the snapshot, with the battle's in-pass flag set around it. */
+  private void pendingPass(List<BattleEntity> snapshot, int phase) {
+    inPendingPass = true;
+    try {
+      for (BattleEntity entity : snapshot) {
+        entity.actions().pendingPass(phase);
+      }
+    } finally {
+      inPendingPass = false;
+    }
+  }
+
   /** Moves every removable entity of a list, in list order, to the end of the removed list. */
   private static void drainRemovable(List<BattleEntity> list, List<BattleEntity> removed) {
     for (Iterator<BattleEntity> it = list.iterator(); it.hasNext(); ) {
@@ -162,9 +197,7 @@ public class EntityHolder {
       for (BattleEntity entity : snapshot) {
         entity.preHook();
       }
-      for (BattleEntity entity : snapshot) {
-        entity.actions().pendingPass(EntityActions.PHASE_POST_TICK_INIT);
-      }
+      pendingPass(snapshot, EntityActions.PHASE_POST_TICK_INIT);
       for (int slot = 0; slot < BattleEntity.COMPONENT_SLOTS; slot++) {
         for (BattleEntity entity : snapshot) {
           BattleComponent component = entity.component(slot);
@@ -180,16 +213,12 @@ public class EntityHolder {
       for (BattleEntity entity : snapshot) {
         entity.actions().runPass(tick);
       }
-      for (BattleEntity entity : snapshot) {
-        entity.actions().pendingPass(EntityActions.PHASE_POST_COMPONENT_TICK);
-      }
+      pendingPass(snapshot, EntityActions.PHASE_POST_COMPONENT_TICK);
       for (BattleEntity entity : snapshot) {
         entity.postHook();
       }
       passes.afterPostHooks();
-      for (BattleEntity entity : snapshot) {
-        entity.actions().pendingPass(EntityActions.PHASE_POST_GAME_OBJECT_TICK);
-      }
+      pendingPass(snapshot, EntityActions.PHASE_POST_GAME_OBJECT_TICK);
       passes.postPass(tick);
       cleanup();
       for (BattleEntity entity : live) {

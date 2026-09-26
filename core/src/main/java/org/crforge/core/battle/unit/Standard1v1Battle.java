@@ -7,11 +7,14 @@ import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleMode;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -255,5 +258,49 @@ public class Standard1v1Battle {
           }
         });
     return character;
+  }
+
+  /**
+   * Places an action owner: an object with a position, a side, a level and an action holder and
+   * nothing else, standing in for the objects that run spawn rows in the data. It is handed to the
+   * holder at once and admitted by the next cleanup, so it stands from the next step on.
+   *
+   * @param name its name, which the children it spawns are named after
+   * @param side its side
+   * @param x its position in game units
+   * @param y its position in game units
+   * @param packedLevel its level, packed
+   */
+  public ActionOwnerEntity addActionOwner(String name, int side, int x, int y, int packedLevel) {
+    ActionOwnerEntity owner = new ActionOwnerEntity(world, name, side, x, y, packedLevel);
+    battle.getHolder().add(owner);
+    return owner;
+  }
+
+  /**
+   * Schedules an action on an owner in the command pass of the given tick, as the owner's own
+   * starting action would be scheduled: with the row's own delay, not asked to start at once, and
+   * the owner as its cause. Outside every pending pass, an action with no delay waits for the first
+   * pending pass of that tick.
+   *
+   * @param tick the tick the schedule is made on
+   * @param owner the owner
+   * @param action the action
+   */
+  public void scheduleAction(int tick, SpawnHost owner, BattleAction action) {
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            owner
+                .actionHolder()
+                .schedule(action, ActionHolder.OWN_DELAY, false, owner.actionHolder());
+          }
+        });
   }
 }

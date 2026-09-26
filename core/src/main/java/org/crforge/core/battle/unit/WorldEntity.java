@@ -14,6 +14,8 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
+import org.crforge.core.battle.spawn.SpawnArguments;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -68,7 +70,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " takes the entity as its owner, and whose reference to an entity that left is"
             + " dropped by the removal notice. Not modelled yet: the shield's hit points at the"
             + " level, and what a death does beyond the entity becoming removable.")
-public abstract class WorldEntity extends BattleEntity implements ActionOwner {
+public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
   public static final int SIDE_BOTTOM = 0;
@@ -371,12 +373,64 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner {
     return actionHolder == null ? 0 : actionHolder.tags();
   }
 
-  /** The entity's action holder, made on first use as the standard game makes it. */
+  /**
+   * The entity's action holder, made on first use as the standard game makes it. Its pending passes
+   * are the battle's, so it reads the battle's in-pass flag.
+   */
+  @Override
   public ActionHolder actionHolder() {
     if (actionHolder == null) {
-      actionHolder = new ActionHolder(this);
+      actionHolder = new ActionHolder(this, world.getHolder()::isInPendingPass);
     }
     return actionHolder;
+  }
+
+  @Override
+  public int x() {
+    return view.getX();
+  }
+
+  @Override
+  public int y() {
+    return view.getY();
+  }
+
+  @Override
+  public int kind() {
+    return getKind();
+  }
+
+  /** Every arena entity answers as a character, whose own columns a spawner may read. */
+  @Override
+  public boolean isCharacter() {
+    return true;
+  }
+
+  /** No entity carries a prestige yet, so a spawn that inherits it inherits none. */
+  @Override
+  public int prestige() {
+    return 0;
+  }
+
+  @Override
+  public int packedLevel() {
+    return packedLevel;
+  }
+
+  @Override
+  public int spawnCharacters(SpawnArguments arguments) {
+    return world.spawnCharacters(this, arguments);
+  }
+
+  /**
+   * Before its registration visit, a spawned entity takes its id into its view and learns this
+   * tick's arena entities as its candidates, the opposing towers among them, as the pre-pass would
+   * have given it.
+   */
+  @Override
+  protected void beforeRegistrationVisit() {
+    view.setId(getId());
+    registerCandidates(world.present());
   }
 
   @Override
