@@ -11,13 +11,9 @@ import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
-import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
-import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.projectile.ProjectileEntity;
-import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnHost;
-import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,65 +23,20 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Plays the three runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
- * <p>No object the battle has yet runs these rows from its hooks, so each run gives the battle an
- * action owner: an entity with an action holder, a position, a side and a level and nothing else,
- * on which the row is scheduled in the command pass of its tick. In {@code bush_goblins} a group
- * spawns two Bush Goblins to either side of a bottom-side owner a tick apart, the second pushed one
- * unit off the first as it is registered. In {@code brawler_goblins} a top-side owner spawns four
- * Goblin Brawlers, the side flipping both axes of the location. In {@code gift_knight} the owner
- * spawns a Knight on itself that walks at once: its registration visit takes its target and a first
- * step.
+ * <p>The rows are the game's own, built from its action rows. No object the battle has yet runs
+ * them from its hooks, so each run gives the battle an action owner: an entity with an action
+ * holder, a position, a side and a level and nothing else, on which the row is scheduled in the
+ * command pass of its tick. In {@code bush_goblins} a group spawns two Bush Goblins to either side
+ * of a bottom-side owner a tick apart, the second pushed one unit off the first as it is
+ * registered. In {@code brawler_goblins} a top-side owner spawns four Goblin Brawlers, the side
+ * flipping both axes of the location. In {@code gift_knight} the owner spawns a Knight on itself
+ * that walks at once: its registration visit takes its target and a first step.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
  * sixth state visit, so the towers lock on it six ticks late.
  */
 class BattleActionSpawnRunTest {
-
-  /** A unit row as the battle reads it. */
-  private static UnitData unit(String name) {
-    return GameData.unit(name);
-  }
-
-  /** A spawn to a location half tiles from the source, starting to deploy. */
-  private static BattleAction spawnBeside(String name, String unit, int relativeX, int relativeY) {
-    return new SpawnCharacters(
-        ActionRow.named(name),
-        SpawnRow.builder()
-            .toLocation(true)
-            .spawnData(unit(unit))
-            .relativeX(relativeX)
-            .relativeY(relativeY)
-            .useDeploy(true)
-            .build());
-  }
-
-  /** The row each run schedules, built column for column from the data. */
-  private static BattleAction row(String name) {
-    return switch (name) {
-      case "SuspiciousBush_SpawnBushGoblin" ->
-          new Group(
-              ActionRow.named(name),
-              List.of(
-                  spawnBeside("SuspiciousBush_SpawnBushGoblin1", "BushGoblin", -1, 0),
-                  spawnBeside("SuspiciousBush_SpawnBushGoblin2", "BushGoblin", 1, 0)),
-              List.of(675, 625));
-      case "SuspiciousBush_Crazy1_OnDeath" ->
-          new Group(
-              ActionRow.named(name),
-              List.of(
-                  spawnBeside("SuspiciousBush_Crazy1_SpawnBrawlerGoblin1", "GoblinBrawler", -1, 0),
-                  spawnBeside("SuspiciousBush_Crazy1_SpawnBrawlerGoblin2", "GoblinBrawler", 1, 0),
-                  spawnBeside("SuspiciousBush_Crazy1_SpawnBrawlerGoblin3", "GoblinBrawler", -1, 1),
-                  spawnBeside("SuspiciousBush_Crazy1_SpawnBrawlerGoblin4", "GoblinBrawler", 1, 1)),
-              List.of(675, 625, 775, 725));
-      case "Gift_Delivery_Knight" ->
-          new SpawnCharacters(
-              ActionRow.named(name),
-              SpawnRow.builder().spawnData(unit("Knight")).parentGoAsSource(true).build());
-      default -> throw new IllegalArgumentException("no row " + name);
-    };
-  }
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(strings = {"bush_goblins", "brawler_goblins", "gift_knight"})
@@ -119,7 +70,11 @@ class BattleActionSpawnRunTest {
                 }
               });
       for (JsonNode s : o.get("schedule")) {
-        match.scheduleAction(s.get("tick").asInt(), owner, row(s.get("action").asText()));
+        // The row is built from the game's own action rows, for the owner it runs on.
+        match.scheduleAction(
+            s.get("tick").asInt(),
+            owner,
+            GameData.actions().build(s.get("action").asText(), owner.binding()));
       }
     }
 

@@ -2,11 +2,14 @@ package org.crforge.core.battle.unit;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
@@ -121,6 +124,31 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
   @Override
   public int spawnCharacters(SpawnArguments arguments) {
     return world.spawnCharacters(this, arguments);
+  }
+
+  /**
+   * What an action row built for the owner reads from it: the battle's variable keys and an empty
+   * tag word. It answers no expression, as it stands in for objects whose functions are not
+   * modelled; a row with one is refused when it is built.
+   */
+  public ActionBinding binding() {
+    return new ActionBinding() {
+      @Override
+      public IntSupplier expression(String text) {
+        throw new UnsupportedOperationException(
+            name + " stands in for an object and answers no expression: " + text);
+      }
+
+      @Override
+      public int variableKey(String variable) {
+        return world.declaredVariable(variable);
+      }
+
+      @Override
+      public LongSupplier tags() {
+        return () -> 0;
+      }
+    };
   }
 
   @Override
