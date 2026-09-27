@@ -81,6 +81,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param globalId the id the game gives the unit's row, which expressions compare it by
  * @param lifeTimeMs how long the unit lives before its hit points run down; 0 for no limit
  * @param targetOnlyBuildings true for a unit that attacks buildings only
+ * @param attackSequence the unit's attack sequence; a row without one keeps a single element
+ * @param onStartingAttackAction the action row the unit runs as it starts an attack and at each
+ *     hit, or null
+ * @param onAttackAction the action row the unit runs as it attacks, or null
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -135,11 +139,15 @@ public record UnitData(
     boolean champion,
     int globalId,
     int lifeTimeMs,
-    boolean targetOnlyBuildings) {
+    boolean targetOnlyBuildings,
+    AttackSequence attackSequence,
+    String onStartingAttackAction,
+    String onAttackAction) {
 
   public UnitData {
     unmodelledDeathColumns =
         unmodelledDeathColumns == null ? List.of() : List.copyOf(unmodelledDeathColumns);
+    attackSequence = attackSequence == null ? AttackSequence.NONE : attackSequence;
   }
 
   /** True for a unit that fires a projectile rather than hitting its target directly. */

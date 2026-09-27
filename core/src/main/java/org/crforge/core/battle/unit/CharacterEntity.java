@@ -76,8 +76,14 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " building standing without a movement component while it deploys, held by the"
             + " Tombstone killed while deploying; a row swap taking the new row's radius, mass, speed"
             + " and targeting columns at once, the reference cleared raw and a kept target stored"
-            + " again through the setter, held by golemite_convert. Refused: a building past its"
-            + " deploy, and a swap that builds or frees the movement component or reaches a"
+            + " again through the setter, held by golemite_convert; the starting-attack row queued"
+            + " on the character at the first attack step, at each hit and on a new reference in"
+            + " range, running in its phase-2 pass, and the attack sequence entry at the index"
+            + " launching in place of the row's projectile, held by the evolved Archer's runs."
+            + " Refused: a building past its"
+            + " deploy, an attack sequence whose mode moves the index itself or whose entries set"
+            + " more than a projectile and a damage, an action run as it attacks, and a swap that"
+            + " builds or frees the movement component or reaches a"
             + " lifetime, a building or a flying row, a champion, a shield or another deploy time."
             + " Not"
             + " modelled yet: the registration visit of a unit a card play creates, which meets an"
@@ -161,6 +167,7 @@ public class CharacterEntity extends WorldEntity {
         targetingConfig(data),
         level);
     checkArgument(!data.air(), () -> data.name() + " is not a ground unit or a building");
+    refuseAttack(data);
 
     GridEntity view = getView();
     TargetingState targeting = getTargeting();
@@ -195,6 +202,12 @@ public class CharacterEntity extends WorldEntity {
         !data.building() || waitMs < 0,
         () -> data.name() + " is a building, whose wait to deploy is not modelled");
     unit.selection().setStateSetter(setter);
+    if (data.onStartingAttackAction() != null) {
+      // The visit asks for it on the first attack step and on each step that completes a hit, the
+      // setter on a new reference already in range; either way it is queued on the character, the
+      // character as its cause, and runs in its phase-2 pending pass of the tick.
+      unit.selection().setOnStartingAttack(this::startingAttack);
+    }
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
 
     attach(new TargetingComponent());
@@ -348,6 +361,46 @@ public class CharacterEntity extends WorldEntity {
     }
   }
 
+  /** The row the character runs as it starts an attack, built on first use. */
+  private BattleAction startingAttackRow;
+
+  /** Schedules the character's starting-attack row on itself, the character as its cause. */
+  private void startingAttack() {
+    if (startingAttackRow == null) {
+      startingAttackRow =
+          world.getActions().build(getData().onStartingAttackAction(), world.binding(this));
+    }
+    actionHolder().schedule(startingAttackRow, ActionHolder.OWN_DELAY, false, actionHolder());
+  }
+
+  /**
+   * Refuses the parts of a character's attack that are not established: an attack sequence whose
+   * mode moves the index by itself, an entry that sets more than its damage and projectile, an
+   * entry without a projectile on a unit that fires, and an action run as the character attacks.
+   */
+  private static void refuseAttack(UnitData data) {
+    AttackSequence sequence = data.attackSequence();
+    String refused = null;
+    if (sequence.mode() != AttackSequence.MODE_NONE) {
+      refused = "an attack sequence whose mode " + sequence.mode() + " moves the index itself";
+    } else if (sequence.replacesAttack()) {
+      for (int index = 0; index < sequence.order().size(); index++) {
+        AttackSequence.Entry entry = sequence.entryAt(index);
+        if (entry.overridesMore()) {
+          refused = "an attack sequence entry that sets more than its damage and projectile";
+        } else if (entry.projectile() == null && data.hasProjectile()) {
+          refused = "an attack sequence entry without a projectile on a unit that fires";
+        }
+      }
+    }
+    if (refused == null && data.onAttackAction() != null) {
+      refused = "an action run as it attacks";
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(data.name() + " has " + refused + ", not modelled");
+    }
+  }
+
   /** The children linked into this character's group, newest first. */
   public List<CharacterEntity> group() {
     return Collections.unmodifiableList(group);
@@ -422,6 +475,9 @@ public class CharacterEntity extends WorldEntity {
         .toBuilder()
         .configKey(data.name())
         .targetOnlyBuildings(data.targetOnlyBuildings())
+        .attackSequenceMode(data.attackSequence().mode())
+        .attackSequenceLength(data.attackSequence().order().size())
+        .hasOnStartingAttackAction(data.onStartingAttackAction() != null)
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .hasProjectile(data.hasProjectile())
         .areaDamageRadius(data.areaDamageRadius())

@@ -56,7 +56,9 @@ public final class ProjectileLauncher {
       int sequenceIndex,
       BattleWorld world) {
     UnitData unit = launcher.getData();
-    ProjectileData data = unit.projectile();
+    // The attack sequence's entry at the index in place of the row's, for a sequence of two or
+    // more.
+    ProjectileData data = launcher.attackProjectile();
     if (data == null) {
       return;
     }

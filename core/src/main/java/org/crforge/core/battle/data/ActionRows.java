@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunOnInstigator;
 import org.crforge.core.battle.action.Select;
+import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
@@ -117,6 +118,8 @@ public final class ActionRows {
           Map.entry("ActionRunActionAtHealth", Set.of("HealthPercentages", "Actions")),
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
+          Map.entry(
+              "ActionSetAttackSequenceIndex", Set.of("AttackIndex", "SetEvenIfCombatDisabled")),
           Map.entry("ActionChangeGameObjectData", Set.of("NewCharacterData", "ResetTarget")),
           Map.entry(
               "ActionRunIfGameObjectExists",
@@ -312,6 +315,9 @@ public final class ActionRows {
             case "ActionHeal" ->
                 new Heal(shared, expression(f.get("Value")), integer(f, "MaxOverHealPercent"));
             case "ActionKill" -> new Kill(shared, action(f.get("OnKillAction")));
+            case "ActionSetAttackSequenceIndex" ->
+                new SetAttackSequenceIndex(
+                    shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
             case "ActionChangeGameObjectData" -> {
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
