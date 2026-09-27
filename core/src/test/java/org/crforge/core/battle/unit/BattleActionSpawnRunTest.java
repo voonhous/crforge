@@ -23,8 +23,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the thirty-nine runs in which an action, a death or a building spawns characters through
- * {@link Battle} and holds the battle to them tick for tick.
+ * Plays the forty-one runs in which an action, a death, a building or a unit's own spawner spawns
+ * characters through {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -95,6 +95,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * thrown projectile whose impact launches a rolling one, which hits what its body passes. Four runs
  * hold shields - {@code recruit_tower}, {@code guards_knight}, {@code poison_guards} and {@code
  * tombstone_crazy_life} - and every hit a shield took.
+ *
+ * <p>Two runs place a unit whose own spawner fires while it walks and attacks: {@code
+ * witch_left_lane}, a Witch whose four Skeletons stand on the ring of its spawn radius around it,
+ * the first wave while it walks and the second while it attacks a princess tower; and {@code
+ * night_witch}, a Night Witch whose two Bats a wave stand at its sides, the ring turned by its
+ * angle shift and the angle it faces, as does the Bat of its death spawn.
  */
 class BattleActionSpawnRunTest {
 
@@ -139,7 +145,9 @@ class BattleActionSpawnRunTest {
         "recruit_tower",
         "guards_knight",
         "poison_guards",
-        "tombstone_crazy_life"
+        "tombstone_crazy_life",
+        "witch_left_lane",
+        "night_witch"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

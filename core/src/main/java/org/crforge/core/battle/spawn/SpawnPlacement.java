@@ -9,12 +9,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p>With a radius, the children stand evenly on a ring around the point: child {@code i} of {@code
  * n} at angle {@code (n - 1 - i) * 360 / n}, so the last one sits at angle 0, straight along the
- * width. With no radius, the children stand in front of the source: at an offset of the source's
- * collision radius plus the child's along the length, toward the enemy - negated for the top team -
- * and mirrored along the width right of the arena's middle. The in-front test is asked of the
- * offset turned by each quarter turn in order, and the first point it accepts is the child's; when
- * it refuses all four, the child stands one unit right of the source. A single child has no offset,
- * so it stands on the point itself whenever the test accepts it.
+ * width; a character source whose row sets an angle shift turns the whole ring by that shift plus
+ * the angle it faces. With no radius, the children stand in front of the source: at an offset of
+ * the source's collision radius plus the child's along the length, toward the enemy - negated for
+ * the top team - and mirrored along the width right of the arena's middle. The in-front test is
+ * asked of the offset turned by each quarter turn in order, and the first point it accepts is the
+ * child's; when it refuses all four, the child stands one unit right of the source. A single child
+ * has no offset, so it stands on the point itself whenever the test accepts it.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -22,9 +23,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "Settled and held by the recorded placements: the ring for a source that is not a"
             + " character, a single child on the point or one unit right of it, and children in"
             + " front of a character source by its collision radius and theirs, held by"
-            + " tombstone_life and goblin_hut_life. Not modelled: the in-front offset of a source"
-            + " that is not a character; a character source's angle shift and minimum radius on a"
-            + " ring; the ring's lane mirror; and the step back a unit without hit points takes.")
+            + " tombstone_life and goblin_hut_life; the ring turned by a character source's angle"
+            + " shift and facing, held by night_witch. Not modelled: the in-front offset of a source"
+            + " that is not a character; a character source's minimum radius on a ring; the ring's"
+            + " lane mirror; and the step back a unit without hit points takes.")
 public final class SpawnPlacement {
 
   /** The in-front test, asked of a point. */
@@ -90,8 +92,41 @@ public final class SpawnPlacement {
       int team,
       int arenaWidth,
       Passable passable) {
+    return position(x, y, index, count, noOffset, radius, 0, reach, team, arenaWidth, passable);
+  }
+
+  /**
+   * Where one child stands, for a source whose ring is turned: a character source whose row sets an
+   * angle shift turns every ring angle by that shift plus the angle it faces.
+   *
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param index the child's index
+   * @param count how many children the spawn makes
+   * @param noOffset true for no in-front offset
+   * @param radius the ring's radius, or 0 to place in front of the point
+   * @param turn the degrees every ring angle is turned by; the in-front offset is not turned
+   * @param reach the in-front offset: the source's collision radius plus the child's, or {@link
+   *     #NO_REACH} for a source that is not a character
+   * @param team the source's team, 0 or 1
+   * @param arenaWidth the arena's width in game units
+   * @param passable the in-front test, asked only with no radius
+   * @return the child's position as {x, y}
+   */
+  public static int[] position(
+      int x,
+      int y,
+      int index,
+      int count,
+      boolean noOffset,
+      int radius,
+      int turn,
+      int reach,
+      int team,
+      int arenaWidth,
+      Passable passable) {
     if (radius != 0) {
-      int angle = (count - 1 - index) * 360 / count;
+      int angle = (count - 1 - index) * 360 / count + turn;
       int ox = towardZero(FixedMath.sine1024(angle + 90) * radius);
       int oy = towardZero(FixedMath.sine1024(angle) * radius);
       return new int[] {ox + x, oy + y};

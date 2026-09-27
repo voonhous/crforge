@@ -182,7 +182,7 @@ public final class BattleRecords {
    * battle does not model: refused only for a unit that spawns on its death.
    */
   private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS =
-      List.of("DeathInheritIgnoreList", "SpawnConstPriority", "SpawnLimit", "SpawnAngleShift");
+      List.of("DeathInheritIgnoreList", "SpawnConstPriority", "SpawnLimit");
 
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is

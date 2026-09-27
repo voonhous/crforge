@@ -13,6 +13,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Kill;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -178,12 +179,26 @@ class BattleDeathHookTest {
   }
 
   @Test
-  @DisplayName("the death of a unit whose death spawn turns by its facing is refused")
-  void anUnmodelledDeathIsRefused() {
+  @DisplayName("a death spawn's ring turns by the row's angle shift and the dying unit's facing")
+  void aDeathSpawnRingTurnsByTheFacing() {
+    // The Battle Ram, facing up the arena (heading 90), spawns two Barbarians at 600 with an
+    // angle shift of 180: the ring angles 180 and 0 turn by 270, to 90 and 270, so one stands in
+    // front of it and one behind.
     Setup s = new Setup(GameData.unit("BattleRam"), 3500, 25000);
-    assertThatThrownBy(() -> s.stepWith(world -> world.kill(s.tombstone, s.knight)))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SpawnAngleShift");
+    List<int[]> made = new ArrayList<>();
+    s.match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void characterSpawned(
+                  int tick, SpawnHost source, CharacterEntity child, int x, int y) {
+                made.add(new int[] {x, y});
+              }
+            });
+    s.stepWith(world -> world.kill(s.tombstone, s.knight));
+
+    assertThat(made).containsExactly(new int[] {14500, 18200}, new int[] {14500, 17000});
   }
 
   @Test

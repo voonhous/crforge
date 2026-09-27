@@ -292,6 +292,15 @@ The towers fight at level 11. A shielded unit is created with its shield full, a
 
 `BattleActionSpawnRunTest` plays all four with the spawn runs.
 
+## `golden/witch_left_lane.json` and `golden/night_witch.json` - a unit's own spawner
+
+The towers fight at level 11. The run's unit is placed directly for the bottom side at (3500, 10000) on tick 0, at level 11, and walks up the left lane at PrincessTower_1_1. Its spawner runs in its state visit from the end of its deploy on 19, whether it walks or attacks: each visit takes 50 ms off its timer, which starts at its row's 1000, so the first wave comes on 38 and the next every 140 or 100 ticks. The children stand on the ring of its spawn radius around where it stands as the wave fires, the ring untested for passability, walking at once (state 1) in lane 1, with no first-tick immunity, so the towers may lock on them at once. `building_log` lists each firing (`spawner`, as for a building) with the timer after it; `actions` lists each child (`spawn`, phase `live`, or `death` for a death spawn).
+
+- `witch_left_lane`: a Witch. Four Skeletons on 38, at (3651, 9112), (1651, 11112), (3651, 13112) and (5651, 11112) while it walks; four more on 178, centred on (3716, 18552), while it attacks the tower. The towers kill it on 306, before its third wave; its Skeletons take the tower on 375, and the last dies on 441.
+- `night_witch`: a Night Witch (DarkWitch). Two Bats a wave, on 38, 138, 238 and 338, the ring of 1500 turned by its row's angle shift of 90 plus the angle it faces, so each pair stands at its sides: on 38, facing (22, 255), a heading of 85, at (5145, 10982) and (2157, 11242); later, facing straight up, level with it. It dies on 343, and its death spawn's one Bat stands at (3231, 22434), 500 from it on a ring turned the same way. The Bats take the tower on 458, and the last dies on 492.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
