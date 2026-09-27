@@ -102,6 +102,11 @@ final class EntityFilterSubject implements FilterSubject {
   }
 
   @Override
+  public int rowGlobalId() {
+    return entity.getData().globalId();
+  }
+
+  @Override
   public int state() {
     return view().getState();
   }

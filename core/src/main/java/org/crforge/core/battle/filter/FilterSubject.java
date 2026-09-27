@@ -60,6 +60,15 @@ public interface FilterSubject {
   /** The name of the object's row. */
   String rowName();
 
+  /**
+   * The global id of the object's row, which a check by name compares.
+   *
+   * @throws UnsupportedOperationException for an object whose row carries no global id here
+   */
+  default int rowGlobalId() {
+    throw new UnsupportedOperationException("the row of this object carries no global id");
+  }
+
   /** A character's state. */
   int state();
 

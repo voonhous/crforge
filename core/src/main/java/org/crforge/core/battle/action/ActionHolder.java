@@ -69,6 +69,13 @@ public class ActionHolder implements EntityActions {
   /** What an observer of the holder is told as its actions start, stop, finish and leave. */
   public interface Listener {
 
+    /**
+     * An action passed its gates and is about to start, in the pending pass of the given phase, or
+     * 0 outside every pass. Whatever it starts in turn is told of after this and before its {@link
+     * #started}.
+     */
+    default void starting(BattleAction action, int phase) {}
+
     /** An action started, in the pending pass of the given phase, or 0 outside every pass. */
     default void started(BattleAction action, int phase) {}
 
@@ -233,6 +240,7 @@ public class ActionHolder implements EntityActions {
     if (!holds(action.executeIf(), true)) {
       return;
     }
+    listener.starting(action, passPhase);
     ActionInstance instance = action.start(this, instigator);
     listener.started(action, passPhase);
     if (instance != null) {
