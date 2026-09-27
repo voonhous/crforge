@@ -364,6 +364,14 @@ class BattleTowerRunTest {
       }
 
       @Override
+      public void diedAtRemoval(int tick, WorldEntity entity) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add("%d deploy_end_death %s".formatted(currentTick[0], entity.name()));
+      }
+
+      @Override
       public void areaEffectHit(
           int tick,
           AreaEffectEntity areaEffect,
@@ -582,6 +590,8 @@ class BattleTowerRunTest {
                   event.get("damage").asInt(),
                   event.get("hp").asInt(),
                   event.get("hit_id").asInt());
+      case "deploy_end_death" ->
+          "%d deploy_end_death %s".formatted(tick, event.get("unit").asText());
       case "area_effect_hit" ->
           "%d area_effect_hit %s %s %d %d"
               .formatted(

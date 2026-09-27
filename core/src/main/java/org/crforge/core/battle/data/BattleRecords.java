@@ -96,13 +96,7 @@ public final class BattleRecords {
    * battle does not model: refused only for a unit that spawns on its death.
    */
   private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS =
-      List.of(
-          "DeathSpawnPushback",
-          "DeathSpawnMinRadius",
-          "DeathInheritIgnoreList",
-          "SpawnConstPriority",
-          "SpawnLimit",
-          "SpawnAngleShift");
+      List.of("DeathInheritIgnoreList", "SpawnConstPriority", "SpawnLimit", "SpawnAngleShift");
 
   private final GameTables tables;
 
@@ -174,6 +168,8 @@ public final class BattleRecords {
         .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
         .deathAreaEffect(
             row.string("DeathAreaEffect").isEmpty() ? null : row.string("DeathAreaEffect"))
+        .deathSpawnPushback(row.bool("DeathSpawnPushback"))
+        .deathSpawnMinRadius(row.intValue("DeathSpawnMinRadius"))
         .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
         .champion(champion(row))
         .globalId(row.globalId())

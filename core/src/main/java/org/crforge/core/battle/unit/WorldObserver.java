@@ -240,4 +240,10 @@ public interface WorldObserver {
 
   /** An area effect left the battle, at the cleanup that removed it. */
   default void areaEffectRemoved(int tick, AreaEffectEntity areaEffect) {}
+
+  /**
+   * An object without hit points died as its state visit removed it - a bomb as its deploy ended -
+   * before its death slot runs.
+   */
+  default void diedAtRemoval(int tick, WorldEntity entity) {}
 }

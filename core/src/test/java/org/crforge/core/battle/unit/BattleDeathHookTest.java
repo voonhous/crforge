@@ -178,12 +178,12 @@ class BattleDeathHookTest {
   }
 
   @Test
-  @DisplayName("the death of a unit whose death spawn pushes its children is refused")
+  @DisplayName("the death of a unit whose death spawn turns by its facing is refused")
   void anUnmodelledDeathIsRefused() {
-    Setup s = new Setup(GameData.unit("Golem"), 3500, 25000);
+    Setup s = new Setup(GameData.unit("BattleRam"), 3500, 25000);
     assertThatThrownBy(() -> s.stepWith(world -> world.kill(s.tombstone, s.knight)))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DeathSpawnPushback");
+        .hasMessageContaining("SpawnAngleShift");
   }
 
   @Test
