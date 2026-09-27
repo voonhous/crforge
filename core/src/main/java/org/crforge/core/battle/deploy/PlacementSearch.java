@@ -16,15 +16,18 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * first ring that holds a legal tile ends the search; within it the tile nearest to the clamped
  * request wins, the first in walk order on a tie. A ground unit that is no building and walks to
  * nothing then takes 1 off x on the arena's left half and 1 off y on the top side, so the two
- * sides' units stand mirrored exactly.
+ * sides' units stand mirrored exactly. A spell card is searched for its projectile's spawned
+ * character when it has one, the Goblin Barrel's Goblin, and otherwise for no unit: the point snaps
+ * to the tile centre and is not adjusted.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the clamp, the character snap and the tile centre, the footprint, the rings and"
             + " their walk order, the legality test with the margin columns, the mask and the map"
-            + " cells, the nearest-in-the-first-ring rule and the symmetrical snap. Not modelled:"
-            + " the Mirror card, a spell or area-effect card, a building unit's morph, and the lane"
+            + " cells, the nearest-in-the-first-ring rule and the symmetrical snap, and a spell's"
+            + " search for its projectile's character or for no unit. Not modelled: the Mirror"
+            + " card, a spell deployed as a thrown projectile, a building unit's morph, and the lane"
             + " requirement, which the place-card command does not ask for.")
 public final class PlacementSearch {
 
@@ -79,10 +82,12 @@ public final class PlacementSearch {
     int cy = y > 0 ? Math.min(y, ymax) : 0;
     int hw = w >> 1;
     int hh = h >> 1;
-    UnitData unit = card.unit();
-    int fp = unit.building() ? footprint(unit) : 1;
-    int sx = snap(unit, cx);
-    int sy = snap(unit, cy);
+    // A spell's search is for its projectile's spawned character, or for no unit at all: then the
+    // point snaps to the tile centre and no symmetrical adjustment follows.
+    UnitData unit = card.placementUnit();
+    int fp = unit != null && unit.building() ? footprint(unit) : 1;
+    int sx = unit != null ? snap(unit, cx) : cx / 1000 * 1000 + 500;
+    int sy = unit != null ? snap(unit, cy) : cy / 1000 * 1000 + 500;
     int margin = card.deployWTileMargin();
 
     long best = Integer.MAX_VALUE;
@@ -128,6 +133,7 @@ public final class PlacementSearch {
       return null;
     }
     if (symmetricalSnap
+        && unit != null
         && unit.flyingHeight() <= 0
         && !unit.building()
         && unit.spawnPathfindSpeed() == 0) {

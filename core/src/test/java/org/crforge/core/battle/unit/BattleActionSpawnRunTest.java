@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the twenty-eight runs in which an action, a death or a building spawns characters through
+ * Plays the thirty-one runs in which an action, a death or a building spawns characters through
  * {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -84,6 +84,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Knight with the towers passive; {@code lava_hound_river}, a Lava Hound dying over the river and
  * its pups flying back to their ring points; and {@code baby_dragon_left}, a Baby Dragon firing
  * from its height. A further unit is placed at its own level where the run gives one.
+ *
+ * <p>Three runs play a spell by a command: {@code fireball_knight_tower}, a Fireball from the blue
+ * king tower landing on a Knight and a princess tower and pushing the Knight; {@code
+ * zap_knight_cast}, the Zap run with its area effect cast at the snapped point; and {@code
+ * goblin_barrel_tower}, a Goblin Barrel whose Goblins stand in formation around its landing point.
  */
 class BattleActionSpawnRunTest {
 
@@ -117,7 +122,10 @@ class BattleActionSpawnRunTest {
         "balloon_tower",
         "balloons_cross",
         "lava_hound_river",
-        "baby_dragon_left"
+        "baby_dragon_left",
+        "fireball_knight_tower",
+        "zap_knight_cast",
+        "goblin_barrel_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -151,7 +159,7 @@ class BattleActionSpawnRunTest {
     if (!reference.get("card").isNull()) {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
     } else if (!reference.has("action_owners")) {
-      for (JsonNode u : reference.get("units")) {
+      for (JsonNode u : reference.path("units")) {
         placed.add(
             match.deploy(
                 u.get("tick").asInt(),
@@ -165,6 +173,10 @@ class BattleActionSpawnRunTest {
     }
     for (CharacterEntity unit : placed) {
       unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
+    }
+    // A run with card plays plays each as a place-card command due on its tick.
+    if (reference.has("commands")) {
+      BattlePlacementRunTest.playAll(match, reference);
     }
     // The area effects a run places directly, each in the command pass of its tick.
     for (JsonNode a : reference.path("area_effects")) {
@@ -267,7 +279,7 @@ class BattleActionSpawnRunTest {
             new WorldObserver() {
               @Override
               public void areaEffectCreated(
-                  int tick, AreaEffectEntity a, String how, BattleEntity source) {
+                  int tick, AreaEffectEntity a, String how, String source) {
                 a.actionHolder().setListener(listener(a.name(), currentTick, actions, dropping));
               }
             });
@@ -640,7 +652,7 @@ class BattleActionSpawnRunTest {
   static WorldObserver areaEffectLog(int[] currentTick, List<String> lines) {
     return new WorldObserver() {
       @Override
-      public void areaEffectCreated(int tick, AreaEffectEntity a, String how, BattleEntity source) {
+      public void areaEffectCreated(int tick, AreaEffectEntity a, String how, String source) {
         lines.add(
             "%d created %s %s %d %s %s %d %d %d %d %d"
                 .formatted(
@@ -649,7 +661,7 @@ class BattleActionSpawnRunTest {
                     a.getData().name(),
                     a.getId(),
                     how,
-                    sourceName(source),
+                    source,
                     a.side(),
                     a.getX(),
                     a.getY(),
@@ -681,14 +693,6 @@ class BattleActionSpawnRunTest {
         lines.add("%d removed %s %d".formatted(currentTick[0], a.name(), a.getCountdown()));
       }
     };
-  }
-
-  /** What an area effect was created from, by name: an arena entity or another area effect. */
-  private static String sourceName(BattleEntity source) {
-    if (source instanceof WorldEntity w) {
-      return w.name();
-    }
-    return source instanceof AreaEffectEntity a ? a.name() : null;
   }
 
   /** The reference's area-effect log in the same layout. */

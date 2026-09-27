@@ -153,11 +153,13 @@ public class Standard1v1Battle {
   /**
    * Queues a card play to run on the given tick: at the head of that step the play is worked out
    * against the battle as it stands, and its units are handed to the holder in creation order, so
-   * the tick's entity tick admits and visits them. A refused play creates nothing.
+   * the tick's entity tick admits and visits them. A spell's play casts instead, at the placed
+   * point: its area effect, or its projectile from the side's king tower. A refused play creates
+   * nothing.
    *
    * @param tick the tick the play runs on
    * @param card the card
-   * @param level the level of its units, counted from 1
+   * @param level the level it is played at, counted from 1
    * @param side the placing side
    * @param x the requested point in game units
    * @param y the requested point in game units
@@ -205,6 +207,10 @@ public class Standard1v1Battle {
             entities,
             SYMMETRICAL_DEPLOY_SNAP,
             LANE_BASED_DEPLOY_SEQUENCE);
+    if (card.spell() && result.placed()) {
+      // The card item's level field; the hand is not modelled, so it is the level played, less 1.
+      world.castSpell(card, level - 1, side, result.x(), result.y(), name);
+    }
     List<CharacterEntity> units = new ArrayList<>();
     for (CardPlacement.Unit unit : result.units()) {
       if (unit.unit().onStartingAction() != null) {

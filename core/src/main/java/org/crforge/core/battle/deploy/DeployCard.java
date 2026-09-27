@@ -3,11 +3,14 @@ package org.crforge.core.battle.deploy;
 import org.crforge.core.battle.unit.UnitData;
 
 /**
- * The columns of a troop card that its placement reads: the units it summons and how many, the
- * shape and stagger of their formation, and where the card may be placed.
+ * The columns of a card that its placement reads: the units a troop card summons and how many, the
+ * shape and stagger of their formation, where the card may be placed, and what a spell card casts.
+ *
+ * <p>A spell card summons no unit: it casts a projectile from its side's king tower or an area
+ * effect at the placed point.
  *
  * @param name the card's name
- * @param unit the unit the card summons first
+ * @param unit the unit the card summons first, or null for a spell
  * @param count how many of it
  * @param secondary the unit of the card's second group, or null
  * @param secondaryCount how many of that
@@ -23,6 +26,10 @@ import org.crforge.core.battle.unit.UnitData;
  * @param deployWTileMargin tiles kept closed at each side of the width
  * @param deployStartY the first open row, with {@code deployEndY}; both 0 for no limit
  * @param deployEndY the row from which the rows close again
+ * @param projectile the projectile a spell casts from the king tower, or null
+ * @param areaEffect the area effect a spell casts at the placed point, or null
+ * @param searchUnit the unit a spell's placement is searched for: its projectile's spawned
+ *     character, or null for none
  */
 public record DeployCard(
     String name,
@@ -41,15 +48,28 @@ public record DeployCard(
     boolean touchdownLimitedDeploy,
     int deployWTileMargin,
     int deployStartY,
-    int deployEndY) {
+    int deployEndY,
+    String projectile,
+    String areaEffect,
+    UnitData searchUnit) {
+
+  /** True for a spell card, which summons no unit and casts instead. */
+  public boolean spell() {
+    return unit == null;
+  }
 
   /** The unit of the index-th place of the formation: the first group, then the second. */
   public UnitData unitAt(int index) {
     return index < count || secondary == null ? unit : secondary;
   }
 
-  /** How many units the card places in all. */
+  /** How many units the card places in all; none for a spell. */
   public int total() {
-    return count + (secondary == null ? 0 : secondaryCount);
+    return spell() ? 0 : count + (secondary == null ? 0 : secondaryCount);
+  }
+
+  /** The unit the placement is searched for: the summoned one, or a spell's search unit. */
+  public UnitData placementUnit() {
+    return spell() ? searchUnit : unit;
   }
 }

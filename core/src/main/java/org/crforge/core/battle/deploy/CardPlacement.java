@@ -25,8 +25,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
         "Settled: the order of the steps, the column interval and its two parities, the formation"
             + " radius chosen from the card, then the unit's spawn radius, then its collision"
             + " radius, the clamp into the column, the creation inset, the unit's lane from its own"
-            + " position with the placed point as the reference, and its start. Not modelled: the"
-            + " elixir and the other gates before the map check, spell and building cards.")
+            + " position with the placed point as the reference, and its start; a spell card"
+            + " placed with no unit, its point handed to the cast. Not modelled: the elixir and the"
+            + " other gates before the map check, and building cards.")
 public final class CardPlacement {
 
   /** How far from every edge of the arena a unit is created. */
@@ -105,6 +106,10 @@ public final class CardPlacement {
     int py = placed[1];
     int w = tileMap.width();
     int h = tileMap.height();
+    if (card.spell()) {
+      // A spell places no unit: the cast takes the placed point.
+      return new Result(0, px, py, null, 0, List.of());
+    }
     // The column is read from the mask built as if the card could not be placed on buildings.
     DeployCard offBuildings =
         new DeployCard(
@@ -124,7 +129,10 @@ public final class CardPlacement {
             card.touchdownLimitedDeploy(),
             card.deployWTileMargin(),
             0,
-            0);
+            0,
+            card.projectile(),
+            card.areaEffect(),
+            card.searchUnit());
     int[] interval =
         columnInterval(
             PlacementSearch.mask(tileMap, offBuildings, side, entities),
