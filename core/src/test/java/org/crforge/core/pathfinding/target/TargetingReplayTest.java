@@ -150,9 +150,12 @@ class TargetingReplayTest {
                     ? TargetingConfig.tower("KingTower", 7000, 7000, 1400, 1000, 500, false)
                     : TargetingConfig.tower("PrincessTower", 7500, 7500, 1000, 800, 0, true));
         if (fixtureTower.side() != side) {
-          chain.registerTower(view);
+          // The princess towers are the candidates; the king only seeds the selection.
           if (king) {
+            chain.register(view);
             chain.setSeed(view);
+          } else {
+            chain.registerTower(view);
           }
         } else {
           chain.register(view);
@@ -232,15 +235,15 @@ class TargetingReplayTest {
 
   @Test
   @DisplayName(
-      "a unit deployed inside the left lane near the middle takes its lane's tower for ten ticks,"
-          + " the king from tick 30 and the princess tower again from tick 68")
+      "a unit deployed inside the left lane near the middle takes its lane's princess tower and"
+          + " keeps it")
   void innerLeftDeployment() throws IOException {
     Replay replay = load("knight_left_inner");
 
     replay.replay();
 
     assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_1");
-    assertThat(replay.records.get(30).reference()).isEqualTo("KingTower_1_0");
+    assertThat(replay.records.get(30).reference()).isEqualTo("PrincessTower_1_1");
     assertThat(replay.records.get(68).reference()).isEqualTo("PrincessTower_1_1");
     assertThat(firstAttackingTick(replay)).isEqualTo(259);
   }
@@ -258,14 +261,14 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName("a unit deployed in the middle starts at the king tower and switches at tick 82")
+  @DisplayName(
+      "a unit deployed in the middle takes its lane's princess tower at once and locks on at 245")
   void centreDeployment() throws IOException {
     Replay replay = load("knight_centre");
 
     replay.replay();
 
-    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("KingTower_1_0");
-    assertThat(replay.records.get(81).reference()).isEqualTo("KingTower_1_0");
+    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_2");
     assertThat(replay.records.get(82).reference()).isEqualTo("PrincessTower_1_2");
     assertThat(firstAttackingTick(replay)).isEqualTo(245);
   }
@@ -282,16 +285,17 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName("a unit deployed behind its king tower starts at the king tower and switches at 85")
+  @DisplayName(
+      "a unit deployed behind its king tower takes its lane's princess tower at once and locks on"
+          + " at 369")
   void behindKingDeployment() throws IOException {
     Replay replay = load("knight_behind_king");
 
     replay.replay();
 
-    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("KingTower_1_0");
-    assertThat(replay.records.get(84).reference()).isEqualTo("KingTower_1_0");
+    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_2");
     assertThat(replay.records.get(85).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(firstAttackingTick(replay)).isEqualTo(361);
+    assertThat(firstAttackingTick(replay)).isEqualTo(369);
   }
 
   @Test

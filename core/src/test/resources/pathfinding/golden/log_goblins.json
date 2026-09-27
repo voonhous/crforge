@@ -42,10 +42,10 @@
   {"tick": 74, "event": "launch", "projectile": "proj_4000003", "config": "TowerPrincessProjectile", "owner": "PrincessTower_0_1", "target": null, "x": 3510, "y": 6799, "z": 3000, "aim": [3804, 14974], "aim_z": 0}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 37, "event": "reference", "tower": "PrincessTower_0_1", "target": "Goblins_1", "in_range": 1},

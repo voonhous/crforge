@@ -61,10 +61,10 @@
   {"tick": 449, "event": "area", "owner": "Balloon_0", "centre": [3298, 23927], "radius": 3000, "damage": 240, "tower_damage": 240, "hit_id": 0, "push": 0, "push_flag": 0, "in_circle": ["PrincessTower_1_1", "Balloon_0"], "validated": ["PrincessTower_1_1"], "victims": ["PrincessTower_1_1"], "pushed": []}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 131, "event": "reference", "tower": "PrincessTower_1_1", "target": "Balloon", "in_range": 1},

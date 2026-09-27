@@ -238,8 +238,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * Makes every arena entity of this tick known to the entity's selection. The first call also
-   * registers the opposing side's towers as the default targets, in creation order - king first,
-   * then the princess towers along the arena's width - and seeds the selection with the king.
+   * registers the opposing side's princess towers as the default targets, in creation order along
+   * the arena's width, and seeds the selection with its king, which is no candidate itself.
    */
   void registerCandidates(List<WorldEntity> present) {
     if (!towersRegistered) {
@@ -247,9 +247,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int enemy = opposing(side());
       for (WorldEntity entity : present) {
         if (entity instanceof TowerEntity tower && tower.side() == enemy) {
-          selection.registerTower(tower.getTargetView());
-          if (tower.getData().king() && selection.getSeed() == null) {
-            selection.setSeed(tower.getTargetView());
+          if (tower.getData().king()) {
+            // The king fills the side's tower slot: it seeds the selection and is no candidate.
+            selection.register(tower.getTargetView());
+            if (selection.getSeed() == null) {
+              selection.setSeed(tower.getTargetView());
+            }
+          } else {
+            selection.registerTower(tower.getTargetView());
           }
         }
       }

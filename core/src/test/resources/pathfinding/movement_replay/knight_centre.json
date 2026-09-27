@@ -11,11 +11,11 @@
    "tick": 20,
    "query": "endpoint",
    "inputs": [
-    18,
-    58,
+    29,
+    51,
     1700
    ],
-   "output": 1179703
+   "output": 1769520
   },
   {
    "tick": 20,
@@ -23,26 +23,16 @@
    "inputs": [
     18,
     24,
-    18,
-    55,
+    27,
+    48,
     1
    ],
    "outputs": [
-    1998,
-    1962,
-    1963,
-    1964,
-    1965,
-    1930,
-    1895,
-    1860,
-    1825,
-    1790,
-    1754,
-    1718,
-    1683,
-    1647,
-    1611,
+    1755,
+    1720,
+    1684,
+    1648,
+    1612,
     1576,
     1540,
     1504,
@@ -83,11 +73,11 @@
    "tick": 20,
    "query": "endpoint",
    "inputs": [
-    18,
-    58,
+    29,
+    51,
     1700
    ],
-   "output": 1179703
+   "output": 1769520
   },
   {
    "tick": 21,
@@ -97,1036 +87,6 @@
   },
   {
    "tick": 21,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 22,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 22,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 23,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 23,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 24,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 24,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 25,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 25,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 26,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 26,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 27,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 27,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 28,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 28,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 29,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 29,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 30,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 30,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 31,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 31,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1179703
-  },
-  {
-   "tick": 32,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 32,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 32,
-   "query": "search",
-   "inputs": [
-    19,
-    25,
-    19,
-    55,
-    1
-   ],
-   "outputs": [
-    1999,
-    1963,
-    1964,
-    1965,
-    1930,
-    1895,
-    1860,
-    1825,
-    1790,
-    1754,
-    1719,
-    1684,
-    1648,
-    1612,
-    1576,
-    1540,
-    1504,
-    1468,
-    1432,
-    1396,
-    1360,
-    1324,
-    1288,
-    1252,
-    1216,
-    1180,
-    1144,
-    1107,
-    1070,
-    1069,
-    1068,
-    1067,
-    1030,
-    993,
-    956
-   ]
-  },
-  {
-   "tick": 32,
-   "query": "farther",
-   "inputs": [],
-   "output": 0
-  },
-  {
-   "tick": 33,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 33,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 34,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 34,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 35,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 35,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 36,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 36,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 37,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 37,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 38,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 38,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 39,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 39,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 40,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 40,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 41,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 41,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 42,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 42,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 43,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 43,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 44,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 44,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 45,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 45,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 46,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 46,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 47,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 47,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 48,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 48,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 49,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 49,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 50,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 50,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 51,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 51,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 52,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 52,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 53,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 53,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 54,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 54,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 55,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 55,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 56,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 56,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 57,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 57,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 58,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 58,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 59,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 59,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 60,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 60,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 61,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 61,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 62,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 62,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 63,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 63,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 64,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 64,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 65,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 65,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 66,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 66,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 67,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 67,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 68,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 68,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 69,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 69,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 70,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 70,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 71,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 71,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 72,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 72,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 73,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 73,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 74,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 74,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 75,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 75,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 76,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 76,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 77,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 77,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 78,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 78,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 79,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 79,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 80,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 80,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 81,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 81,
-   "query": "endpoint",
-   "inputs": [
-    18,
-    58,
-    1700
-   ],
-   "output": 1245239
-  },
-  {
-   "tick": 82,
-   "query": "attackRange",
-   "inputs": [],
-   "output": 1700
-  },
-  {
-   "tick": 82,
    "query": "endpoint",
    "inputs": [
     29,
@@ -1136,45 +96,964 @@
    "output": 1769520
   },
   {
-   "tick": 82,
-   "query": "search",
-   "inputs": [
-    23,
-    28,
-    27,
-    48,
-    1
-   ],
-   "outputs": [
-    1755,
-    1719,
-    1683,
-    1647,
-    1611,
-    1575,
-    1539,
-    1503,
-    1468,
-    1432,
-    1396,
-    1360,
-    1324,
-    1288,
-    1252,
-    1216,
-    1180,
-    1144,
-    1107,
-    1070,
-    1069,
-    1068
-   ]
+   "tick": 22,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
   },
   {
-   "tick": 82,
-   "query": "farther",
+   "tick": 22,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 23,
+   "query": "attackRange",
    "inputs": [],
-   "output": 0
+   "output": 1700
+  },
+  {
+   "tick": 23,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 24,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 24,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 25,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 25,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 26,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 26,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 27,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 27,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 28,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 28,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 29,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 29,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 30,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 30,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 31,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 31,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 32,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 32,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 33,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 33,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 34,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 34,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 35,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 35,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 36,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 36,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 37,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 37,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 38,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 38,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 39,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 39,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 40,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 40,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 41,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 41,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 42,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 42,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 43,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 43,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 44,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 44,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 45,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 45,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 46,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 46,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 47,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 47,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 48,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 48,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 49,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 49,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 50,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 50,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 51,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 51,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 52,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 52,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 53,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 53,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 54,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 54,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 55,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 55,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 56,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 56,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 57,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 57,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 58,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 58,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 59,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 59,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 60,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 60,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 61,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 61,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 62,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 62,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 63,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 63,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 64,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 64,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 65,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 65,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 66,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 66,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 67,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 67,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 68,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 68,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 69,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 69,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 70,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 70,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 71,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 71,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 72,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 72,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 73,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 73,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 74,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 74,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 75,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 75,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 76,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 76,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 77,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 77,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 78,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 78,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 79,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 79,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 80,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 80,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
+  },
+  {
+   "tick": 81,
+   "query": "attackRange",
+   "inputs": [],
+   "output": 1700
+  },
+  {
+   "tick": 81,
+   "query": "endpoint",
+   "inputs": [
+    29,
+    51,
+    1700
+   ],
+   "output": 1769520
   },
   {
    "tick": 82,

@@ -45,7 +45,7 @@
   {"tick": 22, "event": "area", "owner": "Ghost", "centre": [3500, 24000], "radius": 1000, "damage": 204, "tower_damage": 204, "hit_id": 0, "push": 0, "push_flag": 0, "in_circle": ["PrincessTower_1_1", "KnightRed", "KnightBlue"], "validated": ["PrincessTower_1_1", "KnightRed"], "victims": ["PrincessTower_1_1", "KnightRed"], "pushed": []}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KnightBlue", "in_range": 1},

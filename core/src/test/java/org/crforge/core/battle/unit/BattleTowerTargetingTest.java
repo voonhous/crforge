@@ -164,8 +164,10 @@ class BattleTowerTargetingTest {
     TowerEntity bottomKing = BattleMusketeerRunTest.towerNamed(battle, "KingTower_0_0");
     TowerEntity topKing = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
     TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, PRINCESS_TOWER);
-    assertThat(referenceName(bottomKing)).isEqualTo("KingTower_1_0");
-    assertThat(referenceName(topKing)).isEqualTo("KingTower_0_0");
+    // A king's default target is the other side's princess tower of its lane; the king it would
+    // seed from is no candidate.
+    assertThat(referenceName(bottomKing)).isEqualTo("PrincessTower_1_2");
+    assertThat(referenceName(topKing)).isEqualTo("PrincessTower_0_2");
     assertThat(bottomKing.isInactive()).isFalse();
     assertThat(bottomKing.isActive(TowerEntity.TARGETING_SLOT)).isTrue();
 
@@ -183,7 +185,7 @@ class BattleTowerTargetingTest {
     }
     assertThat(bottomKing.getTargeting().getAttackTimerMs()).isEqualTo(kingTimer);
     assertThat(bottomKing.getView().getState()).isEqualTo(GridEntityState.STANDING);
-    assertThat(referenceName(bottomKing)).isEqualTo("KingTower_1_0");
+    assertThat(referenceName(bottomKing)).isEqualTo("PrincessTower_1_2");
   }
 
   @Test
@@ -218,11 +220,11 @@ class BattleTowerTargetingTest {
         // the fold before the run pass that removes it.
         assertThat(king.isInactive()).as(where).isTrue();
         assertThat(king.isActive(TowerEntity.TARGETING_SLOT)).as(where).isFalse();
-        assertThat(referenceName(king)).as(where).isEqualTo("KingTower_0_0");
+        assertThat(referenceName(king)).as(where).isEqualTo("PrincessTower_0_2");
       } else if (tick == condition + 69) {
         assertThat(king.isInactive()).as(where).isFalse();
         assertThat(king.isActive(TowerEntity.TARGETING_SLOT)).as(where).isTrue();
-        assertThat(referenceName(king)).as(where).isEqualTo("KingTower_0_0");
+        assertThat(referenceName(king)).as(where).isEqualTo("PrincessTower_0_2");
       } else {
         assertThat(referenceName(king))
             .as(where + ": the first visit locks on")

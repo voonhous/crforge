@@ -228,10 +228,10 @@
   {"tick": 965, "event": "death", "target": "PrincessTower_1_2"}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 99, "event": "reference", "tower": "PrincessTower_1_1", "target": "Barbarians_0", "in_range": 1},
@@ -300,6 +300,7 @@
   {"tick": 963, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Pocket_2", "target_lost_timer": 1},
   {"tick": 963, "event": "reference_dropped", "tower": "PrincessTower_1_2", "removed": "Pocket_2"},
   {"tick": 963, "event": "removed", "entity": "Pocket_2"},
+  {"tick": 965, "event": "reference", "tower": "KingTower_0_0", "target": null, "removed": "PrincessTower_1_2", "target_lost_timer": 0},
   {"tick": 965, "event": "reference", "tower": "PrincessTower_0_2", "target": null, "removed": "PrincessTower_1_2", "target_lost_timer": 0},
   {"tick": 965, "event": "removed", "entity": "PrincessTower_1_2"}
  ],
