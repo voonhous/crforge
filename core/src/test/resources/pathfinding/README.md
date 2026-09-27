@@ -186,6 +186,17 @@ The towers fight at level 11. A Knight is the run's unit at (3500, 10000); a Ras
 
 `BattleScheduledRowRunTest` plays it with `chef_filter`.
 
+## `golden/golemite_convert.json` - a unit that takes another row
+
+The towers fight at level 11. `ElixirGolem4_crazy_babyGolemite`, the crazy arena's baby golemite, is placed directly for the bottom side at (3500, 16000) on tick 0, level 11, and its row's starting group runs in its phase-1 pass of that tick (a `start` action event marks the schedule at placement). The group queues `ElixirGolem4_crazy_babyGolemite_storeMaxHp` 3500 ms later. PrincessTower_1_1's arrows land on 53 and 67, leaving 142 of 360. In phase 1 of 70, in one pass:
+- the store runs, and writes `(hp * 100) / max_hp`, 39, to `ElixirGolem2_crazy_maxHP` (a `set_variable` action event);
+- its waited next action swaps the unit's row for `ElixirGolem2` at once (a `change_data` event with the rows, hit points, maxima and radii before and after, the speed and the target): its hit points stay 142, its maximum becomes 762, its radius 500 and its speed 60, and PrincessTower_1_1 is kept as its target;
+- the swap's own next action heals `(max_hp * ElixirGolem2_crazy_maxHP / 100) - hp`, 155, to 297 (a `heal` event).
+
+The movement visit of 70 already walks at 60. Three more arrows kill it on 110. Its new row spawns two golemites as it dies, which the reference does not make; the battle refuses that death, so the run is held through 109. The header's `damage` is the generator's reading of the unit's row at the end of the run, after the swap; `card` is the row placed.
+
+`BattleChangeDataRunTest` plays it.
+
 ## `golden/barbarians_left.json`, `golden/barbarians_edge.json`, `golden/skeleton_army_edge.json`, `golden/knight_side1.json` and `golden/deploy_refused.json` - placing a card
 
 Units placed the way a player places them: by a place-card command carrying the card, the requested point, the side and the tick it runs on, at level 11 with the towers fighting. The requested point is not where a unit stands: the play clamps it to the arena, snaps it to a tile, moves it to the nearest tile the card may be placed on, and lays the card's units out around it.
