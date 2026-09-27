@@ -30,7 +30,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  *
  * <p>Then every victim with hit points takes the damage, or the crown-tower damage when it is a
  * crown tower, shared out evenly and rounded up when the area splits it. Only an amount of at least
- * one is dealt.
+ * one is dealt. An area that pushes then pushes each such victim away from the push point, right
+ * after its damage and before the next victim's, as far as the push says, when the battle finds the
+ * victim may be pushed.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -42,7 +44,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " three impacts and the Valkyrie runs' areas, the owner's own side among them."
             + " Supplied, not settled: nothing is untouchable. Not modelled: the second circle and the dedupe list of a chained"
             + " projectile, the area objects of their own kind, the heal of the owner's side,"
-            + " the pushback and its visuals, and the death presentation.")
+            + " the push's floor and visuals, and the death presentation. The push is held by a"
+            + " Golemite's death damage.")
 public final class AreaDamage {
 
   private AreaDamage() {
@@ -63,6 +66,9 @@ public final class AreaDamage {
    * @param hitsAir whether the area reaches air units
    * @param hitsGround whether the area reaches ground units and buildings
    * @param split true to share the damage out evenly among the victims
+   * @param push how far each victim is pushed; 0 for no push
+   * @param pushX the point victims are pushed away from, along the width
+   * @param pushY the point victims are pushed away from, along the length
    */
   public record Area(
       int x,
@@ -75,7 +81,41 @@ public final class AreaDamage {
       boolean ownSide,
       boolean hitsAir,
       boolean hitsGround,
-      boolean split) {}
+      boolean split,
+      int push,
+      int pushX,
+      int pushY) {
+
+    /** An area that pushes nothing. */
+    public Area(
+        int x,
+        int y,
+        int radius,
+        int damage,
+        int towerDamage,
+        int hitId,
+        int limit,
+        boolean ownSide,
+        boolean hitsAir,
+        boolean hitsGround,
+        boolean split) {
+      this(
+          x,
+          y,
+          radius,
+          damage,
+          towerDamage,
+          hitId,
+          limit,
+          ownSide,
+          hitsAir,
+          hitsGround,
+          split,
+          0,
+          0,
+          0);
+    }
+  }
 
   /**
    * What one area did.
@@ -85,12 +125,14 @@ public final class AreaDamage {
    * @param validated those of them the validator accepts
    * @param victims the entities the collection kept
    * @param damaged the victims that were dealt an amount
+   * @param pushed the victims that were pushed
    */
   public record Outcome(
       List<TargetView> inCircle,
       List<TargetView> validated,
       List<TargetView> victims,
-      List<TargetView> damaged) {}
+      List<TargetView> damaged,
+      List<TargetView> pushed) {}
 
   /** What the area asks of the battle about a victim. */
   public interface Queries {
@@ -108,6 +150,21 @@ public final class AreaDamage {
      * @param hitId the id of the hit
      */
     DamageResult damage(TargetView victim, int damage, int hitId);
+
+    /**
+     * Pushes one victim away from a point, after its damage: the battle decides whether it can be
+     * pushed - it has a movement component, its row does not ignore pushback, and it is still alive
+     * - and asks for its pushback.
+     *
+     * @param victim the victim
+     * @param x the point it is pushed away from, along the width
+     * @param y the point it is pushed away from, along the length
+     * @param distance how far
+     * @return true when it was pushed
+     */
+    default boolean push(TargetView victim, int x, int y, int distance) {
+      throw new UnsupportedOperationException("this area's battle does not push its victims");
+    }
   }
 
   /**
@@ -178,6 +235,7 @@ public final class AreaDamage {
       towerDamage = (towerDamage + n - 1) / n;
     }
     List<TargetView> damaged = new ArrayList<>();
+    List<TargetView> pushed = new ArrayList<>();
     for (TargetView victim : victims) {
       if (!victim.isHitPointsPresent()) {
         continue;
@@ -187,7 +245,10 @@ public final class AreaDamage {
         queries.damage(victim, dealt, area.hitId());
         damaged.add(victim);
       }
+      if (area.push() >= 1 && queries.push(victim, area.pushX(), area.pushY(), area.push())) {
+        pushed.add(victim);
+      }
     }
-    return new Outcome(inCircle, validated, victims, damaged);
+    return new Outcome(inCircle, validated, victims, damaged, pushed);
   }
 }

@@ -30,6 +30,7 @@
   {"tick": 45, "event": "launch", "projectile": "proj_4000001", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_2", "target": "Tombstone", "x": 14500, "y": 25200, "z": 3000, "aim": [14500, 17600], "aim_z": 0},
   {"tick": 45, "event": "impact", "projectile": "proj_4000000", "target": "Tombstone", "damage": 281, "hp": 0, "x": 14500, "y": 17600, "z": 0},
   {"tick": 45, "event": "death", "target": "Tombstone"},
+  {"tick": 45, "event": "area", "owner": "Tombstone", "centre": [14500, 17600], "radius": 3000, "damage": 500, "tower_damage": 500, "hit_id": 0, "push": 0, "push_flag": 0, "in_circle": ["Tombstone"], "validated": [], "victims": [], "pushed": []},
   {"tick": 64, "event": "launch", "projectile": "proj_4000002", "config": "chr_wizardProjectile", "owner": "Wizard", "target": "Tombstone_0", "x": 14542, "y": 21828, "z": 1500, "aim": [14021, 18493], "aim_z": 0},
   {"tick": 67, "event": "launch", "projectile": "proj_4000003", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_2", "target": "Tombstone_0", "x": 14481, "y": 25201, "z": 3000, "aim": [14051, 18668], "aim_z": 0},
   {"tick": 70, "event": "impact", "projectile": "proj_4000002", "target": "Tombstone_0", "damage": 281, "hp": 617, "x": 14085, "y": 18902, "z": 0},

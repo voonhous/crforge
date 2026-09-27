@@ -164,22 +164,26 @@ class BattleDeathHookTest {
   }
 
   @Test
-  @DisplayName("a death whose death damage would reach an enemy is refused")
-  void deathDamageThatWouldLandIsRefused() {
+  @DisplayName("a death's damage lands on an enemy within its radius, before the death hooks")
+  void deathDamageLands() {
     // The Knight stands 2500 from the Tombstone, inside its 3000 death damage radius.
     Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 14500, 20100);
-    assertThatThrownBy(() -> s.stepWith(world -> world.kill(s.tombstone, s.knight)))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("death damage would reach Knight");
+    int before = s.knight.getHitPoints().getHitPoints();
+    s.stepWith(world -> world.kill(s.tombstone, s.knight));
+
+    assertThat(s.knight.getHitPoints().getHitPoints())
+        .as("the Tombstone's 500 at its level 1")
+        .isEqualTo(before - 500);
+    assertThat(s.scheduled).hasSize(1);
   }
 
   @Test
-  @DisplayName("the death of a unit whose row spawns on its death is refused")
+  @DisplayName("the death of a unit whose death spawn pushes its children is refused")
   void anUnmodelledDeathIsRefused() {
     Setup s = new Setup(GameData.unit("Golem"), 3500, 25000);
     assertThatThrownBy(() -> s.stepWith(world -> world.kill(s.tombstone, s.knight)))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DeathSpawnCharacter");
+        .hasMessageContaining("DeathSpawnPushback");
   }
 
   @Test

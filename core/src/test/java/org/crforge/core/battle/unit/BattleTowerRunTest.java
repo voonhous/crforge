@@ -346,7 +346,7 @@ class BattleTowerRunTest {
           return;
         }
         events.add(
-            "%d area %s %d %d r%d %d %d %d %s %s %s"
+            "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
                 .formatted(
                     currentTick[0],
                     owner.name(),
@@ -358,7 +358,9 @@ class BattleTowerRunTest {
                     area.hitId(),
                     names(outcome.inCircle()),
                     names(outcome.validated()),
-                    names(outcome.damaged())));
+                    names(outcome.damaged()),
+                    area.push(),
+                    names(outcome.pushed())));
       }
 
       @Override
@@ -534,7 +536,7 @@ class BattleTowerRunTest {
                   event.get("hp").asInt(),
                   event.get("hit_id").asInt());
       case "area" ->
-          "%d area %s %d %d r%d %d %d %d %s %s %s"
+          "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
               .formatted(
                   tick,
                   event.get("owner").asText(),
@@ -546,7 +548,9 @@ class BattleTowerRunTest {
                   event.get("hit_id").asInt(),
                   jsonNames(event.get("in_circle")),
                   jsonNames(event.get("validated")),
-                  jsonNames(event.get("victims")));
+                  jsonNames(event.get("victims")),
+                  event.get("push").asInt(),
+                  jsonNames(event.get("pushed")));
       default -> throw new IllegalStateException("unknown event " + kind);
     };
   }

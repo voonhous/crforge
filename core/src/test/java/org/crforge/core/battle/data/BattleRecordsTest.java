@@ -169,17 +169,26 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a unit carries its death damage and lists the columns of its death the battle does not"
-          + " model")
+      "a unit carries its death damage, pushback and death spawn, and lists the columns of its"
+          + " death the battle does not model")
   void deathColumns() {
     UnitData tombstone = records.unit("Tombstone_crazy_1");
     assertThat(tombstone.deathDamage()).isEqualTo(500);
     assertThat(tombstone.deathDamageRadius()).isEqualTo(3000);
     assertThat(tombstone.unmodelledDeathColumns()).isEmpty();
+    // The Golem's children are pushed from its point, which is not modelled; the Elixir Golem's
+    // ring and the elixir it gives are.
     assertThat(records.unit("Golem").unmodelledDeathColumns())
-        .containsExactly("DeathSpawnCharacter", "DeathPushBack");
-    assertThat(records.unit("ElixirGolem1").unmodelledDeathColumns())
-        .containsExactly("DeathSpawnCharacter", "ManaOnDeathForOpponent");
+        .containsExactly("DeathSpawnPushback");
+    assertThat(records.unit("ElixirGolem1").unmodelledDeathColumns()).isEmpty();
+    UnitData golemite = records.unit("Golemite");
+    assertThat(golemite.deathPushBack()).isEqualTo(900);
+    assertThat(golemite.targetOnlyBuildings()).isTrue();
+    UnitData elixirGolem = records.unit("ElixirGolem2");
+    assertThat(elixirGolem.deathSpawnCharacter()).isEqualTo("ElixirGolem4");
+    assertThat(elixirGolem.deathSpawnCount()).isEqualTo(2);
+    assertThat(elixirGolem.deathSpawnRadius()).isEqualTo(750);
+    assertThat(records.unit("Knight").deathSpawnCount()).isZero();
     UnitData knight = records.unit("Knight");
     assertThat(knight.deathDamage()).isZero();
     assertThat(knight.unmodelledDeathColumns()).isEmpty();

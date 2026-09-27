@@ -180,15 +180,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * this entity's hit points - whether it is alive, and what an attacker that prefers the weakest
    * candidate sees - is brought back into step here, so no pass can read a stale answer.
    *
-   * @param attacker what deals it: the unit for a direct hit or its area, the projectile for an
-   *     impact, or null for nothing
+   * <p>A death the event causes is not run here: the battle tells its observers of the event first,
+   * then runs the death with what dealt it.
+   *
    * @param damage hit points the source is dealing, before the two sides' buffs
    * @param dedupeId id of a source that must land on this entity only once; 0 for a direct hit
    * @param directionX direction of the hit along the arena's width
    * @param directionY direction of the hit along the arena's length
    */
-  public DamageResult takeDamage(
-      BattleEntity attacker, int damage, int dedupeId, int directionX, int directionY) {
+  public DamageResult takeDamage(int damage, int dedupeId, int directionX, int directionY) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -196,9 +196,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         DamageApplication.damage(
             hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
     refreshHitPoints();
-    if (result.died()) {
-      die(attacker);
-    }
     return result;
   }
 
@@ -210,12 +207,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   protected void died() {}
 
   /**
-   * The death of the entity, in the pass whose hit took its hit points to zero: first what the
-   * entity itself switches off, then the battle's death handler, which schedules its death hooks.
+   * The death of the entity, in the pass whose hit took its hit points to zero, once the battle has
+   * told its observers of that hit: first what the entity itself switches off, then the battle's
+   * death slot and death handler.
    *
    * @param attacker what killed it, or null for nothing
    */
-  private void die(BattleEntity attacker) {
+  void die(BattleEntity attacker) {
     died();
     world.entityDied(this, attacker);
   }
@@ -623,36 +621,29 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Takes a typed hit from the drain, its pipeline already run.
    *
-   * @param source the entity that dealt it while it is still in the battle, or null
-   * @return what the hit did
+   * @return what the hit did; a death it causes is the battle's to run
    */
-  DamageResult takeTypedHit(
-      BattleEntity source, int amount, int damageId, int directionX, int directionY) {
+  DamageResult takeTypedHit(int amount, int damageId, int directionX, int directionY) {
     DamageResult result =
         DamageApplication.typedHit(
             hitPoints, amount, damageId, directionX, directionY, damageQueries());
     refreshHitPoints();
-    if (result.died()) {
-      die(source);
-    }
+
     return result;
   }
 
   /**
    * Takes a kill: the whole hit points as one hit that ignores the battle's holds.
    *
-   * @param killer the entity that caused it, or null for none
-   * @return what the kill did
+   * @return what the kill did; the death it causes is the battle's to run
    */
-  DamageResult takeKill(BattleEntity killer) {
+  DamageResult takeKill() {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     DamageResult result = DamageApplication.kill(hitPoints, damageQueries());
     refreshHitPoints();
-    if (result.died()) {
-      die(killer);
-    }
+
     return result;
   }
 

@@ -67,13 +67,20 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onKilledAction the action row the unit runs when it is killed, or null
  * @param deathDamage damage the unit deals around itself as it dies, at the first level; 0 for none
  * @param deathDamageRadius the radius of that damage
- * @param unmodelledDeathColumns the columns of what the unit does as it dies, beyond its death
- *     damage and its hooks, that its row sets and the battle does not model: its death spawns, its
- *     death projectile, its death area effect, its death pushback and the elixir it gives
+ * @param deathPushBack how far that damage pushes what it hits; 0 for no push
+ * @param deathSpawnCharacter the row of the units the unit spawns as it dies, or null for none
+ * @param deathSpawnCount how many it spawns: the column, at least one when the row spawns
+ * @param deathSpawnRadius the radius of the ring they stand on; 0 for none
+ * @param deathSpawnDeployTimeMs the deploy time they start with; 0 for their own row's rule
+ * @param unmodelledDeathColumns the columns of what the unit does as it dies that its row sets and
+ *     the battle does not model: a second or third death spawn, a death projectile, a death area
+ *     effect, a starting buff taken back, a spawned area object ended, and the parts of the death
+ *     spawn's placement that are not established
  * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
  *     unless it says otherwise
  * @param globalId the id the game gives the unit's row, which expressions compare it by
  * @param lifeTimeMs how long the unit lives before its hit points run down; 0 for no limit
+ * @param targetOnlyBuildings true for a unit that attacks buildings only
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -119,10 +126,16 @@ public record UnitData(
     String onKilledAction,
     int deathDamage,
     int deathDamageRadius,
+    int deathPushBack,
+    String deathSpawnCharacter,
+    int deathSpawnCount,
+    int deathSpawnRadius,
+    int deathSpawnDeployTimeMs,
     List<String> unmodelledDeathColumns,
     boolean champion,
     int globalId,
-    int lifeTimeMs) {
+    int lifeTimeMs,
+    boolean targetOnlyBuildings) {
 
   public UnitData {
     unmodelledDeathColumns =
