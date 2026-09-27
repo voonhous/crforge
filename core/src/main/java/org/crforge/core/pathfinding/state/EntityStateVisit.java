@@ -54,8 +54,9 @@ import org.crforge.core.pathfinding.move.MovementState;
  * </ul>
  *
  * <p>Two further gaps inside ported blocks: the dash-landing block announces the landing without
- * running the targeting work the standard game does alongside it, and the ability block starts the
- * cast without removing the buff the cast leaves behind.
+ * running the targeting work the standard game does alongside it - the attack reset and the
+ * wind-up's reload, which the battle's character runs on the announcement once the visit returns -
+ * and the ability block starts the cast without removing the buff the cast leaves behind.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -64,7 +65,8 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " pathfind states, the delay accumulators, staggered placement, the dash landing"
             + " delay, pending damage, dash immunity, the ability countdowns, the follow"
             + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
-            + " deploy countdown ending in the moving state, and little else. Not modelled:"
+            + " deploy countdown ending in the moving state, and the dash landing delay and the"
+            + " dash immunity, by mega_knight_group and bandit_knight. Not modelled:"
             + " the not-attacking buff timer, kamikaze self-damage, elixir generation, hiding,"
             + " growth, and the targeting visit the standard game runs"
             + " straight after a hidden unit resumes. A removal is requested by name and read"

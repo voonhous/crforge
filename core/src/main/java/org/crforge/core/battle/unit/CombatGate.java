@@ -32,8 +32,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " the drop and switch of a dead, deploying or stunned entity, held by zap_knight for"
             + " the stun. Not modelled: a Projectile buff (refused with its row), the"
             + " casting state's KeepCurrentTarget, a clone's setup state with CLONE_RESET_TARGET,"
-            + " the touchdown query (Ladder answers 0), and a dashing row's null path, which asks"
-            + " for a resume.")
+            + " and the touchdown query (Ladder answers 0). A dashing row's null path asks for a"
+            + " resume, which the gate runs, held by bandit_knight's death.")
 final class CombatGate {
 
   /** The time step the gate scales by the hit speed multipliers, as the attack timer does. */
@@ -54,6 +54,8 @@ final class CombatGate {
    * @param rowHasHitPoints whether its row has hit points, which decides the switch of an entity
    *     that is not acting
    * @param routePreparer prepares a route when the dropped reference asks for one
+   * @param resume resumes the entity when the dropped reference asks for it, as a dashing row's
+   *     does
    * @return whether the targeting component is on after the gate
    */
   static boolean targetingOn(
@@ -63,7 +65,8 @@ final class CombatGate {
       boolean alive,
       int hitSpeed,
       boolean rowHasHitPoints,
-      Runnable routePreparer) {
+      Runnable routePreparer,
+      Runnable resume) {
     int state = view.getState();
     if ((view.getFlags() & GameTags.KEEPS_TARGETING_OFF) != 0) {
       return false;
@@ -90,8 +93,7 @@ final class CombatGate {
       outcome.setRoutePreparer(routePreparer);
       TargetingVisit.clearReference(targeting, view, outcome);
       if (outcome.isResumeRequested()) {
-        throw new UnsupportedOperationException(
-            "a dashing row's reference dropped by the combat gate, which no run holds yet");
+        resume.run();
       }
     }
     return !rowHasHitPoints && targetingOn;

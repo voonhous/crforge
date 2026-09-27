@@ -24,9 +24,11 @@ import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
+import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.move.AttachedParent;
+import org.crforge.core.pathfinding.move.DashStart;
 import org.crforge.core.pathfinding.move.MovementChain;
 import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementRequests;
@@ -34,6 +36,7 @@ import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.MovementVisit;
 import org.crforge.core.pathfinding.move.PushbackQueries;
 import org.crforge.core.pathfinding.move.PushbackRequest;
+import org.crforge.core.pathfinding.move.SpeedBudget;
 import org.crforge.core.pathfinding.move.SpeedConfig;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.ResumeHelper;
@@ -42,6 +45,7 @@ import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
 import org.crforge.core.pathfinding.target.HitQueries;
+import org.crforge.core.pathfinding.target.RangeTest;
 import org.crforge.core.pathfinding.target.ReferenceSetter;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.SelectionChain;
@@ -49,6 +53,7 @@ import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.core.pathfinding.target.TargetingVisit;
+import org.crforge.core.pathfinding.target.ValidatorQueries;
 
 /**
  * A walking ground unit: a targeting component in slot 0, a movement component in slot 1 and the
@@ -122,13 +127,19 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " strike-now byte landing the first hit at once and that hit's special damage, held"
             + " by prince_tower and dark_prince_tower; a river jump over the water its route"
             + " crosses, from the node before the water to the first land cell beyond it at its"
-            + " jump speed, held by hog_river; the"
+            + " jump speed, held by hog_river; a dash, its wind-up standing it still inside its"
+            + " ring, its start short of its reference by both radii, its flight at its jump speed"
+            + " with its stop in range or its constant time and height, its landing hit on its"
+            + " reference or over its radius with a push, its landing hold, its immunity while it"
+            + " dashes and after, and the resume when it loses its reference, held by bandit_knight"
+            + " and mega_knight_group; the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
             + " hit points, hovering, direct"
-            + " paths, a completed charge's action, elixir, a"
+            + " paths, a completed charge's action, a chained dash, a dash's contact damage,"
+            + " fixed distance, area effect or closing action, elixir, a"
             + " spawner's launches, second and third characters, limit, push and"
             + " deploy for its children), a charge on a unit that fires, a Kamikaze row's hit, a"
             + " lifetime's death"
@@ -137,8 +148,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " a row that attaches riders placed directly, spawned or waiting its turn, a buff on a"
             + " parent or a rider, a rider whose parent may not attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
-            + " spawner, a building or a flying row, a champion, another deploy time, a charge or"
-            + " a river jump."
+            + " spawner, a building or a flying row, a champion, another deploy time, a charge,"
+            + " a river jump or a dash; a dash's landing on a cell it may not stand on."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
             + " meets an empty index, the"
             + " hit-points visit's dedupe expiry, and the columns its data does not"
@@ -154,6 +165,12 @@ public class CharacterEntity extends WorldEntity {
 
   /** Slot of the hit-points component, whose visit runs the lifetime decay. */
   public static final int HIT_POINTS_SLOT = 2;
+
+  /** How far beyond its attack range a dash's single landing hit still reaches its reference. */
+  private static final int DASH_HIT_EXTENSION = 500;
+
+  /** Where a landing hold starts; the state visit adds 50 a visit until the landing time. */
+  private static final int LANDING_HOLD_START_MS = 50;
 
   /** The follower's time step before the buffs scale it. */
   private static final int FOLLOWER_STEP = 100;
@@ -224,6 +241,56 @@ public class CharacterEntity extends WorldEntity {
         public void chargeCompleted() {
           world.chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
         }
+
+        @Override
+        public void dashLanded() {
+          landDash();
+        }
+      };
+
+  /**
+   * The character's dash, for a row with a dash cooldown: its range check and its start. A buff
+   * that pulls, which would hold the dash back, is refused with its row.
+   */
+  private final SelectionChain.Dasher dasher =
+      new SelectionChain.Dasher() {
+        @Override
+        public boolean inDashRange(TargetView reference) {
+          UnitData data = getData();
+          if (unit.targeting().getDashWindupMs() > 0) {
+            return true;
+          }
+          if (SpeedBudget.speedModifier(getBuffs().speedPercents(), data.speed()) < 1) {
+            return false;
+          }
+          return RangeTest.rangeTest(
+              reference,
+              getView().getX(),
+              getView().getY(),
+              data.dashMaxRange(),
+              data.collisionRadius() + data.dashMinRange(),
+              false);
+        }
+
+        @Override
+        public void startDash(int x, int y, int radius) {
+          GridEntity view = getView();
+          int fromX = view.getX();
+          int fromY = view.getY();
+          TargetView reference = unit.targeting().getReference();
+          DashStart.start(
+              view,
+              isActive(MOVEMENT_SLOT) ? unit.movement() : null,
+              unit.movementConfig(),
+              x,
+              y,
+              radius,
+              1,
+              world.getGrid().getWidth(),
+              world.getGrid().getHeight(),
+              setter);
+          world.dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
+        }
       };
 
   /**
@@ -291,19 +358,27 @@ public class CharacterEntity extends WorldEntity {
             new StateTimers(),
             // The movement config's flying height is read only for direct paths, which are
             // refused; its stop and wait make the follower walk in bursts, its charge range
-            // builds the charge and its jump leaps the river.
+            // builds the charge, its jump leaps the river and gives a dash its height, and its
+            // constant dash time times a dash.
             MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs())
                 .withCharge(data.chargeRange())
-                .withJump(data.jumpEnabled(), data.jumpHeight()),
+                .withJump(data.jumpEnabled(), data.jumpHeight())
+                .withDashConstantTime(data.dashConstantTimeMs()),
             SpeedConfig.forGroundUnit(data.speed())
                 .withChargeMultiplier(data.chargeSpeedMultiplier())
                 .withJumpSpeed(data.jumpSpeed()),
-            StateVisitConfig.forGroundUnit(data.deployTimeMs()),
+            StateVisitConfig.forGroundUnit(data.deployTimeMs())
+                .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs()),
             getSelection(),
             getTargetView());
     this.setter =
         new GridStateSetter(
-            view, unit.movement(), targeting, this::movementChain, data.deployTimeMs());
+            view,
+            unit.movement(),
+            targeting,
+            this::movementChain,
+            data.deployTimeMs(),
+            unit.movementConfig());
     // The movement component starts tracking a charge for a row with a charge range.
     if (data.chargeRange() != 0) {
       unit.movement().setChargeProgress(0);
@@ -331,6 +406,9 @@ public class CharacterEntity extends WorldEntity {
       unit.selection().setOnStartingAttack(this::startingAttack);
     }
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
+    if (data.dashCooldown() > 0) {
+      unit.selection().setDasher(dasher);
+    }
 
     attach(new TargetingComponent());
     if (!data.building()) {
@@ -529,6 +607,8 @@ public class CharacterEntity extends WorldEntity {
         || current.jumpEnabled()
         || next.jumpEnabled()) {
       refused = "a charge or a river jump";
+    } else if (current.dashCooldown() != 0 || next.dashCooldown() != 0) {
+      refused = "a dash";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(
@@ -670,6 +750,12 @@ public class CharacterEntity extends WorldEntity {
         .minimumRange(data.minimumRange())
         .keepChargingAfterAttack(data.keepChargingAfterAttack())
         .jumpHeight(data.jumpHeight())
+        .dashCooldown(data.dashCooldown())
+        .dashMinRange(data.dashMinRange())
+        .dashMaxRange(data.dashMaxRange())
+        .dashLandingTime(data.dashLandingTimeMs())
+        .dashStopsAtContact(data.dashToTargetRadius())
+        .dashImmuneToDamageTime(data.dashImmuneToDamageTimeMs())
         .build();
   }
 
@@ -784,10 +870,80 @@ public class CharacterEntity extends WorldEntity {
     world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
-  /** Untouchable while it rides on a parent, or while its dash immunity lasts. */
+  /**
+   * Untouchable while it rides on a parent, while it dashes under a row with a dash immunity, and
+   * while that immunity lasts after the dash.
+   */
   @Override
   boolean untouchable() {
-    return parent != null || unit.timers().getDashImmunityRemainingMs() > 0;
+    return parent != null
+        || getView().getState() == GridEntityState.DASHING
+            && getData().dashImmuneToDamageTimeMs() > 0
+        || unit.timers().getDashImmunityRemainingMs() >= 1;
+  }
+
+  /** A dasher that lost its reference resumes, as the state visit's resume does. */
+  @Override
+  protected void resumeAfterDrop() {
+    ResumeHelper.resume(getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
+  }
+
+  /**
+   * The landing of a dash, as the follower asks for it where the dash ends. Its damage is the row's
+   * dash damage at the character's level, under a hit id of its own. With a dash radius it hits the
+   * area around the landing point and pushes what it hits; without, it hits the reference alone,
+   * when the shared validator accepts it and it is within the attack range widened by 500, along
+   * the character's facing, and then resets the attack and reloads the wind-up, so the next hit
+   * comes a whole hit speed later; a character that stopped on a cell it may not stand on is moved
+   * off it. Then the moving state is asked for, or, for a row with a landing time, the landing hold
+   * starts.
+   */
+  private void landDash() {
+    UnitData data = getData();
+    GridEntity view = getView();
+    int damage =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            data.dashDamage(),
+            getPackedLevel(),
+            ScalingMode.CARD_DAMAGE,
+            data.rarity());
+    int hitId = world.nextHitId();
+    WorldEntity hit = null;
+    boolean area = data.dashRadius() >= 1;
+    if (area) {
+      world.dashLandingArea(this, damage, hitId);
+    } else {
+      TargetingState t = unit.targeting();
+      TargetView reference = isActive(TARGETING_SLOT) ? t.getReference() : null;
+      if (reference != null
+          && ReferenceValidator.sharedValidate(
+              t,
+              reference,
+              false,
+              data.targetOnlyBuildings(),
+              false,
+              false,
+              ValidatorQueries.standard1v1())
+          && RangeTest.referenceInRange(t, reference, DASH_HIT_EXTENSION)) {
+        hit = world.entityOf(reference.getEntity());
+        world.dealDamage(this, reference, damage, view.getDirX(), view.getDirY());
+        t.clearAttack();
+        t.setLoadTimerMs(data.loadTimeMs());
+      }
+      if ((CellTests.cellBlocked(world.getGrid(), view.getX(), view.getY()) & 1) != 0) {
+        throw new UnsupportedOperationException(
+            name()
+                + " landed its dash on a cell it may not stand on, whose move off it no run"
+                + " holds");
+      }
+    }
+    if (data.dashLandingTimeMs() < 1) {
+      movementRequests.requestState(GridEntityState.MOVING);
+    } else if (view.getBlockCountdownMs() == 0) {
+      view.setBlockCountdownMs(LANDING_HOLD_START_MS);
+    }
+    world.dashLanded(this, hit, hit != null || area ? damage : 0, area);
   }
 
   /**
@@ -950,6 +1106,12 @@ public class CharacterEntity extends WorldEntity {
     }
     if (calls.contains("spawner")) {
       spawner();
+    }
+    // The landing hold's end resets the attack and reloads the wind-up, with the targeting
+    // component on, as the moving state is asked for.
+    if (calls.contains("dash_landed") && isActive(TARGETING_SLOT)) {
+      unit.targeting().clearAttack();
+      unit.targeting().setLoadTimerMs(getData().loadTimeMs());
     }
     if (calls.contains("targeting_visit")) {
       throw new UnsupportedOperationException(

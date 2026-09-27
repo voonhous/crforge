@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.move.MovementChain;
+import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.state.StateSetter;
 import org.crforge.core.pathfinding.target.TargetingState;
@@ -37,13 +38,18 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * state with the larger of the countdown and the deploy time, which is how a unit that waited its
  * turn starts deploying.
  *
+ * <p>Entering the dashing state raises the dashing flag and, for a unit with a movement component,
+ * resets its charge - to 0 for a row with a charge range, to none without, with the targeting
+ * component's strike-now byte cleared - loads its dash timer with the row's constant dash time and
+ * clears its landing hold.
+ *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
  * change, seeds the morph countdown on entering the morphing state and the ability countdowns on
- * entering the casting state, raises the dashing flag and stops the unit on entering the dashing
- * state, chains a further dash on leaving it, clears the movement component's destination on
- * leaving clone setup, relocates a unit leaving a following state to a free cell, makes a building
- * asked to follow stand instead, and ends every change with two notifications. None of that is
- * reachable from a plain ground unit, which is all the grid drives.
+ * entering the casting state, chains a further dash on leaving the dashing state and runs the row's
+ * closing action, resets the charge on leaving the casting states, clears the movement component's
+ * destination on leaving clone setup, relocates a unit leaving a following state to a free cell,
+ * makes a building asked to follow stand instead, and ends every change with two notifications.
+ * None of that is reachable from a plain ground unit, which is all the grid drives.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -52,10 +58,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " clone-setup and casting states; the route prepared on entering the moving"
             + " state; the target-lost timer cleared on leaving the attacking state; the deploy"
             + " countdown cleared on leaving the deploying and pathfinding states and raised to"
-            + " the unit's deploy time on entering the deploying state. Held by the 53 reference"
+            + " the unit's deploy time on entering the deploying state; the dashing state's entry,"
+            + " held by bandit_knight and mega_knight_group. Held by the 53 reference"
             + " walks, whose route empties at the lock, and the staggered placements. Not"
             + " modelled: switching components, the countdowns seeded on entering the morphing and"
-            + " casting states, the dash entry and exit, the following-state rewrites and the"
+            + " casting states, the chained dash and closing action on leaving the dashing state,"
+            + " whose columns are refused, the following-state rewrites and the"
             + " two notifications every change ends with.")
 public final class GridStateSetter implements StateSetter {
 
@@ -66,6 +74,9 @@ public final class GridStateSetter implements StateSetter {
 
   /** The deploy countdown entering the deploying state seeds; -1 for a setter that seeds none. */
   private final int deployTimeMs;
+
+  /** The unit's movement columns, which the dashing state's entry reads; null for none. */
+  private final MovementConfig movementConfig;
 
   /**
    * Creates the setter of one unit.
@@ -100,11 +111,33 @@ public final class GridStateSetter implements StateSetter {
       TargetingState targeting,
       Supplier<MovementChain> chains,
       int deployTimeMs) {
+    this(owner, movement, targeting, chains, deployTimeMs, null);
+  }
+
+  /**
+   * Creates the setter of one unit that seeds its deploy countdown and can enter the dashing state.
+   *
+   * @param owner the unit whose state this sets
+   * @param movement the unit's movement component, or null when it has none
+   * @param targeting the unit's targeting component, or null when it has none
+   * @param chains builds a movement chain over the unit's current reference
+   * @param deployTimeMs the unit's deploy time, or -1 to seed nothing
+   * @param movementConfig the unit's movement columns, whose charge range and constant dash time
+   *     the dashing state's entry reads; null for a unit that never dashes
+   */
+  public GridStateSetter(
+      GridEntity owner,
+      MovementState movement,
+      TargetingState targeting,
+      Supplier<MovementChain> chains,
+      int deployTimeMs,
+      MovementConfig movementConfig) {
     this.owner = owner;
     this.movement = movement;
     this.targeting = targeting;
     this.chains = chains;
     this.deployTimeMs = deployTimeMs;
+    this.movementConfig = movementConfig;
   }
 
   @Override
@@ -161,6 +194,7 @@ public final class GridStateSetter implements StateSetter {
           GridEntityState.CASTING ->
           resetRoute();
       case GridEntityState.MOVING -> prepareRoute();
+      case GridEntityState.DASHING -> enterDash();
       case GridEntityState.DEPLOYING -> {
         // Entering the deploying state switches the movement component on, which a unit that
         // waited its turn had off.
@@ -177,6 +211,31 @@ public final class GridStateSetter implements StateSetter {
         // No ported action.
       }
     }
+  }
+
+  /**
+   * The dashing state's entry: the dashing flag raised and, with a movement component, the charge
+   * reset, the dash timer loaded and the landing hold cleared.
+   */
+  private void enterDash() {
+    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.DASHING);
+    if (movement == null) {
+      return;
+    }
+    checkArgument(
+        movementConfig != null,
+        () -> "the setter of " + owner.getName() + " has no movement columns to dash with");
+    movement.setChargeProgress(
+        movementConfig.chargeRange() != 0 ? 0 : MovementState.CHARGE_INACTIVE);
+    if (targeting != null) {
+      targeting.setChargeStrike(false);
+    }
+    // The dash timer: the constant dash time, when the row has one; a fixed dash distance, which
+    // times the dash by its length instead, is refused with its row.
+    if (movementConfig.dashConstantTime() >= 1) {
+      movement.setDashTimeMs(movementConfig.dashConstantTime());
+    }
+    owner.setBlockCountdownMs(0);
   }
 
   /** Empties the route and clears the route-leads-away bit. */

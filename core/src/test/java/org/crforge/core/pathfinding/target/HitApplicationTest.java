@@ -180,6 +180,18 @@ class HitApplicationTest {
   }
 
   @Test
+  @DisplayName("a dasher immune after its dash never cancels a hit for distance; one without does")
+  void aDasherImmuneAfterItsDashNeverCancels() {
+    t.setConfig(t.getConfig().toBuilder().dashCooldown(800).dashImmuneToDamageTime(100).build());
+    assertThat(HitApplication.apply(t, targetAt(30000), queries)).isFalse();
+    assertThat(queries.dealt).hasSize(1);
+
+    t.setConfig(t.getConfig().toBuilder().dashImmuneToDamageTime(0).build());
+    assertThat(HitApplication.apply(t, targetAt(30000), queries)).isTrue();
+    assertThat(queries.dealt).hasSize(1);
+  }
+
+  @Test
   @DisplayName("a wind-up-first unit whose hit missed stays loaded when the match says so")
   void aMissedWindUpFirstHitKeepsTheLoad() {
     t.setConfig(t.getConfig().toBuilder().loadFirstHit(true).build());

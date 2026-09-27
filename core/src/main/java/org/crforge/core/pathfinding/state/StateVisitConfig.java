@@ -67,4 +67,31 @@ public record StateVisitConfig(
         false,
         0L);
   }
+
+  /**
+   * This configuration with a dash: the time the entity is held after its dash lands, and how long
+   * nothing can hurt it after the dash.
+   *
+   * @param landingTimeMs the hold after the landing; 0 to walk on at once
+   * @param immuneTimeMs the immunity after the dash; 0 for none
+   */
+  public StateVisitConfig withDash(int landingTimeMs, int immuneTimeMs) {
+    return new StateVisitConfig(
+        deployTimeMs,
+        landingTimeMs,
+        immuneTimeMs,
+        flyingHeight,
+        ingamePathfindEndsInDeploy,
+        spawnPathfindMorph,
+        onIngamePathfindStopAction,
+        kamikaze,
+        kingTowerMiddle,
+        neutralObject,
+        hideBeforeFirstHit,
+        hidesWhenNotAttacking,
+        deployTimeAffectedByCharacterSpeed,
+        abilityPresent,
+        abilityHoldsState,
+        abilityStateFlags);
+  }
 }

@@ -219,6 +219,29 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName("a unit carries its dash, and a chained dash is among the columns not modelled")
+  void dashColumns() {
+    UnitData bandit = records.unit("Assassin");
+    assertThat(bandit.dashCooldown()).isEqualTo(800);
+    assertThat(bandit.dashMinRange()).isEqualTo(3500);
+    assertThat(bandit.dashMaxRange()).isEqualTo(6000);
+    assertThat(bandit.dashDamage()).isEqualTo(152);
+    assertThat(bandit.dashRadius()).isZero();
+    assertThat(bandit.dashLandingTimeMs()).isZero();
+    assertThat(bandit.dashImmuneToDamageTimeMs()).isEqualTo(100);
+    assertThat(bandit.jumpSpeed()).isEqualTo(500);
+    assertThat(bandit.unmodelledColumns()).isEmpty();
+    UnitData megaKnight = records.unit("MegaKnight");
+    assertThat(megaKnight.dashRadius()).isEqualTo(2200);
+    assertThat(megaKnight.dashPushBack()).isEqualTo(1000);
+    assertThat(megaKnight.dashLandingTimeMs()).isEqualTo(300);
+    assertThat(megaKnight.dashConstantTimeMs()).isEqualTo(800);
+    assertThat(megaKnight.jumpHeight()).isEqualTo(3000);
+    assertThat(megaKnight.dashToTargetRadius()).isFalse();
+    assertThat(records.unit("GoldenKnight").unmodelledColumns()).containsExactly("DashCount");
+  }
+
+  @Test
   @DisplayName(
       "a building carries its lifetime, minimum range and spawner, and a unit lists the columns"
           + " the battle does not model")

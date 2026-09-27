@@ -71,8 +71,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param dashDistance fixed dash distance, 0 to dash up to the target
  * @param dashLandingTime milliseconds the unit holds still after a dash
  * @param dashingPushback pushback applied to entities hit during a dash
- * @param dashStopsAtContact flag that stops a dash at the two entities' touching edges rather than
- *     at the target's centre; the published name of this flag is not documented
+ * @param dashStopsAtContact the row's DashToTargetRadius: a dash with no fixed distance aims at the
+ *     point where the two entities' edges touch rather than at the target's centre
  * @param hasDashStartEffect true when starting a dash plays an effect
  * @param specialMinRange closest distance at which the special attack may start
  * @param specialLoadTime wind-up of the special attack in milliseconds
@@ -108,6 +108,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param selfAsAoeCenter true when that circle is centred on the unit itself rather than on where
  *     its reference stood at the start of the visit
  * @param keepChargingAfterAttack true when a charging unit's hit leaves its charge as it was
+ * @param dashImmuneToDamageTime milliseconds a dashing unit is immune after its dash; with a dash,
+ *     it also keeps the unit's hits from being cancelled for distance
  */
 @Builder(toBuilder = true)
 public record TargetingConfig(
@@ -183,7 +185,8 @@ public record TargetingConfig(
     int crownTowerDamagePercent,
     int areaDamageRadius,
     boolean selfAsAoeCenter,
-    boolean keepChargingAfterAttack) {
+    boolean keepChargingAfterAttack,
+    int dashImmuneToDamageTime) {
 
   /** Sight clip depth every ordinary character carries in the standard mode. */
   public static final int STANDARD_SIGHT_CLIP = 1000;

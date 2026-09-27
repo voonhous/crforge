@@ -225,6 +225,41 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
     }
   }
 
+  /** The owner's dash: whether a reference is in its dash ring, and the start of a dash. */
+  public interface Dasher {
+
+    /**
+     * Whether the reference is inside the owner's dash ring, or its wind-up is already running.
+     *
+     * @param reference the owner's reference
+     */
+    boolean inDashRange(TargetView reference);
+
+    /**
+     * Starts a dash toward a point.
+     *
+     * @param x the point along the arena's width
+     * @param y the point along the arena's length
+     * @param radius the radius the dash stops short of the point by, beyond the owner's own
+     */
+    void startDash(int x, int y, int radius);
+  }
+
+  /** The owner's dash, or null for an owner that does not dash. */
+  @Setter private Dasher dasher;
+
+  @Override
+  public boolean dashRangeReached(TargetView reference) {
+    return dasher != null && dasher.inDashRange(reference);
+  }
+
+  @Override
+  public void startDash(TargetView target, int x, int y, int radius) {
+    if (dasher != null) {
+      dasher.startDash(x, y, radius);
+    }
+  }
+
   // -------------------------------------------------------------------------------------------
   // SelectionQueries
   // -------------------------------------------------------------------------------------------

@@ -424,7 +424,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     int hitSpeed = buffs.hitSpeed(CombatGate.HIT_SPEED_STEP_MS);
     boolean on =
         CombatGate.targetingOn(
-            view, targeting, targetingOn, alive, hitSpeed, data.hitpoints() != 0, routePreparer);
+            view,
+            targeting,
+            targetingOn,
+            alive,
+            hitSpeed,
+            data.hitpoints() != 0,
+            routePreparer,
+            this::resumeAfterDrop);
     if (before != null && targeting.getReference() == null) {
       world.combatGateDropped(this, before, hitSpeed);
     }
@@ -435,6 +442,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     gateStunned = stunned;
     setActive(GATED_SLOT, on);
+  }
+
+  /**
+   * Resumes the entity after its reference was dropped, as a dashing row's null path asks. A tower
+   * never dashes, so it never asks.
+   */
+  protected void resumeAfterDrop() {
+    throw new UnsupportedOperationException(name() + " asked to resume, which only a dasher does");
   }
 
   /**

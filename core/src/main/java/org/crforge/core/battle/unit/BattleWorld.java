@@ -1381,6 +1381,37 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** Tells the observers a character's spawner fired. */
+  /**
+   * Tells every observer that a unit started a dash.
+   *
+   * @param unit the dashing unit
+   * @param reference what it dashed at
+   * @param fromX where it stood, along the width
+   * @param fromY where it stood, along the length
+   * @param aimX the point it dashed toward, along the width
+   * @param aimY the point it dashed toward, along the length
+   */
+  void dashStarted(
+      CharacterEntity unit, TargetView reference, int fromX, int fromY, int aimX, int aimY) {
+    for (WorldObserver observer : observers) {
+      observer.dashStarted(tick, unit, reference, fromX, fromY, aimX, aimY);
+    }
+  }
+
+  /**
+   * Tells every observer that a unit landed its dash.
+   *
+   * @param unit the unit
+   * @param hit what its landing hit: the target of a single hit, or null for an area or nothing
+   * @param damage the landing's damage, or 0 when nothing was hit
+   * @param area true when the landing hit an area
+   */
+  void dashLanded(CharacterEntity unit, WorldEntity hit, int damage, boolean area) {
+    for (WorldObserver observer : observers) {
+      observer.dashLanded(tick, unit, hit, damage, area);
+    }
+  }
+
   /** Tells every observer that a unit's charge completed. */
   void chargeCompleted(CharacterEntity unit, int progress) {
     for (WorldObserver observer : observers) {
@@ -1461,8 +1492,36 @@ public class BattleWorld implements HolderPasses {
       return;
     }
     int towerDamage = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
-    int x = dying.getView().getX();
-    int y = dying.getView().getY();
+    pushingArea(dying, radius, damage, towerDamage, 0, push);
+  }
+
+  /**
+   * The landing hit of a dash with a radius: the area damage around the landing point, the dashing
+   * unit as its owner, its damage the row's dash damage at the unit's level, taken whole by a crown
+   * tower too, under the hit id the landing took, with no split and a thousand victims at most. It
+   * hits air units when the row attacks air and ground ones unless the row attacks air alone, and
+   * pushes each victim still alive, with a movement component and a row that does not ignore
+   * pushback, the row's dash pushback away from the landing point.
+   *
+   * @param dasher the unit that landed
+   * @param damage the dash damage at its level
+   * @param hitId the id the landing took
+   */
+  void dashLandingArea(CharacterEntity dasher, int damage, int hitId) {
+    UnitData data = dasher.getData();
+    pushingArea(dasher, data.dashRadius(), damage, damage, hitId, data.dashPushBack());
+  }
+
+  /**
+   * An area damage around an entity, the entity as its owner and its targeting as the validator's,
+   * that pushes each victim away from its centre: no split, a thousand victims at most, air units
+   * when the entity's row attacks air and ground ones unless it attacks air alone.
+   */
+  private void pushingArea(
+      WorldEntity owner, int radius, int damage, int towerDamage, int hitId, int push) {
+    UnitData data = owner.getData();
+    int x = owner.getView().getX();
+    int y = owner.getView().getY();
     boolean air = data.attacksAir();
     AreaDamage.Area area =
         new AreaDamage.Area(
@@ -1471,7 +1530,7 @@ public class BattleWorld implements HolderPasses {
             radius,
             damage,
             towerDamage,
-            0,
+            hitId,
             DEATH_DAMAGE_LIMIT,
             false,
             air,
@@ -1486,14 +1545,14 @@ public class BattleWorld implements HolderPasses {
     }
     AreaDamage.Outcome outcome =
         AreaDamage.damage(
-            dying.getTargeting(),
+            owner.getTargeting(),
             entities,
             area,
             ValidatorQueries.standard1v1(),
             new AreaDamage.Queries() {
               @Override
-              public DamageResult damage(TargetView victim, int dealt, int hitId) {
-                return dealAreaDamage(dying, entityOf(victim.getEntity()), dealt, hitId);
+              public DamageResult damage(TargetView victim, int dealt, int id) {
+                return dealAreaDamage(owner, entityOf(victim.getEntity()), dealt, id);
               }
 
               @Override
@@ -1502,7 +1561,7 @@ public class BattleWorld implements HolderPasses {
                     && character.pushedByArea(fromX, fromY, distance);
               }
             });
-    areaDamaged(dying, area, outcome);
+    areaDamaged(owner, area, outcome);
   }
 
   /**
