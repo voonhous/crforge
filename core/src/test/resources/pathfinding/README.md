@@ -281,6 +281,17 @@ The towers fight at level 11. The Log and the Barbarian Barrel are thrown: the p
 
 `BattleActionSpawnRunTest` plays both with the spawn runs.
 
+## `golden/recruit_tower.json`, `golden/guards_knight.json`, `golden/poison_guards.json` and `golden/tombstone_crazy_life.json` - shields
+
+The towers fight at level 11. A shielded unit is created with its shield full, at its row's ShieldHitpoints at its level (240 for a Recruit, 256 for a SkeletonWarrior). Every hit meets the shield first; it takes the whole hit up to its value, the rest is lost, and the hit points take nothing. `shields` lists every hit a shield took: the tick, the target, what hit it (`by`) and how (`kind`), the damage, the shield before and after, the hit points, whether it broke, and the attackers whose attack the break reset (`resets`, none here).
+
+- `recruit_tower`: a Recruit walking up the left lane. PrincessTower_1_1's arrows of 109 take its shield from 240 to 131, 22 and 0 on 157, 172 and 186 (87 lost), its 547 hit points untouched; then the arrows take the hit points, and it dies on 278.
+- `guards_knight`: Guards (SkeletonWarriors) played for the bottom side at (3500, 10000) on tick 0, and a top-side Knight at (3500, 16000) on tick 0 (in `units`; the generator did not list it, and the file takes it from the run's definition). The Knight's 202 leaves Guards_0's shield at 54 on 50 and breaks it on 74 (148 lost); Guards_0 dies on 98. The Knight dies on 121. The tower's arrows break Guards_1's shield on 199 and kill it on 213, and take Guards_2's shield in three, on 239, 255 and 271, before the fourth arrow kills it.
+- `poison_guards`: the Guards without the Knight, and Poison placed for the top side at (3500, 11000) on 20. Its 92 a hit takes each shield to 164 on 44, 72 on 64, and breaks it on 84 (20 lost); the next hit kills two Guards on 104, and the third falls to an arrow on 113.
+- `tombstone_crazy_life`: Tombstone_crazy_1 placed for the bottom side at (5500, 11000) on tick 0, its whole life: tombstone_life's schedule, each child a SkeletonWarrior with a 256 shield that the tower's arrows take in three before the fourth kills. The decay kills the Tombstone on 621, and its death action, scheduled on it with itself as the cause (`death_hooks`), runs in its phase-2 pass and spawns SkeletonKing on its point, handed over to its side. The run stops at the king tower's death on 657.
+
+`BattleActionSpawnRunTest` plays all four with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
