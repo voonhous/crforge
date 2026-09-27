@@ -193,7 +193,8 @@ public final class BattleRecords {
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
-          "ShieldHitpoints",
+          "ShieldDiePushback",
+          "ShieldLostAction",
           "HidesWhenNotAttacking",
           "HideBeforeFirstHit",
           "BuffOnXHP",
@@ -302,6 +303,7 @@ public final class BattleRecords {
         .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
         .spawnStartTimeMs(row.intValue("SpawnStartTime"))
         .ignoreBuffs(namesOf(row, "IgnoreBuff"))
+        .shieldHitpoints(row.intValue("ShieldHitpoints"))
         .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))
         .waitMs(row.intValue("WaitMS"))
         .unmodelledColumns(unmodelledColumns(row))

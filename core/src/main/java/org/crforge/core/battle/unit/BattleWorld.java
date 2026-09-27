@@ -792,25 +792,35 @@ public class BattleWorld implements HolderPasses {
   /**
    * The death of a character whose lifetime decay took its last hit point, in its hit-points visit:
    * what it switches off, then its death slot, with no death handler after it. It leaves at the
-   * closing cleanup of the tick. The death action the decay then runs on it, with itself as the
-   * cause, is refused: no run holds it.
+   * closing cleanup of the tick. Then its death action, and not its killed action, is scheduled on
+   * it with itself as the cause, and runs in the tick's next pending pass.
    *
    * @param dying the character
    * @param hitPointsBefore its hit points before the decay's last step
    */
   void decayDeath(WorldEntity dying, int hitPointsBefore) {
     UnitData data = dying.getData();
-    if (data.onDeathAction() != null) {
-      throw new UnsupportedOperationException(
-          dying.name()
-              + " died as its lifetime ran out, and the death action it then runs is not"
-              + " established");
-    }
     for (WorldObserver observer : observers) {
       observer.decayDied(tick, dying, hitPointsBefore);
     }
     dying.died();
     deathSlot(dying, data);
+    if (data.onDeathAction() != null) {
+      // The death action alone, on itself with itself as the cause, taken by the tick's next
+      // pending pass.
+      List<String> hooks = List.of(data.onDeathAction());
+      boolean inPendingPass = holder.isInPendingPass();
+      for (WorldObserver observer : observers) {
+        observer.deathHooksScheduled(tick, dying, dying, dying.side(), hooks, inPendingPass);
+      }
+      dying
+          .actionHolder()
+          .schedule(
+              actions.build(data.onDeathAction(), binding(dying)),
+              ActionHolder.OWN_DELAY,
+              false,
+              dying.actionHolder());
+    }
   }
 
   /**
@@ -1225,6 +1235,31 @@ public class BattleWorld implements HolderPasses {
     if (data.pushback() >= 1 && entity instanceof CharacterEntity character) {
       character.pushedByTravellingHit(
           projectile.getX(), projectile.getY(), data.pushback(), data.pushbackAll());
+    }
+  }
+
+  /** Tells the observers a hit met an entity's shield. */
+  void shieldHit(WorldEntity target, int damage, int before, int after) {
+    for (WorldObserver observer : observers) {
+      observer.shieldHit(tick, target, damage, before, after);
+    }
+  }
+
+  /**
+   * A shield broken by a hit, in the hit's own pass: every character of the tick with an attack
+   * sequence mode that is attacking the entity has its attack reset, as an inferno's ramp is. The
+   * row columns the break also reads - a pushback on the entity and an action it schedules - are
+   * refused as it is created.
+   */
+  void shieldBroken(WorldEntity broken) {
+    for (WorldEntity entity : present) {
+      if (entity instanceof CharacterEntity character
+          && character.getData().attackSequence().mode() != 0
+          && character.isActive(CharacterEntity.TARGETING_SLOT)
+          && character.getTargeting().getReference() == broken.getTargetView()
+          && character.getView().getState() == GridEntityState.ATTACKING) {
+        character.getTargeting().clearAttack();
+      }
     }
   }
 

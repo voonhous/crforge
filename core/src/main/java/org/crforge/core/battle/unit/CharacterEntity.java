@@ -9,6 +9,7 @@ import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -106,17 +107,18 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
-            + " not model (a shield, hiding, a buff at a share of its hit points, hovering, direct"
+            + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
+            + " hit points, hovering, direct"
             + " paths, the river jump, elixir, a"
             + " spawner's launches, second and third characters, limit, attachment, push and"
             + " deploy for its children), a unit's own spawner as it fires, a lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself or whose"
             + " entries set more than a projectile and a damage, an action run as it attacks, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
-            + " spawner, a building or a flying row, a champion, a shield or another deploy time."
+            + " spawner, a building or a flying row, a champion or another deploy time."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
             + " meets an empty index, the"
-            + " hit-points visit's dedupe expiry and shield tag, and the columns its data does not"
+            + " hit-points visit's dedupe expiry, and the columns its data does not"
             + " carry: the stop time after an attack and the ones that restrict what a unit may"
             + " target beyond buildings only, which it carries.")
 public class CharacterEntity extends WorldEntity {
@@ -392,8 +394,8 @@ public class CharacterEntity extends WorldEntity {
    * leaves the attack timing as it was. The new row's starting action does not run.
    *
    * <p>Refused rather than guessed: a building or a flying row either side, a swap that builds or
-   * frees the movement component, a row with a lifetime, a different rarity or deploy time, a
-   * champion, and a character carrying a shield.
+   * frees the movement component, a row with a lifetime, a different rarity or deploy time, and a
+   * champion. A shield keeps its value, its maximum taken from the new row.
    *
    * @param rowName the name of the new character row
    * @param resetTarget true to give up the target rather than keep it
@@ -451,9 +453,6 @@ public class CharacterEntity extends WorldEntity {
       refused = "another deploy time";
     } else if (current.champion()) {
       refused = "a champion's controller";
-    } else if (getHitPoints() != null
-        && (getHitPoints().getShield() != 0 || getHitPoints().getShieldMaximum() != 0)) {
-      refused = "a shield's maximum";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(
@@ -880,6 +879,10 @@ public class CharacterEntity extends WorldEntity {
 
     @Override
     public void visit() {
+      // A shield that is up is tagged in every state and at any hit points, from the next step.
+      if (getHitPoints().getShield() >= 1) {
+        getView().setPendingFlags(getView().getPendingFlags() | GameTags.HAS_SHIELD);
+      }
       int state = getView().getState();
       if (getHitPoints().getHitPoints() < 1
           || state == GridEntityState.DEPLOYING

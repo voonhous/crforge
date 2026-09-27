@@ -27,10 +27,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * new instance is listed last, its level packed against the buff's rarity.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
- * ms, deals its damage over time when one is due, and is removed once its time is 0. The damage is
- * the damage per second at the instance's level, rounded down to a multiple of what one hit can
- * deal, for the period of the hit; a crown tower takes the per-hit column or that share raised by
- * the crown-tower percent, and a building the building percent of it.
+ * ms and is removed once its time is 0; the damage over time due on the visit lands once it is
+ * over. The damage is the damage per second at the instance's level, rounded down to a multiple of
+ * what one hit can deal, for the period of the hit; a crown tower takes the per-hit column or that
+ * share raised by the crown-tower percent, and a building the building percent of it.
  *
  * <p><b>Scales.</b> The speed, the attack time step and the spawn time step each take the largest
  * boost of the listed rows, from 100, times what the largest slow leaves of 100: Rage makes a step
@@ -152,12 +152,15 @@ public final class BuffComponent implements BattleComponent {
   public void visit() {
     List<BuffInstance> snapshot = new ArrayList<>(items);
     List<BuffInstance> removed = new ArrayList<>();
+    List<BuffInstance> hitting = new ArrayList<>();
+    List<Integer> periods = new ArrayList<>();
     for (int k = snapshot.size() - 1; k >= 0; k--) {
       BuffInstance instance = snapshot.get(k);
       instance.step(STEP_MS);
       int period = instance.countHit(STEP_MS);
       if (period != 0) {
-        overTime(instance, period);
+        hitting.add(instance);
+        periods.add(period);
       }
       if (instance.getRemaining() == 0 && items.remove(instance)) {
         removed.add(instance);
@@ -165,6 +168,10 @@ public final class BuffComponent implements BattleComponent {
     }
     for (BuffInstance instance : removed) {
       world.buffRemoved(entity, instance);
+    }
+    // The hits the visit found due land once it is over, in the order it found them.
+    for (int i = 0; i < hitting.size(); i++) {
+      overTime(hitting.get(i), periods.get(i));
     }
   }
 

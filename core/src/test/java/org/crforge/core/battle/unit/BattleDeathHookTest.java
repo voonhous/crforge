@@ -187,17 +187,20 @@ class BattleDeathHookTest {
   }
 
   @Test
-  @DisplayName("a spawner whose child carries a shield is refused as its first child is made")
-  void aShieldedChildIsRefused() {
+  @DisplayName("a spawner's child that carries a shield is made with it full")
+  void aShieldedChildStartsWithAFullShield() {
     Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 3500, 25000);
-    assertThatThrownBy(
-            () -> {
-              for (int tick = 1; tick <= 25; tick++) {
-                s.battle.step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SkeletonWarrior sets columns the battle does not model")
-        .hasMessageContaining("ShieldHitpoints");
+    CharacterEntity child = null;
+    for (int tick = 1; tick <= 25 && child == null; tick++) {
+      s.battle.step();
+      for (BattleEntity entity : s.battle.getHolder().entities()) {
+        if (entity instanceof CharacterEntity c && c.getData().name().equals("SkeletonWarrior")) {
+          child = c;
+        }
+      }
+    }
+    assertThat(child).isNotNull();
+    assertThat(child.getHitPoints().getShield()).isPositive();
+    assertThat(child.getHitPoints().getShield()).isEqualTo(child.getHitPoints().getShieldMaximum());
   }
 }
