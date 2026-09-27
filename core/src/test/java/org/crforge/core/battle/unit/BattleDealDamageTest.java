@@ -127,6 +127,7 @@ class BattleDealDamageTest {
         card.projectile(),
         card.areaEffect(),
         card.searchUnit(),
+        card.spellAsDeploy(),
         card.radius(),
         card.multipleProjectiles(),
         card.projectileWaves(),

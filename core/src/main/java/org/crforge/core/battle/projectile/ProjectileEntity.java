@@ -2,6 +2,7 @@ package org.crforge.core.battle.projectile;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
@@ -56,11 +57,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " impacts; an action holder, made when the projectile first causes an action, as the"
             + " cause of the death hooks of what it kills, held by the Tombstone's death."
             + " Supplied, not settled: the deflection pass finds nothing, the projectile's"
-            + " own collision radius is zero, and no buff changes its damage. Not modelled: the"
-            + " hits on what a flying body passes, the pushback on impact, the on-impact spawns"
-            + " and the chained hop, the limited-time homing beyond the columns carried, the"
-            + " pingpong sweep, the ring scatter, the drag-back hook, the delays before the flight,"
-            + " the custom movement, and the far-distance clamp with its cell pull.")
+            + " own collision radius is zero, and no buff changes its damage. A spell's cast from"
+            + " the king tower, its delay, its chain and ring point, a thrown projectile's aim at"
+            + " its spawned one's body height, and a spawned projectile's launch from its parent"
+            + " are held by the spell runs. Not modelled: the chained hop, the limited-time homing"
+            + " beyond the columns carried, the pingpong sweep, the random delays, the drag-back"
+            + " hook, the custom movement, and the far-distance clamp with its cell pull.")
 public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Game time one flight step advances, in milliseconds. */
@@ -74,7 +76,10 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
   /** The side of the launcher, which the projectile fights for. */
   @Getter private final int side;
 
-  /** The entity that launched the projectile, or null once it has left the battle. */
+  /**
+   * The entity that launched the projectile, or null once it has left the battle, or for one
+   * another projectile's impact spawned.
+   */
   @Getter private WorldEntity owner;
 
   /** The launcher, or the launcher's own root for a projectile fired by a projectile. */
@@ -123,6 +128,12 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /** Milliseconds its flight still waits before it moves, 50 off each visit. */
   @Getter private int delayMs;
+
+  /** The ids of the entities its flying body has hit, which it does not hit again. */
+  @Getter private final List<Integer> hitIds = new ArrayList<>();
+
+  /** How many links of spawned projectiles its impact may still launch. */
+  @Getter private int spawnChain;
 
   /** The chain it belongs to, or null for a projectile on its own. */
   @Getter private ProjectileChain chain;
@@ -174,7 +185,19 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    * @param hy the hit position along the arena's length
    */
   void launch(WorldEntity launcher, WorldEntity target, int sx, int sy, int sz, int hx, int hy) {
-    place(launcher, target, launcher.getPackedLevel(), sx, sy, sz, hx, hy);
+    GridEntity view = launcher.getView();
+    place(
+        launcher,
+        launcher,
+        target,
+        launcher.getPackedLevel(),
+        sx,
+        sy,
+        sz,
+        hx,
+        hy,
+        view.getX(),
+        view.getY());
   }
 
   /**
@@ -193,7 +216,8 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    */
   public void cast(
       WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy, int delayMs) {
-    place(king, null, cardLevel, sx, sy, sz, hx, hy);
+    // The cast has no launcher: a projectile that aims by its range would aim from its start.
+    place(king, king, null, cardLevel, sx, sy, sz, hx, hy, sx, sy);
     this.delayMs = delayMs;
   }
 
@@ -217,27 +241,57 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     delayMs -= STEP_MS;
   }
 
-  /** The launch body: the level re-based, the start, the owner, the aim and the facing. */
+  /**
+   * Launches a projectile another one's impact spawns: from where the parent stands, at the height
+   * the parent aimed at, with no target and no launcher - so a projectile that aims by its range
+   * aims from its start - at the parent's level re-based on this row's rarity, with the parent's
+   * root, and one link fewer of its spawn chain.
+   *
+   * @param parent the projectile that landed
+   * @param hx the point it aims beyond the parent's aim, along the width
+   * @param hy the point it aims beyond the parent's aim, along the length
+   */
+  public void launchSpawned(ProjectileEntity parent, int hx, int hy) {
+    place(
+        null,
+        parent.root,
+        null,
+        parent.packedLevel,
+        parent.x,
+        parent.y,
+        parent.aimZ,
+        hx,
+        hy,
+        parent.x,
+        parent.y);
+    spawnChain = parent.spawnChain - 1;
+  }
+
+  /**
+   * The launch body: the level re-based, the start, the owner and root, the aim from its origin,
+   * its height, and the facing.
+   */
   private void place(
       WorldEntity launcher,
+      WorldEntity rootOwner,
       WorldEntity target,
       int launcherLevel,
       int sx,
       int sy,
       int sz,
       int hx,
-      int hy) {
+      int hy,
+      int originX,
+      int originY) {
     this.packedLevel = PackedLevel.pack(launcherLevel, data.rarity());
     this.x = sx;
     this.y = sy;
     this.z = sz;
     this.target = target;
     this.owner = launcher;
-    // A projectile fired by a character has that character as its root; one fired by another
-    // projectile would take the launcher's root, which nothing here does yet.
-    this.root = launcher;
-    GridEntity launcherView = launcher.getView();
-    aim(launcherView.getX(), launcherView.getY(), hx, hy);
+    this.root = rootOwner;
+    this.spawnChain = data.spawnChain();
+    aim(originX, originY, hx, hy);
     this.startX = x;
     this.startY = y;
     this.startZ = z;
@@ -260,6 +314,15 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     }
     if (data.homingLike()) {
       aimZ = startZ;
+    } else if (data.spawnProjectile() != null) {
+      // A projectile that spawns one flying to a point aims at that one's body height.
+      ProjectileData spawned = world.getRecords().projectile(data.spawnProjectile());
+      if (spawned.homingLike()) {
+        aimZ =
+            spawned.projectileRadiusY() == 0
+                ? spawned.projectileRadius()
+                : Math.min(spawned.projectileRadius(), spawned.projectileRadiusY());
+      }
     }
     boolean homingNow = this.target != null && data.homing();
     int dx = (homingNow ? this.target.getView().getX() : aimX) - x;
@@ -267,8 +330,8 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     facing = FixedMath.guardedDistance(dx, dy) >= 1 ? FixedMath.angleOfVector(dx, dy) : 0;
     if (homingTimeMs >= 1) {
       // A limited-time homing projectile measures its flight from the launcher, not the start.
-      startX = launcherView.getX();
-      startY = launcherView.getY();
+      startX = originX;
+      startY = originY;
     }
   }
 

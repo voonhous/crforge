@@ -40,6 +40,7 @@ import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -58,6 +59,7 @@ import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
+import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -898,6 +900,9 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** The collision radius a thrown spell's height is taken from when the king has none. */
+  private static final int THROWN_DEFAULT_RADIUS = 1400;
+
   /** The spell whose projectiles the cast lays out on a ring, by its name. */
   private static final String ARROWS = "Arrows";
 
@@ -998,7 +1003,28 @@ public class BattleWorld implements HolderPasses {
           ty = vec[1] + y;
         }
         ProjectileEntity projectile = new ProjectileEntity(this, data, side);
-        projectile.cast(king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay);
+        if (card.spellAsDeploy()) {
+          // Thrown: from MinDistance behind the point, toward the caster's own side, at five
+          // times the king's collision radius, onto the point.
+          if (data.spawnProjectile() == null) {
+            throw new UnsupportedOperationException(
+                card.name() + " is thrown without a projectile to spawn, which is not modelled");
+          }
+          int direction = ky >= tileMap.height() * 250 ? -1 : 1;
+          int radiusOrDefault = king.getData().collisionRadius();
+          radiusOrDefault = radiusOrDefault != 0 ? radiusOrDefault : THROWN_DEFAULT_RADIUS;
+          projectile.cast(
+              king,
+              cardLevel,
+              tx,
+              ty - direction * data.minDistance(),
+              5 * radiusOrDefault,
+              tx,
+              ty,
+              delay);
+        } else {
+          projectile.cast(king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay);
+        }
         holder.add(projectile);
         if (chain != null) {
           projectile.joinChain(chain, rx, ry);
@@ -1083,6 +1109,122 @@ public class BattleWorld implements HolderPasses {
       int packed = Relocation.relocate(grid.getWidth(), grid.getHeight(), cx, cy, -1, grid::water);
       spawned.getView().setX(Relocation.unpackX(packed));
       spawned.getView().setY(Relocation.unpackY(packed));
+    }
+  }
+
+  /**
+   * The projectile another one's impact launches: from the parent's position at the height the
+   * parent aimed at, aimed beyond the parent's aim along the line it came, at the parent's level,
+   * with the parent's root. It is handed to the holder, which admits it at the next cleanup, and a
+   * projectile that flies to a point runs its first pass at once, its body widened by the row's
+   * start radius: a pass no run finds anyone in.
+   *
+   * @param parent the projectile that landed
+   * @param hx the point beyond the parent's aim, along the width
+   * @param hy the point beyond the parent's aim, along the length
+   */
+  public void impactProjectile(ProjectileEntity parent, int hx, int hy) {
+    ProjectileData data = records.projectile(parent.getData().spawnProjectile());
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          parent.getData().name()
+              + " spawns "
+              + data.name()
+              + ", which sets columns its flight does not model: "
+              + data.unmodelledColumns());
+    }
+    ProjectileEntity projectile = new ProjectileEntity(this, data, parent.side());
+    projectile.launchSpawned(parent, hx, hy);
+    holder.add(projectile);
+    if (data.homingLike()) {
+      cellPass(projectile, projectile.getX(), projectile.getY(), data.projectileStartExtraRadius());
+    }
+  }
+
+  /**
+   * The pass a projectile flying to a point runs over what its body covers: the spatial index's box
+   * of its body radius, widened by the extra, by its body's half height - or its circle without one
+   * - buildings tested as squares; one fresh hit id for the whole pass; and the travelling hit on
+   * each entity found, in the index's order.
+   *
+   * @param projectile the projectile
+   * @param x where the pass is centred, along the width
+   * @param y where the pass is centred, along the length
+   * @param extra how much the body radius is widened
+   */
+  public void cellPass(ProjectileEntity projectile, int x, int y, int extra) {
+    ProjectileData data = projectile.getData();
+    if (data.projectileRadius() < 1) {
+      // Without a body the deflection pass runs, which finds nothing without deflecting areas.
+      return;
+    }
+    List<GridEntity> found =
+        index.query(
+            new SpatialQuery(
+                x,
+                y,
+                data.projectileRadius() + extra,
+                data.projectileRadiusY(),
+                false,
+                true,
+                0,
+                -1));
+    int hitId = nextHitId();
+    for (GridEntity view : found) {
+      WorldEntity entity = known.get(view);
+      if (entity != null) {
+        travellingHit(projectile, entity, x, y, hitId);
+      }
+    }
+    index.release(found);
+  }
+
+  /**
+   * A flying body's hit on one entity it covers, as the translated hit runs it. Held by the Log's
+   * and the Barbarian Barrel's hits: the damage at the level, the id list, and no push from a hit
+   * that kills; held by no run: the own side spared, the crown-tower share, the untouchable
+   * listing, the air and jump checks, and the push itself. In order: none on its own side when it
+   * hits enemies only, none on an entity it has hit already; an untouchable character is listed as
+   * hit and spared; a character on a layer the projectile does not reach, or in the air, is spared.
+   * An entity with hit points takes the projectile's damage at its level, or its crown-tower share,
+   * from the direction of the pass's centre, and is listed as hit; then a character whose movement
+   * is still on is pushed the row's pushback away from the projectile, the row's push-all lifting
+   * the gates.
+   */
+  private void travellingHit(
+      ProjectileEntity projectile, WorldEntity entity, int x, int y, int hitId) {
+    ProjectileData data = projectile.getData();
+    if (data.onlyEnemies() && (entity.side() & 1) == (projectile.side() & 1)) {
+      return;
+    }
+    int id = entity.getId();
+    if (projectile.getHitIds().contains(id)) {
+      return;
+    }
+    GridEntity view = entity.getView();
+    if (entity.untouchable()) {
+      projectile.getHitIds().add(id);
+      return;
+    }
+    if (!data.aoeToAir() && view.isAir()) {
+      return;
+    }
+    if (!data.aoeToGround() && !view.isAir()) {
+      return;
+    }
+    if (!data.aoeToAir() && view.getState() == GridEntityState.JUMPING) {
+      return;
+    }
+    if (entity.getHitPoints() == null) {
+      return;
+    }
+    int damage =
+        entity.getTargetView().crownTower() ? projectile.towerDamage() : projectile.damage();
+    projectile.getHitIds().add(id);
+    dealProjectileDamage(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y);
+    if (data.pushback() >= 1 && entity instanceof CharacterEntity character) {
+      character.pushedByTravellingHit(
+          projectile.getX(), projectile.getY(), data.pushback(), data.pushbackAll());
     }
   }
 
