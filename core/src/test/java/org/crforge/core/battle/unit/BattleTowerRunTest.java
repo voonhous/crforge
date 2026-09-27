@@ -364,6 +364,53 @@ class BattleTowerRunTest {
       }
 
       @Override
+      public void areaEffectHit(
+          int tick,
+          AreaEffectEntity areaEffect,
+          WorldEntity victim,
+          int damage,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area_effect_hit %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    areaEffect.name(),
+                    victim.name(),
+                    damage,
+                    victim.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], victim.name()));
+        }
+      }
+
+      @Override
+      public void areaEffectDamaged(
+          int tick, AreaEffectEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    area.x(),
+                    area.y(),
+                    area.radius(),
+                    area.damage(),
+                    area.towerDamage(),
+                    area.hitId(),
+                    names(outcome.inCircle()),
+                    names(outcome.validated()),
+                    names(outcome.damaged()),
+                    area.push(),
+                    names(outcome.pushed())));
+      }
+
+      @Override
       public void projectileLaunched(int tick, ProjectileEntity projectile) {
         if (currentTick[0] < 0) {
           return;
@@ -535,6 +582,14 @@ class BattleTowerRunTest {
                   event.get("damage").asInt(),
                   event.get("hp").asInt(),
                   event.get("hit_id").asInt());
+      case "area_effect_hit" ->
+          "%d area_effect_hit %s %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("area_effect").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
       case "area" ->
           "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
               .formatted(

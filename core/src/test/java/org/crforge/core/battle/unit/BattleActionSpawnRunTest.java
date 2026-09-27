@@ -22,7 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the twelve runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the thirteen runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -46,10 +46,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * damages a tower and a Knight around it and pushes the Knight away. In {@code archer_ev1_vs_tower}
  * and {@code archer_ev1_knight} the evolved Archer's starting-attack row picks its attack sequence
  * index by whether its target is within 4500: its long shots launch the double-damage arrow of its
- * second entry, and once a Knight closes in it goes back to its first. In {@code gift_select} two
- * owners each schedule the gift delivery's select on the same tick, from a random state of the
- * run's own: each select draws its part as it is scheduled, in the command pass, the first owner's
- * draw first, and the part it chose spawns its unit in that owner's phase-1 pass.
+ * second entry, and once a Knight closes in it goes back to its first. In {@code
+ * area_effect_direct} two area effects placed directly hit a Knight and a tower, one of them
+ * pushing the Knight, and leave as their countdown runs out. In {@code gift_select} two owners each
+ * schedule the gift delivery's select on the same tick, from a random state of the run's own: each
+ * select draws its part as it is scheduled, in the command pass, the first owner's draw first, and
+ * the part it chose spawns its unit in that owner's phase-1 pass.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
@@ -71,7 +73,8 @@ class BattleActionSpawnRunTest {
         "golemite_convert",
         "golemite_death_damage",
         "archer_ev1_vs_tower",
-        "archer_ev1_knight"
+        "archer_ev1_knight",
+        "area_effect_direct"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -116,6 +119,19 @@ class BattleActionSpawnRunTest {
     for (CharacterEntity unit : placed) {
       unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
     }
+    // The area effects a run places directly, each in the command pass of its tick.
+    for (JsonNode a : reference.path("area_effects")) {
+      if (a.get("event").asText().equals("created") && a.get("how").asText().equals("placed")) {
+        match.placeAreaEffect(
+            a.get("tick").asInt(),
+            a.get("row").asText(),
+            reference.get("level").asInt(),
+            a.get("side").asInt(),
+            a.get("x").asInt(),
+            a.get("y").asInt(),
+            a.get("area_effect").asText());
+      }
+    }
     for (JsonNode o : reference.path("action_owners")) {
       ActionOwnerEntity owner =
           match.addActionOwner(
@@ -158,6 +174,8 @@ class BattleActionSpawnRunTest {
     List<String> deaths = new ArrayList<>();
     Map<String, Integer> spawnTicks = new HashMap<>();
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
+    List<String> areaEffects = new ArrayList<>();
+    match.getWorld().addObserver(areaEffectLog(currentTick, areaEffects));
     match
         .getWorld()
         .addObserver(
@@ -390,6 +408,10 @@ class BattleActionSpawnRunTest {
     }
     assertThat(locks).as("every tower's lock").containsExactlyElementsOf(expectedLocks);
 
+    assertThat(areaEffects)
+        .as("what every area effect did")
+        .containsExactlyElementsOf(expectedAreaEffects(reference));
+
     List<String> expectedEvents = new ArrayList<>();
     for (JsonNode event : reference.get("events")) {
       expectedEvents.add(BattleTowerRunTest.eventLine(event));
@@ -482,6 +504,98 @@ class BattleActionSpawnRunTest {
       int tick, String kind, CharacterEntity source, CharacterEntity child) {
     List<String> chain = source.group().stream().map(CharacterEntity::name).toList();
     return "%d %s %s %s %s".formatted(tick, kind, source.name(), child.name(), chain);
+  }
+
+  /** Lists what each area effect does, in the reference's layout. */
+  static WorldObserver areaEffectLog(int[] currentTick, List<String> lines) {
+    return new WorldObserver() {
+      @Override
+      public void areaEffectCreated(int tick, AreaEffectEntity a, String how, BattleEntity source) {
+        lines.add(
+            "%d created %s %s %d %s %s %d %d %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    a.name(),
+                    a.getData().name(),
+                    a.getId(),
+                    how,
+                    source instanceof WorldEntity w ? w.name() : null,
+                    a.side(),
+                    a.getX(),
+                    a.getY(),
+                    a.getPackedLevel(),
+                    a.getCountdown()));
+      }
+
+      @Override
+      public void areaEffectAdmitted(int tick, AreaEffectEntity a) {
+        lines.add("%d folded %s".formatted(currentTick[0], a.name()));
+      }
+
+      @Override
+      public void areaEffectUpdated(
+          int tick,
+          AreaEffectEntity a,
+          int before,
+          int after,
+          int hits,
+          int radius,
+          List<Integer> damages) {
+        lines.add(
+            "%d update %s %d %d hits %d r%d %s"
+                .formatted(currentTick[0], a.name(), before, after, hits, radius, damages));
+      }
+
+      @Override
+      public void areaEffectRemoved(int tick, AreaEffectEntity a) {
+        lines.add("%d removed %s %d".formatted(currentTick[0], a.name(), a.getCountdown()));
+      }
+    };
+  }
+
+  /** The reference's area-effect log in the same layout. */
+  static List<String> expectedAreaEffects(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode a : reference.path("area_effects")) {
+      int tick = a.get("tick").asInt();
+      String name = a.get("area_effect").asText();
+      switch (a.get("event").asText()) {
+        case "created" ->
+            expected.add(
+                "%d created %s %s %d %s %s %d %d %d %d %d"
+                    .formatted(
+                        tick,
+                        name,
+                        a.get("row").asText(),
+                        a.get("id").asInt(),
+                        a.get("how").asText(),
+                        a.get("source").isNull() ? null : a.get("source").asText(),
+                        a.get("side").asInt(),
+                        a.get("x").asInt(),
+                        a.get("y").asInt(),
+                        a.get("level").asInt(),
+                        a.get("countdown").asInt()));
+        case "folded" -> expected.add("%d folded %s".formatted(tick, name));
+        case "update" -> {
+          List<Integer> damages = new ArrayList<>();
+          a.get("damage").forEach(d -> damages.add(d.asInt()));
+          expected.add(
+              "%d update %s %d %d hits %d r%d %s"
+                  .formatted(
+                      tick,
+                      name,
+                      a.get("countdown").get(0).asInt(),
+                      a.get("countdown").get(1).asInt(),
+                      a.get("hits").asInt(),
+                      a.get("radius").asInt(),
+                      damages));
+        }
+        case "removed" ->
+            expected.add("%d removed %s %d".formatted(tick, name, a.get("countdown").asInt()));
+        default -> throw new IllegalStateException("unknown area effect event " + a);
+      }
+    }
+    return expected;
   }
 
   /** An attacker as the reference names it: a projectile by its id. */

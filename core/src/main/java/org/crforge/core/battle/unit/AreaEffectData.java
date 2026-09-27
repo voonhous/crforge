@@ -1,0 +1,56 @@
+package org.crforge.core.battle.unit;
+
+import java.util.List;
+import lombok.Builder;
+import org.crforge.core.pathfinding.combat.RarityTable;
+
+/**
+ * The published columns of one area effect row that the battle reads, in the columns' own units.
+ *
+ * @param name the row's name
+ * @param rarity the rarity its level is packed against
+ * @param lifeDurationMs how long it lasts
+ * @param radius the radius of its hits
+ * @param maxRadius the radius it starts from and shrinks toward its radius over its life; 0 for
+ *     none
+ * @param hitSpeedMs the time between its hits; 0 for one hit on its first update, below 0 for none
+ * @param hitSpeedOffsetMs how far into its life its hit schedule is moved
+ * @param damage the damage of one hit at the first level
+ * @param crownTowerDamagePercent how much more or less a crown tower takes, in percent
+ * @param hitsAir whether its hits reach air units
+ * @param hitsGround whether its hits reach ground units and buildings
+ * @param onlyEnemies true when its hits spare its own side
+ * @param ignoreBuildings true when its hits spare buildings
+ * @param pushback how far a hit pushes its victims; 0 for none
+ * @param maximumTargets the most victims a hit takes; 0 for no limit
+ * @param sharedDamage true when a hit's damage is shared out among its victims
+ * @param onStartingAction the action it runs as it joins the battle, or null
+ * @param onLifeTimeEndAction the action it runs when its life ends, or null
+ * @param unmodelledColumns the columns its row sets that the battle does not model
+ */
+@Builder
+public record AreaEffectData(
+    String name,
+    RarityTable rarity,
+    int lifeDurationMs,
+    int radius,
+    int maxRadius,
+    int hitSpeedMs,
+    int hitSpeedOffsetMs,
+    int damage,
+    int crownTowerDamagePercent,
+    boolean hitsAir,
+    boolean hitsGround,
+    boolean onlyEnemies,
+    boolean ignoreBuildings,
+    int pushback,
+    int maximumTargets,
+    boolean sharedDamage,
+    String onStartingAction,
+    String onLifeTimeEndAction,
+    List<String> unmodelledColumns) {
+
+  public AreaEffectData {
+    unmodelledColumns = unmodelledColumns == null ? List.of() : List.copyOf(unmodelledColumns);
+  }
+}

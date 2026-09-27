@@ -195,4 +195,49 @@ public interface WorldObserver {
    * @param child the champion
    */
   default void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {}
+
+  /**
+   * An area effect was created and handed to the holder, which admits it at the next cleanup.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect, with its id
+   * @param how "death" or "placed"
+   * @param source what it was created from, or null
+   */
+  default void areaEffectCreated(
+      int tick, AreaEffectEntity areaEffect, String how, BattleEntity source) {}
+
+  /** An area effect was admitted to the live list, and its starting action scheduled. */
+  default void areaEffectAdmitted(int tick, AreaEffectEntity areaEffect) {}
+
+  /**
+   * An area effect updated.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param before its countdown before the update
+   * @param after its countdown after it
+   * @param hits the hits that fell in the step
+   * @param radius the radius of its hits
+   * @param damages the damage of each hit that dealt one
+   */
+  default void areaEffectUpdated(
+      int tick,
+      AreaEffectEntity areaEffect,
+      int before,
+      int after,
+      int hits,
+      int radius,
+      List<Integer> damages) {}
+
+  /** One victim's share of an area effect's hit, once it is dealt. */
+  default void areaEffectHit(
+      int tick, AreaEffectEntity areaEffect, WorldEntity victim, int damage, DamageResult result) {}
+
+  /** What one hit of an area effect did, once its victims are dealt and pushed. */
+  default void areaEffectDamaged(
+      int tick, AreaEffectEntity areaEffect, AreaDamage.Area area, AreaDamage.Outcome outcome) {}
+
+  /** An area effect left the battle, at the cleanup that removed it. */
+  default void areaEffectRemoved(int tick, AreaEffectEntity areaEffect) {}
 }

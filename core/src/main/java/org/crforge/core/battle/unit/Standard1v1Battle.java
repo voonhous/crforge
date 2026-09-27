@@ -18,6 +18,7 @@ import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.grid.TileMap;
 
 /**
@@ -277,6 +278,36 @@ public class Standard1v1Battle {
           }
         });
     return character;
+  }
+
+  /**
+   * Places an area effect on the given tick, in the command pass at the head of that step, as a
+   * spell's play would: the step's opening cleanup admits it, and it updates in that same step.
+   *
+   * @param tick the tick it is placed on
+   * @param row its row
+   * @param level its level, counted from 1
+   * @param side its side
+   * @param x its point along the width
+   * @param y its point along the length
+   * @param name its name
+   */
+  public void placeAreaEffect(
+      int tick, String row, int level, int side, int x, int y, String name) {
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            AreaEffectData data = world.getRecords().areaEffect(row);
+            world.createAreaEffect(
+                row, x, y, side, PackedLevel.fromLevel(level, data.rarity()), name, "placed", null);
+          }
+        });
   }
 
   /**
