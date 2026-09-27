@@ -44,7 +44,10 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
 /**
  * A walking ground unit: a targeting component in slot 0, a movement component in slot 1 and the
  * entity state visit as its post-hook. A building is one too, without the movement component: it
- * stands where it is placed, and other units treat it as the obstacle a tower is.
+ * stands where it is placed, and other units treat it as the obstacle a tower is. An air unit is
+ * one too, created at its row's flying height, which it keeps: the same code with other layer
+ * answers, so it routes to one node, crosses water, and meets in the contact passes only units on
+ * its side of height 0.
  *
  * <p>Because the holder runs one whole-list pass per slot, every character has chosen its target
  * for the tick before any character moves, and every character has moved before any character's
@@ -94,11 +97,17 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " reference and switches its targeting off, held by every run's death tick; its"
             + " buffs scaling its speed budget and its attack timer, held by rage_knight,"
             + " zap_knight and poison_knight_tower, and the follower's step, the deploy step and"
-            + " the spawner's rate, which no run holds; the"
+            + " the spawner's rate, which no run holds; an air unit created at its flying height"
+            + " and keeping it, its layer answered from it - one route node, the flat endpoint"
+            + " rank, flight over water, contact only with units on its side of height 0, targets"
+            + " by the validator's air and ground pairing, projectiles from its height - held by"
+            + " minions_left, minion_musketeer, balloon_tower, balloons_cross, lava_hound_river"
+            + " and baby_dragon_left; the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
-            + " not model (a shield, hiding, a buff at a share of its hit points, elixir, a"
+            + " not model (a shield, hiding, a buff at a share of its hit points, hovering, direct"
+            + " paths, the river jump, elixir, a"
             + " spawner's launches, second and third characters, limit, attachment, push and"
             + " deploy for its children), a unit's own spawner as it fires, a lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself or whose"
@@ -106,7 +115,7 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
             + " spawner, a building or a flying row, a champion, a shield or another deploy time."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
-            + " meets an empty index, air, jumping and hovering units, the"
+            + " meets an empty index, the"
             + " hit-points visit's dedupe expiry and shield tag, and the columns its data does not"
             + " carry: the stop time after an attack and the ones that restrict what a unit may"
             + " target beyond buildings only, which it carries.")
@@ -203,7 +212,6 @@ public class CharacterEntity extends WorldEntity {
         createView(world.getTileMap(), data, name, side, x, y),
         targetingConfig(data),
         level);
-    checkArgument(!data.air(), () -> data.name() + " is not a ground unit or a building");
     if (!data.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
           data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
@@ -221,6 +229,8 @@ public class CharacterEntity extends WorldEntity {
             MovementState.forSide(side, x, y),
             targeting,
             new StateTimers(),
+            // The movement config's flying height is read only for direct paths, which are
+            // refused.
             MovementConfig.forGroundUnit(),
             SpeedConfig.forGroundUnit(data.speed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs()),
@@ -534,6 +544,11 @@ public class CharacterEntity extends WorldEntity {
     view.setSide(side);
     view.setCollisionRadius(data.collisionRadius());
     view.setMass(data.mass());
+    // An air unit is created at its row's flying height and keeps it; the layer tests of the
+    // contact passes compare that height, the validator the air answer.
+    view.setAir(data.air());
+    view.setZ(data.flyingHeight());
+    view.setZTotal(data.flyingHeight());
     // A building has no movement component, and stands in the overlay as an obstacle.
     view.setBuilding(data.building());
     view.setOccludes(data.building());

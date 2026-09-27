@@ -155,8 +155,9 @@ public final class BattleRecords {
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield, hiding while not attacking or before the first hit, a buff
-   * at a share of its hit points, the elixir a collector makes, a spawner's launches, its second
-   * and third characters, its destruction at the limit and the deploy it gives its children.
+   * at a share of its hit points, hovering, a flying unit's direct paths, the river jump, the
+   * elixir a collector makes, a spawner's launches, its second and third characters, its
+   * destruction at the limit and the deploy it gives its children.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -164,6 +165,9 @@ public final class BattleRecords {
           "HidesWhenNotAttacking",
           "HideBeforeFirstHit",
           "BuffOnXHP",
+          "Hovering",
+          "FlyDirectPaths",
+          "JumpEnabled",
           "ManaCollectAmount",
           "SpawnProjectile",
           "SpawnCharacter2",
