@@ -4,6 +4,7 @@ import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.ExpressionEnvironment;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.grid.TileMap;
 
 /**
  * The battle as an expression sees it, from one entity: the context every function starts from.
@@ -18,12 +19,16 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: x and y as the context entity's position as it stands when the expression"
             + " is evaluated; king_tower_damaged as the context side's king tower below its"
             + " maximum hit points, and tower_destroyed as that side down to fewer than two"
-            + " princess towers."
-            + " Supplied, not settled: the two co-op functions answer 0 in a battle of two"
-            + " players; a name the table does not know naming one of the battle's variables, read"
-            + " from the context entity, 0 for one never written, and then one of its game tags,"
-            + " true when the context entity carries every bit of it. Not modelled: the other 41"
-            + " functions, which fail when called, and names of data rows.")
+            + " princess towers; team_index as the side's low bit, 2 for the neutral side;"
+            + " team_y_direction as -1 for 0 and 1 for anything else; map_width and map_height"
+            + " as the arena's cells times 500; a character or building row's name, after the"
+            + " functions, variables and tags, as its global id, 0 for a negative one, and"
+            + " has_data as the context's own row having that id. Supplied, not settled: the"
+            + " two co-op functions answer 0 in a battle of two players; a name the table does"
+            + " not know naming one of the battle's variables, read from the context entity, 0"
+            + " for one never written, and then one of its game tags, true when the context"
+            + " entity carries every bit of it. Not modelled: the other 36 functions, which fail"
+            + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   private static final int KING_TOWER_DAMAGED = BattleFunctions.id("king_tower_damaged");
@@ -33,6 +38,27 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int IS_NPC_BATTLE = BattleFunctions.id("is_npc_battle");
   private static final int X = BattleFunctions.id("x");
   private static final int Y = BattleFunctions.id("y");
+  private static final int TEAM_INDEX = BattleFunctions.id("team_index");
+  private static final int TEAM_Y_DIRECTION = BattleFunctions.id("team_y_direction");
+  private static final int MAP_WIDTH = BattleFunctions.id("map_width");
+  private static final int MAP_HEIGHT = BattleFunctions.id("map_height");
+  private static final int HAS_DATA = BattleFunctions.id("has_data");
+
+  /** The side that belongs to neither player, whose team is 2. */
+  private static final int NEUTRAL_SIDE = 100;
+
+  /** The team of the neutral side. */
+  private static final int NEUTRAL_TEAM = 2;
+
+  /**
+   * What the game adds to a data row's global id to make the id its call carries. A row whose call
+   * id comes out negative answers 0; one that would land below it, among the other calls, is not
+   * established.
+   */
+  static final int DATA_CALL_BASE = 100_000;
+
+  /** The id a named data row's place in the battle's list is added to: above every variable. */
+  static final int DATA_ROW_BASE = 30_000;
 
   /** The id a variable's key is added to: every function and tag id lies below it. */
   static final int VARIABLE_BASE = 20_000;
@@ -68,11 +94,32 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       return new Function(VARIABLE_BASE + key, 0, 0);
     }
     Integer tag = world.gameTagIndex(name);
-    return tag == null ? null : new Function(GAME_TAG_BASE + tag, 0, 0);
+    if (tag != null) {
+      return new Function(GAME_TAG_BASE + tag, 0, 0);
+    }
+    // Then the name of a character or building row, which stands for its global id.
+    Integer row = world.dataRow(name);
+    if (row == null) {
+      return null;
+    }
+    int callId = DATA_CALL_BASE + world.dataRowId(row);
+    if (callId >= 0 && callId < DATA_CALL_BASE) {
+      throw new UnsupportedOperationException(
+          "the data row "
+              + name
+              + " has a global id whose call id falls among the other calls; what it answers is"
+              + " not established");
+    }
+    return new Function(DATA_ROW_BASE + row, 0, 0);
   }
 
   @Override
   public int call(int id, int[] arguments) {
+    if (id >= DATA_ROW_BASE) {
+      // The call id is the global id plus the base, in 32 bits; a negative one answers 0.
+      int callId = DATA_CALL_BASE + world.dataRowId(id - DATA_ROW_BASE);
+      return callId < 0 ? 0 : callId - DATA_CALL_BASE;
+    }
     if (id >= VARIABLE_BASE) {
       return context.variable(id - VARIABLE_BASE);
     }
@@ -103,6 +150,24 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (id == COOP_KING_TOWER_DAMAGED || id == COOP_TOWER_DESTROYED) {
       // A battle of two players has no co-op side.
       return 0;
+    }
+    if (id == TEAM_INDEX) {
+      int side = context.side();
+      return side == NEUTRAL_SIDE ? NEUTRAL_TEAM : side & 1;
+    }
+    if (id == TEAM_Y_DIRECTION) {
+      // It reads only its argument: -1 for team 0, 1 for any other.
+      return arguments[0] == 0 ? -1 : 1;
+    }
+    if (id == MAP_WIDTH) {
+      return world.getTileMap().width() * TileMap.CELL_UNITS;
+    }
+    if (id == MAP_HEIGHT) {
+      return world.getTileMap().height() * TileMap.CELL_UNITS;
+    }
+    if (id == HAS_DATA) {
+      // The context's own row, the exact one: a relative row with an id of its own is not it.
+      return arguments[0] == context.getData().globalId() ? 1 : 0;
     }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.

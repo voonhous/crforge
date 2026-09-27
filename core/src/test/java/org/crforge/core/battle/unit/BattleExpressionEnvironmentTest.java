@@ -103,6 +103,104 @@ class BattleExpressionEnvironmentTest {
   }
 
   @Test
+  @DisplayName(
+      "team_index is the side's low bit, and team_y_direction answers -1 for team 0 and 1"
+          + " otherwise")
+  void theTeam() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.getBattle().step();
+    BattleExpressionEnvironment bottom =
+        new BattleExpressionEnvironment(
+            BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_0_0"),
+            match.getWorld());
+    BattleExpressionEnvironment top =
+        new BattleExpressionEnvironment(
+            BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0"),
+            match.getWorld());
+
+    assertThat(evaluate("team_index", bottom)).isZero();
+    assertThat(evaluate("team_index", top)).isEqualTo(1);
+    assertThat(evaluate("team_y_direction(team_index)", bottom)).isEqualTo(-1);
+    assertThat(evaluate("team_y_direction(team_index)", top)).isEqualTo(1);
+    // It reads only its argument.
+    assertThat(evaluate("team_y_direction(0)", top)).isEqualTo(-1);
+    assertThat(evaluate("team_y_direction(7)", bottom)).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("map_width and map_height are the arena's cells times 500")
+  void theMapSize() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.getBattle().step();
+    BattleExpressionEnvironment environment =
+        new BattleExpressionEnvironment(
+            BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0"),
+            match.getWorld());
+
+    assertThat(evaluate("map_width", environment)).isEqualTo(18000);
+    assertThat(evaluate("map_height", environment)).isEqualTo(32000);
+  }
+
+  @Test
+  @DisplayName(
+      "a character or building row's name is its global id, and has_data holds on that row"
+          + " alone")
+  void dataRows() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.getBattle().step();
+    BattleWorld world = match.getWorld();
+    CharacterEntity miniPekka =
+        new CharacterEntity(world, GameData.unit("MiniPekka"), "MiniPekka", 0, 3500, 10000, 11);
+    CharacterEntity superMiniPekka =
+        new CharacterEntity(
+            world, GameData.unit("SuperMiniPekka"), "SuperMiniPekka", 0, 2500, 10000, 11);
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    BattleExpressionEnvironment onMiniPekka = new BattleExpressionEnvironment(miniPekka, world);
+
+    assertThat(evaluate("MiniPekka", onMiniPekka)).isEqualTo(34000016);
+    assertThat(evaluate("KingTower", onMiniPekka)).as("a building").isEqualTo(35000000);
+    assertThat(evaluate("has_data(MiniPekka)", onMiniPekka)).isEqualTo(1);
+    assertThat(
+            evaluate("has_data(MiniPekka)", new BattleExpressionEnvironment(superMiniPekka, world)))
+        .as("the exact row, not a relative")
+        .isZero();
+    assertThat(evaluate("has_data(KingTower)", new BattleExpressionEnvironment(king, world)))
+        .isEqualTo(1);
+    assertThat(evaluate("has_data(34000016)", onMiniPekka)).as("the id as a number").isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("a row whose global id is negative answers 0 by name, even on its own row")
+  void aNegativeIdCannotBeNamed() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.getBattle().step();
+    BattleWorld world = match.getWorld();
+    // A unit carrying DaggerDuchess's global id, which hashes below zero.
+    int daggerDuchess = GameData.records().unitGlobalId("DaggerDuchess");
+    CharacterEntity unit =
+        new CharacterEntity(
+            world,
+            GameData.unit("Knight").toBuilder().globalId(daggerDuchess).build(),
+            "Unit",
+            0,
+            3500,
+            10000,
+            11);
+    BattleExpressionEnvironment environment = new BattleExpressionEnvironment(unit, world);
+
+    assertThat(daggerDuchess).isEqualTo(-1749071821);
+    assertThat(evaluate("DaggerDuchess", environment)).isZero();
+    assertThat(evaluate("has_data(DaggerDuchess)", environment)).isZero();
+    assertThat(evaluate("has_data(-1749071821)", environment))
+        .as("the data writes it as its number")
+        .isEqualTo(1);
+  }
+
+  private static int evaluate(String text, BattleExpressionEnvironment environment) {
+    return ExpressionEvaluator.evaluate(ExpressionCompiler.compile(text, environment), environment);
+  }
+
+  @Test
   @DisplayName("a function the battle does not answer yet fails rather than guess")
   void anUnportedFunctionFails() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());

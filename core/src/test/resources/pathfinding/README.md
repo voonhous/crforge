@@ -174,6 +174,12 @@ The Knight's run with the towers fighting, `tower_vs_knight_left`, with the Roya
 
 `BattleTowerRunTest` plays it with the other tower runs.
 
+## `golden/chef_filter.json` - a row that names a data row
+
+The towers fight at level 11. A MiniPekka is the run's unit at (3500, 10000), and a Knight at (4500, 10000) and a SuperMiniPekka at (2500, 10000) stand beside it for the bottom side, all placed on tick 0 and listed in `units`. The Royal Chef's pancake filter, `ChefTower_pancake_filter_mini_pekka` (an ActionFilter whose condition is `has_data(MiniPekka)`), is scheduled on each of the three on tick 5 (`unit_schedules`). The condition holds on the MiniPekka alone, the exact row: its branch, the effect row `ChefTower_pancake_reaction_mini_pekka`, runs at once inside the filter in the MiniPekka's phase-1 pass, listed in `actions` as a run without a phase; the Knight and the SuperMiniPekka take no branch. `filter` action events give each condition's value and the branch taken. The run stops on tick 11. The unit's records follow the kill-run layout; the other two follow in `unit_records`.
+
+`BattleExpressionRunTest` plays it and holds every unit's position, state and hit points and every run of an action.
+
 ## `golden/barbarians_left.json`, `golden/barbarians_edge.json`, `golden/skeleton_army_edge.json`, `golden/knight_side1.json` and `golden/deploy_refused.json` - placing a card
 
 Units placed the way a player places them: by a place-card command carrying the card, the requested point, the side and the tick it runs on, at level 11 with the towers fighting. The requested point is not where a unit stands: the play clamps it to the arena, snaps it to a tile, moves it to the nearest tile the card may be placed on, and lays the card's units out around it.
