@@ -10,6 +10,7 @@ import java.util.Set;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -45,6 +46,36 @@ public final class BattleRecords {
 
   private static final String CHARACTER_ABILITIES = "character_abilities";
   private static final String GAME_OBJECT_FILTERS = "game_object_filters";
+  private static final String AREA_EFFECT_OBJECTS = "area_effect_objects";
+
+  /**
+   * The columns of an area effect the battle does not model: a row that sets one is refused as the
+   * area effect is created. Buffs and everything the buff block does, clones, the hit action, the
+   * shape, the filter, the spawns and launches, the chained area effect, the life condition, the
+   * following, the tags, the deflection, the per-level lifetime and the push's floor and gate lift.
+   */
+  private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
+      List.of(
+          "Buff",
+          "Clone",
+          "OnHitAction",
+          "OnHitSelfAction",
+          "Shape",
+          "Filter",
+          "SpawnCharacter",
+          "Projectile",
+          "SpawnAreaEffectObject",
+          "AliveIfTrue",
+          "FollowBehaviour",
+          "Tags",
+          "DeflectProjectilesEnabled",
+          "LifeDurationIncreasePerLevel",
+          "LifeDurationIncreaseAfterTournamentCap",
+          "MinPushback",
+          "PushbackAll",
+          "AffectsHidden",
+          "OneHitPerTarget");
+
   private static final String GAME_TAGS = "game_tags";
 
   /**
@@ -57,7 +88,6 @@ public final class BattleRecords {
           "DeathSpawnCharacter2",
           "DeathSpawnCharacter3",
           "DeathSpawnProjectile",
-          "DeathAreaEffect",
           "StartingBuff",
           "SpawnAreaObject");
 
@@ -142,6 +172,8 @@ public final class BattleRecords {
         .deathSpawnCount(deathSpawn.isEmpty() ? 0 : Math.max(row.intValue("DeathSpawnCount"), 1))
         .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
         .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
+        .deathAreaEffect(
+            row.string("DeathAreaEffect").isEmpty() ? null : row.string("DeathAreaEffect"))
         .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
         .champion(champion(row))
         .globalId(row.globalId())
@@ -333,6 +365,44 @@ public final class BattleRecords {
       }
     }
     return columns;
+  }
+
+  /**
+   * An area effect as the battle reads it, from the area effect objects table.
+   *
+   * @param name the row's name
+   */
+  public AreaEffectData areaEffect(String name) {
+    GameTable table = tables.table(AREA_EFFECT_OBJECTS);
+    checkArgument(table.has(name), () -> "the game tables have no area effect " + name);
+    GameRow row = table.row(name);
+    List<String> unmodelled = new ArrayList<>();
+    for (String column : UNMODELLED_AREA_EFFECT_COLUMNS) {
+      if (sets(row, column)) {
+        unmodelled.add(column);
+      }
+    }
+    return AreaEffectData.builder()
+        .name(row.name())
+        .rarity(rarity(row.string("Rarity")))
+        .lifeDurationMs(row.intValue("LifeDuration"))
+        .radius(row.intValue("Radius"))
+        .maxRadius(row.intValue("MaxRadius"))
+        .hitSpeedMs(row.intValue("HitSpeed"))
+        .hitSpeedOffsetMs(row.intValue("HitSpeedOffset"))
+        .damage(row.intValue("Damage"))
+        .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
+        .hitsAir(row.bool("HitsAir"))
+        .hitsGround(row.bool("HitsGround"))
+        .onlyEnemies(row.bool("OnlyEnemies"))
+        .ignoreBuildings(row.bool("IgnoreBuildings"))
+        .pushback(row.intValue("Pushback"))
+        .maximumTargets(row.intValue("MaximumTargets"))
+        .sharedDamage(row.bool("SharedDamage"))
+        .onStartingAction(actionName(row, "OnStartingAction"))
+        .onLifeTimeEndAction(actionName(row, "OnLifeTimeEndAction"))
+        .unmodelledColumns(unmodelled)
+        .build();
   }
 
   /** True when a row sets a column: a value other than empty, 0 or false. */

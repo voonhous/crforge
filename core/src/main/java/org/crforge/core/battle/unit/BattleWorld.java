@@ -87,7 +87,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " champion handed over after its spawn with no effect on it; the death slot inside"
             + " the killing hit - the death damage around the dying entity with its pushback, and"
             + " the death spawn on its ring - held by golemite_convert, golemite_death_damage and"
-            + " tombstone_death_hook. Refused: a death whose row sets a column of the slot not"
+            + " tombstone_death_hook; an area effect created by a death or placed directly and"
+            + " its hits dealt, held by area_effect_direct and area_effect_death. Refused: a death"
+            + " whose row sets a column of the slot not"
             + " modelled, a death spawn with no ring, and a death hook with no attacker or no"
             + " pending pass ahead of it. Left out: the elixir a death gives. Not"
             + " modelled: the game mode's own per-tick work beside the index and the overlay, and"
@@ -606,6 +608,12 @@ public class BattleWorld implements HolderPasses {
    */
   @Override
   public void entityRemoved(BattleEntity removed) {
+    if (removed instanceof AreaEffectEntity areaEffect) {
+      for (WorldObserver observer : observers) {
+        observer.areaEffectRemoved(tick, areaEffect);
+      }
+      return;
+    }
     if (!(removed instanceof WorldEntity gone)) {
       return;
     }
@@ -642,6 +650,8 @@ public class BattleWorld implements HolderPasses {
         subjects.add(new KindOnlySubject(FilterSubject.PROJECTILE, projectile.getSide() & 1));
       } else if (entity instanceof ActionOwnerEntity owner) {
         subjects.add(new KindOnlySubject(FilterSubject.AREA_EFFECT, owner.side() & 1));
+      } else if (entity instanceof AreaEffectEntity areaEffect) {
+        subjects.add(new KindOnlySubject(FilterSubject.AREA_EFFECT, areaEffect.side() & 1));
       } else {
         throw new UnsupportedOperationException(
             "a filter over " + entity.getClass().getSimpleName() + " is not modelled");
@@ -693,6 +703,18 @@ public class BattleWorld implements HolderPasses {
               + " died, and what its row does as it dies is not modelled: "
               + data.unmodelledDeathColumns());
     }
+    // The death's area effect comes first, at its point, for its side and at its level.
+    if (data.deathAreaEffect() != null) {
+      createAreaEffect(
+          data.deathAreaEffect(),
+          dying.getView().getX(),
+          dying.getView().getY(),
+          dying.side(),
+          dying.getPackedLevel(),
+          null,
+          "death",
+          dying);
+    }
     deathDamage(dying, data);
     deathSpawn(dying, data);
     if (data.onDeathAction() == null && data.onKilledAction() == null) {
@@ -706,6 +728,9 @@ public class BattleWorld implements HolderPasses {
     } else if (attacker instanceof ProjectileEntity projectile) {
       cause = projectile.actionHolder();
       side = projectile.getSide();
+    } else if (attacker instanceof AreaEffectEntity areaEffect) {
+      cause = areaEffect.actionHolder();
+      side = areaEffect.side();
     } else {
       throw new UnsupportedOperationException(
           dying.name()
@@ -1052,6 +1077,92 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.championHandedOver(tick, source, champion);
     }
+  }
+
+  /**
+   * Creates an area effect at a point and hands it to the holder, which gives it its id at once and
+   * admits it at the next cleanup. It is named after its row and its id unless given a name.
+   *
+   * <p>Refused rather than guessed: a row that sets a column the area effect does not model.
+   *
+   * @param row the area effect's row
+   * @param x its point along the width
+   * @param y its point along the length
+   * @param side its side
+   * @param packedLevel the level it is created at, packed; re-based on its own rarity
+   * @param name its name, or null for its row's and its id
+   * @param how how it came about, for the observers
+   * @param source what it was created from, or null
+   * @return the area effect
+   */
+  public AreaEffectEntity createAreaEffect(
+      String row,
+      int x,
+      int y,
+      int side,
+      int packedLevel,
+      String name,
+      String how,
+      BattleEntity source) {
+    AreaEffectData data = records.areaEffect(row);
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          "the area effect " + row + " sets columns not modelled: " + data.unmodelledColumns());
+    }
+    AreaEffectEntity areaEffect =
+        new AreaEffectEntity(this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()));
+    holder.add(areaEffect);
+    areaEffect.setName(name != null ? name : row + "_" + areaEffect.getId());
+    for (WorldObserver observer : observers) {
+      observer.areaEffectCreated(tick, areaEffect, how, source);
+    }
+    return areaEffect;
+  }
+
+  /** Tells the observers an area effect was admitted. */
+  void areaEffectAdmitted(AreaEffectEntity areaEffect) {
+    for (WorldObserver observer : observers) {
+      observer.areaEffectAdmitted(tick, areaEffect);
+    }
+  }
+
+  /** Tells the observers an area effect updated. */
+  void areaEffectUpdated(
+      AreaEffectEntity areaEffect,
+      int before,
+      int after,
+      int hits,
+      int radius,
+      List<Integer> damages) {
+    for (WorldObserver observer : observers) {
+      observer.areaEffectUpdated(tick, areaEffect, before, after, hits, radius, damages);
+    }
+  }
+
+  /** Tells the observers what one hit of an area effect did. */
+  void areaEffectDamaged(
+      AreaEffectEntity areaEffect, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+    for (WorldObserver observer : observers) {
+      observer.areaEffectDamaged(tick, areaEffect, area, outcome);
+    }
+  }
+
+  /**
+   * Deals one victim its share of an area effect's hit, tells the observers, and runs the death it
+   * causes, with the area effect as what killed it. A victim that has left takes nothing.
+   */
+  DamageResult dealAreaEffectDamage(AreaEffectEntity areaEffect, WorldEntity victim, int damage) {
+    if (victim == null || known.get(victim.getView()) != victim) {
+      return DamageResult.NOTHING;
+    }
+    DamageResult result = victim.takeDamage(damage, 0, 0, 0);
+    for (WorldObserver observer : observers) {
+      observer.areaEffectHit(tick, areaEffect, victim, damage, result);
+    }
+    if (result.died()) {
+      victim.die(areaEffect);
+    }
+    return result;
   }
 
   /** A position kept the creation's inset inside one axis of the arena. */

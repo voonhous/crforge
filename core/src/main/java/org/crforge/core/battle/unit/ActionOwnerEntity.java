@@ -3,20 +3,12 @@ package org.crforge.core.battle.unit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntSupplier;
-import java.util.function.LongSupplier;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.ActionBinding;
-import org.crforge.core.battle.expression.BattleFunctions;
-import org.crforge.core.battle.expression.Expression;
-import org.crforge.core.battle.expression.ExpressionCompiler;
-import org.crforge.core.battle.expression.ExpressionEnvironment;
-import org.crforge.core.battle.expression.ExpressionEvaluator;
-import org.crforge.core.battle.expression.ExpressionException;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
@@ -54,28 +46,6 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
   private final int packedLevel;
 
   private final ActionHolder actionHolder;
-
-  /** The one function an owner's expressions may name. */
-  private static final BattleFunctions.Entry RAND = BattleFunctions.byName("rand");
-
-  /**
-   * What an owner's expressions see: rand, as the battle's table has it, drawing from the battle's
-   * source as the expression is evaluated, and no other name.
-   */
-  private final ExpressionEnvironment randOnly =
-      new ExpressionEnvironment() {
-        @Override
-        public Function resolve(String symbol) {
-          return RAND.name().equalsIgnoreCase(symbol)
-              ? new Function(RAND.id(), RAND.minArguments(), RAND.maxArguments())
-              : null;
-        }
-
-        @Override
-        public int call(int id, int[] arguments) {
-          return world.getRandom().next(arguments[0]);
-        }
-      };
 
   /** The variables the owner's actions write. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -168,30 +138,7 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
    * owner stands in for and is not modelled: a row with one is refused when it is built.
    */
   public ActionBinding binding() {
-    return new ActionBinding() {
-      @Override
-      public IntSupplier expression(String text) {
-        Expression expression;
-        try {
-          expression = ExpressionCompiler.compile(text, randOnly);
-        } catch (ExpressionException e) {
-          throw new UnsupportedOperationException(
-              name + " stands in for an object and answers only rand, not the expression: " + text,
-              e);
-        }
-        return () -> ExpressionEvaluator.evaluate(expression, randOnly);
-      }
-
-      @Override
-      public int variableKey(String variable) {
-        return world.declaredVariable(variable);
-      }
-
-      @Override
-      public LongSupplier tags() {
-        return () -> 0;
-      }
-    };
+    return new RandOnlyBinding(world, name);
   }
 
   @Override
