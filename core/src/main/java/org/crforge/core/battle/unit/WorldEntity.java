@@ -75,7 +75,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " dropped by the removal notice; a level change moving the level, the damage from"
             + " the next hit, the maxima and, on a rise only, the hit points by their share; a"
             + " death handing what killed it - the unit, the projectile, the typed hit's source"
-            + " still in the battle, the killer - to the battle's death handler. Not modelled yet:"
+            + " still in the battle, the killer - to the battle's death handler; a row swap reading"
+            + " the new row from then on, the maxima recomputed at the kept level and the hit"
+            + " points kept. Not modelled yet:"
             + " the shield's hit points at the level.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -88,7 +90,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The battle's shared arena state. */
   protected final BattleWorld world;
 
-  @Getter private final UnitData data;
+  /** The entity's data row, which a data-changing action may swap for another. */
+  @Getter private UnitData data;
 
   /** The entity as the routing grid, the spatial index and the overlay see it. */
   @Getter private final GridEntity view;
@@ -533,6 +536,49 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;
       int rescaled = maximum * share / 100_000;
       hitPoints.setHitPoints(Math.max(hitPoints.getHitPoints(), rescaled));
+    }
+    refreshHitPoints();
+  }
+
+  /**
+   * Takes another data row, as a data-changing action gives it. Only a character can: see its own
+   * swap.
+   *
+   * @param rowName the name of the new character row
+   * @param resetTarget true to give up the target rather than keep it
+   */
+  @Override
+  public void changeData(String rowName, boolean resetTarget) {
+    throw new UnsupportedOperationException(name() + " cannot take another data row");
+  }
+
+  /**
+   * The part of a row swap every entity shares: the row itself, read from here on wherever the
+   * entity reads a column, the damage of its next hit, and the hit points' maximum and both team
+   * pools recomputed from the new row at the level the entity has, which is not re-based. The hit
+   * points themselves are kept, even above the new maximum.
+   *
+   * @param next the new row
+   */
+  protected void swapRow(UnitData next) {
+    if (hitPoints == null ? next.hitpoints() > 0 : next.hitpoints() <= 0) {
+      throw new UnsupportedOperationException(
+          name() + " would gain or lose its hit points by taking " + next.name());
+    }
+    data = next;
+    damage = damageAt(packedLevel);
+    if (hitPoints != null) {
+      int maximum =
+          LevelScaling.hitpoints(
+              ScalingGlobals.standard(),
+              next.hitpoints(),
+              packedLevel,
+              next.rarity(),
+              next.king(),
+              next.summonerTower());
+      hitPoints.setMaximum(maximum);
+      hitPoints.setTeamPool(0, maximum);
+      hitPoints.setTeamPool(1, maximum);
     }
     refreshHitPoints();
   }

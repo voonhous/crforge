@@ -73,6 +73,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
  *     unless it says otherwise
  * @param globalId the id the game gives the unit's row, which expressions compare it by
+ * @param lifeTimeMs how long the unit lives before its hit points run down; 0 for no limit
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -120,7 +121,8 @@ public record UnitData(
     int deathDamageRadius,
     List<String> unmodelledDeathColumns,
     boolean champion,
-    int globalId) {
+    int globalId,
+    int lifeTimeMs) {
 
   public UnitData {
     unmodelledDeathColumns =

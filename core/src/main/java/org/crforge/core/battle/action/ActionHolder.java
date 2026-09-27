@@ -73,8 +73,11 @@ public class ActionHolder implements EntityActions {
      * An action passed its gates and is about to start, in the pending pass of the given phase, or
      * 0 outside every pass. Whatever it starts in turn is told of after this and before its {@link
      * #started}.
+     *
+     * @param queued true when the pending pass took it from the queue; false when it starts at once
+     *     as it is scheduled, or as it is started directly
      */
-    default void starting(BattleAction action, int phase) {}
+    default void starting(BattleAction action, int phase, boolean queued) {}
 
     /** An action started, in the pending pass of the given phase, or 0 outside every pass. */
     default void started(BattleAction action, int phase) {}
@@ -229,6 +232,11 @@ public class ActionHolder implements EntityActions {
    * @param instigator the holder of the entity that caused it, or null for none
    */
   public void start(BattleAction action, ActionHolder instigator) {
+    start(action, instigator, false);
+  }
+
+  /** Starts an action, as the pending pass does when it takes it from the queue or otherwise. */
+  private void start(BattleAction action, ActionHolder instigator, boolean queued) {
     if (action.singleton()) {
       for (ActionInstance instance : running) {
         if (instance.getAction() == action) {
@@ -240,7 +248,7 @@ public class ActionHolder implements EntityActions {
     if (!holds(action.executeIf(), true)) {
       return;
     }
-    listener.starting(action, passPhase);
+    listener.starting(action, passPhase, queued);
     ActionInstance instance = action.start(this, instigator);
     listener.started(action, passPhase);
     if (instance != null) {
@@ -298,7 +306,7 @@ public class ActionHolder implements EntityActions {
             && (wanted == BattleAction.ANY_PHASE || wanted == phase)
             && !holds(entry.action.pausedIf(), false)) {
           removeBySwap(pending, i);
-          start(entry.action, entry.instigator);
+          start(entry.action, entry.instigator, true);
         } else {
           i++;
         }

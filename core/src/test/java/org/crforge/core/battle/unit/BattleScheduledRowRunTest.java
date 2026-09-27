@@ -36,9 +36,8 @@ class BattleScheduledRowRunTest {
     Battle battle = match.getBattle();
     List<CharacterEntity> units = BattleTowerRunTest.deployAll(match, reference);
     int[] currentTick = {-1};
-    // Runs are listed as they start, in the reference's order; one that starts inside another's
-    // start ran at once, which the reference writes without a phase.
-    int[] depth = {0};
+    // Runs are listed as they start, in the reference's order; one that did not wait in the queue
+    // for a pending pass started at once, which the reference writes without a phase.
     List<String> runs = new ArrayList<>();
     Map<String, CharacterEntity> byName = new HashMap<>();
     for (CharacterEntity unit : units) {
@@ -47,20 +46,14 @@ class BattleScheduledRowRunTest {
           .setListener(
               new ActionHolder.Listener() {
                 @Override
-                public void starting(BattleAction action, int phase) {
+                public void starting(BattleAction action, int phase, boolean queued) {
                   runs.add(
                       "%d %s %s %s"
                           .formatted(
                               currentTick[0],
                               unit.name(),
                               action.name(),
-                              depth[0] > 0 ? "at once" : phase));
-                  depth[0]++;
-                }
-
-                @Override
-                public void started(BattleAction action, int phase) {
-                  depth[0]--;
+                              queued ? phase : "at once"));
                 }
               });
     }

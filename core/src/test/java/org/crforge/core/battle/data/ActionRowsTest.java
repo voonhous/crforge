@@ -93,11 +93,9 @@ class ActionRowsTest {
   @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
   void anUnmodelledClassIsRefused() {
-    assertThatThrownBy(
-            () ->
-                GameData.actions().build("GoblinDemolisher_kamikaze_transformation", INERT_BINDING))
+    assertThatThrownBy(() -> GameData.actions().build("Archer_EV1_Attack1", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionChangeGameObjectData");
+        .hasMessageContaining("ActionSetAttackSequenceIndex");
   }
 
   @Test
@@ -168,11 +166,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 469 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 487 are built; the
     // rest are refused for their class, a column the battle does not model or a spawn type other
     // than characters.
-    assertThat(built).as("rows built").isEqualTo(469);
+    assertThat(built).as("rows built").isEqualTo(487);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 240, "column", 32, "spawn type", 205));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 215, "column", 38, "spawn type", 206));
   }
 }

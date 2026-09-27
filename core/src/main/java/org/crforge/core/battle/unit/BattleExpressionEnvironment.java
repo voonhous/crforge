@@ -4,6 +4,7 @@ import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.ExpressionEnvironment;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.grid.TileMap;
 
 /**
@@ -24,12 +25,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " as the arena's cells times 500; a character or building row's name, after the"
             + " functions, variables and tags, as its global id, 0 for a negative one, and"
             + " has_data as the context's own row having that id; rand as one draw from the"
-            + " battle's random source, taken as the expression is evaluated. Supplied, not"
-            + " settled: the battle's seed, 1 unless one is given; the"
+            + " battle's random source, taken as the expression is evaluated; hp as the context's"
+            + " hit points and max_hp without a level as its maximum. Supplied, not"
+            + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
+            + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
-            + " entity carries every bit of it. Not modelled: the other 35 functions, which fail"
+            + " entity carries every bit of it. Not modelled: the other 33 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -46,6 +49,13 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int MAP_HEIGHT = BattleFunctions.id("map_height");
   private static final int HAS_DATA = BattleFunctions.id("has_data");
   private static final int RAND = BattleFunctions.id("rand");
+  private static final int HP = BattleFunctions.id("hp");
+  private static final int MAX_HP = BattleFunctions.id("max_hp");
+
+  /**
+   * The growth percentage a unit's maximum hit points are read at: no unit that grows is modelled.
+   */
+  private static final int GROWTH_PERCENT = 100;
 
   /** The side that belongs to neither player, whose team is 2. */
   private static final int NEUTRAL_SIDE = 100;
@@ -167,6 +177,25 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     if (id == MAP_HEIGHT) {
       return world.getTileMap().height() * TileMap.CELL_UNITS;
+    }
+    if (id == HP || id == MAX_HP) {
+      HitPoints hitPoints = context.getHitPoints();
+      if (hitPoints == null) {
+        throw new UnsupportedOperationException(
+            BattleFunctions.byId(id).name()
+                + " on "
+                + context.name()
+                + ", which has no hit points");
+      }
+      if (id == HP) {
+        return hitPoints.getHitPoints();
+      }
+      if (arguments.length != 0) {
+        throw new UnsupportedOperationException(
+            "max_hp with a level, a lookup of the row at that level, is not modelled");
+      }
+      // The maximum times the growth percentage, the usual 100: no unit that grows is modelled.
+      return hitPoints.getMaximum() * GROWTH_PERCENT / 100;
     }
     if (id == RAND) {
       // One draw from the battle's source, taken as the expression is evaluated.
