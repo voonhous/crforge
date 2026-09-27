@@ -212,14 +212,14 @@ class AttackTimerAdvanceTest {
   @Test
   @DisplayName("a restored component rounds its attack time up to the next hit, once")
   void aRestoreFlagRoundsUpOnce() {
-    t.setAttackTimeRoundUpB(true);
+    t.setRestoredRoundUp(true);
     t.setAttackTimerMs(750);
 
     advance();
 
     assertThat(t.getAttackTimerMs()).isEqualTo(HIT_SPEED);
-    assertThat(t.isAttackTimeRoundUpA()).isFalse();
-    assertThat(t.isAttackTimeRoundUpB()).isFalse();
+    assertThat(t.isChargeStrike()).isFalse();
+    assertThat(t.isRestoredRoundUp()).isFalse();
     assertThat(t.isAttackTimeRoundedUp()).isTrue();
 
     advance();
@@ -231,9 +231,9 @@ class AttackTimerAdvanceTest {
   }
 
   @Test
-  @DisplayName("a restore flag on a zero attack time skips the load and rounds to one hit")
-  void aRestoreFlagSkipsTheLoad() {
-    t.setAttackTimeRoundUpA(true);
+  @DisplayName("the charge's strike-now byte on a zero attack time skips the load, one whole hit")
+  void theChargeStrikeSkipsTheLoad() {
+    t.setChargeStrike(true);
 
     advance();
 

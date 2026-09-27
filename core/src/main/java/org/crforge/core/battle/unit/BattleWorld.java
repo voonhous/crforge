@@ -1381,6 +1381,27 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** Tells the observers a character's spawner fired. */
+  /** Tells every observer that a unit's charge completed. */
+  void chargeCompleted(CharacterEntity unit, int progress) {
+    for (WorldObserver observer : observers) {
+      observer.chargeCompleted(tick, unit, progress);
+    }
+  }
+
+  /** Tells every observer that a unit fully charged at its last movement visit is no longer. */
+  void chargeLost(CharacterEntity unit) {
+    for (WorldObserver observer : observers) {
+      observer.chargeLost(tick, unit);
+    }
+  }
+
+  /** Tells every observer that a unit's movement pass had its state changed. */
+  void movementStateRequested(CharacterEntity unit, int from, int to) {
+    for (WorldObserver observer : observers) {
+      observer.movementStateRequested(tick, unit, from, to);
+    }
+  }
+
   void spawnerFired(
       CharacterEntity spawner, String row, int count, int radius, int timerAfter, int waveMade) {
     for (WorldObserver observer : observers) {

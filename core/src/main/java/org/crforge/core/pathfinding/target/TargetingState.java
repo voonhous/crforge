@@ -109,14 +109,19 @@ public class TargetingState {
   private int loadTimerMs;
 
   /**
-   * Two flags a component restored from a saved battle may carry. Either one makes the next
-   * attack-timer advance round the attack time up to the next multiple of the hit speed instead of
-   * stepping it, and both are cleared by that advance. Nothing in a live battle sets them.
+   * The charge's strike-now byte. A fully charged unit sets it on each step it walks after the one
+   * that completed the charge, and anything that drops the charge clears it. While it is set, the
+   * next attack-timer advance rounds the attack time up to the next multiple of the hit speed
+   * instead of stepping it, so the charged hit lands on the first attack visit; that advance clears
+   * it, together with {@link #restoredRoundUp}.
    */
-  private boolean attackTimeRoundUpA;
+  private boolean chargeStrike;
 
-  /** The second of the two restore flags; see {@link #attackTimeRoundUpA}. */
-  private boolean attackTimeRoundUpB;
+  /**
+   * A second flag with the same effect on the attack-timer advance, which a component restored from
+   * a saved battle may carry. Nothing in a live battle is known to set it.
+   */
+  private boolean restoredRoundUp;
 
   /** True when the last attack-timer advance rounded the attack time up. Read by nothing. */
   private boolean attackTimeRoundedUp;

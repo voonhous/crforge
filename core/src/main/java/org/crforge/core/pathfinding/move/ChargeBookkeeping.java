@@ -13,11 +13,16 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The charge only ever builds while the entity actually covered ground in the moving state. It
  * grows by {@code step * 1000 / chargeRange}, so an entity charges over exactly the configured
  * range, and at 10000 it is complete: the completion action runs and the charging flag goes on the
- * entity. An entity with no charge range at all loses its charge outright rather than keeping it.
+ * entity. From the next such step on, the targeting component's strike-now byte is set, which lands
+ * the charged hit on the first visit the entity attacks. An entity with no charge range at all
+ * loses its charge outright rather than keeping it.
  *
  * <p>Standing still resets the charge: to zero when the entity has a charge range to build over and
- * to "no charge" when it has not. An attack pushback, a jump and clone setup are the exceptions:
- * the entity is not walking, but the charge is left exactly as it was.
+ * to "no charge" when it has not, and the strike-now byte is cleared. The step counts, not the
+ * distance actually covered: a step of a unit in the moving state still counts when the grid holds
+ * it, and a stunned unit's step of 0 resets it though it stays in that state. An attack pushback, a
+ * jump and clone setup are the exceptions: the entity is not walking, but the charge is left
+ * exactly as it was.
  *
  * <p>This never runs for an entity whose charge is already inactive; the displacement returns
  * before it.
@@ -25,9 +30,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "All five paths agree with the reference line for line, but no driven unit"
-            + " charges, so nothing beyond the inactive-charge early return is held by a"
-            + " fixture.")
+        "All five paths agree with the reference line for line. Held by prince_tower and"
+            + " dark_prince_tower: the growth to a full charge, the strike-now byte from the next"
+            + " step and the reset of a unit that stops to attack. Not held: the charge range a"
+            + " buff gives an entity without one, whose buffs are refused.")
 public final class ChargeBookkeeping {
 
   /** Scale the charge progress is expressed in relative to the configured charge range. */
@@ -41,7 +47,7 @@ public final class ChargeBookkeeping {
    * Updates the charge progress after one displacement.
    *
    * @param component the entity's movement component, whose charge progress this writes
-   * @param owner the entity, whose movement byte and pending flags this writes
+   * @param owner the entity, whose pending flags this writes
    * @param config the entity's movement configuration columns
    * @param queries the answers the bookkeeping pulls from the rest of the simulation
    * @param chain the chain that records what the bookkeeping announced
@@ -61,7 +67,7 @@ public final class ChargeBookkeeping {
         chain.mark("targeting_lookup");
         if (queries.targetingLookup()) {
           chain.mark("targeting_lookup");
-          owner.setMovingMarker(1);
+          queries.setChargeStrike(true);
         }
       } else {
         int range = config.chargeRange();
@@ -76,10 +82,10 @@ public final class ChargeBookkeeping {
         } else {
           chain.mark("modifier_component");
           component.setChargeProgress(MovementState.CHARGE_INACTIVE);
-          resetMovementByte(owner, queries, chain);
+          clearChargeStrike(queries, chain);
         }
         if (component.getChargeProgress() >= MovementState.CHARGE_COMPLETE) {
-          chain.mark("start_charging");
+          chain.startCharging();
         }
       }
     } else if ((attackFlag & 1) != 0
@@ -88,7 +94,7 @@ public final class ChargeBookkeeping {
       // An attack pushback, a jump and clone setup all leave the charge exactly as it was.
     } else if (config.chargeRange() != 0) {
       component.setChargeProgress(0);
-      resetMovementByte(owner, queries, chain);
+      clearChargeStrike(queries, chain);
     } else {
       chain.mark("modifier_component");
       if (queries.hasModifierComponent() && queries.chargeRangeFromModifiers() != 0) {
@@ -96,19 +102,18 @@ public final class ChargeBookkeeping {
       } else {
         component.setChargeProgress(MovementState.CHARGE_INACTIVE);
       }
-      resetMovementByte(owner, queries, chain);
+      clearChargeStrike(queries, chain);
     }
     if (component.getChargeProgress() >= MovementState.CHARGE_COMPLETE) {
       Displacement.markCharging(owner);
     }
   }
 
-  /** Clears the entity's movement byte, which the targeting side reads. */
-  private static void resetMovementByte(
-      GridEntity owner, MovementQueries queries, MovementChain chain) {
+  /** Clears the targeting component's strike-now byte, whenever the entity carries one. */
+  private static void clearChargeStrike(MovementQueries queries, MovementChain chain) {
     chain.mark("movement_byte");
     if (queries.targetingPresent()) {
-      owner.setMovingMarker(0);
+      queries.setChargeStrike(false);
     }
   }
 }

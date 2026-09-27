@@ -23,7 +23,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>the damage of one hit at the owner's level, the special one for a special hit;
  *   <li>a unit with a stop time after its attack has its attack block timer set to it;
  *   <li>the hit itself: the direct hit for a unit without a projectile, and for a unit with one the
- *       launch of its projectiles, which a cancelled hit skips;
+ *       launch of its projectiles, which a cancelled hit skips. Before a direct hit, a unit that
+ *       tracks a charge deals its charged damage when the charge is complete, and has the charge
+ *       reset, complete or not, unless its row keeps charging after an attack;
  *   <li>a pending special load is cleared.
  * </ul>
  *
@@ -37,10 +39,13 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the order above, the component writes, the long-distance cancel, the direct"
             + " hit of a unit without a projectile and the launch for a unit with one. Held by the"
             + " kill run's hit cadence, by every hit landing on the reference's remaining hit"
-            + " points and by the Musketeer run's launch ticks. Supplied, not settled: the owner"
-            + " may always attack. Not modelled: special hits by interval or while hidden and the"
-            + " columns they read, the attack sequence step's own damage and projectile, the"
-            + " charged hit, the projectile a buff substitutes, the targeted hit effect and its"
+            + " points and by the Musketeer run's launch ticks; the charged direct hit and the"
+            + " charge reset after it, by prince_tower and dark_prince_tower. Supplied, not"
+            + " settled: the owner may always attack. Not modelled: special hits by interval or"
+            + " while hidden and the columns they read, the attack sequence step's own damage"
+            + " and projectile, the charged hit of a unit that fires, whose rows are refused, the"
+            + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
+            + " the targeted hit effect and its"
             + " pushback, the attack counter and the attacking flag on the owner, the buff a hit"
             + " applies, the actions an attack runs and the notifications it ends with, and the"
             + " dasher's exception to the long-distance cancel, whose column is not carried.")
@@ -98,12 +103,30 @@ public final class HitApplication {
       t.setAttackBlockTimerMs(cfg.stopTimeAfterAttack());
     }
     if (!cfg.hasProjectile()) {
+      damage = charged(cfg, damage, queries);
       DirectHit.resolve(t, target, damage, missed, queries);
     } else if (!missed) {
       queries.launchProjectiles(t, target, sequenceIndex);
     }
     t.setSpecialLoadPending(false);
     return missed;
+  }
+
+  /**
+   * The charged branch of a direct hit: an owner that tracks a charge deals its charged damage when
+   * the charge is complete, and then has the charge reset, complete or not, unless its row keeps
+   * charging after an attack.
+   */
+  private static int charged(TargetingConfig cfg, int damage, HitQueries queries) {
+    int progress = queries.chargeProgress();
+    if (progress == HitQueries.NO_CHARGE) {
+      return damage;
+    }
+    int dealt = progress >= HitQueries.CHARGE_COMPLETE ? queries.chargedDamage() : damage;
+    if (!cfg.keepChargingAfterAttack()) {
+      queries.resetCharge();
+    }
+    return dealt;
   }
 
   /**

@@ -107,6 +107,7 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     damages instead of its target alone; 0 for one that hits its target alone
  * @param selfAsAoeCenter true when that circle is centred on the unit itself rather than on where
  *     its reference stood at the start of the visit
+ * @param keepChargingAfterAttack true when a charging unit's hit leaves its charge as it was
  */
 @Builder(toBuilder = true)
 public record TargetingConfig(
@@ -181,7 +182,8 @@ public record TargetingConfig(
     int stopTimeAfterAttack,
     int crownTowerDamagePercent,
     int areaDamageRadius,
-    boolean selfAsAoeCenter) {
+    boolean selfAsAoeCenter,
+    boolean keepChargingAfterAttack) {
 
   /** Sight clip depth every ordinary character carries in the standard mode. */
   public static final int STANDARD_SIGHT_CLIP = 1000;

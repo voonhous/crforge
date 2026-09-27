@@ -368,4 +368,33 @@ public interface WorldObserver {
       int damage,
       int hitPointsBefore,
       DamageResult result) {}
+
+  /**
+   * A unit's charge completed on the step it just walked.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param progress its charge progress after that step, 10000 or more
+   */
+  default void chargeCompleted(int tick, CharacterEntity unit, int progress) {}
+
+  /**
+   * A unit that was fully charged at the end of its last movement visit is not at the end of this
+   * one: it hit, or stopped walking.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   */
+  default void chargeLost(int tick, CharacterEntity unit) {}
+
+  /**
+   * A unit's movement pass asked for a state change, and its state setter applied it: a jump over
+   * the river starting or landing, or a unit held in place stopping.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param from its state before the request
+   * @param to its state after the setter applied it
+   */
+  default void movementStateRequested(int tick, CharacterEntity unit, int from, int to) {}
 }

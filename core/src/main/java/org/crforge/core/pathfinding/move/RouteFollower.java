@@ -31,21 +31,22 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>A speed of 60 therefore gives exactly one displacement per tick, because 60 divided by 250 is
  * zero and the loop always runs once.
  *
- * <p>The jump and dash branches, and the negative-speed branches of the ordinary path, are written
- * out so that the behaviour is complete, but no plain ground unit reaches any of them and no test
- * here exercises them.
+ * <p>A jump-enabled unit that reaches the edge of water on its route jumps it: the route becomes
+ * the single node of the first land cell beyond the water, and the unit asks for the jumping state,
+ * which it leaves for the moving state once fewer than two jump steps remain. Each state request is
+ * handed to the owner through the chain as it is made, and applied at once.
+ *
+ * <p>The dash branch, and the negative-speed branches of the ordinary path, are written out so that
+ * the behaviour is complete, but no unit the battle drives reaches them yet.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line. Held: the ordinary walk, arrival, and"
-            + " the node advance at 1000 units. Not held by any fixture: the held-position"
-            + " head, the jump visit and its arc, the dash visit, the stop-movement and wait"
-            + " timers, the scaled time step, speeds of 250 and above, and the water crossing"
-            + " of a jump-enabled unit. Not modelled: a jump target is announced by name only,"
-            + " so the route replacement, the direction reset and the dash stop byte do not"
-            + " happen, and the state changes this pass asks for are announced and not"
-            + " applied.")
+            + " the node advance at 1000 units; the water crossing of a jump-enabled unit, its"
+            + " single-node route and the jump visit to its landing, by hog_river; the"
+            + " stop-movement and wait timers by golem_death_pushback. Not held by any"
+            + " fixture: the held-position head, the dash visit and speeds of 250 and above.")
 public final class RouteFollower {
 
   /** Largest distance one displacement may cover, in game units. */
@@ -102,7 +103,7 @@ public final class RouteFollower {
         } else {
           component.setChargeProgress(0);
         }
-        resetMovementByte(owner, queries, chain);
+        clearChargeStrike(queries, chain);
       }
       component.setRoute(new Route());
       component.setRouteLeadsAway(0);
@@ -111,7 +112,7 @@ public final class RouteFollower {
           || state == GridEntityState.DASHING
           || state == GridEntityState.JUMPING
           || state == GridEntityState.ROUTE_FOLLOWING_ALTERNATE) {
-        chain.mark("set_state_standing");
+        chain.requestState("set_state_standing", GridEntityState.STANDING);
       }
       if ((flags & EntityFlags.NO_MOVE) != 0) {
         return;
@@ -237,7 +238,7 @@ public final class RouteFollower {
         component.getRoute().pop();
         chain.directionInit();
         if (config.jumpEnabled()) {
-          crossWaterByJumping(component, owner, globals, grid, chain);
+          crossWaterByJumping(component, owner, config, globals, grid, chain);
         }
       }
       if (iteration < substepLimit && !component.getRoute().isEmpty()) {
@@ -251,32 +252,17 @@ public final class RouteFollower {
 
   /**
    * The jump-enabled water crossing: when the node just uncovered is water, the entity jumps to the
-   * centre of the first node below it that is not.
+   * centre of the first node below it that is not, or of the route's goal when water runs to the
+   * end.
    *
-   * <p>Not exercised by tests: only the five jump-enabled cards reach it, and none of them is
-   * grid-driven.
-   *
-   * <p><b>The landing point is computed and then thrown away.</b> The chain is told that a jump
-   * target was set but not where, because the chain only carries a name, so nothing downstream can
-   * learn where the jump should land. Only the distance to it survives, in the component's jump
-   * total. An integrator making jump-enabled units grid-driven has to give the chain somewhere to
-   * put the point first.
-   *
-   * <p><b>Setting a jump target does more than record a point, and none of the rest happens here
-   * either.</b> It replaces the route with the single node at the landing cell, re-initialises the
-   * direction and writes the byte the dash reads to decide whether to stop early. With only the
-   * name announced, the remaining iterations of the same substep loop still see the old route.
-   *
-   * <p><b>The state changes this pass asks for are announced, not applied.</b> Standing at the head
-   * of a held position, moving when a jump lands and jumping at the water crossing are each passed
-   * to the chain as a name, and nothing reads them. The pass re-reads the owner's state after the
-   * first of those, so a held unit that was jumping takes the ordinary path once the change has
-   * been applied and the jump path while it has not. Only jumping and dashing units are affected,
-   * and none is grid-driven.
+   * <p>The route becomes that one node, with the direction pointed at it; the distance to it is
+   * kept as the jump's total, and the jumping state is asked for at once. The substep loop's later
+   * iterations, if any, walk the new route.
    */
   private static void crossWaterByJumping(
       MovementState component,
       GridEntity owner,
+      MovementConfig config,
       MovementGlobals globals,
       CellGrid grid,
       MovementChain chain) {
@@ -300,10 +286,12 @@ public final class RouteFollower {
     int targetX = (node % width) * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
     int targetY = (node / width) * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
     chain.mark("set_jump_target");
+    SingleNodeRoute.set(
+        component, owner, config, targetX, targetY, 1, grid.getWidth(), grid.getHeight());
     int squared = FixedMath.guardedSumOfSquares(targetX - owner.getX(), targetY - owner.getY());
     component.setJumpTotalDistance(
         squared == FixedMath.INT_MAX ? FixedMath.SATURATED_DISTANCE : FixedMath.isqrt(squared));
-    chain.mark("set_state_jumping");
+    chain.requestState("set_state_jumping", GridEntityState.JUMPING);
   }
 
   /** True when the cell a route node names holds water. */
@@ -312,16 +300,10 @@ public final class RouteFollower {
   }
 
   /**
-   * One visit while the entity follows a jump arc.
-   *
-   * <p>Not exercised by tests: only the five jump-enabled cards reach it, and none of them is
-   * grid-driven.
-   *
-   * <p><b>The landing point is computed and then thrown away.</b> The chain is told that a jump
-   * target was set but not where, because the chain only carries a name, so nothing downstream can
-   * learn where the jump should land. Only the distance to it survives, in the component's jump
-   * total. An integrator making jump-enabled units grid-driven has to give the chain somewhere to
-   * put the point first.
+   * One visit while the entity follows a jump arc: one displacement at the jump speed toward the
+   * landing node, then, when fewer than two steps of it remain, the moving state is asked for,
+   * whose entry prepares a route from where the entity stands. Otherwise the arc's height at this
+   * point is kept in the component's two sample lists; the entity's own height is not written.
    */
   private static void jumpVisit(
       MovementState component,
@@ -354,7 +336,7 @@ public final class RouteFollower {
     int done = FixedMath.divOrZero(distance, speed);
     int position = Math.min(Math.min(done, steps - done) * 2, JUMP_SAMPLES);
     if (done <= 1) {
-      chain.mark("set_state_moving");
+      chain.requestState("set_state_moving", GridEntityState.MOVING);
       return;
     }
     position = Math.max(position, 0);
@@ -501,12 +483,11 @@ public final class RouteFollower {
     component.setWaypointReached(outcome.reached());
   }
 
-  /** Clears the entity's movement byte, which the targeting side reads. */
-  private static void resetMovementByte(
-      GridEntity owner, MovementQueries queries, MovementChain chain) {
+  /** Clears the targeting component's strike-now byte, whenever the entity carries one. */
+  private static void clearChargeStrike(MovementQueries queries, MovementChain chain) {
     chain.mark("movement_byte");
     if (queries.targetingSlotZero()) {
-      owner.setMovingMarker(0);
+      queries.setChargeStrike(false);
     }
   }
 }

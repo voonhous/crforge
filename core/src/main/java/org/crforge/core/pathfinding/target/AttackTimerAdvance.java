@@ -21,8 +21,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *       load, and one that hit a moment ago only what has recharged since. A load time longer than
  *       the hit speed credits nothing: the countdown is cleared when it is no longer than the hit
  *       speed, and the advance ends without a step when it is longer.
- *   <li>A component restored from a saved battle may carry a flag that instead rounds the attack
- *       time up to the next multiple of the hit speed, once.
+ *   <li>A fully charged unit's strike-now byte, or a flag a component restored from a saved battle
+ *       may carry, instead rounds the attack time up to the next multiple of the hit speed, once,
+ *       clearing both: from zero that is one whole hit, so a charged unit hits on the first visit
+ *       it attacks.
  *   <li>Otherwise the burst timer takes the step while it is running, and then the attack time
  *       takes it too, unless a running burst freezes the attack time under the
  *       burst-affects-animation column.
@@ -34,9 +36,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line: the hold, the step and its halving, the load"
-            + " credit and reload in all three load-time cases, the restore round-up, the burst"
+            + " credit and reload in all three load-time cases, the round-up, the burst"
             + " timer and the animation freeze. Held by the kill run's hit ticks for a unit with"
-            + " one sequence step and no bursts. Supplied: the battle never holds the timers,"
+            + " one sequence step and no bursts, and the round-up under the charge's strike-now"
+            + " byte by prince_tower and dark_prince_tower. Supplied: the battle never holds the"
+            + " timers,"
             + " and no status effect scales the step.")
 public final class AttackTimerAdvance {
 
@@ -81,7 +85,7 @@ public final class AttackTimerAdvance {
     }
 
     int attackTime = t.getAttackTimerMs();
-    boolean roundUp = t.isAttackTimeRoundUpA() || t.isAttackTimeRoundUpB();
+    boolean roundUp = t.isChargeStrike() || t.isRestoredRoundUp();
     if (attackTime == 0 && !roundUp) {
       int loadTime = cfg.loadTime();
       int countdown = t.getLoadTimerMs();
@@ -110,8 +114,8 @@ public final class AttackTimerAdvance {
     }
 
     if (roundUp) {
-      t.setAttackTimeRoundUpA(false);
-      t.setAttackTimeRoundUpB(false);
+      t.setChargeStrike(false);
+      t.setRestoredRoundUp(false);
       t.setAttackTimeRoundedUp(true);
       int wholeHits = FixedMath.divOrZero(attackTime, hitSpeed) * hitSpeed;
       t.setAttackTimerMs(attackTime + hitSpeed + (wholeHits - attackTime));

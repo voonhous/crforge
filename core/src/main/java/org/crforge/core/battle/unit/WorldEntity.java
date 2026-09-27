@@ -168,8 +168,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     targeting.setConfig(targetingConfig);
     this.selection = new SelectionChain(world.getIndex(), targeting, world.getTileMap().height());
     selection.setHitSink(
-        (target, sequenceIndex, extraTargets, last) ->
-            HitApplication.apply(targeting, target, sequenceIndex, hitQueries()));
+        (target, sequenceIndex, extraTargets, last) -> {
+          refuseHit();
+          return HitApplication.apply(targeting, target, sequenceIndex, hitQueries());
+        });
     // The attack timer, the dash and the special loads step by the time the buffs scale.
     this.buffs = new BuffComponent(this, world);
     selection.setTimeScaler(buffs::hitSpeed);
@@ -307,6 +309,21 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public int chargeProgress() {
+        return WorldEntity.this.chargeProgress();
+      }
+
+      @Override
+      public int chargedDamage() {
+        return WorldEntity.this.chargedDamage();
+      }
+
+      @Override
+      public void resetCharge() {
+        WorldEntity.this.resetCharge();
+      }
+
+      @Override
       public int nextHitId() {
         return world.nextHitId();
       }
@@ -327,6 +344,26 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         damageArea(x, y, radius, damage, towerDamage, hitId);
       }
     };
+  }
+
+  /** Refuses a hit whose effect on the entity itself is not established; a tower's has none. */
+  protected void refuseHit() {
+    // A tower's hit is fully modelled.
+  }
+
+  /** The progress of the entity's charge; a tower tracks none. */
+  protected int chargeProgress() {
+    return HitQueries.NO_CHARGE;
+  }
+
+  /** The damage of the entity's charged hit at its level; a tower's ordinary damage. */
+  protected int chargedDamage() {
+    return attackDamage();
+  }
+
+  /** Resets the entity's charge after a hit; a tower has none to reset. */
+  protected void resetCharge() {
+    // A tower tracks no charge.
   }
 
   /**

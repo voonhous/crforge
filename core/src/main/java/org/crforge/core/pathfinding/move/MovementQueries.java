@@ -131,15 +131,29 @@ public interface MovementQueries {
     return true;
   }
 
-  /** True when the charge bookkeeping may look the targeting component up. Supplied as true. */
+  /**
+   * True when the charge bookkeeping may look the targeting component up to set its strike-now
+   * byte: only while that component is switched on. Supplied as true.
+   */
   default boolean targetingLookup() {
     return true;
   }
 
-  /** True when the follower may write the entity's movement byte. Supplied as true. */
+  /**
+   * True when the follower may clear the targeting component's strike-now byte. Supplied as true.
+   */
   default boolean targetingSlotZero() {
     return true;
   }
+
+  /**
+   * Sets or clears the targeting component's strike-now byte, which a complete charge sets and
+   * anything that drops the charge clears. Supplied as writing nothing, for an entity no attack
+   * reads it of.
+   *
+   * @param set true to set it, false to clear it
+   */
+  default void setChargeStrike(boolean set) {}
 
   /** True when a dash may stop because its reference came into range. Supplied as true. */
   default boolean targetingActive() {
