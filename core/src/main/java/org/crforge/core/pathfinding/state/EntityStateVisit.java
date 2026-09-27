@@ -34,9 +34,11 @@ import org.crforge.core.pathfinding.move.MovementState;
  *
  * <p>Blocks this class does not carry, because each is gated by a configuration column that belongs
  * to a part of the simulation outside movement and routing: the buff a unit gets while it is not
- * attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, the morph
- * timer with its growth scale, and the live spawner. They sit between blocks 4 and 5 and between 11
- * and 12 in the order above and none of them changes a state or a position that routing reads.
+ * attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, and the
+ * morph timer with its growth scale. They sit between blocks 4 and 5 and between 11 and 12 in the
+ * order above and none of them changes a state or a position that routing reads. The live spawner,
+ * the last block before 12, is announced as {@code spawner} where the visit reaches it, and its
+ * caller runs it: nothing after it in the visit reads what it does.
  *
  * <p>Two consequences of leaving them out, which matter to anyone extending this class rather than
  * to a plain ground troop:
@@ -64,7 +66,7 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
             + " deploy countdown ending in the moving state, and little else. Not modelled:"
             + " the not-attacking buff timer, kamikaze self-damage, elixir generation, hiding,"
-            + " growth, the spawner timers, and the targeting visit the standard game runs"
+            + " growth, and the targeting visit the standard game runs"
             + " straight after a hidden unit resumes. A removal is requested by name and read"
             + " by nothing.")
 public final class EntityStateVisit {
@@ -275,6 +277,10 @@ public final class EntityStateVisit {
         setter.setState(entity, GridEntityState.STANDING);
       }
     }
+
+    // The spawner block runs here, between the goal row and the morph countdown; the caller runs
+    // it.
+    chain.add("spawner");
 
     // 12. A morph counts down and the unit stands when it ends.
     if (entity.getState() == GridEntityState.MORPHING) {

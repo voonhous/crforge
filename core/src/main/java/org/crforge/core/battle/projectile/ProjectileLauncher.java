@@ -75,7 +75,7 @@ public final class ProjectileLauncher {
         // The standard game draws a distance between a quarter of the spread and the spread; the
         // draw is supplied as zero here, so every further projectile starts a quarter out.
         offset[0] = quarter;
-        rotate(offset, step * k);
+        FixedMath.rotate1024(offset, step * k);
       }
       ProjectileEntity projectile = new ProjectileEntity(world, data, launcher.side());
       int hx = t.getLastReferenceX() + offset[0];
@@ -137,15 +137,5 @@ public final class ProjectileLauncher {
   /** Half of a value, rounded toward zero. */
   private static int halfTowardZero(int value) {
     return (value + (value < 0 ? 1 : 0)) >> 1;
-  }
-
-  /** Rotates a vector by whole degrees with the 1024-scaled sine table, truncating toward zero. */
-  static void rotate(int[] vec, int degrees) {
-    int c = FixedMath.sine1024(degrees + 90);
-    int s = FixedMath.sine1024(degrees);
-    int nx = c * vec[0] - s * vec[1];
-    int ny = s * vec[0] + c * vec[1];
-    vec[0] = (nx + (nx < 0 ? 1023 : 0)) >> 10;
-    vec[1] = (ny + (ny < 0 ? 1023 : 0)) >> 10;
   }
 }

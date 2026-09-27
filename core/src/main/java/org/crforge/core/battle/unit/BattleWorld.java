@@ -90,11 +90,15 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " tombstone_death_hook; the death spawn's children flying back to the ring, held by"
             + " golem_death_pushback; a single child on the dying object's point and a bomb's"
             + " death slot as its deploy ends, without the death hooks, held by"
-            + " giant_skeleton_bomb; an area effect created by a death or placed directly and"
-            + " its hits dealt, held by area_effect_direct and area_effect_death. Refused: a death"
-            + " whose row sets a column of the slot not modelled, several death spawn children"
-            + " with no ring, a least radius that draws, a child without hit points that has a"
-            + " range, and a death hook with no attacker or no pending pass ahead of it. Left out: the elixir a death gives. Not"
+            + " giant_skeleton_bomb; several death spawn children in front of the dying object,"
+            + " a lifetime's death without the death handler and a building spawner's children in"
+            + " front of it, held by tombstone_life and goblin_hut_life; an area effect created by"
+            + " a death or placed directly and its hits dealt, held by area_effect_direct and"
+            + " area_effect_death. Refused: a death whose row sets a column of the slot not"
+            + " modelled, a least radius that draws, a child without hit points that has a range, a"
+            + " spawner's turned or drawn ring and a spawner child without hit points, a building,"
+            + " pathing or starting an action, and a death hook with no attacker or no pending"
+            + " pass ahead of it. Left out: the elixir a death gives. Not"
             + " modelled: the game mode's own per-tick work beside the index and the overlay, and"
             + " the copy of the attacker the game makes as a death hook's cause.")
 public class BattleWorld implements HolderPasses {
@@ -766,6 +770,111 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The death of a character whose lifetime decay took its last hit point, in its hit-points visit:
+   * what it switches off, then its death slot, with no death handler after it. It leaves at the
+   * closing cleanup of the tick. The death action the decay then runs on it, with itself as the
+   * cause, is refused: no run holds it.
+   *
+   * @param dying the character
+   * @param hitPointsBefore its hit points before the decay's last step
+   */
+  void decayDeath(WorldEntity dying, int hitPointsBefore) {
+    UnitData data = dying.getData();
+    if (data.onDeathAction() != null) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died as its lifetime ran out, and the death action it then runs is not"
+              + " established");
+    }
+    for (WorldObserver observer : observers) {
+      observer.decayDied(tick, dying, hitPointsBefore);
+    }
+    dying.died();
+    deathSlot(dying, data);
+  }
+
+  /**
+   * One firing of a character's spawner: its row's spawn character, as many as the firing makes,
+   * each created for the spawner's side at its level re-based on the child's rarity, walking at
+   * once when it has a speed, with no deploy and no first-tick immunity, registered inside the
+   * post-hook pass with its registration visit, and joining the live list at the tick's closing
+   * cleanup.
+   *
+   * <p>With a radius the children stand on its ring, as a death spawn's do. With none each stands
+   * in front of the spawner, the spawner's collision radius and its own away toward the enemy, at
+   * the first quarter turn of that offset the in-front test accepts, or one unit right of the
+   * spawner where it accepts none.
+   *
+   * <p>Refused rather than guessed: a ring turned by the spawner's angle shift or drawn from its
+   * least radius, and a child without hit points, a building, one that paths to its point or one
+   * with a starting action of its own.
+   *
+   * @param spawner the character whose spawner fires
+   * @param count how many children the firing makes
+   * @param radius the ring's radius, or 0 to place in front
+   */
+  void liveSpawn(CharacterEntity spawner, int count, int radius) {
+    UnitData data = spawner.getData();
+    UnitData child = records.unit(data.spawnCharacter());
+    if (radius != 0 && (data.spawnAngleShift() != 0 || data.deathSpawnMinRadius() != 0)) {
+      throw new UnsupportedOperationException(
+          spawner.name()
+              + "'s spawner turns or draws the ring its children stand on, which is not modelled");
+    }
+    if (child.hitpoints() <= 0
+        || child.building()
+        || child.spawnPathfindSpeed() != 0
+        || child.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          spawner.name()
+              + "'s spawner makes "
+              + child.name()
+              + ", without hit points, a building, pathing to its point or starting an action,"
+              + " which is not modelled");
+    }
+    int fromX = spawner.getView().getX();
+    int fromY = spawner.getView().getY();
+    for (int i = 0; i < count; i++) {
+      int[] at =
+          SpawnPlacement.position(
+              fromX,
+              fromY,
+              i,
+              count,
+              false,
+              radius,
+              data.collisionRadius() + child.collisionRadius(),
+              spawner.side() & 1,
+              tileMap.width() * TileMap.CELL_UNITS,
+              (px, py) -> SpawnPassable.passable(tileMap, px, py, child.collisionRadius()));
+      int x = inset(at[0], tileMap.width());
+      int y = inset(at[1], tileMap.height());
+      int made = spawnCounts.merge(spawner.name(), 1, Integer::sum) - 1;
+      CharacterEntity spawned =
+          CharacterEntity.spawned(
+              this,
+              child,
+              spawner.name() + "_" + made,
+              spawner.side(),
+              x,
+              y,
+              PackedLevel.level(PackedLevel.pack(spawner.getPackedLevel(), child.rarity())));
+      holder.addRegistered(spawned);
+      for (WorldObserver observer : observers) {
+        observer.characterSpawned(tick, spawner, spawned, x, y);
+      }
+    }
+  }
+
+  /** Tells the observers a character's spawner fired. */
+  void spawnerFired(
+      CharacterEntity spawner, String row, int count, int radius, int timerAfter, int waveMade) {
+    for (WorldObserver observer : observers) {
+      observer.spawnerFired(tick, spawner, row, count, radius, timerAfter, waveMade);
+    }
+  }
+
+  /**
    * The death slot: what a dying object's row does as it dies, in order - its area effect at its
    * point, for its side and at its level; its death damage; its death spawn. A death whose row sets
    * a column of the slot the battle does not model is refused.
@@ -872,15 +981,16 @@ public class BattleWorld implements HolderPasses {
    * <p>With a radius the children stand on its ring - child {@code i} of {@code n} at angle {@code
    * (n - 1 - i) * 360 / n} - the ring untested for passability; a least radius equal to the radius
    * draws nothing. A row that pushes its children puts each on the dying object and flies it back
-   * to its ring point. With no radius a single child stands on the dying object, or one unit right
-   * of it where it may not stand.
+   * to its ring point. With no radius a single child stands on the dying object, and several stand
+   * together in front of it, the dying object's collision radius and the child's away toward the
+   * enemy, the first quarter turn of that offset the in-front test accepts; where it accepts none,
+   * the children stand one unit right of the dying object.
    *
-   * <p>Refused rather than guessed: several children with no ring; a child that is a building with
-   * hit points, which replaces the dying object, paths to its point or has a starting action of its
-   * own; a least radius below the radius, which draws each child's ring radius from the battle's
-   * random source - no row sets one; and a single child without hit points that has a range, which
-   * is pulled back half its range along the dying object's facing - every such row has none, so no
-   * run holds it.
+   * <p>Refused rather than guessed: a child that is a building with hit points, which replaces the
+   * dying object, paths to its point or has a starting action of its own; a least radius below the
+   * radius, which draws each child's ring radius from the battle's random source - no row sets one;
+   * and a single child without hit points that has a range, which is pulled back half its range
+   * along the dying object's facing - every such row has none, so no run holds it.
    */
   private void deathSpawn(WorldEntity dying, UnitData data) {
     if (data.deathSpawnCharacter() == null) {
@@ -888,11 +998,6 @@ public class BattleWorld implements HolderPasses {
     }
     int radius = data.deathSpawnRadius();
     int count = data.deathSpawnCount();
-    if (radius == 0 && count > 1) {
-      throw new UnsupportedOperationException(
-          dying.name()
-              + "'s death spawn stands several children in front of it, which is not modelled");
-    }
     UnitData child = records.unit(data.deathSpawnCharacter());
     // A building with hit points replaces the dying object instead; one without, a bomb, is made.
     if ((child.building() && child.hitpoints() > 0)
@@ -921,16 +1026,20 @@ public class BattleWorld implements HolderPasses {
       if (radius != 0) {
         at = SpawnPlacement.position(fromX, fromY, i, count, false, radius, (px, py) -> true);
       } else {
+        // A single child has no in-front offset; several share the one in-front point.
         at =
             SpawnPlacement.position(
                 fromX,
                 fromY,
+                i,
+                count,
+                count == 1,
                 0,
-                1,
-                true,
-                0,
+                dying.getData().collisionRadius() + child.collisionRadius(),
+                dying.side() & 1,
+                tileMap.width() * TileMap.CELL_UNITS,
                 (px, py) -> SpawnPassable.passable(tileMap, px, py, child.collisionRadius()));
-        if (child.hitpoints() <= 0 && child.range() != 0) {
+        if (count == 1 && child.hitpoints() <= 0 && child.range() != 0) {
           // Pulled back by half its range along the dying object's facing; every such row has a
           // range of 0, so no run holds the pullback.
           throw new UnsupportedOperationException(

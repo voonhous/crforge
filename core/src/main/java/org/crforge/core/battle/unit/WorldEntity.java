@@ -168,6 +168,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             data.king(),
             data.summonerTower());
     this.hitPoints = maximum > 0 ? new HitPoints(maximum) : null;
+    if (hitPoints != null) {
+      hitPoints.setDecayStep(HitPoints.decayStep(maximum, data.lifeTimeMs()));
+    }
     this.damage = damageAt(packedLevel);
     // A candidate advertises its current hit points to an attacker that prefers the weakest.
     targetView.setHitPointsPresent(hitPoints != null);
@@ -324,6 +327,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return targetView.isCrownTowerTarget();
       }
     };
+  }
+
+  /**
+   * One step of the lifetime decay on the entity's hit points, advertised at once to attackers that
+   * prefer the weakest.
+   *
+   * @return true when the step took the last hit point
+   */
+  protected boolean decay() {
+    boolean last = hitPoints.decay();
+    refreshHitPoints();
+    return last;
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */
@@ -513,6 +528,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints != null && (hitPoints.getShield() != 0 || hitPoints.getShieldMaximum() != 0)) {
       throw new UnsupportedOperationException(
           "changing the level of " + name() + ", which carries a shield, is not modelled");
+    }
+    if (hitPoints != null && hitPoints.getDecayStep() != 0) {
+      throw new UnsupportedOperationException(
+          "changing the level of " + name() + ", whose hit points decay, is not established");
     }
     packedLevel = PackedLevel.pack(packed, data.rarity());
     damage = damageAt(packedLevel);

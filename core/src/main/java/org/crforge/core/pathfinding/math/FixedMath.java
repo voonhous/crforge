@@ -186,6 +186,22 @@ public final class FixedMath {
   }
 
   /**
+   * Rotates a vector in place by whole degrees with the 1024-scaled sine table, each component
+   * truncated toward zero.
+   *
+   * @param vec the vector as {x, y}, rewritten with the rotated one
+   * @param degrees the angle, counter-clockwise
+   */
+  public static void rotate1024(int[] vec, int degrees) {
+    int c = sine1024(degrees + 90);
+    int s = sine1024(degrees);
+    int nx = c * vec[0] - s * vec[1];
+    int ny = s * vec[0] + c * vec[1];
+    vec[0] = (nx + (nx < 0 ? 1023 : 0)) >> 10;
+    vec[1] = (ny + (ny < 0 ? 1023 : 0)) >> 10;
+  }
+
+  /**
    * Heading of a vector as a whole number of degrees in 0..359, measured counter-clockwise from the
    * positive x axis. The zero vector has heading 0.
    *

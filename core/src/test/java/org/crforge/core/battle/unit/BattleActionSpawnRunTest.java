@@ -22,8 +22,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the sixteen runs in which an action spawns characters through {@link Battle} and holds the
- * battle to them tick for tick.
+ * Plays the twenty runs in which an action, a death or a building spawns characters through {@link
+ * Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -53,9 +53,19 @@ import org.junit.jupiter.params.provider.ValueSource;
  * select draws its part as it is scheduled, in the command pass, the first owner's draw first, and
  * the part it chose spawns its unit in that owner's phase-1 pass.
  *
- * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
- * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
- * sixth state visit, so the towers lock on it six ticks late.
+ * <p>Four runs place a building directly with the towers fighting. In {@code cannon_knight} a
+ * Cannon deploys, stands, takes the default tower as its reference on the tick after and locks on a
+ * Knight that walks into range, firing until the Knight destroys it, its hit points falling by its
+ * lifetime's decay meanwhile; in {@code mortar_knight} a Mortar drops the Knight once it comes
+ * inside its minimum range. In {@code tombstone_life} a Tombstone spawns Skeletons in front of it
+ * in waves of two from the end of its deploy, until its decay kills it and its death spawns four
+ * more on the same point; {@code goblin_hut_life} does the same with a Goblin Hut's three Spear
+ * Goblins and its one death spawn on its own point.
+ *
+ * <p>Every spawned child is registered inside the pass that made it, joins the live list at the
+ * tick's closing cleanup and is first visited on the next tick. A child of an action or a death
+ * cannot be targeted until its sixth state visit, so the towers lock on it six ticks late; a
+ * building's spawner gives its children no such immunity.
  */
 class BattleActionSpawnRunTest {
 
@@ -77,7 +87,11 @@ class BattleActionSpawnRunTest {
         "area_effect_direct",
         "area_effect_death",
         "golem_death_pushback",
-        "giant_skeleton_bomb"
+        "giant_skeleton_bomb",
+        "cannon_knight",
+        "tombstone_life",
+        "goblin_hut_life",
+        "mortar_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -179,6 +193,40 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
     List<String> areaEffects = new ArrayList<>();
     match.getWorld().addObserver(areaEffectLog(currentTick, areaEffects));
+    // What each building's spawner and lifetime did.
+    List<String> buildingLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void spawnerFired(
+                  int tick,
+                  CharacterEntity spawner,
+                  String row,
+                  int count,
+                  int radius,
+                  int timerAfter,
+                  int waveMade) {
+                buildingLog.add(
+                    "%d spawner %s %s %d %d %d %d"
+                        .formatted(
+                            currentTick[0],
+                            spawner.name(),
+                            row,
+                            count,
+                            radius,
+                            timerAfter,
+                            waveMade));
+              }
+
+              @Override
+              public void decayDied(int tick, WorldEntity entity, int hitPointsBefore) {
+                buildingLog.add(
+                    "%d decay_death %s %d"
+                        .formatted(currentTick[0], entity.name(), hitPointsBefore));
+              }
+            });
     // An area effect's own runs are listed like any owner's, from its creation.
     match
         .getWorld()
@@ -296,7 +344,10 @@ class BattleActionSpawnRunTest {
         if (entity instanceof CharacterEntity c) {
           units.putIfAbsent(c.name(), c);
         }
-        if (entity instanceof TowerEntity tower) {
+        // A building locks on as a tower does.
+        if (entity instanceof TowerEntity
+            || entity instanceof CharacterEntity c && c.getData().building()) {
+          WorldEntity tower = (WorldEntity) entity;
           // A lock is the tower attacking a target it was not attacking at the end of the last
           // step: entering the attacking state, or, still in it after its target left, taking the
           // next one.
@@ -425,6 +476,31 @@ class BattleActionSpawnRunTest {
     assertThat(areaEffects)
         .as("what every area effect did")
         .containsExactlyElementsOf(expectedAreaEffects(reference));
+
+    List<String> expectedBuildingLog = new ArrayList<>();
+    for (JsonNode b : reference.path("building_log")) {
+      String kind = b.get("event").asText();
+      if (kind.equals("spawner")) {
+        expectedBuildingLog.add(
+            "%d spawner %s %s %d %d %d %d"
+                .formatted(
+                    b.get("tick").asInt(),
+                    b.get("building").asText(),
+                    b.get("row").asText(),
+                    b.get("count").asInt(),
+                    b.get("radius").asInt(),
+                    b.get("timer_after").asInt(),
+                    b.get("burst").asInt()));
+      } else if (kind.equals("decay_death")) {
+        expectedBuildingLog.add(
+            "%d decay_death %s %d"
+                .formatted(
+                    b.get("tick").asInt(), b.get("entity").asText(), b.get("hp_before").asInt()));
+      }
+    }
+    assertThat(buildingLog)
+        .as("every spawner firing and every death by a lifetime's decay")
+        .containsExactlyElementsOf(expectedBuildingLog);
 
     List<String> expectedEvents = new ArrayList<>();
     for (JsonNode event : reference.get("events")) {
@@ -629,7 +705,7 @@ class BattleActionSpawnRunTest {
         .orElseThrow();
   }
 
-  private static String referenceName(TowerEntity tower) {
+  private static String referenceName(WorldEntity tower) {
     TargetView reference = tower.getTargeting().getReference();
     return reference == null ? null : reference.name();
   }
