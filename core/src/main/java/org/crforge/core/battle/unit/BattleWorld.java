@@ -867,6 +867,13 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** Tells the observers a character's spawner fired. */
+  /** Tells the observers the combat gate dropped an entity's reference. */
+  void combatGateDropped(WorldEntity entity, TargetView reference) {
+    for (WorldObserver observer : observers) {
+      observer.combatGateDropped(tick, entity, reference);
+    }
+  }
+
   void spawnerFired(
       CharacterEntity spawner, String row, int count, int radius, int timerAfter, int waveMade) {
     for (WorldObserver observer : observers) {

@@ -89,6 +89,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** Side of the player at the high end of the arena. */
   public static final int SIDE_TOP = 1;
 
+  /** The slot of the targeting component the combat gate switches, on a character and a tower. */
+  private static final int GATED_SLOT = 0;
+
   /** The battle's shared arena state. */
   protected final BattleWorld world;
 
@@ -339,6 +342,29 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     boolean last = hitPoints.decay();
     refreshHitPoints();
     return last;
+  }
+
+  /**
+   * The combat gate at the tail of the state visit: switches the targeting component on or off and
+   * tells the battle of a reference it dropped.
+   *
+   * @param targetingOn whether the targeting component is on as the gate reaches it
+   * @param routePreparer prepares a route when the dropped reference asks for one
+   */
+  protected void combatGate(boolean targetingOn, Runnable routePreparer) {
+    TargetView before = targeting.getReference();
+    boolean on =
+        CombatGate.targetingOn(
+            view,
+            targeting,
+            targetingOn,
+            HitPoints.alive(hitPoints),
+            data.hitpoints() != 0,
+            routePreparer);
+    if (before != null && targeting.getReference() == null) {
+      world.combatGateDropped(this, before);
+    }
+    setActive(GATED_SLOT, on);
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */

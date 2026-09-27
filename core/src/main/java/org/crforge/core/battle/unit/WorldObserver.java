@@ -7,6 +7,7 @@ import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.move.MovementState;
+import org.crforge.core.pathfinding.target.TargetView;
 
 /**
  * Something that watches one battle's arena from outside the tick: it is told where the tick's
@@ -272,4 +273,14 @@ public interface WorldObserver {
    * @param hitPointsBefore its hit points before the step
    */
   default void decayDied(int tick, WorldEntity entity, int hitPointsBefore) {}
+
+  /**
+   * The combat gate at the tail of an entity's state visit dropped its reference: the entity is
+   * dead or still deploying.
+   *
+   * @param tick the tick
+   * @param entity the entity whose reference went
+   * @param reference the reference it held
+   */
+  default void combatGateDropped(int tick, WorldEntity entity, TargetView reference) {}
 }

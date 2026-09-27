@@ -36,7 +36,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * again every tick; once a unit comes into range it locks on, fires its projectile on the attack
  * ticks, and returns to standing when the reference is gone. Its post-hook is the entity state
  * visit, which steps its elapsed time from its first tick, and at its end the combat gate, which
- * switches the targeting component off while the tower is inactive.
+ * switches the targeting component off while the tower is inactive or dead: a king tower that dies
+ * drops its reference and fires no more.
  *
  * <p>A king tower sleeps until its side loses a princess tower or it loses hit points itself. Its
  * placement queues its starting action, built from its row: a group around a wait that sets the
@@ -59,9 +60,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " on its first two ticks, the wait its placement queues and its condition, the"
             + " activating run that follows and the tags both set, which the pre-hook folds in and"
             + " the gate reads, all built from the king's own starting row; a king tower never"
-            + " removable, so it stays in the holder dead. Supplied, not settled: the towers scale"
-            + " as Common, and the"
-            + " enabling side of the gate answers for a standing, living tower. Not modelled: the"
+            + " removable, so it stays in the holder dead, switched off by the gate from the tick"
+            + " it dies. Supplied, not settled: the towers scale as Common. Not modelled: the"
             + " rest of the king's own state visit.")
 public class TowerEntity extends WorldEntity {
 
@@ -234,10 +234,6 @@ public class TowerEntity extends WorldEntity {
   }
 
   /**
-   * The entity state visit, which for a standing tower steps its elapsed time and nothing else, and
-   * at its end the combat gate: the targeting component runs while the tower is not inactive.
-   */
-  /**
    * A king tower is never removable: it stays in the holder after its hit points run out, and an
    * entity that held it drops it by its own targeting, not by a removal notice. A princess tower
    * leaves in the cleanup of the tick it dies.
@@ -247,6 +243,11 @@ public class TowerEntity extends WorldEntity {
     return !getData().king() && super.isRemovable();
   }
 
+  /**
+   * The entity state visit, which for a standing tower steps its elapsed time and nothing else, and
+   * at its end the combat gate: the targeting component runs while the tower is alive and not
+   * inactive. A king tower that dies drops its reference and is switched off on that tick.
+   */
   @Override
   protected void postHook() {
     EntityStateVisit.stateVisit(
@@ -258,7 +259,10 @@ public class TowerEntity extends WorldEntity {
         stateQueries(),
         new ArrayList<>(),
         setter);
-    setActive(TARGETING_SLOT, !holdingFire && !isInactive());
+    combatGate(isActive(TARGETING_SLOT), setter::prepareRoute);
+    if (holdingFire) {
+      setActive(TARGETING_SLOT, false);
+    }
   }
 
   /** Chooses, keeps or drops the tower's target and decides whether it fires this tick. */

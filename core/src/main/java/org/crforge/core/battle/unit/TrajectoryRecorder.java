@@ -362,6 +362,18 @@ public final class TrajectoryRecorder implements WorldObserver {
   }
 
   /**
+   * A tower's reference the combat gate dropped - a tower that died this tick - is not a change its
+   * targeting visit made: it is noted as gone without an event, and the tower is no longer locked.
+   */
+  @Override
+  public void combatGateDropped(int tick, WorldEntity entity, TargetView reference) {
+    if (entity instanceof TowerEntity tower && fightingTowers.contains(tower)) {
+      towerReferences.put(tower, null);
+      lockedTowers.remove(tower);
+    }
+  }
+
+  /**
    * What the removal of an entity left each fighting tower holding: a changed reference, with the
    * target-lost countdown the removal started, and the drop of a reference a tower had locked on;
    * then the removal itself.
