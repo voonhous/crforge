@@ -118,6 +118,19 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param jumpHeight the height of its jump arc
  * @param jumpSpeed its speed while it jumps, in game units per tick
  * @param kamikaze true for a unit whose hit destroys it
+ * @param dashCooldown the wind-up before a dash, in milliseconds; 0 for a unit that does not dash
+ * @param dashMinRange how far beyond its own collision radius a target must be for a dash
+ * @param dashMaxRange how far a target may be for a dash
+ * @param dashDamage the damage its dash deals as it lands, at the first level
+ * @param dashRadius the radius that damage covers around the landing point; 0 to hit its target
+ *     alone
+ * @param dashPushBack how far that damage pushes what it hits
+ * @param dashLandingTimeMs how long it is held after its dash lands; 0 to walk on at once
+ * @param dashConstantTimeMs how long its dash flies, with a fixed height profile; 0 for a dash that
+ *     flies until it reaches its target
+ * @param dashImmuneToDamageTimeMs how long, after its dash, nothing can hurt it; while it dashes
+ *     with one, nothing can
+ * @param dashToTargetRadius true when its dash aims at its target's edge rather than its centre
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -204,6 +217,16 @@ public record UnitData(
     int jumpHeight,
     int jumpSpeed,
     boolean kamikaze,
+    int dashCooldown,
+    int dashMinRange,
+    int dashMaxRange,
+    int dashDamage,
+    int dashRadius,
+    int dashPushBack,
+    int dashLandingTimeMs,
+    int dashConstantTimeMs,
+    int dashImmuneToDamageTimeMs,
+    boolean dashToTargetRadius,
     List<String> unmodelledColumns) {
 
   public UnitData {

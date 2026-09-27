@@ -30,8 +30,9 @@ import org.crforge.core.pathfinding.grid.CellGrid;
     note =
         "Runs each pass at the point the visit announces it, so later passes see"
             + " earlier writes; held by the 53 reference walks and the multi-unit parity"
-            + " scenes. Hands the follower's state requests and a completed charge to the"
-            + " owner's requests when it has them, held by prince_tower and hog_river; without"
+            + " scenes. Hands the follower's state requests, a completed charge and a dash's"
+            + " landing to the owner's requests when it has them, held by prince_tower, hog_river"
+            + " and bandit_knight; without"
             + " them they are recorded by name only, as are the end actions.")
 public final class MovementChain {
 
@@ -134,6 +135,14 @@ public final class MovementChain {
     markers.add(name);
     if (requests != null) {
       requests.requestState(state);
+    }
+  }
+
+  /** Records that a dash just ended and has the owner land it. */
+  public void dashLanded() {
+    markers.add("on_stop");
+    if (requests != null) {
+      requests.dashLanded();
     }
   }
 

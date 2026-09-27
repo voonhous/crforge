@@ -191,8 +191,9 @@ public final class BattleRecords {
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield, hiding while not attacking or before the first hit, a buff
    * at a share of its hit points, hovering, a flying unit's direct paths, the action a completed
-   * charge runs, the elixir a collector makes, a spawner's launches, its second and third
-   * characters, its destruction at the limit and the deploy it gives its children.
+   * charge runs, a chained dash, a dash's contact damage, fixed distance, area effect and closing
+   * action, the elixir a collector makes, a spawner's launches, its second and third characters,
+   * its destruction at the limit and the deploy it gives its children.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -204,6 +205,11 @@ public final class BattleRecords {
           "Hovering",
           "FlyDirectPaths",
           "OnStartChargingAction",
+          "DashCount",
+          "DashingDamage",
+          "DashDistance",
+          "AreaEffectOnDash",
+          "OnAfterDashAction",
           "ManaCollectAmount",
           "SpawnProjectile",
           "SpawnCharacter2",
@@ -321,6 +327,16 @@ public final class BattleRecords {
         .jumpHeight(row.intValue("JumpHeight"))
         .jumpSpeed(row.intValue("JumpSpeed"))
         .kamikaze(row.bool("Kamikaze"))
+        .dashCooldown(row.intValue("DashCooldown"))
+        .dashMinRange(row.intValue("DashMinRange"))
+        .dashMaxRange(row.intValue("DashMaxRange"))
+        .dashDamage(row.intValue("DashDamage"))
+        .dashRadius(row.intValue("DashRadius"))
+        .dashPushBack(row.intValue("DashPushBack"))
+        .dashLandingTimeMs(row.intValue("DashLandingTime"))
+        .dashConstantTimeMs(row.intValue("DashConstantTime"))
+        .dashImmuneToDamageTimeMs(row.intValue("DashImmuneToDamageTime"))
+        .dashToTargetRadius(row.bool("DashToTargetRadius"))
         .unmodelledColumns(unmodelledColumns(row))
         .build();
   }

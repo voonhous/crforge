@@ -36,8 +36,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * which it leaves for the moving state once fewer than two jump steps remain. Each state request is
  * handed to the owner through the chain as it is made, and applied at once.
  *
- * <p>The dash branch, and the negative-speed branches of the ordinary path, are written out so that
- * the behaviour is complete, but no unit the battle drives reaches them yet.
+ * <p>A dashing unit flies at its jump speed toward its dash's single node and lands where the dash
+ * ends; the landing is handed to the owner through the chain. The negative-speed branches of the
+ * ordinary path are written out so that the behaviour is complete, but nothing reaches them.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -45,8 +46,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "Agrees with the reference line for line. Held: the ordinary walk, arrival, and"
             + " the node advance at 1000 units; the water crossing of a jump-enabled unit, its"
             + " single-node route and the jump visit to its landing, by hog_river; the"
-            + " stop-movement and wait timers by golem_death_pushback. Not held by any"
-            + " fixture: the held-position head, the dash visit and speeds of 250 and above.")
+            + " stop-movement and wait timers by golem_death_pushback; the dash visit, its stop"
+            + " in range, its constant time and height profile and speeds of 250 and above, by"
+            + " bandit_knight and mega_knight_group. Not held by any fixture: the held-position"
+            + " head and a dash stopped on water.")
 public final class RouteFollower {
 
   /** Largest distance one displacement may cover, in game units. */
@@ -351,9 +354,12 @@ public final class RouteFollower {
   }
 
   /**
-   * One visit while the entity runs a dash.
-   *
-   * <p>Not exercised by tests: only the dashing cards reach it.
+   * One visit while the entity runs a dash: up to one displacement per 250 units of its jump speed
+   * toward the dash's single node. A dash with a constant time follows its height profile and ends
+   * when the time runs out; one without ends when fewer than one step remains, or when its
+   * reference comes into range where its stop-in-range byte allows. At the end the route is
+   * emptied, the landing runs, and the entity stands on the point it stopped at, moved off water,
+   * at height 0. A dash with a constant time loses 50 ms of it every visit.
    */
   private static void dashVisit(
       MovementState component,
@@ -436,7 +442,9 @@ public final class RouteFollower {
         if (stop) {
           component.setRoute(new Route());
           component.setRouteLeadsAway(0);
-          chain.mark("on_stop");
+          // The landing reads and may move the entity; the stop point taken above is written back
+          // after it, relocated off water.
+          chain.dashLanded();
           if (x >= 0
               && y >= 0
               && x < grid.getWidth() * TileMap.CELL_UNITS

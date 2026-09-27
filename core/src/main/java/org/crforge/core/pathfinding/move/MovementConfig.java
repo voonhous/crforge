@@ -136,6 +136,34 @@ public record MovementConfig(
   }
 
   /**
+   * This configuration with a dash of fixed length in time: it flies for that long, its height
+   * following the dash's profile up to the jump height and back.
+   *
+   * @param constantTime how long the dash flies, in milliseconds; 0 for a dash that flies until it
+   *     reaches its target
+   */
+  public MovementConfig withDashConstantTime(int constantTime) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        constantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        entersWaterWhileSpawnPathfinding);
+  }
+
+  /**
    * This configuration with the river jump: the entity leaps over the water in its way.
    *
    * @param enabled true for a unit that jumps

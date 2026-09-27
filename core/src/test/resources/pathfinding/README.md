@@ -319,6 +319,15 @@ The towers fight at level 11, and each run places its unit for the bottom side o
 
 `BattleActionSpawnRunTest` plays them with the spawn runs.
 
+## `golden/bandit_knight.json` and `golden/mega_knight_group.json` - the dash
+
+The towers fight at level 11. Each run places its dasher for the bottom side on tick 0 and red Knights ahead of it, and lists, under `jump_charge_dash`, every dash started - its reference, where it stood, the point it aimed at, its route, its stop-in-range byte, its dash time and its wind-up - every state its movement pass asked for, and every landing with its hit, its landing hold and its state.
+
+- `bandit_knight`: a Bandit at (3500, 10000) and a Knight at (3500, 18000). The Knight is inside the Bandit's ring from tick 30; the wind-up of 800 holds the Bandit still from 31, and on 46 it dashes from (3665, 10965) toward the Knight at (3687, 16486), its route the single node 1087, short of the Knight by both radii. It flies 500 a visit and, after the second step of 53, at (3727, 14465), finds the Knight in range: it lands 389 on it, walks on at once, and its reset attack hits for 194 on 72, 92 and every 20 ticks. The Knight first hits it on 62; it dies on 158, and the reference its death drops asks for a resume. The reference was regenerated after its generator was corrected to test the range after each step at the position that step left the Bandit, as the game does; it first stopped the Bandit a tick later.
+- `mega_knight_group`: a Mega Knight at (3500, 9000) and three Knights at (3500, 17500), (2700, 18000) and (4300, 18000). The wind-up of 900 holds it from 43; on 60 it dashes toward Knight_0 on node 979 for its constant 800 ms, 250 a visit, its height following the profile up to 3000 and back. It lands on 76 at (3750, 13750): 537 on each Knight over its radius of 2200, each pushed 1000 away, and a Knight's hit on it the same tick, since it has no immunity. Its landing hold keeps it standing until it walks on from 80. The run lists an area's pushes after all of its hits, where the battle pushes each victim right after its own; the test orders them the same way.
+
+`BattleActionSpawnRunTest` plays them with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

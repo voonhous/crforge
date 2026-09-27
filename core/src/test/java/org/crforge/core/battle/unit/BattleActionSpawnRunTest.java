@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the forty-two runs in which an action, a death, a building or a unit's own spawner spawns
- * characters through {@link Battle} and holds the battle to them tick for tick.
+ * Plays the forty-seven runs in which an action, a death, a building or a unit's own spawner spawns
+ * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
+ * them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -107,6 +109,15 @@ import org.junit.jupiter.params.provider.ValueSource;
  * first, placed behind its shoulders a tick behind it, shooting the tower from their height while
  * nothing can target them, and let go in the cleanup that removes the Giant, each leaving a Spear
  * Goblin where it rode.
+ *
+ * <p>Three runs hold the charge and the river jump: {@code prince_tower} and {@code
+ * dark_prince_tower}, a unit charged by the steps it walks, twice as fast once full, whose first
+ * hit lands at once for its special damage; and {@code hog_river}, a Hog Rider whose route crosses
+ * the river and which jumps it to the first land cell beyond. Two hold the dash: {@code
+ * bandit_knight}, a Bandit's wind-up, its dash stopped in range of a Knight and its single landing
+ * hit; and {@code mega_knight_group}, a Mega Knight's timed dash, its landing over three Knights
+ * with a push and its landing hold. Each is also held to every charge completed and lost, every
+ * state a movement pass asked for, every dash started and every landing.
  */
 class BattleActionSpawnRunTest {
 
@@ -157,7 +168,9 @@ class BattleActionSpawnRunTest {
         "goblin_giant_tower",
         "prince_tower",
         "dark_prince_tower",
-        "hog_river"
+        "hog_river",
+        "bandit_knight",
+        "mega_knight_group"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -653,7 +666,7 @@ class BattleActionSpawnRunTest {
     for (JsonNode event : reference.get("events")) {
       expectedEvents.add(BattleTowerRunTest.eventLine(event));
     }
-    assertThat(events)
+    assertThat(pushesAfterTheirArea(events))
         .as("every launch, impact, hit and death")
         .containsExactlyElementsOf(expectedEvents);
     List<String> expectedPositions = new ArrayList<>();
@@ -1022,6 +1035,59 @@ class BattleActionSpawnRunTest {
       }
 
       @Override
+      public void dashStarted(
+          int tick,
+          CharacterEntity unit,
+          TargetView reference,
+          int fromX,
+          int fromY,
+          int aimX,
+          int aimY) {
+        log.add(
+            "%d dash_start %s %s %d %d aim %d %d route %s stop %d time %d windup %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    reference.getEntity().getName(),
+                    fromX,
+                    fromY,
+                    aimX,
+                    aimY,
+                    Arrays.stream(unit.getUnit().movement().getRoute().toArray()).boxed().toList(),
+                    unit.getUnit().movement().getDashStopsInRange(),
+                    unit.getUnit().movement().getDashTimeMs(),
+                    unit.getUnit().targeting().getDashWindupMs()));
+      }
+
+      @Override
+      public void dashLanded(
+          int tick, CharacterEntity unit, WorldEntity hit, int damage, boolean area) {
+        String what = "none";
+        if (area) {
+          what =
+              "area %d %d %d %d %d"
+                  .formatted(
+                      unit.getView().getX(),
+                      unit.getView().getY(),
+                      unit.getData().dashRadius(),
+                      damage,
+                      unit.getData().dashPushBack());
+        } else if (hit != null) {
+          what = "single %s %d".formatted(hit.name(), damage);
+        }
+        log.add(
+            "%d landing %s %d %d %s delay %d state %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    what,
+                    unit.getView().getBlockCountdownMs(),
+                    unit.getView().getState()));
+      }
+
+      @Override
       public void movementStateRequested(int tick, CharacterEntity unit, int from, int to) {
         String jump = "";
         if (to == GridEntityState.JUMPING) {
@@ -1089,9 +1155,82 @@ class BattleActionSpawnRunTest {
                       e.get("y").asInt(),
                       jump));
         }
+        case "dash_start" -> {
+          List<Integer> route = new ArrayList<>();
+          e.get("route").forEach(node -> route.add(node.asInt()));
+          expected.add(
+              "%d dash_start %s %s %d %d aim %d %d route %s stop %d time %d windup %d"
+                  .formatted(
+                      tick,
+                      unit,
+                      e.get("ref").asText(),
+                      e.get("x").asInt(),
+                      e.get("y").asInt(),
+                      e.get("aim").get(0).asInt(),
+                      e.get("aim").get(1).asInt(),
+                      route,
+                      e.get("stop_check").asInt(),
+                      e.get("dash_time").asInt(),
+                      e.get("windup").asInt()));
+        }
+        case "landing" -> {
+          JsonNode hit = e.get("hit");
+          String what = "none";
+          if (hit != null && !hit.isNull()) {
+            what =
+                hit.get("kind").asText().equals("area")
+                    ? "area %d %d %d %d %d"
+                        .formatted(
+                            hit.get("centre").get(0).asInt(),
+                            hit.get("centre").get(1).asInt(),
+                            hit.get("radius").asInt(),
+                            hit.get("damage").asInt(),
+                            hit.get("push").asInt())
+                    : "single %s %d"
+                        .formatted(hit.get("target").asText(), hit.get("damage").asInt());
+          }
+          expected.add(
+              "%d landing %s %d %d %s delay %d state %d"
+                  .formatted(
+                      tick,
+                      unit,
+                      e.get("x").asInt(),
+                      e.get("y").asInt(),
+                      what,
+                      e.get("landing_delay").asInt(),
+                      e.get("state").asInt()));
+        }
         default -> throw new IllegalArgumentException("an event this test does not hold: " + kind);
       }
     }
     return expected;
+  }
+
+  /**
+   * The events with an area's pushes listed after all of its hits. The battle pushes each victim
+   * right after its damage, as the area damage does; the reference applies the pushes the area
+   * asked for once its loop ends, so it lists them after the last hit. Nothing a push does reaches
+   * the later victims' damage, so only the order they are listed in differs.
+   */
+  private static List<String> pushesAfterTheirArea(List<String> events) {
+    List<String> ordered = new ArrayList<>();
+    List<String> pushes = new ArrayList<>();
+    for (String event : events) {
+      String[] words = event.split(" ");
+      if (words[1].equals("pushback")
+          && !ordered.isEmpty()
+          && (ordered.get(ordered.size() - 1).startsWith(words[0] + " area_hit ")
+              || !pushes.isEmpty())) {
+        pushes.add(event);
+        continue;
+      }
+      if (!pushes.isEmpty() && !event.startsWith(words[0] + " area_hit ")) {
+        ordered.addAll(pushes);
+        pushes.clear();
+      }
+      ordered.add(event);
+    }
+    ordered.addAll(pushes);
+    return ordered;
   }
 }

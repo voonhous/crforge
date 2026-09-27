@@ -7,6 +7,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementState;
 
 /**
@@ -29,9 +30,11 @@ import org.crforge.core.pathfinding.move.MovementState;
  * TargetingQueries#timeStepMs()} in a tick, except the attack time, which {@link
  * AttackTimerAdvance} first credits with the part of the wind-up that has already run down.
  *
- * <p><b>The dash path is incomplete and nothing exercises it.</b> No card the grid drives dashes
- * today, so none of this is reachable, but an integrator adding one should know that three pieces
- * of the standard game's dash are missing here:
+ * <p>A unit with a dash cooldown winds its dash up while its reference is inside its dash ring,
+ * standing still meanwhile, and starts the dash through {@link TargetingQueries#startDash} when the
+ * wind-up runs out, aimed at the reference - or, for a row that dashes to its target's edge, at the
+ * point where the two entities' edges would touch. The contact hits of a dash, below, are reached
+ * only by a row with contact damage, which the battle refuses; two pieces of them are missing here:
  *
  * <ul>
  *   <li>the pushback a dash applies is given to every entity in reach, where the standard game
@@ -39,10 +42,7 @@ import org.crforge.core.pathfinding.move.MovementState;
  *       building or a tower, which the standard game never does. The dash target view carries no
  *       movement-component answer, so the gate cannot be expressed at all yet;
  *   <li>the number of hits a dash applies is read from the first dash slot rather than from the
- *       dashing entity's own dash index, which the entity view does not carry;
- *   <li>the offset that stops a dash at the two entities' touching edges, rather than at the
- *       target's centre, is not applied, so a unit configured to stop on contact and with no fixed
- *       dash distance would overshoot into its target.
+ *       dashing entity's own dash index, which the entity view does not carry.
  * </ul>
  */
 @Fidelity(
@@ -51,9 +51,10 @@ import org.crforge.core.pathfinding.move.MovementState;
         "Agrees with the reference line for line: every early return, the uneven"
             + " comparisons and the order of timer reads and writes. Held: selection, keeping"
             + " and dropping a reference, and the lock, by the 53 reference walks; the attack"
-            + " tick and the hit cadence by the kill run. Not held by any fixture: dashes,"
-            + " special loads, bursts, several targets, attack sequences, the block timer and"
-            + " pending damage.")
+            + " tick and the hit cadence by the kill run; the dash wind-up, its ring and its start"
+            + " by bandit_knight and mega_knight_group. Not held by any fixture: a dash's contact"
+            + " hits, the dash to a target's edge, special loads, bursts, several targets, the"
+            + " block timer and pending damage.")
 public final class TargetingVisit {
 
   /** Entity states in which the targeting pass does nothing at all. */
@@ -513,7 +514,16 @@ public final class TargetingVisit {
           return;
         }
         t.setDashWindupMs(cfg.dashLandingTime() > 0 ? 0 : cfg.dashCooldown());
-        queries.startDash(reference, reference.x(), reference.y(), reference.radius());
+        int aimX = reference.x();
+        int aimY = reference.y();
+        if (cfg.dashStopsAtContact() && cfg.dashDistance() == 0) {
+          // Aimed at the reference's edge: pulled back toward the unit by both radii.
+          int[] back = {e.getX() - aimX, e.getY() - aimY};
+          FixedMath.normalize(back, reference.radius() + e.getCollisionRadius());
+          aimX += back[0];
+          aimY += back[1];
+        }
+        queries.startDash(reference, aimX, aimY, reference.radius());
         tail(t, e, cfg, globals, outcome, false);
         return;
       }

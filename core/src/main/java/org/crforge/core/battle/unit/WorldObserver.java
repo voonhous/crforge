@@ -397,4 +397,37 @@ public interface WorldObserver {
    * @param to its state after the setter applied it
    */
   default void movementStateRequested(int tick, CharacterEntity unit, int from, int to) {}
+
+  /**
+   * A unit's dash wind-up ran out and it started a dash, its state already the dashing one.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param reference the reference it dashed at
+   * @param fromX where it stood, along the width
+   * @param fromY where it stood, along the length
+   * @param aimX the point it dashed toward, along the width
+   * @param aimY the point it dashed toward, along the length
+   */
+  default void dashStarted(
+      int tick,
+      CharacterEntity unit,
+      TargetView reference,
+      int fromX,
+      int fromY,
+      int aimX,
+      int aimY) {}
+
+  /**
+   * A unit's dash ended and it landed: its landing hit dealt, and its state either the moving one
+   * or still the dashing one with its landing hold started.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param hit the one target its landing hit, or null for an area or none
+   * @param damage the landing's damage, or 0 when it hit nothing
+   * @param area true when the landing hit an area around it
+   */
+  default void dashLanded(
+      int tick, CharacterEntity unit, WorldEntity hit, int damage, boolean area) {}
 }

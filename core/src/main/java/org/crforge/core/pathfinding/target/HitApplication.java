@@ -15,7 +15,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>a unit that may not attack discards the hit here;
  *   <li>the long-distance cancel: a target that has left the attack range, widened by the published
  *       allowance, during the wind-up is missed, and the hit lands on nothing. A building never
- *       cancels;
+ *       cancels, nor does a dasher that is immune after its dash;
  *   <li>the load countdown is reloaded with the load time, unless a wind-up-first unit's hit missed
  *       and the match keeps such a unit loaded;
  *   <li>the special-hit decision, after which a special hit clears the charge and an ordinary hit
@@ -47,8 +47,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
             + " the targeted hit effect and its"
             + " pushback, the attack counter and the attacking flag on the owner, the buff a hit"
-            + " applies, the actions an attack runs and the notifications it ends with, and the"
-            + " dasher's exception to the long-distance cancel, whose column is not carried.")
+            + " applies, and the actions an attack runs and the notifications it ends with. The"
+            + " dasher's exception to the long-distance cancel is carried and held by no run.")
 public final class HitApplication {
 
   private HitApplication() {
@@ -136,9 +136,11 @@ public final class HitApplication {
    */
   private static boolean cancelledForDistance(
       TargetingState t, TargetView target, TargetingConfig cfg, TargetingGlobals globals) {
-    // A dasher that is immune to damage while it dashes is the other exception to the cancel; the
-    // column that says for how long is not carried, so no unit takes that exception here.
-    if (!globals.cancelHitFromLongDistance() || cfg.isBuilding() || target == null) {
+    // A dasher that is immune to damage after its dash is the other exception to the cancel.
+    if (!globals.cancelHitFromLongDistance()
+        || cfg.isBuilding()
+        || (cfg.dashCooldown() > 0 && cfg.dashImmuneToDamageTime() > 0)
+        || target == null) {
       return false;
     }
     int range = AttackRange.attackRange(t) + globals.cancelHitFromLongDistanceRange();
