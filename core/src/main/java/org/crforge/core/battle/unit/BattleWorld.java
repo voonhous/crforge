@@ -48,6 +48,7 @@ import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.FootprintOverlay;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -137,6 +138,9 @@ public class BattleWorld implements HolderPasses {
 
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
+
+  /** How many buff instances the battle has listed, which names the next. */
+  private int buffKeys;
 
   /** The most victims a death's damage takes. */
   private static final int DEATH_DAMAGE_LIMIT = 1000;
@@ -300,7 +304,7 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * What an action row built for an arena entity reads from it: its expressions compiled for it and
-   * evaluated afresh each time, the battle's variable keys, and its tag word.
+   * evaluated afresh each time, the battle's variable keys, its tag word and its spawn rate.
    *
    * @param owner the entity the row is built for
    */
@@ -323,6 +327,11 @@ public class BattleWorld implements HolderPasses {
       @Override
       public LongSupplier tags() {
         return () -> owner.getView().getFlags();
+      }
+
+      @Override
+      public IntSupplier spawnRate() {
+        return () -> owner.getBuffs().spawnRate();
       }
     };
   }
@@ -868,9 +877,16 @@ public class BattleWorld implements HolderPasses {
 
   /** Tells the observers a character's spawner fired. */
   /** Tells the observers the combat gate dropped an entity's reference. */
-  void combatGateDropped(WorldEntity entity, TargetView reference) {
+  void combatGateDropped(WorldEntity entity, TargetView reference, int hitSpeed) {
     for (WorldObserver observer : observers) {
-      observer.combatGateDropped(tick, entity, reference);
+      observer.combatGateDropped(tick, entity, reference, hitSpeed);
+    }
+  }
+
+  /** Tells the observers the combat gate switched a stunned entity's targeting off or on. */
+  void combatComponentSwitched(WorldEntity entity, boolean on, int hitSpeed) {
+    for (WorldObserver observer : observers) {
+      observer.combatComponentSwitched(tick, entity, on, hitSpeed);
     }
   }
 
@@ -1291,6 +1307,9 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           "the area effect " + row + " sets columns not modelled: " + data.unmodelledColumns());
     }
+    if (data.buff() != null) {
+      buffData(data.buff());
+    }
     AreaEffectEntity areaEffect =
         new AreaEffectEntity(this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()));
     holder.add(areaEffect);
@@ -1299,6 +1318,94 @@ public class BattleWorld implements HolderPasses {
       observer.areaEffectCreated(tick, areaEffect, how, source);
     }
     return areaEffect;
+  }
+
+  /** A buff's row, refused when it sets a column the battle does not model. */
+  private BuffData buffData(String name) {
+    BuffData buff = records.buff(name);
+    if (!buff.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          "the buff " + name + " sets columns not modelled: " + buff.unmodelledColumns());
+    }
+    return buff;
+  }
+
+  /**
+   * An area effect's buff, applied with one of its hits: to each character of this tick, in the
+   * order they joined, inside its circle and reached by it; of the king-class towers only the first
+   * takes a buff that deals damage. Each is applied with the area effect as the source, at its
+   * level and for its side, once every target has been found.
+   *
+   * @param areaEffect the area effect
+   * @param radius the radius of its hit
+   * @param time how long the buff lasts
+   */
+  void areaBuff(AreaEffectEntity areaEffect, int radius, int time) {
+    BuffData buff = buffData(areaEffect.getData().buff());
+    boolean damaging = BuffComponent.damagePerSecond(buff, 0) > 0;
+    boolean towerTaken = false;
+    List<WorldEntity> targets = new ArrayList<>();
+    for (WorldEntity entity : present) {
+      if (!ShapeTests.withinCircleShape(
+              entity.getView(), areaEffect.getX(), areaEffect.getY(), radius)
+          || !areaEffect.buffReaches(entity)) {
+        continue;
+      }
+      if (entity.getTargetView().towerFlag()) {
+        boolean skip = damaging && towerTaken;
+        towerTaken |= damaging;
+        if (skip) {
+          continue;
+        }
+      }
+      targets.add(entity);
+    }
+    for (WorldObserver observer : observers) {
+      observer.areaBuff(tick, areaEffect, buff, time, targets);
+    }
+    for (WorldEntity target : targets) {
+      target
+          .getBuffs()
+          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side());
+    }
+  }
+
+  /** The name of the next buff instance listed in the battle. */
+  String nextBuffKey() {
+    return "buff_" + ++buffKeys;
+  }
+
+  void buffApplied(WorldEntity target, BuffInstance buff) {
+    for (WorldObserver observer : observers) {
+      observer.buffApplied(tick, target, buff);
+    }
+  }
+
+  void buffRefreshed(WorldEntity target, BuffInstance buff, int before) {
+    for (WorldObserver observer : observers) {
+      observer.buffRefreshed(tick, target, buff, before);
+    }
+  }
+
+  void buffRemoved(WorldEntity target, BuffInstance buff) {
+    for (WorldObserver observer : observers) {
+      observer.buffRemoved(tick, target, buff);
+    }
+  }
+
+  /**
+   * Deals one hit of a buff's damage over time, tells the observers, and runs the death it causes,
+   * with nothing as what killed it.
+   */
+  void dealBuffDamage(WorldEntity target, BuffInstance buff, int damage) {
+    int before = target.getHitPoints().getHitPoints();
+    DamageResult result = target.takeDamageOverTime(damage);
+    for (WorldObserver observer : observers) {
+      observer.buffDamaged(tick, target, buff, damage, before, result);
+    }
+    if (result.died()) {
+      target.die(null);
+    }
   }
 
   /** Tells the observers an area effect was admitted. */

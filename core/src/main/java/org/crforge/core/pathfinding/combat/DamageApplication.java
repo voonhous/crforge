@@ -83,6 +83,21 @@ public final class DamageApplication {
   }
 
   /**
+   * Deals a hit of damage over time from a buff: refused only where damage is forbidden, then the
+   * bookkeeping and the subtraction as for an ordinary hit, with no dedupe id and no heading.
+   *
+   * @param hitPoints the target's hit points
+   * @param damage the amount, after the target's damage reduction
+   * @param queries what the chain asks about the target and the battle
+   */
+  public static DamageResult overTime(HitPoints hitPoints, int damage, DamageQueries queries) {
+    if (queries.damageForbidden()) {
+      return DamageResult.NOTHING;
+    }
+    return bookkeeping(hitPoints, damage, 0, 0, 0, queries);
+  }
+
+  /**
    * Kills a hit-points object: an ordinary hit of its whole hit points that ignores the battle's
    * holds and lists no dedupe id. A shield that is up takes it and the object lives; otherwise it
    * dies. Only an entity attached to a parent is spared, and nothing is attached yet.

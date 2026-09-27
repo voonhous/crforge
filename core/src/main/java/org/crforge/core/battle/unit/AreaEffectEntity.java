@@ -16,7 +16,9 @@ import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -47,8 +49,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * percent, no hit id, the row's target limit, the damage shared out when the row shares it, its
  * victims pushed away from its point, and its own test of a target in place of a character's - no
  * building for a row that ignores them, and air or ground as the row reaches them. A hit of no
- * damage deals nothing. When the countdown reaches 0 its life-end action is scheduled on itself; it
- * leaves at the cleanup that finds the countdown below 1.
+ * damage deals nothing. A row with a buff applies it with each hit, after the damage, to every
+ * character in the circle it reaches, for the row's buff time - no longer than the life it has left
+ * and one hit speed more when the row caps it. A row that chains another area effect creates it at
+ * its own point and level on its first update. When the countdown reaches 0 its life-end action is
+ * scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -57,11 +62,15 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and by a direct placement, the level re-based, the id band, the admission and the"
             + " starting action scheduled then, the update as the post-hook, the countdown, the hit"
             + " schedule, the radius, a hit as the area damage with the area effect as its owner"
-            + " and its own target test, the pushback, and the removal. Not modelled, and refused"
-            + " by its row: buffs, clones, the hit action, the shape, the filter, the spawns, the"
-            + " launches, the chained area effect, the life condition, following, tags,"
-            + " deflection, a lifetime that grows by level, the push's floor and gate lift, the"
-            + " hidden-units flag and one hit per target. Not created yet by a spell, a projectile"
+            + " and its own target test, the pushback, and the removal. Held by rage_knight,"
+            + " zap_knight and poison_knight_tower: the buff each hit applies to the characters in"
+            + " its circle it reaches, its time capped by its own life, and the area effect its row"
+            + " chains, created on its first update; its own-troops test, which no run meets. Not"
+            + " modelled, and refused by its row: a buff"
+            + " boosting one target or lasting longer by level, clones, the hit action, the shape,"
+            + " the filter, the spawns, the launches, the life condition, following, tags,"
+            + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
+            + " hit per target; hidden units are not modelled. Not created yet by a spell, a projectile"
             + " or an action.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -85,6 +94,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /** What is left of its life, in milliseconds; it leaves once this is below 1. */
   @Getter private int countdown;
+
+  /** True once the area effect its row chains has been created, on its first update. */
+  private boolean chained;
 
   private final ActionHolder actionHolder;
 
@@ -165,7 +177,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     }
   }
 
-  /** The update: the countdown, the hits of the step, and the life-end action. */
+  /**
+   * The update: the countdown and the hits of the step, told to the observers first; then, on the
+   * first update, the area effect its row chains; then each hit, its damage and its buff; then the
+   * life-end action.
+   */
   @Override
   protected void postHook() {
     int life = data.lifeDurationMs();
@@ -183,25 +199,73 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       hits = 0;
     }
     int radius = radiusNow(life);
+    int damage =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            data.damage(),
+            packedLevel,
+            ScalingMode.CARD_DAMAGE,
+            data.rarity());
     List<Integer> dealt = new ArrayList<>();
-    for (int i = 0; i < hits; i++) {
-      int damage =
-          LevelScaling.scale(
-              ScalingGlobals.standard(),
-              data.damage(),
-              packedLevel,
-              ScalingMode.CARD_DAMAGE,
-              data.rarity());
-      if (damage >= 1) {
-        hit(radius, damage);
-        dealt.add(damage);
-      }
+    for (int i = 0; i < hits && damage >= 1; i++) {
+      dealt.add(damage);
     }
     world.areaEffectUpdated(this, before, countdown, hits, radius, dealt);
+    if (!chained && data.spawnAreaEffectObject() != null) {
+      chained = true;
+      world.createAreaEffect(
+          data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", this);
+    }
+    for (int i = 0; i < hits; i++) {
+      if (damage >= 1) {
+        hit(radius, damage);
+      }
+      if (data.buff() != null) {
+        int time = data.buffTimeMs();
+        if (data.capBuffTimeToAreaEffectTime()) {
+          time = Math.min(time, countdown + speed);
+        }
+        if (time >= 1) {
+          world.areaBuff(this, radius, time);
+        }
+      }
+    }
     if (countdown <= 0 && data.onLifeTimeEndAction() != null) {
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
     }
+  }
+
+  /**
+   * Whether its buff may reach a character: one of its own side when the buff is for its own troops
+   * only, of the other side when it hits enemies only; alive; not untouchable; not waiting to
+   * deploy; not a building when it ignores buildings; and passing its own test of a target, which
+   * adds the air and ground it reaches.
+   */
+  boolean buffReaches(WorldEntity target) {
+    boolean sameTeam = ((side & 1) == 0) == ((target.side() & 1) == 0);
+    if (!sameTeam && data.onlyOwnTroops()) {
+      return false;
+    }
+    if (sameTeam && data.onlyEnemies()) {
+      return false;
+    }
+    if (!HitPoints.alive(target.getHitPoints())) {
+      return false;
+    }
+    if (target.untouchable()) {
+      return false;
+    }
+    if (target.getView().getState() == GridEntityState.WAITING_TO_DEPLOY) {
+      return false;
+    }
+    if (target.getData().building() && data.ignoreBuildings()) {
+      return false;
+    }
+    if ((target.getView().getFlags() & EntityFlags.UNTARGETABLE) != 0) {
+      return false;
+    }
+    return accepts(target.getTargetView());
   }
 
   /** The radius now: the row's, or shrinking from its maximum toward it as the countdown falls. */

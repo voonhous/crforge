@@ -291,8 +291,9 @@ public final class ActionRows {
                     action(f.get("ActionToExecute")),
                     f.has("PauseTag") ? tagMask(f.get("PauseTag").asText()) : 0,
                     binding.tags(),
-                    // The spawn speed would set the rate; with no buffs it is the usual 100.
-                    () -> 100);
+                    // A row affected by the spawn speed steps at the owner's spawn rate, which
+                    // its buffs set; any other at the usual 100.
+                    bool(f, "AffectedBySpawnSpeed") ? binding.spawnRate() : () -> 100);
             case "ActionFlipFlop" ->
                 new FlipFlop(
                     shared,

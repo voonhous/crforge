@@ -91,7 +91,10 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " the live spawner from the deploy end - its timer, its waves and its children in"
             + " front - held by cannon_knight, tombstone_life, goblin_hut_life and mortar_knight;"
             + " the combat gate at the state visit's tail, which drops a dead character's"
-            + " reference and switches its targeting off, held by every run's death tick; the"
+            + " reference and switches its targeting off, held by every run's death tick; its"
+            + " buffs scaling its speed budget and its attack timer, held by rage_knight,"
+            + " zap_knight and poison_knight_tower, and the follower's step, the deploy step and"
+            + " the spawner's rate, which no run holds; the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
@@ -103,8 +106,7 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
             + " spawner, a building or a flying row, a champion, a shield or another deploy time."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
-            + " meets an empty index, air, jumping and hovering units, status effects on the"
-            + " speed budget and the spawn speed, the flag that holds a spawner's timer, the"
+            + " meets an empty index, air, jumping and hovering units, the"
             + " hit-points visit's dedupe expiry and shield tag, and the columns its data does not"
             + " carry: the stop time after an attack and the ones that restrict what a unit may"
             + " target beyond buildings only, which it carries.")
@@ -119,8 +121,11 @@ public class CharacterEntity extends WorldEntity {
   /** Slot of the hit-points component, whose visit runs the lifetime decay. */
   public static final int HIT_POINTS_SLOT = 2;
 
-  /** The spawn speed in percent the spawner's timer runs at, without a buff. */
-  private static final int SPAWN_SPEED = 100;
+  /** The follower's time step before the buffs scale it. */
+  private static final int FOLLOWER_STEP = 100;
+
+  /** The deploy countdown's step before the buffs scale it, for a row whose speed scales it. */
+  private static final int DEPLOY_STEP_MS = 50;
 
   /** The working state of the character's two components and its state visit. */
   @Getter private GridUnitState unit;
@@ -653,6 +658,12 @@ public class CharacterEntity extends WorldEntity {
     return true;
   }
 
+  /** Untouchable while its dash immunity lasts; nothing is attached yet. */
+  @Override
+  boolean untouchable() {
+    return unit.timers().getDashImmunityRemainingMs() > 0;
+  }
+
   /** True while the character waits its turn to deploy: none of its components is visited. */
   private boolean waiting() {
     return getView().getState() == GridEntityState.WAITING_TO_DEPLOY;
@@ -675,12 +686,13 @@ public class CharacterEntity extends WorldEntity {
         queries.protectedFromDamage(),
         queries.protectionApplies(),
         queries.goalRow(),
-        queries.scaledDeployStepMs());
+        getBuffs().speed(DEPLOY_STEP_MS));
   }
 
   /** The movement pass's answers for the character as it stands now, reference included. */
   private GridMovementQueries movementQueries() {
-    return new GridMovementQueries(unit, world.getGrid(), world.getCosts(), world::unitStateOf);
+    return new GridMovementQueries(unit, world.getGrid(), world.getCosts(), world::unitStateOf)
+        .withBuffs(getBuffs().speedPercents(), getBuffs().speed(FOLLOWER_STEP));
   }
 
   /** A movement chain over the character's current reference, for one visit or one preparation. */
@@ -746,7 +758,7 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The spawner block of the state visit, for a row with a spawn character: from the end of its
-   * deploy, each visit takes half the spawn speed - 50 ms without a buff - off its timer, and at 0
+   * deploy, each visit takes half the spawn rate - 50 ms without a buff - off its timer, and at 0
    * or below it fires: one child for a row with an interval, the whole wave at once at the row's
    * spawn radius for one without. The next firing is the interval away within a wave, or the pause
    * away once the wave is made, and never less than 1 ms; a timer that went below 0 carries.
@@ -759,7 +771,7 @@ public class CharacterEntity extends WorldEntity {
     if (data.spawnCharacter() == null || interval + pause <= 0) {
       return;
     }
-    spawnTimer -= SPAWN_SPEED / 2;
+    spawnTimer -= getBuffs().spawnRate() / 2;
     if (spawnTimer > 0) {
       return;
     }

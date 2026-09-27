@@ -362,14 +362,19 @@ public final class TrajectoryRecorder implements WorldObserver {
   }
 
   /**
-   * A tower's reference the combat gate dropped - a tower that died this tick - is not a change its
-   * targeting visit made: it is noted as gone without an event, and the tower is no longer locked.
+   * A tower's reference the combat gate dropped is not a change its targeting visit made: it is
+   * noted as gone without a reference event, and the tower is no longer locked. A drop a stun
+   * causes, on a living tower, is listed as a drop by the gate.
    */
   @Override
-  public void combatGateDropped(int tick, WorldEntity entity, TargetView reference) {
+  public void combatGateDropped(int tick, WorldEntity entity, TargetView reference, int hitSpeed) {
     if (entity instanceof TowerEntity tower && fightingTowers.contains(tower)) {
       towerReferences.put(tower, null);
       lockedTowers.remove(tower);
+      if (hitSpeed == 0 && tower.getView().isAlive()) {
+        towerEvents.add(
+            towerEventHead(tick, "reference_dropped", tower) + ", \"cause\": \"combat_gate\"}");
+      }
     }
   }
 

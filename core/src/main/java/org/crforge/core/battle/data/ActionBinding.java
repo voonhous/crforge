@@ -5,7 +5,7 @@ import java.util.function.LongSupplier;
 
 /**
  * What an action row needs from the entity it is built for: its expressions compiled for that
- * entity, the keys of the variables it writes, and the entity's tag word.
+ * entity, the keys of the variables it writes, the entity's tag word, and its spawn rate.
  */
 public interface ActionBinding {
 
@@ -25,4 +25,12 @@ public interface ActionBinding {
 
   /** The entity's tag word as it stands. */
   LongSupplier tags();
+
+  /**
+   * The entity's spawn rate as its buffs make it, in percent: 100 for an entity without buffs,
+   * which is every entity that is not a character or a tower.
+   */
+  default IntSupplier spawnRate() {
+    return () -> 100;
+  }
 }
