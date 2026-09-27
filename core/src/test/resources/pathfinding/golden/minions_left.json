@@ -62,10 +62,10 @@
   {"tick": 255, "event": "death", "target": "Minions_2"}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 81, "event": "reference", "tower": "PrincessTower_1_1", "target": "Minions_0", "in_range": 1},

@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the thirty-four runs in which an action, a death or a building spawns characters through
+ * Plays the thirty-five runs in which an action, a death or a building spawns characters through
  * {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -77,10 +77,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * poison_knight_tower} Poison, stacking by its source, hits a red Knight for 92 and a princess
  * tower for 23 every twenty visits and slows the Knight to 51.
  *
- * <p>Five runs hold air units, created at their flying height, routed to one node, crossing water
+ * <p>Six runs hold air units, created at their flying height, routed to one node, crossing water
  * and meeting only units on their side of height 0: {@code minion_musketeer}, a Minion shot down by
  * a Musketeer while a Knight cannot reach it; {@code balloon_tower}, a Balloon and its bomb, which
- * dies on the ground as its deploy ends; {@code balloons_cross}, two Balloons crossing over a
+ * dies on the ground as its deploy ends; {@code balloon_river}, a Balloon and its bomb dying over
+ * the river, the bomb no default target; {@code balloons_cross}, two Balloons crossing over a
  * Knight with the towers passive; {@code lava_hound_river}, a Lava Hound dying over the river and
  * its pups flying back to their ring points; and {@code baby_dragon_left}, a Baby Dragon firing
  * from its height. A further unit is placed at its own level where the run gives one.
@@ -124,6 +125,7 @@ class BattleActionSpawnRunTest {
         "minion_musketeer",
         "balloon_tower",
         "balloons_cross",
+        "balloon_river",
         "lava_hound_river",
         "baby_dragon_left",
         "fireball_knight_tower",

@@ -230,8 +230,8 @@ public class CharacterEntity extends WorldEntity {
             targeting,
             new StateTimers(),
             // The movement config's flying height is read only for direct paths, which are
-            // refused.
-            MovementConfig.forGroundUnit(),
+            // refused; its stop and wait make the follower walk in bursts.
+            MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs()),
             SpeedConfig.forGroundUnit(data.speed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs()),
             getSelection(),

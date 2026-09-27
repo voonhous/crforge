@@ -145,10 +145,10 @@
   {"tick": 392, "event": "launch", "projectile": "proj_4000015", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_2", "target": null, "x": 14231, "y": 25631, "z": 3000, "aim": [6625, 29341], "aim_z": 0}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 56, "event": "reference", "tower": "PrincessTower_1_1", "target": "Swarm_8", "in_range": 1},
@@ -250,7 +250,7 @@
   {"tick": 391, "event": "reference_dropped", "tower": "PrincessTower_1_2"},
   {"tick": 392, "event": "lock", "tower": "PrincessTower_1_2", "target": null},
   {"tick": 392, "event": "reference_dropped", "tower": "PrincessTower_1_2"},
-  {"tick": 394, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 394, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 398, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],

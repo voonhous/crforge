@@ -302,6 +302,8 @@ public final class BattleRecords {
         .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
         .spawnStartTimeMs(row.intValue("SpawnStartTime"))
         .ignoreBuffs(namesOf(row, "IgnoreBuff"))
+        .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))
+        .waitMs(row.intValue("WaitMS"))
         .unmodelledColumns(unmodelledColumns(row))
         .build();
   }

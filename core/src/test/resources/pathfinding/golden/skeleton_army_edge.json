@@ -144,10 +144,10 @@
   {"tick": 517, "event": "launch", "projectile": "proj_4000016", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_2", "target": null, "x": 14216, "y": 25596, "z": 3000, "aim": [6802, 28100], "aim_z": 0}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 141, "event": "reference", "tower": "PrincessTower_1_1", "target": "SkeletonArmy_8", "in_range": 1},
@@ -255,7 +255,7 @@
   {"tick": 516, "event": "reference_dropped", "tower": "PrincessTower_1_2"},
   {"tick": 517, "event": "lock", "tower": "PrincessTower_1_2", "target": null},
   {"tick": 517, "event": "reference_dropped", "tower": "PrincessTower_1_2"},
-  {"tick": 519, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 519, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 523, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],

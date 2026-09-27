@@ -52,6 +52,18 @@ public record MovementConfig(
    * recorded trajectories.
    */
   public static MovementConfig forGroundUnit() {
-    return new MovementConfig(0, 0, 0, 0, 0, false, 0, null, null, false, 0, 0, 0, 0, 0, 0, false);
+    return forGroundUnit(0, 0);
+  }
+
+  /**
+   * The configuration of a plain ground unit that walks in bursts: after every stretch of walking
+   * it stands still for a while, as the Giant and the Golem do.
+   *
+   * @param stopMovementAfterMs how long it walks before each stop; 0 for never
+   * @param waitMs how long each stop lasts
+   */
+  public static MovementConfig forGroundUnit(int stopMovementAfterMs, int waitMs) {
+    return new MovementConfig(
+        0, 0, 0, 0, 0, false, 0, null, null, false, 0, 0, stopMovementAfterMs, waitMs, 0, 0, false);
   }
 }

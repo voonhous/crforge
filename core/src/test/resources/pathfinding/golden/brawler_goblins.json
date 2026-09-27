@@ -249,14 +249,15 @@
   {"tick": 2983, "event": "hit", "target": "KingTower_0_0", "damage": 337, "hp": 0}
  ],
  "tower_events": [
-  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "KingTower_1_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_0_2", "target": "PrincessTower_1_2", "in_range": 0},
-  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "KingTower_0_0", "in_range": 0},
+  {"tick": 0, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 19, "event": "reference", "tower": "PrincessTower_0_2", "target": "Crazy_0", "in_range": 1},
   {"tick": 19, "event": "lock", "tower": "PrincessTower_0_2", "target": "Crazy_0"},
+  {"tick": 97, "event": "reference", "tower": "KingTower_1_0", "target": null, "removed": "PrincessTower_0_2", "target_lost_timer": 0},
   {"tick": 97, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "PrincessTower_0_2", "target_lost_timer": 0},
   {"tick": 97, "event": "removed", "entity": "PrincessTower_0_2"},
   {"tick": 98, "event": "reference", "tower": "PrincessTower_1_2", "target": "KingTower_0_0", "in_range": 0},

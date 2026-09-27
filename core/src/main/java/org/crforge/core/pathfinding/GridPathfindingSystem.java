@@ -555,9 +555,9 @@ public class GridPathfindingSystem {
   }
 
   /**
-   * Registers the opposing side's crown towers as the default target candidates, in placement order
-   * - king first, then the princess tower with the lower position along the arena's width, then the
-   * other - and seeds the selection with the king tower.
+   * Registers the opposing side's princess towers as the default target candidates, in placement
+   * order - the one with the lower position along the arena's width first - and seeds the selection
+   * with the king tower, which fills the side's tower slot and is no candidate itself.
    */
   private void registerEnemyTowers(SelectionChain chain, Team team) {
     Team enemy = team == Team.BLUE ? Team.RED : Team.BLUE;
@@ -565,7 +565,7 @@ public class GridPathfindingSystem {
     if (crown != null) {
       TargetView view = targetViews.get(crown.getId());
       if (view != null) {
-        chain.registerTower(view);
+        chain.register(view);
         chain.setSeed(view);
       }
     }

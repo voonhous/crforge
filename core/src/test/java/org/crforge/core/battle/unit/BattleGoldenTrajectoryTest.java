@@ -49,7 +49,8 @@ class BattleGoldenTrajectoryTest {
   }
 
   @Test
-  @DisplayName("a Knight deployed in the centre switches tower and locks on at tick 245")
+  @DisplayName(
+      "a Knight deployed in the centre walks at its lane's princess tower and locks on at tick 245")
   void centreDeployment() {
     replay("knight_centre", "PrincessTower_1_2", 245);
   }
@@ -63,19 +64,18 @@ class BattleGoldenTrajectoryTest {
 
   @Test
   @DisplayName(
-      "a Knight deployed behind its king tower is pushed while deploying and locks at tick 361")
+      "a Knight deployed behind its king tower is pushed while deploying and locks at tick 369")
   void behindKingDeployment() {
-    replay("knight_behind_king", "PrincessTower_1_2", 361);
+    replay("knight_behind_king", "PrincessTower_1_2", 369);
   }
 
   @Test
   @DisplayName(
-      "a Knight deployed inside the left lane near the middle is kept to its lane's tower for its"
-          + " first ten walking ticks, then walks at the king until the princess tower is closer")
+      "a Knight deployed inside the left lane near the middle walks at its lane's princess tower"
+          + " throughout: the king is no candidate, only the seed")
   void innerLeftDeployment() {
-    // The king tower is the closest in x from (8000, 10000), but a unit in its first ten walking
-    // ticks only considers the towers of its own lane, so the left princess tower is taken on
-    // tick 20, the king on tick 30, and the princess tower again from tick 68.
+    // The candidates are the two princess towers; the left one is the closer in x from
+    // (8000, 10000), so the unit takes it on tick 20 and keeps it.
     replay("knight_left_inner", "PrincessTower_1_1", 259);
   }
 

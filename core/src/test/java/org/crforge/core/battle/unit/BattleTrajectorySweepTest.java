@@ -74,8 +74,11 @@ class BattleTrajectorySweepTest {
         new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     // The sweep's model walks each unit alone, without the spawner a Witch has, whose firing the
-    // battle refuses on a unit; the unit walks here with its spawner switched off.
-    UnitData data = GameData.unit(unitName).toBuilder().spawnCharacter(null).build();
+    // battle refuses on a unit, and without the stops of a unit that walks in bursts (the Giant,
+    // the Golem), which its references were recorded without; the unit walks here with both
+    // switched off. The battle's own references hold the stops.
+    UnitData data =
+        GameData.unit(unitName).toBuilder().spawnCharacter(null).stopMovementAfterMs(0).build();
     CharacterEntity unit =
         match.deploy(
             0,
