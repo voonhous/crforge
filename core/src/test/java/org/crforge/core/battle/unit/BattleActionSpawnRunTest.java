@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the forty-one runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the forty-two runs in which an action, a death, a building or a unit's own spawner spawns
  * characters through {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -101,6 +101,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the first wave while it walks and the second while it attacks a princess tower; and {@code
  * night_witch}, a Night Witch whose two Bats a wave stand at its sides, the ring turned by its
  * angle shift and the angle it faces, as does the Bat of its death spawn.
+ *
+ * <p>{@code goblin_giant_tower} plays a Goblin Giant, whose two Spear Goblins ride on it: made as
+ * the play sets it deploying and queued ahead of it, so they take the lower ids and are visited
+ * first, placed behind its shoulders a tick behind it, shooting the tower from their height while
+ * nothing can target them, and let go in the cleanup that removes the Giant, each leaving a Spear
+ * Goblin where it rode.
  */
 class BattleActionSpawnRunTest {
 
@@ -147,7 +153,8 @@ class BattleActionSpawnRunTest {
         "poison_guards",
         "tombstone_crazy_life",
         "witch_left_lane",
-        "night_witch"
+        "night_witch",
+        "goblin_giant_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -354,6 +361,14 @@ class BattleActionSpawnRunTest {
                             child.getView().getX(),
                             child.getView().getY(),
                             child.getView().getState()));
+              }
+
+              @Override
+              public void riderAttached(
+                  int tick, CharacterEntity parent, CharacterEntity rider, int index, int angle) {
+                // A rider is made in the command pass, ahead of the opening cleanup that folds it,
+                // so no record finds it still pending.
+                spawnTicks.remove(rider.name());
               }
 
               @Override
@@ -688,7 +703,7 @@ class BattleActionSpawnRunTest {
     assertThat(unit.isSpawnImmune() ? 1 : 0)
         .as("%s immune", where)
         .isEqualTo(record.get("immune").asInt());
-    assertThat(spawnTicks.get(unit.name()) == tick)
+    assertThat(Integer.valueOf(tick).equals(spawnTicks.get(unit.name())))
         .as("%s spawned this tick", where)
         .isEqualTo(record.get("pending").asBoolean());
   }

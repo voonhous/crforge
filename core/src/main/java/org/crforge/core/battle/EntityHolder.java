@@ -20,7 +20,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <ol>
  *   <li>cleanup: drop removable entities, telling every remaining entity and the holder's passes of
- *       each removal, then admit the entities added since the last cleanup;
+ *       each removal, round after round until a round drops nothing, then admit the entities added
+ *       since the last cleanup;
  *   <li>take a snapshot of the live list, which every entity loop below runs over;
  *   <li>the holder pre-pass;
  *   <li>every entity's pre-hook;
@@ -52,8 +53,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " entity is handed over, the live list sorted by id, and that every remaining entity"
             + " is told of a removal inside the cleanup that removes it, the entities handed over"
             + " that tick before the live list, so a reference to a dead entity is dropped before"
-            + " the next visit; and that an entity killed during a tick is visited by the rest of"
-            + " it, less the components its death switches off. Not settled: whether the removed entity is"
+            + " the next visit; that the cleanup's removals repeat until a round removes nothing,"
+            + " so a rider let go by its parent leaves in the same cleanup; and that an entity"
+            + " killed during a tick is visited by the rest of it, less the components its death"
+            + " switches off. Not settled: whether the removed entity is"
             + " told of its own removal, and whether anything reorders the live list between"
             + " ticks.")
 public class EntityHolder {
@@ -143,23 +146,10 @@ public class EntityHolder {
    * late it arrived. The admitted entities are told of their registration in ascending id.
    */
   public void cleanup() {
-    List<BattleEntity> removed = new ArrayList<>();
-    drainRemovable(live, removed);
-    drainRemovable(pendingAdditions, removed);
-    for (BattleEntity gone : removed) {
-      // The entities handed over this tick hear of it first, then the live list, so a projectile
-      // launched on the tick its target dies loses the target in the same cleanup.
-      // Each entity's components hear first, then its action holder drops what the leaving
-      // entity caused and still waits; the side lists and the level re-read come after all of them.
-      for (BattleEntity entity : pendingAdditions) {
-        entity.entityRemoved(gone);
-        entity.actions().instigatorLeft(gone.actions());
-      }
-      for (BattleEntity entity : live) {
-        entity.entityRemoved(gone);
-        entity.actions().instigatorLeft(gone.actions());
-      }
-      passes.entityRemoved(gone);
+    // A removal can make another entity removable - a rider let go by its parent - so the rounds
+    // repeat until one removes nothing.
+    while (removalRound()) {
+      // Each round has told every entity of what it removed.
     }
     if (pendingAdditions.isEmpty()) {
       return;
@@ -172,6 +162,34 @@ public class EntityHolder {
     for (BattleEntity entity : admitted) {
       entity.onRegistered();
     }
+  }
+
+  /**
+   * One round of the cleanup's removals: every removable entity leaves both lists, and every entity
+   * still listed hears of each in turn. The entities handed over this tick hear of it first, then
+   * the live list, so a projectile launched on the tick its target dies loses the target in the
+   * same cleanup. Each entity's components hear first, then its action holder drops what the
+   * leaving entity caused and still waits, then an entity attached to it is let go; the side lists
+   * and the level re-read come after all of them. Each notice goes to the entities listed as it
+   * starts, so a child a notice makes does not hear of it.
+   *
+   * @return true when the round removed anything
+   */
+  private boolean removalRound() {
+    List<BattleEntity> removed = new ArrayList<>();
+    drainRemovable(live, removed);
+    drainRemovable(pendingAdditions, removed);
+    for (BattleEntity gone : removed) {
+      List<BattleEntity> listed = new ArrayList<>(pendingAdditions);
+      listed.addAll(live);
+      for (BattleEntity entity : listed) {
+        entity.entityRemoved(gone);
+        entity.actions().instigatorLeft(gone.actions());
+        entity.parentRemoved(gone);
+      }
+      passes.entityRemoved(gone);
+    }
+    return !removed.isEmpty();
   }
 
   /** One pending pass over the snapshot, with the battle's in-pass flag set around it. */

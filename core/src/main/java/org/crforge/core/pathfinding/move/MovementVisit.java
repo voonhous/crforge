@@ -30,8 +30,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Agrees with the reference line for line. Held: the ordinary visit of a walking"
             + " ground unit, and the pushback visit of a unit's own recoil with its relocation off"
-            + " the river, by the Sparky run. Not held by any fixture: attached placement and its"
-            + " limited rotation, the pushback visit's end action, the block countdown. Both callers fix the parent to none and collision checks to on.")
+            + " the river, by the Sparky run; the attached placement of a rider without a rotation"
+            + " limit, by the Goblin Giant's run. Not held by any fixture: the limited rotation of an"
+            + " attacking rider, the pushback visit's end action, the block countdown. Collision"
+            + " checks are always on.")
 public final class MovementVisit {
 
   /** The x value that marks an entity's position as never having been written. */
@@ -110,7 +112,8 @@ public final class MovementVisit {
    * while attacking it turns toward the parent's facing by at most the configured rotation per
    * visit, taking whichever of the three unwrapped candidate angles is closest.
    *
-   * <p>Not exercised by tests: no attached entity appears in the recorded trajectories.
+   * <p>Held by the Goblin Giant's run, whose riders have no rotation limit; the limited rotation is
+   * not held.
    */
   static void attachedPlacement(
       GridEntity owner,

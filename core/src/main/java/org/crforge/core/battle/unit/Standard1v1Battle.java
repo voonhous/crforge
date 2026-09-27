@@ -218,6 +218,11 @@ public class Standard1v1Battle {
             unit.unit().name() + " has a starting action, whose start by a card play is not held");
       }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
+      if (waits && unit.unit().spawnAttach()) {
+        throw new UnsupportedOperationException(
+            unit.unit().name()
+                + " waits its turn to deploy, which makes its riders later, not held");
+      }
       CharacterEntity character =
           new CharacterEntity(
               world,
@@ -229,6 +234,11 @@ public class Standard1v1Battle {
               level,
               unit.lane(),
               waits ? unit.start().waitMs() : -1);
+      // The construction sets the unit deploying before it queues it, and entering that state
+      // makes the riders of a row that attaches its children: they are queued first.
+      if (unit.unit().spawnAttach()) {
+        world.attachRiders(character);
+      }
       target.getHolder().add(character);
       units.add(character);
     }
@@ -268,6 +278,10 @@ public class Standard1v1Battle {
    */
   public CharacterEntity deploy(
       int tick, UnitData data, int level, int side, int x, int y, String name) {
+    if (data.spawnAttach()) {
+      throw new UnsupportedOperationException(
+          data.name() + " makes its riders as a card play sets it deploying; play it by its card");
+    }
     CharacterEntity character = new CharacterEntity(world, data, name, side, x, y, level);
     battle.queue(
         new BattleCommand() {

@@ -100,7 +100,7 @@ public final class DamageApplication {
   /**
    * Kills a hit-points object: an ordinary hit of its whole hit points that ignores the battle's
    * holds and lists no dedupe id. A shield that is up takes it and the object lives; otherwise it
-   * dies. Only an entity attached to a parent is spared, and nothing is attached yet.
+   * dies. Only an untouchable entity, such as one attached to a parent, is spared.
    *
    * @param hitPoints the object
    * @param queries what the chain asks about the target and the battle

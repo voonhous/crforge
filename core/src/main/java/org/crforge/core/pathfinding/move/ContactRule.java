@@ -15,10 +15,10 @@ import org.crforge.core.pathfinding.GridEntityState;
  *
  * <ul>
  *   <li>under the no-check-collisions flag;
+ *   <li>while attached to a parent;
  *   <li>in the dashing state, the jumping state or the first following-removed state;
- *   <li>(not reachable here) while attached to a parent, while deploying as a clone that is not yet
- *       set up, and, for a building of the placeable-building kind, while another entity stands
- *       within 500 of it edge to edge.
+ *   <li>(not reachable here) while deploying as a clone that is not yet set up, and, for a building
+ *       of the placeable-building kind, while another entity stands within 500 of it edge to edge.
  * </ul>
  *
  * <p>The avoidance answer is 0 in either following-removed state and under the no-check-avoidance
@@ -33,8 +33,9 @@ import org.crforge.core.pathfinding.GridEntityState;
         "Settled: the no-check-collisions and no-check-avoidance flags, the three states without"
             + " collision, the two following-removed states the avoidance answer drops, and 1 for"
             + " every other entity, crown towers included; held by the tower-contact run, the"
-            + " regenerated walks past a unit's own tower and the placement runs. Supplied: no"
-            + " entity is attached to a parent, no unit's dash-time column is positive (a dashing"
+            + " regenerated walks past a unit's own tower and the placement runs. An attached entity"
+            + " taking no part rests on the translation and a unit test; no run has a unit meet a"
+            + " rider. Supplied: no unit's dash-time column is positive (a dashing"
             + " unit takes no part), no deploying unit is an unset clone, and no building is of the"
             + " placeable-building kind whose answer depends on the entities near it; none of"
             + " those is reachable from the units the grid drives.")
@@ -55,7 +56,7 @@ public final class ContactRule {
    * moves, is pushed by them.
    */
   public static int collides(GridEntity entity) {
-    if ((entity.getFlags() & EntityFlags.NO_CHECK_COLLISIONS) != 0) {
+    if ((entity.getFlags() & EntityFlags.NO_CHECK_COLLISIONS) != 0 || entity.isAttached()) {
       return 0;
     }
     int state = entity.getState();

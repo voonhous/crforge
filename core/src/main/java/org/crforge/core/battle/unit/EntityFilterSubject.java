@@ -10,10 +10,10 @@ import org.crforge.core.pathfinding.GridEntity;
     status = FidelityStatus.PARTIAL,
     note =
         "Answered from the entity: its kind, team, tag word, crown tower, building, alive, flying,"
-            + " hit points, row name, state and whether its row ignores pushback; the summoner is the"
-            + " king tower. Supplied: a princess tower is a row with the summoner-tower column, and"
-            + " nothing is hidden, underground, a clone, attached to a parent, invisible or immune"
-            + " while dashing, none of which the battle models yet.")
+            + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
+            + " pushback; the summoner is the king tower. Supplied: a princess tower is a row with"
+            + " the summoner-tower column, and nothing is hidden, underground, a clone, invisible or"
+            + " immune while dashing, none of which the battle models yet.")
 final class EntityFilterSubject implements FilterSubject {
 
   private final WorldEntity entity;
@@ -93,7 +93,7 @@ final class EntityFilterSubject implements FilterSubject {
 
   @Override
   public boolean attachedChild() {
-    return false;
+    return entity instanceof CharacterEntity character && character.getParent() != null;
   }
 
   @Override

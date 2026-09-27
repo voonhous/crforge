@@ -50,7 +50,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param attackFinishTimeMs that own wait
  * @param spawnRadius the radius of the formation a card places the unit in, when the card sets
  *     none; 0 for none, which falls back to the collision radius
- * @param spawnAngleShift degrees the formation is turned by
+ * @param spawnAngleShift degrees its spawner's ring is turned by, with the angle it faces; for an
+ *     attached unit, degrees its place around its parent is turned by
  * @param flyingHeight how high the unit flies; 0 for a ground unit
  * @param spawnPathfindSpeed the speed of a unit that walks to its placement; 0 for one placed at
  *     once
@@ -100,6 +101,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param shieldHitpoints its shield at the first level; 0 for none
  * @param stopMovementAfterMs how long it walks before it stops for a while; 0 for never
  * @param waitMs how long it stands each time it stops
+ * @param deathInheritIgnoreList true when its death spawn joins every id list that holds it, and a
+ *     rider it lets go joins every id list that holds it too
+ * @param spawnAttach true when its spawner's children ride on it: made as it starts deploying and
+ *     attached to it from then on
+ * @param spawnMaxAngle for an attached unit, the arc its share of its parent's ring is taken from
+ * @param spawnAttachMaxRotation for an attached unit, how far, in degrees, it may face away from
+ *     its parent's heading while it attacks; 0 for no limit
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -174,6 +182,10 @@ public record UnitData(
     int shieldHitpoints,
     int stopMovementAfterMs,
     int waitMs,
+    boolean deathInheritIgnoreList,
+    boolean spawnAttach,
+    int spawnMaxAngle,
+    int spawnAttachMaxRotation,
     List<String> unmodelledColumns) {
 
   public UnitData {

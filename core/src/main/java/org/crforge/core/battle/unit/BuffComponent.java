@@ -101,6 +101,11 @@ public final class BuffComponent implements BattleComponent {
     if ((entity.getView().getFlags() & NO_BUFFS) != 0) {
       return;
     }
+    // A buff on a parent is handed to its riders; neither is modelled.
+    if (entity instanceof CharacterEntity c && (c.getParent() != null || !c.riders().isEmpty())) {
+      throw new UnsupportedOperationException(
+          entity.name() + " rides or carries riders, whose share of a buff is not modelled");
+    }
     if (buff.noEffectToCrownTowers() && entity.getTargetView().crownTower()) {
       return;
     }
