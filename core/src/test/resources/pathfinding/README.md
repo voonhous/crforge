@@ -265,6 +265,12 @@ The towers fight at level 11, and every spell is played by a place-card command 
 
 `BattleActionSpawnRunTest` plays all three with the spawn runs.
 
+## `golden/arrows_skeletons.json` - Arrows
+
+The towers fight at level 11. Skeletons played for the top side at (3500, 22000) on tick 0 (a placement, with its units in `commands` and `units`), and Arrows played for the bottom side at (3500, 17000) on 60, placed at (3500, 17500). The cast makes 30 arrows (in `commands`: each one's start, aim, delay and `ring_point`): three waves of ten, delays 0, 200 and 400, each wave a chain. A wave's first arrow has the placed point as its ring point and the others stand 2660 out at 40-degree steps; each aims at its ring point plus 840 turned by a battle random below 359 (the 30 `draws`, from the battle's start state), and starts from the blue king shifted by that offset. The later waves first move on 64 and 68. The first wave's arrows land on 73 and 74, each dealing 122 on its ring point, and kill the three Skeletons; no Skeleton is hit twice by a wave. `projectiles` holds every arrow's position to its arrival, past the last event.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
