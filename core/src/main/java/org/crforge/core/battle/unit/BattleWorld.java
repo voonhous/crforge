@@ -9,6 +9,7 @@ import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleRandom;
 import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.action.ActionHolder;
@@ -119,6 +120,24 @@ public class BattleWorld implements HolderPasses {
 
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
+
+  /** The state the battle's random source starts from when no seed is given. */
+  public static final int DEFAULT_SEED = 1;
+
+  /**
+   * The battle's one random source, which every draw of the battle takes in turn: an expression's
+   * draw is taken where the expression is evaluated.
+   */
+  @Getter private BattleRandom random = new BattleRandom(DEFAULT_SEED);
+
+  /**
+   * Starts the battle's random source from a state of its own, before anything draws.
+   *
+   * @param seed the state the first draw steps
+   */
+  public void seed(int seed) {
+    random = new BattleRandom(seed);
+  }
 
   /**
    * The published global that makes a death spawn's children untargetable at first: on in the

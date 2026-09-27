@@ -252,7 +252,8 @@ public final class ActionRows {
                 new Select(
                     shared,
                     actions(f.get("SubActions")),
-                    expression(f.get("Condition")),
+                    // A condition the data writes as a list compiles from its first element.
+                    expression(first(f.get("Condition"))),
                     expressions(f.get("PerActionConditions")));
             case "ActionFilter" ->
                 new Filter(
@@ -459,6 +460,14 @@ public final class ActionRows {
       }
       String text = value.asText();
       return text.isEmpty() ? null : binding.expression(text);
+    }
+
+    /** A list's first element, null for an empty one, or the value itself when it is no list. */
+    private static JsonNode first(JsonNode value) {
+      if (value == null || !value.isArray()) {
+        return value;
+      }
+      return value.isEmpty() ? null : value.get(0);
     }
 
     private List<IntSupplier> expressions(JsonNode values) {

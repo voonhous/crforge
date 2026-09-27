@@ -23,11 +23,13 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " team_y_direction as -1 for 0 and 1 for anything else; map_width and map_height"
             + " as the arena's cells times 500; a character or building row's name, after the"
             + " functions, variables and tags, as its global id, 0 for a negative one, and"
-            + " has_data as the context's own row having that id. Supplied, not settled: the"
+            + " has_data as the context's own row having that id; rand as one draw from the"
+            + " battle's random source, taken as the expression is evaluated. Supplied, not"
+            + " settled: the battle's seed, 1 unless one is given; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
-            + " entity carries every bit of it. Not modelled: the other 36 functions, which fail"
+            + " entity carries every bit of it. Not modelled: the other 35 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -43,6 +45,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int MAP_WIDTH = BattleFunctions.id("map_width");
   private static final int MAP_HEIGHT = BattleFunctions.id("map_height");
   private static final int HAS_DATA = BattleFunctions.id("has_data");
+  private static final int RAND = BattleFunctions.id("rand");
 
   /** The side that belongs to neither player, whose team is 2. */
   private static final int NEUTRAL_SIDE = 100;
@@ -164,6 +167,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     if (id == MAP_HEIGHT) {
       return world.getTileMap().height() * TileMap.CELL_UNITS;
+    }
+    if (id == RAND) {
+      // One draw from the battle's source, taken as the expression is evaluated.
+      return world.getRandom().next(arguments[0]);
     }
     if (id == HAS_DATA) {
       // The context's own row, the exact one: a relative row with an id of its own is not it.

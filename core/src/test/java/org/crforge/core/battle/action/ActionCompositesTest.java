@@ -93,9 +93,15 @@ class ActionCompositesTest {
     assertThat(queue(h4)).isEmpty();
   }
 
+  /** The part a select queued, with its ticks, and nothing else it queued. */
+  private static List<String> parts(ActionHolder holder) {
+    return queue(holder).stream().filter(q -> !q.startsWith("select ")).toList();
+  }
+
   @Test
   @DisplayName(
-      "a select picks one part: the condition modulo the list, or the first true per-part one")
+      "a select picks one part as it is scheduled: the condition modulo the list, or the first"
+          + " true per-part one, else the part past the last condition")
   void select() {
     Leaf sa = new Leaf("sa");
     Leaf sb = new Leaf("sb");
@@ -104,24 +110,84 @@ class ActionCompositesTest {
     int[][] cases = {{0, 0}, {1, 1}, {2, 2}, {3, 0}, {5, 2}};
     for (int[] c : cases) {
       int value = c[0];
-      new ActionHolder().schedule(new Select(row("select"), parts, () -> value, null), 0, true);
-      assertThat(take())
-          .as("condition %d", value)
-          .containsExactly("perform " + parts.get(c[1]).name());
+      ActionHolder h = new ActionHolder();
+      h.schedule(new Select(row("select"), parts, () -> value, null), 0, false);
+      assertThat(parts(h)).as("condition %d", value).containsExactly(parts.get(c[1]).name() + " 0");
     }
-    new ActionHolder().schedule(new Select(row("select"), parts, () -> -1, null), 0, true);
-    assertThat(take()).as("a negative condition selects nothing").isEmpty();
+    ActionHolder negative = new ActionHolder();
+    negative.schedule(new Select(row("select"), parts, () -> -1, null), 0, false);
+    assertThat(parts(negative)).as("a negative condition selects nothing").isEmpty();
+    ActionHolder none = new ActionHolder();
+    none.schedule(new Select(row("select"), parts, null, null), 0, false);
+    assertThat(parts(none)).as("no condition at all selects nothing").isEmpty();
 
-    new ActionHolder()
-        .schedule(
-            new Select(row("select"), parts, () -> -1, List.of(() -> 0, () -> 1, () -> 1)),
-            0,
-            true);
-    assertThat(take()).as("the first true per-part condition wins").containsExactly("perform sb");
-    new ActionHolder()
-        .schedule(
-            new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0, () -> 0)), 0, true);
-    assertThat(take()).as("no true per-part condition selects nothing").isEmpty();
+    ActionHolder first = new ActionHolder();
+    first.schedule(
+        new Select(row("select"), parts, () -> -1, List.of(() -> 0, () -> 1, () -> 1)), 0, false);
+    assertThat(parts(first)).as("the first true per-part condition wins").containsExactly("sb 0");
+    ActionHolder otherwise = new ActionHolder();
+    otherwise.schedule(
+        new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0)), 0, false);
+    assertThat(parts(otherwise))
+        .as("every condition false and a part past them: that part, the else")
+        .containsExactly("sc 0");
+    ActionHolder nothing = new ActionHolder();
+    nothing.schedule(
+        new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0, () -> 0)), 0, false);
+    assertThat(parts(nothing)).as("no true condition and no part past them").isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a select's part is scheduled with no delay, whatever the select's delay or the part's own,"
+          + " and with the select's cause")
+  void selectPartDelay() {
+    Leaf own = new Leaf("own");
+    BattleAction delayedPart =
+        new RowAction(row("delayed").toBuilder().delayMs(300).build()) {
+          @Override
+          public ActionInstance start(ActionHolder holder) {
+            return null;
+          }
+        };
+    ActionHolder h = new ActionHolder();
+    h.schedule(
+        new Select(
+            row("select").toBuilder().delayMs(500).build(),
+            List.<BattleAction>of(delayedPart, own),
+            () -> 0,
+            null),
+        ActionHolder.OWN_DELAY,
+        false);
+    assertThat(queue(h))
+        .as("the select waits its own 10 ticks; its part is queued with none")
+        .containsExactly("select 10", "delayed 0");
+
+    ActionHolder cause = new ActionHolder();
+    ActionHolder owner = new ActionHolder();
+    owner.schedule(new Select(row("select"), List.of(own), () -> 0, null), 0, false, cause);
+    assertThat(owner.queuedInstigators()).containsOnly(cause);
+  }
+
+  @Test
+  @DisplayName(
+      "a select whose start gate is false chooses nothing and evaluates nothing, though it is"
+          + " itself queued")
+  void selectGate() {
+    int[] evaluated = {0};
+    Select gated =
+        new Select(
+            row("select").toBuilder().executeIf(() -> 0).build(),
+            List.of(new Leaf("sa")),
+            () -> {
+              evaluated[0]++;
+              return 0;
+            },
+            null);
+    ActionHolder h = new ActionHolder();
+    h.schedule(gated, 0, false);
+    assertThat(queue(h)).containsExactly("select 0");
+    assertThat(evaluated[0]).as("the condition is not evaluated").isZero();
   }
 
   // ---------------------------------------------------------------------------------------------

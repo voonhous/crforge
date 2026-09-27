@@ -21,7 +21,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the six runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the seven runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -36,7 +36,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * that Knight caused when it dies. In {@code tombstone_death_hook} a Wizard's projectile kills a
  * Tombstone while it deploys, and the Tombstone's death action, scheduled as it dies with the
  * projectile as its cause, runs in its phase-3 pass and spawns SkeletonKing on it, a champion
- * handed over to its side.
+ * handed over to its side. In {@code gift_select} two owners each schedule the gift delivery's
+ * select on the same tick, from a random state of the run's own: each select draws its part as it
+ * is scheduled, in the command pass, the first owner's draw first, and the part it chose spawns its
+ * unit in that owner's phase-1 pass.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
@@ -52,13 +55,23 @@ class BattleActionSpawnRunTest {
         "gift_knight",
         "abort_instigator",
         "witch_hooks",
-        "tombstone_death_hook"
+        "tombstone_death_hook",
+        "gift_select"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
     Standard1v1Battle match =
         new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
+    // A run that draws starts the battle's random source from its own state.
+    if (reference.has("seed")) {
+      match.getWorld().seed(reference.get("seed").asInt());
+    }
+    // The random state each drawing tick leaves behind: the last draw's.
+    Map<Integer, Long> stateAfter = new HashMap<>();
+    for (JsonNode draw : reference.path("draws")) {
+      stateAfter.put(draw.get("tick").asInt(), draw.get("state").get(1).asLong());
+    }
 
     int[] currentTick = {-1};
     // The holder tells its listener of a run once the action's start returns, after the spawn it
@@ -210,6 +223,11 @@ class BattleActionSpawnRunTest {
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
       battle.step();
+      if (stateAfter.containsKey(tick)) {
+        assertThat(Integer.toUnsignedLong(match.getWorld().getRandom().getState()))
+            .as("tick %d: the random state after its draws", tick)
+            .isEqualTo(stateAfter.get(tick));
+      }
       for (BattleEntity entity : battle.getHolder().entities()) {
         if (entity instanceof CharacterEntity c) {
           units.putIfAbsent(c.name(), c);
