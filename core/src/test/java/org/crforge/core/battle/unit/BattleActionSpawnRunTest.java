@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the thirty-two runs in which an action, a death or a building spawns characters through
+ * Plays the thirty-four runs in which an action, a death or a building spawns characters through
  * {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -90,7 +90,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * zap_knight_cast}, the Zap run with its area effect cast at the snapped point; and {@code
  * goblin_barrel_tower}, a Goblin Barrel whose Goblins stand in formation around its landing point;
  * {@code arrows_skeletons}, Arrows' three waves of chained arrows, landing on their ring points. A
- * run lasts to its last projectile position.
+ * run lasts to its last projectile position. {@code log_goblins} and {@code barb_barrel_knight}, a
+ * thrown projectile whose impact launches a rolling one, which hits what its body passes.
  */
 class BattleActionSpawnRunTest {
 
@@ -128,7 +129,9 @@ class BattleActionSpawnRunTest {
         "fireball_knight_tower",
         "zap_knight_cast",
         "goblin_barrel_tower",
-        "arrows_skeletons"
+        "arrows_skeletons",
+        "log_goblins",
+        "barb_barrel_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -518,7 +521,10 @@ class BattleActionSpawnRunTest {
 
     List<String> expectedLocks = new ArrayList<>();
     for (JsonNode event : reference.path("tower_events")) {
-      if (event.get("event").asText().equals("lock")) {
+      // A lock names the target the tower attacks. The reference also logs the attacking state
+      // requested again while an attack runs on with no reference, as a lock of nothing; that is
+      // no lock.
+      if (event.get("event").asText().equals("lock") && !event.get("target").isNull()) {
         expectedLocks.add(
             event.get("tick").asInt()
                 + " "

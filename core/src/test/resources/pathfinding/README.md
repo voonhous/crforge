@@ -271,6 +271,15 @@ The towers fight at level 11. Skeletons played for the top side at (3500, 22000)
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/log_goblins.json` and `golden/barb_barrel_knight.json` - a thrown projectile that spawns a rolling one
+
+The towers fight at level 11. The Log and the Barbarian Barrel are thrown: the point snaps to the tile centre, the thrown projectile starts 3000 behind it toward the caster's side, 7000 up, and falls to the point at 600, the rolling one's height; it lands eight ticks after the cast. Its impact launches the rolling projectile from there, aimed its range beyond along the line (10100 for The Log, 4500 for the barrel), moving 200 a visit from the next tick at 600. After every step the rolling projectile hits what its body covers (1950 or 1300 across, 600 along), each entity once; a hit is an `impact` event at the rolling projectile's position.
+
+- `log_goblins`: Goblins played for the top side at (3500, 14000) on tick 0; The Log played for the bottom side at (3500, 9000) on 30, placed at (3500, 9500), thrown from (3500, 6500) and landing on 38. The rolling log moves from 39, hits the four Goblins on 53, 55, 56 and 60 for 268 each, killing each, so none is pushed, and arrives at (3500, 19600) on 89. After Goblins_3 dies, PrincessTower_0_1's attack runs on with no reference until its shot at 74; the file logs that as a `lock` of nothing followed by a `reference_dropped` on every tick from 61, which is no lock.
+- `barb_barrel_knight`: a top-side Knight, `KnightRed`, at (3500, 13000) on tick 0 (in `units`; the generator did not list it, and the file takes it from the run's definition), and the Barbarian Barrel played for the bottom side at (3500, 9000) on 20. The rolling barrel hits the Knight once on 36 for 232 and passes it on 37 to 43 without hitting it again; it has no pushback. It arrives at (3500, 14000), and its impact spawns one Barbarian there (`spawn` action, owner the rolling projectile), deploying for 1000 ms.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

@@ -30,6 +30,8 @@ import org.crforge.core.battle.unit.UnitData;
  * @param areaEffect the area effect a spell casts at the placed point, or null
  * @param searchUnit the unit a spell's placement is searched for: its projectile's spawned
  *     character, or null for none
+ * @param spellAsDeploy true for a spell thrown as a projectile at the placed point, which snaps to
+ *     the tile centre whatever it spawns
  * @param radius a spell's radius: the circle Arrows' ring and jitter are drawn in
  * @param multipleProjectiles how many projectiles a spell casts in one wave; 0 for one
  * @param projectileWaves how many waves; 0 for one
@@ -57,6 +59,7 @@ public record DeployCard(
     String projectile,
     String areaEffect,
     UnitData searchUnit,
+    boolean spellAsDeploy,
     int radius,
     int multipleProjectiles,
     int projectileWaves,

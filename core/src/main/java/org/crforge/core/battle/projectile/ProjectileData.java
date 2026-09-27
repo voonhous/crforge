@@ -46,6 +46,15 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param spawnCharacter the character the impact spawns around the impact point, or null
  * @param spawnCharacterCount how many of it: at least one when the row names one, else 0
  * @param spawnCharacterDeployTimeMs the deploy time the impact gives its children; 0 for none
+ * @param radiusY the half height of the area of the impact, which makes it a box; 0 for a circle
+ * @param projectileRadiusY the half height of a flying body's box; 0 for a circle
+ * @param projectileStartExtraRadius how much wider a flying body's first pass is, at its
+ *     registration
+ * @param pushbackAll true when the push of a hit along a flying body's way lifts the gates that
+ *     would refuse it
+ * @param spawnProjectile the projectile the impact launches beyond the aim, or null
+ * @param spawnChain how many links of spawned projectiles are left: at least one when the row names
+ *     a spawned projectile, else 0
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -83,6 +92,12 @@ public record ProjectileData(
     String spawnCharacter,
     int spawnCharacterCount,
     int spawnCharacterDeployTimeMs,
+    int radiusY,
+    int projectileRadiusY,
+    int projectileStartExtraRadius,
+    boolean pushbackAll,
+    String spawnProjectile,
+    int spawnChain,
     List<String> unmodelledColumns) {
 
   public ProjectileData {

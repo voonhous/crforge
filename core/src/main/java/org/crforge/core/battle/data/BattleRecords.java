@@ -44,29 +44,30 @@ public final class BattleRecords {
    * that sets one is refused.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
-      List.of(
-          "Mirror",
-          "CustomFirstProjectile",
-          "SpellAsDeploy",
-          "CustomClassType",
-          "UseProjectedTimeSummon");
+      List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
 
   /**
    * The columns of a projectile the impact does not model: the buff it applies to its target, the
-   * area effect and the projectile it spawns, its chained hop, a flying body's second radius, and
-   * the push's floor and gate lift. A spell whose projectile sets one is refused as it is cast.
+   * area effect it spawns, several spawned projectiles or ones laid along an axis, its chained hop,
+   * the push's floor and a push along the flight, a stop at the first entity it touches, the
+   * pingpong sweep and a constant height. A spell whose projectile, or the projectile that one
+   * spawns, sets one is refused as it is cast or spawned.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
           "TargetBuff",
           "BuffTime",
+          "ApplyBuffBeforeDamage",
           "SpawnAreaEffectObject",
-          "SpawnProjectile",
-          "SpawnChain",
+          "SpawnCount",
+          "SpawnAxisX",
+          "SpawnAxisY",
           "ChainedHitRadius",
-          "RadiusY",
-          "PushbackAll",
-          "MinPushback");
+          "MinPushback",
+          "DoDirectionalPushback",
+          "CheckCollisions",
+          "PingpongVisualTime",
+          "ConstantHeight");
 
   /** The card columns the placement does not model; a card that sets one is refused. */
   private static final List<String> UNMODELLED_CARD_COLUMNS =
@@ -675,6 +676,13 @@ public final class BattleRecords {
         .spawnCharacterCount(
             set(row, "SpawnCharacter") ? Math.max(row.intValue("SpawnCharacterCount"), 1) : 0)
         .spawnCharacterDeployTimeMs(row.intValue("SpawnCharacterDeployTime"))
+        .radiusY(row.intValue("RadiusY"))
+        .projectileRadiusY(row.intValue("ProjectileRadiusY"))
+        .projectileStartExtraRadius(row.intValue("ProjectileStartExtraRadius"))
+        .pushbackAll(row.bool("PushbackAll"))
+        .spawnProjectile(set(row, "SpawnProjectile") ? row.string("SpawnProjectile") : null)
+        // The loader stores at least one link for a row that names a spawned projectile.
+        .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
         .unmodelledColumns(
             UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList())
         .build();
@@ -693,12 +701,17 @@ public final class BattleRecords {
    */
   public DeployCard card(String name) {
     GameTable table = tables.table(SPELLS_CHARACTERS);
+    boolean spells = false;
     if (!table.has(name) && tables.table(SPELLS_OTHER).has(name)) {
       table = tables.table(SPELLS_OTHER);
+      spells = true;
     }
     checkArgument(table.has(name), () -> "the game tables have no card " + name);
     GameRow row = table.row(name);
-    if (row.string("SummonCharacter").isEmpty()
+    // A spell of the spells table summons no character and casts; a card of the characters table
+    // keeps the troop path, and its refusals, whatever it casts besides.
+    if (spells
+        && row.string("SummonCharacter").isEmpty()
         && (set(row, "Projectile") || set(row, "AreaEffectObject"))) {
       return spell(row);
     }
@@ -731,6 +744,7 @@ public final class BattleRecords {
         null,
         null,
         null,
+        false,
         0,
         0,
         0,
@@ -780,6 +794,7 @@ public final class BattleRecords {
         projectile,
         areaEffect,
         searchUnit,
+        row.bool("SpellAsDeploy"),
         row.intValue("Radius"),
         row.intValue("MultipleProjectiles"),
         row.intValue("ProjectileWaves"),

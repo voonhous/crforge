@@ -45,14 +45,15 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " crown-tower choice, the area impact around the aim, and that a projectile whose"
             + " target left lands on nothing. Held by every projectile position and impact of the"
             + " Musketeer and Wizard runs; the area impact's pushback by fireball_knight_tower and"
-            + " the impact's character spawn by goblin_barrel_tower. Supplied, not settled: the deflection pass answers"
-            + " nothing, the projectile's own radius is zero, and the row's target limit, which is"
-            + " not carried, is none. Not modelled: the area impact of a projectile that flies to"
-            + " a point and of one that only heals, the area buff, the hits along a flying body's"
-            + " path, the height"
-            + " toward a moving target under the z-distance column, the delays, the pingpong"
-            + " sweep, the ring, the drag-back hook, the hit effects, and the on-impact projectile"
-            + " and area effect.")
+            + " the impact's character spawn by goblin_barrel_tower; the delay, the ring point and"
+            + " the chain by arrows_skeletons; a flying body's pass after every step, and the"
+            + " projectile the impact spawns beyond the aim, by log_goblins and"
+            + " barb_barrel_knight, the pass at the arrival held by no run. Supplied, not settled:"
+            + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
+            + " row's target limit, which is not carried, is none. Not modelled: the area impact"
+            + " of one that only heals, the area buff, the height toward a moving target under the"
+            + " z-distance column, the random delays, the pingpong sweep, the drag-back hook, the"
+            + " hit effects, and the on-impact area effect.")
 final class ProjectileFlight {
 
   private ProjectileFlight() {
@@ -89,6 +90,12 @@ final class ProjectileFlight {
       arrive(p, world);
     } else {
       advance(p, remaining, speed);
+      // A projectile that flies to a point hits what its body passes after every step; anything
+      // else asks the deflection pass, which finds nothing in a battle without deflecting area
+      // effects.
+      if (data.homingLike()) {
+        world.cellPass(p, p.getX(), p.getY(), 0);
+      }
     }
   }
 
@@ -110,8 +117,6 @@ final class ProjectileFlight {
     int nx = FixedMath.divOrZero((p.getAimX() - x) * speed, remaining) + x;
     int ny = FixedMath.divOrZero((p.getAimY() - y) * speed, remaining) + y;
     p.moveTo(nx, ny, arcHeight(p, nx, ny));
-    // A flying body would now hit what it passes; anything else asks the deflection pass, which
-    // finds nothing in a battle without deflecting area effects.
   }
 
   /**
@@ -172,9 +177,17 @@ final class ProjectileFlight {
         singleImpact(p, world, target, damage, towerDamage, hitId);
       }
     }
+    // A projectile that flies to a point hits what its body covers at its aim once more.
+    if (data.homingLike()) {
+      world.cellPass(p, p.getX(), p.getY(), 0);
+    }
     // The impact's character spawn: its children in formation around the impact point.
     if (data.spawnCharacterCount() >= 1) {
       world.impactSpawn(p, px, py);
+    }
+    // The projectile it spawns flies on beyond the aim, along the line it came.
+    if (data.spawnProjectile() != null && p.getSpawnChain() >= 1) {
+      world.impactProjectile(p, 2 * p.getAimX() - p.getStartX(), 2 * p.getAimY() - p.getStartY());
     }
   }
 
@@ -193,7 +206,8 @@ final class ProjectileFlight {
     ProjectileData data = p.getData();
     if (data.homingLike()) {
       // A projectile that flies to a point has hit along its way already, and only runs that pass
-      // once more at its aim; no row carried here does.
+      // once more at its aim.
+      world.cellPass(p, p.getAimX(), p.getAimY(), 0);
       return;
     }
     if (damage <= 0) {

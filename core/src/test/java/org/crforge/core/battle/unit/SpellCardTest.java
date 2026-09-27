@@ -54,11 +54,19 @@ class SpellCardTest {
   }
 
   @Test
-  @DisplayName("a spell thrown as a projectile is refused as the card is read")
-  void theCastsNotModelled() {
-    assertThatThrownBy(() -> GameData.card("Log"))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SpellAsDeploy");
+  @DisplayName(
+      "The Log is thrown: it snaps to the tile centre and casts a projectile that spawns a rolling"
+          + " one")
+  void theLog() {
+    DeployCard log = GameData.card("Log");
+    assertThat(log.spellAsDeploy()).isTrue();
+    assertThat(log.projectile()).isEqualTo("LogProjectile");
+    assertThat(GameData.records().projectile("LogProjectile").spawnProjectile())
+        .isEqualTo("LogProjectileRolling");
+    assertThat(GameData.records().projectile("LogProjectile").spawnChain()).isEqualTo(1);
+    // The Barbarian Barrel's row names no chain; the loader stores one link.
+    assertThat(GameData.records().projectile("BarbLogProjectile").spawnChain()).isEqualTo(1);
+    assertThat(GameData.records().projectile("LogProjectileRolling").homingLike()).isTrue();
   }
 
   @Test

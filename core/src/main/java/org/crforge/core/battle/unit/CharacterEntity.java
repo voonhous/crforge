@@ -673,6 +673,37 @@ public class CharacterEntity extends WorldEntity {
     return true;
   }
 
+  /**
+   * A push from a hit along a projectile's way: only a character whose movement is on and that is
+   * not waiting to deploy is pushed, away from the projectile, with the gates that would refuse it
+   * lifted when the projectile's row pushes all.
+   *
+   * @param x the projectile's position along the width
+   * @param y the projectile's position along the length
+   * @param distance how far
+   * @param liftGates true when the row pushes all
+   */
+  void pushedByTravellingHit(int x, int y, int distance, boolean liftGates) {
+    if (!getView().isMovementComponent() || !getView().isMovementActive() || waiting()) {
+      return;
+    }
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            x,
+            y,
+            distance,
+            liftGates,
+            false,
+            false,
+            false,
+            false);
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+  }
+
   /** Untouchable while its dash immunity lasts; nothing is attached yet. */
   @Override
   boolean untouchable() {

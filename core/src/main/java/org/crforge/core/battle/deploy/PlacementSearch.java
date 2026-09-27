@@ -84,10 +84,13 @@ public final class PlacementSearch {
     int hh = h >> 1;
     // A spell's search is for its projectile's spawned character, or for no unit at all: then the
     // point snaps to the tile centre and no symmetrical adjustment follows.
+    // A spell thrown as a projectile snaps to the tile centre whatever its search unit is; the
+    // symmetrical adjustment still follows the unit.
     UnitData unit = card.placementUnit();
-    int fp = unit != null && unit.building() ? footprint(unit) : 1;
-    int sx = unit != null ? snap(unit, cx) : cx / 1000 * 1000 + 500;
-    int sy = unit != null ? snap(unit, cy) : cy / 1000 * 1000 + 500;
+    boolean characterSnap = unit != null && !(card.spell() && card.spellAsDeploy());
+    int fp = characterSnap && unit.building() ? footprint(unit) : 1;
+    int sx = characterSnap ? snap(unit, cx) : cx / 1000 * 1000 + 500;
+    int sy = characterSnap ? snap(unit, cy) : cy / 1000 * 1000 + 500;
     int margin = card.deployWTileMargin();
 
     long best = Integer.MAX_VALUE;
