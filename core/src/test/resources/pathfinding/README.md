@@ -242,6 +242,19 @@ The towers fight at level 11, and the run's unit is a Knight walking up the left
 
 `BattleActionSpawnRunTest` plays all three with the spawn runs, and holds them to the buff log as well.
 
+## `golden/minions_left.json`, `golden/minion_musketeer.json`, `golden/balloon_tower.json`, `golden/balloons_cross.json`, `golden/lava_hound_river.json` and `golden/baby_dragon_left.json` - air units
+
+The towers fight at level 11 unless stated. An air unit is created at its row's flying height and keeps it. It runs the ground unit's code with other layer answers: its route is one node, the nearest cell within its attack range of the target, with no search; it crosses water; the push and avoidance passes meet only units on its side of height 0; a target in the air needs an attacker that attacks air. Its shots start at its height plus the row's launch height, and a shot aimed at it climbs to its height.
+
+- `minions_left`: a Minions card played at (3500, 10000) for the bottom side on tick 0, placed at (3500, 10500): an air card takes no symmetric snap. Its three Minions fly at 1500, one deploying and two waiting. PrincessTower_1_1 locks each in turn and kills them on 135, 195 and 255; two lock the tower and spit from 1950. It is a placement file, played by `BattlePlacementRunTest`.
+- `minion_musketeer`: a top-side Minion from (3500, 21000) meets a bottom-side Musketeer at (3500, 9000) and Knight at (4500, 9000) (in `units`). The Musketeer takes the Minion on 54 and kills it on 92 with shots that climb to it; the Knight, which does not attack air, only ever references PrincessTower_1_1. The Minion locks the Knight on 78 and spits on 87.
+- `balloon_tower`: a Balloon locks PrincessTower_1_1 on 256 at (3298, 23927) and hits it for 640 four times. It dies on 389, and its death spawn, BalloonBomb, stands on its point on the ground (height 0, deploying 3000 ms) and dies as its deploy ends on 449, dealing 240 to the tower.
+- `balloons_cross`: with the towers passive, a bottom-side Balloon from (3500, 12000) and a top-side one from (3500, 20000) cross over a top-side Knight from (3500, 17500). They meet on 78 and push each other apart, the Knight moves neither and neither moves it, and neither Balloon references the other. A run without the towers fighting records no hit points of its own unit.
+- `lava_hound_river`: a level-1 Lava Hound from (2000, 14500) meets four level-11 top-side Musketeers at (1000..4000, 21500) (each unit with its own `level`) and dies on 58 at (1961, 16216), over the river. Its six LavaPups, at 3500, are made on its point and fly back to their ring points over the water, 250 a step, and die on 81, 103 and 126.
+- `baby_dragon_left`: a Baby Dragon locks PrincessTower_1_1 on 138 at (3288, 20521) and fires from 5400 on 143 and every 30 ticks, 161 on the tower, before it dies on 277.
+
+`BattleActionSpawnRunTest` plays all but `minions_left` with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
