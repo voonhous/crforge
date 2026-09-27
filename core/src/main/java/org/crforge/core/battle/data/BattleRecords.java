@@ -36,6 +36,39 @@ public final class BattleRecords {
   private static final String BUILDINGS = "buildings";
   private static final String PROJECTILES = "projectiles";
   private static final String SPELLS_CHARACTERS = "spells_characters";
+  private static final String SPELLS_OTHER = "spells_other";
+
+  /**
+   * The columns of a spell card the cast does not model yet: a Mirror, several projectiles or
+   * waves, a spell deployed as a thrown projectile, and the play variants no reference holds. A
+   * spell that sets one is refused.
+   */
+  private static final List<String> UNMODELLED_SPELL_COLUMNS =
+      List.of(
+          "Mirror",
+          "MultipleProjectiles",
+          "ProjectileWaves",
+          "ProjectileWaveInterval",
+          "SpellAsDeploy",
+          "CustomClassType",
+          "UseProjectedTimeSummon");
+
+  /**
+   * The columns of a projectile the impact does not model: the buff it applies to its target, the
+   * area effect and the projectile it spawns, its chained hop, a flying body's second radius, and
+   * the push's floor and gate lift. A spell whose projectile sets one is refused as it is cast.
+   */
+  private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
+      List.of(
+          "TargetBuff",
+          "BuffTime",
+          "SpawnAreaEffectObject",
+          "SpawnProjectile",
+          "SpawnChain",
+          "ChainedHitRadius",
+          "RadiusY",
+          "PushbackAll",
+          "MinPushback");
 
   /** The card columns the placement does not model; a card that sets one is refused. */
   private static final List<String> UNMODELLED_CARD_COLUMNS =
@@ -638,6 +671,14 @@ public final class BattleRecords {
         .checkCollisions(row.bool("CheckCollisions"))
         .minDistance(row.intValue("MinDistance"))
         .circleScatter("Circle".equals(row.string("Scatter")))
+        .pushback(row.intValue("Pushback"))
+        .spawnCharacter(set(row, "SpawnCharacter") ? row.string("SpawnCharacter") : null)
+        // The loader stores at least one child for a row that names a spawned character.
+        .spawnCharacterCount(
+            set(row, "SpawnCharacter") ? Math.max(row.intValue("SpawnCharacterCount"), 1) : 0)
+        .spawnCharacterDeployTimeMs(row.intValue("SpawnCharacterDeployTime"))
+        .unmodelledColumns(
+            UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList())
         .build();
   }
 
@@ -654,8 +695,15 @@ public final class BattleRecords {
    */
   public DeployCard card(String name) {
     GameTable table = tables.table(SPELLS_CHARACTERS);
-    checkArgument(table.has(name), () -> "the game tables have no troop card " + name);
+    if (!table.has(name) && tables.table(SPELLS_OTHER).has(name)) {
+      table = tables.table(SPELLS_OTHER);
+    }
+    checkArgument(table.has(name), () -> "the game tables have no card " + name);
     GameRow row = table.row(name);
+    if (row.string("SummonCharacter").isEmpty()
+        && (set(row, "Projectile") || set(row, "AreaEffectObject"))) {
+      return spell(row);
+    }
     for (String column : UNMODELLED_CARD_COLUMNS) {
       if (set(row, column)) {
         throw new UnsupportedOperationException(
@@ -681,7 +729,54 @@ public final class BattleRecords {
         row.bool("TouchdownLimitedDeploy"),
         row.intValue("DeployWTileMargin"),
         row.intValue("DeployStartY"),
-        row.intValue("DeployEndY"));
+        row.intValue("DeployEndY"),
+        null,
+        null,
+        null);
+  }
+
+  /**
+   * A spell card: no unit, the projectile it casts or the area effect it creates, and the unit its
+   * placement is searched for - its projectile's spawned character, which the Goblin Barrel has.
+   * The offsets a spell card may list for its characters are not read by the cast.
+   */
+  private DeployCard spell(GameRow row) {
+    for (String column : UNMODELLED_SPELL_COLUMNS) {
+      if (set(row, column)) {
+        throw new UnsupportedOperationException(
+            row.name() + " sets " + column + ", which the spell's cast does not model");
+      }
+    }
+    String projectile = set(row, "Projectile") ? row.string("Projectile") : null;
+    String areaEffect = set(row, "AreaEffectObject") ? row.string("AreaEffectObject") : null;
+    UnitData searchUnit = null;
+    if (projectile != null) {
+      GameRow projectileRow = tables.table(PROJECTILES).row(projectile);
+      if (set(projectileRow, "SpawnCharacter")) {
+        searchUnit = unit(projectileRow.string("SpawnCharacter"));
+      }
+    }
+    return new DeployCard(
+        row.name(),
+        null,
+        0,
+        null,
+        0,
+        0,
+        0,
+        0,
+        0,
+        row.bool("CanDeployOnEnemySide"),
+        row.bool("CanPlaceOnBuildings"),
+        row.bool("CanPlaceOnWater"),
+        row.bool("FullLaneDeploy"),
+        row.bool("TouchdownLimitedDeploy"),
+        row.intValue("DeployWTileMargin"),
+        row.intValue("DeployStartY"),
+        row.intValue("DeployEndY"),
+        projectile,
+        areaEffect,
+        searchUnit);
   }
 
   /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */

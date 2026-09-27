@@ -214,7 +214,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (!chained && data.spawnAreaEffectObject() != null) {
       chained = true;
       world.createAreaEffect(
-          data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", this);
+          data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", name);
     }
     for (int i = 0; i < hits; i++) {
       if (damage >= 1) {

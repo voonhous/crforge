@@ -202,11 +202,12 @@ public interface WorldObserver {
    *
    * @param tick the battle tick
    * @param areaEffect the area effect, with its id
-   * @param how "death" or "placed"
-   * @param source what it was created from, or null
+   * @param how "death", "placed", "chained" or "cast"
+   * @param source the name of what it was created from: the dying entity, the area effect that
+   *     chains it or the card play that cast it; null for a direct placement
    */
   default void areaEffectCreated(
-      int tick, AreaEffectEntity areaEffect, String how, BattleEntity source) {}
+      int tick, AreaEffectEntity areaEffect, String how, String source) {}
 
   /** An area effect was admitted to the live list, and its starting action scheduled. */
   default void areaEffectAdmitted(int tick, AreaEffectEntity areaEffect) {}

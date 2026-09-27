@@ -1,5 +1,6 @@
 package org.crforge.core.battle.projectile;
 
+import java.util.List;
 import lombok.Builder;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -40,6 +41,13 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param minDistance the least distance from the start the aim is pushed out to; 0 for none
  * @param circleScatter true for a row whose scatter pattern is the circle, which counts it among
  *     the projectiles that fly to a point rather than to a target
+ * @param pushback how far the area of the impact pushes its victims from the impact point; 0 for
+ *     none
+ * @param spawnCharacter the character the impact spawns around the impact point, or null
+ * @param spawnCharacterCount how many of it: at least one when the row names one, else 0
+ * @param spawnCharacterDeployTimeMs the deploy time the impact gives its children; 0 for none
+ * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
+ *     as a spell casts it
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -47,7 +55,9 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the constant height, the far"
             + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
-            + " columns, the deflect behaviour, the chained hit and the on-impact spawns.")
+            + " columns, the deflect behaviour, the chained hit, the target buff and the spawned"
+            + " projectile and area effect; the impact's pushback and its spawned characters are"
+            + " carried.")
 @Builder(toBuilder = true)
 public record ProjectileData(
     String name,
@@ -68,12 +78,18 @@ public record ProjectileData(
     int projectileRange,
     boolean checkCollisions,
     int minDistance,
-    boolean circleScatter) {
+    boolean circleScatter,
+    int pushback,
+    String spawnCharacter,
+    int spawnCharacterCount,
+    int spawnCharacterDeployTimeMs,
+    List<String> unmodelledColumns) {
 
   public ProjectileData {
     if (damageMode == null) {
       damageMode = ScalingMode.CARD_DAMAGE;
     }
+    unmodelledColumns = unmodelledColumns == null ? List.of() : List.copyOf(unmodelledColumns);
   }
 
   /**

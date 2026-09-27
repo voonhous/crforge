@@ -123,7 +123,10 @@ class BattleDealDamageTest {
         card.touchdownLimitedDeploy(),
         card.deployWTileMargin(),
         card.deployStartY(),
-        card.deployEndY());
+        card.deployEndY(),
+        card.projectile(),
+        card.areaEffect(),
+        card.searchUnit());
   }
 
   @Test

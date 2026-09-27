@@ -255,6 +255,16 @@ The towers fight at level 11 unless stated. An air unit is created at its row's 
 
 `BattleActionSpawnRunTest` plays all but `minions_left` with the spawn runs.
 
+## `golden/fireball_knight_tower.json`, `golden/zap_knight_cast.json` and `golden/goblin_barrel_tower.json` - spells played by a command
+
+The towers fight at level 11, and every spell is played by a place-card command (in `commands`, with the requested `point`, the `placed` point, the outcome `cast` and what the cast `made`). A spell summons nothing: its point is clamped and snapped to the tile centre, and in the command pass of its tick its area effect is created at the placed point, or its projectile starts from its side's king tower at (9000, 3000) or (9000, 29000), 4200 up, with no target. Either first acts in that tick's post-hooks, at the card's level (10 for level 11). A cast projectile has no `launch` event; its positions are in `projectiles`.
+
+- `fireball_knight_tower`: the Knight of `tower_vs_knight_left`, and a top-side Knight, `KnightRed`, placed at (3500, 24500) on 150 below PrincessTower_1_1 (in `units`; the generator did not list it, and the file takes it from the run's definition). A Fireball played for the bottom side at (3500, 24000) on 150 lands at (3500, 24500). It flies 600 a visit from the blue king and lands on 187: 207 on the tower (its crown-tower percent of -70), 688 on KnightRed, which is pushed 1000 away from the impact point (a `pushback` event).
+- `zap_knight_cast`: `zap_knight` with Zap played by the top side's command on 254 at (3731, 22854), snapped to (3500, 22500), where the area effect is created (`how` "cast", its source the play). Everything after is `zap_knight`'s.
+- `goblin_barrel_tower`: a Goblin Barrel played for the bottom side at (3500, 23500) on 20 is searched for its Goblin, so it lands at (3499, 23500), with the symmetric adjustment. It lands on 73 and makes three Goblins in formation around the point, at (3499, 24077), (3000, 23212) and (3998, 23212), deploying for 1100 ms (`spawn` actions with the projectile as owner). Each registration visit pushes a Goblin by a unit, and the relocation off the water that follows puts it back on its created point. They deploy until 95 and attack PrincessTower_1_1, which kills them on 107, 147 and 187.
+
+`BattleActionSpawnRunTest` plays all three with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

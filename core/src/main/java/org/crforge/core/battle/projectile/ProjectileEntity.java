@@ -2,12 +2,15 @@ package org.crforge.core.battle.projectile;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.spawn.SpawnArguments;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
@@ -58,7 +61,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " and the chained hop, the limited-time homing beyond the columns carried, the"
             + " pingpong sweep, the ring scatter, the drag-back hook, the delays before the flight,"
             + " the custom movement, and the far-distance clamp with its cell pull.")
-public class ProjectileEntity extends BattleEntity implements ActionOwner {
+public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Game time one flight step advances, in milliseconds. */
   static final int STEP_MS = 50;
@@ -160,7 +163,37 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner {
    * @param hy the hit position along the arena's length
    */
   void launch(WorldEntity launcher, WorldEntity target, int sx, int sy, int sz, int hx, int hy) {
-    this.packedLevel = PackedLevel.pack(launcher.getPackedLevel(), data.rarity());
+    place(launcher, target, launcher.getPackedLevel(), sx, sy, sz, hx, hy);
+  }
+
+  /**
+   * Places a spell's projectile, cast by a card play: owned by its side's king tower, with no
+   * target, at the card's level re-based on the row's rarity, from the start the cast works out to
+   * the placed point.
+   *
+   * @param king the side's king tower, the owner and the root
+   * @param cardLevel the card's level, packed, as the play gives it
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   * @param hx the placed point along the arena's width
+   * @param hy the placed point along the arena's length
+   */
+  public void cast(WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy) {
+    place(king, null, cardLevel, sx, sy, sz, hx, hy);
+  }
+
+  /** The launch body: the level re-based, the start, the owner, the aim and the facing. */
+  private void place(
+      WorldEntity launcher,
+      WorldEntity target,
+      int launcherLevel,
+      int sx,
+      int sy,
+      int sz,
+      int hx,
+      int hy) {
+    this.packedLevel = PackedLevel.pack(launcherLevel, data.rarity());
     this.x = sx;
     this.y = sy;
     this.z = sz;
@@ -297,6 +330,47 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner {
    */
   TargetView targetView() {
     return target == null ? null : target.getTargetView();
+  }
+
+  @Override
+  public int x() {
+    return x;
+  }
+
+  @Override
+  public int y() {
+    return y;
+  }
+
+  @Override
+  public int side() {
+    return side;
+  }
+
+  @Override
+  public int kind() {
+    return getKind();
+  }
+
+  @Override
+  public boolean isCharacter() {
+    return false;
+  }
+
+  @Override
+  public int prestige() {
+    return 0;
+  }
+
+  @Override
+  public int packedLevel() {
+    return packedLevel;
+  }
+
+  /** A projectile's children come from its impact, not from a spawn row. */
+  @Override
+  public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
+    throw new UnsupportedOperationException(name() + " runs no spawn row");
   }
 
   /** The flight: one step toward the aim, or the arrival and the impact. */

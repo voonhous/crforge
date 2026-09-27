@@ -9,6 +9,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.AreaDamage;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.ValidatorQueries;
@@ -31,7 +32,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  *
  * <p>The impact of a row with a radius does not look at the target at all: everything the area
  * damage collects in the circle around the aim takes the damage, or the crown-tower share, and the
- * launcher's own side is spared only when the row says so.
+ * launcher's own side is spared only when the row says so; the victims are pushed the row's
+ * pushback away from the aim. A row that spawns characters then makes them in formation around the
+ * aim.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -41,13 +44,15 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " release and the placement at the aim on arrival, the single impact with the"
             + " crown-tower choice, the area impact around the aim, and that a projectile whose"
             + " target left lands on nothing. Held by every projectile position and impact of the"
-            + " Musketeer and Wizard runs. Supplied, not settled: the deflection pass answers"
+            + " Musketeer and Wizard runs; the area impact's pushback by fireball_knight_tower and"
+            + " the impact's character spawn by goblin_barrel_tower. Supplied, not settled: the deflection pass answers"
             + " nothing, the projectile's own radius is zero, and the row's target limit, which is"
             + " not carried, is none. Not modelled: the area impact of a projectile that flies to"
             + " a point and of one that only heals, the area buff, the hits along a flying body's"
             + " path, the height"
             + " toward a moving target under the z-distance column, the delays, the pingpong"
-            + " sweep, the ring, the drag-back hook, the hit effects and the on-impact spawns.")
+            + " sweep, the ring, the drag-back hook, the hit effects, and the on-impact projectile"
+            + " and area effect.")
 final class ProjectileFlight {
 
   private ProjectileFlight() {
@@ -149,13 +154,16 @@ final class ProjectileFlight {
     int hitId = world.nextHitId();
     if (data.radius() >= 1) {
       areaImpact(p, world, damage, towerDamage, hitId);
-      return;
+    } else {
+      TargetView target = p.targetView();
+      if (target != null) {
+        singleImpact(p, world, target, damage, towerDamage, hitId);
+      }
     }
-    TargetView target = p.targetView();
-    if (target == null) {
-      return;
+    // The impact's character spawn: its children in formation around the impact point.
+    if (data.spawnCharacterCount() >= 1) {
+      world.impactSpawn(p, p.getAimX(), p.getAimY());
     }
-    singleImpact(p, world, target, damage, towerDamage, hitId);
   }
 
   /**
@@ -191,15 +199,29 @@ final class ProjectileFlight {
             !data.onlyEnemies(),
             data.aoeToAir(),
             data.aoeToGround(),
-            false);
+            false,
+            data.pushback(),
+            p.getAimX(),
+            p.getAimY());
     AreaDamage.damage(
         p.areaOwner(),
         entities,
         area,
         ValidatorQueries.standard1v1(),
-        (victim, dealt, id) ->
+        new AreaDamage.Queries() {
+          @Override
+          public DamageResult damage(TargetView victim, int dealt, int id) {
             // The area hands the damage on without a direction.
-            world.dealProjectileDamage(p, world.entityOf(victim.getEntity()), dealt, id, 0, 0));
+            return world.dealProjectileDamage(
+                p, world.entityOf(victim.getEntity()), dealt, id, 0, 0);
+          }
+
+          @Override
+          public boolean push(TargetView victim, int fromX, int fromY, int distance) {
+            // Its victims are pushed away from the impact point, as an area effect's are.
+            return world.pushByArea(world.entityOf(victim.getEntity()), fromX, fromY, distance);
+          }
+        });
   }
 
   /** The hit on the one target: nothing without damage or a target without hit points. */

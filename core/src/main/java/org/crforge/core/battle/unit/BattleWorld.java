@@ -1,5 +1,7 @@
 package org.crforge.core.battle.unit;
 
+import static org.crforge.core.util.ValidationUtils.checkState;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -20,10 +22,13 @@ import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.deploy.Formation;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.filter.FilterSubject;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -46,7 +51,9 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.FootprintOverlay;
+import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
+import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
@@ -875,7 +882,6 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** Tells the observers a character's spawner fired. */
   /** Tells the observers the combat gate dropped an entity's reference. */
   void combatGateDropped(WorldEntity entity, TargetView reference, int hitSpeed) {
     for (WorldObserver observer : observers) {
@@ -890,6 +896,117 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * The cast of a spell card at its placed point, in the command pass of its play: the area effect
+   * at the point, or the projectile from the side's king tower - from its centre at three times its
+   * collision radius, with no target, aimed at the point - both at the card's level and handed to
+   * the holder, whose opening cleanup of the same step admits them.
+   *
+   * @param card the spell card
+   * @param cardLevel the card's level as the play gives it, packed
+   * @param side the playing side
+   * @param x the placed point along the width
+   * @param y the placed point along the length
+   * @param name the play's name, which a cast area effect names as its source
+   */
+  public void castSpell(DeployCard card, int cardLevel, int side, int x, int y, String name) {
+    if (card.areaEffect() != null) {
+      createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
+    }
+    if (card.projectile() != null) {
+      ProjectileData data = records.projectile(card.projectile());
+      if (!data.unmodelledColumns().isEmpty()) {
+        throw new UnsupportedOperationException(
+            card.name()
+                + " casts "
+                + data.name()
+                + ", which sets columns its impact does not model: "
+                + data.unmodelledColumns());
+      }
+      TowerEntity king = kingTower(side);
+      checkState(king != null, () -> "side " + side + " has no king tower to cast from");
+      ProjectileEntity projectile = new ProjectileEntity(this, data, side);
+      projectile.cast(
+          king,
+          cardLevel,
+          king.getView().getX(),
+          king.getView().getY(),
+          3 * king.getData().collisionRadius(),
+          x,
+          y);
+      holder.add(projectile);
+    }
+  }
+
+  /**
+   * The character spawn of a projectile's impact: its children in the card formation around the
+   * impact point, the spread their collision radius when there are several, each created kept
+   * inside the arena, at the projectile's level, deploying for the row's deploy time when it has
+   * one, and registered with its registration visit; only then is it moved off the water, onto the
+   * point the relocation gives its created point, which also undoes whatever its registration visit
+   * moved it by.
+   *
+   * @param projectile the projectile that landed
+   * @param x the impact point along the width
+   * @param y the impact point along the length
+   */
+  public void impactSpawn(ProjectileEntity projectile, int x, int y) {
+    ProjectileData data = projectile.getData();
+    UnitData child = records.unit(data.spawnCharacter());
+    if (child.hitpoints() <= 0
+        || child.building()
+        || child.spawnPathfindSpeed() != 0
+        || child.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          data.name()
+              + "'s impact makes "
+              + child.name()
+              + ", without hit points, a building, pathing to its point or starting an action,"
+              + " which is not modelled");
+    }
+    int count = data.spawnCharacterCount();
+    int w = tileMap.width();
+    int h = tileMap.height();
+    int lane = LaneAssignment.lane(w, h, w, x, y, -1, 0, tileMap::bits);
+    for (int i = 0; i < count; i++) {
+      int[] offset =
+          Formation.offset(
+              i,
+              count,
+              count == 1 ? 0 : child.collisionRadius(),
+              0,
+              (projectile.side() & 1) == 0 ? 1 : 0,
+              lane,
+              child.spawnAngleShift(),
+              0,
+              true,
+              Standard1v1Battle.LANE_BASED_DEPLOY_SEQUENCE);
+      int cx = inset(x + offset[0], w);
+      int cy = inset(y + offset[1], h);
+      int made = spawnCounts.merge(projectile.name(), 1, Integer::sum) - 1;
+      CharacterEntity spawned =
+          CharacterEntity.spawned(
+              this,
+              child,
+              projectile.name() + "_" + made,
+              projectile.side(),
+              cx,
+              cy,
+              PackedLevel.level(PackedLevel.pack(projectile.getPackedLevel(), child.rarity())));
+      if (data.spawnCharacterDeployTimeMs() >= 1) {
+        spawned.deployFor(data.spawnCharacterDeployTimeMs());
+      }
+      holder.addRegistered(spawned);
+      for (WorldObserver observer : observers) {
+        observer.characterSpawned(tick, projectile, spawned, cx, cy);
+      }
+      int packed = Relocation.relocate(grid.getWidth(), grid.getHeight(), cx, cy, -1, grid::water);
+      spawned.getView().setX(Relocation.unpackX(packed));
+      spawned.getView().setY(Relocation.unpackY(packed));
+    }
+  }
+
+  /** Tells the observers a character's spawner fired. */
   void spawnerFired(
       CharacterEntity spawner, String row, int count, int radius, int timerAfter, int waveMade) {
     for (WorldObserver observer : observers) {
@@ -918,7 +1035,7 @@ public class BattleWorld implements HolderPasses {
           dying.getPackedLevel(),
           null,
           "death",
-          dying);
+          dying.name());
     }
     deathDamage(dying, data);
     deathSpawn(dying, data);
@@ -1290,18 +1407,11 @@ public class BattleWorld implements HolderPasses {
    * @param packedLevel the level it is created at, packed; re-based on its own rarity
    * @param name its name, or null for its row's and its id
    * @param how how it came about, for the observers
-   * @param source what it was created from, or null
+   * @param source the name of what it was created from, or null
    * @return the area effect
    */
   public AreaEffectEntity createAreaEffect(
-      String row,
-      int x,
-      int y,
-      int side,
-      int packedLevel,
-      String name,
-      String how,
-      BattleEntity source) {
+      String row, int x, int y, int side, int packedLevel, String name, String how, String source) {
     AreaEffectData data = records.areaEffect(row);
     if (!data.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
@@ -1452,6 +1562,17 @@ public class BattleWorld implements HolderPasses {
       victim.die(areaEffect);
     }
     return result;
+  }
+
+  /**
+   * Pushes the victim of an area away from a point, as an area effect's or a projectile's impact
+   * does: only a character can be pushed, and it decides whether it may be.
+   *
+   * @return true when it was pushed
+   */
+  public boolean pushByArea(WorldEntity victim, int fromX, int fromY, int distance) {
+    return victim instanceof CharacterEntity character
+        && character.pushedByArea(fromX, fromY, distance);
   }
 
   /** A position kept the creation's inset inside one axis of the arena. */
