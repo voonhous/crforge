@@ -22,7 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the eight runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the ten runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -40,10 +40,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * handed over to its side. In {@code goblin_wave} the Goblin Hero's second-wave rows are scheduled
  * on a Knight of each side, which has a run of its own: each spawns four deploying goblins around
  * its Knight, placed by the Knight's team and the middle of the arena, and links each into the
- * Knight's group. In {@code gift_select} two owners each schedule the gift delivery's select on the
- * same tick, from a random state of the run's own: each select draws its part as it is scheduled,
- * in the command pass, the first owner's draw first, and the part it chose spawns its unit in that
- * owner's phase-1 pass.
+ * Knight's group. In {@code golemite_convert} a baby golemite turns into an Elixir Golem, which
+ * dies on tick 110 and spawns two golemites on the ring of its death spawn radius, each immune for
+ * its first ticks and killed by a tower later. In {@code golemite_death_damage} a Golemite's death
+ * damages a tower and a Knight around it and pushes the Knight away. In {@code gift_select} two
+ * owners each schedule the gift delivery's select on the same tick, from a random state of the
+ * run's own: each select draws its part as it is scheduled, in the command pass, the first owner's
+ * draw first, and the part it chose spawns its unit in that owner's phase-1 pass.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
@@ -61,7 +64,9 @@ class BattleActionSpawnRunTest {
         "witch_hooks",
         "tombstone_death_hook",
         "gift_select",
-        "goblin_wave"
+        "goblin_wave",
+        "golemite_convert",
+        "golemite_death_damage"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -79,8 +84,8 @@ class BattleActionSpawnRunTest {
     }
 
     int[] currentTick = {-1};
-    // The holder tells its listener of a run once the action's start returns, after the spawn it
-    // made, so the runs and the spawns are compared as two lists, each in order.
+    // A run is listed as it starts and a spawn as it is made, so the runs and the spawns are
+    // compared as two lists, each in order.
     List<String> actions = new ArrayList<>();
     List<String> spawns = new ArrayList<>();
     List<String> dropping = new ArrayList<>();
@@ -276,16 +281,16 @@ class BattleActionSpawnRunTest {
 
     List<String> expectedActions = new ArrayList<>();
     List<String> expectedSpawns = new ArrayList<>();
-    for (JsonNode a : reference.get("actions")) {
+    for (JsonNode a : reference.path("actions")) {
       String kind = a.get("event").asText();
       if (kind.equals("run")) {
         expectedActions.add(
-            "%d run %s %s %d"
+            "%d run %s %s %s"
                 .formatted(
                     a.get("tick").asInt(),
                     a.get("owner").asText(),
                     a.get("action").asText(),
-                    a.get("phase").asInt()));
+                    a.get("phase").isNull() ? "at once" : a.get("phase").asText()));
       } else if (kind.equals("spawn")) {
         JsonNode after = a.get("after_registration");
         expectedSpawns.add(
@@ -308,7 +313,7 @@ class BattleActionSpawnRunTest {
     }
     assertThat(actions).as("every run of an action").containsExactlyElementsOf(expectedActions);
     List<String> expectedDrops = new ArrayList<>();
-    for (JsonNode a : reference.get("actions")) {
+    for (JsonNode a : reference.path("actions")) {
       if (a.get("event").asText().equals("dropped")) {
         expectedDrops.add(
             "%d dropped %s %s %d"
@@ -324,7 +329,7 @@ class BattleActionSpawnRunTest {
         .containsExactlyElementsOf(expectedDrops);
     assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
     List<String> expectedGroups = new ArrayList<>();
-    for (JsonNode a : reference.get("actions")) {
+    for (JsonNode a : reference.path("actions")) {
       String kind = a.get("event").asText();
       if (kind.equals("group_link") || kind.equals("group_unlink")) {
         List<String> chain = new ArrayList<>();
@@ -343,7 +348,7 @@ class BattleActionSpawnRunTest {
         .as("every child linked into its source's group and unlinked as it leaves")
         .containsExactlyElementsOf(expectedGroups);
     List<String> expectedDeaths = new ArrayList<>();
-    for (JsonNode a : reference.get("actions")) {
+    for (JsonNode a : reference.path("actions")) {
       String kind = a.get("event").asText();
       if (kind.equals("death_hooks")) {
         List<String> hooks = new ArrayList<>();
@@ -445,13 +450,18 @@ class BattleActionSpawnRunTest {
         .isEqualTo(record.get("pending").asBoolean());
   }
 
-  /** Records the runs and drops of one holder's actions, named after its owner. */
+  /**
+   * Records the runs and drops of one holder's actions, named after its owner: a run as it starts,
+   * with the pass that took it from the queue, or at once for one that did not wait there.
+   */
   private static ActionHolder.Listener listener(
       String owner, int[] currentTick, List<String> actions, List<String> dropping) {
     return new ActionHolder.Listener() {
       @Override
-      public void started(BattleAction action, int phase) {
-        actions.add("%d run %s %s %d".formatted(currentTick[0], owner, action.name(), phase));
+      public void starting(BattleAction action, int phase, boolean queued) {
+        actions.add(
+            "%d run %s %s %s"
+                .formatted(currentTick[0], owner, action.name(), queued ? phase : "at once"));
       }
 
       @Override

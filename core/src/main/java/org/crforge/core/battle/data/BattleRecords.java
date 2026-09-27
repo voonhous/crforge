@@ -3,6 +3,7 @@ package org.crforge.core.battle.data;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -45,19 +46,31 @@ public final class BattleRecords {
   private static final String GAME_TAGS = "game_tags";
 
   /**
-   * The columns of what a unit does as it dies that the battle does not model, beyond its death
-   * damage: a unit whose row sets one is refused when it dies.
+   * The columns of what a unit does as it dies that the battle does not model: a unit whose row
+   * sets one is refused when it dies. The elixir a death gives is not among them: the battle models
+   * no elixir at all.
    */
   private static final List<String> UNMODELLED_DEATH_COLUMNS =
       List.of(
-          "DeathSpawnCharacter",
           "DeathSpawnCharacter2",
           "DeathSpawnCharacter3",
           "DeathSpawnProjectile",
           "DeathAreaEffect",
-          "DeathPushBack",
-          "ManaOnDeath",
-          "ManaOnDeathForOpponent");
+          "StartingBuff",
+          "SpawnAreaObject");
+
+  /**
+   * The columns that change where a unit's death spawn stands or what its children take, which the
+   * battle does not model: refused only for a unit that spawns on its death.
+   */
+  private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS =
+      List.of(
+          "DeathSpawnPushback",
+          "DeathSpawnMinRadius",
+          "DeathInheritIgnoreList",
+          "SpawnConstPriority",
+          "SpawnLimit",
+          "SpawnAngleShift");
 
   private final GameTables tables;
 
@@ -76,6 +89,7 @@ public final class BattleRecords {
    */
   public UnitData unit(String name) {
     GameRow row = unitRow(name);
+    String deathSpawn = row.string("DeathSpawnCharacter");
     return UnitData.builder()
         .name(row.name())
         .speed(row.intValue("Speed"))
@@ -120,11 +134,17 @@ public final class BattleRecords {
         .onKilledAction(actionName(row, "OnKilledAction"))
         .deathDamage(row.intValue("DeathDamage"))
         .deathDamageRadius(row.intValue("DeathDamageRadius"))
-        .unmodelledDeathColumns(
-            UNMODELLED_DEATH_COLUMNS.stream().filter(column -> sets(row, column)).toList())
+        .deathPushBack(row.intValue("DeathPushBack"))
+        .deathSpawnCharacter(deathSpawn.isEmpty() ? null : deathSpawn)
+        // The loader keeps at least one child for a row that spawns on its death.
+        .deathSpawnCount(deathSpawn.isEmpty() ? 0 : Math.max(row.intValue("DeathSpawnCount"), 1))
+        .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
+        .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
+        .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
         .champion(champion(row))
         .globalId(row.globalId())
         .lifeTimeMs(row.intValue("LifeTime"))
+        .targetOnlyBuildings(row.bool("TargetOnlyBuildings"))
         .build();
   }
 
@@ -186,6 +206,24 @@ public final class BattleRecords {
       bits |= 1L << tags.row(tag).index();
     }
     return bits;
+  }
+
+  /** The columns of a row's death that are not modelled, those of its death spawn only with one. */
+  private static List<String> unmodelledDeathColumns(GameRow row, boolean spawns) {
+    List<String> columns = new ArrayList<>();
+    for (String column : UNMODELLED_DEATH_COLUMNS) {
+      if (sets(row, column)) {
+        columns.add(column);
+      }
+    }
+    if (spawns) {
+      for (String column : UNMODELLED_DEATH_SPAWN_COLUMNS) {
+        if (sets(row, column)) {
+          columns.add(column);
+        }
+      }
+    }
+    return columns;
   }
 
   /** True when a row sets a column: a value other than empty, 0 or false. */

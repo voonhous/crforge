@@ -17,6 +17,7 @@ import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridMovementQueries;
 import org.crforge.core.pathfinding.GridStateSetter;
 import org.crforge.core.pathfinding.GridUnitState;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.move.MovementChain;
@@ -82,7 +83,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " modelled yet: the registration visit of a unit a card play creates, which meets an"
             + " empty index, air, jumping and hovering units, status effects on the speed budget,"
             + " and the columns its data does not carry: the stop time after an attack and"
-            + " the ones that restrict what a unit may target, such as buildings only.")
+            + " the ones that restrict what a unit may target beyond buildings only, which it"
+            + " carries.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -419,6 +421,7 @@ public class CharacterEntity extends WorldEntity {
             data.attacksAir())
         .toBuilder()
         .configKey(data.name())
+        .targetOnlyBuildings(data.targetOnlyBuildings())
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .hasProjectile(data.hasProjectile())
         .areaDamageRadius(data.areaDamageRadius())
@@ -470,6 +473,42 @@ public class CharacterEntity extends WorldEntity {
             false);
     world.pushbackRequested(
         this, ran == 1 && movement.getPushbackInFlight() == 1, aimX, aimY, movement);
+  }
+
+  /**
+   * An area's push on the character, after the area's damage: a character that stands without a
+   * movement component, whose row ignores pushback or that the damage killed is left where it is.
+   * Otherwise its movement component is switched on and a pushback is asked for, away from the
+   * point, with every gate in place and nothing lifted.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param distance how far
+   * @return true when the pushback was asked for
+   */
+  boolean pushedByArea(int x, int y, int distance) {
+    if (!getView().isMovementComponent()
+        || getData().ignorePushback()
+        || !HitPoints.alive(getHitPoints())) {
+      return false;
+    }
+    getView().setMovementActive(true);
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            x,
+            y,
+            distance,
+            false,
+            false,
+            false,
+            false,
+            false);
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    return true;
   }
 
   /** True while the character waits its turn to deploy: none of its components is visited. */
