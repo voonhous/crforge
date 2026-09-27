@@ -22,7 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the thirteen runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the sixteen runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -74,7 +74,10 @@ class BattleActionSpawnRunTest {
         "golemite_death_damage",
         "archer_ev1_vs_tower",
         "archer_ev1_knight",
-        "area_effect_direct"
+        "area_effect_direct",
+        "area_effect_death",
+        "golem_death_pushback",
+        "giant_skeleton_bomb"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -176,6 +179,17 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
     List<String> areaEffects = new ArrayList<>();
     match.getWorld().addObserver(areaEffectLog(currentTick, areaEffects));
+    // An area effect's own runs are listed like any owner's, from its creation.
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void areaEffectCreated(
+                  int tick, AreaEffectEntity a, String how, BattleEntity source) {
+                a.actionHolder().setListener(listener(a.name(), currentTick, actions, dropping));
+              }
+            });
     match
         .getWorld()
         .addObserver(
@@ -196,7 +210,7 @@ class BattleActionSpawnRunTest {
                             child.getView().getState(),
                             child.getView().getDeployCountdown(),
                             child.getView().getLane(),
-                            child.getHitPoints().getHitPoints(),
+                            child.getHitPoints() == null ? 0 : child.getHitPoints().getHitPoints(),
                             child.getView().getX(),
                             child.getView().getY(),
                             child.getView().getState()));
@@ -456,7 +470,7 @@ class BattleActionSpawnRunTest {
           .as("%s reference", where)
           .isEqualTo(stillThere ? recorded : null);
     }
-    assertThat(unit.getHitPoints().getHitPoints())
+    assertThat(unit.getHitPoints() == null ? 0 : unit.getHitPoints().getHitPoints())
         .as("%s own hit points", where)
         .isEqualTo(record.get("own_hp").asInt());
     if (record.path("delay").isNull() || record.path("delay").isMissingNode()) {

@@ -73,6 +73,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param deathSpawnRadius the radius of the ring they stand on; 0 for none
  * @param deathSpawnDeployTimeMs the deploy time they start with; 0 for their own row's rule
  * @param deathAreaEffect the area effect the unit leaves where it dies, or null for none
+ * @param deathSpawnPushback true when the death spawn's children are put on the unit and fly back
+ *     to their ring points
+ * @param deathSpawnMinRadius the least radius a death spawn's child is drawn at; 0 for the ring's
+ *     own radius
  * @param unmodelledDeathColumns the columns of what the unit does as it dies that its row sets and
  *     the battle does not model: a second or third death spawn, a death projectile, a starting buff
  *     taken back, a spawned area object ended, and the parts of the death spawn's placement that
@@ -137,6 +141,8 @@ public record UnitData(
     int deathSpawnRadius,
     int deathSpawnDeployTimeMs,
     String deathAreaEffect,
+    boolean deathSpawnPushback,
+    int deathSpawnMinRadius,
     List<String> unmodelledDeathColumns,
     boolean champion,
     int globalId,

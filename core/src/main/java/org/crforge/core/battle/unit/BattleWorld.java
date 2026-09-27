@@ -87,11 +87,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " champion handed over after its spawn with no effect on it; the death slot inside"
             + " the killing hit - the death damage around the dying entity with its pushback, and"
             + " the death spawn on its ring - held by golemite_convert, golemite_death_damage and"
-            + " tombstone_death_hook; an area effect created by a death or placed directly and"
+            + " tombstone_death_hook; the death spawn's children flying back to the ring, held by"
+            + " golem_death_pushback; a single child on the dying object's point and a bomb's"
+            + " death slot as its deploy ends, without the death hooks, held by"
+            + " giant_skeleton_bomb; an area effect created by a death or placed directly and"
             + " its hits dealt, held by area_effect_direct and area_effect_death. Refused: a death"
-            + " whose row sets a column of the slot not"
-            + " modelled, a death spawn with no ring, and a death hook with no attacker or no"
-            + " pending pass ahead of it. Left out: the elixir a death gives. Not"
+            + " whose row sets a column of the slot not modelled, several death spawn children"
+            + " with no ring, a least radius that draws, a child without hit points that has a"
+            + " range, and a death hook with no attacker or no pending pass ahead of it. Left out: the elixir a death gives. Not"
             + " modelled: the game mode's own per-tick work beside the index and the overlay, and"
             + " the copy of the attacker the game makes as a death hook's cause.")
 public class BattleWorld implements HolderPasses {
@@ -672,11 +675,12 @@ public class BattleWorld implements HolderPasses {
    * once the entity has switched off what it no longer does.
    *
    * <p>The death slot comes first, inside the killing hit. Its death damage lands around the entity
-   * - see {@link #deathDamage} - and then its death spawn stands on the ring around it - see {@link
-   * #deathSpawn}. A death whose row sets a column of the slot the battle does not model is refused:
-   * a second or third death spawn, a death projectile or area effect, a starting buff taken back, a
-   * spawned area object ended, and the parts of the death spawn's placement not established. The
-   * elixir a death gives is left out, as the battle models no elixir.
+   * - see {@link #deathDamage} - and then its death spawn stands on the ring around it or on its
+   * point - see {@link #deathSpawn}. A death whose row sets a column of the slot the battle does
+   * not model is refused: a second or third death spawn, a death projectile or area effect, a
+   * starting buff taken back, a spawned area object ended, and the parts of the death spawn's
+   * placement not established. The elixir a death gives is left out, as the battle models no
+   * elixir.
    *
    * <p>Then the death handler's hooks: the row's death action and, unless the entity killed itself,
    * its killed action, each built for the entity and scheduled on its own holder with the row's own
@@ -697,26 +701,7 @@ public class BattleWorld implements HolderPasses {
    */
   void entityDied(WorldEntity dying, BattleEntity attacker) {
     UnitData data = dying.getData();
-    if (!data.unmodelledDeathColumns().isEmpty()) {
-      throw new UnsupportedOperationException(
-          dying.name()
-              + " died, and what its row does as it dies is not modelled: "
-              + data.unmodelledDeathColumns());
-    }
-    // The death's area effect comes first, at its point, for its side and at its level.
-    if (data.deathAreaEffect() != null) {
-      createAreaEffect(
-          data.deathAreaEffect(),
-          dying.getView().getX(),
-          dying.getView().getY(),
-          dying.side(),
-          dying.getPackedLevel(),
-          null,
-          "death",
-          dying);
-    }
-    deathDamage(dying, data);
-    deathSpawn(dying, data);
+    deathSlot(dying, data);
     if (data.onDeathAction() == null && data.onKilledAction() == null) {
       return;
     }
@@ -763,6 +748,48 @@ public class BattleWorld implements HolderPasses {
           .actionHolder()
           .schedule(actions.build(hook, binding(dying)), ActionHolder.OWN_DELAY, false, cause);
     }
+  }
+
+  /**
+   * The death of an object without hit points that its state visit removes - a bomb as its deploy
+   * ends: what the object switches off, then its death slot, with no death handler after it, so no
+   * hooks. It leaves at a later cleanup, once the visit has asked for its removal.
+   *
+   * @param dying the object
+   */
+  void deathAtRemoval(WorldEntity dying) {
+    for (WorldObserver observer : observers) {
+      observer.diedAtRemoval(tick, dying);
+    }
+    dying.died();
+    deathSlot(dying, dying.getData());
+  }
+
+  /**
+   * The death slot: what a dying object's row does as it dies, in order - its area effect at its
+   * point, for its side and at its level; its death damage; its death spawn. A death whose row sets
+   * a column of the slot the battle does not model is refused.
+   */
+  private void deathSlot(WorldEntity dying, UnitData data) {
+    if (!data.unmodelledDeathColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died, and what its row does as it dies is not modelled: "
+              + data.unmodelledDeathColumns());
+    }
+    if (data.deathAreaEffect() != null) {
+      createAreaEffect(
+          data.deathAreaEffect(),
+          dying.getView().getX(),
+          dying.getView().getY(),
+          dying.side(),
+          dying.getPackedLevel(),
+          null,
+          "death",
+          dying);
+    }
+    deathDamage(dying, data);
+    deathSpawn(dying, data);
   }
 
   /**
@@ -835,54 +862,83 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The death spawn: the row's death spawn character, as many as its count, on the ring of its
-   * death spawn radius around the dying entity - child {@code i} of {@code n} at angle {@code (n -
-   * 1 - i) * 360 / n} - each created for the entity's side at the entity's level re-based on its
-   * own rarity, walking at once, or deploying for the row's death spawn deploy time when it has
-   * one, registered inside the pass of the kill with its registration visit, and untargetable at
-   * first. It joins the live list at the tick's closing cleanup.
+   * The death spawn: the row's death spawn character, as many as its count, each created for the
+   * dying object's side at its level re-based on the child's rarity, walking at once when it has a
+   * speed and hit points, deploying for its own deploy time when it has none, or deploying for the
+   * row's death spawn deploy time when the row has one; registered inside the pass of the kill with
+   * its registration visit, untargetable at first, and joining the live list at the tick's closing
+   * cleanup.
    *
-   * <p>Refused rather than guessed: a death spawn with no ring, which stands in front of the entity
-   * instead; and a child that is a building, has no hit points, paths to its point or has a
-   * starting action of its own.
+   * <p>With a radius the children stand on its ring - child {@code i} of {@code n} at angle {@code
+   * (n - 1 - i) * 360 / n} - the ring untested for passability; a least radius equal to the radius
+   * draws nothing. A row that pushes its children puts each on the dying object and flies it back
+   * to its ring point. With no radius a single child stands on the dying object, or one unit right
+   * of it where it may not stand.
+   *
+   * <p>Refused rather than guessed: several children with no ring; a child that is a building with
+   * hit points, which replaces the dying object, paths to its point or has a starting action of its
+   * own; a least radius below the radius, which draws each child's ring radius from the battle's
+   * random source - no row sets one; and a single child without hit points that has a range, which
+   * is pulled back half its range along the dying object's facing - every such row has none, so no
+   * run holds it.
    */
   private void deathSpawn(WorldEntity dying, UnitData data) {
     if (data.deathSpawnCharacter() == null) {
       return;
     }
     int radius = data.deathSpawnRadius();
-    if (radius == 0) {
+    int count = data.deathSpawnCount();
+    if (radius == 0 && count > 1) {
       throw new UnsupportedOperationException(
           dying.name()
-              + "'s death spawn has no ring, and its place in front of it is not modelled");
+              + "'s death spawn stands several children in front of it, which is not modelled");
     }
     UnitData child = records.unit(data.deathSpawnCharacter());
-    if (child.building()
-        || child.hitpoints() <= 0
+    // A building with hit points replaces the dying object instead; one without, a bomb, is made.
+    if ((child.building() && child.hitpoints() > 0)
         || child.spawnPathfindSpeed() != 0
         || child.onStartingAction() != null) {
       throw new UnsupportedOperationException(
           dying.name()
               + "'s death spawn "
               + child.name()
-              + " is a building, has no hit points, paths to its point or starts an action,"
-              + " which is not modelled");
+              + " replaces it, paths to its point or starts an action, which is not modelled");
+    }
+    // A least radius draws the ring for each child between it and the radius; every row that sets
+    // one sets it to the radius, so the bound is 0, nothing is drawn and the ring is the radius.
+    if (data.deathSpawnMinRadius() != 0 && data.deathSpawnMinRadius() != radius) {
+      throw new UnsupportedOperationException(
+          dying.name() + "'s death spawn draws its ring radius, which is not modelled");
     }
     if (data.deathSpawnDeployTimeMs() < 0) {
       throw new UnsupportedOperationException(
           dying.name() + "'s death spawn has a negative deploy time, which is not modelled");
     }
-    int count = data.deathSpawnCount();
+    int fromX = dying.getView().getX();
+    int fromY = dying.getView().getY();
     for (int i = 0; i < count; i++) {
-      int[] at =
-          SpawnPlacement.position(
-              dying.getView().getX(),
-              dying.getView().getY(),
-              i,
-              count,
-              count == 1,
-              radius,
-              (px, py) -> true);
+      int[] at;
+      if (radius != 0) {
+        at = SpawnPlacement.position(fromX, fromY, i, count, false, radius, (px, py) -> true);
+      } else {
+        at =
+            SpawnPlacement.position(
+                fromX,
+                fromY,
+                0,
+                1,
+                true,
+                0,
+                (px, py) -> SpawnPassable.passable(tileMap, px, py, child.collisionRadius()));
+        if (child.hitpoints() <= 0 && child.range() != 0) {
+          // Pulled back by half its range along the dying object's facing; every such row has a
+          // range of 0, so no run holds the pullback.
+          throw new UnsupportedOperationException(
+              dying.name()
+                  + "'s death spawn is an object without hit points with a range, which is not"
+                  + " modelled");
+        }
+      }
       int x = inset(at[0], tileMap.width());
       int y = inset(at[1], tileMap.height());
       int made = spawnCounts.merge(dying.name(), 1, Integer::sum) - 1;
@@ -895,15 +951,24 @@ public class BattleWorld implements HolderPasses {
               x,
               y,
               PackedLevel.level(PackedLevel.pack(dying.getPackedLevel(), child.rarity())));
+      if (radius != 0 && data.deathSpawnPushback()) {
+        spawned.flyBackFrom(fromX, fromY);
+      }
+      if (child.hitpoints() <= 0 && child.deployTimeMs() >= 1) {
+        spawned.startDeploying();
+      }
       if (data.deathSpawnDeployTimeMs() > 0) {
         spawned.deployFor(data.deathSpawnDeployTimeMs());
       }
+      // Where it is made: on its point, or on the dying object for one that flies back.
+      int madeX = spawned.getView().getX();
+      int madeY = spawned.getView().getY();
       holder.addRegistered(spawned);
       if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         spawned.startSpawnImmunity();
       }
       for (WorldObserver observer : observers) {
-        observer.characterSpawned(tick, dying, spawned, x, y);
+        observer.characterSpawned(tick, dying, spawned, madeX, madeY);
       }
     }
   }
@@ -1007,8 +1072,9 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
    * pushback, a ring around a character source, which reads its own spawn columns, a unit that
-   * paths to its spawn point, a unit without hit points, and a unit with a starting action of its
-   * own, which a child starts as it joins the live list.
+   * paths to its spawn point, and a unit with a starting action of its own, which a child starts as
+   * it joins the live list. A child without a speed stands where it is made, and one without hit
+   * points is taken like any other.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
@@ -1188,8 +1254,6 @@ public class BattleWorld implements HolderPasses {
       refused = "a ring around a character, which reads the character's own spawn columns";
     } else if (data.spawnPathfindSpeed() != 0) {
       refused = "a unit that paths to its spawn point";
-    } else if (data.hitpoints() <= 0) {
-      refused = "a unit without hit points";
     } else if (data.onStartingAction() != null) {
       refused = "a child with a starting action, started as it joins the live list";
     }

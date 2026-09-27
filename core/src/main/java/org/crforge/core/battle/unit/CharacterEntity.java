@@ -79,9 +79,12 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " again through the setter, held by golemite_convert; the starting-attack row queued"
             + " on the character at the first attack step, at each hit and on a new reference in"
             + " range, running in its phase-2 pass, and the attack sequence entry at the index"
-            + " launching in place of the row's projectile, held by the evolved Archer's runs."
-            + " Refused: a building past its"
-            + " deploy, an attack sequence whose mode moves the index itself or whose entries set"
+            + " launching in place of the row's projectile, held by the evolved Archer's runs; a"
+            + " spawned child without a speed standing, held by area_effect_death; a death spawn"
+            + " child put on the dying unit and flown back to its ring point in steps of 250, held"
+            + " by golem_death_pushback; and an object without hit points running its death slot"
+            + " as its deploy ends and leaving at the next cleanup, held by giant_skeleton_bomb."
+            + " Refused: a building with hit points past its deploy, an attack sequence whose mode moves the index itself or whose entries set"
             + " more than a projectile and a damage, an action run as it attacks, and a swap that"
             + " builds or frees the movement component or reaches a"
             + " lifetime, a building or a flying row, a champion, a shield or another deploy time."
@@ -232,9 +235,51 @@ public class CharacterEntity extends WorldEntity {
   static CharacterEntity spawned(
       BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
     CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level);
-    child.getView().setState(GridEntityState.MOVING);
+    // The level setter leaves a unit with a speed walking and one without standing.
+    child.getView().setState(data.speed() >= 1 ? GridEntityState.MOVING : GridEntityState.STANDING);
     child.getView().setDeployCountdown(0);
     return child;
+  }
+
+  /**
+   * Puts a death spawn's child on the dying unit's point and aims it back at its own point on the
+   * ring, as a death spawn that pushes its children does: its movement component flies it there in
+   * steps of 250, one per movement visit, for as many steps as whole 250s fit in the distance, the
+   * first in its registration visit; meanwhile it may not attack.
+   *
+   * @param fromX the dying unit's point, along the width
+   * @param fromY the dying unit's point, along the length
+   */
+  void flyBackFrom(int fromX, int fromY) {
+    MovementState movement = unit.movement();
+    GridEntity view = getView();
+    int ringX = view.getX();
+    int ringY = view.getY();
+    movement.setTargetX(ringX);
+    movement.setTargetY(ringY);
+    view.setX(fromX);
+    view.setY(fromY);
+    view.setPrevX(fromX);
+    view.setPrevY(fromY);
+    long dx = ringX - fromX;
+    long dy = ringY - fromY;
+    movement.setBlockCountdown(isqrt(dx * dx + dy * dy) / DEATH_PUSHBACK_STEP);
+    movement.setPushbackBudget(DEATH_PUSHBACK_STEP);
+  }
+
+  /** One step of a death spawn child's flight back to its ring point, in game units. */
+  private static final int DEATH_PUSHBACK_STEP = 250;
+
+  /** The integer square root, rounded down. */
+  private static int isqrt(long value) {
+    long root = (long) Math.sqrt((double) value);
+    while (root * root > value) {
+      root--;
+    }
+    while ((root + 1) * (root + 1) <= value) {
+      root++;
+    }
+    return (int) root;
   }
 
   /** Sets the character deploying through its own setter, with its row's deploy time. */
@@ -572,8 +617,24 @@ public class CharacterEntity extends WorldEntity {
     return getView().getState() == GridEntityState.WAITING_TO_DEPLOY;
   }
 
+  /**
+   * What the state visit asks of the character: its team, whether it can hold a route - only with a
+   * movement component - and whether it has hit points.
+   */
   private StateQueries stateQueries() {
-    return StateQueries.forUnitWithRoute(side() & 1);
+    StateQueries queries = StateQueries.forUnitWithRoute(side() & 1);
+    return new StateQueries(
+        queries.team(),
+        getView().isMovementComponent(),
+        queries.gridAllowsRoute(),
+        queries.gridRouteFlag(),
+        getHitPoints() != null,
+        queries.abilityCastActive(),
+        queries.abilityTriggerReady(),
+        queries.protectedFromDamage(),
+        queries.protectionApplies(),
+        queries.goalRow(),
+        queries.scaledDeployStepMs());
   }
 
   /** The movement pass's answers for the character as it stands now, reference included. */
@@ -614,6 +675,7 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   protected void postHook() {
+    List<String> calls = new ArrayList<>();
     EntityStateVisit.stateVisit(
         getView(),
         unit.timers(),
@@ -621,10 +683,16 @@ public class CharacterEntity extends WorldEntity {
         unit.stateConfig(),
         StateVisitGlobals.standard(),
         stateQueries(),
-        new ArrayList<>(),
+        calls,
         setter);
     getTargetView().setAcceptsAttacker(!unit.timers().isSpawnImmune());
-    if (getData().building() && !deploying()) {
+    // The visit's removal of an object without hit points - the resume at the end of a bomb's
+    // deploy - calls its death slot, without the death handler.
+    if (calls.contains("remove")) {
+      world.deathAtRemoval(this);
+    }
+    // A building without hit points, a bomb, dies as its deploy ends and is removed after.
+    if (getData().building() && getHitPoints() != null && !deploying()) {
       throw new UnsupportedOperationException(
           name()
               + " is a building whose deploy has ended; what a deployed building does is not"
