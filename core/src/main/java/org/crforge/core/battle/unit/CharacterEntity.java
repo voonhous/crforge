@@ -90,7 +90,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " tick after the deploy and its death with the death slot and no death handler, and"
             + " the live spawner from the deploy end - its timer, its waves and its children in"
             + " front - held by cannon_knight, tombstone_life, goblin_hut_life and mortar_knight;"
-            + " the building's targeting and attack there rest on the verified translations, not"
+            + " the combat gate at the state visit's tail, which drops a dead character's"
+            + " reference and switches its targeting off, held by every run's death tick; the"
+            + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
             + " not model (a shield, hiding, a buff at a share of its hit points, elixir, a"
@@ -708,7 +710,8 @@ public class CharacterEntity extends WorldEntity {
    * The entity state visit: the deploy countdown and every other per-tick state transition. A
    * spawned child's immunity is counted here, and once it clears the child accepts attackers again.
    * A building's deploy ends in the standing state through the resume, and its targeting component
-   * visits it from the next tick. Where the visit reaches its spawner block, the spawner runs.
+   * visits it from the next tick. Where the visit reaches its spawner block, the spawner runs, and
+   * where it reaches its tail, the combat gate: a dead character drops its reference there.
    */
   @Override
   protected void postHook() {
@@ -730,6 +733,14 @@ public class CharacterEntity extends WorldEntity {
     }
     if (calls.contains("spawner")) {
       spawner();
+    }
+    if (calls.contains("targeting_visit")) {
+      throw new UnsupportedOperationException(
+          name() + " hides until it attacks, whose deploy end runs the gate and a targeting visit");
+    }
+    // The visit's tail call: the combat gate.
+    if (!calls.isEmpty() && calls.get(calls.size() - 1).equals("visit_tail")) {
+      combatGate(isActive(TARGETING_SLOT) && !deploying() && !waiting(), setter::prepareRoute);
     }
   }
 
