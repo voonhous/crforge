@@ -25,8 +25,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: cost field, wrapper and search composed with the standard settings,"
-            + " held by the 53 reference walks. Supplied: both water permissions are passed in"
-            + " by the caller, and every caller passes false.")
+            + " held by the 53 reference walks; the river jump's water permission held by"
+            + " hog_river. Supplied: the water permissions are passed in by the caller, and no"
+            + " caller passes a hovering unit's.")
 public final class GridSearchService {
 
   private GridSearchService() {
@@ -40,8 +41,9 @@ public final class GridSearchService {
    * @param costs the six cost weights
    * @param state the unit's state, which decides whether roads are priced at all
    * @param lane the road id the unit is assigned to
-   * @param waterPermission whether the unit may enter water
-   * @param alternateWaterPermission the second per-unit water permission
+   * @param waterPermission whether the unit hovers, which lets it enter water
+   * @param alternateWaterPermission whether the unit's row jumps the river, which also lets it
+   *     enter water
    * @param startCol the cell the unit stands on
    * @param startRow the cell the unit stands on
    * @param goalCol the cell it is heading for

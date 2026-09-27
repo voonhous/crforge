@@ -15,6 +15,9 @@ class HitApplicationTest {
   /** Damage of one hit at the attacker's level, as the queries answer it. */
   private static final int DAMAGE = 202;
 
+  /** Damage of the attacker's charged hit at its level, as the queries answer it. */
+  private static final int CHARGED_DAMAGE = 783;
+
   private TargetingState t;
   private TargetView target;
   private RecordingQueries queries;
@@ -25,10 +28,27 @@ class HitApplicationTest {
     private final List<String> dealt = new ArrayList<>();
     private boolean forbidden;
     private int hitCounter;
+    private int charge = NO_CHARGE;
+    private int resets;
 
     @Override
     public int damage() {
       return DAMAGE;
+    }
+
+    @Override
+    public int chargeProgress() {
+      return charge;
+    }
+
+    @Override
+    public int chargedDamage() {
+      return CHARGED_DAMAGE;
+    }
+
+    @Override
+    public void resetCharge() {
+      resets++;
     }
 
     @Override
@@ -202,5 +222,53 @@ class HitApplicationTest {
     assertThat(HitApplication.apply(t, null, queries)).isFalse();
     assertThat(t.isHitStarted()).isTrue();
     assertThat(queries.dealt).isEmpty();
+  }
+
+  @Test
+  @DisplayName("a fully charged unit's direct hit deals its charged damage and resets the charge")
+  void aChargedHitDealsItsChargedDamage() {
+    t.setLastReferenceY(2000);
+    queries.charge = 10080;
+
+    HitApplication.apply(t, target, queries);
+
+    assertThat(queries.dealt).containsExactly("target 783 1 0 2000");
+    assertThat(queries.resets).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit charging but not yet full deals its ordinary damage and still loses the charge")
+  void aHalfChargedHitResetsTheCharge() {
+    t.setLastReferenceY(2000);
+    queries.charge = 5000;
+
+    HitApplication.apply(t, target, queries);
+
+    assertThat(queries.dealt).containsExactly("target 202 1 0 2000");
+    assertThat(queries.resets).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("a row that keeps charging after an attack deals the charged damage and keeps it")
+  void aRowThatKeepsChargingKeepsTheCharge() {
+    t.setLastReferenceY(2000);
+    t.setConfig(t.getConfig().toBuilder().keepChargingAfterAttack(true).build());
+    queries.charge = 10000;
+
+    HitApplication.apply(t, target, queries);
+
+    assertThat(queries.dealt).containsExactly("target 783 1 0 2000");
+    assertThat(queries.resets).isZero();
+  }
+
+  @Test
+  @DisplayName("a unit that tracks no charge deals its ordinary damage and resets nothing")
+  void aUnitWithoutAChargeIsUntouched() {
+    t.setLastReferenceY(2000);
+    HitApplication.apply(t, target, queries);
+
+    assertThat(queries.dealt).containsExactly("target 202 1 0 2000");
+    assertThat(queries.resets).isZero();
   }
 }

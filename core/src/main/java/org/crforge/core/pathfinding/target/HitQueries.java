@@ -19,6 +19,31 @@ public interface HitQueries {
     return damage();
   }
 
+  /** The charge progress of an owner that tracks none. */
+  int NO_CHARGE = -1;
+
+  /** The charge progress at which a charge is complete. */
+  int CHARGE_COMPLETE = 10000;
+
+  /**
+   * The progress of the owner's charge, or {@link #NO_CHARGE} for an owner that tracks none.
+   * Supplied as none.
+   */
+  default int chargeProgress() {
+    return NO_CHARGE;
+  }
+
+  /** Damage of the owner's charged hit, at its level; the ordinary damage for an owner without. */
+  default int chargedDamage() {
+    return damage();
+  }
+
+  /**
+   * Resets the owner's charge after a hit: to zero for an owner with a charge range to build over,
+   * and the targeting component's strike-now byte cleared. Supplied as doing nothing.
+   */
+  default void resetCharge() {}
+
   /** True when the owner may not attack at all, which discards the hit before any other step. */
   default boolean attackForbidden() {
     return false;

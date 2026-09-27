@@ -21,11 +21,15 @@ import org.crforge.core.pathfinding.GridMovementQueries;
 import org.crforge.core.pathfinding.GridStateSetter;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.move.AttachedParent;
 import org.crforge.core.pathfinding.move.MovementChain;
 import org.crforge.core.pathfinding.move.MovementConfig;
+import org.crforge.core.pathfinding.move.MovementRequests;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.MovementVisit;
 import org.crforge.core.pathfinding.move.PushbackQueries;
@@ -37,6 +41,7 @@ import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
+import org.crforge.core.pathfinding.target.HitQueries;
 import org.crforge.core.pathfinding.target.ReferenceSetter;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.SelectionChain;
@@ -113,21 +118,27 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " rank, flight over water, contact only with units on its side of height 0, targets"
             + " by the validator's air and ground pairing, projectiles from its height - held by"
             + " minions_left, minion_musketeer, balloon_tower, balloons_cross, lava_hound_river"
-            + " and baby_dragon_left; the"
+            + " and baby_dragon_left; a charge built by the steps it walks, its doubled speed, its"
+            + " strike-now byte landing the first hit at once and that hit's special damage, held"
+            + " by prince_tower and dark_prince_tower; a river jump over the water its route"
+            + " crosses, from the node before the water to the first land cell beyond it at its"
+            + " jump speed, held by hog_river; the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
             + " hit points, hovering, direct"
-            + " paths, the river jump, elixir, a"
+            + " paths, a completed charge's action, elixir, a"
             + " spawner's launches, second and third characters, limit, push and"
-            + " deploy for its children), a lifetime's death"
+            + " deploy for its children), a charge on a unit that fires, a Kamikaze row's hit, a"
+            + " lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself or whose"
             + " entries set more than a projectile and a damage, an action run as it attacks, and"
             + " a row that attaches riders placed directly, spawned or waiting its turn, a buff on a"
             + " parent or a rider, a rider whose parent may not attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
-            + " spawner, a building or a flying row, a champion or another deploy time."
+            + " spawner, a building or a flying row, a champion, another deploy time, a charge or"
+            + " a river jump."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
             + " meets an empty index, the"
             + " hit-points visit's dedupe expiry, and the columns its data does not"
@@ -191,6 +202,29 @@ public class CharacterEntity extends WorldEntity {
 
   /** True once it has been let go by its parent, which removes it at the same cleanup. */
   private boolean released;
+
+  /** True when its charge was complete at the end of its last movement visit. */
+  private boolean charged;
+
+  /**
+   * The character's answers to its movement pass's requests: a state change goes to its state
+   * setter at once, and a completed charge is told to the world's observers. The action a completed
+   * charge runs is refused with its row.
+   */
+  private final MovementRequests movementRequests =
+      new MovementRequests() {
+        @Override
+        public void requestState(int state) {
+          int from = getView().getState();
+          setter.setState(getView(), state);
+          world.movementStateRequested(CharacterEntity.this, from, getView().getState());
+        }
+
+        @Override
+        public void chargeCompleted() {
+          world.chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
+        }
+      };
 
   /**
    * Creates a character at its deploy position, deploying.
@@ -256,15 +290,24 @@ public class CharacterEntity extends WorldEntity {
             targeting,
             new StateTimers(),
             // The movement config's flying height is read only for direct paths, which are
-            // refused; its stop and wait make the follower walk in bursts.
-            MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs()),
-            SpeedConfig.forGroundUnit(data.speed()),
+            // refused; its stop and wait make the follower walk in bursts, its charge range
+            // builds the charge and its jump leaps the river.
+            MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs())
+                .withCharge(data.chargeRange())
+                .withJump(data.jumpEnabled(), data.jumpHeight()),
+            SpeedConfig.forGroundUnit(data.speed())
+                .withChargeMultiplier(data.chargeSpeedMultiplier())
+                .withJumpSpeed(data.jumpSpeed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs()),
             getSelection(),
             getTargetView());
     this.setter =
         new GridStateSetter(
             view, unit.movement(), targeting, this::movementChain, data.deployTimeMs());
+    // The movement component starts tracking a charge for a row with a charge range.
+    if (data.chargeRange() != 0) {
+      unit.movement().setChargeProgress(0);
+    }
     if (lane >= 0) {
       view.setLane(lane);
     }
@@ -481,6 +524,11 @@ public class CharacterEntity extends WorldEntity {
       refused = "another deploy time";
     } else if (current.champion()) {
       refused = "a champion's controller";
+    } else if (current.chargeRange() != 0
+        || next.chargeRange() != 0
+        || current.jumpEnabled()
+        || next.jumpEnabled()) {
+      refused = "a charge or a river jump";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(
@@ -522,6 +570,9 @@ public class CharacterEntity extends WorldEntity {
     }
     if (refused == null && data.onAttackAction() != null) {
       refused = "an action run as it attacks";
+    }
+    if (refused == null && data.chargeRange() != 0 && data.hasProjectile()) {
+      refused = "a charge on a unit that fires, whose charged shot is not established";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(data.name() + " has " + refused + ", not modelled");
@@ -617,6 +668,8 @@ public class CharacterEntity extends WorldEntity {
         .overrideAttackFinishTime(data.overrideAttackFinishTime())
         .attackFinishTime(data.attackFinishTimeMs())
         .minimumRange(data.minimumRange())
+        .keepChargingAfterAttack(data.keepChargingAfterAttack())
+        .jumpHeight(data.jumpHeight())
         .build();
   }
 
@@ -820,14 +873,53 @@ public class CharacterEntity extends WorldEntity {
 
   private MovementChain movementChain(GridMovementQueries queries) {
     return new MovementChain(
-        unit.movement(),
-        getView(),
-        world.getGrid(),
-        unit.movementConfig(),
-        world.getMovementGlobals(),
-        queries.reference(),
-        world.getNeighbourQuery(),
-        queries);
+            unit.movement(),
+            getView(),
+            world.getGrid(),
+            unit.movementConfig(),
+            world.getMovementGlobals(),
+            queries.reference(),
+            world.getNeighbourQuery(),
+            queries)
+        .withRequests(movementRequests);
+  }
+
+  /** Refuses a Kamikaze row's hit, which destroys the unit and is not modelled. */
+  @Override
+  protected void refuseHit() {
+    if (getData().kamikaze()) {
+      throw new UnsupportedOperationException(
+          name() + " hits as a Kamikaze row, which destroys it and is not modelled");
+    }
+  }
+
+  /** The progress of the character's charge, while its movement component is on. */
+  @Override
+  protected int chargeProgress() {
+    return isActive(MOVEMENT_SLOT) ? unit.movement().getChargeProgress() : HitQueries.NO_CHARGE;
+  }
+
+  /** The damage of the character's charged hit: its row's special damage at its level. */
+  @Override
+  protected int chargedDamage() {
+    return LevelScaling.scale(
+        ScalingGlobals.standard(),
+        getData().damageSpecial(),
+        getPackedLevel(),
+        ScalingMode.CARD_DAMAGE,
+        getData().rarity());
+  }
+
+  /**
+   * The charge reset: the progress back to 0 for a row with a charge range and to no charge for one
+   * without, and the targeting component's strike-now byte cleared. A buff that gives a charge
+   * range is refused with its row.
+   */
+  @Override
+  protected void resetCharge() {
+    unit.movement()
+        .setChargeProgress(getData().chargeRange() != 0 ? 0 : MovementState.CHARGE_INACTIVE);
+    unit.targeting().setChargeStrike(false);
   }
 
   /**
@@ -1015,6 +1107,11 @@ public class CharacterEntity extends WorldEntity {
       for (int[] r : queries.relocations()) {
         world.relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
       }
+      boolean full = unit.movement().getChargeProgress() >= MovementState.CHARGE_COMPLETE;
+      if (charged && !full) {
+        world.chargeLost(CharacterEntity.this);
+      }
+      charged = full;
     }
   }
 }

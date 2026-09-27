@@ -154,7 +154,10 @@ class BattleActionSpawnRunTest {
         "tombstone_crazy_life",
         "witch_left_lane",
         "night_witch",
-        "goblin_giant_tower"
+        "goblin_giant_tower",
+        "prince_tower",
+        "dark_prince_tower",
+        "hog_river"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -289,6 +292,9 @@ class BattleActionSpawnRunTest {
                             shieldAfter == 0));
               }
             });
+    // Every charge completed and lost, and every state change a unit's movement pass asked for.
+    List<String> jumpChargeDash = new ArrayList<>();
+    match.getWorld().addObserver(jumpChargeDashLog(currentTick, jumpChargeDash));
     // What each buff did.
     List<String> buffLog = new ArrayList<>();
     match.getWorld().addObserver(buffLog(currentTick, buffLog));
@@ -596,6 +602,9 @@ class BattleActionSpawnRunTest {
     assertThat(areaEffects)
         .as("what every area effect did")
         .containsExactlyElementsOf(expectedAreaEffects(reference));
+    assertThat(jumpChargeDash)
+        .as("every charge, its loss, and every state a movement pass asked for")
+        .containsExactlyElementsOf(expectedJumpChargeDash(reference));
 
     List<String> expectedBuildingLog = new ArrayList<>();
     for (JsonNode b : reference.path("building_log")) {
@@ -979,5 +988,110 @@ class BattleActionSpawnRunTest {
   private static String referenceName(WorldEntity tower) {
     TargetView reference = tower.getTargeting().getReference();
     return reference == null ? null : reference.name();
+  }
+
+  /**
+   * Lists every charge a unit completed, with its progress and where it stood, every charge it lost
+   * at a movement visit, with its state then, and every state its movement pass asked for; a jump
+   * lists its length and its landing node.
+   */
+  private static WorldObserver jumpChargeDashLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void chargeCompleted(int tick, CharacterEntity unit, int progress) {
+        log.add(
+            "%d charged %s %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    progress,
+                    unit.getView().getX(),
+                    unit.getView().getY()));
+      }
+
+      @Override
+      public void chargeLost(int tick, CharacterEntity unit) {
+        log.add(
+            "%d charge_lost %s %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    unit.getView().getState(),
+                    unit.getView().getX(),
+                    unit.getView().getY()));
+      }
+
+      @Override
+      public void movementStateRequested(int tick, CharacterEntity unit, int from, int to) {
+        String jump = "";
+        if (to == GridEntityState.JUMPING) {
+          jump =
+              " jump %d %s"
+                  .formatted(
+                      unit.getUnit().movement().getJumpTotalDistance(),
+                      List.of(unit.getUnit().movement().getRoute().last()));
+        }
+        log.add(
+            "%d state %s %d %d %d %d%s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    from,
+                    to,
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    jump));
+      }
+    };
+  }
+
+  /** The reference's charges, their losses and the states movement passes asked for, as listed. */
+  private static List<String> expectedJumpChargeDash(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("jump_charge_dash")) {
+      String kind = e.get("event").asText();
+      int tick = e.get("tick").asInt();
+      String unit = e.get("unit").asText();
+      switch (kind) {
+        case "charged" ->
+            expected.add(
+                "%d charged %s %d %d %d"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("charge").asInt(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt()));
+        case "charge_lost" ->
+            expected.add(
+                "%d charge_lost %s %d %d %d"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("state").asInt(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt()));
+        case "state" -> {
+          String jump = "";
+          if (e.has("jump_total")) {
+            List<Integer> target = new ArrayList<>();
+            e.get("target").forEach(node -> target.add(node.asInt()));
+            jump = " jump %d %s".formatted(e.get("jump_total").asInt(), target);
+          }
+          expected.add(
+              "%d state %s %d %d %d %d%s"
+                  .formatted(
+                      tick,
+                      unit,
+                      e.get("old").asInt(),
+                      e.get("state").asInt(),
+                      e.get("x").asInt(),
+                      e.get("y").asInt(),
+                      jump));
+        }
+        default -> throw new IllegalArgumentException("an event this test does not hold: " + kind);
+      }
+    }
+    return expected;
   }
 }

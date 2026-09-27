@@ -197,6 +197,28 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName("a unit carries its charge, its river jump and whether its hit destroys it")
+  void chargeAndJumpColumns() {
+    UnitData prince = records.unit("Prince");
+    assertThat(prince.chargeRange()).isEqualTo(250);
+    assertThat(prince.chargeSpeedMultiplier()).isEqualTo(200);
+    assertThat(prince.damageSpecial()).isEqualTo(306);
+    assertThat(prince.keepChargingAfterAttack()).isFalse();
+    assertThat(prince.jumpEnabled()).isTrue();
+    assertThat(prince.jumpHeight()).isEqualTo(4000);
+    assertThat(prince.jumpSpeed()).isEqualTo(160);
+    assertThat(prince.kamikaze()).isFalse();
+    assertThat(records.unit("Ram_crazy_1").keepChargingAfterAttack()).isTrue();
+    UnitData ram = records.unit("BattleRam");
+    assertThat(ram.chargeRange()).isEqualTo(300);
+    assertThat(ram.jumpEnabled()).isFalse();
+    assertThat(ram.kamikaze()).isTrue();
+    UnitData knight = records.unit("Knight");
+    assertThat(knight.chargeRange()).isZero();
+    assertThat(knight.jumpEnabled()).isFalse();
+  }
+
+  @Test
   @DisplayName(
       "a building carries its lifetime, minimum range and spawner, and a unit lists the columns"
           + " the battle does not model")
@@ -212,7 +234,9 @@ class BattleRecordsTest {
     assertThat(records.unit("GoblinDrill").spawnStartTimeMs()).isEqualTo(1000);
     assertThat(records.unit("Mortar").minimumRange()).isEqualTo(2900);
     assertThat(records.unit("Cannon").spawnCharacter()).isNull();
-    assertThat(records.unit("DarkPrince").unmodelledColumns()).containsExactly("JumpEnabled");
+    assertThat(records.unit("DarkPrince").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("Ram_crazy_1").unmodelledColumns())
+        .containsExactly("OnStartChargingAction");
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).contains("ShieldLostAction");
     assertThat(records.unit("Tesla").unmodelledColumns()).containsExactly("HidesWhenNotAttacking");

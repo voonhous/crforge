@@ -107,4 +107,58 @@ public record MovementConfig(
     return new MovementConfig(
         0, 0, 0, 0, 0, false, 0, null, null, false, 0, 0, stopMovementAfterMs, waitMs, 0, 0, false);
   }
+
+  /**
+   * This configuration with a charge: the entity builds a charge as it walks, complete after ten
+   * times the range.
+   *
+   * @param range a tenth of the distance a full charge takes; 0 for none
+   */
+  public MovementConfig withCharge(int range) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        range,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        entersWaterWhileSpawnPathfinding);
+  }
+
+  /**
+   * This configuration with the river jump: the entity leaps over the water in its way.
+   *
+   * @param enabled true for a unit that jumps
+   * @param height the height of its jump arc
+   */
+  public MovementConfig withJump(boolean enabled, int height) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        enabled,
+        height,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        entersWaterWhileSpawnPathfinding);
+  }
 }

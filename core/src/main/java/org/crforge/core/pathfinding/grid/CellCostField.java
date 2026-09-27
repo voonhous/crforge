@@ -51,9 +51,9 @@ public final class CellCostField {
    *     it
    * @param costs the six cost weights
    * @param entityPresent whether a unit is being priced, rather than the bare cell
-   * @param waterPermission whether that unit may enter water
-   * @param alternateWaterPermission a second per-unit flag that also permits water; its writers are
-   *     not established, so the name stays neutral
+   * @param waterPermission whether that unit hovers, which lets it enter water
+   * @param alternateWaterPermission whether that unit's row jumps the river, which also lets it
+   *     enter water
    * @param state the unit's state, one of the constants in {@link GridEntityState}
    * @param lane the road id the unit is assigned to, 0 for none
    * @param dynamicActive whether the building overlay has been built for this tick

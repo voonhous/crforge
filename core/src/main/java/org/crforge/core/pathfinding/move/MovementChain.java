@@ -30,8 +30,9 @@ import org.crforge.core.pathfinding.grid.CellGrid;
     note =
         "Runs each pass at the point the visit announces it, so later passes see"
             + " earlier writes; held by the 53 reference walks and the multi-unit parity"
-            + " scenes. The names it collects for state changes, jump targets and end actions"
-            + " are recorded and read by nothing.")
+            + " scenes. Hands the follower's state requests and a completed charge to the"
+            + " owner's requests when it has them, held by prince_tower and hog_river; without"
+            + " them they are recorded by name only, as are the end actions.")
 public final class MovementChain {
 
   private final MovementState component;
@@ -43,6 +44,9 @@ public final class MovementChain {
   private final NeighbourQuery neighbours;
   private final MovementQueries queries;
   private final List<String> markers = new ArrayList<>();
+
+  /** Where the pass's state requests and a completed charge go, or null to only record them. */
+  private MovementRequests requests;
 
   /** Largest number of pushes the push pass accumulated in one run during this visit. */
   private int pushContributions;
@@ -107,6 +111,38 @@ public final class MovementChain {
     this.reference = reference;
     this.neighbours = neighbours;
     this.queries = queries;
+  }
+
+  /**
+   * Hands the pass's state requests and a completed charge to the owner, as they are made.
+   *
+   * @param requests the owner's answers to them
+   * @return this chain
+   */
+  public MovementChain withRequests(MovementRequests requests) {
+    this.requests = requests;
+    return this;
+  }
+
+  /**
+   * Records a state request under its name and hands it to the owner, which applies it at once.
+   *
+   * @param name the name the request is recorded under
+   * @param state the state asked for
+   */
+  public void requestState(String name, int state) {
+    markers.add(name);
+    if (requests != null) {
+      requests.requestState(state);
+    }
+  }
+
+  /** Records that the charge just completed and tells the owner. */
+  public void startCharging() {
+    markers.add("start_charging");
+    if (requests != null) {
+      requests.chargeCompleted();
+    }
   }
 
   /** The position the entity is heading for, or null when it has none. */

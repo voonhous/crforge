@@ -108,6 +108,16 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnMaxAngle for an attached unit, the arc its share of its parent's ring is taken from
  * @param spawnAttachMaxRotation for an attached unit, how far, in degrees, it may face away from
  *     its parent's heading while it attacks; 0 for no limit
+ * @param chargeRange a tenth of the distance it must walk to be fully charged; 0 for a unit that
+ *     does not charge
+ * @param chargeSpeedMultiplier the percent its speed is scaled by once fully charged
+ * @param damageSpecial the damage of its charged hit at the first level
+ * @param keepChargingAfterAttack true when its charged hit does not reset the charge
+ * @param jumpEnabled true for a unit that jumps the river: its route may cross water, and it leaps
+ *     over the water in its way
+ * @param jumpHeight the height of its jump arc
+ * @param jumpSpeed its speed while it jumps, in game units per tick
+ * @param kamikaze true for a unit whose hit destroys it
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -186,6 +196,14 @@ public record UnitData(
     boolean spawnAttach,
     int spawnMaxAngle,
     int spawnAttachMaxRotation,
+    int chargeRange,
+    int chargeSpeedMultiplier,
+    int damageSpecial,
+    boolean keepChargingAfterAttack,
+    boolean jumpEnabled,
+    int jumpHeight,
+    int jumpSpeed,
+    boolean kamikaze,
     List<String> unmodelledColumns) {
 
   public UnitData {

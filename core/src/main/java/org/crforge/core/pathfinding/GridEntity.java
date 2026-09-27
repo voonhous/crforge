@@ -164,12 +164,6 @@ public class GridEntity {
   private int blockCountdownMs;
 
   /**
-   * Byte the follower and the displacement helper write while the entity moves. Its readers are not
-   * established.
-   */
-  private int movingMarker;
-
-  /**
    * The tower slot: set for the king tower alone, the entity that fills its side's tower slot. The
    * validator's tower filters read it, apart from the crown-tower flag, which every tower answers.
    */

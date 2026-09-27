@@ -39,7 +39,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
     status = FidelityStatus.PARTIAL,
     note =
         "Answers the movement pass from the live grid and the unit's own state; held by"
-            + " the 53 reference walks. Supplied: both water permissions off, every map cell"
+            + " the 53 reference walks. Supplied: the hovering water permission off, every map cell"
             + " an acceptable endpoint, no status effects in the speed inputs, and a unit that"
             + " always carries both components.")
 public final class GridMovementQueries implements MovementQueries {
@@ -113,15 +113,15 @@ public final class GridMovementQueries implements MovementQueries {
   @Override
   public Route search(int startCol, int startRow, int goalCol, int goalRow, int adjust) {
     GridEntity entity = unit.entity();
-    // Both water permissions are off: a plain ground unit may not route through the river, and
-    // the units that may are not managed here.
+    // A unit that jumps the river may route over water, at the water cost; a hovering unit, which
+    // may too, is not managed here.
     return GridSearchService.route(
         grid,
         costs,
         entity.getState(),
         entity.getLane(),
         false,
-        false,
+        unit.movementConfig().jumpEnabled(),
         startCol,
         startRow,
         goalCol,
@@ -204,6 +204,17 @@ public final class GridMovementQueries implements MovementQueries {
         speedPercents,
         true,
         unit.movement().getChargeProgress());
+  }
+
+  /** The strike-now byte is looked up only while the targeting component is switched on. */
+  @Override
+  public boolean targetingLookup() {
+    return unit.targeting().isTargetingComponentActive();
+  }
+
+  @Override
+  public void setChargeStrike(boolean set) {
+    unit.targeting().setChargeStrike(set);
   }
 
   @Override

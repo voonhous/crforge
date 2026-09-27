@@ -101,6 +101,9 @@ class BattleChangeDataTest {
     assertThatThrownBy(() -> new Scene("SkeletonKing").knight.changeData("Knight", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("champion");
+    assertThatThrownBy(() -> new Scene("Knight").knight.changeData("Prince", false))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a charge or a river jump");
     Scene towers = new Scene("Knight");
     TowerEntity king = BattleMusketeerRunTest.towerNamed(towers.battle, "KingTower_0_0");
     assertThatThrownBy(() -> king.changeData("Knight", false))

@@ -35,4 +35,35 @@ public record SpeedConfig(
   public static SpeedConfig forGroundUnit(int rawSpeed) {
     return new SpeedConfig(rawSpeed, 0, 0, 0, NEUTRAL_CHARGE_MULTIPLIER, false);
   }
+
+  /**
+   * These speeds with a charge multiplier, which scales the ordinary budget once the charge is
+   * complete.
+   *
+   * @param multiplier the percent the budget is scaled by
+   */
+  public SpeedConfig withChargeMultiplier(int multiplier) {
+    return new SpeedConfig(
+        speed,
+        jumpSpeed,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        multiplier,
+        ingamePathfindVisible);
+  }
+
+  /**
+   * These speeds with a jump speed, the budget of the jumping and dashing states.
+   *
+   * @param speed the budget while jumping or dashing
+   */
+  public SpeedConfig withJumpSpeed(int speed) {
+    return new SpeedConfig(
+        this.speed,
+        speed,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        chargeSpeedMultiplier,
+        ingamePathfindVisible);
+  }
 }
