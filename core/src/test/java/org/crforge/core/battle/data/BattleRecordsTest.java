@@ -194,6 +194,17 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName("a unit carries its row's global id, a building's as much as a character's")
+  void globalId() {
+    assertThat(records.unit("MiniPekka").globalId()).isEqualTo(34000016);
+    assertThat(records.unit("KingTower").globalId()).isEqualTo(35000000);
+    // A row named in an expression is looked up by name, characters first; this one hashes below 0.
+    assertThat(records.unitGlobalId("DaggerDuchess")).isEqualTo(-1749071821);
+    assertThat(records.unitGlobalId("MiniPekka")).isEqualTo(34000016);
+    assertThat(records.unitGlobalId("NoSuchRow")).isNull();
+  }
+
+  @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
   void anInlineHookIsRefused() {
     assertThatThrownBy(() -> records.unit("Berserker"))

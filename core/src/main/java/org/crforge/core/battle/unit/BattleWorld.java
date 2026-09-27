@@ -194,6 +194,37 @@ public class BattleWorld implements HolderPasses {
     return variableKeys.get(name);
   }
 
+  /** The global ids of the data rows the battle's expressions have named, in the order named. */
+  private final List<Integer> dataRowIds = new ArrayList<>();
+
+  /** Each named data row's place in {@link #dataRowIds}, by name. */
+  private final Map<String, Integer> dataRowIndex = new HashMap<>();
+
+  /**
+   * The place of a character or building row an expression names, which its compiled call carries;
+   * null for a name that is no such row, or while no data is loaded.
+   *
+   * @param name the row's name, matched exactly
+   */
+  Integer dataRow(String name) {
+    Integer index = dataRowIndex.get(name);
+    if (index != null || records == null) {
+      return index;
+    }
+    Integer globalId = records.unitGlobalId(name);
+    if (globalId == null) {
+      return null;
+    }
+    dataRowIds.add(globalId);
+    dataRowIndex.put(name, dataRowIds.size() - 1);
+    return dataRowIds.size() - 1;
+  }
+
+  /** The global id of the data row at a place {@link #dataRow} gave. */
+  int dataRowId(int index) {
+    return dataRowIds.get(index);
+  }
+
   /** The battle's unit, projectile and card records, from the tables it was loaded with. */
   @Getter private BattleRecords records;
 

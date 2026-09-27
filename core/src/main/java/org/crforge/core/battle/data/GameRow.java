@@ -20,11 +20,20 @@ public final class GameRow {
   private final String className;
   private final Map<String, JsonNode> columns;
 
+  /** The id the game gives the row, or null for a row of a table that carries none. */
+  private final Integer globalId;
+
   GameRow(String name, int index, String className, Map<String, JsonNode> columns) {
+    this(name, index, className, columns, null);
+  }
+
+  GameRow(
+      String name, int index, String className, Map<String, JsonNode> columns, Integer globalId) {
     this.name = name;
     this.index = index;
     this.className = className;
     this.columns = Collections.unmodifiableMap(columns);
+    this.globalId = globalId;
   }
 
   /** The row's name. */
@@ -35,6 +44,19 @@ public final class GameRow {
   /** The row's creation order in its table; for a game tag, its bit in an object's tag word. */
   public int index() {
     return index;
+  }
+
+  /**
+   * The id the game gives the row: its fixed id, or a hash of its type and name, which may be
+   * negative. Only the rows of the characters and buildings tables carry one.
+   *
+   * @throws IllegalStateException for a row whose table carries no global id
+   */
+  public int globalId() {
+    if (globalId == null) {
+      throw new IllegalStateException("the row " + name + " carries no global id");
+    }
+    return globalId;
   }
 
   /** The row's class, which matters in the tables that hold several; null where none is given. */

@@ -151,7 +151,8 @@ public final class GameTables {
               entry.getKey(),
               row.path("index").asInt(),
               className.isNull() || className.isMissingNode() ? null : className.asText(),
-              columns));
+              columns,
+              row.has("global_id") ? row.get("global_id").asInt() : null));
     }
     return new GameTable(
         document.path("table").asText(),

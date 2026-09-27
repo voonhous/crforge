@@ -72,6 +72,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     death projectile, its death area effect, its death pushback and the elixir it gives
  * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
  *     unless it says otherwise
+ * @param globalId the id the game gives the unit's row, which expressions compare it by
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -118,7 +119,8 @@ public record UnitData(
     int deathDamage,
     int deathDamageRadius,
     List<String> unmodelledDeathColumns,
-    boolean champion) {
+    boolean champion,
+    int globalId) {
 
   public UnitData {
     unmodelledDeathColumns =

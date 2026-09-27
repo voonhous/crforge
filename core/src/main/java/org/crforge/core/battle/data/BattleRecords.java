@@ -15,11 +15,12 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *
  * <p>Units, projectiles and troop cards. Every field is the column of the same name, in the
  * column's own units - milliseconds, game units, the published speed - and nothing is converted or
- * chosen. A column the row leaves empty is 0 or false. Only five fields are not a column: a unit
- * flies when its flying height is above 0; a unit is a champion when its ability row makes it one;
- * a unit lists the columns of its death that its row sets and the battle does not model; a
- * projectile's damage scaling rule is named by its scaling mode column, the king tower's or the
- * princess towers', and is the card rule otherwise; and a rarity is the published row of that name.
+ * chosen. A column the row leaves empty is 0 or false. Only six fields are not a column: a unit
+ * carries its row's global id; a unit flies when its flying height is above 0; a unit is a champion
+ * when its ability row makes it one; a unit lists the columns of its death that its row sets and
+ * the battle does not model; a projectile's damage scaling rule is named by its scaling mode
+ * column, the king tower's or the princess towers', and is the card rule otherwise; and a rarity is
+ * the published row of that name.
  */
 public final class BattleRecords {
 
@@ -118,6 +119,7 @@ public final class BattleRecords {
         .unmodelledDeathColumns(
             UNMODELLED_DEATH_COLUMNS.stream().filter(column -> sets(row, column)).toList())
         .champion(champion(row))
+        .globalId(row.globalId())
         .build();
   }
 
@@ -273,6 +275,22 @@ public final class BattleRecords {
   }
 
   /** The row of a unit: the characters table's, else the buildings table's. */
+  /**
+   * The global id of the character or building row of that name, as an expression names it: the
+   * characters are asked first. Null for a name that is neither.
+   *
+   * @param name the row's name, matched exactly
+   */
+  public Integer unitGlobalId(String name) {
+    for (String table : new String[] {CHARACTERS, BUILDINGS}) {
+      GameTable rows = tables.table(table);
+      if (rows.has(name)) {
+        return rows.row(name).globalId();
+      }
+    }
+    return null;
+  }
+
   private GameRow unitRow(String name) {
     for (String table : new String[] {CHARACTERS, BUILDINGS}) {
       GameTable rows = tables.table(table);
