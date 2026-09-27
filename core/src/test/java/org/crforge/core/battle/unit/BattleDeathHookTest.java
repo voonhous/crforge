@@ -187,8 +187,8 @@ class BattleDeathHookTest {
   }
 
   @Test
-  @DisplayName("a building whose deploy ends is refused: a deployed building is not modelled")
-  void aDeployedBuildingIsRefused() {
+  @DisplayName("a spawner whose child carries a shield is refused as its first child is made")
+  void aShieldedChildIsRefused() {
     Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 3500, 25000);
     assertThatThrownBy(
             () -> {
@@ -197,6 +197,7 @@ class BattleDeathHookTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Tombstone is a building whose deploy has ended");
+        .hasMessageContaining("SkeletonWarrior sets columns the battle does not model")
+        .hasMessageContaining("ShieldHitpoints");
   }
 }

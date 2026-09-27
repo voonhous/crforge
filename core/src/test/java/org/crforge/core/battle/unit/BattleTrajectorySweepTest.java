@@ -73,10 +73,13 @@ class BattleTrajectorySweepTest {
     Standard1v1Battle match =
         new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
+    // The sweep's model walks each unit alone, without the spawner a Witch has, whose firing the
+    // battle refuses on a unit; the unit walks here with its spawner switched off.
+    UnitData data = GameData.unit(unitName).toBuilder().spawnCharacter(null).build();
     CharacterEntity unit =
         match.deploy(
             0,
-            GameData.unit(unitName),
+            data,
             Standard1v1Battle.DEFAULT_LEVEL,
             trajectory.get("side").asInt(),
             trajectory.get("deploy").get(0).asInt(),

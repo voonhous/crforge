@@ -26,7 +26,7 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: creation at the maximum, the alive test, the removal test and the fields the"
-            + " damage chain reads. Not modelled yet: the subtraction, so nothing lowers the hit"
+            + " damage chain reads, and the lifetime decay's step and carry. Not modelled yet: the subtraction, so nothing lowers the hit"
             + " points; the shield's hit points at the level; the percentage applied to the"
             + " maximum and the two-against-two raise; the sources a reflected attack has"
             + " already hit.")
@@ -50,6 +50,15 @@ public final class HitPoints {
   /** The shield's maximum. */
   @Getter @Setter private int shieldMaximum;
 
+  /**
+   * The lifetime decay's step: hundredths of a hit point each visit takes, set from the maximum and
+   * the row's lifetime; 0 for no decay.
+   */
+  @Getter @Setter private int decayStep;
+
+  /** The hundredths the decay has taken and not yet removed from the hit points. */
+  @Getter private int decayCarry;
+
   /** Dedupe ids of the damage sources that have landed on this object. */
   private final List<Integer> dedupeIds = new ArrayList<>();
 
@@ -67,6 +76,44 @@ public final class HitPoints {
     this.maximum = maximum;
     this.teamPools[0] = maximum;
     this.teamPools[1] = maximum;
+  }
+
+  /**
+   * The decay's step for a maximum and a lifetime: the maximum times 100,000 over the lifetime,
+   * then over 20, both divisions truncating toward zero; the product is 32-bit and wraps as the
+   * game's does. A lifetime below 1 ms gives 0.
+   *
+   * @param maximum the maximum hit points
+   * @param lifeTimeMs the row's lifetime
+   */
+  public static int decayStep(int maximum, int lifeTimeMs) {
+    if (lifeTimeMs < 1) {
+      return 0;
+    }
+    return maximum * 100_000 / lifeTimeMs / 20;
+  }
+
+  /**
+   * One step of the lifetime decay: the step joins the carried hundredths, and once they reach 100
+   * the whole hundreds leave the hit points. The step that takes the last one leaves the hit points
+   * and the carry at 0.
+   *
+   * @return true when this step took the last hit point
+   */
+  public boolean decay() {
+    decayCarry += decayStep;
+    if (decayCarry < 100) {
+      return false;
+    }
+    int hundreds = decayCarry / 100;
+    decayCarry -= hundreds * 100;
+    hitPoints -= hundreds;
+    if (hitPoints > 0) {
+      return false;
+    }
+    hitPoints = 0;
+    decayCarry = 0;
+    return true;
   }
 
   /** True while the hit points are above zero. */

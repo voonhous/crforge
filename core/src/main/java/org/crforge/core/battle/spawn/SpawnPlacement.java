@@ -9,18 +9,22 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p>With a radius, the children stand evenly on a ring around the point: child {@code i} of {@code
  * n} at angle {@code (n - 1 - i) * 360 / n}, so the last one sits at angle 0, straight along the
- * width. With no radius, a single child stands on the point itself, unless the in-front test
- * refuses the point, when it stands one unit right of it. That test is asked four times, once for
- * each quarter turn of an offset that for a single child is nothing.
+ * width. With no radius, the children stand in front of the source: at an offset of the source's
+ * collision radius plus the child's along the length, toward the enemy - negated for the top team -
+ * and mirrored along the width right of the arena's middle. The in-front test is asked of the
+ * offset turned by each quarter turn in order, and the first point it accepts is the child's; when
+ * it refuses all four, the child stands one unit right of the source. A single child has no offset,
+ * so it stands on the point itself whenever the test accepts it.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled and held by the recorded placements: the ring for a source that is not a"
-            + " character, and a single child on the point or one unit right of it. Not modelled:"
-            + " several children with no radius, which stand in front of the source by its own"
-            + " offset; a character source's angle shift and minimum radius on a ring; the ring's"
-            + " lane mirror; and the step back a unit without hit points takes.")
+            + " character, a single child on the point or one unit right of it, and children in"
+            + " front of a character source by its collision radius and theirs, held by"
+            + " tombstone_life and goblin_hut_life. Not modelled: the in-front offset of a source"
+            + " that is not a character; a character source's angle shift and minimum radius on a"
+            + " ring; the ring's lane mirror; and the step back a unit without hit points takes.")
 public final class SpawnPlacement {
 
   /** The in-front test, asked of a point. */
@@ -31,8 +35,11 @@ public final class SpawnPlacement {
     boolean test(int x, int y);
   }
 
-  /** Quarter turns the in-front offset is tried at. */
-  private static final int ATTEMPTS = 4;
+  /** The quarter turns the in-front offset is tried at, in order. */
+  private static final int[] TURNS = {0, 90, 180, 270};
+
+  /** The in-front reach of a source whose collision radius the placement does not read. */
+  public static final int NO_REACH = -1;
 
   private SpawnPlacement() {
     // Utility class
@@ -52,21 +59,63 @@ public final class SpawnPlacement {
    */
   public static int[] position(
       int x, int y, int index, int count, boolean noOffset, int radius, Passable passable) {
+    return position(x, y, index, count, noOffset, radius, NO_REACH, 0, 0, passable);
+  }
+
+  /**
+   * Where one child stands, before its creation keeps it inside the arena, for a source whose
+   * in-front reach is known.
+   *
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param index the child's index
+   * @param count how many children the spawn makes
+   * @param noOffset true for no in-front offset
+   * @param radius the ring's radius, or 0 to place in front of the point
+   * @param reach the in-front offset: the source's collision radius plus the child's, or {@link
+   *     #NO_REACH} for a source that is not a character
+   * @param team the source's team, 0 or 1
+   * @param arenaWidth the arena's width in game units
+   * @param passable the in-front test, asked only with no radius
+   * @return the child's position as {x, y}
+   */
+  public static int[] position(
+      int x,
+      int y,
+      int index,
+      int count,
+      boolean noOffset,
+      int radius,
+      int reach,
+      int team,
+      int arenaWidth,
+      Passable passable) {
     if (radius != 0) {
       int angle = (count - 1 - index) * 360 / count;
       int ox = towardZero(FixedMath.sine1024(angle + 90) * radius);
       int oy = towardZero(FixedMath.sine1024(angle) * radius);
       return new int[] {ox + x, oy + y};
     }
-    if (!noOffset) {
+    if (!noOffset && reach == NO_REACH) {
       throw new UnsupportedOperationException(
-          "several children with no radius stand in front of the source by its own offset,"
-              + " which is not established");
+          "children with no radius stand in front of a source that is not a character by its"
+              + " own offset, which is not established");
     }
-    // The offset is nothing, so every quarter turn tests the point itself.
-    for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (passable.test(x, y)) {
-        return new int[] {x, y};
+    int half = arenaWidth >> 1;
+    for (int degrees : TURNS) {
+      int[] offset = {0, noOffset ? 0 : reach};
+      FixedMath.rotate1024(offset, degrees);
+      // Mirrored right of the arena's middle, and toward the enemy for the top team.
+      if (x > half) {
+        offset[0] = -offset[0];
+      }
+      if (team == 1) {
+        offset[1] = -offset[1];
+      }
+      int px = offset[0] + x;
+      int py = offset[1] + y;
+      if (passable.test(px, py)) {
+        return new int[] {px, py};
       }
     }
     return new int[] {x + 1, y};

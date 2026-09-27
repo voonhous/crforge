@@ -87,4 +87,50 @@ class HitPointsTest {
     assertThat(hitPoints.teamPool(0)).isEqualTo(10);
     assertThat(hitPoints.teamPool(1)).isEqualTo(4);
   }
+
+  @Test
+  @DisplayName(
+      "the decay's step is the maximum over the lifetime per visit, and it kills on the visit the"
+          + " traced lives end on")
+  void theDecay() {
+    // Maximum, lifetime, step and the decaying visit that takes the last hit point, for the Cannon
+    // and the Tombstone at levels 11 and 1, the Goblin Hut and the Goblin Drill at level 11.
+    int[][] lives = {
+      {824, 30000, 137, 602},
+      {322, 30000, 53, 608},
+      {529, 30000, 88, 602},
+      {207, 30000, 34, 609},
+      {847, 29000, 146, 581},
+      {1313, 10000, 656, 201}
+    };
+    for (int[] life : lives) {
+      HitPoints hitPoints = new HitPoints(life[0]);
+      hitPoints.setDecayStep(HitPoints.decayStep(life[0], life[1]));
+      assertThat(hitPoints.getDecayStep()).as("step for %d", life[0]).isEqualTo(life[2]);
+      int visits = 1;
+      while (!hitPoints.decay()) {
+        visits++;
+      }
+      assertThat(visits).as("visits for %d", life[0]).isEqualTo(life[3]);
+      assertThat(hitPoints.getHitPoints()).isZero();
+      assertThat(hitPoints.getDecayCarry()).isZero();
+    }
+    assertThat(HitPoints.decayStep(824, 0)).as("no lifetime").isZero();
+  }
+
+  @Test
+  @DisplayName("the decay carries the hundredths below a whole hit point to the next visit")
+  void theDecayCarries() {
+    HitPoints hitPoints = new HitPoints(824);
+    hitPoints.setDecayStep(137);
+    assertThat(hitPoints.decay()).isFalse();
+    assertThat(hitPoints.getHitPoints()).isEqualTo(823);
+    assertThat(hitPoints.getDecayCarry()).isEqualTo(37);
+    hitPoints.decay();
+    assertThat(hitPoints.getHitPoints()).isEqualTo(822);
+    assertThat(hitPoints.getDecayCarry()).isEqualTo(74);
+    hitPoints.decay();
+    assertThat(hitPoints.getHitPoints()).isEqualTo(820);
+    assertThat(hitPoints.getDecayCarry()).isEqualTo(11);
+  }
 }

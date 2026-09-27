@@ -246,4 +246,30 @@ public interface WorldObserver {
    * before its death slot runs.
    */
   default void diedAtRemoval(int tick, WorldEntity entity) {}
+
+  /**
+   * A character's spawner fired, after its children were made.
+   *
+   * @param spawner the character
+   * @param row the row of its children
+   * @param count how many children the firing made
+   * @param radius the ring they stand on, or 0 for in front
+   * @param timerAfter its timer to the next firing, in milliseconds
+   * @param waveMade how many children of the current wave it has made, 0 once a wave is complete
+   */
+  default void spawnerFired(
+      int tick,
+      CharacterEntity spawner,
+      String row,
+      int count,
+      int radius,
+      int timerAfter,
+      int waveMade) {}
+
+  /**
+   * A character's lifetime decay took its last hit point, before its death slot runs.
+   *
+   * @param hitPointsBefore its hit points before the step
+   */
+  default void decayDied(int tick, WorldEntity entity, int hitPointsBefore) {}
 }

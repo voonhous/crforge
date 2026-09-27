@@ -83,17 +83,29 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " spawned child without a speed standing, held by area_effect_death; a death spawn"
             + " child put on the dying unit and flown back to its ring point in steps of 250, held"
             + " by golem_death_pushback; and an object without hit points running its death slot"
-            + " as its deploy ends and leaving at the next cleanup, held by giant_skeleton_bomb."
-            + " Refused: a building with hit points past its deploy, an attack sequence whose mode moves the index itself or whose entries set"
-            + " more than a projectile and a damage, an action run as it attacks, and a swap that"
-            + " builds or frees the movement component or reaches a"
-            + " lifetime, a building or a flying row, a champion, a shield or another deploy time."
-            + " Not"
-            + " modelled yet: the registration visit of a unit a card play creates, which meets an"
-            + " empty index, air, jumping and hovering units, status effects on the speed budget,"
-            + " and the columns its data does not carry: the stop time after an attack and"
-            + " the ones that restrict what a unit may target beyond buildings only, which it"
-            + " carries.")
+            + " as its deploy ends and leaving at the next cleanup, held by giant_skeleton_bomb; a"
+            + " building's deploy ending in the standing state through the resume, its targeting"
+            + " from the next tick and its attacks as a tower's, the minimum range with the"
+            + " collision radius added, the lifetime decay in the third component pass from the"
+            + " tick after the deploy and its death with the death slot and no death handler, and"
+            + " the live spawner from the deploy end - its timer, its waves and its children in"
+            + " front - held by cannon_knight, tombstone_life, goblin_hut_life and mortar_knight;"
+            + " the building's targeting and attack there rest on the verified translations, not"
+            + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
+            + " building's in-front point. Refused: the columns its row sets that the battle does"
+            + " not model (a shield, hiding, a buff at a share of its hit points, elixir, a"
+            + " spawner's launches, second and third characters, limit, attachment, push and"
+            + " deploy for its children), a unit's own spawner as it fires, a lifetime's death"
+            + " with a death action, an attack sequence whose mode moves the index itself or whose"
+            + " entries set more than a projectile and a damage, an action run as it attacks, and"
+            + " a swap that builds or frees the movement component or reaches a lifetime, a"
+            + " spawner, a building or a flying row, a champion, a shield or another deploy time."
+            + " Not modelled yet: the registration visit of a unit a card play creates, which"
+            + " meets an empty index, air, jumping and hovering units, status effects on the"
+            + " speed budget and the spawn speed, the flag that holds a spawner's timer, the"
+            + " hit-points visit's dedupe expiry and shield tag, and the columns its data does not"
+            + " carry: the stop time after an attack and the ones that restrict what a unit may"
+            + " target beyond buildings only, which it carries.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -101,6 +113,12 @@ public class CharacterEntity extends WorldEntity {
 
   /** Slot of the movement component. */
   public static final int MOVEMENT_SLOT = 1;
+
+  /** Slot of the hit-points component, whose visit runs the lifetime decay. */
+  public static final int HIT_POINTS_SLOT = 2;
+
+  /** The spawn speed in percent the spawner's timer runs at, without a buff. */
+  private static final int SPAWN_SPEED = 100;
 
   /** The working state of the character's two components and its state visit. */
   @Getter private GridUnitState unit;
@@ -122,6 +140,15 @@ public class CharacterEntity extends WorldEntity {
 
   /** The character whose group this one is linked into, or null for none. */
   private CharacterEntity groupSource;
+
+  /**
+   * The spawner's timer: what is left before its next firing, in milliseconds, from its row's start
+   * time at placement.
+   */
+  private int spawnTimer;
+
+  /** How many children of the current wave the spawner has made. */
+  private int spawnWaveMade;
 
   /**
    * Creates a character at its deploy position, deploying.
@@ -170,7 +197,13 @@ public class CharacterEntity extends WorldEntity {
         targetingConfig(data),
         level);
     checkArgument(!data.air(), () -> data.name() + " is not a ground unit or a building");
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
+    }
     refuseAttack(data);
+    // The level setter copies the spawner's start time into its timer.
+    this.spawnTimer = data.spawnStartTimeMs();
 
     GridEntity view = getView();
     TargetingState targeting = getTargeting();
@@ -216,6 +249,9 @@ public class CharacterEntity extends WorldEntity {
     attach(new TargetingComponent());
     if (!data.building()) {
       attach(new MovementComponent());
+    }
+    if (getHitPoints() != null) {
+      attach(new HitPointsComponent());
     }
   }
 
@@ -390,6 +426,8 @@ public class CharacterEntity extends WorldEntity {
       refused = "a movement component built or freed";
     } else if (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0) {
       refused = "a lifetime";
+    } else if (current.spawnCharacter() != null || next.spawnCharacter() != null) {
+      refused = "a spawner";
     } else if (current.rarity() != next.rarity()) {
       refused = "a level packed against another rarity";
     } else if (current.deployTimeMs() != next.deployTimeMs()) {
@@ -529,6 +567,7 @@ public class CharacterEntity extends WorldEntity {
         .selfAsAoeCenter(data.selfAsAoeCenter())
         .overrideAttackFinishTime(data.overrideAttackFinishTime())
         .attackFinishTime(data.attackFinishTimeMs())
+        .minimumRange(data.minimumRange())
         .build();
   }
 
@@ -668,10 +707,8 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The entity state visit: the deploy countdown and every other per-tick state transition. A
    * spawned child's immunity is counted here, and once it clears the child accepts attackers again.
-   *
-   * <p>A building is followed only while it deploys: what it does once deployed - its attacks, its
-   * lifetime running down and the units it spawns - is not modelled, so a building whose deploy
-   * ends is refused.
+   * A building's deploy ends in the standing state through the resume, and its targeting component
+   * visits it from the next tick. Where the visit reaches its spawner block, the spawner runs.
    */
   @Override
   protected void postHook() {
@@ -691,13 +728,48 @@ public class CharacterEntity extends WorldEntity {
     if (calls.contains("remove")) {
       world.deathAtRemoval(this);
     }
-    // A building without hit points, a bomb, dies as its deploy ends and is removed after.
-    if (getData().building() && getHitPoints() != null && !deploying()) {
-      throw new UnsupportedOperationException(
-          name()
-              + " is a building whose deploy has ended; what a deployed building does is not"
-              + " modelled");
+    if (calls.contains("spawner")) {
+      spawner();
     }
+  }
+
+  /**
+   * The spawner block of the state visit, for a row with a spawn character: from the end of its
+   * deploy, each visit takes half the spawn speed - 50 ms without a buff - off its timer, and at 0
+   * or below it fires: one child for a row with an interval, the whole wave at once at the row's
+   * spawn radius for one without. The next firing is the interval away within a wave, or the pause
+   * away once the wave is made, and never less than 1 ms; a timer that went below 0 carries.
+   */
+  private void spawner() {
+    UnitData data = getData();
+    int interval = data.spawnIntervalMs();
+    int pause = data.spawnPauseTimeMs();
+    // With no limit, a spawner fires only with a time between its firings.
+    if (data.spawnCharacter() == null || interval + pause <= 0) {
+      return;
+    }
+    spawnTimer -= SPAWN_SPEED / 2;
+    if (spawnTimer > 0) {
+      return;
+    }
+    if (!data.building()) {
+      throw new UnsupportedOperationException(
+          name() + " is a unit whose spawner fires, which no run holds yet");
+    }
+    int number = data.spawnNumber();
+    int count = interval != 0 ? 1 : number;
+    int radius = interval != 0 ? 0 : data.spawnRadius();
+    world.liveSpawn(this, count, radius);
+    spawnWaveMade += count;
+    int next;
+    if (spawnWaveMade < number) {
+      next = interval;
+    } else {
+      spawnWaveMade = 0;
+      next = pause;
+    }
+    spawnTimer = spawnTimer + next > 1 ? spawnTimer + next : 1;
+    world.spawnerFired(this, data.spawnCharacter(), count, radius, spawnTimer, spawnWaveMade);
   }
 
   /** Chooses, keeps or drops the character's target and decides whether it attacks this tick. */
@@ -721,6 +793,34 @@ public class CharacterEntity extends WorldEntity {
       if (selection.getOutcome().isResumeRequested()) {
         ResumeHelper.resume(
             getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
+      }
+    }
+  }
+
+  /**
+   * The hit points' own visit, in the third component pass: outside the deploying, waiting and
+   * spawn-pathfinding states, and while it has hit points, the lifetime decay takes its step; the
+   * step that takes the last hit point is a death of its own.
+   */
+  private final class HitPointsComponent implements BattleComponent {
+
+    @Override
+    public int index() {
+      return HIT_POINTS_SLOT;
+    }
+
+    @Override
+    public void visit() {
+      int state = getView().getState();
+      if (getHitPoints().getHitPoints() < 1
+          || state == GridEntityState.DEPLOYING
+          || state == GridEntityState.WAITING_TO_DEPLOY
+          || state == GridEntityState.SPAWN_PATHFIND) {
+        return;
+      }
+      int before = getHitPoints().getHitPoints();
+      if (decay()) {
+        world.decayDeath(CharacterEntity.this, before);
       }
     }
   }

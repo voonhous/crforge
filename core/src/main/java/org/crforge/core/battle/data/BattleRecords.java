@@ -98,6 +98,32 @@ public final class BattleRecords {
   private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS =
       List.of("DeathInheritIgnoreList", "SpawnConstPriority", "SpawnLimit", "SpawnAngleShift");
 
+  /**
+   * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
+   * refused as it is created. A shield, hiding while not attacking or before the first hit, a buff
+   * at a share of its hit points, the elixir a collector makes, a spawner's launches, its second
+   * and third characters, its destruction at the limit and the deploy it gives its children.
+   */
+  private static final List<String> UNMODELLED_UNIT_COLUMNS =
+      List.of(
+          "ShieldHitpoints",
+          "HidesWhenNotAttacking",
+          "HideBeforeFirstHit",
+          "BuffOnXHP",
+          "ManaCollectAmount",
+          "SpawnProjectile",
+          "SpawnCharacter2",
+          "SpawnCharacter3",
+          "DestroyAtLimit",
+          "SpawnCharacterWithDeploy");
+
+  /**
+   * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
+   * characters: a limit on its waves, children attached to it, and its push on them.
+   */
+  private static final List<String> UNMODELLED_SPAWNER_COLUMNS =
+      List.of("SpawnLimit", "SpawnAttach", "SpawnPushback");
+
   private final GameTables tables;
 
   /**
@@ -178,7 +204,40 @@ public final class BattleRecords {
         .attackSequence(attackSequence(row))
         .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
         .onAttackAction(actionName(row, "OnAttackAction"))
+        .minimumRange(row.intValue("MinimumRange"))
+        .spawnCharacter(
+            row.string("SpawnCharacter").isEmpty() ? null : row.string("SpawnCharacter"))
+        .spawnNumber(row.intValue("SpawnNumber"))
+        .spawnIntervalMs(row.intValue("SpawnInterval"))
+        .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
+        .spawnStartTimeMs(row.intValue("SpawnStartTime"))
+        .unmodelledColumns(unmodelledColumns(row))
         .build();
+  }
+
+  /**
+   * The columns a unit's row sets that the battle does not model: those of any unit, those of a
+   * spawner for a row that spawns characters, and a spawner with neither a count nor an interval,
+   * which spawns once as its deploy ends.
+   */
+  private static List<String> unmodelledColumns(GameRow row) {
+    List<String> columns = new ArrayList<>();
+    for (String column : UNMODELLED_UNIT_COLUMNS) {
+      if (sets(row, column)) {
+        columns.add(column);
+      }
+    }
+    if (!row.string("SpawnCharacter").isEmpty()) {
+      for (String column : UNMODELLED_SPAWNER_COLUMNS) {
+        if (sets(row, column)) {
+          columns.add(column);
+        }
+      }
+      if (row.intValue("SpawnNumber") == 0 && row.intValue("SpawnInterval") == 0) {
+        columns.add("SpawnCharacter");
+      }
+    }
+    return columns;
   }
 
   /**

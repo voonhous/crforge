@@ -199,6 +199,31 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a building carries its lifetime, minimum range and spawner, and a unit lists the columns"
+          + " the battle does not model")
+  void buildingColumns() {
+    UnitData tombstone = records.unit("Tombstone");
+    assertThat(tombstone.lifeTimeMs()).isEqualTo(30000);
+    assertThat(tombstone.spawnCharacter()).isEqualTo("Skeleton");
+    assertThat(tombstone.spawnNumber()).isEqualTo(2);
+    assertThat(tombstone.spawnIntervalMs()).isEqualTo(500);
+    assertThat(tombstone.spawnPauseTimeMs()).isEqualTo(3500);
+    assertThat(tombstone.spawnStartTimeMs()).isZero();
+    assertThat(tombstone.unmodelledColumns()).isEmpty();
+    assertThat(records.unit("GoblinDrill").spawnStartTimeMs()).isEqualTo(1000);
+    assertThat(records.unit("Mortar").minimumRange()).isEqualTo(2900);
+    assertThat(records.unit("Cannon").spawnCharacter()).isNull();
+    assertThat(records.unit("DarkPrince").unmodelledColumns()).containsExactly("ShieldHitpoints");
+    assertThat(records.unit("Tesla").unmodelledColumns()).containsExactly("HidesWhenNotAttacking");
+    assertThat(records.unit("ElixirCollector").unmodelledColumns())
+        .containsExactly("ManaCollectAmount");
+    assertThat(records.unit("GoblinGiant").unmodelledColumns()).containsExactly("SpawnAttach");
+    assertThat(records.unit("PhoenixEgg").unmodelledColumns())
+        .containsExactly("DestroyAtLimit", "SpawnCharacterWithDeploy", "SpawnLimit");
+  }
+
+  @Test
+  @DisplayName(
       "a unit whose ability row says nothing of it is a champion, unless the row says it is not;"
           + " one without an ability is none")
   void champion() {

@@ -90,6 +90,15 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onStartingAttackAction the action row the unit runs as it starts an attack and at each
  *     hit, or null
  * @param onAttackAction the action row the unit runs as it attacks, or null
+ * @param minimumRange the closest distance to a target's edge it may attack from; 0 for none
+ * @param spawnCharacter the row of the units its spawner makes while it lives, or null for none
+ * @param spawnNumber how many children one wave of its spawner makes
+ * @param spawnIntervalMs the time between the children of a wave; 0 to make a wave at once
+ * @param spawnPauseTimeMs the time between waves
+ * @param spawnStartTimeMs the time before the first wave, counted from the end of its deploy
+ * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
+ *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
+ *     parts of a spawner that are not established
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -150,9 +159,17 @@ public record UnitData(
     boolean targetOnlyBuildings,
     AttackSequence attackSequence,
     String onStartingAttackAction,
-    String onAttackAction) {
+    String onAttackAction,
+    int minimumRange,
+    String spawnCharacter,
+    int spawnNumber,
+    int spawnIntervalMs,
+    int spawnPauseTimeMs,
+    int spawnStartTimeMs,
+    List<String> unmodelledColumns) {
 
   public UnitData {
+    unmodelledColumns = unmodelledColumns == null ? List.of() : List.copyOf(unmodelledColumns);
     unmodelledDeathColumns =
         unmodelledDeathColumns == null ? List.of() : List.copyOf(unmodelledDeathColumns);
     attackSequence = attackSequence == null ? AttackSequence.NONE : attackSequence;
