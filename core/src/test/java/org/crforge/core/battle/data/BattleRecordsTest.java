@@ -213,7 +213,8 @@ class BattleRecordsTest {
     assertThat(records.unit("GoblinDrill").spawnStartTimeMs()).isEqualTo(1000);
     assertThat(records.unit("Mortar").minimumRange()).isEqualTo(2900);
     assertThat(records.unit("Cannon").spawnCharacter()).isNull();
-    assertThat(records.unit("DarkPrince").unmodelledColumns()).containsExactly("ShieldHitpoints");
+    assertThat(records.unit("DarkPrince").unmodelledColumns())
+        .containsExactly("ShieldHitpoints", "JumpEnabled");
     assertThat(records.unit("Tesla").unmodelledColumns()).containsExactly("HidesWhenNotAttacking");
     assertThat(records.unit("ElixirCollector").unmodelledColumns())
         .containsExactly("ManaCollectAmount");

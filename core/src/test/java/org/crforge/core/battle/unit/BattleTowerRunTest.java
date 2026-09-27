@@ -723,7 +723,8 @@ class BattleTowerRunTest {
             match.deploy(
                 unit.get("tick").asInt(),
                 unitData(unit.get("card").asText()),
-                reference.get("level").asInt(),
+                // A further unit may be placed at a level of its own.
+                unit.path("level").asInt(reference.get("level").asInt()),
                 unit.get("side").asInt(),
                 unit.get("deploy").get(0).asInt(),
                 unit.get("deploy").get(1).asInt(),
