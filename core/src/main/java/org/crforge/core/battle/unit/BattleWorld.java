@@ -828,10 +828,13 @@ public class BattleWorld implements HolderPasses {
    * it has no delay, since a pending pass is in progress. It joins the live list at the tick's
    * closing cleanup and is first visited on the next tick.
    *
+   * <p>A creation that ignores effects is the same creation: the flag only skips the spawn effect,
+   * which is presentation.
+   *
    * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
    * pushback, a ring around a character source, which reads its own spawn columns, a unit that
-   * paths to its spawn point, a unit without hit points, a creation that ignores effects, and a
-   * unit with a starting action of its own, which a child starts as it joins the live list.
+   * paths to its spawn point, a unit without hit points, and a unit with a starting action of its
+   * own, which a child starts as it joins the live list.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
@@ -919,8 +922,6 @@ public class BattleWorld implements HolderPasses {
       refused = "a spawn for the other side";
     } else if (arguments.constPriority()) {
       refused = "the ring's lane mirror and fixed priority";
-    } else if (arguments.ignoreEffects()) {
-      refused = "a creation that ignores effects";
     } else if (arguments.radius() != 0 && arguments.spawnPushback()) {
       refused = "the pushback of a ring";
     } else if (arguments.radius() != 0 && source.isCharacter()) {

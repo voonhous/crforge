@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the seven runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the eight runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -36,10 +37,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * that Knight caused when it dies. In {@code tombstone_death_hook} a Wizard's projectile kills a
  * Tombstone while it deploys, and the Tombstone's death action, scheduled as it dies with the
  * projectile as its cause, runs in its phase-3 pass and spawns SkeletonKing on it, a champion
- * handed over to its side. In {@code gift_select} two owners each schedule the gift delivery's
- * select on the same tick, from a random state of the run's own: each select draws its part as it
- * is scheduled, in the command pass, the first owner's draw first, and the part it chose spawns its
- * unit in that owner's phase-1 pass.
+ * handed over to its side. In {@code goblin_wave} the Goblin Hero's second-wave rows are scheduled
+ * on a Knight of each side, which has a run of its own: each spawns four deploying goblins around
+ * its Knight, placed by the Knight's team and the middle of the arena, and links each into the
+ * Knight's group. In {@code gift_select} two owners each schedule the gift delivery's select on the
+ * same tick, from a random state of the run's own: each select draws its part as it is scheduled,
+ * in the command pass, the first owner's draw first, and the part it chose spawns its unit in that
+ * owner's phase-1 pass.
  *
  * <p>Every spawned child is registered inside the pass that ran the action, joins the live list at
  * the tick's closing cleanup and is first visited on the next tick. It cannot be targeted until its
@@ -56,7 +60,8 @@ class BattleActionSpawnRunTest {
         "abort_instigator",
         "witch_hooks",
         "tombstone_death_hook",
-        "gift_select"
+        "gift_select",
+        "goblin_wave"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -79,11 +84,15 @@ class BattleActionSpawnRunTest {
     List<String> actions = new ArrayList<>();
     List<String> spawns = new ArrayList<>();
     List<String> dropping = new ArrayList<>();
-    // A run without action owners places its units directly, each of which starts its row's own
-    // starting action as it is placed.
-    if (!reference.has("action_owners")) {
+    // A run with a unit of its own places it, its further units and its schedules on them as the
+    // tower runs do; one without action owners places its units directly. Each unit starts its
+    // row's own starting action as it is placed.
+    List<CharacterEntity> placed = new ArrayList<>();
+    if (!reference.get("card").isNull()) {
+      placed.addAll(BattleTowerRunTest.deployAll(match, reference));
+    } else if (!reference.has("action_owners")) {
       for (JsonNode u : reference.get("units")) {
-        CharacterEntity unit =
+        placed.add(
             match.deploy(
                 u.get("tick").asInt(),
                 GameData.unit(u.get("card").asText()),
@@ -91,9 +100,11 @@ class BattleActionSpawnRunTest {
                 u.get("side").asInt(),
                 u.get("deploy").get(0).asInt(),
                 u.get("deploy").get(1).asInt(),
-                u.get("name").asText());
-        unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
+                u.get("name").asText()));
       }
+    }
+    for (CharacterEntity unit : placed) {
+      unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
     }
     for (JsonNode o : reference.path("action_owners")) {
       ActionOwnerEntity owner =
@@ -213,6 +224,17 @@ class BattleActionSpawnRunTest {
             });
 
     Map<Integer, List<JsonNode>> records = BattleTowerRunTest.otherRecordsByTick(reference);
+    // The run's own unit's records, when it has one, are held to its outside like the others. Its
+    // record of the last deploying tick is taken before the state visit that ends the deployment.
+    if (!reference.get("card").isNull()) {
+      List<JsonNode> own = BattleMusketeerRunTest.records(reference);
+      for (int i = 0; i < own.size(); i++) {
+        ObjectNode named = own.get(i).deepCopy();
+        named.put("name", placed.get(0).name());
+        named.put("state", BattleGoldenTrajectoryTest.expectedState(own, i));
+        records.computeIfAbsent(named.get("tick").asInt(), t -> new ArrayList<>()).add(named);
+      }
+    }
     int lastTick = records.keySet().stream().mapToInt(Integer::intValue).max().orElse(0);
     for (JsonNode event : reference.get("events")) {
       lastTick = Math.max(lastTick, event.get("tick").asInt());
@@ -405,7 +427,7 @@ class BattleActionSpawnRunTest {
     assertThat(unit.getHitPoints().getHitPoints())
         .as("%s own hit points", where)
         .isEqualTo(record.get("own_hp").asInt());
-    if (record.get("delay").isNull()) {
+    if (record.path("delay").isNull() || record.path("delay").isMissingNode()) {
       // A unit the run places itself, not a spawned child, has only its outside recorded.
       return;
     }
