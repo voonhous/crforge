@@ -301,6 +301,14 @@ The towers fight at level 11. The run's unit is placed directly for the bottom s
 
 `BattleActionSpawnRunTest` plays both with the spawn runs.
 
+## `golden/goblin_giant_tower.json` - riders
+
+The towers fight at level 11. A Goblin Giant is played for the bottom side at (3500, 10000) on tick 0 (`commands`); it is placed at (3499, 10500). The play sets it deploying, which makes its two SpearGoblinGiant riders first: they take ids 5000006 and 5000007 and the Giant 5000008, so every pass visits them before it. Each is made on the ring of the Giant's 900, at (2599, 10500) and (4399, 10500), deploying for the Giant's 1000 ms and facing as it faces; its registration visit sees no parent, and it is attached after it (`spawn` actions, phase `attach`). From then on each rider is placed at 900 behind the Giant's heading, turned by its own -22 and its share of its 90 arc (45 and 0), at 4000 high: on tick 0 at (3850, 9672) and (3162, 9666). Visited before the Giant, it sits where the Giant stood before that tick's move, so it trails a tick behind.
+
+The Giant stops for two visits after every 640 ms walked, hits PrincessTower_1_1 for 176, and the riders shoot it for 81 each from their height; no tower ever targets a rider. The tower falls on 523, and the king tower kills the Giant on 637. At that tick's closing cleanup the Giant leaves; each rider hears of it, is let go, runs its death slot - a SpearGoblin where it rode, deploying for 700 ms, immune at first (`spawn` actions, phase `death`) - and is removed in the same cleanup. The towers kill the two SpearGoblins on 677 and 689, and the run lasts to its last projectile position.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
