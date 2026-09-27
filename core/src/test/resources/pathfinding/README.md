@@ -205,6 +205,14 @@ The towers fight at level 11. The evolved Archer (`Archer_EV1`) is the run's uni
 
 `BattleActionSpawnRunTest` plays both.
 
+## `golden/area_effect_direct.json` and `golden/area_effect_death.json` - area effects
+
+The towers fight at level 11. `area_effects` lists what each area effect did: `created` (its name, row, id, how it came about, its source, side, point, packed level and countdown), `folded` when a cleanup admits it, each `update` (the countdown before and after, the hits in the step, the radius and the damage of each hit that dealt one) and `removed`. `area_effect_hit` events give each victim's share, and `area` events the whole of a hit, as a unit's area does.
+- `area_effect_direct`: a top-side Knight (`KnightRed`) at (3500, 24000) and a bottom-side one (`KnightBlue`) at (4500, 24000) placed on tick 0. GoblinDrillDamage is placed for the bottom side at (3500, 24500) on tick 10, in the command pass, so the opening cleanup admits it and it updates in that tick: its countdown goes from 1 to -49, its one hit (a hit speed of 0) deals 84 to the red Knight and 26 to PrincessTower_1_1 (its crown-tower percent of -70), spares the blue Knight on its own side, and pushes the red Knight 1000; it leaves at that tick's closing cleanup. Ghost_EV1_Summon_Damage_Area, placed at (3500, 24000) on tick 20 (hit speed 150, life 250), hits on its third update, 22, for 204 on the tower and the red Knight, and leaves on 24.
+- `area_effect_death`: a Rage Barbarian, the run's unit, dies to PrincessTower_1_1 on 220 at (3739, 23412). Its DeathAreaEffect, RageBarbarianDummyForSpawn, is created there inside the killing arrow's impact (id 3000000, packed level 10, countdown 50) and admitted at 220's closing cleanup. On 221 its starting action spawns the Rage Barbarian's bottle in its phase-1 pass, and its one update takes it to 0 with a hit of no damage; it leaves at 221's closing cleanup. The run stops on 221.
+
+`BattleActionSpawnRunTest` plays `area_effect_direct`; `BattleAreaEffectDeathTest` plays `area_effect_death` through the death, as the bottle, a unit without hit points, is not spawned yet.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
