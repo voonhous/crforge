@@ -94,6 +94,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " tick after the deploy and its death with the death slot and no death handler, and"
             + " the live spawner from the deploy end - its timer, its waves and its children in"
             + " front - held by cannon_knight, tombstone_life, goblin_hut_life and mortar_knight;"
+            + " a walking unit's own spawner, stepping from its deploy end whether it walks or"
+            + " attacks, its waves on the ring turned by its angle shift and facing, held by"
+            + " witch_left_lane and night_witch;"
             + " the combat gate at the state visit's tail, which drops a dead character's"
             + " reference and switches its targeting off, held by every run's death tick; its"
             + " buffs scaling its speed budget and its attack timer, held by rage_knight,"
@@ -111,7 +114,7 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " hit points, hovering, direct"
             + " paths, the river jump, elixir, a"
             + " spawner's launches, second and third characters, limit, attachment, push and"
-            + " deploy for its children), a unit's own spawner as it fires, a lifetime's death"
+            + " deploy for its children), a lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself or whose"
             + " entries set more than a projectile and a damage, an action run as it attacks, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
@@ -802,11 +805,13 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The spawner block of the state visit, for a row with a spawn character: from the end of its
-   * deploy, each visit takes half the spawn rate - 50 ms without a buff - off its timer, and at 0
-   * or below it fires: one child for a row with an interval, the whole wave at once at the row's
-   * spawn radius for one without. The next firing is the interval away within a wave, or the pause
-   * away once the wave is made, and never less than 1 ms; a timer that went below 0 carries.
+   * The spawner block of the state visit, for a row with a spawn character, a building's or a
+   * walking unit's alike: from the end of its deploy, each visit that reaches the block - walking,
+   * attacking or pushed - takes half the spawn rate - 50 ms without a buff, none under a stun - off
+   * its timer, and at 0 or below it fires: one child for a row with an interval, the whole wave at
+   * once at the row's spawn radius for one without. The next firing is the interval away within a
+   * wave, or the pause away once the wave is made, and never less than 1 ms; a timer that went
+   * below 0 carries.
    */
   private void spawner() {
     UnitData data = getData();
@@ -819,10 +824,6 @@ public class CharacterEntity extends WorldEntity {
     spawnTimer -= getBuffs().spawnRate() / 2;
     if (spawnTimer > 0) {
       return;
-    }
-    if (!data.building()) {
-      throw new UnsupportedOperationException(
-          name() + " is a unit whose spawner fires, which no run holds yet");
     }
     int number = data.spawnNumber();
     int count = interval != 0 ? 1 : number;

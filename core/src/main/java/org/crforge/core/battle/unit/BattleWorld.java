@@ -835,9 +835,13 @@ public class BattleWorld implements HolderPasses {
    * the first quarter turn of that offset the in-front test accepts, or one unit right of the
    * spawner where it accepts none.
    *
-   * <p>Refused rather than guessed: a ring turned by the spawner's angle shift or drawn from its
-   * least radius, and a child without hit points, a building, one that paths to its point or one
-   * with a starting action of its own.
+   * <p>A row that sets an angle shift turns the ring by it and by the angle the spawner faces, so
+   * the Night Witch's Bats stand at its sides whichever way it walks. A unit's spawner fires as a
+   * building's does; a stun holds its timer, and a wave due on the tick the unit dies still comes.
+   *
+   * <p>Refused rather than guessed: a ring drawn from the spawner's least radius, and a child
+   * without hit points, a building, one that paths to its point or one with a starting action of
+   * its own.
    *
    * @param spawner the character whose spawner fires
    * @param count how many children the firing makes
@@ -846,10 +850,10 @@ public class BattleWorld implements HolderPasses {
   void liveSpawn(CharacterEntity spawner, int count, int radius) {
     UnitData data = spawner.getData();
     UnitData child = records.unit(data.spawnCharacter());
-    if (radius != 0 && (data.spawnAngleShift() != 0 || data.deathSpawnMinRadius() != 0)) {
+    if (radius != 0 && data.deathSpawnMinRadius() != 0) {
       throw new UnsupportedOperationException(
           spawner.name()
-              + "'s spawner turns or draws the ring its children stand on, which is not modelled");
+              + "'s spawner draws the ring its children stand on, which is not modelled");
     }
     if (child.hitpoints() <= 0
         || child.building()
@@ -873,6 +877,7 @@ public class BattleWorld implements HolderPasses {
               count,
               false,
               radius,
+              ringTurn(spawner),
               data.collisionRadius() + child.collisionRadius(),
               spawner.side() & 1,
               tileMap.width() * TileMap.CELL_UNITS,
@@ -894,6 +899,18 @@ public class BattleWorld implements HolderPasses {
         observer.characterSpawned(tick, spawner, spawned, x, y);
       }
     }
+  }
+
+  /**
+   * The degrees a spawner's ring is turned by: for a row that sets an angle shift, the shift plus
+   * the angle the source faces, its heading as whole degrees; for any other row, none.
+   */
+  private static int ringTurn(WorldEntity source) {
+    int shift = source.getData().spawnAngleShift();
+    if (shift == 0) {
+      return 0;
+    }
+    return shift + FixedMath.angleOfVector(source.getView().getDirX(), source.getView().getDirY());
   }
 
   /** Tells the observers the combat gate dropped an entity's reference. */
@@ -1376,12 +1393,13 @@ public class BattleWorld implements HolderPasses {
    * cleanup.
    *
    * <p>With a radius the children stand on its ring - child {@code i} of {@code n} at angle {@code
-   * (n - 1 - i) * 360 / n} - the ring untested for passability; a least radius equal to the radius
-   * draws nothing. A row that pushes its children puts each on the dying object and flies it back
-   * to its ring point. With no radius a single child stands on the dying object, and several stand
-   * together in front of it, the dying object's collision radius and the child's away toward the
-   * enemy, the first quarter turn of that offset the in-front test accepts; where it accepts none,
-   * the children stand one unit right of the dying object.
+   * (n - 1 - i) * 360 / n}, turned by the row's angle shift and the angle the dying object faces
+   * when the row sets a shift - the ring untested for passability; a least radius equal to the
+   * radius draws nothing. A row that pushes its children puts each on the dying object and flies it
+   * back to its ring point. With no radius a single child stands on the dying object, and several
+   * stand together in front of it, the dying object's collision radius and the child's away toward
+   * the enemy, the first quarter turn of that offset the in-front test accepts; where it accepts
+   * none, the children stand one unit right of the dying object.
    *
    * <p>Refused rather than guessed: a child that is a building with hit points, which replaces the
    * dying object, paths to its point or has a starting action of its own; a least radius below the
@@ -1421,7 +1439,19 @@ public class BattleWorld implements HolderPasses {
     for (int i = 0; i < count; i++) {
       int[] at;
       if (radius != 0) {
-        at = SpawnPlacement.position(fromX, fromY, i, count, false, radius, (px, py) -> true);
+        at =
+            SpawnPlacement.position(
+                fromX,
+                fromY,
+                i,
+                count,
+                false,
+                radius,
+                ringTurn(dying),
+                SpawnPlacement.NO_REACH,
+                0,
+                0,
+                (px, py) -> true);
       } else {
         // A single child has no in-front offset; several share the one in-front point.
         at =

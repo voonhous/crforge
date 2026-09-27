@@ -176,13 +176,12 @@ class BattleRecordsTest {
     assertThat(tombstone.deathDamage()).isEqualTo(500);
     assertThat(tombstone.deathDamageRadius()).isEqualTo(3000);
     assertThat(tombstone.unmodelledDeathColumns()).isEmpty();
-    // The Golem's children fly back to their ring points; the Battle Ram's turn by its facing,
-    // which is not modelled.
+    // The Golem's children fly back to their ring points; the Battle Ram's turn by its facing.
     UnitData golem = records.unit("Golem");
     assertThat(golem.unmodelledDeathColumns()).isEmpty();
     assertThat(golem.deathSpawnPushback()).isTrue();
-    assertThat(records.unit("BattleRam").unmodelledDeathColumns())
-        .containsExactly("SpawnAngleShift");
+    assertThat(records.unit("BattleRam").unmodelledDeathColumns()).isEmpty();
+    assertThat(records.unit("BattleRam").spawnAngleShift()).isEqualTo(180);
     assertThat(records.unit("ElixirGolem1").unmodelledDeathColumns()).isEmpty();
     UnitData golemite = records.unit("Golemite");
     assertThat(golemite.deathPushBack()).isEqualTo(900);
