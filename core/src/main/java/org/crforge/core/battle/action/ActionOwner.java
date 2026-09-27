@@ -45,6 +45,16 @@ public interface ActionOwner {
     throw new UnsupportedOperationException("this owner cannot count the battle's objects");
   }
 
+  /**
+   * Swaps the owner's data row for another, as a data-changing action does.
+   *
+   * @param rowName the name of the new character row
+   * @param resetTarget true to give up the target the owner had rather than keep it
+   */
+  default void changeData(String rowName, boolean resetTarget) {
+    throw new UnsupportedOperationException("this owner's data cannot change");
+  }
+
   /** True for a king tower, whose heals stop one short of its maximum. */
   default boolean kingTower() {
     return false;

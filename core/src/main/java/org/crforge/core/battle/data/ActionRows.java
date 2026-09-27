@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.Filter;
@@ -116,6 +117,7 @@ public final class ActionRows {
           Map.entry("ActionRunActionAtHealth", Set.of("HealthPercentages", "Actions")),
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
+          Map.entry("ActionChangeGameObjectData", Set.of("NewCharacterData", "ResetTarget")),
           Map.entry(
               "ActionRunIfGameObjectExists",
               Set.of(
@@ -310,6 +312,13 @@ public final class ActionRows {
             case "ActionHeal" ->
                 new Heal(shared, expression(f.get("Value")), integer(f, "MaxOverHealPercent"));
             case "ActionKill" -> new Kill(shared, action(f.get("OnKillAction")));
+            case "ActionChangeGameObjectData" -> {
+              // The new row must read as a unit here, so a row the battle cannot take is refused
+              // as the action is built rather than when it runs.
+              String newRow = f.path("NewCharacterData").asText();
+              records.unit(newRow);
+              yield new ChangeGameObjectData(shared, newRow, bool(f, "ResetTarget"));
+            }
             case "ActionRunIfGameObjectExists" ->
                 new RunIfGameObjectExists(
                     shared,

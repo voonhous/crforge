@@ -32,7 +32,10 @@ import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
+import org.crforge.core.pathfinding.target.ReferenceSetter;
+import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.SelectionChain;
+import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.core.pathfinding.target.TargetingVisit;
@@ -70,7 +73,12 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " placement works out; a spawned child walking at once or set deploying, its"
             + " registration visit inside the spawning pass and its first-tick immunity; a"
             + " building standing without a movement component while it deploys, held by the"
-            + " Tombstone killed while deploying. Refused: a building past its deploy. Not"
+            + " Tombstone killed while deploying; a row swap taking the new row's radius, mass, speed"
+            + " and targeting columns at once, the reference cleared raw and a kept target stored"
+            + " again through the setter, held by golemite_convert. Refused: a building past its"
+            + " deploy, and a swap that builds or frees the movement component or reaches a"
+            + " lifetime, a building or a flying row, a champion, a shield or another deploy time."
+            + " Not"
             + " modelled yet: the registration visit of a unit a card play creates, which meets an"
             + " empty index, air, jumping and hovering units, status effects on the speed budget,"
             + " and the columns its data does not carry: the stop time after an attack and"
@@ -84,7 +92,7 @@ public class CharacterEntity extends WorldEntity {
   public static final int MOVEMENT_SLOT = 1;
 
   /** The working state of the character's two components and its state visit. */
-  @Getter private final GridUnitState unit;
+  @Getter private GridUnitState unit;
 
   /** What a pushback request asks of the character: whether its row ignores pushback. */
   private final PushbackQueries pushbackQueries = () -> getData().ignorePushback();
@@ -258,6 +266,84 @@ public class CharacterEntity extends WorldEntity {
     BattleAction starting =
         world.getActions().build(getData().onStartingAction(), world.binding(this));
     actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
+  }
+
+  /**
+   * Takes another character row, as a data-changing action gives it. The target the character's
+   * targeting component holds is read first. Then the row is swapped: the maximum hit points come
+   * from the new row at the unchanged level and the hit points are kept; the reference is cleared
+   * as it stands, with no timer reset and no route; and the collision radius, mass, speed and
+   * targeting columns are the new row's from here on, so the next movement visit already moves at
+   * the new speed. Last, a target it had is kept unless the row resets it or the validator refuses
+   * it, and is then stored again through the setter, which prepares its route; a target given up
+   * leaves the attack timing as it was. The new row's starting action does not run.
+   *
+   * <p>Refused rather than guessed: a building or a flying row either side, a swap that builds or
+   * frees the movement component, a row with a lifetime, a different rarity or deploy time, a
+   * champion, and a character carrying a shield.
+   *
+   * @param rowName the name of the new character row
+   * @param resetTarget true to give up the target rather than keep it
+   */
+  @Override
+  public void changeData(String rowName, boolean resetTarget) {
+    UnitData next = world.getRecords().unit(rowName);
+    refuseSwap(next);
+    TargetingState targeting = getTargeting();
+    TargetView target = isActive(TARGETING_SLOT) ? targeting.getReference() : null;
+    swapRow(next);
+    // The targeting component hears of the swap first: its reference is cleared as it stands.
+    targeting.setReference(null);
+    targeting.setKeptByPendingDamageCheck(false);
+    targeting.setConfig(targetingConfig(next));
+    getView().setCollisionRadius(next.collisionRadius());
+    getView().setMass(next.mass());
+    unit =
+        new GridUnitState(
+            unit.entity(),
+            unit.movement(),
+            unit.targeting(),
+            unit.timers(),
+            unit.movementConfig(),
+            SpeedConfig.forGroundUnit(next.speed()),
+            StateVisitConfig.forGroundUnit(next.deployTimeMs()),
+            unit.selection(),
+            unit.view());
+    if (target != null) {
+      SelectionChain selection = unit.selection();
+      TargetView kept =
+          !resetTarget && selection.validate(target, ReferenceValidator.MODE_RECHECK)
+              ? target
+              : null;
+      ReferenceSetter.setReference(
+          targeting, kept, false, false, false, selection, selection.getOutcome());
+    }
+  }
+
+  /** Refuses a swap whose effect is not established. */
+  private void refuseSwap(UnitData next) {
+    UnitData current = getData();
+    String refused = null;
+    if (next.air() || next.building() || current.building()) {
+      refused = "a building or a flying row";
+    } else if ((current.speed() == 0) != (next.speed() == 0)) {
+      refused = "a movement component built or freed";
+    } else if (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0) {
+      refused = "a lifetime";
+    } else if (current.rarity() != next.rarity()) {
+      refused = "a level packed against another rarity";
+    } else if (current.deployTimeMs() != next.deployTimeMs()) {
+      refused = "another deploy time";
+    } else if (current.champion()) {
+      refused = "a champion's controller";
+    } else if (getHitPoints() != null
+        && (getHitPoints().getShield() != 0 || getHitPoints().getShieldMaximum() != 0)) {
+      refused = "a shield's maximum";
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(
+          name() + " taking " + next.name() + " asks for " + refused + ", which is not modelled");
+    }
   }
 
   /** The children linked into this character's group, newest first. */

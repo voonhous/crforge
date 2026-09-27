@@ -124,6 +124,7 @@ public final class BattleRecords {
             UNMODELLED_DEATH_COLUMNS.stream().filter(column -> sets(row, column)).toList())
         .champion(champion(row))
         .globalId(row.globalId())
+        .lifeTimeMs(row.intValue("LifeTime"))
         .build();
   }
 
