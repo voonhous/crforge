@@ -197,6 +197,14 @@ The movement visit of 70 already walks at 60. Three more arrows kill it on 110, 
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, and `BattleChangeDataRunTest` looks at the swap on its tick.
 
+## `golden/archer_ev1_vs_tower.json` and `golden/archer_ev1_knight.json` - an attack sequence
+
+The towers fight at level 11. The evolved Archer (`Archer_EV1`) is the run's unit at (3500, 10000). Its row's order is [0, 1] with the mode None, so only an action moves its index: entry 0 launches its own arrow, entry 1 the double-damage one. Its starting-attack row `Archer_EV1_AttackSelect`, an ActionFilter on `!target_in_range(4500)`, is queued on it as each attack starts and at each hit, runs in its phase-2 pass, and sets the index to 1 for a target beyond 4500 or 0 for one within (`run`, `filter` and `set_attack_sequence_index` action events, with the index before and after).
+- `archer_ev1_vs_tower`: it locks PrincessTower_1_1 on 155, the row sets 1 in phase 2 of 155, and the hits on 164 and 182 launch the double-damage arrow, 168 each; the towers kill it on 189.
+- `archer_ev1_knight`: a top-side Knight walks down from (3500, 17000). The Archer shoots it with the double-damage arrow while it stands beyond 4500; the row run at the hit of 47 finds it within and sets 0, so from the next hit the arrows deal 112.
+
+`BattleActionSpawnRunTest` plays both.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

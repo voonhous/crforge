@@ -55,6 +55,16 @@ public interface ActionOwner {
     throw new UnsupportedOperationException("this owner's data cannot change");
   }
 
+  /**
+   * Stores the owner's attack sequence index, as an index-setting action does.
+   *
+   * @param index the index
+   * @param evenIfCombatDisabled true to store it with the targeting component off too
+   */
+  default void setAttackSequenceIndex(int index, boolean evenIfCombatDisabled) {
+    throw new UnsupportedOperationException("this owner has no attack sequence");
+  }
+
   /** True for a king tower, whose heals stop one short of its maximum. */
   default boolean kingTower() {
     return false;

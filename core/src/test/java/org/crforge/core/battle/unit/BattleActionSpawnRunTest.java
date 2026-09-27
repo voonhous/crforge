@@ -22,7 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ten runs in which an action spawns characters through {@link Battle} and holds the
+ * Plays the twelve runs in which an action spawns characters through {@link Battle} and holds the
  * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -43,7 +43,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Knight's group. In {@code golemite_convert} a baby golemite turns into an Elixir Golem, which
  * dies on tick 110 and spawns two golemites on the ring of its death spawn radius, each immune for
  * its first ticks and killed by a tower later. In {@code golemite_death_damage} a Golemite's death
- * damages a tower and a Knight around it and pushes the Knight away. In {@code gift_select} two
+ * damages a tower and a Knight around it and pushes the Knight away. In {@code archer_ev1_vs_tower}
+ * and {@code archer_ev1_knight} the evolved Archer's starting-attack row picks its attack sequence
+ * index by whether its target is within 4500: its long shots launch the double-damage arrow of its
+ * second entry, and once a Knight closes in it goes back to its first. In {@code gift_select} two
  * owners each schedule the gift delivery's select on the same tick, from a random state of the
  * run's own: each select draws its part as it is scheduled, in the command pass, the first owner's
  * draw first, and the part it chose spawns its unit in that owner's phase-1 pass.
@@ -66,7 +69,9 @@ class BattleActionSpawnRunTest {
         "gift_select",
         "goblin_wave",
         "golemite_convert",
-        "golemite_death_damage"
+        "golemite_death_damage",
+        "archer_ev1_vs_tower",
+        "archer_ev1_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

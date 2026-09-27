@@ -77,7 +77,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " death handing what killed it - the unit, the projectile, the typed hit's source"
             + " still in the battle, the killer - to the battle's death handler; a row swap reading"
             + " the new row from then on, the maxima recomputed at the kept level and the hit"
-            + " points kept. Not modelled yet:"
+            + " points kept; the attack sequence's entry at the index giving the next hit's"
+            + " projectile and damage for an order of two or more, and an index-setting action"
+            + " storing only below the order's length. Not modelled yet:"
             + " the shield's hit points at the level.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -265,7 +267,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return new HitQueries() {
       @Override
       public int damage() {
-        return getDamage();
+        return attackDamage();
       }
 
       @Override
@@ -579,6 +581,64 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       hitPoints.setTeamPool(1, maximum);
     }
     refreshHitPoints();
+  }
+
+  /**
+   * The projectile the entity's next hit launches: the attack sequence's entry at the index, when
+   * the sequence has two or more in its order, otherwise the row's.
+   */
+  public ProjectileData attackProjectile() {
+    AttackSequence sequence = data.attackSequence();
+    return sequence.replacesAttack()
+        ? sequence.entryAt(targeting.getAttackSequenceIndex()).projectile()
+        : data.projectile();
+  }
+
+  /**
+   * The damage of the entity's next direct hit: the attack sequence's entry at the index, at the
+   * entity's level and falling back to the entry's projectile as the row's damage does, when the
+   * sequence has two or more in its order; otherwise the row's.
+   */
+  int attackDamage() {
+    AttackSequence sequence = data.attackSequence();
+    if (!sequence.replacesAttack()) {
+      return damage;
+    }
+    AttackSequence.Entry entry = sequence.entryAt(targeting.getAttackSequenceIndex());
+    ScalingGlobals globals = ScalingGlobals.standard();
+    ProjectileData projectile = entry.projectile();
+    return LevelScaling.damage(
+        globals,
+        entry.damage(),
+        packedLevel,
+        data.rarity(),
+        data.king(),
+        data.summonerTower(),
+        projectile == null
+            ? null
+            : () -> ProjectileAmounts.damage(globals, projectile, packedLevel));
+  }
+
+  /**
+   * Stores an attack sequence index, as an index-setting action does: only below the length of the
+   * order, a longer one dropped and the old one kept, and, unless the action asks otherwise, only
+   * while the targeting component is on.
+   *
+   * @param index the index
+   * @param evenIfCombatDisabled true to store it with the targeting component off too
+   */
+  @Override
+  public void setAttackSequenceIndex(int index, boolean evenIfCombatDisabled) {
+    if (!evenIfCombatDisabled && !isActive(0)) {
+      return;
+    }
+    if (index < 0) {
+      throw new UnsupportedOperationException(
+          name() + " was given the attack sequence index " + index + ", which is not established");
+    }
+    if (data.attackSequence().order().size() > index) {
+      targeting.setAttackSequenceIndex(index);
+    }
   }
 
   /** The level a packed value stands for: the relative level plus the signed steps. */

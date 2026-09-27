@@ -5,10 +5,12 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
@@ -145,6 +147,9 @@ public final class BattleRecords {
         .globalId(row.globalId())
         .lifeTimeMs(row.intValue("LifeTime"))
         .targetOnlyBuildings(row.bool("TargetOnlyBuildings"))
+        .attackSequence(attackSequence(row))
+        .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
+        .onAttackAction(actionName(row, "OnAttackAction"))
         .build();
   }
 
@@ -206,6 +211,110 @@ public final class BattleRecords {
       bits |= 1L << tags.row(tag).index();
     }
     return bits;
+  }
+
+  /** The attack sequence modes by name; any other name is 0. */
+  private static final Map<String, Integer> SEQUENCE_MODES =
+      Map.of("None", 0, "StaticLoop", 1, "HittimeLoop", 2, "Hittime", 3, "Manual", 4);
+
+  /**
+   * A row's attack sequence as the loader builds it. The order is the AttackSequence column, and
+   * the mode is read only when the order has an element, an empty name there giving 1. With an
+   * AttackSequenceList, one entry per element, and the order a single 0 when the row has none.
+   * Without a list, entry 0 comes from the row's own columns; with an order, entries 1 and 2 come
+   * from the columns numbered 2 and 3; without one, the order is a single 0, and while the last
+   * entry has a variable damage time the next numbered entry joins it and the order, the first of
+   * them making the mode 3.
+   */
+  private AttackSequence attackSequence(GameRow row) {
+    List<Integer> order = new ArrayList<>();
+    JsonNode orderColumn = row.value("AttackSequence");
+    if (orderColumn != null && orderColumn.isArray()) {
+      orderColumn.forEach(element -> order.add(element.asInt()));
+    }
+    int mode = 0;
+    if (!order.isEmpty()) {
+      String name = row.string("AttackSequenceMode");
+      mode = name.isEmpty() ? 1 : SEQUENCE_MODES.getOrDefault(name, 0);
+    }
+    List<AttackSequence.Entry> entries = new ArrayList<>();
+    JsonNode list = row.value("AttackSequenceList");
+    if (list != null && list.isArray() && !list.isEmpty()) {
+      for (JsonNode element : list) {
+        entries.add(listEntry(element));
+      }
+      if (order.isEmpty()) {
+        order.add(0);
+      }
+      return new AttackSequence(mode, order, entries);
+    }
+    entries.add(
+        entry(
+            row.intValue("Damage"),
+            row.string("Projectile"),
+            row.intValue("VariableDamageTime1"),
+            row.intValue("MeleePushback")));
+    if (!order.isEmpty()) {
+      entries.add(numbered(row, 2));
+      entries.add(numbered(row, 3));
+      return new AttackSequence(mode, order, entries);
+    }
+    order.add(0);
+    for (int n = 2; n <= 3; n++) {
+      if (entries.get(entries.size() - 1).variableDamageTime() < 1) {
+        break;
+      }
+      entries.add(numbered(row, n));
+      order.add(n - 1);
+      if (n == 2) {
+        mode = 3;
+      }
+    }
+    return new AttackSequence(mode, order, entries);
+  }
+
+  /** The entry the columns numbered n make; the third has no variable damage time. */
+  private AttackSequence.Entry numbered(GameRow row, int n) {
+    return entry(
+        row.intValue("VariableDamage" + n),
+        row.string("Projectile" + n),
+        n < 3 ? row.intValue("VariableDamageTime" + n) : 0,
+        row.intValue("MeleePushback" + n));
+  }
+
+  /** An entry of the four columns the row's own and numbered entries carry, the rest defaults. */
+  private AttackSequence.Entry entry(
+      int damage, String projectile, int variableDamageTime, int meleePushback) {
+    return new AttackSequence.Entry(
+        damage,
+        projectile.isEmpty() ? null : projectile(projectile),
+        variableDamageTime,
+        100,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        meleePushback,
+        null);
+  }
+
+  /** An entry of an AttackSequenceList element, with the entry columns' defaults. */
+  private AttackSequence.Entry listEntry(JsonNode element) {
+    String projectile = element.path("Projectile").asText("");
+    JsonNode action = element.path("DoAttackAction");
+    return new AttackSequence.Entry(
+        element.path("Damage").asInt(0),
+        projectile.isEmpty() ? null : projectile(projectile),
+        element.path("VariableDamageTime").asInt(0),
+        element.path("HitSpeedMultiplier").asInt(100),
+        element.path("CustomRange").asInt(-1),
+        element.path("CustomSightRange").asInt(-1),
+        element.path("CustomMinimunRange").asInt(-1),
+        element.path("CustomProjectileStartZ").asInt(-1),
+        element.path("CustomProjectileStartRadius").asInt(-1),
+        element.path("MeleePushback").asInt(0),
+        action.isMissingNode() || action.isNull() ? null : action.toString());
   }
 
   /** The columns of a row's death that are not modelled, those of its death spawn only with one. */

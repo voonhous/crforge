@@ -192,14 +192,28 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
     return stateSetter;
   }
 
+  /** What the owner does when it starts an attack, or null for nothing. */
+  private Runnable startingAttack;
+
+  /**
+   * Sets what the owner does when it starts an attack: the battle schedules the owner's row for it.
+   *
+   * @param startingAttack what runs, or null for nothing
+   */
+  public void setOnStartingAttack(Runnable startingAttack) {
+    this.startingAttack = startingAttack;
+  }
+
   /**
    * Runs the action the owner performs when it starts an attack. Both the targeting visit and the
    * reference setter ask for it through this one chain, so the single override below answers both.
-   * No card the grid drives carries such an action yet, so nothing runs.
+   * An owner the battle gives no such action does nothing.
    */
   @Override
   public void onStartingAttack() {
-    // No grid-driven character carries an on-starting-attack action.
+    if (startingAttack != null) {
+      startingAttack.run();
+    }
   }
 
   // -------------------------------------------------------------------------------------------
