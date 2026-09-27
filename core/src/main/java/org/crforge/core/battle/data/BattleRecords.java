@@ -4,7 +4,9 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Set;
 import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -39,6 +41,8 @@ public final class BattleRecords {
           "SpellAsDeploy");
 
   private static final String CHARACTER_ABILITIES = "character_abilities";
+  private static final String GAME_OBJECT_FILTERS = "game_object_filters";
+  private static final String GAME_TAGS = "game_tags";
 
   /**
    * The columns of what a unit does as it dies that the battle does not model, beyond its death
@@ -121,6 +125,66 @@ public final class BattleRecords {
         .champion(champion(row))
         .globalId(row.globalId())
         .build();
+  }
+
+  /**
+   * A game object filter as the battle reads it, from the game object filters table. Every column
+   * is its field of the same name; the dead are filtered unless the row says not; the tags it
+   * excludes, written as names separated by commas, are the bits the game tags table gives them;
+   * the text the game shows for it is not read.
+   *
+   * @param name the row's name
+   */
+  public GameObjectFilter filter(String name) {
+    GameTable table = tables.table(GAME_OBJECT_FILTERS);
+    checkArgument(table.has(name), () -> "the game tables have no game object filter " + name);
+    GameRow row = table.row(name);
+    return GameObjectFilter.builder()
+        .matchTeamOwn(row.bool("MatchTeamOwn"))
+        .matchTeamEnemy(row.bool("MatchTeamEnemy"))
+        .matchTypeCharacters(row.bool("MatchTypeCharacters"))
+        .matchTypeBuildings(row.bool("MatchTypeBuildings"))
+        .matchTypeProjectiles(row.bool("MatchTypeProjectiles"))
+        .matchTypeAoe(row.bool("MatchTypeAoe"))
+        .matchTypeGoblinRef(row.bool("MatchTypeGoblinRef"))
+        .matchTowers(row.bool("MatchTowers"))
+        .filterHidden(row.bool("FilterHidden"))
+        .filterInvisible(row.bool("FilterInvisible"))
+        .filterUnderground(row.bool("FilterUnderground"))
+        .filterBuildings(row.bool("FilterBuildings"))
+        .filterTowers(row.bool("FilterTowers"))
+        .filterSummoner(row.bool("FilterSummoner"))
+        .filterFlying(row.bool("FilterFlying"))
+        .filterJumping(row.bool("FilterJumping"))
+        .filterDashImmune(row.bool("FilterDashImmune"))
+        .filterDragging(row.bool("FilterDragging"))
+        .filterCloning(row.bool("FilterCloning"))
+        .filterIfNoHitpointComponent(row.bool("FilterIfNoHitpointComponent"))
+        .filterPushbackIgnore(row.bool("FilterPushbackIgnore"))
+        .matchAttachedChildren(row.bool("MatchAttachedChildren"))
+        .filterSameObjects(row.bool("FilterSameObjects"))
+        .filterTags(tagBits(row.string("FilterTags")))
+        .filterPrincessTowers(row.bool("FilterPrincessTowers"))
+        .filterDead(!row.has("FilterDead") || row.bool("FilterDead"))
+        .filterClones(row.bool("FilterClones"))
+        .includeCharactersWithData(Set.copyOf(row.strings("IncludeCharactersWithData")))
+        .excludeCharactersWithData(Set.copyOf(row.strings("ExcludeCharactersWithData")))
+        .build();
+  }
+
+  /** The bits of game tags written as names separated by commas; none for an empty text. */
+  private long tagBits(String names) {
+    long bits = 0;
+    for (String name : names.split(",")) {
+      String tag = name.trim();
+      if (tag.isEmpty()) {
+        continue;
+      }
+      GameTable tags = tables.table(GAME_TAGS);
+      checkArgument(tags.has(tag), () -> "the game tables have no game tag " + tag);
+      bits |= 1L << tags.row(tag).index();
+    }
+    return bits;
   }
 
   /** True when a row sets a column: a value other than empty, 0 or false. */

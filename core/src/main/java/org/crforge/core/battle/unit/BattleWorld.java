@@ -23,6 +23,7 @@ import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
+import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -603,6 +604,28 @@ public class BattleWorld implements HolderPasses {
         }
       }
     }
+  }
+
+  /**
+   * The live list's objects as a game object filter asks about them, in the holder's order: an
+   * arena entity as itself, and any other object by its kind and side alone, so a filter that lets
+   * such an object through its gates is refused when it asks anything more.
+   */
+  List<FilterSubject> filterSubjects() {
+    List<FilterSubject> subjects = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof WorldEntity arena) {
+        subjects.add(arena.filterSubject());
+      } else if (entity instanceof ProjectileEntity projectile) {
+        subjects.add(new KindOnlySubject(FilterSubject.PROJECTILE, projectile.getSide() & 1));
+      } else if (entity instanceof ActionOwnerEntity owner) {
+        subjects.add(new KindOnlySubject(FilterSubject.AREA_EFFECT, owner.side() & 1));
+      } else {
+        throw new UnsupportedOperationException(
+            "a filter over " + entity.getClass().getSimpleName() + " is not modelled");
+      }
+    }
+    return subjects;
   }
 
   /** Tells the observers a child was linked into its source's group. */

@@ -21,6 +21,7 @@ import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.action.RunActionAtHealth;
+import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunOnInstigator;
 import org.crforge.core.battle.action.Select;
 import org.crforge.core.battle.action.SetCharacterLevel;
@@ -115,6 +116,15 @@ public final class ActionRows {
           Map.entry("ActionRunActionAtHealth", Set.of("HealthPercentages", "Actions")),
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
+          Map.entry(
+              "ActionRunIfGameObjectExists",
+              Set.of(
+                  "GameObjectFilter",
+                  "MatchName",
+                  "ExcludeName",
+                  "NumMatchesNeeded",
+                  "ActionToRun",
+                  "ActionToRunIfNoMatch")),
           Map.entry(
               "ActionSetCharacterLevel", Set.of("RelativeLevelAdjustment", "AbsoluteLevelToSet")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
@@ -300,6 +310,17 @@ public final class ActionRows {
             case "ActionHeal" ->
                 new Heal(shared, expression(f.get("Value")), integer(f, "MaxOverHealPercent"));
             case "ActionKill" -> new Kill(shared, action(f.get("OnKillAction")));
+            case "ActionRunIfGameObjectExists" ->
+                new RunIfGameObjectExists(
+                    shared,
+                    f.hasNonNull("GameObjectFilter")
+                        ? records.filter(f.get("GameObjectFilter").asText())
+                        : null,
+                    globalIds(f.get("MatchName")),
+                    globalIds(f.get("ExcludeName")),
+                    f.has("NumMatchesNeeded") ? f.get("NumMatchesNeeded").asInt() : 1,
+                    action(f.get("ActionToRun")),
+                    action(f.get("ActionToRunIfNoMatch")));
             case "ActionSetCharacterLevel" ->
                 new SetCharacterLevel(
                     shared,
@@ -460,6 +481,24 @@ public final class ActionRows {
       }
       String text = value.asText();
       return text.isEmpty() ? null : binding.expression(text);
+    }
+
+    /**
+     * The global ids of the character and building rows a list names, in order; a name the data has
+     * no such row for is dropped, as the game drops it when it reads the row.
+     */
+    private List<Integer> globalIds(JsonNode names) {
+      List<Integer> ids = new ArrayList<>();
+      if (names == null || names.isNull()) {
+        return ids;
+      }
+      for (JsonNode name : names.isArray() ? names : List.of(names)) {
+        Integer id = records.unitGlobalId(name.asText());
+        if (id != null) {
+          ids.add(id);
+        }
+      }
+      return ids;
     }
 
     /** A list's first element, null for an empty one, or the value itself when it is no list. */

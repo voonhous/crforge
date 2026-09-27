@@ -3,7 +3,9 @@ package org.crforge.core.battle.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -202,6 +204,42 @@ class BattleRecordsTest {
     assertThat(records.unitGlobalId("DaggerDuchess")).isEqualTo(-1749071821);
     assertThat(records.unitGlobalId("MiniPekka")).isEqualTo(34000016);
     assertThat(records.unitGlobalId("NoSuchRow")).isNull();
+  }
+
+  @Test
+  @DisplayName(
+      "a game object filter is its columns, the dead filtered unless it says not, its tags as"
+          + " their bits")
+  void aFilterIsItsColumns() {
+    GameObjectFilter troops = records.filter("friendly_troop_no_buildings");
+    assertThat(troops.isMatchTeamOwn()).isTrue();
+    assertThat(troops.isMatchTeamEnemy()).isFalse();
+    assertThat(troops.isMatchTypeCharacters()).isTrue();
+    assertThat(troops.isFilterBuildings()).isTrue();
+    assertThat(troops.isFilterSummoner()).isTrue();
+    assertThat(troops.isFilterPrincessTowers()).isTrue();
+    assertThat(troops.isFilterDead()).as("the default").isTrue();
+    assertThat(troops.getFilterTags()).isZero();
+
+    assertThat(records.filter("EnemyTowersOnly").isFilterDead()).isFalse();
+    GameObjectFilter skeletons = records.filter("friendly_skeletons_can_be_dead");
+    assertThat(skeletons.getIncludeCharactersWithData())
+        .containsExactlyInAnyOrder("Skeleton", "Skeleton_EV1", "SkeletonWarrior");
+    // Its three tags, by the bits the game tags table gives them.
+    GameObjectFilter noDash = records.filter("enemy_troops_no_dash");
+    assertThat(noDash.getFilterTags())
+        .isEqualTo(tagBits("NO_CHECKAVOIDANCE", "NO_CHECKCOLLISIONS", "DASHING"));
+    assertThat(noDash.isFilterSameObjects()).isFalse();
+    assertThat(records.filter("passive_hit_ground_characters_not_same").isFilterSameObjects())
+        .isTrue();
+  }
+
+  private static long tagBits(String... names) {
+    long bits = 0;
+    for (String name : names) {
+      bits |= 1L << GameData.tables().table("game_tags").row(name).index();
+    }
+    return bits;
   }
 
   @Test

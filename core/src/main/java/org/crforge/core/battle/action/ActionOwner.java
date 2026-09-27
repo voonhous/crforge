@@ -1,5 +1,6 @@
 package org.crforge.core.battle.action;
 
+import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.pathfinding.combat.HitPoints;
 
 /**
@@ -34,6 +35,14 @@ public interface ActionOwner {
    */
   default void changeLevel(int packed) {
     throw new UnsupportedOperationException("this owner's level cannot change");
+  }
+
+  /**
+   * The owner's battle's objects as a game object filter asks about them, with the team and name
+   * the filter is asked for.
+   */
+  default ObjectCensus census() {
+    throw new UnsupportedOperationException("this owner cannot count the battle's objects");
   }
 
   /** True for a king tower, whose heals stop one short of its maximum. */

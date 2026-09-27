@@ -13,6 +13,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.filter.FilterSubject;
+import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.battle.projectile.ProjectileAmounts;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
@@ -463,6 +464,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The entity as a game object filter asks about it. */
   public FilterSubject filterSubject() {
     return new EntityFilterSubject(this);
+  }
+
+  /** The battle's live objects as a filter asks about them, for this entity's team and row. */
+  @Override
+  public ObjectCensus census() {
+    return new ObjectCensus(world.filterSubjects(), side() & 1, data.name());
   }
 
   @Override
