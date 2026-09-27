@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the thirty-one runs in which an action, a death or a building spawns characters through
+ * Plays the thirty-two runs in which an action, a death or a building spawns characters through
  * {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -88,7 +88,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>Three runs play a spell by a command: {@code fireball_knight_tower}, a Fireball from the blue
  * king tower landing on a Knight and a princess tower and pushing the Knight; {@code
  * zap_knight_cast}, the Zap run with its area effect cast at the snapped point; and {@code
- * goblin_barrel_tower}, a Goblin Barrel whose Goblins stand in formation around its landing point.
+ * goblin_barrel_tower}, a Goblin Barrel whose Goblins stand in formation around its landing point;
+ * {@code arrows_skeletons}, Arrows' three waves of chained arrows, landing on their ring points. A
+ * run lasts to its last projectile position.
  */
 class BattleActionSpawnRunTest {
 
@@ -125,7 +127,8 @@ class BattleActionSpawnRunTest {
         "baby_dragon_left",
         "fireball_knight_tower",
         "zap_knight_cast",
-        "goblin_barrel_tower"
+        "goblin_barrel_tower",
+        "arrows_skeletons"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -160,6 +163,10 @@ class BattleActionSpawnRunTest {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
     } else if (!reference.has("action_owners")) {
       for (JsonNode u : reference.path("units")) {
+        // A unit a card play created is listed with its command; the command places it.
+        if (u.has("command")) {
+          continue;
+        }
         placed.add(
             match.deploy(
                 u.get("tick").asInt(),
@@ -373,6 +380,10 @@ class BattleActionSpawnRunTest {
     int lastTick = records.keySet().stream().mapToInt(Integer::intValue).max().orElse(0);
     for (JsonNode event : reference.get("events")) {
       lastTick = Math.max(lastTick, event.get("tick").asInt());
+    }
+    // A shot still in flight when the run ends is recorded past the last record and event.
+    for (JsonNode p : reference.path("projectiles")) {
+      lastTick = Math.max(lastTick, p.get(0).asInt());
     }
     Map<String, CharacterEntity> units = new HashMap<>();
     Map<String, String> towerStates = new HashMap<>();

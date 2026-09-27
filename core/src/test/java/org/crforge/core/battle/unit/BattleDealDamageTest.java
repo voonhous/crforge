@@ -126,7 +126,12 @@ class BattleDealDamageTest {
         card.deployEndY(),
         card.projectile(),
         card.areaEffect(),
-        card.searchUnit());
+        card.searchUnit(),
+        card.radius(),
+        card.multipleProjectiles(),
+        card.projectileWaves(),
+        card.projectileWaveIntervalMs(),
+        card.projectileIntervalMs());
   }
 
   @Test

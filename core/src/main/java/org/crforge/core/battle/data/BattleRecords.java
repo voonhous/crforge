@@ -39,16 +39,14 @@ public final class BattleRecords {
   private static final String SPELLS_OTHER = "spells_other";
 
   /**
-   * The columns of a spell card the cast does not model yet: a Mirror, several projectiles or
-   * waves, a spell deployed as a thrown projectile, and the play variants no reference holds. A
-   * spell that sets one is refused.
+   * The columns of a spell card the cast does not model yet: a Mirror, a first projectile of its
+   * own, a spell deployed as a thrown projectile, and the play variants no reference holds. A spell
+   * that sets one is refused.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
       List.of(
           "Mirror",
-          "MultipleProjectiles",
-          "ProjectileWaves",
-          "ProjectileWaveInterval",
+          "CustomFirstProjectile",
           "SpellAsDeploy",
           "CustomClassType",
           "UseProjectedTimeSummon");
@@ -732,7 +730,12 @@ public final class BattleRecords {
         row.intValue("DeployEndY"),
         null,
         null,
-        null);
+        null,
+        0,
+        0,
+        0,
+        0,
+        0);
   }
 
   /**
@@ -776,7 +779,12 @@ public final class BattleRecords {
         row.intValue("DeployEndY"),
         projectile,
         areaEffect,
-        searchUnit);
+        searchUnit,
+        row.intValue("Radius"),
+        row.intValue("MultipleProjectiles"),
+        row.intValue("ProjectileWaves"),
+        row.intValue("ProjectileWaveInterval"),
+        row.intValue("ProjectileInterval"));
   }
 
   /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */

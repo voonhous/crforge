@@ -132,7 +132,12 @@ public final class CardPlacement {
             0,
             card.projectile(),
             card.areaEffect(),
-            card.searchUnit());
+            card.searchUnit(),
+            card.radius(),
+            card.multipleProjectiles(),
+            card.projectileWaves(),
+            card.projectileWaveIntervalMs(),
+            card.projectileIntervalMs());
     int[] interval =
         columnInterval(
             PlacementSearch.mask(tileMap, offBuildings, side, entities),

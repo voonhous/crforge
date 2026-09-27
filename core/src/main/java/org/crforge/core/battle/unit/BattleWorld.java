@@ -28,6 +28,7 @@ import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.filter.FilterSubject;
+import org.crforge.core.battle.projectile.ProjectileChain;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnArguments;
@@ -57,6 +58,7 @@ import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
@@ -896,6 +898,12 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** The spell whose projectiles the cast lays out on a ring, by its name. */
+  private static final String ARROWS = "Arrows";
+
+  /** The globals value that would make Arrows' projectiles one whole chain; false in the data. */
+  private static final boolean DEFLECT_ARROWS_AS_WHOLE = false;
+
   /**
    * The cast of a spell card at its placed point, in the command pass of its play: the area effect
    * at the point, or the projectile from the side's king tower - from its centre at three times its
@@ -925,17 +933,89 @@ public class BattleWorld implements HolderPasses {
       }
       TowerEntity king = kingTower(side);
       checkState(king != null, () -> "side " + side + " has no king tower to cast from");
-      ProjectileEntity projectile = new ProjectileEntity(this, data, side);
-      projectile.cast(
-          king,
-          cardLevel,
-          king.getView().getX(),
-          king.getView().getY(),
-          3 * king.getData().collisionRadius(),
-          x,
-          y);
-      holder.add(projectile);
+      castProjectiles(card, data, king, cardLevel, side, x, y);
     }
+  }
+
+  /**
+   * A spell's projectiles, wave by wave: each wave a projectile at a time, the wave's delay plus
+   * the projectile interval for each. Arrows' waves are chains whose damage lands on ring points:
+   * the first on the placed point, the rest on a ring of the spell's radius less six tenths of the
+   * projectile's, at even angles; each aims at its ring point plus six tenths of the projectile's
+   * radius turned by a battle random below 359, the offset from the placed point kept within nine
+   * tenths of the spell's radius, and starts at the king tower plus a quarter of that offset across
+   * and the whole of it along. A chain shares its circle, the placed point and the spell's radius,
+   * and the ids it has hit.
+   */
+  private void castProjectiles(
+      DeployCard card,
+      ProjectileData data,
+      TowerEntity king,
+      int cardLevel,
+      int side,
+      int x,
+      int y) {
+    int count = Math.max(card.multipleProjectiles(), 1);
+    int waves = Math.max(card.projectileWaves(), 1);
+    boolean ring = card.name().equals(ARROWS) && !DEFLECT_ARROWS_AS_WHOLE;
+    if (count > 1 && !ring) {
+      throw new UnsupportedOperationException(
+          card.name() + " casts several projectiles of a random spread, which is not modelled");
+    }
+    int radius = card.radius();
+    int stepRing = count > 1 ? 360 / (count - 1) : 0;
+    int r90 = radius * 90 / 100;
+    int r90sq = r90 * r90;
+    int kx = king.getView().getX();
+    int ky = king.getView().getY();
+    int height = 3 * king.getData().collisionRadius();
+    int base = 0;
+    for (int wave = 0; wave < waves; wave++) {
+      int delay = base;
+      ProjectileChain chain = ring ? new ProjectileChain(x, y, radius) : null;
+      for (int i = 0; i < count; i++) {
+        int[] vec = {0, 0};
+        int rx = x;
+        int ry = y;
+        if (i != 0 && ring) {
+          vec = new int[] {radius - data.radius() * 60 / 100, 0};
+          FixedMath.rotate1024(vec, stepRing * (i - 1));
+          rx = vec[0] + x;
+          ry = vec[1] + y;
+        }
+        int tx = x;
+        int ty = y;
+        if (ring) {
+          // The jitter: six tenths of the projectile's radius, turned by a battle random.
+          vec = new int[] {0, data.radius() * 60 / 100};
+          FixedMath.rotate1024(vec, random.next(359));
+          vec[0] += rx - x;
+          vec[1] += ry - y;
+          if (lengthSquared(vec[0], vec[1]) > r90sq) {
+            FixedMath.normalize(vec, r90);
+          }
+          tx = vec[0] + x;
+          ty = vec[1] + y;
+        }
+        ProjectileEntity projectile = new ProjectileEntity(this, data, side);
+        projectile.cast(king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay);
+        holder.add(projectile);
+        if (chain != null) {
+          projectile.joinChain(chain, rx, ry);
+        }
+        delay += card.projectileIntervalMs();
+      }
+      base += card.projectileWaveIntervalMs();
+    }
+  }
+
+  /** A vector's squared length; the largest int when a component or the sum would overflow. */
+  private static int lengthSquared(int x, int y) {
+    if (x < -46340 || x > 46340 || y < -46340 || y > 46340) {
+      return Integer.MAX_VALUE;
+    }
+    long sum = (long) x * x + (long) y * y;
+    return sum > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) sum;
   }
 
   /**
