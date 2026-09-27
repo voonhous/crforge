@@ -17,7 +17,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled: the step, the zero-state rule, a range below one drawing nothing, and the"
             + " unsigned magnitude and remainder. Held by recorded draws from seven states over six"
-            + " ranges. Not settled: the battle's seed and the order of the draws within a tick.")
+            + " ranges. The draws of an expression fall where the expression is evaluated, in the"
+            + " battle's own call order: held by gift_select. Not settled: the battle's seed.")
 public final class BattleRandom {
 
   /** The state the next draw steps. */

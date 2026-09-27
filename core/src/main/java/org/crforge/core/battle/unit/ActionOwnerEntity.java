@@ -11,6 +11,12 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.ActionBinding;
+import org.crforge.core.battle.expression.BattleFunctions;
+import org.crforge.core.battle.expression.Expression;
+import org.crforge.core.battle.expression.ExpressionCompiler;
+import org.crforge.core.battle.expression.ExpressionEnvironment;
+import org.crforge.core.battle.expression.ExpressionEvaluator;
+import org.crforge.core.battle.expression.ExpressionException;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
@@ -31,7 +37,8 @@ import org.crforge.core.pathfinding.combat.HitPoints;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the kind and its id band, the action passes and the answers a spawn reads - its"
-            + " position, side and packed level, not a character. Supplied: the object itself,"
+            + " position, side and packed level, not a character - and rand in its expressions,"
+            + " which reads only the battle's random source. Supplied: the object itself,"
             + " which stands in for an area effect or an event building without their own update,"
             + " lifetime or removal.")
 public final class ActionOwnerEntity extends BattleEntity implements ActionOwner, SpawnHost {
@@ -47,6 +54,28 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
   private final int packedLevel;
 
   private final ActionHolder actionHolder;
+
+  /** The one function an owner's expressions may name. */
+  private static final BattleFunctions.Entry RAND = BattleFunctions.byName("rand");
+
+  /**
+   * What an owner's expressions see: rand, as the battle's table has it, drawing from the battle's
+   * source as the expression is evaluated, and no other name.
+   */
+  private final ExpressionEnvironment randOnly =
+      new ExpressionEnvironment() {
+        @Override
+        public Function resolve(String symbol) {
+          return RAND.name().equalsIgnoreCase(symbol)
+              ? new Function(RAND.id(), RAND.minArguments(), RAND.maxArguments())
+              : null;
+        }
+
+        @Override
+        public int call(int id, int[] arguments) {
+          return world.getRandom().next(arguments[0]);
+        }
+      };
 
   /** The variables the owner's actions write. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -133,16 +162,24 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
   }
 
   /**
-   * What an action row built for the owner reads from it: the battle's variable keys and an empty
-   * tag word. It answers no expression, as it stands in for objects whose functions are not
-   * modelled; a row with one is refused when it is built.
+   * What an action row built for the owner reads from it: the battle's variable keys, an empty tag
+   * word, and expressions that name nothing but {@code rand}, which reads only the battle's random
+   * source and so answers alike on whatever object it runs. Any other name belongs to an object the
+   * owner stands in for and is not modelled: a row with one is refused when it is built.
    */
   public ActionBinding binding() {
     return new ActionBinding() {
       @Override
       public IntSupplier expression(String text) {
-        throw new UnsupportedOperationException(
-            name + " stands in for an object and answers no expression: " + text);
+        Expression expression;
+        try {
+          expression = ExpressionCompiler.compile(text, randOnly);
+        } catch (ExpressionException e) {
+          throw new UnsupportedOperationException(
+              name + " stands in for an object and answers only rand, not the expression: " + text,
+              e);
+        }
+        return () -> ExpressionEvaluator.evaluate(expression, randOnly);
       }
 
       @Override

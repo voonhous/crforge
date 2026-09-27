@@ -209,8 +209,8 @@ class BattleExpressionEnvironmentTest {
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
 
-    assertThatThrownBy(() -> environment.call(BattleFunctions.id("rand"), new int[] {10}))
+    assertThatThrownBy(() -> environment.call(BattleFunctions.id("get_radius"), new int[0]))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("rand");
+        .hasMessageContaining("get_radius");
   }
 }
