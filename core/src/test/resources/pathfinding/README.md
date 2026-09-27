@@ -217,7 +217,7 @@ The towers fight at level 11. `area_effects` lists what each area effect did: `c
 ## `golden/golem_death_pushback.json` and `golden/giant_skeleton_bomb.json` - death spawns that fly back and bombs
 
 The towers fight at level 11, and a red Knight (`KnightRed`, in `units`) walks down the left lane in each. `death_pushback` action events give each child that flies back: the point it is moved to, the ring point it flies to, its step countdown and its budget. `deploy_end_death` events mark a bomb's death as its deploy ends.
-- `golem_death_pushback`: a Golem, the run's unit at (3500, 10000), destroys PrincessTower_1_1 on 820 and dies on 825 at (3727, 23039); the Knight is placed at (3500, 21000) on 700. Its death damage, 225 in a radius of 2000, lands on the Knight and pushes it 1800. Its two Golemites, DeathSpawnPushback set, are made on the Golem's point and aimed back at their ring points 1500 away, (2227, 23039) and (5227, 23039), with 6 steps of 250 (`death_pushback`); the first step falls in their registration visit, and they reach their ring points on 830 and walk at the king tower from 831. They die on 1017 and 1054, each dealing its own death damage, 99 with a push of 900.
+- `golem_death_pushback`: a Golem, the run's unit at (3500, 10000), walks in bursts - it stops for 200 ms after every 1000 ms of walking - and locks on PrincessTower_1_1 on 390 at (3727, 23039); the Knight is placed at (3500, 21000) on 700. The tower kills the Golem on 830. Its death damage, 225 in a radius of 2000, lands on the Knight and pushes it 1800. Its two Golemites, DeathSpawnPushback set, are made on the Golem's point and aimed back at their ring points 1500 away, (2227, 23039) and (5227, 23039), with 6 steps of 250 (`death_pushback`); the first step falls in their registration visit. They destroy PrincessTower_1_1 on 879, walk at the king tower, and die on 1046 and 1060, each dealing its own death damage, 99 with a push of 900.
 - `giant_skeleton_bomb`: a Giant Skeleton, the run's unit at (3500, 10000), destroys PrincessTower_1_1 on 524 and dies on 650 at (5706, 26376). Its death spawn, GiantSkeletonBomb, a building row without hit points or a range, stands on its point, deploying for its own 3000 ms (state 4), with no registration visit. As its deploy ends on 710 its state visit finds no hit points and runs its death slot, without the death hooks: its death damage, 535 and 1070 on a crown tower in a radius of 3000, lands on KingTower_1_0 and the Knight and pushes the Knight 1800. It leaves at 711's closing cleanup.
 
 `BattleActionSpawnRunTest` plays both with the spawn runs.
@@ -242,7 +242,7 @@ The towers fight at level 11, and the run's unit is a Knight walking up the left
 
 `BattleActionSpawnRunTest` plays all three with the spawn runs, and holds them to the buff log as well.
 
-## `golden/minions_left.json`, `golden/minion_musketeer.json`, `golden/balloon_tower.json`, `golden/balloons_cross.json`, `golden/lava_hound_river.json` and `golden/baby_dragon_left.json` - air units
+## `golden/minions_left.json`, `golden/minion_musketeer.json`, `golden/balloon_tower.json`, `golden/balloons_cross.json`, `golden/balloon_river.json`, `golden/lava_hound_river.json` and `golden/baby_dragon_left.json` - air units
 
 The towers fight at level 11 unless stated. An air unit is created at its row's flying height and keeps it. It runs the ground unit's code with other layer answers: its route is one node, the nearest cell within its attack range of the target, with no search; it crosses water; the push and avoidance passes meet only units on its side of height 0; a target in the air needs an attacker that attacks air. Its shots start at its height plus the row's launch height, and a shot aimed at it climbs to its height.
 
@@ -250,6 +250,7 @@ The towers fight at level 11 unless stated. An air unit is created at its row's 
 - `minion_musketeer`: a top-side Minion from (3500, 21000) meets a bottom-side Musketeer at (3500, 9000) and Knight at (4500, 9000) (in `units`). The Musketeer takes the Minion on 54 and kills it on 92 with shots that climb to it; the Knight, which does not attack air, only ever references PrincessTower_1_1. The Minion locks the Knight on 78 and spits on 87.
 - `balloon_tower`: a Balloon locks PrincessTower_1_1 on 256 at (3298, 23927) and hits it for 640 four times. It dies on 389, and its death spawn, BalloonBomb, stands on its point on the ground (height 0, deploying 3000 ms) and dies as its deploy ends on 449, dealing 240 to the tower.
 - `balloons_cross`: with the towers passive, a bottom-side Balloon from (3500, 12000) and a top-side one from (3500, 20000) cross over a top-side Knight from (3500, 17500). They meet on 78 and push each other apart, the Knight moves neither and neither moves it, and neither Balloon references the other. A run without the towers fighting records no hit points of its own unit.
+- `balloon_river`: a level-1 Balloon from (2000, 14500) meets four level-11 top-side Musketeers at (1000..4000, 21500) and dies on 42 at (2141, 15857), over the river. Its BalloonBomb stands one unit to the right, at (2142, 15857), on the water - every in-front try is water - and dies as its deploy ends on 102, dealing 94 to each Musketeer. Once the Balloon is gone the Musketeers take PrincessTower_0_1 on 48: the bomb, a building placed during the battle, is no default target.
 - `lava_hound_river`: a level-1 Lava Hound from (2000, 14500) meets four level-11 top-side Musketeers at (1000..4000, 21500) (each unit with its own `level`) and dies on 58 at (1961, 16216), over the river. Its six LavaPups, at 3500, are made on its point and fly back to their ring points over the water, 250 a step, and die on 81, 103 and 126.
 - `baby_dragon_left`: a Baby Dragon locks PrincessTower_1_1 on 138 at (3288, 20521) and fires from 5400 on 143 and every 30 ticks, 161 on the tower, before it dies on 277.
 
@@ -394,21 +395,19 @@ reference and no goal that preparation asks the grid nothing and leaves no entry
 |----------------------|----------------|----------------------------------------------------|-------------|
 | `knight_left`        | (3500, 10000)  | PrincessTower_1_1                                  | tick 235    |
 | `knight_right`       | (14500, 10000) | PrincessTower_1_2                                  | tick 235    |
-| `knight_centre`      | (9000, 12000)  | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245    |
+| `knight_centre`      | (9000, 12000)  | PrincessTower_1_2                                  | tick 245    |
 | `knight_right_rear`  | (16500, 5000)  | PrincessTower_1_2                                  | tick 326    |
-| `knight_behind_king` | (9000, 4600)   | KingTower_1_0, then PrincessTower_1_2 from tick 85 | tick 361    |
-| `knight_left_inner`  | (8000, 10000)  | PrincessTower_1_1 on ticks 20 to 29, KingTower_1_0 from tick 30, PrincessTower_1_1 from tick 68 | tick 259 |
+| `knight_behind_king` | (9000, 4600)   | PrincessTower_1_2                                  | tick 369    |
+| `knight_left_inner`  | (8000, 10000)  | PrincessTower_1_1                                  | tick 259    |
 
-The centre case is the interesting one: the king tower is the closest in x from the deploy point, so
-the unit walks at it until a princess tower becomes closer in x, which happens at tick 82.
+The default target is chosen among the other side's princess towers only: the king seeds the choice
+and is never a candidate itself. So the centre and inner cases, whose closest tower in x would be the
+king, take their lane's princess tower from their first walking tick and keep it.
 
-The inner case pins the lane rule of the default selection. A unit is kept to the towers of its own
-lane while its elapsed time, which starts at zero and grows by one step per state visit outside the
-deploying states, is below 500 ms: its first ten walking ticks. From (8000, 10000) the king tower is
-the closest in x but lies in the other lane, so the unit takes the left princess tower on tick 20,
-switches to the king on tick 30 when the rule lets go, and comes back to the princess tower on tick
-68 when it is the closer in x. In the other five cases the closest tower in x is in the unit's own
-lane, so the rule never shows.
+The lane rule of the default selection keeps a unit to the towers of its own lane while its elapsed
+time, which starts at zero and grows by one step per state visit outside the deploying states, is
+below 500 ms: its first ten walking ticks. With both princess towers standing, a unit in its own
+half always finds its lane's tower the closer in x, so no case here shows the rule.
 
 The last two cases deploy the unit beside one of its own towers - behind the right princess tower
 and behind the king tower - so that the trajectory runs through the part of the arena where a

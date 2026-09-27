@@ -106,12 +106,12 @@ Six golden cases pin a whole Knight deployment on the standard arena with nothin
 | --- | --- | --- | --- | --- |
 | `knight_left` | (3500, 10000) | PrincessTower_1_1 | tick 235 | (3731, 22854) |
 | `knight_right` | (14500, 10000) | PrincessTower_1_2 | tick 235 | (14731, 22854) |
-| `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 245 | (14231, 22852) |
+| `knight_centre` | (9000, 12000) | PrincessTower_1_2 | tick 245 | (14231, 22855) |
 | `knight_right_rear` | (16500, 5000) | PrincessTower_1_2 | tick 326 | (14769, 22824) |
-| `knight_behind_king` | (9000, 4600) | KingTower_1_0, then PrincessTower_1_2 from tick 85 | tick 361 | (14231, 22844) |
-| `knight_left_inner` | (8000, 10000) | PrincessTower_1_1 on ticks 20 to 29, KingTower_1_0 from tick 30, PrincessTower_1_1 from tick 68 | tick 259 | (3769, 22848) |
+| `knight_behind_king` | (9000, 4600) | PrincessTower_1_2 | tick 369 | (14231, 22843) |
+| `knight_left_inner` | (8000, 10000) | PrincessTower_1_1 | tick 259 | (3769, 22842) |
 
-The centre case is the interesting one: the king tower is closest in x from the deploy point, so the unit walks at it until a princess tower becomes closer in x at tick 82. The inner case pins the lane rule: for its first ten walking ticks a unit only considers the towers of its own lane, so from (8000, 10000) it takes the left princess tower before the king, which is closer in x, and returns to the princess tower once that is the closer.
+The default target is chosen among the other side's princess towers only: the king seeds the choice and is never a candidate itself. So the centre and inner cases, whose closest tower in x would be the king, take their lane's princess tower from their first walking tick and keep it. For its first ten walking ticks a unit only considers the towers of its own lane; with both princess towers standing, a unit in its own half always finds its lane's tower the closer in x, so the rule has nothing to skip.
 
 The last two cases put the unit right beside one of its own towers - behind the right princess tower and behind the king tower - so that the two passes which look at a unit's neighbours, the push pass and the avoidance handler, are covered with a tower as the neighbour. `knight_right_rear` is steered around its princess tower from tick 40. `knight_behind_king` is pushed 1 unit a tick by its king while it deploys, from (9000, 4600) to (9000, 4620), because a deploying unit is visited by the movement pass with a speed of zero. Without them a change to either pass could leave the first three cases untouched.
 
