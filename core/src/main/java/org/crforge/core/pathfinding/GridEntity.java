@@ -149,6 +149,12 @@ public class GridEntity {
   private boolean movementComponent;
 
   /**
+   * True while the entity rides on another, placed around it every movement visit: it takes no part
+   * in collision, so no push pass or avoidance meets it.
+   */
+  private boolean attached;
+
+  /**
    * Countdown in milliseconds that blocks movement while it is positive, for example the delay
    * after a dash lands. The speed budget and all three movement gates return zero while it runs.
    *

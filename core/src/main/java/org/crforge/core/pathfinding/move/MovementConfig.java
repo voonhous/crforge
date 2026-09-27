@@ -56,6 +56,47 @@ public record MovementConfig(
   }
 
   /**
+   * The configuration of a unit that rides on a parent, as its attached placement reads it.
+   *
+   * @param spawnAngleShift degrees its place around the parent is turned by
+   * @param spawnMaxAngle the arc its share of the parent's ring is taken from
+   * @param spawnAttachMaxRotation how far it may face away from its parent's heading while it
+   *     attacks; 0 for no limit
+   * @param flyingHeight the height it is held at
+   */
+  public static MovementConfig forRider(
+      int spawnAngleShift, int spawnMaxAngle, int spawnAttachMaxRotation, int flyingHeight) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        0,
+        flyingHeight,
+        false,
+        0,
+        null,
+        null,
+        false,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        false);
+  }
+
+  /**
+   * The configuration of a parent as its riders' placement reads it: the radius they sit at.
+   *
+   * @param spawnRadius the parent's spawn radius
+   */
+  public static MovementConfig forParent(int spawnRadius) {
+    return new MovementConfig(
+        0, 0, 0, spawnRadius, 0, false, 0, null, null, false, 0, 0, 0, 0, 0, 0, false);
+  }
+
+  /**
    * The configuration of a plain ground unit that walks in bursts: after every stretch of walking
    * it stands still for a while, as the Giant and the Golem do.
    *

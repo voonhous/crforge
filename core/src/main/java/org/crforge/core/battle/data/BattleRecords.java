@@ -179,10 +179,13 @@ public final class BattleRecords {
 
   /**
    * The columns that change where a unit's death spawn stands or what its children take, which the
-   * battle does not model: refused only for a unit that spawns on its death.
+   * battle does not model: refused only for a unit that spawns on its death. The inherited ignore
+   * list is not among them: the id lists it joins are written only by such a death spawn and by a
+   * rider let go under a parent that sets it, which is refused, so every list stays empty and the
+   * column changes nothing.
    */
   private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS =
-      List.of("DeathInheritIgnoreList", "SpawnConstPriority", "SpawnLimit");
+      List.of("SpawnConstPriority", "SpawnLimit");
 
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
@@ -210,10 +213,10 @@ public final class BattleRecords {
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
-   * characters: a limit on its waves, children attached to it, and its push on them.
+   * characters: a limit on its waves and its push on its children.
    */
   private static final List<String> UNMODELLED_SPAWNER_COLUMNS =
-      List.of("SpawnLimit", "SpawnAttach", "SpawnPushback");
+      List.of("SpawnLimit", "SpawnPushback");
 
   private final GameTables tables;
 
@@ -306,6 +309,10 @@ public final class BattleRecords {
         .shieldHitpoints(row.intValue("ShieldHitpoints"))
         .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))
         .waitMs(row.intValue("WaitMS"))
+        .deathInheritIgnoreList(row.bool("DeathInheritIgnoreList"))
+        .spawnAttach(row.bool("SpawnAttach"))
+        .spawnMaxAngle(row.intValue("SpawnMaxAngle"))
+        .spawnAttachMaxRotation(row.intValue("SpawnAttachMaxRotation"))
         .unmodelledColumns(unmodelledColumns(row))
         .build();
   }

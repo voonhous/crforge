@@ -168,6 +168,27 @@ public interface WorldObserver {
       int tick, SpawnHost source, CharacterEntity child, int createdX, int createdY) {}
 
   /**
+   * A rider was attached to the parent whose spawner made it, after its registration visit.
+   *
+   * @param tick the tick it was made on
+   * @param parent the character it rides on
+   * @param rider the rider
+   * @param index its index among the parent's riders
+   * @param angle its angle on the parent's ring
+   */
+  default void riderAttached(
+      int tick, CharacterEntity parent, CharacterEntity rider, int index, int angle) {}
+
+  /**
+   * A rider's parent left the holder and let it go, before its death slot runs.
+   *
+   * @param tick the tick of the cleanup
+   * @param rider the rider
+   * @param parent the parent that left
+   */
+  default void parentLeft(int tick, CharacterEntity rider, CharacterEntity parent) {}
+
+  /**
    * A dying entity scheduled its death hooks on itself, as its death handler does: its row's death
    * action, then, for a kill by another entity, its killed action. Neither has run yet unless it
    * was scheduled inside a pending pass.

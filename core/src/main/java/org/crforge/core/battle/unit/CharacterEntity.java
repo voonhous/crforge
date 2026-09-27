@@ -7,12 +7,14 @@ import java.util.Collections;
 import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridMovementQueries;
@@ -21,6 +23,7 @@ import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.move.AttachedParent;
 import org.crforge.core.pathfinding.move.MovementChain;
 import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -96,7 +99,11 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " front - held by cannon_knight, tombstone_life, goblin_hut_life and mortar_knight;"
             + " a walking unit's own spawner, stepping from its deploy end whether it walks or"
             + " attacks, its waves on the ring turned by its angle shift and facing, held by"
-            + " witch_left_lane and night_witch;"
+            + " witch_left_lane and night_witch; a card play's riders, made as the unit starts"
+            + " deploying and queued ahead of it, placed around it a tick behind, untouchable,"
+            + " untargetable and out of collisions, targeting and attacking on their own, and let"
+            + " go in the cleanup that removes their parent, their death slot run and themselves"
+            + " removed in that cleanup, held by goblin_giant_tower;"
             + " the combat gate at the state visit's tail, which drops a dead character's"
             + " reference and switches its targeting off, held by every run's death tick; its"
             + " buffs scaling its speed budget and its attack timer, held by rage_knight,"
@@ -113,10 +120,12 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
             + " hit points, hovering, direct"
             + " paths, the river jump, elixir, a"
-            + " spawner's launches, second and third characters, limit, attachment, push and"
+            + " spawner's launches, second and third characters, limit, push and"
             + " deploy for its children), a lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself or whose"
             + " entries set more than a projectile and a damage, an action run as it attacks, and"
+            + " a row that attaches riders placed directly, spawned or waiting its turn, a buff on a"
+            + " parent or a rider, a rider whose parent may not attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
             + " spawner, a building or a flying row, a champion or another deploy time."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
@@ -170,6 +179,18 @@ public class CharacterEntity extends WorldEntity {
 
   /** How many children of the current wave the spawner has made. */
   private int spawnWaveMade;
+
+  /** The character this one rides on, or null while it rides on none. */
+  @Getter private CharacterEntity parent;
+
+  /** Its angle on its parent's ring as it was made, which gives its share of the arc it sits on. */
+  private int attachAngle;
+
+  /** The characters riding on this one, in the order they were made. */
+  private final List<CharacterEntity> riders = new ArrayList<>();
+
+  /** True once it has been let go by its parent, which removes it at the same cleanup. */
+  private boolean released;
 
   /**
    * Creates a character at its deploy position, deploying.
@@ -292,6 +313,10 @@ public class CharacterEntity extends WorldEntity {
    */
   static CharacterEntity spawned(
       BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    if (data.spawnAttach()) {
+      throw new UnsupportedOperationException(
+          data.name() + " is spawned and would make its riders as it deploys, which is not held");
+    }
     CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level);
     // The level setter leaves a unit with a speed walking and one without standing.
     child.getView().setState(data.speed() >= 1 ? GridEntityState.MOVING : GridEntityState.STANDING);
@@ -706,10 +731,55 @@ public class CharacterEntity extends WorldEntity {
     world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
-  /** Untouchable while its dash immunity lasts; nothing is attached yet. */
+  /** Untouchable while it rides on a parent, or while its dash immunity lasts. */
   @Override
   boolean untouchable() {
-    return unit.timers().getDashImmunityRemainingMs() > 0;
+    return parent != null || unit.timers().getDashImmunityRemainingMs() > 0;
+  }
+
+  /**
+   * Attaches the character to a parent it rides on, as its parent's spawner makes it: from its next
+   * movement visit on it is placed around the parent, and meanwhile nothing can hurt, target or
+   * push it.
+   *
+   * @param parent the character it rides on
+   * @param angle its angle on the parent's ring
+   */
+  void attachTo(CharacterEntity parent, int angle) {
+    this.parent = parent;
+    this.attachAngle = angle;
+    parent.riders.add(this);
+    getView().setAttached(true);
+    unit.timers().setAttached(true);
+    getTargetView().setAcceptsAttacker(false);
+  }
+
+  /** The characters riding on this one, in the order they were made. */
+  public List<CharacterEntity> riders() {
+    return Collections.unmodifiableList(riders);
+  }
+
+  /**
+   * The last part of the removal notice: a rider whose parent left is let go. It forgets the
+   * parent, runs its death slot - not the death handler - and is removed in the same cleanup.
+   */
+  @Override
+  protected void parentRemoved(BattleEntity removed) {
+    if (parent == null || parent != removed) {
+      return;
+    }
+    CharacterEntity left = parent;
+    parent = null;
+    getView().setAttached(false);
+    unit.timers().setAttached(false);
+    world.parentLeft(this, left);
+    released = true;
+  }
+
+  /** The state visit's removal request, or the release by a parent that left. */
+  @Override
+  protected boolean removalRequested() {
+    return released || unit.timers().isRemovalRequested();
   }
 
   /** True while the character waits its turn to deploy: none of its components is visited. */
@@ -760,12 +830,6 @@ public class CharacterEntity extends WorldEntity {
         queries);
   }
 
-  /** The state visit's removal request, raised for a unit that has no hit points to lose. */
-  @Override
-  protected boolean removalRequested() {
-    return unit.timers().isRemovalRequested();
-  }
-
   /**
    * The entity state visit: the deploy countdown and every other per-tick state transition. A
    * spawned child's immunity is counted here, and once it clears the child accepts attackers again.
@@ -785,7 +849,8 @@ public class CharacterEntity extends WorldEntity {
         stateQueries(),
         calls,
         setter);
-    getTargetView().setAcceptsAttacker(!unit.timers().isSpawnImmune());
+    // An attached rider answers no attacker at all; a spawned child none while it is immune.
+    getTargetView().setAcceptsAttacker(!unit.timers().isSpawnImmune() && parent == null);
     // The visit's removal of an object without hit points - the resume at the end of a bomb's
     // deploy - calls its death slot, without the death handler.
     if (calls.contains("remove")) {
@@ -854,6 +919,10 @@ public class CharacterEntity extends WorldEntity {
       if (deploying() || waiting()) {
         return;
       }
+      if (parent != null && (parent.getView().getFlags() & EntityFlags.NO_ATTACK) != 0) {
+        throw new UnsupportedOperationException(
+            name() + " rides on a parent that may not attack, whose hold on its hit no run holds");
+      }
       unit.targeting().setRouteLeadsAway(unit.movement().getRouteLeadsAway() != 0);
       SelectionChain selection = unit.selection();
       selection.beginTick();
@@ -914,8 +983,25 @@ public class CharacterEntity extends WorldEntity {
         return;
       }
       // A deploying unit is visited too: it asks for no route and gets no speed, so only a push
-      // from another unit can move it.
+      // from another unit can move it. A rider is placed around its parent and nothing else.
       GridMovementQueries queries = movementQueries();
+      if (parent != null) {
+        UnitData data = getData();
+        MovementVisit.movementVisit(
+            unit.movement(),
+            getView(),
+            new AttachedParent(parent.getView(), attachAngle),
+            MovementConfig.forRider(
+                data.spawnAngleShift(),
+                data.spawnMaxAngle(),
+                data.spawnAttachMaxRotation(),
+                data.flyingHeight()),
+            MovementConfig.forParent(parent.getData().spawnRadius()),
+            queries,
+            false,
+            movementChain(queries));
+        return;
+      }
       MovementVisit.movementVisit(
           unit.movement(),
           getView(),

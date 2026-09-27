@@ -902,6 +902,106 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The riders of a character whose row attaches its spawner's children, made as it enters the
+   * deploying state: in a card play, before the character itself is handed to the holder, so they
+   * take the lower ids and every pass visits them before it. As many as the row's spawn number, on
+   * the ring of its spawn radius - turned by its angle shift and facing when it sets one - or on
+   * the parent's point with no radius, each at the parent's level re-based on its rarity, set
+   * deploying for the parent's deploy time and facing as the parent faces, registered at once with
+   * its registration visit, which sees no parent yet, and attached to the parent after it: from its
+   * next movement visit it is placed around the parent.
+   *
+   * <p>Refused rather than guessed: a rider without hit points, a building, one that paths to its
+   * point, one with a starting action, one that has riders of its own, and a ring drawn from the
+   * least radius.
+   *
+   * @param parent the character entering the deploying state
+   */
+  void attachRiders(CharacterEntity parent) {
+    UnitData data = parent.getData();
+    UnitData child = records.unit(data.spawnCharacter());
+    if (child.hitpoints() <= 0
+        || child.building()
+        || child.spawnPathfindSpeed() != 0
+        || child.onStartingAction() != null
+        || child.spawnAttach()
+        || data.deathSpawnMinRadius() != 0) {
+      throw new UnsupportedOperationException(
+          parent.name()
+              + "'s riders "
+              + child.name()
+              + " lack hit points, are a building, path to their point, start an action, carry"
+              + " riders or stand on a drawn ring, which is not modelled");
+    }
+    int count = data.spawnNumber();
+    int radius = data.spawnRadius();
+    int fromX = parent.getView().getX();
+    int fromY = parent.getView().getY();
+    for (int i = 0; i < count; i++) {
+      // Its angle on the ring before any turn, which gives its share of the arc it rides on.
+      int angle = (count - 1 - i) * 360 / count;
+      int[] at =
+          SpawnPlacement.position(
+              fromX,
+              fromY,
+              i,
+              count,
+              true,
+              radius,
+              ringTurn(parent),
+              data.collisionRadius() + child.collisionRadius(),
+              parent.side() & 1,
+              tileMap.width() * TileMap.CELL_UNITS,
+              (px, py) -> SpawnPassable.passable(tileMap, px, py, child.collisionRadius()));
+      int x = inset(at[0], tileMap.width());
+      int y = inset(at[1], tileMap.height());
+      int made = spawnCounts.merge(parent.name(), 1, Integer::sum) - 1;
+      CharacterEntity rider =
+          CharacterEntity.spawned(
+              this,
+              child,
+              parent.name() + "_" + made,
+              parent.side(),
+              x,
+              y,
+              PackedLevel.level(PackedLevel.pack(parent.getPackedLevel(), child.rarity())));
+      if (data.deployTimeMs() != 0) {
+        rider.deployFor(data.deployTimeMs());
+        rider.getView().setDirX(parent.getView().getDirX());
+        rider.getView().setDirY(parent.getView().getDirY());
+      }
+      holder.addRegistered(rider);
+      for (WorldObserver observer : observers) {
+        observer.characterSpawned(tick, parent, rider, x, y);
+      }
+      rider.attachTo(parent, angle);
+      for (WorldObserver observer : observers) {
+        observer.riderAttached(tick, parent, rider, i, angle);
+      }
+    }
+  }
+
+  /**
+   * A rider let go as its parent leaves the holder, in the parent's removal notice: its death slot
+   * runs - its death spawn stands where it rode - without the death handler, and it leaves at the
+   * same cleanup. A parent whose row sets the inherited ignore list is refused.
+   *
+   * @param rider the rider
+   * @param parent the parent that left
+   */
+  void parentLeft(CharacterEntity rider, CharacterEntity parent) {
+    if (parent.getData().deathInheritIgnoreList()) {
+      // Every entity accepted then would list the rider's id, the one write that fills an id list.
+      throw new UnsupportedOperationException(
+          parent.name() + " lets its riders go under an inherited ignore list, which is not held");
+    }
+    for (WorldObserver observer : observers) {
+      observer.parentLeft(tick, rider, parent);
+    }
+    deathSlot(rider, rider.getData());
+  }
+
+  /**
    * The degrees a spawner's ring is turned by: for a row that sets an angle shift, the shift plus
    * the angle the source faces, its heading as whole degrees; for any other row, none.
    */

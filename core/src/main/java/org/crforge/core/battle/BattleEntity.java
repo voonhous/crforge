@@ -140,6 +140,12 @@ public abstract class BattleEntity {
    */
   protected void entityRemoved(BattleEntity removed) {}
 
+  /**
+   * The last part of the removal notice: an entity attached to the one that left is let go. Nothing
+   * for an entity attached to nothing.
+   */
+  protected void parentRemoved(BattleEntity removed) {}
+
   /** Runs once per tick before any component of any entity. */
   protected void preHook() {}
 

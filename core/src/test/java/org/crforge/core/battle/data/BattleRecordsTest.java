@@ -218,7 +218,18 @@ class BattleRecordsTest {
     assertThat(records.unit("Tesla").unmodelledColumns()).containsExactly("HidesWhenNotAttacking");
     assertThat(records.unit("ElixirCollector").unmodelledColumns())
         .containsExactly("ManaCollectAmount");
-    assertThat(records.unit("GoblinGiant").unmodelledColumns()).containsExactly("SpawnAttach");
+    // The Goblin Giant's two Spear Goblins ride on it, at 900, turned by their own -22.
+    UnitData goblinGiant = records.unit("GoblinGiant");
+    assertThat(goblinGiant.unmodelledColumns()).isEmpty();
+    assertThat(goblinGiant.spawnAttach()).isTrue();
+    assertThat(goblinGiant.spawnNumber()).isEqualTo(2);
+    assertThat(goblinGiant.spawnRadius()).isEqualTo(900);
+    UnitData rider = records.unit("SpearGoblinGiant");
+    assertThat(rider.spawnAngleShift()).isEqualTo(-22);
+    assertThat(rider.spawnMaxAngle()).isEqualTo(90);
+    assertThat(rider.spawnAttachMaxRotation()).isZero();
+    assertThat(rider.flyingHeight()).isEqualTo(4000);
+    assertThat(rider.deathInheritIgnoreList()).isTrue();
     assertThat(records.unit("PhoenixEgg").unmodelledColumns())
         .containsExactly("DestroyAtLimit", "SpawnCharacterWithDeploy", "SpawnLimit");
   }
