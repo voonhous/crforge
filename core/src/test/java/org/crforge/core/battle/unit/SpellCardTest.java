@@ -43,12 +43,19 @@ class SpellCardTest {
   }
 
   @Test
-  @DisplayName(
-      "several projectiles and a spell thrown as a projectile are refused as the card is read")
+  @DisplayName("Arrows casts three waves of ten projectiles in the circle of its radius")
+  void arrows() {
+    DeployCard arrows = GameData.card("Arrows");
+    assertThat(arrows.multipleProjectiles()).isEqualTo(10);
+    assertThat(arrows.projectileWaves()).isEqualTo(3);
+    assertThat(arrows.projectileWaveIntervalMs()).isEqualTo(200);
+    assertThat(arrows.projectileIntervalMs()).isZero();
+    assertThat(arrows.radius()).isEqualTo(3500);
+  }
+
+  @Test
+  @DisplayName("a spell thrown as a projectile is refused as the card is read")
   void theCastsNotModelled() {
-    assertThatThrownBy(() -> GameData.card("Arrows"))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("MultipleProjectiles");
     assertThatThrownBy(() -> GameData.card("Log"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("SpellAsDeploy");

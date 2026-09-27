@@ -42,8 +42,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the even split rounded up, the crown-tower damage for a crown tower and the floor"
             + " of one, with a projectile or a character as the owner. Held by the Wizard run's"
             + " three impacts and the Valkyrie runs' areas, the owner's own side among them."
-            + " Supplied, not settled: nothing is untouchable. Not modelled: the second circle and the dedupe list of a chained"
-            + " projectile, the area objects of their own kind, the heal of the owner's side,"
+            + " Supplied, not settled: nothing is untouchable. The second circle and the id list"
+            + " of a chain of projectiles are held by arrows_skeletons, not the partner of a 2v2"
+            + " tower. Not modelled: the area objects of their own kind, the heal of the owner's side,"
             + " the push's floor and visuals, and the death presentation. The push is held by a"
             + " Golemite's death damage.")
 public final class AreaDamage {
@@ -134,6 +135,17 @@ public final class AreaDamage {
       List<TargetView> damaged,
       List<TargetView> pushed) {}
 
+  /**
+   * What a chain of projectiles shares with each of its areas: a second circle every victim must
+   * also stand in, and the ids the chain has hit, which no area of it hits again.
+   *
+   * @param x the second circle's centre along the width
+   * @param y the second circle's centre along the length
+   * @param radius its radius; 0 for none
+   * @param hitIds the ids the chain has hit, which this area adds to
+   */
+  public record Chain(int x, int y, int radius, List<Integer> hitIds) {}
+
   /** What the area asks of the battle about a victim. */
   public interface Queries {
 
@@ -184,6 +196,23 @@ public final class AreaDamage {
       Area area,
       ValidatorQueries validatorQueries,
       Queries queries) {
+    return damage(owner, entities, area, null, validatorQueries, queries);
+  }
+
+  /**
+   * Damages the area of one projectile of a chain: as an ordinary area, with the chain's circle as
+   * a second circle and its id list, which an entity in both circles is checked against and then
+   * added to, before the one-per-area tower rule.
+   *
+   * @param chain what the chain shares, or null for an ordinary area
+   */
+  public static Outcome damage(
+      TargetingState owner,
+      List<TargetView> entities,
+      Area area,
+      Chain chain,
+      ValidatorQueries validatorQueries,
+      Queries queries) {
     List<TargetView> victims = new ArrayList<>();
     List<TargetView> inCircle = new ArrayList<>();
     List<TargetView> validated = new ArrayList<>();
@@ -214,6 +243,17 @@ public final class AreaDamage {
       }
       if (!ShapeTests.withinCircleShape(entity.getEntity(), area.x(), area.y(), area.radius())) {
         continue;
+      }
+      if (chain != null) {
+        if (chain.radius() >= 1
+            && !ShapeTests.withinCircleShape(
+                entity.getEntity(), chain.x(), chain.y(), chain.radius())) {
+          continue;
+        }
+        if (chain.hitIds().contains(entity.id())) {
+          continue;
+        }
+        chain.hitIds().add(entity.id());
       }
       // One area takes at most one of the entities that fill a side's tower slot.
       if (entity.towerFlag() && towerSlotTaken) {

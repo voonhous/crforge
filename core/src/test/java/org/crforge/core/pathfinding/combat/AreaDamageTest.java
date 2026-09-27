@@ -103,6 +103,47 @@ class AreaDamageTest {
   }
 
   @Test
+  @DisplayName(
+      "a chain's area also needs its victims in the chain's circle, and hits no id the chain has"
+          + " hit")
+  void aChainSharesItsCircleAndItsIds() {
+    TargetView inside = unit("inside", 1, 1000, 0);
+    inside.getEntity().setId(5000001);
+    TargetView outside = unit("outside", 1, -1000, 0);
+    outside.getEntity().setId(5000002);
+    List<Integer> hit = new ArrayList<>();
+    // The chain's circle, around (2000, 0) with a radius of 1500, holds the first unit only.
+    AreaDamage.Chain chain = new AreaDamage.Chain(2000, 0, 1500, hit);
+
+    List<String> first = new ArrayList<>();
+    for (TargetView victim :
+        AreaDamage.damage(
+                owner,
+                List.of(inside, outside),
+                area(1500, 0, false, false),
+                chain,
+                ValidatorQueries.standard1v1(),
+                queries)
+            .victims()) {
+      first.add(victim.name());
+    }
+    assertThat(first).containsExactly("inside");
+    assertThat(hit).containsExactly(5000001);
+
+    // A second area of the same chain finds the first unit's id listed and passes it over.
+    assertThat(
+            AreaDamage.damage(
+                    owner,
+                    List.of(inside, outside),
+                    area(1500, 0, false, false),
+                    chain,
+                    ValidatorQueries.standard1v1(),
+                    queries)
+                .victims())
+        .isEmpty();
+  }
+
+  @Test
   @DisplayName("a unit is in the area while its centre is closer than the radius plus its own")
   void aUnitCountsItsOwnRadius() {
     // Radius 1500 plus the unit's 500: a centre at 1999 is inside, one at 2000 is not.

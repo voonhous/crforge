@@ -76,7 +76,12 @@ final class ProjectileFlight {
         p.setHomingTimeMs(p.getHomingTimeMs() - ProjectileEntity.STEP_MS);
       }
     }
-    // The random and angular delays would hold the projectile here; no row carried here has one.
+    // A projectile with a delay left counts it down and does not move; the random and angular
+    // delays before it would hold the projectile here too, and no row carried here has one.
+    if (p.getDelayMs() >= 1) {
+      p.stepDelay();
+      return;
+    }
     snapToTarget(p);
     int remaining = FixedMath.guardedDistance(p.getX() - p.getAimX(), p.getY() - p.getAimY());
     int speed = data.speed();
@@ -146,14 +151,21 @@ final class ProjectileFlight {
     impact(p, world);
   }
 
-  /** The impact: the amounts at the projectile's level, one hit id, and the hit on the target. */
+  /**
+   * The impact: the amounts at the projectile's level, one hit id, and the hit on the target, or
+   * the area around its aim - around its ring point for a chain that lands on ring points.
+   */
   private static void impact(ProjectileEntity p, BattleWorld world) {
     ProjectileData data = p.getData();
     int damage = p.damage();
     int towerDamage = p.towerDamage();
     int hitId = world.nextHitId();
+    ProjectileChain chain = p.getChain();
+    boolean onRing = chain != null && chain.isRingPoints();
+    int px = onRing ? p.getRingX() : p.getAimX();
+    int py = onRing ? p.getRingY() : p.getAimY();
     if (data.radius() >= 1) {
-      areaImpact(p, world, damage, towerDamage, hitId);
+      areaImpact(p, world, px, py, damage, towerDamage, hitId);
     } else {
       TargetView target = p.targetView();
       if (target != null) {
@@ -162,7 +174,7 @@ final class ProjectileFlight {
     }
     // The impact's character spawn: its children in formation around the impact point.
     if (data.spawnCharacterCount() >= 1) {
-      world.impactSpawn(p, p.getAimX(), p.getAimY());
+      world.impactSpawn(p, px, py);
     }
   }
 
@@ -171,7 +183,13 @@ final class ProjectileFlight {
    * damage, or the crown-tower damage, and the launcher's own side too unless the row spares it.
    */
   private static void areaImpact(
-      ProjectileEntity p, BattleWorld world, int damage, int towerDamage, int hitId) {
+      ProjectileEntity p,
+      BattleWorld world,
+      int px,
+      int py,
+      int damage,
+      int towerDamage,
+      int hitId) {
     ProjectileData data = p.getData();
     if (data.homingLike()) {
       // A projectile that flies to a point has hit along its way already, and only runs that pass
@@ -188,8 +206,8 @@ final class ProjectileFlight {
     }
     AreaDamage.Area area =
         new AreaDamage.Area(
-            p.getAimX(),
-            p.getAimY(),
+            px,
+            py,
             data.radius(),
             damage,
             towerDamage,
@@ -201,12 +219,20 @@ final class ProjectileFlight {
             data.aoeToGround(),
             false,
             data.pushback(),
-            p.getAimX(),
-            p.getAimY());
+            px,
+            py);
+    // A chain's victims must also stand in its circle, and none is hit twice by it.
+    ProjectileChain chain = p.getChain();
+    AreaDamage.Chain shared =
+        chain == null
+            ? null
+            : new AreaDamage.Chain(
+                chain.getX(), chain.getY(), chain.getRadius(), chain.getHitIds());
     AreaDamage.damage(
         p.areaOwner(),
         entities,
         area,
+        shared,
         ValidatorQueries.standard1v1(),
         new AreaDamage.Queries() {
           @Override

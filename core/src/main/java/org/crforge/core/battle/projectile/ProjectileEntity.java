@@ -121,6 +121,17 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
   /** True until the first flight step has run. */
   private boolean firstVisit = true;
 
+  /** Milliseconds its flight still waits before it moves, 50 off each visit. */
+  @Getter private int delayMs;
+
+  /** The chain it belongs to, or null for a projectile on its own. */
+  @Getter private ProjectileChain chain;
+
+  /** The point its damage lands on as part of a chain, when the chain lands on ring points. */
+  @Getter private int ringX;
+
+  @Getter private int ringY;
+
   /** The projectile's action holder, made the first time it causes an action; null until then. */
   private ActionHolder actionHolder;
 
@@ -178,9 +189,32 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    * @param sz start height
    * @param hx the placed point along the arena's width
    * @param hy the placed point along the arena's length
+   * @param delayMs how long its flight waits before it moves
    */
-  public void cast(WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy) {
+  public void cast(
+      WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy, int delayMs) {
     place(king, null, cardLevel, sx, sy, sz, hx, hy);
+    this.delayMs = delayMs;
+  }
+
+  /**
+   * Makes the projectile part of a chain whose damage lands on ring points: its own is the given
+   * point, and the chain lands on ring points from now on.
+   *
+   * @param chain the wave's shared state
+   * @param x the ring point along the width
+   * @param y the ring point along the length
+   */
+  public void joinChain(ProjectileChain chain, int x, int y) {
+    this.chain = chain;
+    this.ringX = x;
+    this.ringY = y;
+    chain.markRingPoints();
+  }
+
+  /** One visit's step of the delay before the flight. */
+  void stepDelay() {
+    delayMs -= STEP_MS;
   }
 
   /** The launch body: the level re-based, the start, the owner, the aim and the facing. */
