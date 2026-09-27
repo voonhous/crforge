@@ -309,6 +309,16 @@ The Giant stops for two visits after every 640 ms walked, hits PrincessTower_1_1
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/prince_tower.json`, `golden/dark_prince_tower.json` and `golden/hog_river.json` - the charge and the river jump
+
+The towers fight at level 11, and each run places its unit for the bottom side on tick 0. Each lists, under `jump_charge_dash`, every charge completed, with its progress and where the unit stood, every charge lost at a movement visit, with the unit's state then, and every state its movement pass asked for.
+
+- `prince_tower`: a Prince at (3500, 10000). Its charge grows by its step times 1000 over its range of 250, 240 a visit at its speed of 60, and completes on tick 61 at 10080; its budget is 120 from the next visit. The visit of 144 finds PrincessTower_1_1 in range and, its strike-now byte set, hits at once for its charged 783; the charge is lost there. It then hits for 391 every 28 ticks, and the tower falls on 312. Walking on toward the king, it charges again (359) and hits the king for 783 on 382; it dies on 428.
+- `dark_prince_tower`: a Dark Prince at (3500, 10000), with its range of 300 charged on 69. The tower's arrows break its 240 shield on 151; on 152 its charged 532 reaches the tower through its area of 1100, then 266 every 26 ticks, until it dies on 343.
+- `hog_river`: a Hog Rider at (9000, 13000). Its route may cross water at the water cost of 7, so from the middle of the arena it runs straight over the river. On 32, at (10092, 14092), the node after the one it reached is water: its route becomes node 1250, the first land cell beyond, 4466 units away, and it jumps, at 160 a visit, its height left at 0. PrincessTower_1_2 locks on it mid-jump on 56. On 58, with fewer than two steps left, it asks for the moving state at (13030, 17030), and its route is prepared from there. It hits the tower for 317 from 123 until it dies on 315.
+
+`BattleActionSpawnRunTest` plays them with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
