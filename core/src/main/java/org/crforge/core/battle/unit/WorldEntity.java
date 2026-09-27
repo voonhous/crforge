@@ -131,6 +131,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** Answers which target the targeting component should have now. */
   @Getter private final SelectionChain selection;
 
+  /** The buffs listed on the entity, in slot 3, and what they make of its speeds. */
+  @Getter private final BuffComponent buffs;
+
+  /** Whether the hit speed was 0 at the last combat gate: a stun was holding the entity. */
+  private boolean gateStunned;
+
   /** True once the opposing side's towers have been registered as default targets. */
   private boolean towersRegistered;
 
@@ -160,6 +166,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     selection.setHitSink(
         (target, sequenceIndex, extraTargets, last) ->
             HitApplication.apply(targeting, target, sequenceIndex, hitQueries()));
+    // The attack timer, the dash and the special loads step by the time the buffs scale.
+    this.buffs = new BuffComponent(this, world);
+    selection.setTimeScaler(buffs::hitSpeed);
+    attach(buffs);
     this.packedLevel = PackedLevel.fromLevel(level, data.rarity());
     ScalingGlobals globals = ScalingGlobals.standard();
     int maximum =
@@ -262,6 +272,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (removed instanceof WorldEntity gone) {
       RemovalNotice.entityRemoved(targeting, gone.getTargetView(), null);
     }
+    // The buff component hears of it after the targeting component.
+    buffs.entityRemoved(removed);
   }
 
   /**
@@ -353,18 +365,42 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   protected void combatGate(boolean targetingOn, Runnable routePreparer) {
     TargetView before = targeting.getReference();
+    boolean alive = HitPoints.alive(hitPoints);
+    int hitSpeed = buffs.hitSpeed(CombatGate.HIT_SPEED_STEP_MS);
     boolean on =
         CombatGate.targetingOn(
-            view,
-            targeting,
-            targetingOn,
-            HitPoints.alive(hitPoints),
-            data.hitpoints() != 0,
-            routePreparer);
+            view, targeting, targetingOn, alive, hitSpeed, data.hitpoints() != 0, routePreparer);
     if (before != null && targeting.getReference() == null) {
-      world.combatGateDropped(this, before);
+      world.combatGateDropped(this, before, hitSpeed);
     }
+    // Only a switch a stun causes, or the first after one, is told.
+    boolean stunned = alive && hitSpeed == 0;
+    if (on != isActive(GATED_SLOT) && (stunned || gateStunned)) {
+      world.combatComponentSwitched(this, on, hitSpeed);
+    }
+    gateStunned = stunned;
     setActive(GATED_SLOT, on);
+  }
+
+  /**
+   * Whether the entity is untouchable: attached to another, or still immune from a dash. Nothing is
+   * attached yet, and a tower never dashes.
+   */
+  boolean untouchable() {
+    return false;
+  }
+
+  /**
+   * Takes one hit of a buff's damage over time: refused only where damage is forbidden, with no
+   * dedupe id and no heading.
+   */
+  DamageResult takeDamageOverTime(int damage) {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    DamageResult result = DamageApplication.overTime(hitPoints, damage, damageQueries());
+    refreshHitPoints();
+    return result;
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */

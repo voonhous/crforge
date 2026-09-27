@@ -276,11 +276,63 @@ public interface WorldObserver {
 
   /**
    * The combat gate at the tail of an entity's state visit dropped its reference: the entity is
-   * dead or still deploying.
+   * dead, still deploying, or stunned.
    *
    * @param tick the tick
    * @param entity the entity whose reference went
    * @param reference the reference it held
+   * @param hitSpeed the gate's time step as the entity's buffs scale it; 0 under a stun
    */
-  default void combatGateDropped(int tick, WorldEntity entity, TargetView reference) {}
+  default void combatGateDropped(
+      int tick, WorldEntity entity, TargetView reference, int hitSpeed) {}
+
+  /**
+   * The combat gate switched an entity's targeting off as a stun holds it, or on again at the first
+   * gate after the stun.
+   *
+   * @param tick the tick
+   * @param entity the entity
+   * @param on whether its targeting is on now
+   * @param hitSpeed the gate's time step as the entity's buffs scale it
+   */
+  default void combatComponentSwitched(int tick, WorldEntity entity, boolean on, int hitSpeed) {}
+
+  /**
+   * An area effect's hit reached the characters its buff applies to, before each is applied.
+   *
+   * @param tick the tick
+   * @param areaEffect the area effect
+   * @param buff the buff's row
+   * @param time the time it is applied for
+   * @param targets the characters that passed its test, in the order they are applied to
+   */
+  default void areaBuff(
+      int tick, AreaEffectEntity areaEffect, BuffData buff, int time, List<WorldEntity> targets) {}
+
+  /** A new buff instance was listed on an entity. */
+  default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
+
+  /**
+   * A buff instance was refreshed by a re-application.
+   *
+   * @param before what was left of its time before
+   */
+  default void buffRefreshed(int tick, WorldEntity target, BuffInstance buff, int before) {}
+
+  /** A buff instance's time ran out and it was removed. */
+  default void buffRemoved(int tick, WorldEntity target, BuffInstance buff) {}
+
+  /**
+   * A buff instance's damage over time landed on its entity.
+   *
+   * @param hitPointsBefore the entity's hit points before the hit
+   * @param result what the hit did
+   */
+  default void buffDamaged(
+      int tick,
+      WorldEntity target,
+      BuffInstance buff,
+      int damage,
+      int hitPointsBefore,
+      DamageResult result) {}
 }

@@ -7,7 +7,9 @@ import org.crforge.core.battle.GameData;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** An area effect's row as the battle reads it, and the area effects it refuses. */
+/**
+ * An area effect's row and its buff's as the battle reads them, and the area effects it refuses.
+ */
 class BattleAreaEffectTest {
 
   @Test
@@ -23,17 +25,58 @@ class BattleAreaEffectTest {
     assertThat(drill.hitsGround()).isTrue();
     assertThat(drill.hitsAir()).isFalse();
     assertThat(drill.unmodelledColumns()).isEmpty();
-    assertThat(GameData.records().areaEffect("Zap").unmodelledColumns()).contains("Buff");
+    assertThat(drill.buff()).isNull();
+    assertThat(drill.spawnAreaEffectObject()).isNull();
+
+    AreaEffectData zap = GameData.records().areaEffect("Zap");
+    assertThat(zap.buff()).isEqualTo("ZapFreeze");
+    assertThat(zap.buffTimeMs()).isEqualTo(500);
+    assertThat(zap.capBuffTimeToAreaEffectTime()).isFalse();
+    assertThat(zap.unmodelledColumns()).isEmpty();
+
+    AreaEffectData rage = GameData.records().areaEffect("Rage");
+    assertThat(rage.buff()).isEqualTo("Rage");
+    assertThat(rage.buffTimeMs()).isEqualTo(1000);
+    assertThat(rage.capBuffTimeToAreaEffectTime()).isTrue();
+    assertThat(rage.onlyOwnTroops()).isTrue();
+    assertThat(rage.spawnAreaEffectObject()).isEqualTo("RageDamage");
+    assertThat(rage.unmodelledColumns()).isEmpty();
   }
 
   @Test
-  @DisplayName("an area effect whose row carries a buff is refused as it is created")
-  void aBuffIsRefused() {
+  @DisplayName(
+      "a buff is its row's columns, and every column it sets that neither is read nor only shows"
+          + " something is listed")
+  void theBuffRow() {
+    BuffData poison = GameData.records().buff("Poison");
+    assertThat(poison.speedMultiplier()).isEqualTo(-15);
+    assertThat(poison.damagePerSecond()).isEqualTo(36);
+    assertThat(poison.hitFrequency()).isEqualTo(1000);
+    assertThat(poison.crownTowerDamagePercent()).isEqualTo(-75);
+    assertThat(poison.enableStacking()).isTrue();
+    assertThat(poison.unmodelledColumns()).isEmpty();
+
+    BuffData rage = GameData.records().buff("Rage");
+    assertThat(rage.speedMultiplier()).isEqualTo(130);
+    assertThat(rage.hitSpeedMultiplier()).isEqualTo(130);
+    assertThat(rage.spawnSpeedMultiplier()).isEqualTo(130);
+    assertThat(rage.unmodelledColumns()).isEmpty();
+
+    assertThat(GameData.records().buff("ZapFreeze").hitSpeedMultiplier()).isEqualTo(-100);
+    assertThat(GameData.records().buff("Earthquake").unmodelledColumns())
+        .containsExactly("HitTickFromSource");
+    assertThat(GameData.records().buff("Tornado").unmodelledColumns())
+        .containsExactly("AttractPercentage", "ControlledByParent", "PushSpeedFactor");
+  }
+
+  @Test
+  @DisplayName("an area effect whose buff sets a column not modelled is refused as it is created")
+  void aBuffNotModelledIsRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    match.placeAreaEffect(1, "Zap", 11, 0, 3500, 20000, "Zap");
+    match.placeAreaEffect(1, "Earthquake", 11, 0, 3500, 20000, "Earthquake");
     match.getBattle().step();
     assertThatThrownBy(() -> match.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Buff");
+        .hasMessageContaining("HitTickFromSource");
   }
 }

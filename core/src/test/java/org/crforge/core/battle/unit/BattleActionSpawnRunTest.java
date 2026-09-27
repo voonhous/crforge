@@ -17,13 +17,14 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the twenty runs in which an action, a death or a building spawns characters through {@link
- * Battle} and holds the battle to them tick for tick.
+ * Plays the twenty-three runs in which an action, a death or a building spawns characters through
+ * {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -66,6 +67,15 @@ import org.junit.jupiter.params.provider.ValueSource;
  * tick's closing cleanup and is first visited on the next tick. A child of an action or a death
  * cannot be targeted until its sixth state visit, so the towers lock on it six ticks late; a
  * building's spawner gives its children no such immunity.
+ *
+ * <p>Three runs place a spell's area effect directly on a walking or attacking Knight, and hold its
+ * buffs. In {@code rage_knight} Rage, with its chained RageDamage, refreshes a 1000 ms buff on the
+ * Knight every six ticks: from the tick after the first, the Knight walks at 78 and steps its
+ * attack timer by 65, and it goes back to 60 and 50 once the last refresh runs out. In {@code
+ * zap_knight} Zap's 500 ms stun drops the attacking Knight's reference and switches its targeting
+ * off on the tick it lands, and the first gate after the buff goes switches it back on. In {@code
+ * poison_knight_tower} Poison, stacking by its source, hits a red Knight for 92 and a princess
+ * tower for 23 every twenty visits and slows the Knight to 51.
  */
 class BattleActionSpawnRunTest {
 
@@ -91,7 +101,10 @@ class BattleActionSpawnRunTest {
         "cannon_knight",
         "tombstone_life",
         "goblin_hut_life",
-        "mortar_knight"
+        "mortar_knight",
+        "rage_knight",
+        "zap_knight",
+        "poison_knight_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -193,6 +206,9 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
     List<String> areaEffects = new ArrayList<>();
     match.getWorld().addObserver(areaEffectLog(currentTick, areaEffects));
+    // What each buff did.
+    List<String> buffLog = new ArrayList<>();
+    match.getWorld().addObserver(buffLog(currentTick, buffLog));
     // What each building's spawner and lifetime did.
     List<String> buildingLog = new ArrayList<>();
     match
@@ -502,6 +518,10 @@ class BattleActionSpawnRunTest {
         .as("every spawner firing and every death by a lifetime's decay")
         .containsExactlyElementsOf(expectedBuildingLog);
 
+    assertThat(buffLog)
+        .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
+        .containsExactlyElementsOf(expectedBuffLog(reference));
+
     List<String> expectedEvents = new ArrayList<>();
     for (JsonNode event : reference.get("events")) {
       expectedEvents.add(BattleTowerRunTest.eventLine(event));
@@ -609,7 +629,7 @@ class BattleActionSpawnRunTest {
                     a.getData().name(),
                     a.getId(),
                     how,
-                    source instanceof WorldEntity w ? w.name() : null,
+                    sourceName(source),
                     a.side(),
                     a.getX(),
                     a.getY(),
@@ -641,6 +661,14 @@ class BattleActionSpawnRunTest {
         lines.add("%d removed %s %d".formatted(currentTick[0], a.name(), a.getCountdown()));
       }
     };
+  }
+
+  /** What an area effect was created from, by name: an arena entity or another area effect. */
+  private static String sourceName(BattleEntity source) {
+    if (source instanceof WorldEntity w) {
+      return w.name();
+    }
+    return source instanceof AreaEffectEntity a ? a.name() : null;
   }
 
   /** The reference's area-effect log in the same layout. */
@@ -683,6 +711,136 @@ class BattleActionSpawnRunTest {
         case "removed" ->
             expected.add("%d removed %s %d".formatted(tick, name, a.get("countdown").asInt()));
         default -> throw new IllegalStateException("unknown area effect event " + a);
+      }
+    }
+    return expected;
+  }
+
+  /** Lists what each buff does, in the reference's layout. */
+  static WorldObserver buffLog(int[] currentTick, List<String> lines) {
+    return new WorldObserver() {
+      @Override
+      public void areaBuff(
+          int tick, AreaEffectEntity a, BuffData buff, int time, List<WorldEntity> targets) {
+        lines.add(
+            "%d area_buff %s %s %d %s"
+                .formatted(
+                    currentTick[0],
+                    a.name(),
+                    buff.name(),
+                    time,
+                    targets.stream().map(WorldEntity::name).toList()));
+      }
+
+      @Override
+      public void buffApplied(int tick, WorldEntity target, BuffInstance buff) {
+        lines.add(
+            "%d applied %s %s %s %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    buff.getBuff().name(),
+                    buff.getKey(),
+                    buff.getRemaining(),
+                    buff.getPackedLevel(),
+                    buff.getSource() == null ? null : buff.getSource().name()));
+      }
+
+      @Override
+      public void buffRefreshed(int tick, WorldEntity target, BuffInstance buff, int before) {
+        lines.add(
+            "%d refreshed %s %s %s %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    buff.getBuff().name(),
+                    buff.getKey(),
+                    before,
+                    buff.getRemaining(),
+                    buff.getSource() == null ? null : buff.getSource().name()));
+      }
+
+      @Override
+      public void buffRemoved(int tick, WorldEntity target, BuffInstance buff) {
+        lines.add(
+            "%d removed %s %s %s"
+                .formatted(currentTick[0], target.name(), buff.getBuff().name(), buff.getKey()));
+      }
+
+      @Override
+      public void buffDamaged(
+          int tick,
+          WorldEntity target,
+          BuffInstance buff,
+          int damage,
+          int hitPointsBefore,
+          DamageResult result) {
+        lines.add(
+            "%d damage %s %d %d"
+                .formatted(
+                    currentTick[0], target.name(), damage, target.getTargetView().getHitPoints()));
+      }
+    };
+  }
+
+  /** The reference's buff log in the same layout. */
+  static List<String> expectedBuffLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode b : reference.path("buffs")) {
+      int tick = b.get("tick").asInt();
+      String source = b.path("source").isNull() ? null : b.path("source").asText();
+      switch (b.get("event").asText()) {
+        case "area_buff" -> {
+          List<String> targets = new ArrayList<>();
+          b.get("targets").forEach(t -> targets.add(t.asText()));
+          expected.add(
+              "%d area_buff %s %s %d %s"
+                  .formatted(
+                      tick,
+                      b.get("area_effect").asText(),
+                      b.get("buff").asText(),
+                      b.get("time").asInt(),
+                      targets));
+        }
+        case "applied" ->
+            expected.add(
+                "%d applied %s %s %s %d %d %s"
+                    .formatted(
+                        tick,
+                        b.get("target").asText(),
+                        b.get("buff").asText(),
+                        b.get("key").asText(),
+                        b.get("time").asInt(),
+                        b.get("level").asInt(),
+                        source));
+        case "refreshed" ->
+            expected.add(
+                "%d refreshed %s %s %s %d %d %s"
+                    .formatted(
+                        tick,
+                        b.get("target").asText(),
+                        b.get("buff").asText(),
+                        b.get("key").asText(),
+                        b.get("remaining").get(0).asInt(),
+                        b.get("remaining").get(1).asInt(),
+                        source));
+        case "removed" ->
+            expected.add(
+                "%d removed %s %s %s"
+                    .formatted(
+                        tick,
+                        b.get("target").asText(),
+                        b.get("buff").asText(),
+                        b.get("key").asText()));
+        case "damage" ->
+            expected.add(
+                "%d damage %s %d %d"
+                    .formatted(
+                        tick,
+                        b.get("target").asText(),
+                        b.get("damage").asInt(),
+                        b.get("hp").asInt()));
+        default -> throw new IllegalStateException("unknown buff event " + b);
       }
     }
     return expected;

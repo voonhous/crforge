@@ -26,6 +26,12 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param sharedDamage true when a hit's damage is shared out among its victims
  * @param onStartingAction the action it runs as it joins the battle, or null
  * @param onLifeTimeEndAction the action it runs when its life ends, or null
+ * @param buff the buff each of its hits applies, or null for none
+ * @param buffTimeMs how long the buff it applies lasts
+ * @param capBuffTimeToAreaEffectTime true when the buff lasts no longer than its own life and one
+ *     hit speed more
+ * @param onlyOwnTroops true when its buff reaches only its own side
+ * @param spawnAreaEffectObject the area effect it creates at its point on its first update, or null
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -48,6 +54,11 @@ public record AreaEffectData(
     boolean sharedDamage,
     String onStartingAction,
     String onLifeTimeEndAction,
+    String buff,
+    int buffTimeMs,
+    boolean capBuffTimeToAreaEffectTime,
+    boolean onlyOwnTroops,
+    String spawnAreaEffectObject,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

@@ -419,6 +419,53 @@ class BattleTowerRunTest {
       }
 
       @Override
+      public void buffDamaged(
+          int tick,
+          WorldEntity target,
+          BuffInstance buff,
+          int damage,
+          int hitPointsBefore,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d buff_hit %s %d %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    damage,
+                    target.getTargetView().getHitPoints(),
+                    hitPointsBefore,
+                    buff.getSource() == null ? null : buff.getSource().name()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      @Override
+      public void combatGateDropped(
+          int tick, WorldEntity entity, TargetView reference, int hitSpeed) {
+        // Only a drop a stun causes is listed: that of a living entity whose hit speed is 0.
+        if (currentTick[0] < 0 || hitSpeed != 0 || !entity.getView().isAlive()) {
+          return;
+        }
+        events.add(
+            "%d combat_gate_drop %s %s %d"
+                .formatted(currentTick[0], entity.name(), reference.name(), hitSpeed));
+      }
+
+      @Override
+      public void combatComponentSwitched(int tick, WorldEntity entity, boolean on, int hitSpeed) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d combat_component %s %d %d"
+                .formatted(currentTick[0], entity.name(), on ? 1 : 0, hitSpeed));
+      }
+
+      @Override
       public void projectileLaunched(int tick, ProjectileEntity projectile) {
         if (currentTick[0] < 0) {
           return;
@@ -616,6 +663,29 @@ class BattleTowerRunTest {
                   jsonNames(event.get("victims")),
                   event.get("push").asInt(),
                   jsonNames(event.get("pushed")));
+      case "buff_hit" ->
+          "%d buff_hit %s %d %d %d %s"
+              .formatted(
+                  tick,
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("before").asInt(),
+                  event.get("source").isNull() ? null : event.get("source").asText());
+      case "combat_gate_drop" ->
+          "%d combat_gate_drop %s %s %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("ref").asText(),
+                  event.get("hit_speed").asInt());
+      case "combat_component" ->
+          "%d combat_component %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("on").asInt(),
+                  event.get("hit_speed").asInt());
       default -> throw new IllegalStateException("unknown event " + kind);
     };
   }

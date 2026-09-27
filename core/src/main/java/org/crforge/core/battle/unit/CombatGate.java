@@ -21,21 +21,23 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * hit points; one without keeps whatever it had.
  *
  * <p>So a unit's reference is gone on its death tick, and a king tower, which is never removed, is
- * switched off on the tick it dies and never on again.
+ * switched off on the tick it dies and never on again. A stun, which scales the hit speed to 0,
+ * drops the reference and switches the component off at every gate while it lasts; the first gate
+ * after it goes switches it on again, and the next targeting visit selects anew.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "The gate agrees with the reference for the tags, the waiting state, the acting test and"
-            + " the drop and switch of a dead or deploying entity. Not modelled: the hit speed a"
-            + " buff scales and a Projectile buff (the hit speed is the unscaled step), the"
+            + " the drop and switch of a dead, deploying or stunned entity, held by zap_knight for"
+            + " the stun. Not modelled: a Projectile buff (refused with its row), the"
             + " casting state's KeepCurrentTarget, a clone's setup state with CLONE_RESET_TARGET,"
             + " the touchdown query (Ladder answers 0), and a dashing row's null path, which asks"
             + " for a resume.")
 final class CombatGate {
 
   /** The time step the gate scales by the hit speed multipliers, as the attack timer does. */
-  private static final int HIT_SPEED_STEP_MS = 50;
+  static final int HIT_SPEED_STEP_MS = 50;
 
   private CombatGate() {
     // Utility class
@@ -48,6 +50,7 @@ final class CombatGate {
    * @param targeting its targeting component's state
    * @param targetingOn whether its targeting component is switched on now
    * @param alive whether it is alive
+   * @param hitSpeed the gate's time step as the entity's buffs scale it; 0 under a stun
    * @param rowHasHitPoints whether its row has hit points, which decides the switch of an entity
    *     that is not acting
    * @param routePreparer prepares a route when the dropped reference asks for one
@@ -58,6 +61,7 @@ final class CombatGate {
       TargetingState targeting,
       boolean targetingOn,
       boolean alive,
+      int hitSpeed,
       boolean rowHasHitPoints,
       Runnable routePreparer) {
     int state = view.getState();
@@ -71,8 +75,7 @@ final class CombatGate {
       throw new UnsupportedOperationException(
           "the combat gate of an entity casting or set up as a clone, which no run holds yet");
     }
-    // No buff scales the hit speed yet, so it stays above 0.
-    int hitSpeed = HIT_SPEED_STEP_MS;
+    // A Projectile buff, which keeps a stunned entity acting, is refused with its row.
     if (alive && view.getDeployCountdown() <= 0 && hitSpeed != 0) {
       if (state == GridEntityState.ABILITY_FOLLOW_UP) {
         return false;

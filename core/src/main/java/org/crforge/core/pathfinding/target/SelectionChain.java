@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntUnaryOperator;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.fidelity.Fidelity;
@@ -61,6 +62,9 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
 
   /** Where the targeting visit's hits go; the default answers that every hit landed. */
   @Getter @Setter private HitSink hitSink = (target, sequenceIndex, extra, last) -> false;
+
+  /** Scales a time step by the owner's buffs; unscaled until the owner says how. */
+  @Setter private IntUnaryOperator timeScaler = IntUnaryOperator.identity();
 
   /**
    * How the visit's request for the attacking state is applied: the bare interrupt guard until the
@@ -180,6 +184,11 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
   @Override
   public boolean buildingKeepsAttacking() {
     return buildingKeepsAttacking;
+  }
+
+  @Override
+  public int scaleTimeStep(int baseMs) {
+    return timeScaler.applyAsInt(baseMs);
   }
 
   @Override

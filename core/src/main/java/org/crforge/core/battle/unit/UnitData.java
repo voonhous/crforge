@@ -96,6 +96,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnIntervalMs the time between the children of a wave; 0 to make a wave at once
  * @param spawnPauseTimeMs the time between waves
  * @param spawnStartTimeMs the time before the first wave, counted from the end of its deploy
+ * @param ignoreBuffs the buff rows it takes nothing of
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -166,10 +167,12 @@ public record UnitData(
     int spawnIntervalMs,
     int spawnPauseTimeMs,
     int spawnStartTimeMs,
+    List<String> ignoreBuffs,
     List<String> unmodelledColumns) {
 
   public UnitData {
     unmodelledColumns = unmodelledColumns == null ? List.of() : List.copyOf(unmodelledColumns);
+    ignoreBuffs = ignoreBuffs == null ? List.of() : List.copyOf(ignoreBuffs);
     unmodelledDeathColumns =
         unmodelledDeathColumns == null ? List.of() : List.copyOf(unmodelledDeathColumns);
     attackSequence = attackSequence == null ? AttackSequence.NONE : attackSequence;

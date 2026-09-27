@@ -4,6 +4,7 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +13,7 @@ import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.AttackSequence;
+import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
@@ -47,16 +49,70 @@ public final class BattleRecords {
   private static final String CHARACTER_ABILITIES = "character_abilities";
   private static final String GAME_OBJECT_FILTERS = "game_object_filters";
   private static final String AREA_EFFECT_OBJECTS = "area_effect_objects";
+  private static final String CHARACTER_BUFFS = "character_buffs";
+
+  /** The columns of a buff the battle reads. */
+  private static final Set<String> MODELLED_BUFF_COLUMNS =
+      Set.of(
+          "Name",
+          "Rarity",
+          "SpeedMultiplier",
+          "HitSpeedMultiplier",
+          "SpawnSpeedMultiplier",
+          "HitFrequency",
+          "DamagePerSecond",
+          "CrownTowerDamagePerHit",
+          "CrownTowerDamagePercent",
+          "BuildingDamagePercent",
+          "EnableStacking",
+          "PlayerSpecificBuff",
+          "NoEffectToCrownTowers",
+          "IgnoreBuildings");
+
+  /** The columns of a buff that only show something: its effects, icons, filters and sounds. */
+  private static final Set<String> PRESENTATION_BUFF_COLUMNS =
+      Set.of(
+          "AudioPitchModifier",
+          "ContinuousEffect",
+          "DeathEffectOverride",
+          "Effect",
+          "EffectScale",
+          "FilterAffectsTransformation",
+          "FilterExportName",
+          "FilterFile",
+          "FilterInheritLifeDuration",
+          "HideEffectWhenUnderground",
+          "HitEffect",
+          "IconExportName",
+          "IconFileName",
+          "LoopContinuousEffect",
+          "MarkEffect",
+          "PreContinuousEffect",
+          "PreContinuousEffectExclusiveTime",
+          "ProjectileEffect",
+          "RemoveEffect",
+          "Scale",
+          "ShadowAlpha",
+          "StatsTags",
+          "SwitchTeamContinuosEffect",
+          "TID",
+          "TopEffect",
+          "TopEffectDisabledForAttachedCharacters",
+          "TopEffectVerticalOffset",
+          "UNUSED0");
 
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
-   * area effect is created. Buffs and everything the buff block does, clones, the hit action, the
-   * shape, the filter, the spawns and launches, the chained area effect, the life condition, the
-   * following, the tags, the deflection, the per-level lifetime and the push's floor and gate lift.
+   * area effect is created. A buff that boosts one target or lasts longer by level, clones, the hit
+   * action, the shape, the filter, the spawns and launches, the life condition, the following, the
+   * tags, the deflection, the per-level lifetime and the push's floor and gate lift. Hidden units
+   * are not modelled, so a row that reaches them is read as one that does not.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
-          "Buff",
+          "Boost",
+          "BuffTimeIncreasePerLevel",
+          "BuffTimeIncreaseAfterTournamentCap",
           "Clone",
           "OnHitAction",
           "OnHitSelfAction",
@@ -64,7 +120,6 @@ public final class BattleRecords {
           "Filter",
           "SpawnCharacter",
           "Projectile",
-          "SpawnAreaEffectObject",
           "AliveIfTrue",
           "FollowBehaviour",
           "Tags",
@@ -73,7 +128,6 @@ public final class BattleRecords {
           "LifeDurationIncreaseAfterTournamentCap",
           "MinPushback",
           "PushbackAll",
-          "AffectsHidden",
           "OneHitPerTarget");
 
   private static final String GAME_TAGS = "game_tags";
@@ -211,6 +265,7 @@ public final class BattleRecords {
         .spawnIntervalMs(row.intValue("SpawnInterval"))
         .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
         .spawnStartTimeMs(row.intValue("SpawnStartTime"))
+        .ignoreBuffs(namesOf(row, "IgnoreBuff"))
         .unmodelledColumns(unmodelledColumns(row))
         .build();
   }
@@ -220,6 +275,15 @@ public final class BattleRecords {
    * spawner for a row that spawns characters, and a spawner with neither a count nor an interval,
    * which spawns once as its deploy ends.
    */
+  /** A column of row names, written as one name or a list of them. */
+  private static List<String> namesOf(GameRow row, String column) {
+    if (row.has(column) && row.value(column).isTextual()) {
+      String name = row.string(column);
+      return name.isEmpty() ? List.of() : List.of(name);
+    }
+    return row.strings(column);
+  }
+
   private static List<String> unmodelledColumns(GameRow row) {
     List<String> columns = new ArrayList<>();
     for (String column : UNMODELLED_UNIT_COLUMNS) {
@@ -456,6 +520,52 @@ public final class BattleRecords {
         .sharedDamage(row.bool("SharedDamage"))
         .onStartingAction(actionName(row, "OnStartingAction"))
         .onLifeTimeEndAction(actionName(row, "OnLifeTimeEndAction"))
+        .buff(row.string("Buff").isEmpty() ? null : row.string("Buff"))
+        .buffTimeMs(row.intValue("BuffTime"))
+        .capBuffTimeToAreaEffectTime(row.bool("CapBuffTimeToAreaEffectTime"))
+        .onlyOwnTroops(row.bool("OnlyOwnTroops"))
+        .spawnAreaEffectObject(
+            row.string("SpawnAreaEffectObject").isEmpty()
+                ? null
+                : row.string("SpawnAreaEffectObject"))
+        .unmodelledColumns(unmodelled)
+        .build();
+  }
+
+  /**
+   * A character buff as the battle reads it, from the character buffs table. Every column it sets
+   * that is neither read nor only shows something is listed as not modelled.
+   *
+   * @param name the row's name
+   */
+  public BuffData buff(String name) {
+    GameTable table = tables.table(CHARACTER_BUFFS);
+    checkArgument(table.has(name), () -> "the game tables have no buff " + name);
+    GameRow row = table.row(name);
+    List<String> unmodelled = new ArrayList<>();
+    for (String column : row.columns().keySet()) {
+      if (!MODELLED_BUFF_COLUMNS.contains(column)
+          && !PRESENTATION_BUFF_COLUMNS.contains(column)
+          && sets(row, column)) {
+        unmodelled.add(column);
+      }
+    }
+    Collections.sort(unmodelled);
+    return BuffData.builder()
+        .name(row.name())
+        .rarity(rarity(row.string("Rarity")))
+        .speedMultiplier(row.intValue("SpeedMultiplier"))
+        .hitSpeedMultiplier(row.intValue("HitSpeedMultiplier"))
+        .spawnSpeedMultiplier(row.intValue("SpawnSpeedMultiplier"))
+        .hitFrequency(row.intValue("HitFrequency"))
+        .damagePerSecond(row.intValue("DamagePerSecond"))
+        .crownTowerDamagePerHit(row.intValue("CrownTowerDamagePerHit"))
+        .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
+        .buildingDamagePercent(row.intValue("BuildingDamagePercent"))
+        .enableStacking(row.bool("EnableStacking"))
+        .playerSpecificBuff(row.bool("PlayerSpecificBuff"))
+        .noEffectToCrownTowers(row.bool("NoEffectToCrownTowers"))
+        .ignoreBuildings(row.bool("IgnoreBuildings"))
         .unmodelledColumns(unmodelled)
         .build();
   }

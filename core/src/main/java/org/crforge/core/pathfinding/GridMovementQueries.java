@@ -53,6 +53,12 @@ public final class GridMovementQueries implements MovementQueries {
   private final Function<GridEntity, GridUnitState> neighbourStates;
   private final ReferencePoint reference;
 
+  /** The speed percents of the unit's buffs, which the speed budget scales by. */
+  private int[] speedPercents = new int[0];
+
+  /** The follower's time step, 100 scaled by the unit's buffs. */
+  private int followerStep = 100;
+
   /** The last budget this visit asked for, kept so the tick driver can report it afterwards. */
   private int lastSpeedBudget;
 
@@ -83,6 +89,25 @@ public final class GridMovementQueries implements MovementQueries {
 
   public ReferencePoint reference() {
     return reference;
+  }
+
+  /**
+   * Gives the answers the unit's buffs: the speed percents the budget scales by and the follower's
+   * time step.
+   *
+   * @param speedPercents the speed percent of each listed buff
+   * @param followerStep 100 scaled by the buffs' speed
+   * @return these answers
+   */
+  public GridMovementQueries withBuffs(int[] speedPercents, int followerStep) {
+    this.speedPercents = speedPercents.clone();
+    this.followerStep = followerStep;
+    return this;
+  }
+
+  @Override
+  public int scaledTimeStep() {
+    return followerStep;
   }
 
   @Override
@@ -176,8 +201,7 @@ public final class GridMovementQueries implements MovementQueries {
         targeting.getAttackBlockTimerMs(),
         targeting.isSpecialLoadPending() ? 1 : 0,
         entity.getBlockCountdownMs(),
-        // Status effects do not feed the grid speed budget yet.
-        new int[0],
+        speedPercents,
         true,
         unit.movement().getChargeProgress());
   }
