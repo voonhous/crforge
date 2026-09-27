@@ -320,6 +320,17 @@ public interface WorldObserver {
    */
   default void buffRefreshed(int tick, WorldEntity target, BuffInstance buff, int before) {}
 
+  /**
+   * A hit met the entity's shield, which took the whole of it up to its value; whatever was left
+   * was lost, and a shield brought to 0 broke.
+   *
+   * @param damage the hit's amount as it reached the shield
+   * @param shieldBefore the shield before the hit
+   * @param shieldAfter the shield after it
+   */
+  default void shieldHit(
+      int tick, WorldEntity target, int damage, int shieldBefore, int shieldAfter) {}
+
   /** A buff instance's time ran out and it was removed. */
   default void buffRemoved(int tick, WorldEntity target, BuffInstance buff) {}
 

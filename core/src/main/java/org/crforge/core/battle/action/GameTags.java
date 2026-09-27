@@ -13,6 +13,9 @@ public final class GameTags {
   /** The entity is waking up: its targeting component is switched off until the run ends. */
   public static final long ACTIVATING = 1L << 21;
 
+  /** The entity's shield is up: raised by its hit-points visit, read by data expressions only. */
+  public static final long HAS_SHIELD = 1L << 22;
+
   /** The tags under which the combat gate keeps an entity's targeting component off. */
   public static final long KEEPS_TARGETING_OFF = INACTIVE | ACTIVATING;
 

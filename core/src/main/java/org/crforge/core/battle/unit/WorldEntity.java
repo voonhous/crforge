@@ -30,6 +30,7 @@ import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.target.HitApplication;
 import org.crforge.core.pathfinding.target.HitQueries;
 import org.crforge.core.pathfinding.target.RemovalNotice;
@@ -79,8 +80,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the new row from then on, the maxima recomputed at the kept level and the hit"
             + " points kept; the attack sequence's entry at the index giving the next hit's"
             + " projectile and damage for an order of two or more, and an index-setting action"
-            + " storing only below the order's length. Not modelled yet:"
-            + " the shield's hit points at the level.")
+            + " storing only below the order's length; a shield created full at its value at the"
+            + " level by the card hit-points rule, every hit it takes reported, the excess of a"
+            + " hit lost, and its break resetting an attacker with an attack sequence, held by"
+            + " recruit_tower, guards_knight, poison_guards and tombstone_crazy_life - the reset,"
+            + " and a shield through a level change or a swap, held by no run.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -183,6 +187,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     this.hitPoints = maximum > 0 ? new HitPoints(maximum) : null;
     if (hitPoints != null) {
       hitPoints.setDecayStep(HitPoints.decayStep(maximum, data.lifeTimeMs()));
+      // The shield starts full, at its value at the level by the card rule.
+      int shield = shieldAt(data, packedLevel);
+      hitPoints.setShieldMaximum(shield);
+      hitPoints.setShield(shield);
     }
     this.damage = damageAt(packedLevel);
     // A candidate advertises its current hit points to an attacker that prefers the weakest.
@@ -210,9 +218,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
+    int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.damage(
             hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
+    shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;
   }
@@ -403,9 +413,38 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
+    int shieldBefore = hitPoints.getShield();
     DamageResult result = DamageApplication.overTime(hitPoints, damage, damageQueries());
+    shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;
+  }
+
+  /** A shield's value at a level: its row's ShieldHitpoints by the card hit-points rule. */
+  private static int shieldAt(UnitData row, int packedLevel) {
+    if (row.shieldHitpoints() <= 0) {
+      return 0;
+    }
+    return LevelScaling.scale(
+        ScalingGlobals.standard(),
+        row.shieldHitpoints(),
+        packedLevel,
+        ScalingMode.CARD_HITPOINTS,
+        row.rarity());
+  }
+
+  /**
+   * After a hit that met the shield: the battle hears of it, and a hit that brought the shield to 0
+   * broke it, in the hit's own pass.
+   */
+  private void shieldHit(int damage, int shieldBefore) {
+    if (shieldBefore < 1 || damage < 1 || hitPoints.getShield() == shieldBefore) {
+      return;
+    }
+    world.shieldHit(this, damage, shieldBefore, hitPoints.getShield());
+    if (hitPoints.getShield() == 0) {
+      world.shieldBroken(this);
+    }
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */
@@ -577,8 +616,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * was launched at. Nothing else of the entity changes.
    *
    * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
-   * and an entity carrying a shield, whose maximum at the level is not modelled. The growth
-   * percentage the share is taken at is the usual 100, as no unit that grows is modelled.
+   * The shield's maximum follows the level too, and a shield that is up keeps its share on a rise
+   * as the hit points do; a broken one stays at 0. The growth percentage the share is taken at is
+   * the usual 100, as no unit that grows is modelled.
    *
    * @param packed the new level, packed
    */
@@ -591,10 +631,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (data.king() || data.summonerTower()) {
       throw new UnsupportedOperationException(
           "changing the level of " + name() + ", a tower, is not established");
-    }
-    if (hitPoints != null && (hitPoints.getShield() != 0 || hitPoints.getShieldMaximum() != 0)) {
-      throw new UnsupportedOperationException(
-          "changing the level of " + name() + ", which carries a shield, is not modelled");
     }
     if (hitPoints != null && hitPoints.getDecayStep() != 0) {
       throw new UnsupportedOperationException(
@@ -622,6 +658,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;
       int rescaled = maximum * share / 100_000;
       hitPoints.setHitPoints(Math.max(hitPoints.getHitPoints(), rescaled));
+    }
+    // The shield's maximum follows the level; a shield that is up keeps its share on a rise, and a
+    // broken one stays broken.
+    int oldShieldMaximum = hitPoints.getShieldMaximum();
+    int shieldMaximum = shieldAt(data, packedLevel);
+    hitPoints.setShieldMaximum(shieldMaximum);
+    if (delta >= 1 && hitPoints.getShield() >= 1 && oldShieldMaximum >= 1) {
+      int share = hitPoints.getShield() * 100_000 / oldShieldMaximum;
+      int rescaled = shieldMaximum * share / 100_000;
+      hitPoints.setShield(Math.max(hitPoints.getShield(), rescaled));
     }
     refreshHitPoints();
   }
@@ -665,6 +711,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       hitPoints.setMaximum(maximum);
       hitPoints.setTeamPool(0, maximum);
       hitPoints.setTeamPool(1, maximum);
+      // The shield's maximum comes from the new row; the shield itself is kept as it is.
+      hitPoints.setShieldMaximum(shieldAt(next, packedLevel));
     }
     refreshHitPoints();
   }
@@ -770,9 +818,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @return what the hit did; a death it causes is the battle's to run
    */
   DamageResult takeTypedHit(int amount, int damageId, int directionX, int directionY) {
+    int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.typedHit(
             hitPoints, amount, damageId, directionX, directionY, damageQueries());
+    shieldHit(amount, shieldBefore);
     refreshHitPoints();
 
     return result;
@@ -787,7 +837,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
+    int shieldBefore = hitPoints.getShield();
+    int whole = hitPoints.getHitPoints();
     DamageResult result = DamageApplication.kill(hitPoints, damageQueries());
+    shieldHit(whole, shieldBefore);
     refreshHitPoints();
 
     return result;

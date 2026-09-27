@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the thirty-five runs in which an action, a death or a building spawns characters through
+ * Plays the thirty-nine runs in which an action, a death or a building spawns characters through
  * {@link Battle} and holds the battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
@@ -92,7 +92,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * goblin_barrel_tower}, a Goblin Barrel whose Goblins stand in formation around its landing point;
  * {@code arrows_skeletons}, Arrows' three waves of chained arrows, landing on their ring points. A
  * run lasts to its last projectile position. {@code log_goblins} and {@code barb_barrel_knight}, a
- * thrown projectile whose impact launches a rolling one, which hits what its body passes.
+ * thrown projectile whose impact launches a rolling one, which hits what its body passes. Four runs
+ * hold shields - {@code recruit_tower}, {@code guards_knight}, {@code poison_guards} and {@code
+ * tombstone_crazy_life} - and every hit a shield took.
  */
 class BattleActionSpawnRunTest {
 
@@ -133,7 +135,11 @@ class BattleActionSpawnRunTest {
         "goblin_barrel_tower",
         "arrows_skeletons",
         "log_goblins",
-        "barb_barrel_knight"
+        "barb_barrel_knight",
+        "recruit_tower",
+        "guards_knight",
+        "poison_guards",
+        "tombstone_crazy_life"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -247,6 +253,27 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
     List<String> areaEffects = new ArrayList<>();
     match.getWorld().addObserver(areaEffectLog(currentTick, areaEffects));
+    // Every hit a shield took.
+    List<String> shieldLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void shieldHit(
+                  int tick, WorldEntity target, int damage, int shieldBefore, int shieldAfter) {
+                shieldLog.add(
+                    "%d shield %s %d %d %d %d %s"
+                        .formatted(
+                            currentTick[0],
+                            target.name(),
+                            damage,
+                            shieldBefore,
+                            shieldAfter,
+                            target.getHitPoints().getHitPoints(),
+                            shieldAfter == 0));
+              }
+            });
     // What each buff did.
     List<String> buffLog = new ArrayList<>();
     match.getWorld().addObserver(buffLog(currentTick, buffLog));
@@ -386,9 +413,15 @@ class BattleActionSpawnRunTest {
     for (JsonNode event : reference.get("events")) {
       lastTick = Math.max(lastTick, event.get("tick").asInt());
     }
-    // A shot still in flight when the run ends is recorded past the last record and event.
+    // A shot still in flight when the run ends is recorded past the last record and event, and an
+    // area effect, a buff or a shield may be logged past them too.
     for (JsonNode p : reference.path("projectiles")) {
       lastTick = Math.max(lastTick, p.get(0).asInt());
+    }
+    for (String log : List.of("area_effects", "buffs", "shields")) {
+      for (JsonNode entry : reference.path(log)) {
+        lastTick = Math.max(lastTick, entry.get("tick").asInt());
+      }
     }
     Map<String, CharacterEntity> units = new HashMap<>();
     Map<String, String> towerStates = new HashMap<>();
@@ -569,6 +602,20 @@ class BattleActionSpawnRunTest {
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
         .containsExactlyElementsOf(expectedBuffLog(reference));
+    List<String> expectedShields = new ArrayList<>();
+    for (JsonNode s : reference.path("shields")) {
+      expectedShields.add(
+          "%d shield %s %d %d %d %d %s"
+              .formatted(
+                  s.get("tick").asInt(),
+                  s.get("target").asText(),
+                  s.get("damage").asInt(),
+                  s.get("shield_before").asInt(),
+                  s.get("shield").asInt(),
+                  s.get("hp").asInt(),
+                  s.get("broke").asBoolean()));
+    }
+    assertThat(shieldLog).as("every hit a shield took").containsExactlyElementsOf(expectedShields);
 
     List<String> expectedEvents = new ArrayList<>();
     for (JsonNode event : reference.get("events")) {
