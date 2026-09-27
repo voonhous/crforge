@@ -26,7 +26,7 @@ import org.crforge.core.battle.unit.UnitData;
  * @param isDeathSpawn true to make every child untargetable at first; on unless the row says not
  * @param isSpawnConstPriority true for the ring's lane mirror and a fixed priority per child
  * @param spawnPushback true to push the children out from the point
- * @param ignoreEffects true to create the children ignoring effects
+ * @param ignoreEffects true to create the children without the spawn effect, which is presentation
  * @param useMorph true to morph the source instead of creating children
  * @param addToSourceGroup true to link each child into its source's group
  * @param spawnAsClone true to spawn clones
