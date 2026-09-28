@@ -88,8 +88,7 @@ public final class BattleRecords {
           "SummonCharactersList",
           "SummonCharactersOffsetsX",
           "SummonCharactersOffsetsY",
-          "CustomDeployTime",
-          "SpellAsDeploy");
+          "CustomDeployTime");
 
   private static final String CHARACTER_ABILITIES = "character_abilities";
   private static final String GAME_OBJECT_FILTERS = "game_object_filters";
@@ -344,6 +343,8 @@ public final class BattleRecords {
         .jumpHeight(row.intValue("JumpHeight"))
         .jumpSpeed(row.intValue("JumpSpeed"))
         .kamikaze(row.bool("Kamikaze"))
+        .multipleTargets(row.intValue("MultipleTargets"))
+        .buffOnDamage(set(row, "BuffOnDamage") ? row.string("BuffOnDamage") : null)
         .dashCooldown(row.intValue("DashCooldown"))
         .dashMinRange(row.intValue("DashMinRange"))
         .dashMaxRange(row.intValue("DashMaxRange"))
@@ -752,30 +753,45 @@ public final class BattleRecords {
    * formation and where it may be placed. A building card is played as a troop card is; its unit is
    * a buildings-table row, whose footprint the placement snaps and searches over.
    *
+   * <p>A card that names no unit - no summoned character, no second group and no list - but a
+   * projectile or an area effect is a spell, whichever table it is in: the Electro Wizard and the
+   * Ice Wizard are cast, and their unit is made by their area effect's starting action. Deploying
+   * as a spell changes nothing else for a card: it only moves a projectile spell's start and, for a
+   * card with a unit and a projectile or an area effect, the search's snap, which no card sets
+   * together and which is refused.
+   *
    * <p>A card with no count summons one. The level index a card may carry is not read, as the game
    * never reads it: the summoned units take the level the card is played at. A card that summons a
-   * list of characters, places them at offsets of its own, has a deploy time of its own or deploys
-   * as a spell is refused, naming the column: the placement does not model those.
+   * list of characters, places them at offsets of its own or has a deploy time of its own is
+   * refused, naming the column: the placement does not model those.
    *
    * @param name the card row's name
    */
   public DeployCard card(String name) {
     GameTable table = tables.table(SPELLS_CHARACTERS);
-    boolean spells = false;
     if (!table.has(name) && tables.table(SPELLS_BUILDINGS).has(name)) {
       table = tables.table(SPELLS_BUILDINGS);
     } else if (!table.has(name) && tables.table(SPELLS_OTHER).has(name)) {
       table = tables.table(SPELLS_OTHER);
-      spells = true;
     }
     checkArgument(table.has(name), () -> "the game tables have no card " + name);
     GameRow row = table.row(name);
-    // A spell of the spells table summons no character and casts; a card of the characters or the
-    // buildings table keeps the troop path, and its refusals, whatever it casts besides.
-    if (spells
-        && row.string("SummonCharacter").isEmpty()
-        && (set(row, "Projectile") || set(row, "AreaEffectObject"))) {
+    // The card's unit is its summoned character, else its second group, else its list; a card with
+    // none of them that casts is a spell, whichever table it is in. A card with a unit keeps the
+    // troop path, and its refusals, whatever it casts besides.
+    boolean namesUnit =
+        set(row, "SummonCharacter")
+            || set(row, "SummonCharacterSecond")
+            || set(row, "SummonCharactersList");
+    boolean casts = set(row, "Projectile") || set(row, "AreaEffectObject");
+    if (!namesUnit && casts) {
       return spell(row);
+    }
+    if (casts && row.bool("SpellAsDeploy")) {
+      throw new UnsupportedOperationException(
+          name
+              + " deploys as a spell with a unit and a cast, which clears the search's snap and is"
+              + " not modelled");
     }
     for (String column : UNMODELLED_CARD_COLUMNS) {
       if (set(row, column)) {

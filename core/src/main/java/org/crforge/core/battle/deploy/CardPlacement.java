@@ -28,7 +28,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " position with the placed point as the reference, and its start; a spell card"
             + " placed with no unit, its point handed to the cast; a building card placed as a"
             + " troop card is, its unit a building. Not modelled: the elixir and the other gates"
-            + " before the map check.")
+            + " before the map check, and a unit that tunnels to its point from its king tower.")
 public final class CardPlacement {
 
   /** How far from every edge of the arena a unit is created. */
@@ -154,6 +154,12 @@ public final class CardPlacement {
     List<Unit> units = new ArrayList<>();
     for (int k = 0; k < card.total(); k++) {
       UnitData unit = card.unitAt(k);
+      if (unit.spawnPathfindSpeed() != 0) {
+        // The construction hands such a unit to its tunnel from the king tower instead of the
+        // delay selection: the Miner and the Goblin Drill's dig.
+        throw new UnsupportedOperationException(
+            unit.name() + " tunnels to its point from its king tower, which is not modelled");
+      }
       int radius =
           card.summonRadius() != 0
               ? card.summonRadius()

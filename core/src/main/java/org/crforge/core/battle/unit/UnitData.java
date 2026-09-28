@@ -123,6 +123,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param jumpHeight the height of its jump arc
  * @param jumpSpeed its speed while it jumps, in game units per tick
  * @param kamikaze true for a unit whose hit destroys it
+ * @param multipleTargets how many targets one hit reaches, below two for one
+ * @param buffOnDamage the buff its hit applies to what it hits, or null for none
  * @param dashCooldown the wind-up before a dash, in milliseconds; 0 for a unit that does not dash
  * @param dashMinRange how far beyond its own collision radius a target must be for a dash
  * @param dashMaxRange how far a target may be for a dash
@@ -229,6 +231,8 @@ public record UnitData(
     int jumpHeight,
     int jumpSpeed,
     boolean kamikaze,
+    int multipleTargets,
+    String buffOnDamage,
     int dashCooldown,
     int dashMinRange,
     int dashMaxRange,

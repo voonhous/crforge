@@ -1061,12 +1061,25 @@ public class CharacterEntity extends WorldEntity {
         .withRequests(movementRequests);
   }
 
-  /** Refuses a Kamikaze row's hit, which destroys the unit and is not modelled. */
+  /**
+   * Refuses a Kamikaze row's hit, which destroys the unit, and a hit that reaches several targets
+   * or applies a buff to what it hits: none of them is modelled.
+   */
   @Override
   protected void refuseHit() {
-    if (getData().kamikaze()) {
+    UnitData data = getData();
+    if (data.kamikaze()) {
       throw new UnsupportedOperationException(
           name() + " hits as a Kamikaze row, which destroys it and is not modelled");
+    }
+    if (data.multipleTargets() >= 2 || data.buffOnDamage() != null) {
+      throw new UnsupportedOperationException(
+          name()
+              + " hits with MultipleTargets "
+              + data.multipleTargets()
+              + " and BuffOnDamage "
+              + data.buffOnDamage()
+              + ", which are not modelled");
     }
   }
 
