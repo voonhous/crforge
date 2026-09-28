@@ -65,12 +65,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " it by electro_dragon_knights, whose chained hop is held there too; the"
             + " circle's before the damage by no run; the pingpong sweep, its halfway forgetting,"
             + " its landing at the start and its launcher's release by axe_man_knights, the sweep's"
-            + " step under a buff by no run. Supplied, not"
+            + " step under a buff by no run; the random delay, the stop at the first landed hit and"
+            + " the arrival without an impact of a projectile that stops at collisions by"
+            + " hunter_point_blank and hunter_range. Supplied, not"
             + " settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
             + " of one that only heals, the height toward a moving target under the"
-            + " z-distance column, the random delays, the drag-back hook, the"
+            + " z-distance column, the drag-back hook, the"
             + " hit effects, and the on-impact area effect.")
 final class ProjectileFlight {
 
@@ -102,8 +104,8 @@ final class ProjectileFlight {
         p.setHomingTimeMs(p.getHomingTimeMs() - ProjectileEntity.STEP_MS);
       }
     }
-    // A projectile with a delay left counts it down and does not move; the random and angular
-    // delays before it would hold the projectile here too, and no row carried here has one.
+    // A projectile with a delay left counts it down and does not move: a chained hop's wait, or the
+    // random delay its launch drew. A second countdown after it is set by nothing carried here.
     if (p.getDelayMs() >= 1) {
       p.stepDelay();
       return;
@@ -217,11 +219,18 @@ final class ProjectileFlight {
   }
 
   /**
-   * The arrival: the deflection pass finds nothing, the projectile is released and impacts. A
-   * pingpong projectile lands back at its start, on the ground, and lets its launcher's targeting
-   * go on; one whose launcher left has only its death effect, which is presentation.
+   * The arrival: the deflection pass finds nothing, the projectile is released and impacts. One
+   * that stops at collisions is only released, where it stands. A pingpong projectile lands back at
+   * its start, on the ground, and lets its launcher's targeting go on; one whose launcher left has
+   * only its death effect, which is presentation.
    */
   private static void arrive(ProjectileEntity p, BattleWorld world) {
+    if (p.getData().checkCollisions()) {
+      // A projectile that stops at collisions and reached its aim without one is released where it
+      // stands, without an impact; only its hit effect, which is presentation, is shown.
+      p.release();
+      return;
+    }
     // A homing projectile that has not hooked hands its pending damage back to the target here;
     // no pending damage is registered, so there is nothing to hand back.
     p.release();

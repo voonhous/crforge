@@ -155,7 +155,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Electro Dragon's bolt across three Knights, freezing each. {@code firecracker_knight} bursts a
  * Firecracker's shell into a fan of five explosions. {@code axe_man_knights} sweeps an Axe Man's
  * axe out past two Knights and back, hitting each on the way out and again on the way back, while
- * the thrower waits for its return.
+ * the thrower waits for its return. {@code hunter_point_blank} fires a Hunter's ten pellets at a
+ * Knight close enough for all ten to hit it as they are launched, and {@code hunter_range} fires
+ * them from further off, each stopping at the first Knight it hits.
  */
 class BattleActionSpawnRunTest {
 
@@ -227,7 +229,9 @@ class BattleActionSpawnRunTest {
         "witch_mother_skeletons",
         "electro_dragon_knights",
         "firecracker_knight",
-        "axe_man_knights"
+        "axe_man_knights",
+        "hunter_point_blank",
+        "hunter_range"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

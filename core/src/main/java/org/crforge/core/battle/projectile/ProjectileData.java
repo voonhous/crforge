@@ -42,6 +42,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param minDistance the least distance from the start the aim is pushed out to; 0 for none
  * @param circleScatter true for a row whose scatter pattern is the circle, which counts it among
  *     the projectiles that fly to a point rather than to a target
+ * @param lineScatter true for a row whose scatter pattern is the line: as an attack's first
+ *     projectile, it lays the attack's further ones out in a fan about the line to the target
  * @param pushback how far the area of the impact pushes its victims from the impact point; 0 for
  *     none
  * @param spawnCharacter the character the impact spawns around the impact point, or null
@@ -76,6 +78,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param chainedHitCount how many targets a hopping projectile hits in all, its first included
  * @param pingpongVisualTimeMs how long a projectile that sweeps out to its aim and back takes for
  *     the whole sweep; 0 for one that flies once to its aim
+ * @param randomDelayMs the bound of the random wait a unit's launch gives the projectile before it
+ *     flies; 0 for none
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -84,7 +88,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
     note =
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the far"
-            + " distance clamp, the random angle and distance, the delays, the drag columns, the"
+            + " distance clamp, the random angle and distance, the angular delay, the drag columns, the"
             + " pingpong death effect, which is presentation, the deflect behaviour, the chained hit's end effect, the target buff of a"
             + " projectile that flies to a point, and the spawned area effect; the impact's pushback and its spawned characters are"
             + " carried.")
@@ -109,6 +113,7 @@ public record ProjectileData(
     boolean checkCollisions,
     int minDistance,
     boolean circleScatter,
+    boolean lineScatter,
     int pushback,
     String spawnCharacter,
     int spawnCharacterCount,
@@ -132,6 +137,7 @@ public record ProjectileData(
     int chainedHitRadius,
     int chainedHitCount,
     int pingpongVisualTimeMs,
+    int randomDelayMs,
     List<String> unmodelledColumns) {
 
   public ProjectileData {
