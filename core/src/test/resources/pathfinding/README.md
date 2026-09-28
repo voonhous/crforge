@@ -406,6 +406,12 @@ The towers fight at level 11. An Electro Dragon is played for side 0 at (3500, 1
 
 `BattleActionSpawnRunTest` plays it with the spawn runs; every projectile position holds the hops.
 
+## `golden/firecracker_knight.json` - a spawned fan
+
+The towers fight at level 11. A Firecracker is played for side 0 at (3500, 12000) and a Knight for side 1 at (3500, 20000), both on tick 0. FirecrackerProjectile (no radius, no damage, SpawnProjectile FirecrackerExplosion) is launched on 39 from z 2500 and lands on 55. Its impact launches max(SpawnCount, 1) = 5 FirecrackerExplosion from where it landed at the height it aimed at, each aimed beyond its aim along the line it came, turned by the explosion row's SpawnRadius 80 times its step (-2 to 2) over 5: -32, -16, 0, 16 and 32 degrees. Each flies to a point (a body of 400, ProjectileRange 5000, MinDistance 5000) at ConstantHeight 1000 and runs its first pass at once, widened by its ProjectileStartExtraRadius 650, so all five hit the Knight on 55 for 64 each. They fly on and hit what they pass; two reach PrincessTower_1_1 on 64. Later shells burst on 107 and 162, each fan hitting the Knight as it is launched. The Firecracker dies on 170, and the last fan's explosions fly on after it. The Knight dies on 238.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs; every projectile position holds the fan.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
