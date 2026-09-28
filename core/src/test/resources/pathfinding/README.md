@@ -412,6 +412,12 @@ The towers fight at level 11. A Firecracker is played for side 0 at (3500, 12000
 
 `BattleActionSpawnRunTest` plays it with the spawn runs; every projectile position holds the fan.
 
+## `golden/axe_man_knights.json` - a pingpong sweep
+
+The towers fight at level 11. An Axe Man is played for side 0 at (3500, 12000) and two Knights for side 1 at (3500, 20000) and (3500, 21500), all on tick 0. AxeManProjectile (PingpongVisualTime 1500, a body of 1000, ProjectileRange 7500, MinDistance 4500, ConstantHeight 3000) is launched on 50 at z 3000 and holds the Axe Man's targeting, whose visit returns before its reference check while the axe is out. The axe's time moves on by 50 a step, and it stands at its start plus the sine of 180 degrees times the time gone over 1500 of the way to its aim. Its body hits each Knight once on the way out, k0_0 on 55 and k1_0 on 57, for 179 each. On 65, the step that crosses 750, it does not move and forgets both, so it hits them again on the way back, k1_0 on 73 and k0_0 on 75. On 81, the step after its time is up, it lands back at its start, lets the Axe Man's targeting go on and impacts, which hits nothing at its aim. The next throws are launched on 99 and 148, each a hit speed of 900 after the last return. The Axe Man dies on 177 with its third axe still out, which flies back without it; the Knights die on 238 and 359, to the princess tower.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs; every impact and projectile position holds the sweep. Each impact names the projectile where it stood for the hit, before that step's move.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
