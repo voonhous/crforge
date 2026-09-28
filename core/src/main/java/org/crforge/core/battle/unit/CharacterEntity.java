@@ -138,14 +138,18 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " paying the killing side, held by match_elixir_sources (the carry a payout leaves"
             + " when the spawn step does not divide the generation time is held by no run); the"
             + " building's targeting and attack there rest on the verified translations, not"
-            + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
-            + " building's in-front point. Refused: the columns its row sets that the battle does"
+            + " a native run. The Kamikaze hit's end, the unit's kill of itself after its hit, is"
+            + " held by the Battle Ram's, Fire Spirits', Wall Breakers' and Ice Spirits' runs. Held by"
+            + " no run: a spawner's start time other than 0, a top-side"
+            + " building's in-front point, a Kamikaze end after a cancelled hit, and the facing a"
+            + " death-spawned child takes with a deploy time. Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
             + " hit points, hovering, direct"
             + " paths, a completed charge's action, a chained dash, a dash's contact damage,"
             + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
-            + " deploy for its children), a charge on a unit that fires, a Kamikaze row's hit, a"
+            + " deploy for its children, a Kamikaze drain over a time), a charge on a unit that"
+            + " fires, a Kamikaze hit's end on a unit carrying a death-spawn buff or a shield, a"
             + " lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself or whose"
             + " entries set more than a projectile and a damage, an action run as it attacks, and"
@@ -1062,16 +1066,12 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Refuses a Kamikaze row's hit, which destroys the unit, and a hit that reaches several targets
-   * or, without a projectile, applies a buff to what it hits: none of them is modelled.
+   * Refuses a hit that reaches several targets or, without a projectile, applies a buff to what it
+   * hits: neither is modelled.
    */
   @Override
   protected void refuseHit() {
     UnitData data = getData();
-    if (data.kamikaze()) {
-      throw new UnsupportedOperationException(
-          name() + " hits as a Kamikaze row, which destroys it and is not modelled");
-    }
     // A unit that fires hands its hit to its projectile, so its own buff on damage is never
     // applied: the Witch Mother's curse comes from her projectile's target buff.
     if (data.multipleTargets() >= 2 || data.buffOnDamage() != null && data.projectile() == null) {
@@ -1083,6 +1083,34 @@ public class CharacterEntity extends WorldEntity {
               + data.buffOnDamage()
               + ", which are not modelled");
     }
+  }
+
+  /**
+   * The end of a Kamikaze row's hit, after its direct hit or its launch, landed or not: the unit
+   * kills itself with its whole hit points, as its own attacker on its own side, so its death slot
+   * runs in the same pass and it leaves at the tick's closing cleanup; a projectile it launched
+   * flies on without it. A death-spawn buff it carries would be deleted without its death spawn,
+   * and a shield of its own would take the kill; neither is modelled.
+   */
+  @Override
+  protected void hitEnded() {
+    if (!getData().kamikaze()) {
+      return;
+    }
+    for (BuffInstance instance : getBuffs().items()) {
+      if (instance.getBuff().deathSpawn() != null) {
+        throw new UnsupportedOperationException(
+            name()
+                + " ends a Kamikaze hit carrying "
+                + instance.getBuff().name()
+                + ", whose deletion without its death spawn is not modelled");
+      }
+    }
+    if (getHitPoints() == null || getHitPoints().getShield() > 0) {
+      throw new UnsupportedOperationException(
+          name() + " ends a Kamikaze hit without hit points or with a shield, not modelled");
+    }
+    world.kamikazeKill(this);
   }
 
   /** The progress of the character's charge, while its movement component is on. */

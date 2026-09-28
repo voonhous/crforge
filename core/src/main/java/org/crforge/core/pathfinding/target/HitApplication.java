@@ -109,6 +109,7 @@ public final class HitApplication {
       queries.launchProjectiles(t, target, sequenceIndex);
     }
     t.setSpecialLoadPending(false);
+    queries.hitEnded();
     return missed;
   }
 

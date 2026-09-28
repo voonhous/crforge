@@ -93,4 +93,10 @@ public interface HitQueries {
    * @param hitId the id this hit carries
    */
   default void areaDamage(int x, int y, int radius, int damage, int towerDamage, int hitId) {}
+
+  /**
+   * The hit's last call, made whether or not anything landed but not for a hit the owner's tags
+   * forbid: a Kamikaze owner destroys itself here, after its direct hit or its launch.
+   */
+  default void hitEnded() {}
 }
