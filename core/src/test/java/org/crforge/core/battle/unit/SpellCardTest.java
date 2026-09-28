@@ -117,14 +117,4 @@ class SpellCardTest {
     assertThat(GameData.records().projectile("BarbLogProjectile").spawnChain()).isEqualTo(1);
     assertThat(GameData.records().projectile("LogProjectileRolling").homingLike()).isTrue();
   }
-
-  @Test
-  @DisplayName("a projectile whose impact buffs its target is refused as it is cast")
-  void theSnowballIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    match.play(0, GameData.card("Snowball"), 11, 0, 3500, 20000, "Snowball");
-    assertThatThrownBy(() -> match.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("TargetBuff");
-  }
 }

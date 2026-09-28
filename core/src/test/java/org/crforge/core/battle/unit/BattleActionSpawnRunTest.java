@@ -146,7 +146,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>{@code royal_giant_tower} and {@code elite_archer_knight} fire a projectile at a constant
  * height: the Royal Giant's cannonball starts at 1500 and descends onto the tower it homes on, and
  * the Elite Archer's arrow flies level at 2000 past a Knight, the first two arrows re-aiming at it
- * on their first two steps.
+ * on their first two steps. {@code snowball_knights} casts a Snowball onto two Knights, whose
+ * impact damages and pushes both and then slows both with its target buff.
  */
 class BattleActionSpawnRunTest {
 
@@ -213,7 +214,8 @@ class BattleActionSpawnRunTest {
         "electro_wizard_knights",
         "ice_wizard_knights",
         "royal_giant_tower",
-        "elite_archer_knight"
+        "elite_archer_knight",
+        "snowball_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1076,6 +1078,19 @@ class BattleActionSpawnRunTest {
       }
 
       @Override
+      public void projectileBuff(
+          int tick, ProjectileEntity p, BuffData buff, int time, List<WorldEntity> targets) {
+        lines.add(
+            "%d target_buff %s %s %d %s"
+                .formatted(
+                    currentTick[0],
+                    p.name(),
+                    buff.name(),
+                    time,
+                    targets.stream().map(WorldEntity::name).toList()));
+      }
+
+      @Override
       public void buffApplied(int tick, WorldEntity target, BuffInstance buff) {
         lines.add(
             "%d applied %s %s %s %d %d %s"
@@ -1141,6 +1156,18 @@ class BattleActionSpawnRunTest {
                   .formatted(
                       tick,
                       b.get("area_effect").asText(),
+                      b.get("buff").asText(),
+                      b.get("time").asInt(),
+                      targets));
+        }
+        case "target_buff" -> {
+          List<String> targets = new ArrayList<>();
+          b.get("targets").forEach(t -> targets.add(t.asText()));
+          expected.add(
+              "%d target_buff %s %s %d %s"
+                  .formatted(
+                      tick,
+                      b.get("projectile").asText(),
                       b.get("buff").asText(),
                       b.get("time").asInt(),
                       targets));
@@ -1418,21 +1445,24 @@ class BattleActionSpawnRunTest {
    * The events with an area's pushes listed after all of its hits. The battle pushes each victim
    * right after its damage, as the area damage does; the reference applies the pushes the area
    * asked for once its loop ends, so it lists them after the last hit. Nothing a push does reaches
-   * the later victims' damage, so only the order they are listed in differs.
+   * the later victims' damage, so only the order they are listed in differs. An area's hits are an
+   * area effect's or a unit's area hits of one tick, or the impacts of one projectile on one tick.
    */
   private static List<String> pushesAfterTheirArea(List<String> events) {
     List<String> ordered = new ArrayList<>();
     List<String> pushes = new ArrayList<>();
+    String area = null;
     for (String event : events) {
       String[] words = event.split(" ");
-      if (words[1].equals("pushback")
-          && !ordered.isEmpty()
-          && (ordered.get(ordered.size() - 1).startsWith(words[0] + " area_hit ")
-              || !pushes.isEmpty())) {
+      String last = ordered.isEmpty() ? null : areaOf(ordered.get(ordered.size() - 1));
+      if (words[1].equals("pushback") && (!pushes.isEmpty() || last != null)) {
+        if (pushes.isEmpty()) {
+          area = last;
+        }
         pushes.add(event);
         continue;
       }
-      if (!pushes.isEmpty() && !event.startsWith(words[0] + " area_hit ")) {
+      if (!pushes.isEmpty() && !area.equals(areaOf(event))) {
         ordered.addAll(pushes);
         pushes.clear();
       }
@@ -1440,6 +1470,16 @@ class BattleActionSpawnRunTest {
     }
     ordered.addAll(pushes);
     return ordered;
+  }
+
+  /** The area a hit event belongs to, or null for an event that is not an area's hit. */
+  private static String areaOf(String event) {
+    String[] words = event.split(" ");
+    return switch (words[1]) {
+      case "area_hit" -> words[0] + " area_hit";
+      case "impact" -> words[0] + " impact " + words[2];
+      default -> null;
+    };
   }
 
   /** Both sides' opening hands and queues, and the draws that seeded their shuffles. */

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.battle.BattleEntity;
@@ -47,6 +48,7 @@ import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -157,6 +159,9 @@ public class BattleWorld implements HolderPasses {
 
   /** The most victims a death's damage takes. */
   private static final int DEATH_DAMAGE_LIMIT = 1000;
+
+  /** The most characters an area effect's buff reaches in one hit. */
+  private static final int AREA_EFFECT_BUFF_LIMIT = 0x10000;
 
   /** The state the battle's random source starts from when no seed is given. */
   public static final int DEFAULT_SEED = 1;
@@ -2065,13 +2070,96 @@ public class BattleWorld implements HolderPasses {
    */
   void areaBuff(AreaEffectEntity areaEffect, int radius, int time) {
     BuffData buff = buffData(areaEffect.getData().buff());
+    List<WorldEntity> targets =
+        buffTargets(
+            areaEffect.getX(),
+            areaEffect.getY(),
+            radius,
+            buff,
+            AREA_EFFECT_BUFF_LIMIT,
+            areaEffect::buffReaches);
+    for (WorldObserver observer : observers) {
+      observer.areaBuff(tick, areaEffect, buff, time, targets);
+    }
+    for (WorldEntity target : targets) {
+      target
+          .getBuffs()
+          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side());
+    }
+  }
+
+  /**
+   * A projectile's target buff on the circle of its impact: to each character of this tick, in the
+   * order they joined, inside the circle around the impact point and reached by it, while the row's
+   * target limit lasts; of the king-class towers only the first takes a buff that deals damage.
+   * Each is applied with the projectile as the source, at its level and for its side, for the row's
+   * buff time at that level, once every target has been found.
+   *
+   * <p>The projectile reaches a character of the launcher's side only when the row does not hit
+   * enemies only, and one of the other side only when it does not buff its own troops only; the
+   * character must be alive, not untouchable and not waiting to deploy. Unlike an area effect it
+   * has no filter of its own, so the air and the ground are reached alike.
+   *
+   * @param projectile the projectile that landed
+   * @param x the impact point along the width
+   * @param y the impact point along the length
+   */
+  public void projectileAreaBuff(ProjectileEntity projectile, int x, int y) {
+    ProjectileData data = projectile.getData();
+    BuffData buff = buffData(data.targetBuff());
+    int time = data.buffTime(projectile.getPackedLevel());
+    List<WorldEntity> targets =
+        buffTargets(
+            x,
+            y,
+            data.radius(),
+            buff,
+            data.maximumTargets(),
+            target -> projectileBuffReaches(projectile, target));
+    for (WorldObserver observer : observers) {
+      observer.projectileBuff(tick, projectile, buff, time, targets);
+    }
+    for (WorldEntity target : targets) {
+      target
+          .getBuffs()
+          .apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
+    }
+  }
+
+  /** Whether a projectile's buff may reach a character; see {@link #projectileAreaBuff}. */
+  private static boolean projectileBuffReaches(ProjectileEntity projectile, WorldEntity target) {
+    ProjectileData data = projectile.getData();
+    boolean sameTeam = ((projectile.side() & 1) == 0) == ((target.side() & 1) == 0);
+    if (!sameTeam && data.onlyOwnTroops()) {
+      return false;
+    }
+    if (sameTeam && data.onlyEnemies()) {
+      return false;
+    }
+    if (!HitPoints.alive(target.getHitPoints())) {
+      return false;
+    }
+    if (target.untouchable()) {
+      return false;
+    }
+    return target.getView().getState() != GridEntityState.WAITING_TO_DEPLOY;
+  }
+
+  /**
+   * The characters a buff over a circle reaches: this tick's, in the order they joined, inside the
+   * circle and passing the test, until the limit is used up; of the king-class towers only the
+   * first takes a buff that deals damage.
+   */
+  private List<WorldEntity> buffTargets(
+      int x, int y, int radius, BuffData buff, int limit, Predicate<WorldEntity> reaches) {
     boolean damaging = BuffComponent.damagePerSecond(buff, 0) > 0;
     boolean towerTaken = false;
     List<WorldEntity> targets = new ArrayList<>();
     for (WorldEntity entity : present) {
-      if (!ShapeTests.withinCircleShape(
-              entity.getView(), areaEffect.getX(), areaEffect.getY(), radius)
-          || !areaEffect.buffReaches(entity)) {
+      if (targets.size() >= limit) {
+        break;
+      }
+      if (!ShapeTests.withinCircleShape(entity.getView(), x, y, radius) || !reaches.test(entity)) {
         continue;
       }
       if (entity.getTargetView().towerFlag()) {
@@ -2083,14 +2171,7 @@ public class BattleWorld implements HolderPasses {
       }
       targets.add(entity);
     }
-    for (WorldObserver observer : observers) {
-      observer.areaBuff(tick, areaEffect, buff, time, targets);
-    }
-    for (WorldEntity target : targets) {
-      target
-          .getBuffs()
-          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side());
-    }
+    return targets;
   }
 
   /** The name of the next buff instance listed in the battle. */
