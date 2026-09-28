@@ -36,6 +36,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     which is what the level a unit is created at is packed against
  * @param projectile the projectile the unit fires instead of hitting directly, or null for a unit
  *     that hits directly
+ * @param customFirstProjectile the projectile the first of an attack's projectiles is instead, or
+ *     null for none
  * @param projectileStartRadius how far along the line to the target a projectile leaves the unit
  * @param projectileStartZ how high above the unit a projectile leaves it
  * @param projectileYOffset how far along the arena's length a projectile's start is shifted; the
@@ -168,6 +170,7 @@ public record UnitData(
     int crownTowerDamagePercent,
     RarityTable rarity,
     ProjectileData projectile,
+    ProjectileData customFirstProjectile,
     int projectileStartRadius,
     int projectileStartZ,
     int projectileYOffset,

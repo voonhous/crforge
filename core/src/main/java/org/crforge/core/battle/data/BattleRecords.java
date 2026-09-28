@@ -59,10 +59,9 @@ public final class BattleRecords {
 
   /**
    * The columns of a projectile the impact does not model: the area effect it spawns, spawned
-   * projectiles laid along an axis, the push's floor and a push along the flight, a stop at the
-   * first entity it touches, and the flight back to a shooter that walks on. A spell whose
-   * projectile, or the projectile that one spawns, sets one is refused as it is cast or spawned,
-   * and a unit's shot as it is fired.
+   * projectiles laid along an axis, the push's floor and a push along the flight, and the flight
+   * back to a shooter that walks on. A spell whose projectile, or the projectile that one spawns,
+   * sets one is refused as it is cast or spawned, and a unit's shot as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
@@ -71,7 +70,6 @@ public final class BattleRecords {
           "SpawnAxisY",
           "MinPushback",
           "DoDirectionalPushback",
-          "CheckCollisions",
           "PingpongMovingShooter");
 
   /** The target limit the loader stores for a projectile row that leaves it empty. */
@@ -280,6 +278,10 @@ public final class BattleRecords {
         .rarity(rarity(row.string("Rarity")))
         .projectile(
             row.string("Projectile").isEmpty() ? null : projectile(row.string("Projectile")))
+        .customFirstProjectile(
+            row.string("CustomFirstProjectile").isEmpty()
+                ? null
+                : projectile(row.string("CustomFirstProjectile")))
         .projectileStartRadius(row.intValue("ProjectileStartRadius"))
         .projectileStartZ(row.intValue("ProjectileStartZ"))
         .projectileYOffset(row.intValue("ProjectileYOffset"))
@@ -740,6 +742,7 @@ public final class BattleRecords {
             .checkCollisions(row.bool("CheckCollisions"))
             .minDistance(row.intValue("MinDistance"))
             .circleScatter("Circle".equals(row.string("Scatter")))
+            .lineScatter("Line".equals(row.string("Scatter")))
             .pushback(row.intValue("Pushback"))
             .spawnCharacter(set(row, "SpawnCharacter") ? row.string("SpawnCharacter") : null)
             // The loader stores at least one child for a row that names a spawned character.
@@ -770,6 +773,7 @@ public final class BattleRecords {
             .chainedHitRadius(row.intValue("ChainedHitRadius"))
             .chainedHitCount(row.intValue("ChainedHitCount"))
             .pingpongVisualTimeMs(row.intValue("PingpongVisualTime"))
+            .randomDelayMs(row.intValue("RandomDelay"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

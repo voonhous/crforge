@@ -65,7 +65,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " are held by the spell runs; the limited-time homing by the Elite Archer's."
             + " The chained hop is held by the Electro Dragon's, and the pingpong launch that holds"
             + " the launcher's targeting until the projectile comes back by the Axe Man's."
-            + " Not modelled: a pingpong projectile a spell casts or an impact spawns, the random delays, the drag-back"
+            + " The random delay a unit's launch draws is held by the Hunter's."
+            + " Not modelled: a pingpong projectile, or one with a random delay, that a spell casts or an impact spawns, the angular delay, the drag-back"
             + " hook, the custom movement, and the far-distance clamp with its cell pull.")
 public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -214,6 +215,10 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
         hy,
         view.getX(),
         view.getY());
+    if (data.randomDelayMs() >= 1) {
+      // A row with a random delay waits a draw from the battle's random source below it.
+      delayMs = world.getRandom().next(data.randomDelayMs());
+    }
     if (data.pingpongVisualTimeMs() >= 1) {
       // A pingpong projectile is held by its launcher's targeting component, whose visit returns
       // early until the projectile comes back; the resume delay is started at the sweep's time.
@@ -242,7 +247,7 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    */
   public void cast(
       WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy, int delayMs) {
-    refusePingpong("cast");
+    refuseUnitOnly("cast");
     // The cast has no launcher: a projectile that aims by its range would aim from its start.
     place(king, king, null, cardLevel, sx, sy, sz, hx, hy, sx, sy);
     this.delayMs = delayMs;
@@ -264,19 +269,24 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
   }
 
   /**
-   * Refuses a pingpong projectile that no unit launches: it would be held by a king tower's
-   * targeting component, or, spawned, by none, and no row either way is known.
+   * Refuses a pingpong projectile or one with a random delay that no unit launches: a pingpong one
+   * would be held by a king tower's targeting component, or, spawned, by none, and a cast one would
+   * draw its delay; no row either way is known.
    */
-  private void refusePingpong(String how) {
+  private void refuseUnitOnly(String how) {
     if (data.pingpongVisualTimeMs() >= 1) {
       throw new UnsupportedOperationException(
           data.name() + " is a pingpong projectile " + how + " without a unit, not modelled");
     }
+    if (data.randomDelayMs() >= 1) {
+      throw new UnsupportedOperationException(
+          data.name() + " has a random delay and is " + how + " without a unit, not modelled");
+    }
   }
 
-  /** One visit's step of the delay before the flight. */
+  /** One visit's step of the delay before the flight, which stops at zero. */
   void stepDelay() {
-    delayMs -= STEP_MS;
+    delayMs = Math.max(delayMs, STEP_MS) - STEP_MS;
   }
 
   /**
@@ -290,7 +300,7 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    * @param hy the point it aims beyond the parent's aim, along the length
    */
   public void launchSpawned(ProjectileEntity parent, int hx, int hy) {
-    refusePingpong("spawned");
+    refuseUnitOnly("spawned");
     place(
         null,
         parent.root,
@@ -459,6 +469,14 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /** Ends the flight: the projectile takes no further step and leaves at the next cleanup. */
   void release() {
+    released = true;
+  }
+
+  /**
+   * Ends the flight of a projectile that stops at collisions, on the first hit its body lands: it
+   * takes no further hit or step and leaves at the next cleanup, without an impact.
+   */
+  public void finishOnCollision() {
     released = true;
   }
 

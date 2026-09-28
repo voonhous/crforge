@@ -125,6 +125,13 @@ class BattleRecordsTest {
     ProjectileData axe = records.projectile("AxeManProjectile");
     assertThat(axe.pingpongVisualTimeMs()).isEqualTo(1500);
     assertThat(axe.unmodelledColumns()).isEmpty();
+    // The Hunter's pellet: a line scatter, a random delay and a stop at the first landed hit.
+    ProjectileData pellet = records.projectile("HunterProjectile");
+    assertThat(pellet.lineScatter()).isTrue();
+    assertThat(pellet.randomDelayMs()).isEqualTo(200);
+    assertThat(pellet.checkCollisions()).isTrue();
+    assertThat(pellet.unmodelledColumns()).isEmpty();
+    assertThat(records.unit("Hunter").customFirstProjectile().name()).isEqualTo("HunterProjectile");
     // A projectile that flies to a point buffs through its hits on the way, which is not modelled.
     assertThat(records.projectile("SuperEliteArcherArrow").unmodelledColumns())
         .contains("TargetBuff");

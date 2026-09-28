@@ -477,12 +477,25 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Hands a launched projectile to the holder, which gives it its id at once and admits it at the
-   * next cleanup, and tells every observer of the launch.
+   * next cleanup, tells every observer of the launch, and runs its registration pass.
    */
   public void launch(ProjectileEntity projectile) {
     holder.add(projectile);
     for (WorldObserver observer : observers) {
       observer.projectileLaunched(tick, projectile);
+    }
+    registrationPass(projectile);
+  }
+
+  /**
+   * The pass a projectile runs as the holder registers it: one that flies to a point, unless it
+   * sweeps out and back, hits what its body covers where it starts at once, its body widened by the
+   * row's start radius, whatever delay it waits before it flies.
+   */
+  private void registrationPass(ProjectileEntity projectile) {
+    ProjectileData data = projectile.getData();
+    if (data.homingLike() && data.pingpongVisualTimeMs() < 1) {
+      cellPass(projectile, projectile.getX(), projectile.getY(), data.projectileStartExtraRadius());
     }
   }
 
@@ -1304,6 +1317,7 @@ public class BattleWorld implements HolderPasses {
           projectile.cast(king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay);
         }
         holder.add(projectile);
+        registrationPass(projectile);
         if (chain != null) {
           projectile.joinChain(chain, rx, ry);
         }
@@ -1420,10 +1434,7 @@ public class BattleWorld implements HolderPasses {
       ProjectileEntity projectile = new ProjectileEntity(this, data, parent.side());
       projectile.launchSpawned(parent, vec[0] + parent.getAimX(), vec[1] + parent.getAimY());
       holder.add(projectile);
-      if (data.homingLike()) {
-        cellPass(
-            projectile, projectile.getX(), projectile.getY(), data.projectileStartExtraRadius());
-      }
+      registrationPass(projectile);
       step++;
     }
   }
@@ -1432,7 +1443,8 @@ public class BattleWorld implements HolderPasses {
    * The pass a projectile flying to a point runs over what its body covers: the spatial index's box
    * of its body radius, widened by the extra, by its body's half height - or its circle without one
    * - buildings tested as squares; one fresh hit id for the whole pass; and the travelling hit on
-   * each entity found, in the index's order.
+   * each entity found, in the index's order, until a hit finishes a projectile that stops at
+   * collisions.
    *
    * @param projectile the projectile
    * @param x where the pass is centred, along the width
@@ -1459,8 +1471,8 @@ public class BattleWorld implements HolderPasses {
     int hitId = nextHitId();
     for (GridEntity view : found) {
       WorldEntity entity = known.get(view);
-      if (entity != null) {
-        travellingHit(projectile, entity, x, y, hitId);
+      if (entity != null && travellingHit(projectile, entity, x, y, hitId)) {
+        break;
       }
     }
     index.release(found);
@@ -1476,43 +1488,55 @@ public class BattleWorld implements HolderPasses {
    * An entity with hit points takes the projectile's damage at its level, or its crown-tower share,
    * from the direction of the pass's centre, and is listed as hit; then a character whose movement
    * is still on is pushed the row's pushback away from the projectile, the row's push-all lifting
-   * the gates.
+   * the gates. A projectile that stops at collisions is finished by a hit that landed on an entity
+   * with hit points left, and the pass ends; held by the Hunter's pellets.
+   *
+   * @return true when the hit finished the projectile
    */
-  private void travellingHit(
+  private boolean travellingHit(
       ProjectileEntity projectile, WorldEntity entity, int x, int y, int hitId) {
     ProjectileData data = projectile.getData();
     if (data.onlyEnemies() && (entity.side() & 1) == (projectile.side() & 1)) {
-      return;
+      return false;
     }
     int id = entity.getId();
     if (projectile.getHitIds().contains(id)) {
-      return;
+      return false;
     }
     GridEntity view = entity.getView();
     if (entity.untouchable()) {
       projectile.getHitIds().add(id);
-      return;
+      return false;
     }
     if (!data.aoeToAir() && view.isAir()) {
-      return;
+      return false;
     }
     if (!data.aoeToGround() && !view.isAir()) {
-      return;
+      return false;
     }
     if (!data.aoeToAir() && view.getState() == GridEntityState.JUMPING) {
-      return;
+      return false;
     }
     if (entity.getHitPoints() == null) {
-      return;
+      return false;
     }
     int damage =
         entity.getTargetView().crownTower() ? projectile.towerDamage() : projectile.damage();
+    boolean standing = entity.getHitPoints().getHitPoints() >= 1;
     projectile.getHitIds().add(id);
-    dealProjectileDamage(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y);
+    DamageResult result =
+        dealProjectileDamage(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y);
     if (data.pushback() >= 1 && entity instanceof CharacterEntity character) {
       character.pushedByTravellingHit(
           projectile.getX(), projectile.getY(), data.pushback(), data.pushbackAll());
     }
+    // A projectile that stops at collisions is finished by a hit that landed on an entity that had
+    // hit points left.
+    if (standing && result.landed() && data.checkCollisions()) {
+      projectile.finishOnCollision();
+      return true;
+    }
+    return false;
   }
 
   /** Tells the observers a hit met an entity's shield. */
