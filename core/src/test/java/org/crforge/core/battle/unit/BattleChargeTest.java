@@ -28,20 +28,37 @@ class BattleChargeTest {
   }
 
   @Test
-  @DisplayName("a Kamikaze row's hit, which destroys it, is refused as it lands")
-  void aKamikazeHitIsRefused() {
+  @DisplayName("a Kamikaze row's hit destroys it in the tick it lands")
+  void aKamikazeHitDestroysTheUnit() {
     Standard1v1Battle match = passiveTowers();
     // A Battle Ram just short of the red princess tower, which it walks to and hits.
-    match.deploy(0, GameData.unit("BattleRam"), 11, 0, 3500, 22000);
+    CharacterEntity ram = match.deploy(0, GameData.unit("BattleRam"), 11, 0, 3500, 22000);
 
+    int tick = 0;
+    while (ram.getHitPoints().getHitPoints() > 0 && tick < 200) {
+      match.getBattle().step();
+      tick++;
+    }
+    // The tick its hit landed on the tower is the tick it killed itself.
+    WorldEntity tower =
+        match.getWorld().present().stream()
+            .filter(e -> e.name().equals("PrincessTower_1_1"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(ram.getHitPoints().getHitPoints()).isZero();
+    assertThat(tower.getHitPoints().getHitPoints()).isLessThan(tower.getHitPoints().getMaximum());
+  }
+
+  @Test
+  @DisplayName("a Kamikaze row that drains over a time is refused as it is created")
+  void aKamikazeTimeIsRefused() {
+    BattleWorld world = passiveTowers().getWorld();
     assertThatThrownBy(
-            () -> {
-              for (int tick = 0; tick < 200; tick++) {
-                match.getBattle().step();
-              }
-            })
+            () ->
+                new CharacterEntity(
+                    world, GameData.unit("SkeletonBalloon"), "SkeletonBalloon", 0, 3500, 10000, 11))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Kamikaze");
+        .hasMessageContaining("KamikazeTime");
   }
 
   @Test

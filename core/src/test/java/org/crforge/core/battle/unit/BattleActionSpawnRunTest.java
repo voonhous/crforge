@@ -233,7 +233,11 @@ class BattleActionSpawnRunTest {
         "axe_man_knights",
         "hunter_point_blank",
         "hunter_range",
-        "ram_rider_bola"
+        "ram_rider_bola",
+        "kamikaze_battle_ram",
+        "kamikaze_fire_spirits",
+        "kamikaze_wall_breakers",
+        "kamikaze_ice_spirits"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

@@ -206,7 +206,8 @@ public final class BattleRecords {
    * at a share of its hit points, hovering, a flying unit's direct paths, the action a completed
    * charge runs, a chained dash, a dash's contact damage, fixed distance, area effect and closing
    * action, a limit on the elixir a collector makes, a spawner's launches, its second and third
-   * characters, its destruction at the limit and the deploy it gives its children.
+   * characters, its destruction at the limit, the deploy it gives its children, and a Kamikaze
+   * row's drain over a time rather than its kill.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -228,7 +229,8 @@ public final class BattleRecords {
           "SpawnCharacter2",
           "SpawnCharacter3",
           "DestroyAtLimit",
-          "SpawnCharacterWithDeploy");
+          "SpawnCharacterWithDeploy",
+          "KamikazeTime");
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes

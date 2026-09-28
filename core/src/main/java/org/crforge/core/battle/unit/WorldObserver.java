@@ -355,6 +355,13 @@ public interface WorldObserver {
   default void buffDeathSpawn(
       int tick, WorldEntity dying, BuffInstance buff, List<CharacterEntity> made) {}
 
+  /**
+   * A Kamikaze unit killed itself at the end of its hit.
+   *
+   * @param damage its hit points before, all of which the kill took
+   */
+  default void kamikazeKilled(int tick, WorldEntity unit, int damage, DamageResult result) {}
+
   /** A new buff instance was listed on an entity. */
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
 

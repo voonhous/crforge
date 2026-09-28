@@ -360,6 +360,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public void hitEnded() {
+        WorldEntity.this.hitEnded();
+      }
+
+      @Override
       public int nextHitId() {
         return world.nextHitId();
       }
@@ -380,6 +385,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         damageArea(x, y, radius, damage, towerDamage, hitId);
       }
     };
+  }
+
+  /** The end of each of the entity's hits; a tower's does nothing. */
+  protected void hitEnded() {
+    // Only a Kamikaze character's hit does anything at its end.
   }
 
   /** Refuses a hit whose effect on the entity itself is not established; a tower's has none. */

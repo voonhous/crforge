@@ -525,6 +525,23 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Kills a Kamikaze unit at the end of its hit: its whole hit points, with itself as the attacker
+   * on its own side, so its death action runs alone. Every observer is told of the kill.
+   *
+   * @param unit the unit
+   */
+  public void kamikazeKill(WorldEntity unit) {
+    int before = unit.getHitPoints().getHitPoints();
+    DamageResult result = unit.takeKill();
+    for (WorldObserver observer : observers) {
+      observer.kamikazeKilled(tick, unit, before, result);
+    }
+    if (result.died()) {
+      unit.die(unit);
+    }
+  }
+
+  /**
    * Kills an entity of a fallen king's side that the king's circle reached: its whole hit points,
    * no attacker, told to every observer as the circle's kill rather than a hit.
    *
@@ -1957,6 +1974,10 @@ public class BattleWorld implements HolderPasses {
       }
       if (data.deathSpawnDeployTimeMs() > 0) {
         spawned.deployFor(data.deathSpawnDeployTimeMs());
+        // A child made with a deploy time faces the way the dying object faced, as the spawner's
+        // setter leaves it.
+        spawned.getView().setDirX(dying.getView().getDirX());
+        spawned.getView().setDirY(dying.getView().getDirY());
       }
       // Where it is made: on its point, or on the dying object for one that flies back.
       int madeX = spawned.getView().getX();
