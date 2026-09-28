@@ -6,11 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.crforge.core.battle.unit.TowerEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** A Ladder match's gates, and the end it does not model yet. */
+/** A Ladder match's gates and its end. */
 class LadderMatchTest {
 
   private static final List<String> DECK =
@@ -38,16 +37,47 @@ class LadderMatchTest {
   }
 
   @Test
-  @DisplayName("a match whose king falls is refused at the next step, its end not modelled")
-  void theEndIsRefused() {
+  @DisplayName(
+      "a fallen king ends the match: the winner, the frozen timeline, plays refused with 4, and"
+          + " the battle stopped after the end screen's delay")
+  void aFallenKingEndsTheMatch() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
+    battle.getBattle().step();
+    battle.getWorld().kill(battle.getWorld().kingTower(1), null);
+    // The next step's head sees it and ends the match.
+    battle.getBattle().step();
+
+    assertThat(match.isEnded()).isTrue();
+    assertThat(match.getWinner()).isZero();
+    assertThat(match.crowns(0)).isEqualTo(3);
+    assertThat(match.getTimeline().isFrozen()).isTrue();
+    assertThat(match.getEndTimerMs()).isEqualTo(51);
+    assertThat(match.gate(0, match.deckIndex(0, "Archer"))).isEqualTo(LadderMatch.OVER);
+    int steps = 0;
+    while (!match.isOver()) {
+      battle.getBattle().step();
+      steps++;
+    }
+    // From 51, 50 an update: 78 more updates tick the entities, the 79th only cleans up.
+    assertThat(steps).isEqualTo(79);
+    assertThat(match.isLastTicked()).isFalse();
+    int tick = battle.getBattle().getTick();
+    battle.getBattle().step();
+    assertThat(battle.getBattle().getTick()).isEqualTo(tick);
+  }
+
+  @Test
+  @DisplayName("both kings falling together leave the crowns equal: the tiebreaker, refused")
+  void theTiebreakerIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.getBattle().step();
-    TowerEntity king = battle.getWorld().kingTower(1);
-    battle.getWorld().kill(king, null);
+    battle.getWorld().kill(battle.getWorld().kingTower(0), null);
+    battle.getWorld().kill(battle.getWorld().kingTower(1), null);
 
     assertThatThrownBy(() -> battle.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("end of a match");
+        .hasMessageContaining("tiebreaker");
   }
 }

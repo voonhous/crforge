@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
@@ -43,6 +44,7 @@ public final class BattleRecords {
   private static final String GAME_MODES = "game_modes";
   private static final String BATTLE_TIMELINES = "battle_timelines";
   private static final String GLOBALS = "globals";
+  private static final String LOCATIONS = "locations";
 
   /** The section types of a battle timeline by name; the order is their number. */
   private static final List<String> SECTION_TYPES = List.of("Normal", "Overtime", "BonusTime");
@@ -1004,6 +1006,20 @@ public final class BattleRecords {
         row.bool("OmitFromStartingHand"),
         row.intValue("ElixirProductionStopTime"),
         row.bool("Mirror"));
+  }
+
+  /**
+   * The end screen's delay, in milliseconds: how long a battle goes on after its end before it
+   * stops. It is the location's, and every location has the same one; the battle's location is not
+   * read, so one that differed would be refused here.
+   */
+  public int endScreenDelayMs() {
+    Set<Integer> delays = new TreeSet<>();
+    for (GameRow row : tables.table(LOCATIONS).rows()) {
+      delays.add(row.intValue("EndScreenDelay"));
+    }
+    checkArgument(delays.size() == 1, () -> "the locations' end screen delays differ: " + delays);
+    return delays.iterator().next();
   }
 
   /**

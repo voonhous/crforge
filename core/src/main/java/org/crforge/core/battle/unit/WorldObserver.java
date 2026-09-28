@@ -399,6 +399,15 @@ public interface WorldObserver {
   default void movementStateRequested(int tick, CharacterEntity unit, int from, int to) {}
 
   /**
+   * A fallen king's circle reached an entity of its side and killed it.
+   *
+   * @param tick the battle tick
+   * @param target the entity
+   * @param radius the circle's radius
+   */
+  default void circleKilled(int tick, WorldEntity target, int radius) {}
+
+  /**
    * A unit's dash wind-up ran out and it started a dash, its state already the dashing one.
    *
    * @param tick the battle tick

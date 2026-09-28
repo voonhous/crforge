@@ -27,7 +27,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the forty-nine runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the fifty runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -129,7 +129,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>{@code match_elixir_150s} is a Ladder match: both decks shuffled with the battle's source, and
  * on every tick both elixirs, hands and cooldowns, the timeline and the crowns held to the
  * reference's trace, and every play's match code - a card still in the queue refused with 9, one
- * the elixir does not cover with 0xd.
+ * the elixir does not cover with 0xd. {@code match_knights_king} plays a match to its end: the
+ * king's fall, the winner, the end timer, the fallen king's circle and its kills, and the stop.
  */
 class BattleActionSpawnRunTest {
 
@@ -187,7 +188,8 @@ class BattleActionSpawnRunTest {
         "bandit_knight",
         "mega_knight_group",
         "ram_rider_tower",
-        "match_elixir_150s"
+        "match_elixir_150s",
+        "match_knights_king"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -243,6 +245,8 @@ class BattleActionSpawnRunTest {
     // A match is set up before the first step, its decks shuffled with the battle's source.
     LadderMatch ladder = null;
     Map<Integer, JsonNode> trace = new HashMap<>();
+    List<String> circleKills = new ArrayList<>();
+    List<Integer> endTicks = new ArrayList<>();
     if (reference.has("match")) {
       JsonNode m = reference.get("match");
       List<List<String>> decks = new ArrayList<>();
@@ -261,6 +265,7 @@ class BattleActionSpawnRunTest {
         trace.put(row.get(0).asInt(), row);
       }
       assertOpeningHands(ladder, m);
+      match.getWorld().addObserver(circleLog(currentTick, circleKills));
     }
     // A run with card plays plays each as a place-card command due on its tick.
     if (reference.has("commands")) {
@@ -576,6 +581,9 @@ class BattleActionSpawnRunTest {
         assertThat(unit).as("tick %d: %s is in the battle", tick, record.get("name")).isNotNull();
         assertRecord(battle, unit, record, tick, spawnTicks);
       }
+      if (ladder != null && ladder.isEnded() && endTicks.isEmpty()) {
+        endTicks.add(tick);
+      }
       if (trace.containsKey(tick)) {
         assertThat(traceRow(tick, ladder))
             .as("tick %d: the match", tick)
@@ -584,6 +592,28 @@ class BattleActionSpawnRunTest {
     }
     if (ladder != null) {
       assertPlays(match, reference);
+      assertEnd(match, ladder, reference.get("match"));
+      List<String> expectedKills = new ArrayList<>();
+      List<Integer> expectedEnd = new ArrayList<>();
+      for (JsonNode entry : reference.get("match").get("log")) {
+        String kind = entry.get("event").asText();
+        if (kind.equals("circle_kill")) {
+          expectedKills.add(
+              "%d %s %d"
+                  .formatted(
+                      entry.get("tick").asInt(),
+                      entry.get("target").asText(),
+                      entry.get("radius").asInt()));
+        } else if (kind.equals("end")) {
+          expectedEnd.add(entry.get("tick").asInt());
+          assertThat(List.of(ladder.crowns(0), ladder.crowns(1)))
+              .as("the crowns at the end")
+              .containsExactly(
+                  entry.get("crowns").get(0).asInt(), entry.get("crowns").get(1).asInt());
+        }
+      }
+      assertThat(circleKills).as("every kill of a fallen king's circle").isEqualTo(expectedKills);
+      assertThat(endTicks).as("the tick the match ended on").isEqualTo(expectedEnd);
     }
 
     List<String> expectedActions = new ArrayList<>();
@@ -1388,8 +1418,7 @@ class BattleActionSpawnRunTest {
   /**
    * One step of the match as the reference traces it: both elixirs, both hands, both cooldowns, the
    * timeline's time, section and rate, both crowns, the end timer, whether the battle ended, the
-   * tiebreaker's time and whether the entities were ticked. The end is not modelled yet, so its
-   * four fields stand at a match that goes on.
+   * tiebreaker's time and whether the entities were ticked.
    */
   private static String traceRow(int tick, LadderMatch ladder) {
     List<Object> values = new ArrayList<>();
@@ -1405,8 +1434,29 @@ class BattleActionSpawnRunTest {
     values.add(ladder.getTimeline().getRate());
     values.add(ladder.crowns(0));
     values.add(ladder.crowns(1));
-    values.addAll(List.of(0, 0, 0, 1));
+    values.add(ladder.getEndTimerMs());
+    values.add(ladder.isEnded() ? 1 : 0);
+    // The tiebreaker is not modelled: its time stays 0.
+    values.add(0);
+    values.add(ladder.isLastTicked() ? 1 : 0);
     return JSON.valueToTree(values).toString();
+  }
+
+  /**
+   * The match's end: its winner, and the step the battle stops on - which runs nothing at all, not
+   * even the tick counter.
+   */
+  private static void assertEnd(Standard1v1Battle match, LadderMatch ladder, JsonNode m) {
+    if (m.get("end").isNull()) {
+      assertThat(ladder.isEnded()).as("the match goes on").isFalse();
+      return;
+    }
+    assertThat(ladder.getWinner()).as("the winner").isEqualTo(m.get("end").get("winner").asInt());
+    int stopped = m.get("stopped_at").asInt();
+    assertThat(match.getBattle().getTick()).as("the step the battle stops on").isEqualTo(stopped);
+    assertThat(match.getBattle().getMode().isOver()).as("stopped").isTrue();
+    match.getBattle().step();
+    assertThat(match.getBattle().getTick()).as("a stopped battle runs no step").isEqualTo(stopped);
   }
 
   /** Every play refused by a match's gate with the reference's code, and every other let on. */
@@ -1422,5 +1472,15 @@ class BattleActionSpawnRunTest {
       assertThat(codes).as("the play %s ran", name).containsKey(name);
       assertThat(codes.get(name)).as("the play %s's match code", name).isEqualTo(expected);
     }
+  }
+
+  /** Lists every kill of a fallen king's circle with its radius. */
+  private static WorldObserver circleLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void circleKilled(int tick, WorldEntity target, int radius) {
+        log.add("%d %s %d".formatted(currentTick[0], target.name(), radius));
+      }
+    };
   }
 }

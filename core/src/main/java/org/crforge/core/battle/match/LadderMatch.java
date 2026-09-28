@@ -11,13 +11,15 @@ import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.TowerEntity;
+import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.grid.TileMap;
 
 /**
- * A Ladder match between two players: the battle's clock, each king's elixir and hand, and the
- * gates a card play passes before it is placed.
+ * A Ladder match between two players: the battle's clock, each king's elixir and hand, the gates a
+ * card play passes before it is placed, and how the match ends.
  *
  * <p>The match is set up once the towers stand, side 0 first: each king starts with the timeline's
  * starting elixir, and its deck is shuffled into its battle order with one draw of the battle's
@@ -25,10 +27,20 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * are ticked; in their post-hook pass each king refills its hand and then regenerates its elixir,
  * at the rate and cooldown the timeline gives for that tick.
  *
- * <p>A card play first passes the match's gates, in order: the king must be alive (code 8), the
- * card must be in one of the hand's four slots (code 9), and the whole elixir must cover its cost
- * (code 0xd). A refused play changes nothing. One that places or casts takes its cost and moves the
- * card to the back of the queue before its units are created or its spell cast.
+ * <p>A card play first passes the match's gates, in order: the match must not be decided (code 4),
+ * the king must be alive (code 8), the card must be in one of the hand's four slots (code 9), and
+ * the whole elixir must cover its cost (code 0xd). A refused play changes nothing. One that places
+ * or casts takes its cost and moves the card to the back of the queue before its units are created
+ * or its spell cast.
+ *
+ * <p>The match is decided when a king has fallen, when overtime sees a crown, or when the time is
+ * up. It is asked at the head of each step and after the entity tick, and the first time it holds
+ * the match ends: the timeline freezes, the winner is the side with more crowns, and the end timer
+ * starts at 1. The battle goes on - units fight, every play is refused - and each update adds 50 to
+ * the timer, until the update that takes it to the end screen's delay ticks no entities and the
+ * battle stops: from the next step, nothing runs, not even the tick counter. From the update after
+ * a king's fall, a circle grows from it to the arena's length over half that delay and kills every
+ * living entity of its side it reaches.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -36,9 +48,12 @@ import org.crforge.core.pathfinding.combat.HitPoints;
         "Settled and held by match_elixir_150s: the setup in side order with the shuffle's draw,"
             + " the update's advance before the entity tick, the kings' refill and regeneration in"
             + " their post-hook, the gates 9 and 0xd and the spend and cycle before the placement's"
-            + " units. Not modelled yet, and refused: the end of a match - a king's death, the time"
-            + " running out, overtime's first crown - with the crowns it is decided by, the end"
-            + " handler, the end timer, the fallen king's circle and the tiebreaker; the Mirror.")
+            + " units; by match_knights_king: the end at a king's fall, the winner, the end timer"
+            + " and the entity ticks it allows, the fallen king's circle and the stop. Held by"
+            + " LadderMatchTest alone: the gate 4 and the timeline's freeze. Not modelled, and"
+            + " refused: the tiebreaker of equal crowns when the time is up; the Mirror. Not"
+            + " carried: the flag set when a fallen king's two towers stand whole, whose readers"
+            + " are not established.")
 public final class LadderMatch implements BattleMode {
 
   /** The game mode row the match is played under. */
@@ -46,6 +61,9 @@ public final class LadderMatch implements BattleMode {
 
   /** The bound of the battle-source draw that seeds a deck's shuffle. */
   private static final int SHUFFLE_BOUND = 0x0fffffff;
+
+  /** A refused play: the match is decided. */
+  public static final int OVER = 4;
 
   /** A refused play: the king is dead. */
   public static final int KING_DEAD = 8;
@@ -67,6 +85,27 @@ public final class LadderMatch implements BattleMode {
   /** The battle-source draw each side's shuffle was seeded with, before the player's word. */
   private final int[] shuffleDraws = new int[2];
 
+  /** How long the battle goes on after its end: the end screen's delay, in milliseconds. */
+  private final int endDelayMs;
+
+  /** The arena's length in game units, which a fallen king's circle grows to. */
+  private final int arenaLength;
+
+  /** Whether the match has ended. */
+  private boolean ended;
+
+  /** The end timer: 0 until the end, then 1, and 50 more each update. */
+  private int endTimerMs;
+
+  /** The side that won, or -1 for none. */
+  private int winner;
+
+  /** How long a fallen king's circle has grown, in milliseconds. */
+  private int circleMs;
+
+  /** Whether the last step ticked the entities. */
+  private boolean lastTicked;
+
   /**
    * Sets a match up on a battle whose towers stand.
    *
@@ -81,6 +120,8 @@ public final class LadderMatch implements BattleMode {
     this.world = world;
     this.timeline = new Timeline(records.gameModeTimeline(GAME_MODE));
     this.maxMana = records.globalNumber("MAX_MANA");
+    this.endDelayMs = records.endScreenDelayMs();
+    this.arenaLength = world.getTileMap().height() * TileMap.CELL_UNITS;
     for (int side = 0; side < 2; side++) {
       List<MatchCard> deck = new ArrayList<>();
       for (String name : decks.get(side)) {
@@ -113,25 +154,149 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * Whether the match is over and stopped. The end of a match is not modelled yet: a match that
-   * would be over is refused here, at the head of the step that would see it.
+   * Whether the battle has stopped: the match is decided and its end timer has reached the end
+   * screen's delay. A stopped battle runs no step at all.
    */
   @Override
   public boolean isOver() {
-    if (decided()) {
-      throw new UnsupportedOperationException(
-          "the match is over - a king fell, overtime saw a crown or the time ran out - and the"
-              + " end of a match is not modelled");
-    }
-    return false;
+    return decided() && endTimerMs >= endDelayMs;
   }
 
-  /** The update: the crowns-equal byte, then the timeline advanced to the battle tick. */
+  /**
+   * The head of a step: a match decided since the last step is ended here, unless equal crowns in a
+   * mode with no draws take it to the tiebreaker, which is not modelled.
+   */
+  @Override
+  public void beforeCommands(Battle battle) {
+    if (!decided()) {
+      return;
+    }
+    refuseTiebreaker();
+    end();
+  }
+
+  /**
+   * The update: the crowns-equal byte, the timeline advanced to the battle tick, the circle of a
+   * fallen king, and once the match has ended its end timer, 50 more each update; the update that
+   * takes it to the end screen's delay ticks no entities.
+   */
   @Override
   public boolean update(Battle battle) {
     timeline.setCrownsEqual(crowns(0) == crowns(1));
     timeline.advance(battle.getTick());
+    for (int side = 0; side < 2; side++) {
+      TowerEntity king = king(side);
+      if (!HitPoints.alive(king.getHitPoints())) {
+        circle(king);
+      }
+    }
+    if (endTimerMs >= 1) {
+      endTimerMs += 50;
+      if (decided() && endTimerMs >= endDelayMs) {
+        return false;
+      }
+    }
     return true;
+  }
+
+  /** The tail of a step: the crowns-equal byte again, and a match the tick decided is ended. */
+  @Override
+  public void afterTick(Battle battle, boolean ticked) {
+    lastTicked = ticked;
+    if (ticked) {
+      timeline.setCrownsEqual(crowns(0) == crowns(1));
+    }
+    if (decided() && !tiebreakerArmed()) {
+      end();
+    }
+  }
+
+  /**
+   * The end handler, once: the match ended, its timeline frozen, the end timer started at 1, and
+   * the winner the side with more crowns, or none for equal crowns.
+   */
+  private void end() {
+    if (ended) {
+      return;
+    }
+    ended = true;
+    timeline.freeze();
+    endTimerMs = 1;
+    int taken0 = crowns(0);
+    int taken1 = crowns(1);
+    winner = taken0 < taken1 ? 1 : taken0 > taken1 ? 0 : -1;
+  }
+
+  /**
+   * Whether a decided match goes to the tiebreaker rather than its end: the crowns are equal, the
+   * mode allows no draws, and the match has not ended.
+   */
+  private boolean tiebreakerArmed() {
+    return crowns(0) == crowns(1) && !ended;
+  }
+
+  private void refuseTiebreaker() {
+    if (tiebreakerArmed()) {
+      throw new UnsupportedOperationException(
+          "the time is up with equal crowns in a mode without draws, whose tiebreaker is not"
+              + " modelled");
+    }
+  }
+
+  /**
+   * The circle from a fallen king: it grows to the arena's length over half the end screen's delay,
+   * 50 ms an update from the update after the fall, and kills every living entity of the king's
+   * side with hit points it reaches, in the holder's order, with no attacker.
+   */
+  private void circle(TowerEntity king) {
+    circleMs += 50;
+    int duration = endDelayMs / 2;
+    int radius = arenaLength;
+    if (duration >= 1) {
+      radius = arenaLength * Math.min(circleMs, duration) / duration;
+    }
+    int x = king.getView().getX();
+    int y = king.getView().getY();
+    for (BattleEntity entity : List.copyOf(world.getHolder().entities())) {
+      if (entity instanceof WorldEntity w
+          && w.side() == king.side()
+          && w.getHitPoints() != null
+          && HitPoints.alive(w.getHitPoints())
+          && inside(w.getView().getX(), w.getView().getY(), x, y, radius)) {
+        world.circleKill(w, radius);
+      }
+    }
+  }
+
+  /** Whether a point lies within the circle: the square around it, then the squared distance. */
+  private static boolean inside(int px, int py, int cx, int cy, int radius) {
+    int dx = cx - px;
+    int dy = cy - py;
+    if (dx > radius || dx < -radius || dy > radius || dy < -radius) {
+      return false;
+    }
+    checkArgument(radius <= 0x7ffe, () -> "a circle wider than the standard arena's length");
+    return Integer.compareUnsigned(dx * dx + dy * dy, radius * radius) <= 0;
+  }
+
+  /** The end timer: 0 until the match ends, then 1 and 50 more each update. */
+  public int getEndTimerMs() {
+    return endTimerMs;
+  }
+
+  /** Whether the last step ticked the entities, rather than only cleaning the holder up. */
+  public boolean isLastTicked() {
+    return lastTicked;
+  }
+
+  /** Whether the match has ended. */
+  public boolean isEnded() {
+    return ended;
+  }
+
+  /** The winning side, or -1 for none; 0 until the match ends. */
+  public int getWinner() {
+    return winner;
   }
 
   /**
@@ -166,18 +331,29 @@ public final class LadderMatch implements BattleMode {
     return 2 - Math.min(princessTowers, 2);
   }
 
-  /** Whether a side's king still has hit points; a king is never removed from the holder. */
-  private boolean kingAlive(int side) {
+  /** A side's king, which is never removed from the holder. */
+  private TowerEntity king(int side) {
     for (BattleEntity entity : world.getHolder().entities()) {
       if (entity instanceof TowerEntity tower && tower.getData().king() && tower.side() == side) {
-        return HitPoints.alive(tower.getHitPoints());
+        return tower;
       }
     }
     throw new IllegalStateException("side " + side + " has no king tower");
   }
 
-  /** Whether the match is decided: a king is dead, overtime has seen a crown, or time is up. */
+  /** Whether a side's king still has hit points. */
+  private boolean kingAlive(int side) {
+    return HitPoints.alive(king(side).getHitPoints());
+  }
+
+  /**
+   * Whether the match is decided: its end timer runs, a king is dead, overtime has seen a crown, or
+   * the time is up.
+   */
   private boolean decided() {
+    if (endTimerMs > 0) {
+      return true;
+    }
     if (!kingAlive(0) || !kingAlive(1)) {
       return true;
     }
@@ -219,6 +395,9 @@ public final class LadderMatch implements BattleMode {
    */
   public int gate(int side, int index) {
     MatchSide matchSide = sides.get(side);
+    if (decided()) {
+      return OVER;
+    }
     if (!kingAlive(side)) {
       return KING_DEAD;
     }

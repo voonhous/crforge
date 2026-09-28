@@ -34,4 +34,22 @@ public interface BattleMode {
    * @return true when the entity tick runs this step, false when the holder is only cleaned up
    */
   boolean update(Battle battle);
+
+  /**
+   * Runs at the head of a step that runs, before its commands: where a match that has just been
+   * decided is ended. A mode without an end does nothing.
+   */
+  default void beforeCommands(Battle battle) {
+    // No end to reach.
+  }
+
+  /**
+   * Runs at the tail of a step, after the entity tick or the cleanup that stood for it: where a
+   * match decided by the tick is ended. A mode without an end does nothing.
+   *
+   * @param ticked true when the entities were ticked this step
+   */
+  default void afterTick(Battle battle, boolean ticked) {
+    // No end to reach.
+  }
 }
