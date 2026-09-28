@@ -98,6 +98,10 @@ public class TowerEntity extends WorldEntity {
         createView(world.getTileMap(), data, name, side, x, y),
         targetingConfig(data),
         level);
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
+    }
     this.setter = new GridStateSetter(getView(), null, getTargeting(), () -> null);
     SelectionChain selection = getSelection();
     selection.setStateSetter(setter);

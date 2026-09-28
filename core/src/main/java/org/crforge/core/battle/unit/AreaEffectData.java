@@ -35,7 +35,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param affectsHidden true when it reaches a hidden unit, which nothing else does
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
-@Builder
+@Builder(toBuilder = true)
 public record AreaEffectData(
     String name,
     RarityTable rarity,

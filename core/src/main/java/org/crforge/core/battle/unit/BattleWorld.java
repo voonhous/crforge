@@ -644,7 +644,7 @@ public class BattleWorld implements HolderPasses {
    * @param old the unit that surfaced
    */
   void morph(CharacterEntity old) {
-    UnitData data = records.unit(old.getData().spawnPathfindMorph());
+    UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
     CharacterEntity made = CharacterEntity.morphedFrom(old, data);
     holder.addRegistered(made);
     made.startDeployingAfterMorph();
@@ -1193,7 +1193,7 @@ public class BattleWorld implements HolderPasses {
    */
   void liveSpawn(CharacterEntity spawner, int count, int radius) {
     UnitData data = spawner.getData();
-    UnitData child = records.unit(data.spawnCharacter());
+    UnitData child = spawnedRow(data.spawnCharacter());
     if (radius != 0 && data.deathSpawnMinRadius() != 0) {
       throw new UnsupportedOperationException(
           spawner.name()
@@ -1263,7 +1263,7 @@ public class BattleWorld implements HolderPasses {
    */
   void attachRiders(CharacterEntity parent) {
     UnitData data = parent.getData();
-    UnitData child = records.unit(data.spawnCharacter());
+    UnitData child = spawnedRow(data.spawnCharacter());
     if (child.hitpoints() <= 0
         || child.building()
         || child.spawnPathfindSpeed() != 0
@@ -1530,7 +1530,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void impactSpawn(ProjectileEntity projectile, int x, int y) {
     ProjectileData data = projectile.getData();
-    UnitData child = records.unit(data.spawnCharacter());
+    UnitData child = spawnedRow(data.spawnCharacter());
     if (child.hitpoints() <= 0
         || child.building()
         || child.spawnPathfindSpeed() != 0
@@ -1869,7 +1869,7 @@ public class BattleWorld implements HolderPasses {
       if (buff.deathSpawn() == null) {
         continue;
       }
-      UnitData child = records.unit(buff.deathSpawn());
+      UnitData child = spawnedRow(buff.deathSpawn());
       if (buff.deathSpawnRadius() != 0
           || child.building()
           || child.spawnPathfindSpeed() != 0
@@ -2064,7 +2064,7 @@ public class BattleWorld implements HolderPasses {
     }
     int radius = data.deathSpawnRadius();
     int count = data.deathSpawnCount();
-    UnitData child = records.unit(data.deathSpawnCharacter());
+    UnitData child = spawnedRow(data.deathSpawnCharacter());
     // A building with hit points replaces the dying object instead; one without, a bomb, is made.
     if ((child.building() && child.hitpoints() > 0)
         || child.spawnPathfindSpeed() != 0
@@ -2687,6 +2687,20 @@ public class BattleWorld implements HolderPasses {
         cells * TileMap.CELL_UNITS - CardPlacement.CREATION_INSET);
   }
 
+  /**
+   * The row of a child made other than by an action's spawn: its spawner's, its death's, its
+   * projectile's, its rider's or its morph's. A row that limits the size of its spawn group is
+   * refused, as the limit is not traced on these paths.
+   */
+  private UnitData spawnedRow(String name) {
+    UnitData child = records.unit(name);
+    if (child.groupMaxSize() > 0) {
+      throw new UnsupportedOperationException(
+          "spawning " + name + " asks for a limit on its group, which is not established");
+    }
+    return child;
+  }
+
   /** Refuses the parts of a spawn whose behaviour is not established. */
   private static void refuseUnestablished(
       SpawnHost source, SpawnArguments arguments, UnitData data) {
@@ -2705,6 +2719,11 @@ public class BattleWorld implements HolderPasses {
       refused = "a unit that paths to its spawn point";
     } else if (data.onStartingAction() != null) {
       refused = "a child with a starting action, started as it joins the live list";
+    } else if (data.groupMaxSize() > 0
+        && !(source instanceof CharacterEntity character
+            && !character.getData().name().equals(data.name()))) {
+      // A character spawning another row leaves the limit unused; any other limit is not traced.
+      refused = "a limit on its group";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(

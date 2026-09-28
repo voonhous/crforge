@@ -1224,15 +1224,21 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Refuses the hits of several targets and the buffs on damage no reference holds: a third target,
-   * whose lookup skips the second's pick; a list of unique targets, which no row sets; and a buff
-   * on damage over an area, which no row with one has. A unit that fires hands its hit to its
-   * projectile, so its own buff on damage is never applied: the Witch Mother's curse comes from her
-   * projectile's target buff.
+   * Refuses a hit of a unit that buffs itself after so many hits, and the hits of several targets
+   * and the buffs on damage no reference holds: a third target, whose lookup skips the second's
+   * pick; a list of unique targets, which no row sets; and a buff on damage over an area, which no
+   * row with one has. A unit that fires hands its hit to its projectile, so its own buff on damage
+   * is never applied: the Witch Mother's curse comes from her projectile's target buff.
    */
   @Override
   protected void refuseHit() {
     UnitData data = getData();
+    // A unit that buffs itself after so many hits is refused at its first hit, which is where the
+    // count would start.
+    if (!data.buffAfterHits().isEmpty()) {
+      throw new UnsupportedOperationException(
+          name() + " hits with BuffAfterHits " + data.buffAfterHits() + ", which is not modelled");
+    }
     if (data.multipleTargets() >= 3
         || data.multipleTargets() >= 2 && data.uniqueMultipleTargets()
         || data.buffOnDamage() != null

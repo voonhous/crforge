@@ -3,6 +3,7 @@ package org.crforge.core.battle.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
@@ -311,7 +312,12 @@ class BattleRecordsTest {
     assertThat(megaKnight.dashConstantTimeMs()).isEqualTo(800);
     assertThat(megaKnight.jumpHeight()).isEqualTo(3000);
     assertThat(megaKnight.dashToTargetRadius()).isFalse();
-    assertThat(records.unit("GoldenKnight").unmodelledColumns()).containsExactly("DashCount");
+    // The chained dash is listed, and so are its further columns, which nothing reads.
+    assertThat(records.unit("GoldenKnight").unmodelledColumns())
+        .containsExactly("DashCount", "BackDashRadius", "DashSecondaryRange");
+    // The deploy push is read by nothing, so the Mega Knight is refused as it is made.
+    assertThat(megaKnight.unmodelledColumns())
+        .containsExactly("SpawnLimit", "SpawnPushback", "SpawnPushbackRadius");
   }
 
   @Test
@@ -350,7 +356,8 @@ class BattleRecordsTest {
         .containsExactly("OnStartChargingAction");
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).contains("ShieldLostAction");
-    assertThat(records.unit("Tesla").unmodelledColumns()).containsExactly("HidesWhenNotAttacking");
+    assertThat(records.unit("Tesla").unmodelledColumns())
+        .containsExactly("HidesWhenNotAttacking", "HideTimeMs", "UpTimeMs");
     // An elixir collector is modelled: one elixir every 13000 ms; an Elixir Golem's death pays
     // 1000.
     UnitData collector = records.unit("ElixirCollector");
@@ -370,8 +377,14 @@ class BattleRecordsTest {
     assertThat(rider.spawnAttachMaxRotation()).isZero();
     assertThat(rider.flyingHeight()).isEqualTo(4000);
     assertThat(rider.deathInheritIgnoreList()).isTrue();
+    // The listed columns first, then those the row sets that nothing reads, in name order.
     assertThat(records.unit("PhoenixEgg").unmodelledColumns())
-        .containsExactly("DestroyAtLimit", "SpawnCharacterWithDeploy", "SpawnLimit");
+        .containsExactly(
+            "DestroyAtLimit",
+            "SpawnCharacterWithDeploy",
+            "SpawnLimit",
+            "GameTagsToSet",
+            "UntargetableWhenSpawned");
   }
 
   @Test
@@ -483,5 +496,46 @@ class BattleRecordsTest {
     assertThat(records.matchCard("Mirror").omitFromStartingHand()).isTrue();
     assertThat(records.matchCard("Elixir Collector").omitFromStartingHand()).isTrue();
     assertThat(records.globalNumber("MAX_MANA")).isEqualTo(10);
+  }
+
+  @Test
+  @DisplayName(
+      "a column a row sets that nothing reads is not modelled; presentation, inert and pending"
+          + " columns are carried")
+  void everyUnreadColumnIsListed() {
+    BattleRecords records = GameData.records();
+    // Read by nothing: the Electro Giant's reflect, the Fisherman's special, the Suspicious Bush's
+    // invisibility when it does not attack, and the Fisherman's hook's drag.
+    assertThat(records.unit("ElectroGiant").unmodelledColumns())
+        .containsExactly(
+            "ReflectAttackCrownTowerDamage",
+            "ReflectedAttackBuff",
+            "ReflectedAttackBuffDuration",
+            "ReflectedAttackDamage",
+            "ReflectedAttackRadius");
+    assertThat(records.unit("Fisherman").unmodelledColumns())
+        .containsExactly("ProjectileSpecial", "SpecialLoadTime", "SpecialMinRange", "SpecialRange");
+    assertThat(records.unit("SuspiciousBush").unmodelledColumns())
+        .containsExactly("BuffWhenNotAttacking");
+    assertThat(records.projectile("FishermanProjectile").unmodelledColumns())
+        .containsExactly("DragBackAsAttractor", "DragBackSpeed", "DragMargin", "DragSelfSpeed");
+    assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns())
+        .containsExactly("OnHitAction");
+    // Carried: art and effects, inert columns (a Monk's later entries, a collector's ManaOnDeath),
+    // and pending ones (a Hog Rider's sight clips, a Sparky's LoadFirstHit, a tower's turret).
+    for (String unit :
+        List.of(
+            "Knight",
+            "HogRider",
+            "ZapMachine",
+            "Monk",
+            "ElixirCollector",
+            "Bat",
+            "KingTower",
+            "PrincessTower")) {
+      assertThat(records.unit(unit).unmodelledColumns()).as(unit).isEmpty();
+    }
+    assertThat(records.projectile("ArrowsSpell").unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Freeze").unmodelledColumns()).isEmpty();
   }
 }

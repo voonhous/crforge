@@ -49,6 +49,26 @@ class GameTablesTest {
   }
 
   @Test
+  @DisplayName("a tracking view records every column read through it; a plain row tracks nothing")
+  void aTrackingViewRecordsItsReads() throws Exception {
+    GameRow alpha = GameTables.load(folder("synthetic")).table("characters").row("Alpha");
+    GameRow tracked = alpha.tracking();
+    assertThat(tracked.read()).isEmpty();
+
+    assertThat(tracked.intValue("Hitpoints")).isEqualTo(700);
+    tracked.bool("AttacksAir");
+    tracked.string("NoSuchColumn");
+    tracked.strings("Tags");
+    tracked.value("DeployTime");
+
+    assertThat(tracked.read())
+        .as("an absent or empty column read counts too")
+        .containsExactlyInAnyOrder("Hitpoints", "AttacksAir", "NoSuchColumn", "Tags", "DeployTime");
+    assertThat(alpha.tracking().read()).as("each view starts from none").isEmpty();
+    assertThatThrownBy(alpha::read).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
   @DisplayName("the action graph loads by name, with its class and its fields")
   void actions() throws Exception {
     GameTables tables = GameTables.load(folder("synthetic"));
