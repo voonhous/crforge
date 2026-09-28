@@ -314,6 +314,12 @@ class BattleTowerRunTest {
         }
       }
 
+      /** A fallen king's circle kills with no hit of its own: the reference lists the death. */
+      @Override
+      public void circleKilled(int tick, WorldEntity target, int radius) {
+        events.add("%d death %s".formatted(currentTick[0], target.name()));
+      }
+
       @Override
       public void areaHit(
           int tick,

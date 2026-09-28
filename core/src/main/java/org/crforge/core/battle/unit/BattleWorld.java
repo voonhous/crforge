@@ -498,6 +498,23 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * Kills an entity of a fallen king's side that the king's circle reached: its whole hit points,
+   * no attacker, told to every observer as the circle's kill rather than a hit.
+   *
+   * @param target the entity
+   * @param radius the circle's radius
+   */
+  public void circleKill(WorldEntity target, int radius) {
+    DamageResult result = target.takeKill();
+    for (WorldObserver observer : observers) {
+      observer.circleKilled(tick, target, radius);
+    }
+    if (result.died()) {
+      target.die(null);
+    }
+  }
+
   /** Tells every observer a unit asked to push itself back after a launch. */
   void pushbackRequested(
       WorldEntity unit, boolean started, int fromX, int fromY, MovementState pushback) {

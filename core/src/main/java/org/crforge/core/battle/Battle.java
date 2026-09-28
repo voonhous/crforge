@@ -17,8 +17,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <ol>
  *   <li>nothing at all when the mode says the match is over, not even the tick counter;
  *   <li>the clock advances by {@link #STEP_MS};
+ *   <li>the mode's head: where a match just decided is ended;
  *   <li>the due commands, before any entity is visited;
  *   <li>the mode update, and inside it the entity tick, which is handed the current tick;
+ *   <li>the mode's tail: where a match the tick decided is ended;
  *   <li>the tick counter advances.
  * </ol>
  *
@@ -90,12 +92,15 @@ public class Battle {
       return;
     }
     clockMs += STEP_MS;
+    mode.beforeCommands(this);
     executeDueCommands();
-    if (mode.update(this)) {
+    boolean ticked = mode.update(this);
+    if (ticked) {
       holder.tick(tick);
     } else {
       holder.cleanup();
     }
+    mode.afterTick(this, ticked);
     tick++;
   }
 
