@@ -42,8 +42,8 @@ public interface TargetingQueries {
   }
 
   /**
-   * True when the battle holds every attack timer at zero. The standard battle answers false; what
-   * sets the hold is not established.
+   * True when the battle holds every attack timer at zero: once a match has ended. A battle outside
+   * a match answers false.
    */
   default boolean attackTimersHeld() {
     return false;

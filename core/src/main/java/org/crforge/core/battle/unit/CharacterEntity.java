@@ -891,6 +891,15 @@ public class CharacterEntity extends WorldEntity {
   /** A dasher that lost its reference resumes, as the state visit's resume does. */
   @Override
   protected void resumeAfterDrop() {
+    resume();
+  }
+
+  /**
+   * The resume: the state the character should be in now that what held it has ended - moving,
+   * standing, or nothing. A dasher that lost its reference asks for it, and so does a tiebreaker's
+   * clearing before its kill.
+   */
+  void resume() {
     ResumeHelper.resume(getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
   }
 

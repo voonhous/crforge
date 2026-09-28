@@ -40,8 +40,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " head of its step, stamped with the battle's tick counter and run 20 ticks later,"
             + " its placement worked out against every character, live or queued, and its units"
             + " created in formation order, each deploying at once or waiting its turn; played as a"
-            + " Ladder match, the players' hands, elixir, the match clock and its end, held by"
-            + " match_elixir_150s and match_knights_king. Not modelled yet: the tiebreaker.")
+            + " Ladder match, the players' hands, elixir, the match clock, its end and its"
+            + " tiebreaker, held by match_elixir_150s, match_knights_king, match_overtime_tiebreak"
+            + " and match_overtime_draw.")
 public class Standard1v1Battle {
 
   /** The level the reference runs are played at, and the towers' level when none is given. */

@@ -321,6 +321,18 @@ class BattleTowerRunTest {
       }
 
       @Override
+      public void clearingKilled(int tick, WorldEntity target) {
+        events.add("%d death %s".formatted(currentTick[0], target.name()));
+      }
+
+      @Override
+      public void drained(int tick, WorldEntity target, int damage, int hitPoints, boolean died) {
+        if (died) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      @Override
       public void areaHit(
           int tick,
           WorldEntity attacker,

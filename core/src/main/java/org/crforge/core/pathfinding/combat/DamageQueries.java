@@ -32,12 +32,19 @@ public interface DamageQueries {
     return false;
   }
 
-  /** True while the battle holds every damage event, which the bookkeeping refuses to run under. */
+  /**
+   * True while the battle holds every damage event, which the bookkeeping refuses to run under:
+   * from the first step of a Ladder match's tiebreaker on. A kill and the tiebreaker's drain pass
+   * it.
+   */
   default boolean damageHeld() {
     return false;
   }
 
-  /** True once the battle is over, which the subtraction refuses to run under. */
+  /**
+   * True once the battle is over, which the subtraction refuses to run under: from a match's end
+   * on. A kill and the tiebreaker's drain pass it.
+   */
   default boolean battleEnded() {
     return false;
   }

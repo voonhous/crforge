@@ -167,6 +167,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     targeting.setOwner(view);
     targeting.setConfig(targetingConfig);
     this.selection = new SelectionChain(world.getIndex(), targeting, world.getTileMap().height());
+    // A match's end holds every attack timer at zero.
+    selection.setAttackTimersHeld(world::isMatchEnded);
     selection.setHitSink(
         (target, sequenceIndex, extraTargets, last) -> {
           refuseHit();
@@ -389,12 +391,25 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     world.areaDamaged(this, area, outcome);
   }
 
-  /** What the damage chain asks about this entity as a target. */
+  /**
+   * What the damage chain asks about this entity as a target, and about the battle: a match's
+   * tiebreaker holds every hit from its first step, and its end refuses every hit's subtraction.
+   */
   protected DamageQueries damageQueries() {
     return new DamageQueries() {
       @Override
       public boolean crownTowerTarget() {
         return targetView.isCrownTowerTarget();
+      }
+
+      @Override
+      public boolean damageHeld() {
+        return world.isHitsHeld();
+      }
+
+      @Override
+      public boolean battleEnded() {
+        return world.isMatchEnded();
       }
     };
   }
@@ -898,6 +913,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     shieldHit(whole, shieldBefore);
     refreshHitPoints();
 
+    return result;
+  }
+
+  /**
+   * Takes one step of a tiebreaker's drain, which passes the battle's holds.
+   *
+   * @param damage the drain's step
+   * @return what the step did; the death it causes is the battle's to run
+   */
+  DamageResult takeDrain(int damage) {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    int shieldBefore = hitPoints.getShield();
+    DamageResult result = DamageApplication.drain(hitPoints, damage, damageQueries());
+    shieldHit(damage, shieldBefore);
+    refreshHitPoints();
     return result;
   }
 

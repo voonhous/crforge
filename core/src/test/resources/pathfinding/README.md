@@ -344,9 +344,19 @@ Eleven plays run on fixed ticks (`commands`). Side 0's Knight on 20 is refused w
 
 ## `golden/match_knights_king.json` - a match to its end
 
-A Ladder match at level 11 between two decks of eight Knights, both players' words 0. A Knight each on tick 20 meet at the left bridge and both die on 324; side 0 plays waves of three Knights on 340..342 and side 1 on 900..902 (`commands`). PrincessTower_1_1 falls on 700 and KingTower_1_0 on 1220: the match ends there, side 0 the winner with crowns 3 : 0 (`match.end`). From the update of 1221 a circle grows from the fallen king, 800 an update, and takes PrincessTower_1_2 on 1229 at a radius of 7200 (`match.log`, `circle_kill`). The entities are ticked while the end timer runs from 51 to 3951; the update of 1300 takes it to 4001 and only cleans the holder up (holder tick 0 in the trace), and from 1301 the battle runs no step (`stopped_at`). `match.trace` holds every step, the end's fields included.
+A Ladder match at level 11 between two decks of eight Knights, both players' words 0. A Knight each on tick 20 meet at the left bridge and both die on 324; side 0 plays waves of three Knights on 340..342 and side 1 on 900..902 (`commands`). PrincessTower_1_1 falls on 700 and KingTower_1_0 on 1220: the match ends there, side 0 the winner with crowns 3 : 0 (`match.end`). From the update of 1221 a circle grows from the fallen king, 800 an update, and takes PrincessTower_1_2 on 1229 at a radius of 7200 (`match.log`, `circle_kill`). The entities are ticked while the end timer runs from 51 to 3951, with every attack timer held at zero and every ordinary hit refused, so nothing attacks; the update of 1300 takes it to 4001 and only cleans the holder up (holder tick 0 in the trace), and from 1301 the battle runs no step (`stopped_at`). `match.trace` holds every step, the end's fields included.
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, and holds the circle's kills, the end's tick, crowns and winner, and the stop.
+
+## `golden/match_overtime_tiebreak.json` - a tiebreaker decided by a fallen tower
+
+A Ladder match at level 11, side 0's deck eight Knights and side 1's eight Archers, both players' words 0. A Knight and two Archers are played on tick 20 (`commands`); they damage PrincessTower_1_1 and PrincessTower_0_2 by unequal amounts and all three die by 416. The crowns stay 0 : 0: overtime from 3600, and the time is up on 6000 with equal crowns, so the tiebreaker replaces the step from 6001. Its clearing on 6001..6030 finds nothing and runs no update; nothing runs until the step that begins at 3250 ms, 6066, when the drain starts: every tower of both sides takes 50 a step, then 40, 20, 10 and 1 as the lowest tower falls through the bands (`match.log`, `drain`, with the hit points after each step). PrincessTower_1_1, the lower, falls on 6140; the holder is cleaned up, and on 6141 the match ends, side 0 the winner with crowns 1 : 0 (`match.end`). The battle stops on 6221. `match.trace` holds every twentieth step and every step without an entity tick, the tiebreaker's time included.
+
+## `golden/match_overtime_draw.json` - a tiebreaker drawn
+
+A Ladder match at level 11 between two decks of eight Knights with no play. Every tower is whole when the time is up on 6000; the tiebreaker's first drain step on 6066 leaves both sides' lowest towers equal, and on 6067 the match ends a draw (winner -1, crowns 0 : 0). The battle stops on 6147.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs, and holds every drain step, the trace's rows, the end's tick, crowns and winner, and the stop.
 
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 

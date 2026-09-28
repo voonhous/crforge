@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntUnaryOperator;
 import lombok.Getter;
 import lombok.Setter;
@@ -62,6 +63,9 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
 
   /** Where the targeting visit's hits go; the default answers that every hit landed. */
   @Getter @Setter private HitSink hitSink = (target, sequenceIndex, extra, last) -> false;
+
+  /** Whether the battle holds every attack timer at zero; never until the owner says how to ask. */
+  @Setter private BooleanSupplier attackTimersHeld = () -> false;
 
   /** Scales a time step by the owner's buffs; unscaled until the owner says how. */
   @Setter private IntUnaryOperator timeScaler = IntUnaryOperator.identity();
@@ -184,6 +188,11 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
   @Override
   public boolean buildingKeepsAttacking() {
     return buildingKeepsAttacking;
+  }
+
+  @Override
+  public boolean attackTimersHeld() {
+    return attackTimersHeld.getAsBoolean();
   }
 
   @Override

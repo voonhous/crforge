@@ -18,6 +18,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>nothing at all when the mode says the match is over, not even the tick counter;
  *   <li>the clock advances by {@link #STEP_MS};
  *   <li>the mode's head: where a match just decided is ended;
+ *   <li>the mode's own step in place of the rest, when its rules replace the step - the tiebreaker
+ *       of a Ladder match - which then asks for the commands and the update itself;
  *   <li>the due commands, before any entity is visited;
  *   <li>the mode update, and inside it the entity tick, which is handed the current tick;
  *   <li>the mode's tail: where a match the tick decided is ended;
@@ -37,8 +39,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: 50 ms per step as an integer, one command pass before the entity tick, over"
             + " one queue in the order the commands arrived, a late command running at once, the"
             + " tick counter advancing after both, and a finished match skipping the step and the"
-            + " counter; a mode set before the first step, a Ladder match owning the clock. Not"
-            + " modelled: the replay regime that drops a late command.")
+            + " counter; a mode set before the first step, a Ladder match owning the clock, and"
+            + " the mode's own step in place of the rest. Not modelled: the replay regime that"
+            + " drops a late command.")
 public class Battle {
 
   /** Game time one step advances, in milliseconds. */
@@ -93,15 +96,39 @@ public class Battle {
     }
     clockMs += STEP_MS;
     mode.beforeCommands(this);
+    if (mode.replacesStep(this)) {
+      tick++;
+      return;
+    }
     executeDueCommands();
+    boolean ticked = runUpdate();
+    mode.afterTick(this, ticked);
+    tick++;
+  }
+
+  /**
+   * Runs the due commands, as a mode that replaces the step asks for them.
+   *
+   * <p>A step the battle runs itself runs them before the update.
+   */
+  public void runCommands() {
+    executeDueCommands();
+  }
+
+  /**
+   * Runs the mode update and then the entity tick, or only the holder's cleanup when the update
+   * says the entities are not ticked this step.
+   *
+   * @return true when the entities were ticked
+   */
+  public boolean runUpdate() {
     boolean ticked = mode.update(this);
     if (ticked) {
       holder.tick(tick);
     } else {
       holder.cleanup();
     }
-    mode.afterTick(this, ticked);
-    tick++;
+    return ticked;
   }
 
   /**

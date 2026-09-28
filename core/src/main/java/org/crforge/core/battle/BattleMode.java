@@ -7,7 +7,8 @@ package org.crforge.core.battle;
  * <p>The battle asks the mode two questions per step. {@link #isOver()} is asked first, and a
  * finished match freezes the battle entirely: no clock, no entity tick, no tick counter. {@link
  * #update(Battle)} then runs the mode's own sub-steps and says whether the entities are ticked this
- * step; when they are not, the holder is only cleaned up.
+ * step; when they are not, the holder is only cleaned up. A mode may also take a whole step over
+ * ({@link #replacesStep(Battle)}), as a Ladder match's tiebreaker does.
  */
 public interface BattleMode {
 
@@ -41,6 +42,19 @@ public interface BattleMode {
    */
   default void beforeCommands(Battle battle) {
     // No end to reach.
+  }
+
+  /**
+   * Runs the rest of a step in the battle's place, when the mode's rules replace the step: the mode
+   * then asks the battle for the commands ({@link Battle#runCommands()}) and the update with its
+   * entity tick ({@link Battle#runUpdate()}) when and if its rules run them, and the battle only
+   * advances the tick counter afterwards. Asked after {@link #beforeCommands(Battle)}. A mode whose
+   * rules never replace the step answers false.
+   *
+   * @return true when the mode ran the step
+   */
+  default boolean replacesStep(Battle battle) {
+    return false;
   }
 
   /**

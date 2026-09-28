@@ -34,8 +34,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " amount reported, the death test and the clamp to zero. Held by every hit of the"
             + " kill run; a kill as that hit of the whole hit points ignoring the holds, held by"
             + " the worked kills; a typed hit's entry, its refusals, its id listed without a"
-            + " refresh and what it answers. Supplied, not settled: nothing is untouchable or immune, no buff changes"
-            + " the amount and the battle holds nothing. Not modelled: the death handler, the"
+            + " refresh and what it answers; the tiebreaker's drain passing the holds, held by"
+            + " match_overtime_tiebreak. The battle's two holds - the tiebreaker's and the end's -"
+            + " are the battle's answers. Supplied, not settled: nothing is untouchable or immune,"
+            + " no buff changes the amount. Not modelled: the death handler, the"
             + " credit to the attacker, the reflected attack, an absorber, the shield break, a"
             + " target both sides may damage, the presentation and the actions a hit runs on"
             + " arrival.")
@@ -107,6 +109,22 @@ public final class DamageApplication {
    */
   public static DamageResult kill(HitPoints hitPoints, DamageQueries queries) {
     return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true);
+  }
+
+  /**
+   * Deals one step of a tiebreaker's drain: the bookkeeping entered with the flag that passes the
+   * battle's holds, so neither the tiebreaker's hold nor the end refuses it. Only an untouchable
+   * target is spared; the amount takes no modifier and lists no dedupe id.
+   *
+   * @param hitPoints the tower's hit points
+   * @param damage the drain's step
+   * @param queries what the chain asks about the target and the battle
+   */
+  public static DamageResult drain(HitPoints hitPoints, int damage, DamageQueries queries) {
+    if (queries.untouchable()) {
+      return DamageResult.NOTHING;
+    }
+    return subtract(hitPoints, damage, 0, 0, queries, true);
   }
 
   /**
