@@ -43,4 +43,12 @@ public record SpatialQuery(
   public static SpatialQuery targetCandidates(int x, int y, int radius) {
     return new SpatialQuery(x, y, radius, 0, true, false, 0, -1);
   }
+
+  /**
+   * The query each lookup of a hit's extra target makes: the selector's circle test, every type and
+   * every team, but with the king towers left in the index's order.
+   */
+  public static SpatialQuery multiTargetCandidates(int x, int y, int radius) {
+    return new SpatialQuery(x, y, radius, 0, false, false, 0, -1);
+  }
 }

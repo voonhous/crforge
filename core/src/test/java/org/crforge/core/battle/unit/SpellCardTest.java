@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -48,24 +47,6 @@ class SpellCardTest {
     DeployCard heal = GameData.card("Heal");
     assertThat(heal.spell()).isFalse();
     assertThat(heal.unit().name()).isEqualTo("HealSpirit");
-  }
-
-  @Test
-  @DisplayName(
-      "the Electro Wizard's first hit is refused: it hits two targets and stuns them, which is not"
-          + " modelled")
-  void theElectroWizardsHitIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 11, true);
-    match.play(0, GameData.card("Knight"), 11, 1, 3000, 17500, "KnightA");
-    match.play(0, GameData.card("Knight"), 11, 1, 4000, 17500, "KnightB");
-    match.play(110, GameData.card("ElectroWizard"), 11, 0, 3300, 12100, "Wiz");
-    // The reference runs through 141; the wizard's first hit lands on 142.
-    while (match.getBattle().getTick() < 142) {
-      match.getBattle().step();
-    }
-    assertThatThrownBy(() -> match.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("MultipleTargets");
   }
 
   @Test

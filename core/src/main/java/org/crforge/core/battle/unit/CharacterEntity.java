@@ -833,6 +833,9 @@ public class CharacterEntity extends WorldEntity {
         .toBuilder()
         .configKey(data.name())
         .targetOnlyBuildings(data.targetOnlyBuildings())
+        .multipleTargets(data.multipleTargets())
+        .uniqueMultipleTargets(data.uniqueMultipleTargets())
+        .allTargetsHit(data.allTargetsHit())
         .attackSequenceMode(data.attackSequence().mode())
         .attackSequenceLength(data.attackSequence().order().size())
         .hasOnStartingAttackAction(data.onStartingAttackAction() != null)
@@ -1221,21 +1224,29 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Refuses a hit that reaches several targets or, without a projectile, applies a buff to what it
-   * hits: neither is modelled.
+   * Refuses the hits of several targets and the buffs on damage no reference holds: a third target,
+   * whose lookup skips the second's pick; a list of unique targets, which no row sets; and a buff
+   * on damage over an area, which no row with one has. A unit that fires hands its hit to its
+   * projectile, so its own buff on damage is never applied: the Witch Mother's curse comes from her
+   * projectile's target buff.
    */
   @Override
   protected void refuseHit() {
     UnitData data = getData();
-    // A unit that fires hands its hit to its projectile, so its own buff on damage is never
-    // applied: the Witch Mother's curse comes from her projectile's target buff.
-    if (data.multipleTargets() >= 2 || data.buffOnDamage() != null && data.projectile() == null) {
+    if (data.multipleTargets() >= 3
+        || data.multipleTargets() >= 2 && data.uniqueMultipleTargets()
+        || data.buffOnDamage() != null
+            && data.projectile() == null
+            && data.areaDamageRadius() >= 1) {
       throw new UnsupportedOperationException(
           name()
               + " hits with MultipleTargets "
               + data.multipleTargets()
+              + (data.uniqueMultipleTargets() ? " unique" : "")
               + " and BuffOnDamage "
               + data.buffOnDamage()
+              + " over "
+              + data.areaDamageRadius()
               + ", which are not modelled");
     }
   }

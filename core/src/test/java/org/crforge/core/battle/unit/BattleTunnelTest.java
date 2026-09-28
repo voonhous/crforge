@@ -74,6 +74,25 @@ class BattleTunnelTest {
   }
 
   @Test
+  @DisplayName("a hit's buff on damage passes over a tunnelling unit and reaches it surfaced")
+  void aBuffOnDamagePassesItOver() {
+    Standard1v1Battle match = passiveTowers();
+    CharacterEntity miner = playMiner(match);
+    CharacterEntity sparky =
+        match.deploy(
+            1, GameData.unit("MiniZapMachine"), Standard1v1Battle.DEFAULT_LEVEL, 1, 3500, 20000);
+
+    match.getWorld().buffOnDamage(sparky, miner);
+    assertThat(miner.getBuffs().carries("ZapFreeze")).isFalse();
+
+    while (miner.getView().getState() == GridEntityState.SPAWN_PATHFIND) {
+      match.getBattle().step();
+    }
+    match.getWorld().buffOnDamage(sparky, miner);
+    assertThat(miner.getBuffs().carries("ZapFreeze")).isTrue();
+  }
+
+  @Test
   @DisplayName("the damage entry refuses a tunnelling unit")
   void theDamageEntryRefusesIt() {
     Standard1v1Battle match = passiveTowers();

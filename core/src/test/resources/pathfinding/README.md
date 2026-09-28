@@ -483,6 +483,15 @@ The towers fight at level 11. A Goblin Drill is played for side 0 at (3500, 2550
 
 `BattleActionSpawnRunTest` plays it with the spawn runs. The hits the building lands for no damage are listed, as the reference lists every hit it hands the damage entry.
 
+## `golden/electro_wizard_tower_defence.json` and `golden/mini_sparkys_knight.json` - a hit on several targets, and a buff on damage
+
+The towers fight at level 11.
+
+- `electro_wizard_tower_defence`: two side-1 Knights, KnightA placed at (3499, 17499) and KnightB at (4499, 17499), attack PrincessTower_0_1 from 170. On 200 side 0 plays an Electro Wizard behind the tower at (3000, 4000); it is cast at (3500, 4500), where its zap reaches no Knight. The wizard attacks from 232 every 36 ticks, each attack two whole hits of 117 with consecutive hit ids: its target KnightA, then the lookup's pick, KnightB, on 232 and 268. Each hit is followed by ZapFreeze for 500 ms on that Knight, which a later hit refreshes (`buffs`). The tower kills KnightA on 297; from 304 the wizard finds no other target and hits KnightB twice an attack, as its row has AllTargetsHit, until it dies on 412, still taking its ZapFreeze. The wizard then walks to PrincessTower_1_1 and from 599 hits it twice an attack, stunning it nine ticks each time, so the tower's arrows come 25 ticks apart across a stun instead of 16. The wizard dies on 709; the run ends on 716.
+- `mini_sparkys_knight`: a side-1 Knight placed at (3499, 17499); Mini Sparkys played for side 0 at (3500, 9000) on 60, placed at (3499, 9500). Each Sparky hits one target, 117, followed by ZapFreeze for 500 ms. The three hit the Knight on 95, 97 and 99, the second and third refreshing the one instance, so the Knight's combat is off from 95 to 107 and it lands only two hits on Sparkys_0 (120 and 157). It dies on 183. Two Sparkys go on to stun PrincessTower_1_1 from 379 and die to the towers, the last on 534.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs, and holds every buff applied, refreshed and removed.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

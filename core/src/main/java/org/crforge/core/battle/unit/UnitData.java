@@ -131,7 +131,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param jumpSpeed its speed while it jumps, in game units per tick
  * @param kamikaze true for a unit whose hit destroys it
  * @param multipleTargets how many targets one hit reaches, below two for one
+ * @param allTargetsHit true when an extra target the lookup does not find is its reference again
+ * @param uniqueMultipleTargets true when the extra targets are drawn from one list, each hit once
  * @param buffOnDamage the buff its hit applies to what it hits, or null for none
+ * @param buffOnDamageTimeMs how long that buff lasts on what it hits
  * @param dashCooldown the wind-up before a dash, in milliseconds; 0 for a unit that does not dash
  * @param dashMinRange how far beyond its own collision radius a target must be for a dash
  * @param dashMaxRange how far a target may be for a dash
@@ -243,7 +246,10 @@ public record UnitData(
     int jumpSpeed,
     boolean kamikaze,
     int multipleTargets,
+    boolean allTargetsHit,
+    boolean uniqueMultipleTargets,
     String buffOnDamage,
+    int buffOnDamageTimeMs,
     int dashCooldown,
     int dashMinRange,
     int dashMaxRange,
