@@ -394,6 +394,12 @@ The towers fight at level 11. Two side-1 Knights are played at (3500, 22000) and
 
 `BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log. The run lists both Knights' damage before either push; the battle pushes each right after its damage, and the test lists a projectile's pushes after all of its impacts of the tick.
 
+## `golden/witch_mother_skeletons.json` - a curse before the damage, and what it leaves at a death
+
+The towers fight at level 11. A Witch Mother is played for side 0 at (3500, 12000) and Skeletons for side 1 at (3500, 19000), both on tick 0. VoodooProjectile (homing, no radius, ConstantHeight 1000, TargetBuff VoodooCurse, BuffTime 5000, ApplyBuffBeforeDamage) applies the curse to its one target before the damage. Each Skeleton (81 hit points) is killed by the 133 that follows on 31, 51 and 101, and dies carrying the curse (`buffs`: `applied`, then `target_buff`). As its death slot runs, the curse's death spawn makes one VoodooHog in front of it, toward its enemy (`death_spawn`): for side 0, the opponent of the Skeleton's side, at the curse's level, deploying for its DeployTime of 200 and facing the way the Skeleton faced. The hogs are k0_0_0, k0_1_0 and k0_2_0, numbered after the Skeleton that died; each walks four ticks later toward PrincessTower_1_1. The curse on PrincessTower_1_1 from 192 is reached (`target_buff` names it) and refused by the buff, which ignores buildings. The Witch Mother's own BuffOnDamage is never applied: her hit is her projectile's.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log, the hogs' creation in it, and every unit's records.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
