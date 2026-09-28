@@ -66,4 +66,19 @@ public record SpeedConfig(
         chargeSpeedMultiplier,
         ingamePathfindVisible);
   }
+
+  /**
+   * These speeds with a spawn-pathfinding speed, the budget of a unit walking to its placement.
+   *
+   * @param speed the budget in the spawn-pathfinding state
+   */
+  public SpeedConfig withSpawnPathfindSpeed(int speed) {
+    return new SpeedConfig(
+        this.speed,
+        jumpSpeed,
+        speed,
+        ingamePathfindSpeed,
+        chargeSpeedMultiplier,
+        ingamePathfindVisible);
+  }
 }

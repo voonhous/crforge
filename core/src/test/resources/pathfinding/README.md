@@ -471,6 +471,12 @@ The same set-up with a Musketeer placed at (3499, 12500) in place of the Knights
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/miner_princess.json` - a unit that tunnels to its placement
+
+The towers fight at level 11. A Miner is played for side 0 at (3500, 25500), beside the enemy's left princess tower, and placed at (3500, 23500). The play hands it to its tunnel in place of a start: it is moved onto its own king tower at (9000, 3000), aimed at the placed point, and set to the spawn-pathfinding state; its registration visit in the command pass searches its route and takes its first step, to (9144, 3630). It walks at its SpawnPathfindSpeed round the river over the left bridge, hidden: no tower takes it. It surfaces on the point on 33, deploying for 1000 ms, the princess tower locks on it on 34, and it hits the tower for 49 from 62 until it dies on 228.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, holding every position, state and hit.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

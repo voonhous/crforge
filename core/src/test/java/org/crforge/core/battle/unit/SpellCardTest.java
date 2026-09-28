@@ -69,21 +69,6 @@ class SpellCardTest {
   }
 
   @Test
-  @DisplayName("a unit that tunnels to its point from its king tower is refused as it is played")
-  void theMinerIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    match.play(0, GameData.card("Miner"), 11, 0, 3500, 25000, "Miner");
-    assertThatThrownBy(() -> match.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("tunnel");
-    Standard1v1Battle drill = new Standard1v1Battle(GameData.tables());
-    drill.play(0, GameData.card("GoblinDrill"), 11, 0, 3500, 25000, "Drill");
-    assertThatThrownBy(() -> drill.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("tunnel");
-  }
-
-  @Test
   @DisplayName("a spell that summons a character is a troop play")
   void rageIsATroopPlay() {
     DeployCard rage = GameData.card("Rage");

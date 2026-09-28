@@ -491,8 +491,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             entities,
             area,
             ValidatorQueries.standard1v1(),
-            (victim, dealt, id) ->
-                world.dealAreaDamage(this, world.entityOf(victim.getEntity()), dealt, id));
+            new AreaDamage.Queries() {
+              @Override
+              public boolean untouchable(TargetView victim) {
+                return world.entityOf(victim.getEntity()).passedBy(false);
+              }
+
+              @Override
+              public DamageResult damage(TargetView victim, int dealt, int id) {
+                return world.dealAreaDamage(
+                    WorldEntity.this, world.entityOf(victim.getEntity()), dealt, id);
+              }
+            });
     world.areaDamaged(this, area, outcome);
   }
 
@@ -510,6 +520,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public boolean damageHeld() {
         return world.isHitsHeld();
+      }
+
+      // The damage entry refuses a hidden entity.
+      @Override
+      public boolean untouchable() {
+        return hidden();
       }
 
       @Override
@@ -563,6 +579,31 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     gateStunned = stunned;
     setActive(GATED_SLOT, on);
+  }
+
+  /**
+   * Whether the entity is hidden: no attacker takes it, the damage entry refuses it, and every hit,
+   * area and buff passes it by but an area effect's that reaches hidden units. A tower never hides.
+   */
+  public boolean hidden() {
+    return false;
+  }
+
+  /**
+   * Whether an area or a buff passes the entity by: while it is hidden, unless it comes from an
+   * area effect that reaches hidden units, which the battle does not model and refuses.
+   *
+   * @param reachesHidden true for an area effect's that reaches hidden units
+   */
+  public boolean passedBy(boolean reachesHidden) {
+    if (!hidden()) {
+      return false;
+    }
+    if (reachesHidden) {
+      throw new UnsupportedOperationException(
+          "an area effect that reaches hidden units reaches " + name() + ", which is not modelled");
+    }
+    return true;
   }
 
   /** Whether the entity's ability keeps its target while it casts; a tower has no ability. */

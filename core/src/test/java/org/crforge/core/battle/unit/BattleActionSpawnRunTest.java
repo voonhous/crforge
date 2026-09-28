@@ -164,7 +164,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * battle's target locks, casts its ability for eighteen ticks, and fires a projectile at each,
  * whose impact enchants the Knight, so every third hit either lands on the princess tower carries
  * the added damage. The looping effect the enchantment chooses only shows something; the reference
- * leaves such rows out of its runs, and so does the log here.
+ * leaves such rows out of its runs, and so does the log here. {@code miner_princess} plays a Miner
+ * that tunnels from its king tower to a point beside the enemy's princess tower, hidden from the
+ * tower until it surfaces there.
  */
 class BattleActionSpawnRunTest {
 
@@ -247,7 +249,8 @@ class BattleActionSpawnRunTest {
         "moving_cannon_left",
         "furnace_left",
         "giant_buffer_knights",
-        "giant_buffer_musketeer"
+        "giant_buffer_musketeer",
+        "miner_princess"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
