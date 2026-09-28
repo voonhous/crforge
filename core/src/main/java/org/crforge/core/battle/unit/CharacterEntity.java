@@ -555,9 +555,14 @@ public class CharacterEntity extends WorldEntity {
    * it, and is then stored again through the setter, which prepares its route; a target given up
    * leaves the attack timing as it was. The new row's starting action does not run.
    *
-   * <p>Refused rather than guessed: a building or a flying row either side, a swap that builds or
-   * frees the movement component, a row with a lifetime, a different rarity or deploy time, and a
-   * champion. A shield keeps its value, its maximum taken from the new row.
+   * <p>A walking unit may take a building row without a speed that drains over a lifetime, as the
+   * Moving Cannon breaks down: its movement component is freed, it counts as a building, and its
+   * hit points drain over the new row's lifetime from its next hit-points visit, what the drain
+   * carried kept.
+   *
+   * <p>Refused rather than guessed: any other building row, a flying row either side, any other
+   * swap that builds or frees the movement component or reaches a lifetime, a different rarity or
+   * deploy time, and a champion. A shield keeps its value, its maximum taken from the new row.
    *
    * @param rowName the name of the new character row
    * @param resetTarget true to give up the target rather than keep it
@@ -568,7 +573,22 @@ public class CharacterEntity extends WorldEntity {
     refuseSwap(next);
     TargetingState targeting = getTargeting();
     TargetView target = isActive(TARGETING_SLOT) ? targeting.getReference() : null;
+    boolean becomesBuilding = !getData().building() && next.building();
     swapRow(next);
+    if (becomesBuilding) {
+      // A walking unit that takes a building row without a speed: its movement component is
+      // freed, and its hit points drain over the new row's lifetime from the next hit-points
+      // visit, what the old drain carried kept. It keeps its state, position, lane and level.
+      getHitPoints()
+          .setDecayStep(HitPoints.decayStep(getHitPoints().getMaximum(), next.lifeTimeMs()));
+      detach(MOVEMENT_SLOT);
+      targeting.setMovementComponentActive(false);
+      getView().setMovementComponent(false);
+      getView().setMovementActive(false);
+      // Everything that asks whether it is a building reads the new row from here on.
+      getView().setBuilding(true);
+      getView().setOccludes(true);
+    }
     // The targeting component hears of the swap first: its reference is cleared as it stands.
     targeting.setReference(null);
     targeting.setKeptByPendingDamageCheck(false);
@@ -600,12 +620,21 @@ public class CharacterEntity extends WorldEntity {
   /** Refuses a swap whose effect is not established. */
   private void refuseSwap(UnitData next) {
     UnitData current = getData();
+    // A walking unit may take a building row that stands still and drains over a lifetime, as the
+    // Moving Cannon breaks into its broken cannon; no other swap to a building is established.
+    boolean breaksDown =
+        !current.building()
+            && current.speed() != 0
+            && current.lifeTimeMs() == 0
+            && next.building()
+            && next.speed() == 0
+            && next.lifeTimeMs() > 0;
     String refused = null;
-    if (next.air() || next.building() || current.building()) {
+    if (next.air() || current.air() || current.building() || next.building() && !breaksDown) {
       refused = "a building or a flying row";
-    } else if ((current.speed() == 0) != (next.speed() == 0)) {
+    } else if (!breaksDown && (current.speed() == 0) != (next.speed() == 0)) {
       refused = "a movement component built or freed";
-    } else if (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0) {
+    } else if (!breaksDown && (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0)) {
       refused = "a lifetime";
     } else if (current.spawnCharacter() != null || next.spawnCharacter() != null) {
       refused = "a spawner";

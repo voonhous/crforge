@@ -89,8 +89,9 @@ class BattleCardPlayTest {
   }
 
   @Test
-  @DisplayName("a card whose unit has a starting action is refused, its start by a play not held")
-  void aUnitWithAStartingActionIsRefused() {
+  @DisplayName(
+      "a played unit is started, and a starting action the battle does not have is refused")
+  void aUnitWithAnUnknownStartingActionIsRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.play(
         0, GameData.card("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
@@ -102,6 +103,7 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("starting action");
+        // The Giant Buffer's collect is not composed.
+        .hasMessageContaining("ActionGiantBufferCollectFriends");
   }
 }

@@ -79,6 +79,18 @@ public abstract class BattleEntity {
     activeBits |= 1 << index;
   }
 
+  /**
+   * Frees the component in a slot, leaving its active bit as it was: every reader tests the slot
+   * first, so the component is never visited again.
+   *
+   * @param index the slot
+   */
+  protected void detach(int index) {
+    checkArgument(
+        index >= 0 && index < COMPONENT_SLOTS, () -> "component index out of range: " + index);
+    components[index] = null;
+  }
+
   /** The component in a slot, or null when the slot is empty. */
   public BattleComponent component(int index) {
     return index >= 0 && index < COMPONENT_SLOTS ? components[index] : null;

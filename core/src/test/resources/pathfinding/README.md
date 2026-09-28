@@ -447,6 +447,18 @@ The towers fight at level 11 in each. A Kamikaze row's hit ends in the unit kill
 
 `BattleActionSpawnRunTest` plays them with the spawn runs; the events list every self-kill with its death, and the buff log holds the Ice Spirit's freeze.
 
+## `golden/moving_cannon_left.json` - a card play's starting action and a swap into a building
+
+The towers fight at level 11. A Moving Cannon is played for side 0 at (3500, 10000) and placed at (3499, 10500). The play starts it: its OnStartingAction, MovingCannon_trigger_at_health (a run-action-at-health over three rows at 50 per cent), runs in its phase-1 pass of tick 0 (`actions`: `start`, `run`) and steps in every run pass after. It walks up the left lane and fires at PrincessTower_1_1. The tower's arrow of 275 leaves it 828 of 1809; the run pass of 276 finds it at half its hit points and schedules the three rows, which run in its phase-2 pass of 276: the swap into BrokenCannon (`change_data`), then a sound and an effect. The swap keeps its 828 hit points, its maximum 1809, its state and its target, frees its movement component and starts its drain over BrokenCannon's LifeTime of 30000, 301 hundredths a visit. It fires on every 18 ticks, the next shot from BrokenCannon's lower start, 12 hits of 212 on the tower in all, and dies of the drain on 371 (`building_log`: `decay_death`).
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, holding its action runs and its building log.
+
+## `golden/furnace_left.json` - a walking unit's interval that spawns
+
+The towers fight at level 11. A Furnace (card FirespiritHut, unit Furnace_rework: a walking troop with its own projectile) is played for side 0 at (3500, 10000) and placed at (3499, 10500). The play starts its interval, Furnace_rework_continuous_spawn, in its phase-1 pass of tick 0; it fires on 38 and every 140 steps after while the Furnace lives. Each firing spawns one Fire Spirit 1500 ahead of where the Furnace stands, deploying for 500 ms with the first-tick immunity, and the spawn row's action runs on the spirit at once (`run Furnace_0_0 Furnace_rework_spawning_effect`). The spirits, Furnace_0_0 on 38 and Furnace_0_1 on 178, each launch and kill themselves, on 122 and 210, and their projectiles land. The Furnace shoots on 154, 188 and 222 and dies on 252, before a third firing.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, holding every run of the Furnace's and the spirits' actions.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
