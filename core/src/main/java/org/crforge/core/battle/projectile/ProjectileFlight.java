@@ -59,7 +59,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the chain by arrows_skeletons; a flying body's pass after every step, and the"
             + " projectile the impact spawns beyond the aim, by log_goblins and"
             + " barb_barrel_knight, the pass at the arrival held by no run; the limited-time homing"
-            + " re-aim by elite_archer_knight, and the landing at the constant height by"
+            + " re-aim by elite_archer_knight, the spawned fan by firecracker_knight, and the landing at the constant height by"
             + " royal_giant_tower; the target buff on the circle after the damage by"
             + " snowball_knights, and on the one target before it by witch_mother_skeletons, after"
             + " it by electro_dragon_knights, whose chained hop is held there too; the"
@@ -217,9 +217,9 @@ final class ProjectileFlight {
     if (data.spawnCharacterCount() >= 1) {
       world.impactSpawn(p, px, py);
     }
-    // The projectile it spawns flies on beyond the aim, along the line it came.
+    // The projectiles it spawns fly on beyond the aim, fanned about the line it came.
     if (data.spawnProjectile() != null && p.getSpawnChain() >= 1) {
-      world.impactProjectile(p, 2 * p.getAimX() - p.getStartX(), 2 * p.getAimY() - p.getStartY());
+      world.impactProjectile(p);
     }
     // A hopping projectile under its count hops on to the nearest character it may hit; at its
     // count, or with nobody in reach, it stays released.

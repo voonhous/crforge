@@ -1391,17 +1391,18 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The projectile another one's impact launches: from the parent's position at the height the
-   * parent aimed at, aimed beyond the parent's aim along the line it came, at the parent's level,
-   * with the parent's root. It is handed to the holder, which admits it at the next cleanup, and a
-   * projectile that flies to a point runs its first pass at once, its body widened by the row's
-   * start radius: a pass no run finds anyone in.
+   * The projectiles another one's impact launches: as many as the spawned row's spawn count, at
+   * least one, in a fan. Each starts from the parent's position at the height the parent aimed at,
+   * aimed beyond the parent's aim along the line it came, that line turned by the spawned row's
+   * spawn radius, taken as degrees, times the projectile's step in the fan over the count - the
+   * steps running from minus half the count up by one - at the parent's level, with the parent's
+   * root. Each is handed to the holder, which admits it at the next cleanup, and one that flies to
+   * a point runs its first pass at once, its body widened by the row's start radius, before the
+   * next is made.
    *
    * @param parent the projectile that landed
-   * @param hx the point beyond the parent's aim, along the width
-   * @param hy the point beyond the parent's aim, along the length
    */
-  public void impactProjectile(ProjectileEntity parent, int hx, int hy) {
+  public void impactProjectile(ProjectileEntity parent) {
     ProjectileData data = records.projectile(parent.getData().spawnProjectile());
     if (!data.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
@@ -1411,11 +1412,19 @@ public class BattleWorld implements HolderPasses {
               + ", which sets columns its flight does not model: "
               + data.unmodelledColumns());
     }
-    ProjectileEntity projectile = new ProjectileEntity(this, data, parent.side());
-    projectile.launchSpawned(parent, hx, hy);
-    holder.add(projectile);
-    if (data.homingLike()) {
-      cellPass(projectile, projectile.getX(), projectile.getY(), data.projectileStartExtraRadius());
+    int fan = Math.max(data.spawnCount(), 1);
+    int step = -(fan >>> 1);
+    for (int k = 0; k < fan; k++) {
+      int[] vec = {parent.getAimX() - parent.getStartX(), parent.getAimY() - parent.getStartY()};
+      FixedMath.rotate1024(vec, data.spawnRadius() * step / fan);
+      ProjectileEntity projectile = new ProjectileEntity(this, data, parent.side());
+      projectile.launchSpawned(parent, vec[0] + parent.getAimX(), vec[1] + parent.getAimY());
+      holder.add(projectile);
+      if (data.homingLike()) {
+        cellPass(
+            projectile, projectile.getX(), projectile.getY(), data.projectileStartExtraRadius());
+      }
+      step++;
     }
   }
 
