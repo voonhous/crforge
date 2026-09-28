@@ -19,9 +19,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>The order is the point of this class. One tick is:
  *
  * <ol>
- *   <li>cleanup: drop removable entities, telling every remaining entity and the holder's passes of
- *       each removal, round after round until a round drops nothing, then admit the entities added
- *       since the last cleanup;
+ *   <li>cleanup: drop the removable entities of the live list, telling every remaining entity and
+ *       the holder's passes of each removal, round after round until a round drops nothing, then
+ *       admit the entities added since the last cleanup, whatever they have come to;
  *   <li>take a snapshot of the live list, which every entity loop below runs over;
  *   <li>the holder pre-pass;
  *   <li>every entity's pre-hook;
@@ -54,7 +54,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " is told of a removal inside the cleanup that removes it, the entities handed over"
             + " that tick before the live list, so a reference to a dead entity is dropped before"
             + " the next visit; that the cleanup's removals repeat until a round removes nothing,"
-            + " so a rider let go by its parent leaves in the same cleanup; and that an entity"
+            + " so a rider let go by its parent leaves in the same cleanup, and walk the live list"
+            + " alone, so an entity handed over spent is admitted and leaves at the next, held by"
+            + " goblin_drill_princess; and that an entity"
             + " killed during a tick is visited by the rest of it, less the components its death"
             + " switches off. Not settled: whether the removed entity is"
             + " told of its own removal, and whether anything reorders the live list between"
@@ -140,10 +142,12 @@ public class EntityHolder {
   }
 
   /**
-   * Drops every removable entity from both lists, telling every entity still listed and the passes
+   * Drops every removable entity of the live list, telling every entity still listed and the passes
    * of each removal in turn, then folds the pending additions into the live list, which stays
    * sorted by id: an entity of a lower kind lands ahead of every entity of a higher one however
-   * late it arrived. The admitted entities are told of their registration in ascending id.
+   * late it arrived. The admitted entities are told of their registration in ascending id. One
+   * handed over already removable, such as an area object spent in the update that made it, is
+   * admitted all the same and leaves at the next cleanup.
    */
   public void cleanup() {
     // A removal can make another entity removable - a rider let go by its parent - so the rounds
@@ -165,10 +169,10 @@ public class EntityHolder {
   }
 
   /**
-   * One round of the cleanup's removals: every removable entity leaves both lists, and every entity
-   * still listed hears of each in turn. The entities handed over this tick hear of it first, then
-   * the live list, so a projectile launched on the tick its target dies loses the target in the
-   * same cleanup. Each entity's components hear first, then its action holder drops what the
+   * One round of the cleanup's removals: every removable entity leaves the live list, and every
+   * entity still listed hears of each in turn. The entities handed over this tick hear of it first,
+   * then the live list, so a projectile launched on the tick its target dies loses the target in
+   * the same cleanup. Each entity's components hear first, then its action holder drops what the
    * leaving entity caused and still waits, then an entity attached to it is let go; the side lists
    * and the level re-read come after all of them. Each notice goes to the entities listed as it
    * starts, so a child a notice makes does not hear of it.
@@ -176,9 +180,10 @@ public class EntityHolder {
    * @return true when the round removed anything
    */
   private boolean removalRound() {
+    // Only the live list is walked: an entity handed over this tick is admitted first, whatever
+    // it has come to, and leaves at a later cleanup.
     List<BattleEntity> removed = new ArrayList<>();
     drainRemovable(live, removed);
-    drainRemovable(pendingAdditions, removed);
     for (BattleEntity gone : removed) {
       List<BattleEntity> listed = new ArrayList<>(pendingAdditions);
       listed.addAll(live);

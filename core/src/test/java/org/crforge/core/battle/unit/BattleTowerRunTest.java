@@ -302,7 +302,9 @@ class BattleTowerRunTest {
     return new WorldObserver() {
       @Override
       public void damageDealt(int tick, WorldEntity target, int damage, DamageResult result) {
-        if (currentTick[0] < 0 || !result.landed()) {
+        // The reference lists every hit handed to the damage entry, one of no damage as well,
+        // which the entry refuses at once, as a building without damage lands its attacks.
+        if (currentTick[0] < 0 || !result.landed() && damage >= 1) {
           return;
         }
         events.add(

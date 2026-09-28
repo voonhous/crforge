@@ -202,6 +202,32 @@ class EntityHolderTest {
 
   @Test
   @DisplayName(
+      "an entity handed over already removable is admitted by the cleanup, and leaves at the next")
+  void aRemovableNewcomerIsAdmittedFirst() {
+    EntityHolder holder = new EntityHolder(HolderPasses.NONE);
+    RecordingEntity first = new RecordingEntity("a");
+    RecordingEntity spent = new RecordingEntity("spent");
+    spent.removable = true;
+    first.duringPostHook = () -> holder.add(spent);
+    holder.add(first);
+
+    holder.tick(0);
+
+    // The closing cleanup removes from the live list only, so it is admitted as it stands.
+    assertThat(holder.entities()).containsExactly(first, spent);
+    assertThat(log).contains("spent registered as 5000001");
+
+    first.duringPostHook = () -> {};
+    log.clear();
+    holder.tick(1);
+
+    // The opening cleanup of the next tick removes it, before any of its hooks.
+    assertThat(holder.entities()).containsExactly(first);
+    assertThat(log).doesNotContain("spent preHook");
+  }
+
+  @Test
+  @DisplayName(
       "an entity that becomes removable is visited to the end of its tick and then dropped")
   void removalWaitsForTheCleanup() {
     EntityHolder holder = new EntityHolder(HolderPasses.NONE);

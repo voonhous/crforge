@@ -27,6 +27,7 @@ import org.crforge.core.pathfinding.GridStateSetter;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.CellTests;
@@ -383,13 +384,15 @@ public class CharacterEntity extends WorldEntity {
                 .withCharge(data.chargeRange())
                 .withJump(data.jumpEnabled(), data.jumpHeight())
                 .withDashConstantTime(data.dashConstantTimeMs())
-                .withSpawnPathfindSpeed(data.spawnPathfindSpeed()),
+                .withSpawnPathfindSpeed(data.spawnPathfindSpeed())
+                .withEntersWaterWhileSpawnPathfinding(data.spawnPathfindMorph() != null),
             SpeedConfig.forGroundUnit(data.speed())
                 .withChargeMultiplier(data.chargeSpeedMultiplier())
                 .withJumpSpeed(data.jumpSpeed())
                 .withSpawnPathfindSpeed(data.spawnPathfindSpeed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs())
-                .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs()),
+                .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs())
+                .withSpawnPathfindMorph(data.spawnPathfindMorph() != null),
             getSelection(),
             getTargetView());
     this.setter =
@@ -410,6 +413,11 @@ public class CharacterEntity extends WorldEntity {
               data.ability().triggerDelayMs(),
               false,
               this::stateTailGate));
+    }
+    // A row with an area object makes it each time it enters the deploying state through its
+    // setter.
+    if (data.spawnAreaObject() != null) {
+      setter.setDeployingEntry(() -> world.spawnAreaObject(this));
     }
     // The movement component starts tracking a charge for a row with a charge range.
     if (data.chargeRange() != 0) {
@@ -1094,7 +1102,73 @@ public class CharacterEntity extends WorldEntity {
   /** The state visit's removal request, or the release by a parent that left. */
   @Override
   protected boolean removalRequested() {
-    return released || unit.timers().isRemovalRequested();
+    return released || morphed || unit.timers().isRemovalRequested();
+  }
+
+  /** True once it has been morphed into another object, which removes it at the next cleanup. */
+  private boolean morphed;
+
+  /** Marks the character morphed into another object: it leaves at the closing cleanup. */
+  void morphedAway() {
+    morphed = true;
+  }
+
+  /**
+   * Makes the object a surfaced unit morphs into: on its point, at its level and in its lane, in
+   * the state its row is made in - a building stands, with no deploy time yet - with the unit's
+   * share of its hit points, and, for a building, facing as the unit did. Refused rather than
+   * guessed: a unit that rides on another, one that carries buffs, one out of the deploying and
+   * waiting states, a row of another rarity, and a morph into anything but a building.
+   *
+   * @param old the unit that surfaced
+   * @param data the row it morphs into
+   * @return the new object, not yet handed to the holder
+   */
+  static CharacterEntity morphedFrom(CharacterEntity old, UnitData data) {
+    GridEntity from = old.getView();
+    String refused = null;
+    if (old.parent != null) {
+      refused = "a unit that rides on another";
+    } else if (!old.getBuffs().items().isEmpty()) {
+      refused = "a unit carrying buffs, which the new object would copy";
+    } else if (from.getState() != GridEntityState.DEPLOYING
+        && from.getState() != GridEntityState.WAITING_TO_DEPLOY) {
+      refused = "a unit out of the deploying and waiting states";
+    } else if (old.getData().rarity() != data.rarity()) {
+      refused = "a row of another rarity";
+    } else if (!data.building()) {
+      refused = "a morph into a character";
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(
+          old.name() + " morphing into " + data.name() + " asks for " + refused + ", not modelled");
+    }
+    CharacterEntity made =
+        new CharacterEntity(
+            old.world,
+            data,
+            old.name() + "_" + data.name(),
+            old.side(),
+            from.getX(),
+            from.getY(),
+            PackedLevel.level(old.getPackedLevel()),
+            from.getLane(),
+            -1);
+    GridEntity view = made.getView();
+    view.setState(GridEntityState.STANDING);
+    view.setDeployCountdown(0);
+    view.setDirX(from.getDirX());
+    view.setDirY(from.getDirY());
+    made.takeHitPointShare(old);
+    return made;
+  }
+
+  /**
+   * Sets a morph's new object deploying through its setter, as the morph sets it to the unit's
+   * state: the entry seeds its deploy time and makes its row's area object.
+   */
+  void startDeployingAfterMorph() {
+    setter.setState(getView(), GridEntityState.DEPLOYING);
   }
 
   /** True while the character waits its turn to deploy: none of its components is visited. */
@@ -1253,6 +1327,10 @@ public class CharacterEntity extends WorldEntity {
     }
     if (calls.contains("elixir")) {
       collectElixir();
+    }
+    // A unit that surfaced morphs into its row's morph, which is made, queued and deploying.
+    if (calls.contains("spawn_pathfind_morph")) {
+      world.morph(this);
     }
     if (calls.contains("spawner")) {
       spawner();

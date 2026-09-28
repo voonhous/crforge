@@ -110,14 +110,59 @@ class BattleTunnelTest {
   }
 
   @Test
-  @DisplayName("a tunnelling unit that morphs as it surfaces is refused, as the Goblin Drill's dig")
-  void aSurfacingMorphIsRefused() {
+  @DisplayName(
+      "a dig that surfaces morphs into its building, deploying, with the dig's share of hit points,"
+          + " whose entry makes its area object at once")
+  void theDigMorphsIntoItsBuilding() {
     Standard1v1Battle match = passiveTowers();
+    List<String> made = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void morphed(int tick, CharacterEntity old, CharacterEntity building) {
+                made.add(
+                    old.name()
+                        + " "
+                        + building.name()
+                        + " "
+                        + building.getView().getState()
+                        + " "
+                        + building.getView().getDeployCountdown()
+                        + " "
+                        + building.getHitPoints().getHitPoints()
+                        + " facing "
+                        + building.getView().getDirX()
+                        + " "
+                        + building.getView().getDirY());
+              }
+
+              @Override
+              public void areaEffectCreated(
+                  int tick, AreaEffectEntity areaEffect, String how, String source) {
+                made.add(how + " " + source);
+              }
+            });
     match.play(
         0, GameData.card("GoblinDrill"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 25500, "Drill");
+    CharacterEntity dig = null;
+    for (int step = 0; step < 100 && made.isEmpty(); step++) {
+      match.getBattle().step();
+      if (dig == null) {
+        dig = match.getPlays().get(0).units().get(0);
+      }
+    }
 
-    assertThatThrownBy(() -> match.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SpawnPathfindMorph");
+    // The area object is made inside the entry, before the morph is told; the building's
+    // registration visit took one LifeTime step off its 1313 before it was set deploying.
+    assertThat(made)
+        .containsExactly(
+            "spawn_area_object Drill_0_GoblinDrill",
+            // A building faces as the dig did as it surfaced: up its side's length.
+            "Drill_0 Drill_0_GoblinDrill 4 1000 1307 facing 0 256");
+    assertThat(dig.getView().getX()).as("on the searched corner").isEqualTo(1000);
+    match.getBattle().step();
+    assertThat(match.getBattle().getHolder().entities()).doesNotContain(dig);
   }
 }

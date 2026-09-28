@@ -57,6 +57,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param flyingHeight how high the unit flies; 0 for a ground unit
  * @param spawnPathfindSpeed the speed of a unit that walks to its placement; 0 for one placed at
  *     once
+ * @param spawnPathfindMorph the row a unit that walks to its placement morphs into as it arrives,
+ *     or null for none
+ * @param spawnAreaObject the area effect the unit makes each time it enters the deploying state
+ *     through its setter, or null for none
  * @param tileSizeOverride the tiles a building's footprint spans, when not derived from its
  *     collision radius; 0 for none
  * @param noDeploySizeW the width, in tiles, of the box around a building that the other side may
@@ -184,6 +188,8 @@ public record UnitData(
     int spawnAngleShift,
     int flyingHeight,
     int spawnPathfindSpeed,
+    String spawnPathfindMorph,
+    String spawnAreaObject,
     int tileSizeOverride,
     int noDeploySizeW,
     int noDeploySizeH,

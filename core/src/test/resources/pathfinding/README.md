@@ -477,6 +477,12 @@ The towers fight at level 11. A Miner is played for side 0 at (3500, 25500), bes
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, holding every position, state and hit.
 
+## `golden/goblin_drill_princess.json` - a tunnel that morphs into a building
+
+The towers fight at level 11. A Goblin Drill is played for side 0 at (3500, 25500). Its search is for the building its dig morphs into, a 2 x 2 footprint on a tile corner, which places it at (1000, 26000). The dig, GoblinDrillDig, is handed to its tunnel as the Miner is, first step (9094, 3284), and walks at 300. It surfaces on 86 and morphs there into the building GoblinDrill, Drill_0_GoblinDrill: made standing with the dig's share of the hit points (1313), its registration visit takes PrincessTower_1_1 as its target (its lock on 86) and one LifeTime step (1307); then it is set deploying for 1000 ms, and that entry makes GoblinDrillDamage at its point and updates it at once: the tower takes 26, the crown-tower share of its 84. The spent area is admitted at that tick's closing cleanup and leaves at the next opening cleanup, on 87. The tower locks on the building on 87. The building attacks for no damage from 123 every 1100 ms, makes a Goblin on 125 and 185, and falls to the tower on 202, leaving two Goblins; the tower locks on each Goblin in turn and the last dies on 361.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs. The hits the building lands for no damage are listed, as the reference lists every hit it hands the damage entry.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

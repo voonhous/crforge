@@ -178,6 +178,13 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
+   * Runs its update at once, as a unit's entry into deploying does for the area object it makes.
+   */
+  void updateAtOnce() {
+    postHook();
+  }
+
+  /**
    * The update: the countdown and the hits of the step, told to the observers first; then, on the
    * first update, the area effect its row chains; then each hit, its damage and its buff; then the
    * life-end action.

@@ -216,4 +216,31 @@ public record MovementConfig(
         ingamePathfindSpeed,
         entersWaterWhileSpawnPathfinding);
   }
+
+  /**
+   * This configuration with the water let through while spawn pathfinding, as a unit that morphs as
+   * it surfaces is.
+   *
+   * @param enters true to let the grid move enter water in the spawn-pathfinding state
+   */
+  public MovementConfig withEntersWaterWhileSpawnPathfinding(boolean enters) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        enters);
+  }
 }

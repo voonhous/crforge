@@ -680,6 +680,19 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */
+  /**
+   * Takes its share of another object's hit points, as a morph gives it: the other's hit points
+   * times this maximum over the other's, rounded toward zero.
+   *
+   * @param from the object it replaces
+   */
+  void takeHitPointShare(WorldEntity from) {
+    HitPoints old = from.getHitPoints();
+    long share = (long) old.getHitPoints() * hitPoints.getMaximum() / old.getMaximum();
+    hitPoints.setHitPoints((int) share);
+    refreshHitPoints();
+  }
+
   private void refreshHitPoints() {
     view.setAlive(HitPoints.alive(hitPoints));
     targetView.setHitPoints(hitPoints == null ? 0 : hitPoints.getHitPoints());
