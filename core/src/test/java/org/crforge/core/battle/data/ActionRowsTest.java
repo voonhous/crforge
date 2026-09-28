@@ -166,11 +166,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 506 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 518 are built; the
     // rest are refused for their class, a column the battle does not model or a spawn type other
     // than characters.
-    assertThat(built).as("rows built").isEqualTo(506);
+    assertThat(built).as("rows built").isEqualTo(518);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 193, "column", 38, "spawn type", 209));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 181, "column", 38, "spawn type", 209));
   }
 }

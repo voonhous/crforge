@@ -80,6 +80,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     the whole sweep; 0 for one that flies once to its aim
  * @param randomDelayMs the bound of the random wait a unit's launch gives the projectile before it
  *     flies; 0 for none
+ * @param onHitTargetAction the action row its impact schedules on its target, with the projectile
+ *     as the cause, before the hit lands; null for none
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -138,6 +140,7 @@ public record ProjectileData(
     int chainedHitCount,
     int pingpongVisualTimeMs,
     int randomDelayMs,
+    String onHitTargetAction,
     List<String> unmodelledColumns) {
 
   public ProjectileData {

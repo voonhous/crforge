@@ -8,6 +8,7 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -381,6 +382,32 @@ class BattleRecordsTest {
     assertThat(records.unit("SkeletonKing").champion()).isTrue();
     assertThat(records.unit("GiantBuffer").champion()).isFalse();
     assertThat(records.unit("Knight").champion()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "an ability carries its cast, its trigger, the target it keeps and its inline activation"
+          + " action, and lists the effects the battle does not model")
+  void ability() {
+    AbilityData buffer = records.unit("GiantBuffer").ability();
+    assertThat(buffer.name()).isEqualTo("giantbuffer_ability");
+    assertThat(buffer.castTimeMs()).isEqualTo(933);
+    assertThat(buffer.triggerDelayMs()).isEqualTo(50);
+    assertThat(buffer.keepCurrentTarget()).isTrue();
+    assertThat(buffer.champion()).isFalse();
+    // Written inline, it is the actions table's row named after the ability and the column.
+    assertThat(buffer.onActivationAction()).isEqualTo("giantbuffer_ability_OnActivationAction");
+    assertThat(buffer.unmodelledColumns()).isEmpty();
+    assertThat(records.unit("ArcherQueen").ability().unmodelledColumns()).isNotEmpty();
+    assertThat(records.unit("Knight").ability()).isNull();
+  }
+
+  @Test
+  @DisplayName("a projectile carries the action its impact schedules on its target")
+  void onHitTargetAction() {
+    assertThat(records.projectile("GiantBuffProjectile").onHitTargetAction())
+        .isEqualTo("GiantBuffProjectile_OnHitTargetAction");
+    assertThat(records.projectile("MusketeerProjectile").onHitTargetAction()).isNull();
   }
 
   @Test

@@ -8,8 +8,10 @@ import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.unit.BattleWorld;
@@ -19,6 +21,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -616,6 +619,28 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     return actionHolder;
   }
 
+  /**
+   * The damage of the projectile's impact as the enchanting copies it carries change it, from the
+   * last listed down; unchanged without one.
+   *
+   * @param damage the damage so far
+   * @param hitId the impact's hit id
+   * @param crownTower true for the crown-tower damage
+   */
+  int listenedDamage(int damage, int hitId, boolean crownTower) {
+    if (actionHolder == null) {
+      return damage;
+    }
+    List<ActionInstance> runs = actionHolder.running();
+    int out = damage;
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      if (runs.get(i) instanceof GiantBufferBuff.Run copy) {
+        out = copy.damage(out, hitId, crownTower);
+      }
+    }
+    return out;
+  }
+
   @Override
   public EntityActions actions() {
     return actionHolder == null ? EntityActions.NONE : actionHolder;
@@ -630,6 +655,33 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
   @Override
   public int actionPackedLevel() {
     return packedLevel;
+  }
+
+  @Override
+  public int actionId() {
+    return getId();
+  }
+
+  /** A projectile was launched by another object. */
+  @Override
+  public boolean actionCreated() {
+    return true;
+  }
+
+  /** Its launcher, while it is still in the battle; the removal notice forgets it. */
+  @Override
+  public ActionOwner actionCreator() {
+    return owner;
+  }
+
+  @Override
+  public RarityTable actionRarity() {
+    return data.rarity();
+  }
+
+  @Override
+  public String actionRowName() {
+    return data.name();
   }
 
   @Override

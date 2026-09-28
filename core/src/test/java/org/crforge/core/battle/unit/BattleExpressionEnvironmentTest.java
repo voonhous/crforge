@@ -209,8 +209,23 @@ class BattleExpressionEnvironmentTest {
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
 
-    assertThatThrownBy(() -> environment.call(BattleFunctions.id("get_radius"), new int[0]))
+    assertThatThrownBy(() -> environment.call(BattleFunctions.id("is_moving"), new int[0]))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("get_radius");
+        .hasMessageContaining("is_moving");
+  }
+
+  @Test
+  @DisplayName("get_radius answers the context's row's collision radius")
+  void getRadiusIsTheCollisionRadius() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000);
+    CharacterEntity golem =
+        match.deploy(0, GameData.unit("Golem"), Standard1v1Battle.DEFAULT_LEVEL, 0, 5500, 10000);
+
+    assertThat(evaluate("get_radius()", new BattleExpressionEnvironment(knight, match.getWorld())))
+        .isEqualTo(500);
+    assertThat(evaluate("get_radius()", new BattleExpressionEnvironment(golem, match.getWorld())))
+        .isEqualTo(750);
   }
 }

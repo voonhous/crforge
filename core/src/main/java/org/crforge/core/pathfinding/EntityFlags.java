@@ -54,6 +54,12 @@ public final class EntityFlags {
   /** The entity may not be pushed by the other side. */
   public static final long NO_PUSHED_BY_ENEMY = 1L << 17;
 
+  /** The entity's ability may not be cast at all. */
+  public static final long ABILITY_DISABLED = 1L << 25;
+
+  /** The entity's ability waits: a request leaves it pending. */
+  public static final long ABILITY_POSTPONED = 1L << 29;
+
   /** The entity may not use its special attack. */
   public static final long NO_SPECIAL_ATTACK = 1L << 35;
 

@@ -3,12 +3,14 @@ package org.crforge.core.pathfinding;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.function.Supplier;
+import lombok.Setter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.move.MovementChain;
 import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.state.StateSetter;
+import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.target.TargetingState;
 
 /**
@@ -43,13 +45,18 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * component's strike-now byte cleared - loads its dash timer with the row's constant dash time and
  * clears its landing hold.
  *
+ * <p>Entering the casting state, for a unit given its casting, raises the casting flag and seeds
+ * the ability's two countdowns in whole ticks, and empties the route. Leaving it before the effect
+ * fired leaves the ability pending again, and a unit with a movement component has its charge
+ * reset. A change into or out of the casting state ends with the unit's combat gate.
+ *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
- * change, seeds the morph countdown on entering the morphing state and the ability countdowns on
- * entering the casting state, chains a further dash on leaving the dashing state and runs the row's
- * closing action, resets the charge on leaving the casting states, clears the movement component's
- * destination on leaving clone setup, relocates a unit leaving a following state to a free cell,
- * makes a building asked to follow stand instead, and ends every change with two notifications.
- * None of that is reachable from a plain ground unit, which is all the grid drives.
+ * change, seeds the morph countdown on entering the morphing state, chains a further dash on
+ * leaving the dashing state and runs the row's closing action, resets the charge on leaving the
+ * follow-up states, clears the movement component's destination on leaving clone setup, relocates a
+ * unit leaving a following state to a free cell, makes a building asked to follow stand instead,
+ * and ends every other change with two notifications. None of that is reachable from a plain ground
+ * unit, which is all the grid drives.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -59,13 +66,17 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " state; the target-lost timer cleared on leaving the attacking state; the deploy"
             + " countdown cleared on leaving the deploying and pathfinding states and raised to"
             + " the unit's deploy time on entering the deploying state; the dashing state's entry,"
-            + " held by bandit_knight and mega_knight_group. Held by the 53 reference"
-            + " walks, whose route empties at the lock, and the staggered placements. Not"
-            + " modelled: switching components, the countdowns seeded on entering the morphing and"
-            + " casting states, the chained dash and closing action on leaving the dashing state,"
-            + " whose columns are refused, the following-state rewrites and the"
-            + " two notifications every change ends with.")
+            + " held by bandit_knight and mega_knight_group; the casting state's entry and exit"
+            + " with the combat gate after them, held by giant_buffer_knights. Held by the 53"
+            + " reference walks, whose route empties at the lock, and the staggered placements."
+            + " Not modelled: switching components, the countdown seeded on entering the morphing"
+            + " state, the chained dash and closing action on leaving the dashing state, whose"
+            + " columns are refused, the following-state rewrites and the two notifications every"
+            + " change ends with. A cast with no countdowns at all is refused.")
 public final class GridStateSetter implements StateSetter {
+
+  /** Milliseconds per tick, which the casting countdowns are counted in. */
+  private static final int TICK_MS = 50;
 
   private final GridEntity owner;
   private final MovementState movement;
@@ -77,6 +88,27 @@ public final class GridStateSetter implements StateSetter {
 
   /** The unit's movement columns, which the dashing state's entry reads; null for none. */
   private final MovementConfig movementConfig;
+
+  /**
+   * What entering and leaving the casting state needs: the unit's countdowns, its ability's cast
+   * time and trigger delay, whether it is a champion's clone, and the combat gate the change ends
+   * with.
+   *
+   * @param timers the unit's state-visit countdowns, which the entry seeds
+   * @param castTimeMs the ability's cast time
+   * @param triggerDelayMs the ability's trigger delay
+   * @param championClone true for a clone of a champion, whose cast is never left pending
+   * @param combatGate the combat gate, run at the end of a change into or out of the casting state
+   */
+  public record Casting(
+      StateTimers timers,
+      int castTimeMs,
+      int triggerDelayMs,
+      boolean championClone,
+      Runnable combatGate) {}
+
+  /** The unit's casting, or null for a unit without an ability, which never casts. */
+  @Setter private Casting casting;
 
   /**
    * Creates the setter of one unit.
@@ -155,6 +187,12 @@ public final class GridStateSetter implements StateSetter {
     exit(oldState, newState);
     owner.setState(newState);
     enter(newState);
+    // A change into or out of the casting state ends with the combat gate; every other change
+    // leaves the gate to the state visit's tail.
+    if ((oldState == GridEntityState.CASTING || newState == GridEntityState.CASTING)
+        && casting != null) {
+      casting.combatGate().run();
+    }
   }
 
   /** The three states that may be set while the deploy countdown is still running. */
@@ -179,20 +217,74 @@ public final class GridStateSetter implements StateSetter {
           owner.setDeployCountdown(0);
         }
       }
+      case GridEntityState.CASTING -> exitCasting();
       default -> {
         // No ported action.
       }
     }
   }
 
+  /**
+   * Leaving the casting state: a cast left before its effect fired is pending again, unless the
+   * unit is a champion's clone, and a unit with a movement component has its charge reset.
+   */
+  private void exitCasting() {
+    if (casting != null
+        && casting.timers().getAbilityWarningCountdown() >= 1
+        && !casting.championClone()) {
+      owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
+      casting.timers().setAbilityReady(true);
+    }
+    if (movement != null) {
+      resetCharge();
+    }
+  }
+
+  /**
+   * Entering the casting state: the casting flag raised and the countdowns seeded in whole ticks,
+   * the cast time's and the trigger delay's. A cast with neither, whose effect fires in the entry
+   * itself, is refused.
+   */
+  private void enterCasting() {
+    if (casting == null) {
+      throw new UnsupportedOperationException(
+          owner.getName() + " enters the casting state without an ability");
+    }
+    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.CASTING_ABILITY);
+    int cast = casting.castTimeMs() / TICK_MS;
+    int trigger = casting.triggerDelayMs() / TICK_MS;
+    if ((cast | trigger) == 0) {
+      throw new UnsupportedOperationException(
+          owner.getName() + " casts with no cast time and no trigger delay, not modelled");
+    }
+    casting.timers().setAbilityCountdown(cast);
+    casting.timers().setAbilityWarningCountdown(trigger);
+  }
+
+  /**
+   * The charge reset: to 0 for a row with a charge range, to none without, with the targeting
+   * component's strike-now byte cleared.
+   */
+  private void resetCharge() {
+    checkArgument(
+        movementConfig != null,
+        () -> "the setter of " + owner.getName() + " has no movement columns to reset a charge by");
+    movement.setChargeProgress(
+        movementConfig.chargeRange() != 0 ? 0 : MovementState.CHARGE_INACTIVE);
+    if (targeting != null) {
+      targeting.setChargeStrike(false);
+    }
+  }
+
   /** The actions keyed by the state being entered, run after it is stored. */
   private void enter(int newState) {
     switch (newState) {
-      case GridEntityState.STANDING,
-          GridEntityState.ATTACKING,
-          GridEntityState.CLONE_SETUP,
-          GridEntityState.CASTING ->
+      case GridEntityState.STANDING, GridEntityState.ATTACKING, GridEntityState.CLONE_SETUP ->
           resetRoute();
+      case GridEntityState.CASTING -> {
+        enterCasting();
+        resetRoute();
+      }
       case GridEntityState.MOVING -> prepareRoute();
       case GridEntityState.DASHING -> enterDash();
       case GridEntityState.DEPLOYING -> {
@@ -222,14 +314,7 @@ public final class GridStateSetter implements StateSetter {
     if (movement == null) {
       return;
     }
-    checkArgument(
-        movementConfig != null,
-        () -> "the setter of " + owner.getName() + " has no movement columns to dash with");
-    movement.setChargeProgress(
-        movementConfig.chargeRange() != 0 ? 0 : MovementState.CHARGE_INACTIVE);
-    if (targeting != null) {
-      targeting.setChargeStrike(false);
-    }
+    resetCharge();
     // The dash timer: the constant dash time, when the row has one; a fixed dash distance, which
     // times the dash by its length instead, is refused with its row.
     if (movementConfig.dashConstantTime() >= 1) {

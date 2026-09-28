@@ -12,10 +12,12 @@ import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ChangeGameObjectData;
+import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.FlipFlop;
+import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
@@ -133,6 +135,37 @@ public final class ActionRows {
           Map.entry(
               "ActionSetCharacterLevel", Set.of("RelativeLevelAdjustment", "AbsoluteLevelToSet")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
+          Map.entry(
+              "ActionGiantBufferCollectFriends",
+              Set.of(
+                  "Cooldown",
+                  "MaxFriendlyTroops",
+                  "TargetFilter",
+                  "DistanceToGetTargets",
+                  "DistanceToBuff",
+                  "DistanceToUnbuff",
+                  "UseAbility",
+                  "BuffDelay",
+                  "OnBuffAction",
+                  "OnTargetBuffAction",
+                  "Projectile",
+                  "ActionWhenUnitBuffed")),
+          // The buff hands the hits it enchanted to its enemy-target visual, which only shows
+          // them, and keeps a refresh time nothing reads.
+          Map.entry(
+              "ActionGiantBufferBuff",
+              Set.of(
+                  "AttackAmount",
+                  "AttackAmountAction",
+                  "OnFinishedAction",
+                  "AddedDamage",
+                  "AddedCrownTowerDamage",
+                  "FinishIfInstigatorDies",
+                  "InstigatorDepth",
+                  "RefreshTime",
+                  "DamageMultiplierPerUnitNames",
+                  "DamageMultiplierPerUnitValues",
+                  "VisualActionForEnemyTarget")),
           // The effect-playing and forced-animation rows only show something: their own columns
           // reach the view alone, but for the two effect flags that keep a run.
           Map.entry(
@@ -347,6 +380,8 @@ public final class ActionRows {
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));
             case "ActionSpawn", "ActionSpawnToLocation" ->
                 new SpawnCharacters(shared, spawn(name, type, f));
+            case "ActionGiantBufferCollectFriends" -> collectFriends(name, shared, f);
+            case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
             default -> {
@@ -399,6 +434,66 @@ public final class ActionRows {
           .pausedIf(expression(f.get("ActionPausedIfTrue")))
           .abortIfInstigatorDies(f.path("AbortIfInstigatorDies").asBoolean(true))
           .build();
+    }
+
+    /**
+     * A friend collector's columns. One that unbuffs a friend beyond a distance, by ending the
+     * action it gave it, is refused: that end is not modelled.
+     */
+    private CollectFriends collectFriends(String name, ActionRow shared, JsonNode f) {
+      if (integer(f, "DistanceToUnbuff") != 0 && action(f.get("ActionWhenUnitBuffed")) != null) {
+        throw new UnsupportedOperationException(
+            name + " unbuffs a friend beyond a distance, which is not modelled");
+      }
+      return new CollectFriends(
+          shared,
+          CollectFriends.Columns.builder()
+              .cooldownMs(integer(f, "Cooldown"))
+              .maxFriendlyTroops(integer(f, "MaxFriendlyTroops"))
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              .distanceToGetTargets(integer(f, "DistanceToGetTargets"))
+              .distanceToBuff(integer(f, "DistanceToBuff"))
+              .distanceToUnbuff(integer(f, "DistanceToUnbuff"))
+              // The loader's default uses the ability.
+              .useAbility(f.path("UseAbility").asBoolean(true))
+              .buffDelayMs(integer(f, "BuffDelay"))
+              .onBuffAction(action(f.get("OnBuffAction")))
+              .onTargetBuffAction(action(f.get("OnTargetBuffAction")))
+              .projectile(records.projectile(f.get("Projectile").asText()))
+              .build());
+    }
+
+    /**
+     * A hit-enchanting buff's columns. Its multipliers are keyed by the rows they name: a character
+     * or building row, else a projectile row; a name that is neither is dropped, as the game drops
+     * it when it reads the row.
+     */
+    private GiantBufferBuff giantBufferBuff(ActionRow shared, JsonNode f) {
+      Map<String, Integer> characters = new HashMap<>();
+      Map<String, Integer> projectiles = new HashMap<>();
+      JsonNode names = f.path("DamageMultiplierPerUnitNames");
+      List<Integer> values = ints(f.get("DamageMultiplierPerUnitValues"));
+      for (int i = 0; i < names.size() && i < values.size(); i++) {
+        String unit = names.get(i).asText();
+        if (records.unitGlobalId(unit) != null) {
+          characters.put(unit, values.get(i));
+        } else if (tables.table("projectiles").has(unit)) {
+          projectiles.put(unit, values.get(i));
+        }
+      }
+      return new GiantBufferBuff(
+          shared,
+          GiantBufferBuff.Columns.builder()
+              .attackAmount(integer(f, "AttackAmount"))
+              .attackAmountAction(action(f.get("AttackAmountAction")))
+              .onFinishedAction(action(f.get("OnFinishedAction")))
+              .addedDamage(integer(f, "AddedDamage"))
+              .addedCrownTowerDamage(integer(f, "AddedCrownTowerDamage"))
+              .finishIfInstigatorDiesMs(integer(f, "FinishIfInstigatorDies"))
+              .instigatorDepth(integer(f, "InstigatorDepth"))
+              .characterMultipliers(characters)
+              .projectileMultipliers(projectiles)
+              .build());
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */

@@ -14,11 +14,13 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * off for the next tick, and when the reference is dropped.
  *
  * <p>In order: a sleeping or waking entity (the INACTIVE and ACTIVATING tags) is off, and so is one
- * waiting to deploy. An entity that is alive, has no deploy time left and whose hit speed scales
- * above 0 is acting: it is switched on, except in an ability's follow-up, where it is off. Anything
- * else - dead, still deploying, or a hit speed scaled to 0 - has its reference dropped through the
- * setter's null path while its targeting component is on, and is then switched off when its row has
- * hit points; one without keeps whatever it had.
+ * waiting to deploy, and one casting an ability that keeps its target, whose reference stays as it
+ * is; a cast that does not keep it goes on through the rest of the gate. An entity that is alive,
+ * has no deploy time left and whose hit speed scales above 0 is acting: it is switched on, except
+ * in an ability's follow-up, where it is off. Anything else - dead, still deploying, or a hit speed
+ * scaled to 0 - has its reference dropped through the setter's null path while its targeting
+ * component is on, and is then switched off when its row has hit points; one without keeps whatever
+ * it had.
  *
  * <p>So a unit's reference is gone on its death tick, and a king tower, which is never removed, is
  * switched off on the tick it dies and never on again. A stun, which scales the hit speed to 0,
@@ -30,8 +32,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
     note =
         "The gate agrees with the reference for the tags, the waiting state, the acting test and"
             + " the drop and switch of a dead, deploying or stunned entity, held by zap_knight for"
-            + " the stun. Not modelled: a Projectile buff (refused with its row), the"
-            + " casting state's KeepCurrentTarget, a clone's setup state with CLONE_RESET_TARGET,"
+            + " the stun, and the casting state's KeepCurrentTarget, held by giant_buffer_knights."
+            + " Not modelled: a Projectile buff (refused with its row),"
+            + " a clone's setup state with CLONE_RESET_TARGET,"
             + " and the touchdown query (Ladder answers 0). A dashing row's null path asks for a"
             + " resume, which the gate runs, held by bandit_knight's death.")
 final class CombatGate {
@@ -56,6 +59,7 @@ final class CombatGate {
    * @param routePreparer prepares a route when the dropped reference asks for one
    * @param resume resumes the entity when the dropped reference asks for it, as a dashing row's
    *     does
+   * @param keepCurrentTarget whether the entity's ability keeps its target while it casts
    * @return whether the targeting component is on after the gate
    */
   static boolean targetingOn(
@@ -66,7 +70,8 @@ final class CombatGate {
       int hitSpeed,
       boolean rowHasHitPoints,
       Runnable routePreparer,
-      Runnable resume) {
+      Runnable resume,
+      boolean keepCurrentTarget) {
     int state = view.getState();
     if ((view.getFlags() & GameTags.KEEPS_TARGETING_OFF) != 0) {
       return false;
@@ -74,9 +79,13 @@ final class CombatGate {
     if (state == GridEntityState.WAITING_TO_DEPLOY) {
       return false;
     }
-    if (state == GridEntityState.CASTING || state == GridEntityState.CLONE_SETUP) {
+    // A cast that keeps its target switches the component off and leaves the reference alone.
+    if (state == GridEntityState.CASTING && keepCurrentTarget) {
+      return false;
+    }
+    if (state == GridEntityState.CLONE_SETUP) {
       throw new UnsupportedOperationException(
-          "the combat gate of an entity casting or set up as a clone, which no run holds yet");
+          "the combat gate of an entity set up as a clone, which no run holds yet");
     }
     // A Projectile buff, which keeps a stunned entity acting, is refused with its row.
     if (alive && view.getDeployCountdown() <= 0 && hitSpeed != 0) {

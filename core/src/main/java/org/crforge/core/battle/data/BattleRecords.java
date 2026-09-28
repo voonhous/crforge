@@ -14,6 +14,7 @@ import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.BuffData;
@@ -66,6 +67,7 @@ public final class BattleRecords {
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
           "SpawnAreaEffectObject",
+          "OnTargetReachedAction",
           "SpawnAxisX",
           "SpawnAxisY",
           "MinPushback",
@@ -317,6 +319,7 @@ public final class BattleRecords {
         .deathSpawnMinRadius(row.intValue("DeathSpawnMinRadius"))
         .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
         .champion(champion(row))
+        .ability(ability(row))
         .globalId(row.globalId())
         .lifeTimeMs(row.intValue("LifeTime"))
         .targetOnlyBuildings(row.bool("TargetOnlyBuildings"))
@@ -714,6 +717,69 @@ public final class BattleRecords {
   }
 
   /**
+   * The ability columns that make an ability do more than run its activation action - its dash,
+   * buff, area object, lane switch, morph, spawn and follow-up state - or keep a buff on a unit
+   * waiting to cast; the rest are the champion controller's or presentation, which a request never
+   * reads.
+   */
+  private static final List<String> UNMODELLED_ABILITY_COLUMNS =
+      List.of(
+          "DashRange",
+          "Buff",
+          "AreaEffectObject",
+          "SwitchLanes",
+          "MorphTarget",
+          "ActivationSpawnCharacter",
+          "AbilityStateDuration",
+          "PendingBuff");
+
+  /**
+   * A unit's ability row, or null for a unit without one. Its activation action, written inline, is
+   * the actions table's row named after the ability and the column.
+   */
+  private AbilityData ability(GameRow row) {
+    String name = row.string("Ability");
+    if (name.isEmpty()) {
+      return null;
+    }
+    GameTable abilities = tables.table(CHARACTER_ABILITIES);
+    checkArgument(
+        abilities.has(name),
+        () -> row.name() + " names the ability " + name + ", which the game tables lack");
+    GameRow ability = abilities.row(name);
+    return AbilityData.builder()
+        .name(name)
+        .castTimeMs(ability.intValue("CastTime"))
+        .triggerDelayMs(ability.intValue("TriggerDelay"))
+        .keepCurrentTarget(ability.bool("KeepCurrentTarget"))
+        .champion(!ability.has("IsChampion") || ability.bool("IsChampion"))
+        .onActivationAction(inlineActionName(ability, "OnActivationAction"))
+        .unmodelledColumns(
+            UNMODELLED_ABILITY_COLUMNS.stream().filter(column -> set(ability, column)).toList())
+        .build();
+  }
+
+  /**
+   * The action row a column names, or, for a row written inline, the actions table's row named
+   * after the row and the column; null for none.
+   */
+  private String inlineActionName(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    if (value == null || value.isNull()) {
+      return null;
+    }
+    if (value.isObject() && !value.has("action")) {
+      String inline = row.name() + "_" + column;
+      checkArgument(
+          tables.actionNames().contains(inline),
+          () -> row.name() + " writes its " + column + " inline, with no row " + inline);
+      return inline;
+    }
+    String name = value.isObject() ? value.path("action").asText("") : value.asText();
+    return name.isEmpty() ? null : name;
+  }
+
+  /**
    * A projectile as the battle reads it, from the projectiles table.
    *
    * @param name the row's name
@@ -775,6 +841,7 @@ public final class BattleRecords {
             .chainedHitCount(row.intValue("ChainedHitCount"))
             .pingpongVisualTimeMs(row.intValue("PingpongVisualTime"))
             .randomDelayMs(row.intValue("RandomDelay"))
+            .onHitTargetAction(inlineActionName(row, "OnHitTargetAction"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

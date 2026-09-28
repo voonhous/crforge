@@ -2,6 +2,7 @@ package org.crforge.core.battle.action;
 
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.combat.RarityTable;
 
 /**
  * The entity an action holder belongs to, as the leaf actions that act on their own owner see it:
@@ -63,6 +64,53 @@ public interface ActionOwner {
    */
   default void setAttackSequenceIndex(int index, boolean evenIfCombatDisabled) {
     throw new UnsupportedOperationException("this owner has no attack sequence");
+  }
+
+  /**
+   * What a friend-collecting run asks of the battle around the owner.
+   *
+   * @return the owner's answers
+   */
+  default FriendCollecting friendCollecting() {
+    throw new UnsupportedOperationException("this owner cannot collect friends");
+  }
+
+  /** The owner's id in the battle's holder. */
+  default int actionId() {
+    throw new UnsupportedOperationException("this owner has no id");
+  }
+
+  /**
+   * The object that made the owner, as an action walking back from its cause follows it: a
+   * projectile's launcher, or null for an owner made by nothing, or whose maker has left.
+   */
+  default ActionOwner actionCreator() {
+    return null;
+  }
+
+  /** True for an owner another object made, such as a projectile, whose maker it may name. */
+  default boolean actionCreated() {
+    return false;
+  }
+
+  /** The name of the owner's data row. */
+  default String actionRowName() {
+    throw new UnsupportedOperationException("this owner has no data row");
+  }
+
+  /** True for an owner whose row makes children that ride on it. */
+  default boolean actionSpawnsAttached() {
+    return false;
+  }
+
+  /** The owner's rarity, which a level is packed against; null for none. */
+  default RarityTable actionRarity() {
+    throw new UnsupportedOperationException("this owner has no rarity");
+  }
+
+  /** Whether an object with the id is still in the owner's battle's live list. */
+  default boolean liveObject(int id) {
+    throw new UnsupportedOperationException("this owner cannot look up the battle's objects");
   }
 
   /** True for a king tower, whose heals stop one short of its maximum. */

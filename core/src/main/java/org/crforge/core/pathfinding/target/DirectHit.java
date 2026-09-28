@@ -52,6 +52,12 @@ public final class DirectHit {
     TargetingConfig cfg = t.getConfig();
     int crownTowerDamage = crownTowerDamage(cfg.crownTowerDamagePercent(), damage);
     int hitId = queries.nextHitId();
+    // The owner's listening actions change both damages of a hit that lands, after the crown-tower
+    // damage was worked out from the plain one.
+    if (queries.hitListeners() && !missed) {
+      damage = queries.listenedDamage(damage, hitId, false);
+      crownTowerDamage = queries.listenedDamage(crownTowerDamage, hitId, true);
+    }
     if (cfg.areaDamageRadius() >= 1 && !missed) {
       // A unit with an area damages the circle instead of its target, around itself or around
       // where its reference stood at the start of the visit, whether or not a target is left.

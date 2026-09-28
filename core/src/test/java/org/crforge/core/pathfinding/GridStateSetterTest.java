@@ -15,6 +15,7 @@ import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementQueries;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.ReferencePoint;
+import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -177,6 +178,7 @@ class GridStateSetterTest {
   @Test
   @DisplayName("entering the standing, clone-setup and casting states empties the route too")
   void theOtherStoppingStatesEmptyTheRoute() {
+    setter.setCasting(new GridStateSetter.Casting(new StateTimers(), 933, 50, false, () -> {}));
     for (int state :
         new int[] {
           GridEntityState.STANDING, GridEntityState.CLONE_SETUP, GridEntityState.CASTING
@@ -188,6 +190,50 @@ class GridStateSetterTest {
 
       assertThat(movement.getRoute().isEmpty()).as("state %d", state).isTrue();
     }
+  }
+
+  @Test
+  @DisplayName(
+      "entering the casting state seeds the ability's countdowns in whole ticks, then runs the gate")
+  void enteringCastingSeedsTheCountdowns() {
+    StateTimers timers = new StateTimers();
+    int[] gates = {0};
+    setter.setCasting(new GridStateSetter.Casting(timers, 933, 50, false, () -> gates[0]++));
+
+    setter.setState(unit, GridEntityState.CASTING);
+
+    assertThat(timers.getAbilityCountdown()).as("933 ms").isEqualTo(18);
+    assertThat(timers.getAbilityWarningCountdown()).as("50 ms").isEqualTo(1);
+    assertThat(unit.getPendingFlags() & EntityFlags.CASTING_ABILITY).isNotZero();
+    assertThat(movement.getRoute().isEmpty()).isTrue();
+    assertThat(gates[0]).as("the combat gate at the change's end").isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("leaving the casting state before its effect fires leaves the ability pending")
+  void leavingCastingEarlyLeavesItPending() {
+    StateTimers timers = new StateTimers();
+    int[] gates = {0};
+    GridStateSetter withCharge =
+        new GridStateSetter(
+            unit, movement, targeting, () -> null, -1, MovementConfig.forGroundUnit());
+    withCharge.setCasting(new GridStateSetter.Casting(timers, 933, 100, false, () -> gates[0]++));
+    withCharge.setState(unit, GridEntityState.CASTING);
+
+    withCharge.setState(unit, GridEntityState.STANDING);
+
+    assertThat(timers.isAbilityReady()).isTrue();
+    assertThat(unit.getPendingFlags() & EntityFlags.ABILITY_COOLDOWN_PAUSED).isNotZero();
+    assertThat(movement.getChargeProgress()).isEqualTo(MovementState.CHARGE_INACTIVE);
+    assertThat(gates[0]).as("into the cast and out of it").isEqualTo(2);
+  }
+
+  @Test
+  @DisplayName("a unit without an ability may not enter the casting state")
+  void castingWithoutAnAbilityIsRefused() {
+    assertThatThrownBy(() -> setter.setState(unit, GridEntityState.CASTING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("without an ability");
   }
 
   @Test

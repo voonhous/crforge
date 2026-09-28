@@ -17,7 +17,9 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleRandom;
 import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
+import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
@@ -31,9 +33,11 @@ import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.filter.FilterSubject;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileChain;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.spawn.SpawnPassable;
@@ -292,6 +296,9 @@ public class BattleWorld implements HolderPasses {
   /** The battle's action rows, from the tables it was loaded with. */
   @Getter private ActionRows actions;
 
+  /** The battle's target locks, made by the first collector's step; null until then. */
+  private TargetLocks locks;
+
   /**
    * Loads the game's tables into the battle: declares their variables and game tags and keeps the
    * records and action rows built from them, which the battle's entities build their actions from.
@@ -495,15 +502,97 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The pass a projectile runs as the holder registers it: one that flies to a point, unless it
-   * sweeps out and back, hits what its body covers where it starts at once, its body widened by the
-   * row's start radius, whatever delay it waits before it flies.
+   * The pass a projectile runs as the holder registers it, after its launcher's running actions
+   * have heard of it: one that flies to a point, unless it sweeps out and back, hits what its body
+   * covers where it starts at once, its body widened by the row's start radius, whatever delay it
+   * waits before it flies.
    */
   private void registrationPass(ProjectileEntity projectile) {
+    // Its launcher's running actions hear of it first: an enchanting buff may hand it a copy.
+    if (projectile.getOwner() != null) {
+      projectile.getOwner().projectileRegistered(projectile);
+    }
     ProjectileData data = projectile.getData();
     if (data.homingLike() && data.pingpongVisualTimeMs() < 1) {
       cellPass(projectile, projectile.getX(), projectile.getY(), data.projectileStartExtraRadius());
     }
+  }
+
+  /**
+   * The object with an id in the holder's live list, as the holder's id lookup finds it: an entity
+   * killed during the tick is still listed until the closing cleanup. Null for none.
+   */
+  public BattleEntity liveObject(int id) {
+    for (BattleEntity entity : holder.entities()) {
+      if (entity.getId() == id) {
+        return entity;
+      }
+    }
+    return null;
+  }
+
+  /** The battle's target locks, made by the first call, as a collector's first step makes them. */
+  public TargetLocks locks() {
+    if (locks == null) {
+      locks = new TargetLocks();
+    }
+    return locks;
+  }
+
+  /**
+   * The object query around a point: the index's buckets over the circle, in their order, each
+   * entity once, accepted on where it stands now - its centre closer than its collision radius plus
+   * the radius - and by the filter, asked for the team and row name of the entity asking.
+   *
+   * @param asking the entity running the query
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> objectQuery(WorldEntity asking, int radius, GameObjectFilter filter) {
+    GridEntity at = asking.getView();
+    List<GridEntity> found =
+        index.query(new SpatialQuery(at.getX(), at.getY(), radius, 0, false, false, 0, -1));
+    List<WorldEntity> out = new ArrayList<>();
+    if (found == null) {
+      return out;
+    }
+    for (GridEntity view : found) {
+      WorldEntity entity = entityOf(view);
+      if (filter.matches(entity.filterSubject(), asking.side() & 1, asking.getData().name())) {
+        out.add(entity);
+      }
+    }
+    index.release(found);
+    return out;
+  }
+
+  /**
+   * Launches a collector's projectile at a friend: from the launcher's own start, at where the
+   * friend stands now, at the launcher's level and on its side, handed to the holder.
+   *
+   * @param launcher the collecting unit
+   * @param data the projectile's row
+   * @param friend the friend it flies to
+   */
+  public void launchAt(WorldEntity launcher, ProjectileData data, WorldEntity friend) {
+    ProjectileEntity projectile = new ProjectileEntity(this, data, launcher.side());
+    ProjectileLauncher.launchAt(projectile, launcher, friend);
+    launch(projectile);
+  }
+
+  /**
+   * Schedules a projectile's on-hit action on its target as its impact reaches it, the projectile
+   * as the cause: from the post-hooks, so it waits for the phase-3 pending pass.
+   *
+   * @param projectile the landing projectile
+   * @param target its target
+   */
+  public void onHitTarget(ProjectileEntity projectile, WorldEntity target) {
+    BattleAction action = actions.build(projectile.getData().onHitTargetAction(), binding(target));
+    target
+        .actionHolder()
+        .schedule(action, ActionHolder.OWN_DELAY, false, projectile.actionHolder());
   }
 
   /**
@@ -528,6 +617,20 @@ public class BattleWorld implements HolderPasses {
   void characterPlayed(CharacterEntity unit) {
     for (WorldObserver observer : observers) {
       observer.characterPlayed(tick, unit);
+    }
+  }
+
+  /** Tells every observer a unit's ability was requested, and whether it is cast at once. */
+  void abilityRequested(CharacterEntity unit, boolean now) {
+    for (WorldObserver observer : observers) {
+      observer.abilityRequested(tick, unit, now);
+    }
+  }
+
+  /** Tells every observer a unit's ability fired. */
+  void abilityFired(CharacterEntity unit) {
+    for (WorldObserver observer : observers) {
+      observer.abilityFired(tick, unit);
     }
   }
 
@@ -791,6 +894,11 @@ public class BattleWorld implements HolderPasses {
     index.rebuild(views);
     FootprintOverlay.buildOverlay(grid, views);
     grid.setChangeFlags(grid.getChanged().clone());
+    // The target locks' step, before the entities' pre-hooks: a lock whose target or holder is no
+    // longer listed alive goes, then the queued releases.
+    if (locks != null) {
+      locks.prePass(this::listedAlive);
+    }
     List<WorldEntity> snapshotOfPresent = present();
     for (WorldObserver observer : observers) {
       observer.afterPrePass(tick, snapshotOfPresent);
@@ -2532,8 +2640,24 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** Whether the object with an id is listed and, when it has hit points, alive. */
+  private boolean listedAlive(int id) {
+    BattleEntity entity = liveObject(id);
+    if (entity == null) {
+      return false;
+    }
+    if (entity instanceof WorldEntity world && world.getHitPoints() != null) {
+      return world.getHitPoints().getHitPoints() > 0;
+    }
+    return true;
+  }
+
   @Override
   public void postPass(int tick) {
+    // The target locks grant the tick's requests after the phase-3 pending pass.
+    if (locks != null) {
+      locks.postPass();
+    }
     grid.swap();
     index.clear();
   }

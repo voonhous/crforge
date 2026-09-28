@@ -81,6 +81,22 @@ public final class HitApplication {
    */
   public static boolean apply(
       TargetingState t, TargetView target, int sequenceIndex, HitQueries queries) {
+    return apply(t, target, sequenceIndex, true, queries);
+  }
+
+  /**
+   * Applies one hit, knowing whether it is the last of its attack: the end of a single-target
+   * attack's hit that landed is told to the owner's listening actions.
+   *
+   * @param t the attacker's targeting component
+   * @param target what the hit is aimed at, or null when the attacker has given it up
+   * @param sequenceIndex which hit of the attack this is, -1 for a single-target attack
+   * @param last true for the last hit of its attack, which a single-target attack's always is
+   * @param queries the damage at the owner's level, the battle's hit ids and where damage goes
+   * @return true when <b>nothing landed</b>, which is what the visit's sink answers
+   */
+  public static boolean apply(
+      TargetingState t, TargetView target, int sequenceIndex, boolean last, HitQueries queries) {
     TargetingConfig cfg = t.getConfig();
     TargetingGlobals globals = t.getGlobals();
     t.setHitStarted(true);
@@ -108,7 +124,13 @@ public final class HitApplication {
     } else if (!missed) {
       queries.launchProjectiles(t, target, sequenceIndex);
     }
+    boolean specialLoad = t.isSpecialLoadPending();
     t.setSpecialLoadPending(false);
+    // A landed hit that ends a single-target attack, not a special one, is counted by the owner's
+    // listening actions.
+    if (!missed && !specialLoad && last && queries.hitListeners()) {
+      queries.attackEnded();
+    }
     queries.hitEnded();
     return missed;
   }
