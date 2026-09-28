@@ -430,6 +430,12 @@ The towers fight at level 11. A Hunter is played for side 0 at (3500, 12000) and
 
 `BattleActionSpawnRunTest` plays it with the spawn runs; every impact and projectile position holds the volleys.
 
+## `golden/ram_rider_bola.json` - the rider's bola
+
+The towers fight at level 11. A Ram Rider is played for side 0 at (3500, 10000) and two Knights for side 1 at (3500, 20000) and (4500, 20000), all on tick 0. The rider, which targets troops only, takes k0_0 and throws RamRiderBola (homing, ConstantHeight 3000, TargetBuff BolaSnare for 2000 ms, PingpongMovingShooter 200) on 57, then every 22 ticks to 167, at z 3000. Each bola deals 104 and then snares k0_0: the snare is applied on 65 and refreshed by each later bola while it holds, on 83, 102, 125, 151 and 174, each refresh naming the bola that made it (`buffs`: `refreshed`, the remaining time before and after). The Ram dies on 175 and the rider goes with it; the snare runs out and is removed on 214. PingpongMovingShooter is never read. The rider ranks a snared troop lower, but it never has to choose between a snared and an unsnared Knight.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
