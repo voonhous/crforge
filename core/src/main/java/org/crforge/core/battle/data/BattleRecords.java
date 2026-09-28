@@ -59,10 +59,10 @@ public final class BattleRecords {
 
   /**
    * The columns of a projectile the impact does not model: the area effect it spawns, several
-   * spawned projectiles or ones laid along an axis, its chained hop, the push's floor and a push
-   * along the flight, a stop at the first entity it touches, the pingpong sweep, and the flight
-   * back to a shooter that walks on. A spell whose projectile, or the projectile that one spawns,
-   * sets one is refused as it is cast or spawned, and a unit's shot as it is fired.
+   * spawned projectiles or ones laid along an axis, the push's floor and a push along the flight, a
+   * stop at the first entity it touches, the pingpong sweep, and the flight back to a shooter that
+   * walks on. A spell whose projectile, or the projectile that one spawns, sets one is refused as
+   * it is cast or spawned, and a unit's shot as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
@@ -70,7 +70,6 @@ public final class BattleRecords {
           "SpawnCount",
           "SpawnAxisX",
           "SpawnAxisY",
-          "ChainedHitRadius",
           "MinPushback",
           "DoDirectionalPushback",
           "CheckCollisions",
@@ -768,6 +767,8 @@ public final class BattleRecords {
                     ? row.intValue("MaximumTargets")
                     : DEFAULT_MAXIMUM_TARGETS)
             .onlyOwnTroops(row.bool("OnlyOwnTroops"))
+            .chainedHitRadius(row.intValue("ChainedHitRadius"))
+            .chainedHitCount(row.intValue("ChainedHitCount"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

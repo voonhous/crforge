@@ -98,7 +98,7 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "a projectile's target buff is carried for its circle and its one target, before or after"
-          + " the damage, and refused on a projectile that flies to a point")
+          + " the damage, and refused on a projectile that flies to a point; a hop is carried")
   void aProjectileTargetBuff() {
     ProjectileData snowball = records.projectile("SnowballSpell");
     assertThat(snowball.targetBuff()).isEqualTo("IceWizardSlowDown");
@@ -111,8 +111,10 @@ class BattleRecordsTest {
     assertThat(voodoo.targetBuff()).isEqualTo("VoodooCurse");
     assertThat(voodoo.applyBuffBeforeDamage()).isTrue();
     assertThat(voodoo.unmodelledColumns()).isEmpty();
-    assertThat(records.projectile("ElectroDragonProjectile").unmodelledColumns())
-        .containsExactly("ChainedHitRadius");
+    ProjectileData chain = records.projectile("ElectroDragonProjectile");
+    assertThat(chain.chainedHitRadius()).isEqualTo(4000);
+    assertThat(chain.chainedHitCount()).isEqualTo(3);
+    assertThat(chain.unmodelledColumns()).isEmpty();
     // A projectile that flies to a point buffs through its hits on the way, which is not modelled.
     assertThat(records.projectile("SuperEliteArcherArrow").unmodelledColumns())
         .contains("TargetBuff");

@@ -63,12 +63,16 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " the king tower, its delay, its chain and ring point, a thrown projectile's aim at"
             + " its spawned one's body height, and a spawned projectile's launch from its parent"
             + " are held by the spell runs; the limited-time homing by the Elite Archer's."
-            + " Not modelled: the chained hop, the pingpong sweep, the random delays, the drag-back"
+            + " The chained hop is held by the Electro Dragon's."
+            + " Not modelled: the pingpong sweep, the random delays, the drag-back"
             + " hook, the custom movement, and the far-distance clamp with its cell pull.")
 public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Game time one flight step advances, in milliseconds. */
   static final int STEP_MS = 50;
+
+  /** How long a hopping projectile waits after a hop before it flies on, in milliseconds. */
+  static final int HOP_DELAY_MS = 150;
 
   private final BattleWorld world;
 
@@ -133,6 +137,9 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /** The ids of the entities its flying body has hit, which it does not hit again. */
   @Getter private final List<Integer> hitIds = new ArrayList<>();
+
+  /** How many targets a hopping projectile has been launched at, its first included. */
+  @Getter private int chainedHits;
 
   /** How many links of spawned projectiles its impact may still launch. */
   @Getter private int spawnChain;
@@ -334,6 +341,14 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
       startZ = z;
       aimZ = z;
     }
+    if (data.chainedHitRadius() >= 1) {
+      // A hopping projectile counts every launch and lists each target, which it does not hop to
+      // again.
+      chainedHits++;
+      if (this.target != null) {
+        hitIds.add(this.target.getId());
+      }
+    }
     boolean homingNow = this.target != null && data.homing();
     int dx = (homingNow ? this.target.getView().getX() : aimX) - x;
     int dy = (homingNow ? this.target.getView().getY() : aimY) - y;
@@ -361,6 +376,24 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     target = null;
     aimX = originX + vec[0];
     aimY = originY + vec[1];
+  }
+
+  /**
+   * The chained hop, after an impact: the projectile is launched again from where it is, at the
+   * height it aimed at, at its next target, aimed at its old aim mirrored past its start - a homing
+   * projectile then re-pins that aim onto the target - with its owner, root and level. The launch
+   * counts it and lists the target. It is no longer released, and waits {@value #HOP_DELAY_MS} ms
+   * before it flies on.
+   *
+   * @param next the character it hops to
+   */
+  void hop(WorldEntity next) {
+    int hx = 2 * aimX - startX;
+    int hy = 2 * aimY - startY;
+    target = null;
+    place(owner, root, next, packedLevel, x, y, aimZ, hx, hy, x, y);
+    released = false;
+    delayMs = HOP_DELAY_MS;
   }
 
   /** Moves the projectile. */

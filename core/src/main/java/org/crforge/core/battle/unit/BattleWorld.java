@@ -2244,6 +2244,39 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * Where a hopping projectile hops to: the nearest of this tick's characters, in the order they
+   * joined, strictly inside its hop radius of where it stands - the first of equals - that is of
+   * the other side, not untargetable, not in its list of those it has hit, with hit points and
+   * accepting an attacker; none is tested for being alive.
+   *
+   * @param projectile the projectile that landed
+   * @return the character, or null when none is in reach
+   */
+  public WorldEntity chainTarget(ProjectileEntity projectile) {
+    int radius = projectile.getData().chainedHitRadius();
+    int best = Integer.MAX_VALUE;
+    WorldEntity chosen = null;
+    for (WorldEntity entity : present) {
+      if ((entity.side() & 1) == (projectile.side() & 1)
+          || (entity.getView().getFlags() & EntityFlags.UNTARGETABLE) != 0
+          || projectile.getHitIds().contains(entity.getId())
+          || entity.getHitPoints() == null
+          || !entity.getTargetView().acceptsAttacker(true)) {
+        continue;
+      }
+      int d =
+          FixedMath.guardedDistance(
+              projectile.getX() - entity.getView().getX(),
+              projectile.getY() - entity.getView().getY());
+      if (d < radius && d < best) {
+        best = d;
+        chosen = entity;
+      }
+    }
+    return chosen;
+  }
+
   /** Whether a projectile's buff may reach a character; see {@link #projectileAreaBuff}. */
   private static boolean projectileBuffReaches(ProjectileEntity projectile, WorldEntity target) {
     ProjectileData data = projectile.getData();

@@ -36,6 +36,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * launcher's own side is spared only when the row says so; the victims are pushed the row's
  * pushback away from the aim.
  *
+ * <p>A hopping row, under its count, then hops on: to the nearest character strictly inside its hop
+ * radius of where it landed, of the other side, not untargetable, with hit points, accepting an
+ * attacker and not hit by it yet - the first of equals in the order they joined; it is launched
+ * again at it, waits 150 ms and flies on, so a hop within one step of its speed lands four ticks
+ * after the impact.
+ *
  * <p>A row with a target buff buffs the same circle, or the one target of a projectile without a
  * radius, after the damage, or before it when the row says so. A row that spawns characters then
  * makes them in formation around the aim.
@@ -55,8 +61,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " barb_barrel_knight, the pass at the arrival held by no run; the limited-time homing"
             + " re-aim by elite_archer_knight, and the landing at the constant height by"
             + " royal_giant_tower; the target buff on the circle after the damage by"
-            + " snowball_knights, and on the one target before it by witch_mother_skeletons; the"
-            + " circle's before the damage and the one target's after it by no run. Supplied, not"
+            + " snowball_knights, and on the one target before it by witch_mother_skeletons, after"
+            + " it by electro_dragon_knights, whose chained hop is held there too; the"
+            + " circle's before the damage by no run. Supplied, not"
             + " settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
@@ -213,6 +220,18 @@ final class ProjectileFlight {
     // The projectile it spawns flies on beyond the aim, along the line it came.
     if (data.spawnProjectile() != null && p.getSpawnChain() >= 1) {
       world.impactProjectile(p, 2 * p.getAimX() - p.getStartX(), 2 * p.getAimY() - p.getStartY());
+    }
+    // A hopping projectile under its count hops on to the nearest character it may hit; at its
+    // count, or with nobody in reach, it stays released.
+    if (data.chainedHitRadius() >= 1 && p.getChainedHits() < data.chainedHitCount()) {
+      WorldEntity next = world.chainTarget(p);
+      if (next != null) {
+        if (p.getOwner() == null) {
+          throw new UnsupportedOperationException(
+              p.name() + " hops on after its launcher left, which is not modelled");
+        }
+        p.hop(next);
+      }
     }
   }
 

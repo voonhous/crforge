@@ -151,7 +151,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * on their first two steps. {@code snowball_knights} casts a Snowball onto two Knights, whose
  * impact damages and pushes both and then slows both with its target buff. {@code
  * witch_mother_skeletons} shoots Skeletons with a curse applied before the damage, so each dies
- * carrying it and leaves a Voodoo Hog for the other side.
+ * carrying it and leaves a Voodoo Hog for the other side. {@code electro_dragon_knights} hops an
+ * Electro Dragon's bolt across three Knights, freezing each.
  */
 class BattleActionSpawnRunTest {
 
@@ -220,7 +221,8 @@ class BattleActionSpawnRunTest {
         "royal_giant_tower",
         "elite_archer_knight",
         "snowball_knights",
-        "witch_mother_skeletons"
+        "witch_mother_skeletons",
+        "electro_dragon_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
