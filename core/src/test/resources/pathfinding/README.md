@@ -388,6 +388,12 @@ The towers fight at level 11, and the unit is played by a command on tick 0.
 
 `BattleActionSpawnRunTest` plays both with the spawn runs.
 
+## `golden/snowball_knights.json` - a projectile's target buff on its circle
+
+The towers fight at level 11. Two side-1 Knights are played at (3500, 22000) and (4500, 22000) on tick 0, and side 0 casts a Snowball at (3500, 17000) on 60, placed at (3500, 17500) (`commands`). SnowballSpell (Radius 2500, Pushback 1800, TargetBuff IceWizardSlowDown, BuffTime 3000) arrives on 79. Its area impact damages both Knights for 179 and pushes them, and then, after the damage, its target buff reaches the same circle: both Knights take IceWizardSlowDown for 3000 ms, with the projectile as the source, at its level (`buffs`: the `target_buff` event lists what the circle reached, then each instance applied). The slow cuts speed, hit speed and spawn speed by 30 until the instances are removed on 139.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log. The run lists both Knights' damage before either push; the battle pushes each right after its damage, and the test lists a projectile's pushes after all of its impacts of the tick.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
