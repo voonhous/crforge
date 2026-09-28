@@ -132,7 +132,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " with its stop in range or its constant time and height, its landing hit on its"
             + " reference or over its radius with a push, its landing hold, its immunity while it"
             + " dashes and after, and the resume when it loses its reference, held by bandit_knight"
-            + " and mega_knight_group; the"
+            + " and mega_knight_group; a card play's rider that targets troops only, its buff"
+            + " priority fed, held by ram_rider_tower; the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
@@ -149,7 +150,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " parent or a rider, a rider whose parent may not attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
             + " spawner, a building or a flying row, a champion, another deploy time, a charge,"
-            + " a river jump or a dash; a dash's landing on a cell it may not stand on."
+            + " a river jump or a dash; a dash's landing on a cell it may not stand on; a shot"
+            + " whose projectile sets a column its flight or impact does not model; and a buff a"
+            + " character's targeting passes over, applied to anyone."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
             + " meets an empty index, the"
             + " hit-points visit's dedupe expiry, and the columns its data does not"
@@ -756,6 +759,9 @@ public class CharacterEntity extends WorldEntity {
         .dashLandingTime(data.dashLandingTimeMs())
         .dashStopsAtContact(data.dashToTargetRadius())
         .dashImmuneToDamageTime(data.dashImmuneToDamageTimeMs())
+        .targetOnlyTroops(data.targetOnlyTroops())
+        .ignoreTargetsWithBuff(data.ignoreTargetsWithBuff() != null)
+        .deprioritizeTargetsWithBuff(data.deprioritizeTargetsWithBuff())
         .build();
   }
 

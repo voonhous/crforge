@@ -243,6 +243,21 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a rider carries what it may target, and its bola's slow is among the columns refused")
+  void riderTargetingColumns() {
+    UnitData rider = records.unit("RamRider");
+    assertThat(rider.targetOnlyTroops()).isTrue();
+    assertThat(rider.ignoreTargetsWithBuff()).isEqualTo("BolaSnare");
+    assertThat(rider.deprioritizeTargetsWithBuff()).isTrue();
+    assertThat(rider.projectile().unmodelledColumns())
+        .contains("TargetBuff", "BuffTime", "PingpongMovingShooter");
+    UnitData knight = records.unit("Knight");
+    assertThat(knight.targetOnlyTroops()).isFalse();
+    assertThat(knight.ignoreTargetsWithBuff()).isNull();
+  }
+
+  @Test
+  @DisplayName(
       "a building carries its lifetime, minimum range and spawner, and a unit lists the columns"
           + " the battle does not model")
   void buildingColumns() {

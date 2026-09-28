@@ -378,6 +378,26 @@ public class BattleWorld implements HolderPasses {
     return gameTagIndex.get(name);
   }
 
+  /**
+   * Whether a character in the battle names a buff in its IgnoreTargetsWithBuff column, so that its
+   * targeting would read who carries it.
+   *
+   * @param buff the buff row's name
+   */
+  boolean passedOverBySomeone(String buff) {
+    for (WorldEntity entity : present()) {
+      if (buff.equals(entity.getData().ignoreTargetsWithBuff())) {
+        return true;
+      }
+    }
+    for (BattleEntity entity : holder.queued()) {
+      if (entity instanceof WorldEntity w && buff.equals(w.getData().ignoreTargetsWithBuff())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** The bits of the game tag of the given index. */
   long gameTagMask(int index) {
     return gameTagMasks.get(index);

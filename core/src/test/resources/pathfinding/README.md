@@ -328,6 +328,12 @@ The towers fight at level 11. Each run places its dasher for the bottom side on 
 
 `BattleActionSpawnRunTest` plays them with the spawn runs.
 
+## `golden/ram_rider_tower.json` - the Ram Rider
+
+The towers fight at level 11. A Ram Rider is played for the bottom side at (3500, 10000) on tick 0 (`commands`) and placed at (3499, 10500). The play sets the Ram deploying, which makes its one rider first, id 5000006 before the Ram's 5000007, on the Ram's point (its spawn radius is 0), deploying for 1000 ms; `unit_spawner` lists it attached and, on 350, let go. The Ram charges on 61 at 10080, crosses by the bridge without a jump, and hits PrincessTower_1_1 for its charged 501 on 147, then 250 every 34 ticks, until it dies on 350; the rider, which targets troops only, takes no target all run, and is let go and removed in the cleanup of the Ram's death tick. The rider's records list its `ref` as null throughout.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, holding the rider's attachment and release from `unit_spawner`, since the run lists no actions.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

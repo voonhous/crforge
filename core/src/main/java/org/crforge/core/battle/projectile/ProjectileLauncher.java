@@ -62,6 +62,14 @@ public final class ProjectileLauncher {
     if (data == null) {
       return;
     }
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          launcher.name()
+              + " fires "
+              + data.name()
+              + ", which sets columns its flight and impact do not model: "
+              + data.unmodelledColumns());
+    }
     WorldEntity targetEntity = target == null ? null : world.entityOf(target.getEntity());
     int count = Math.max(unit.multipleProjectiles(), 1);
     int spread = unit.areaDamageRadius();

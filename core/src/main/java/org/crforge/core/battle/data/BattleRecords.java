@@ -50,8 +50,9 @@ public final class BattleRecords {
    * The columns of a projectile the impact does not model: the buff it applies to its target, the
    * area effect it spawns, several spawned projectiles or ones laid along an axis, its chained hop,
    * the push's floor and a push along the flight, a stop at the first entity it touches, the
-   * pingpong sweep and a constant height. A spell whose projectile, or the projectile that one
-   * spawns, sets one is refused as it is cast or spawned.
+   * pingpong sweep, the flight back to a shooter that walks on, and a constant height. A spell
+   * whose projectile, or the projectile that one spawns, sets one is refused as it is cast or
+   * spawned, and a unit's shot as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
@@ -67,6 +68,7 @@ public final class BattleRecords {
           "DoDirectionalPushback",
           "CheckCollisions",
           "PingpongVisualTime",
+          "PingpongMovingShooter",
           "ConstantHeight");
 
   /** The card columns the placement does not model; a card that sets one is refused. */
@@ -337,6 +339,12 @@ public final class BattleRecords {
         .dashConstantTimeMs(row.intValue("DashConstantTime"))
         .dashImmuneToDamageTimeMs(row.intValue("DashImmuneToDamageTime"))
         .dashToTargetRadius(row.bool("DashToTargetRadius"))
+        .targetOnlyTroops(row.bool("TargetOnlyTroops"))
+        .ignoreTargetsWithBuff(
+            row.string("IgnoreTargetsWithBuff").isEmpty()
+                ? null
+                : row.string("IgnoreTargetsWithBuff"))
+        .deprioritizeTargetsWithBuff(row.bool("DeprioritizeTargetsWithBuff"))
         .unmodelledColumns(unmodelledColumns(row))
         .build();
   }
