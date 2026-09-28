@@ -1593,8 +1593,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The death slot: what a dying object's row does as it dies, in order - its area effect at its
-   * point, for its side and at its level; its death damage; its death spawn. A death whose row sets
-   * a column of the slot the battle does not model is refused.
+   * point, for its side and at its level; what its buffs leave; its death damage; its death spawn.
+   * A death whose row sets a column of the slot the battle does not model is refused.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -1614,8 +1614,99 @@ public class BattleWorld implements HolderPasses {
           "death",
           dying.name());
     }
+    buffDeathSpawns(dying);
     deathDamage(dying, data);
     deathSpawn(dying, data);
+  }
+
+  /**
+   * What the buffs a dying object carries leave as it dies, each listed instance in turn from the
+   * first: a buff with a death spawn makes its characters through the character spawner, unless the
+   * dying object is a building. The instances stay listed; they leave with the object.
+   *
+   * <p>The children stand in front of the dying object, the dying object's collision radius and the
+   * child's away toward its enemy, or on its point for a row that spawns on the same location. Each
+   * is made at the instance's level re-based on the child's rarity, for the dying object's opponent
+   * when the row spawns for the enemy, else for its side; it deploys when the row delays its
+   * deploy, and for the child's own deploy time, facing the way the dying object faced; it has no
+   * first-tick immunity. It is registered with its registration visit inside the pass of the death
+   * and joins the live list at the tick's closing cleanup.
+   *
+   * <p>Refused rather than guessed: a ring (a death spawn radius), and a child that is a building,
+   * paths to its point or has a starting action. A dying row that spawns the same unit instead is
+   * refused with the death columns.
+   */
+  private void buffDeathSpawns(WorldEntity dying) {
+    if (dying.getBuffs() == null || dying.getData().building()) {
+      return;
+    }
+    for (BuffInstance instance : new ArrayList<>(dying.getBuffs().items())) {
+      BuffData buff = instance.getBuff();
+      if (buff.deathSpawn() == null) {
+        continue;
+      }
+      UnitData child = records.unit(buff.deathSpawn());
+      if (buff.deathSpawnRadius() != 0
+          || child.building()
+          || child.spawnPathfindSpeed() != 0
+          || child.onStartingAction() != null) {
+        throw new UnsupportedOperationException(
+            dying.name()
+                + " died carrying "
+                + buff.name()
+                + ", whose death spawn "
+                + child.name()
+                + " stands on a ring, is a building, paths to its point or starts an action,"
+                + " which is not modelled");
+      }
+      int side = buff.deathSpawnIsEnemy() ? dying.side() ^ 1 : dying.side();
+      int fromX = dying.getView().getX();
+      int fromY = dying.getView().getY();
+      List<CharacterEntity> made = new ArrayList<>();
+      for (int i = 0; i < buff.deathSpawnCount(); i++) {
+        int[] at =
+            SpawnPlacement.position(
+                fromX,
+                fromY,
+                i,
+                buff.deathSpawnCount(),
+                buff.deathSpawnSameLocation(),
+                0,
+                dying.getData().collisionRadius() + child.collisionRadius(),
+                dying.side() & 1,
+                tileMap.width() * TileMap.CELL_UNITS,
+                (px, py) -> SpawnPassable.passable(tileMap, px, py, child.collisionRadius()));
+        int x = inset(at[0], tileMap.width());
+        int y = inset(at[1], tileMap.height());
+        int count = spawnCounts.merge(dying.name(), 1, Integer::sum) - 1;
+        CharacterEntity spawned =
+            CharacterEntity.spawned(
+                this,
+                child,
+                dying.name() + "_" + count,
+                side,
+                x,
+                y,
+                PackedLevel.level(PackedLevel.pack(instance.getPackedLevel(), child.rarity())));
+        if (buff.deathSpawnDeployDelay()) {
+          spawned.startDeploying();
+        }
+        if (child.deployTimeMs() != 0) {
+          // A child made with a deploy time faces the way the dying object faced.
+          spawned.deployFor(child.deployTimeMs());
+          spawned.getView().setDirX(dying.getView().getDirX());
+          spawned.getView().setDirY(dying.getView().getDirY());
+        }
+        holder.addRegistered(spawned);
+        for (WorldObserver observer : observers) {
+          observer.characterSpawned(tick, dying, spawned, x, y);
+        }
+        made.add(spawned);
+      }
+      for (WorldObserver observer : observers) {
+        observer.buffDeathSpawn(tick, dying, instance, made);
+      }
+    }
   }
 
   /**
@@ -2123,6 +2214,33 @@ public class BattleWorld implements HolderPasses {
       target
           .getBuffs()
           .apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
+    }
+  }
+
+  /**
+   * A projectile's target buff on its one target: nothing for a target untouchable at that moment -
+   * riding, or dashing under a dash immunity, but not the immunity that lingers after a dash -
+   * unless the row applies it even then; otherwise applied with the projectile as the source, at
+   * its level and for its side, for the row's buff time at that level. There is no alive test, so a
+   * target the damage has just killed takes it too; the buff decides for itself whether the target
+   * takes it, so a building takes nothing of one that ignores buildings.
+   *
+   * @param projectile the projectile that landed
+   * @param target its target
+   */
+  public void projectileTargetBuff(ProjectileEntity projectile, WorldEntity target) {
+    ProjectileData data = projectile.getData();
+    BuffData buff = buffData(data.targetBuff());
+    int time = data.buffTime(projectile.getPackedLevel());
+    List<WorldEntity> targets = List.of();
+    if (data.applyBuffEvenIfImmuneToDamage() || !target.untouchable(false)) {
+      target
+          .getBuffs()
+          .apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
+      targets = List.of(target);
+    }
+    for (WorldObserver observer : observers) {
+      observer.projectileBuff(tick, projectile, buff, time, targets);
     }
   }
 

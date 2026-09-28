@@ -58,7 +58,11 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     a spawned projectile, else 0
  * @param constantHeight the height the projectile starts at and aims at, in place of its
  *     launcher's, and lands at; 0 for none
- * @param targetBuff the buff its impact applies to what its area holds, or null
+ * @param targetBuff the buff its impact applies to what its area holds, or to its one target, or
+ *     null
+ * @param applyBuffBeforeDamage true when the impact applies its target buff before its damage
+ * @param applyBuffEvenIfImmuneToDamage true when the buff reaches a target that is untouchable at
+ *     the moment
  * @param buffTimeMs how long that buff lasts at the first level
  * @param buffTimeIncreasePerLevel how much longer it lasts for each step of the projectile's level
  * @param maximumTargets the most entities its area buff reaches: 1000 for an empty column, as the
@@ -73,8 +77,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the far"
             + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
-            + " columns, the deflect behaviour, the chained hit, the target buff on one target or"
-            + " before the damage, and the spawned area effect; the impact's pushback and its spawned characters are"
+            + " columns, the deflect behaviour, the chained hit, the target buff of a projectile"
+            + " that flies to a point, and the spawned area effect; the impact's pushback and its spawned characters are"
             + " carried.")
 @Builder(toBuilder = true)
 public record ProjectileData(
@@ -109,6 +113,8 @@ public record ProjectileData(
     int spawnChain,
     int constantHeight,
     String targetBuff,
+    boolean applyBuffBeforeDamage,
+    boolean applyBuffEvenIfImmuneToDamage,
     int buffTimeMs,
     int buffTimeIncreasePerLevel,
     int maximumTargets,

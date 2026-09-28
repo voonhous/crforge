@@ -34,8 +34,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * <p>The impact of a row with a radius does not look at the target at all: everything the area
  * damage collects in the circle around the aim takes the damage, or the crown-tower share, and the
  * launcher's own side is spared only when the row says so; the victims are pushed the row's
- * pushback away from the aim. A row with a target buff then buffs the same circle. A row that
- * spawns characters then makes them in formation around the aim.
+ * pushback away from the aim.
+ *
+ * <p>A row with a target buff buffs the same circle, or the one target of a projectile without a
+ * radius, after the damage, or before it when the row says so. A row that spawns characters then
+ * makes them in formation around the aim.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -52,11 +55,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " barb_barrel_knight, the pass at the arrival held by no run; the limited-time homing"
             + " re-aim by elite_archer_knight, and the landing at the constant height by"
             + " royal_giant_tower; the target buff on the circle after the damage by"
-            + " snowball_knights. Supplied, not settled:"
+            + " snowball_knights, and on the one target before it by witch_mother_skeletons; the"
+            + " circle's before the damage and the one target's after it by no run. Supplied, not"
+            + " settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
-            + " of one that only heals, the target buff on one target or before the damage, the"
-            + " height toward a moving target under the"
+            + " of one that only heals, the height toward a moving target under the"
             + " z-distance column, the random delays, the pingpong sweep, the drag-back hook, the"
             + " hit effects, and the on-impact area effect.")
 final class ProjectileFlight {
@@ -174,17 +178,28 @@ final class ProjectileFlight {
     boolean onRing = chain != null && chain.isRingPoints();
     int px = onRing ? p.getRingX() : p.getAimX();
     int py = onRing ? p.getRingY() : p.getAimY();
+    // The target buff goes before the damage when the row says so, else after it: after, a victim
+    // the damage killed has run its death already; before, it dies carrying the buff.
+    boolean buffFirst = data.applyBuffBeforeDamage();
+    boolean buffs = data.targetBuff() != null;
     if (data.radius() >= 1) {
+      if (buffs && buffFirst) {
+        world.projectileAreaBuff(p, px, py);
+      }
       areaImpact(p, world, px, py, damage, towerDamage, hitId);
-      // The target buff reaches the same circle after the damage, so a victim the damage killed
-      // takes none.
-      if (data.targetBuff() != null) {
+      if (buffs && !buffFirst) {
         world.projectileAreaBuff(p, px, py);
       }
     } else {
-      TargetView target = p.targetView();
+      WorldEntity target = p.getTarget();
       if (target != null) {
-        singleImpact(p, world, target, damage, towerDamage, hitId);
+        if (buffs && buffFirst) {
+          world.projectileTargetBuff(p, target);
+        }
+        singleImpact(p, world, target.getTargetView(), damage, towerDamage, hitId);
+        if (buffs && !buffFirst) {
+          world.projectileTargetBuff(p, target);
+        }
       }
     }
     // A projectile that flies to a point hits what its body covers at its aim once more.

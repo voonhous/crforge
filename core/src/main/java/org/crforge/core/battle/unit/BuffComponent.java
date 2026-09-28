@@ -24,7 +24,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * is refreshed instead of a second one listed: any instance of the row, or with stacking only the
  * one the same source applied, or for a buff specific to a player only one from the same side. A
  * refresh keeps the longer time, growing the whole by the difference, and the higher level. With
- * nothing to refresh a new instance is listed last, its level packed against the buff's rarity.
+ * nothing to refresh a new instance is listed last, its level packed against the buff's rarity. A
+ * buff with a death spawn that would make another with a death spawn give way is refused.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
  * ms and is removed once its time is 0; the damage over time due on the visit lands once it is
@@ -45,8 +46,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " 3, the 50 ms step and the removal, the damage over time on a unit and a crown"
             + " tower; the speed, hit speed and spawn speed scales. Translated but held by no"
             + " run: a building's damage percent, a player-specific refresh, the per-hit crown"
-            + " tower column, a negative hit frequency and the forgotten source. Refused by the"
-            + " row: projectiles, chains, death spawns, spawns, morphs, actions, tags, switching"
+            + " tower column, a negative hit frequency and the forgotten source. A death spawn is"
+            + " left by the dying carrier (see the battle's death slot), held by"
+            + " witch_mother_skeletons; one giving way to another is refused. Refused by the"
+            + " row: projectiles, chains, spawns, morphs, actions, tags, switching"
             + " team, invisibility, shields, hit point and damage multipliers, damage reduction,"
             + " heal over time, pull and push, and a parent that controls the buff.")
 public final class BuffComponent implements BattleComponent {
@@ -145,6 +148,23 @@ public final class BuffComponent implements BattleComponent {
           world.buffRefreshed(entity, instance, before);
         }
         create = false;
+      }
+    }
+    // A buff with a death spawn removes every listed one with a death spawn, unless both allow
+    // another; no run holds the removal.
+    if (buff.deathSpawn() != null) {
+      for (BuffInstance instance : items) {
+        BuffData old = instance.getBuff();
+        if (old.deathSpawn() != null
+            && !(old.otherBuffDeathSpawnAllowed() && buff.otherBuffDeathSpawnAllowed())) {
+          throw new UnsupportedOperationException(
+              buff.name()
+                  + " would remove "
+                  + old.name()
+                  + " from "
+                  + entity.name()
+                  + ", one death spawn buff giving way to another, which is not modelled");
+        }
       }
     }
     if (create) {
