@@ -179,8 +179,9 @@ public final class BattleRecords {
 
   /**
    * The columns of what a unit does as it dies that the battle does not model: a unit whose row
-   * sets one is refused when it dies. The elixir a death gives is not among them: the battle models
-   * no elixir at all.
+   * sets one is refused when it dies. The elixir a death gives is not among them: the death handler
+   * pays a player's unit's ManaOnDeathForOpponent to the side that killed it in a match, and pays
+   * ManaOnDeath only for a neutral object, which the battle has none of.
    */
   private static final List<String> UNMODELLED_DEATH_COLUMNS =
       List.of(
@@ -205,8 +206,8 @@ public final class BattleRecords {
    * refused as it is created. A shield, hiding while not attacking or before the first hit, a buff
    * at a share of its hit points, hovering, a flying unit's direct paths, the action a completed
    * charge runs, a chained dash, a dash's contact damage, fixed distance, area effect and closing
-   * action, the elixir a collector makes, a spawner's launches, its second and third characters,
-   * its destruction at the limit and the deploy it gives its children.
+   * action, a limit on the elixir a collector makes, a spawner's launches, its second and third
+   * characters, its destruction at the limit and the deploy it gives its children.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -223,7 +224,7 @@ public final class BattleRecords {
           "DashDistance",
           "AreaEffectOnDash",
           "OnAfterDashAction",
-          "ManaCollectAmount",
+          "ManaGenerateLimit",
           "SpawnProjectile",
           "SpawnCharacter2",
           "SpawnCharacter3",
@@ -324,6 +325,9 @@ public final class BattleRecords {
         .spawnIntervalMs(row.intValue("SpawnInterval"))
         .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
         .spawnStartTimeMs(row.intValue("SpawnStartTime"))
+        .manaCollectAmount(row.intValue("ManaCollectAmount"))
+        .manaGenerateTimeMs(row.intValue("ManaGenerateTimeMs"))
+        .manaOnDeathForOpponent(row.intValue("ManaOnDeathForOpponent"))
         .ignoreBuffs(namesOf(row, "IgnoreBuff"))
         .shieldHitpoints(row.intValue("ShieldHitpoints"))
         .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))

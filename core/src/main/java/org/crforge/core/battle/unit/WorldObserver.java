@@ -416,6 +416,26 @@ public interface WorldObserver {
   default void clearingKilled(int tick, WorldEntity target) {}
 
   /**
+   * An elixir collector paid its king.
+   *
+   * @param tick the battle tick
+   * @param collector the collector
+   * @param side the side of the king it paid
+   * @param amount the whole elixir it paid
+   */
+  default void elixirCollected(int tick, WorldEntity collector, int side, int amount) {}
+
+  /**
+   * A unit's death paid the king of the side that killed it.
+   *
+   * @param tick the battle tick
+   * @param dying the unit
+   * @param side the killing side
+   * @param amount the elixir paid, in ten-thousandths
+   */
+  default void deathElixirPaid(int tick, WorldEntity dying, int side, int amount) {}
+
+  /**
    * A tiebreaker's drain took a step off a tower.
    *
    * @param tick the battle tick

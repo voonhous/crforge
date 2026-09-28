@@ -133,14 +133,17 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " reference or over its radius with a push, its landing hold, its immunity while it"
             + " dashes and after, and the resume when it loses its reference, held by bandit_knight"
             + " and mega_knight_group; a card play's rider that targets troops only, its buff"
-            + " priority fed, held by ram_rider_tower; the"
+            + " priority fed, held by ram_rider_tower; an elixir collector's payout to its king,"
+            + " held at the cap and paid once the king can take it, and an Elixir Golem's death"
+            + " paying the killing side, held by match_elixir_sources (the carry a payout leaves"
+            + " when the spawn step does not divide the generation time is held by no run); the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. Held by no run: a spawner's start time other than 0 and a top-side"
             + " building's in-front point. Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
             + " hit points, hovering, direct"
             + " paths, a completed charge's action, a chained dash, a dash's contact damage,"
-            + " fixed distance, area effect or closing action, elixir, a"
+            + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
             + " deploy for its children), a charge on a unit that fires, a Kamikaze row's hit, a"
             + " lifetime's death"
@@ -207,6 +210,9 @@ public class CharacterEntity extends WorldEntity {
    * time at placement.
    */
   private int spawnTimer;
+
+  /** An elixir collector's timer: what it has counted toward its next payout, in milliseconds. */
+  private int collectorTimerMs;
 
   /** How many children of the current wave the spawner has made. */
   private int spawnWaveMade;
@@ -1119,6 +1125,9 @@ public class CharacterEntity extends WorldEntity {
     if (calls.contains("remove")) {
       world.deathAtRemoval(this);
     }
+    if (calls.contains("elixir")) {
+      collectElixir();
+    }
     if (calls.contains("spawner")) {
       spawner();
     }
@@ -1147,6 +1156,38 @@ public class CharacterEntity extends WorldEntity {
    * wave, or the pause away once the wave is made, and never less than 1 ms; a timer that went
    * below 0 carries.
    */
+  /**
+   * The elixir block of an elixir collector's state visit: its timer gains half the spawn step a
+   * visit from the end of its deploy, and once it reaches the row's generation time the collector
+   * pays its king the row's amount - but only while that amount and the king's whole elixir come to
+   * no more than MAX_MANA. Otherwise the timer is held at the generation time and it tries again
+   * the next visit. A payout takes the generation time off the timer.
+   */
+  private void collectElixir() {
+    UnitData data = getData();
+    if (data.manaCollectAmount() <= 0) {
+      return;
+    }
+    KingElixir kings = world.getKingElixir();
+    if (kings == null) {
+      throw new UnsupportedOperationException(
+          name() + " collects elixir outside a match, where no king holds any");
+    }
+    int period = data.manaGenerateTimeMs();
+    collectorTimerMs += getBuffs().spawnRate() / 2;
+    if (collectorTimerMs < period) {
+      return;
+    }
+    int amount = data.manaCollectAmount();
+    if (amount + kings.wholeElixir(side()) > kings.maxMana()) {
+      collectorTimerMs = Math.min(collectorTimerMs, period);
+      return;
+    }
+    collectorTimerMs -= period;
+    kings.add(side(), amount * KingElixir.SCALE);
+    world.elixirCollected(this, amount);
+  }
+
   private void spawner() {
     UnitData data = getData();
     int interval = data.spawnIntervalMs();

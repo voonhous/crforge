@@ -279,8 +279,13 @@ class BattleRecordsTest {
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).contains("ShieldLostAction");
     assertThat(records.unit("Tesla").unmodelledColumns()).containsExactly("HidesWhenNotAttacking");
-    assertThat(records.unit("ElixirCollector").unmodelledColumns())
-        .containsExactly("ManaCollectAmount");
+    // An elixir collector is modelled: one elixir every 13000 ms; an Elixir Golem's death pays
+    // 1000.
+    UnitData collector = records.unit("ElixirCollector");
+    assertThat(collector.unmodelledColumns()).isEmpty();
+    assertThat(new int[] {collector.manaCollectAmount(), collector.manaGenerateTimeMs()})
+        .containsExactly(1, 13000);
+    assertThat(records.unit("ElixirGolem1").manaOnDeathForOpponent()).isEqualTo(1000);
     // The Goblin Giant's two Spear Goblins ride on it, at 900, turned by their own -22.
     UnitData goblinGiant = records.unit("GoblinGiant");
     assertThat(goblinGiant.unmodelledColumns()).isEmpty();

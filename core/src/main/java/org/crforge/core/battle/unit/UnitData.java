@@ -97,6 +97,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnIntervalMs the time between the children of a wave; 0 to make a wave at once
  * @param spawnPauseTimeMs the time between waves
  * @param spawnStartTimeMs the time before the first wave, counted from the end of its deploy
+ * @param manaCollectAmount the whole elixir it pays its king each time its collector's timer runs
+ *     out; 0 for no collector
+ * @param manaGenerateTimeMs the time its collector counts between payouts
+ * @param manaOnDeathForOpponent the elixir its death pays the side that killed it, in thousandths
+ *     of an elixir as the row writes it; 0 for none
  * @param ignoreBuffs the buff rows it takes nothing of
  * @param shieldHitpoints its shield at the first level; 0 for none
  * @param stopMovementAfterMs how long it walks before it stops for a while; 0 for never
@@ -205,6 +210,9 @@ public record UnitData(
     int spawnIntervalMs,
     int spawnPauseTimeMs,
     int spawnStartTimeMs,
+    int manaCollectAmount,
+    int manaGenerateTimeMs,
+    int manaOnDeathForOpponent,
     List<String> ignoreBuffs,
     int shieldHitpoints,
     int stopMovementAfterMs,

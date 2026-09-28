@@ -195,7 +195,8 @@ class BattleActionSpawnRunTest {
         "match_elixir_150s",
         "match_knights_king",
         "match_overtime_tiebreak",
-        "match_overtime_draw"
+        "match_overtime_draw",
+        "match_elixir_sources"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -253,6 +254,7 @@ class BattleActionSpawnRunTest {
     Map<Integer, JsonNode> trace = new HashMap<>();
     List<String> circleKills = new ArrayList<>();
     List<String> drains = new ArrayList<>();
+    List<String> elixirPaid = new ArrayList<>();
     List<Integer> endTicks = new ArrayList<>();
     if (reference.has("match")) {
       JsonNode m = reference.get("match");
@@ -272,7 +274,7 @@ class BattleActionSpawnRunTest {
         trace.put(row.get(0).asInt(), row);
       }
       assertOpeningHands(ladder, m);
-      match.getWorld().addObserver(matchLog(currentTick, circleKills, drains));
+      match.getWorld().addObserver(matchLog(currentTick, circleKills, drains, elixirPaid));
     }
     // A run with card plays plays each as a place-card command due on its tick.
     if (reference.has("commands")) {
@@ -602,6 +604,7 @@ class BattleActionSpawnRunTest {
       assertEnd(match, ladder, reference.get("match"));
       List<String> expectedKills = new ArrayList<>();
       List<String> expectedDrains = new ArrayList<>();
+      List<String> expectedElixir = new ArrayList<>();
       List<Integer> expectedEnd = new ArrayList<>();
       for (JsonNode entry : reference.get("match").get("log")) {
         String kind = entry.get("event").asText();
@@ -612,6 +615,16 @@ class BattleActionSpawnRunTest {
                       entry.get("tick").asInt(),
                       entry.get("target").asText(),
                       entry.get("radius").asInt()));
+        } else if (kind.equals("collector_elixir") || kind.equals("death_elixir")) {
+          boolean collector = kind.equals("collector_elixir");
+          expectedElixir.add(
+              "%d %s %s %d %d"
+                  .formatted(
+                      entry.get("tick").asInt(),
+                      collector ? "collector" : "death",
+                      entry.get(collector ? "building" : "unit").asText(),
+                      entry.get("side").asInt(),
+                      entry.get("amount").asInt()));
         } else if (kind.equals("drain")) {
           expectedDrains.add(
               "%d %s %d %d"
@@ -630,6 +643,9 @@ class BattleActionSpawnRunTest {
       }
       assertThat(circleKills).as("every kill of a fallen king's circle").isEqualTo(expectedKills);
       assertThat(drains).as("every step of the tiebreaker's drain").isEqualTo(expectedDrains);
+      assertThat(elixirPaid)
+          .as("every elixir a collector or a death paid a king")
+          .isEqualTo(expectedElixir);
       assertThat(endTicks).as("the tick the match ended on").isEqualTo(expectedEnd);
     }
 
@@ -1491,12 +1507,23 @@ class BattleActionSpawnRunTest {
   }
 
   /**
-   * Lists every kill of a fallen king's circle with its radius, and every step of a tiebreaker's
-   * drain with the tower's hit points after it.
+   * Lists every kill of a fallen king's circle with its radius, every step of a tiebreaker's drain
+   * with the tower's hit points after it, and every elixir a collector or a death paid a king.
    */
   private static WorldObserver matchLog(
-      int[] currentTick, List<String> circle, List<String> drain) {
+      int[] currentTick, List<String> circle, List<String> drain, List<String> elixir) {
     return new WorldObserver() {
+      @Override
+      public void elixirCollected(int tick, WorldEntity collector, int side, int amount) {
+        elixir.add(
+            "%d collector %s %d %d".formatted(currentTick[0], collector.name(), side, amount));
+      }
+
+      @Override
+      public void deathElixirPaid(int tick, WorldEntity dying, int side, int amount) {
+        elixir.add("%d death %s %d %d".formatted(currentTick[0], dying.name(), side, amount));
+      }
+
       @Override
       public void circleKilled(int tick, WorldEntity target, int radius) {
         circle.add("%d %s %d".formatted(currentTick[0], target.name(), radius));
