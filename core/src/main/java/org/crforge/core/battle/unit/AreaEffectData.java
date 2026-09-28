@@ -32,6 +32,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     hit speed more
  * @param onlyOwnTroops true when its buff reaches only its own side
  * @param spawnAreaEffectObject the area effect it creates at its point on its first update, or null
+ * @param affectsHidden true when it reaches a hidden unit, which nothing else does
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -59,6 +60,7 @@ public record AreaEffectData(
     boolean capBuffTimeToAreaEffectTime,
     boolean onlyOwnTroops,
     String spawnAreaEffectObject,
+    boolean affectsHidden,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

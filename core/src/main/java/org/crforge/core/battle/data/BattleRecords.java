@@ -150,8 +150,7 @@ public final class BattleRecords {
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, clones, the hit
    * action, the shape, the filter, the spawns and launches, the life condition, the following, the
-   * tags, the deflection, the per-level lifetime and the push's floor and gate lift. Hidden units
-   * are not modelled, so a row that reaches them is read as one that does not.
+   * tags, the deflection, the per-level lifetime and the push's floor and gate lift.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -208,8 +207,8 @@ public final class BattleRecords {
    * at a share of its hit points, hovering, a flying unit's direct paths, the action a completed
    * charge runs, a chained dash, a dash's contact damage, fixed distance, area effect and closing
    * action, a limit on the elixir a collector makes, a spawner's launches, its second and third
-   * characters, its destruction at the limit, the deploy it gives its children, and a Kamikaze
-   * row's drain over a time rather than its kill.
+   * characters, its destruction at the limit, the deploy it gives its children, a Kamikaze row's
+   * drain over a time rather than its kill, and the morph a tunnelling unit takes as it surfaces.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -232,7 +231,8 @@ public final class BattleRecords {
           "SpawnCharacter3",
           "DestroyAtLimit",
           "SpawnCharacterWithDeploy",
-          "KamikazeTime");
+          "KamikazeTime",
+          "SpawnPathfindMorph");
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
@@ -619,6 +619,7 @@ public final class BattleRecords {
         .hitsGround(row.bool("HitsGround"))
         .onlyEnemies(row.bool("OnlyEnemies"))
         .ignoreBuildings(row.bool("IgnoreBuildings"))
+        .affectsHidden(row.bool("AffectsHidden"))
         .pushback(row.intValue("Pushback"))
         .maximumTargets(row.intValue("MaximumTargets"))
         .sharedDamage(row.bool("SharedDamage"))

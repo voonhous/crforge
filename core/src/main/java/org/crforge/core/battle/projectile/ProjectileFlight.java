@@ -375,6 +375,11 @@ final class ProjectileFlight {
         ValidatorQueries.standard1v1(),
         new AreaDamage.Queries() {
           @Override
+          public boolean untouchable(TargetView victim) {
+            return world.entityOf(victim.getEntity()).passedBy(false);
+          }
+
+          @Override
           public DamageResult damage(TargetView victim, int dealt, int id) {
             // The area hands the damage on without a direction.
             return world.dealProjectileDamage(

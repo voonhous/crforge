@@ -1965,6 +1965,11 @@ public class BattleWorld implements HolderPasses {
             ValidatorQueries.standard1v1(),
             new AreaDamage.Queries() {
               @Override
+              public boolean untouchable(TargetView victim) {
+                return entityOf(victim.getEntity()).passedBy(false);
+              }
+
+              @Override
               public DamageResult damage(TargetView victim, int dealt, int id) {
                 return dealAreaDamage(owner, entityOf(victim.getEntity()), dealt, id);
               }

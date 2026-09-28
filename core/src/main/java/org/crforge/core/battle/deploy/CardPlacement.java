@@ -28,7 +28,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " position with the placed point as the reference, and its start; a spell card"
             + " placed with no unit, its point handed to the cast; a building card placed as a"
             + " troop card is, its unit a building. Not modelled: the elixir and the other gates"
-            + " before the map check, and a unit that tunnels to its point from its king tower.")
+            + " before the map check. A card whose first row tunnels hands its units to the tunnel"
+            + " in place of a start, held by miner_princess.")
 public final class CardPlacement {
 
   /** How far from every edge of the arena a unit is created. */
@@ -48,10 +49,17 @@ public final class CardPlacement {
    * @param x where it is created
    * @param y where it is created
    * @param lane its lane
-   * @param start whether it deploys at once or waits, and how long
+   * @param start whether it deploys at once or waits, and how long; null for a unit that tunnels
+   *     from its king tower, which has no start of its own
    */
   public record Unit(
-      int index, UnitData unit, int dx, int dy, int x, int y, int lane, InitialDelay start) {}
+      int index, UnitData unit, int dx, int dy, int x, int y, int lane, InitialDelay start) {
+
+    /** True for a unit handed to its tunnel from its king tower in place of a start. */
+    public boolean tunnels() {
+      return start == null;
+    }
+  }
 
   /**
    * What a play came to.
@@ -151,15 +159,13 @@ public final class CardPlacement {
     int originLane = LaneAssignment.lane(w, h, w, px, py, -1, 0, tileMap::bits);
     int secondaryCount = card.secondary() == null ? 0 : card.secondaryCount();
     boolean firstIsBuilding = card.unit().building();
+    // The construction asks the card's first row whether its units tunnel: each is then handed to
+    // its tunnel from its king tower in place of the delay selection, as the Miner and the Goblin
+    // Drill's dig are.
+    boolean tunnels = card.unitAt(0).spawnPathfindSpeed() != 0;
     List<Unit> units = new ArrayList<>();
     for (int k = 0; k < card.total(); k++) {
       UnitData unit = card.unitAt(k);
-      if (unit.spawnPathfindSpeed() != 0) {
-        // The construction hands such a unit to its tunnel from the king tower instead of the
-        // delay selection: the Miner and the Goblin Drill's dig.
-        throw new UnsupportedOperationException(
-            unit.name() + " tunnels to its point from its king tower, which is not modelled");
-      }
       int radius =
           card.summonRadius() != 0
               ? card.summonRadius()
@@ -189,13 +195,15 @@ public final class CardPlacement {
         lane = originLane;
       }
       InitialDelay start =
-          InitialDelay.select(
-              k,
-              card.count(),
-              unit.deployTimeMs(),
-              card.summonDeployDelayMs(),
-              card.summonDeployDelaySecondMs(),
-              firstIsBuilding);
+          tunnels
+              ? null
+              : InitialDelay.select(
+                  k,
+                  card.count(),
+                  unit.deployTimeMs(),
+                  card.summonDeployDelayMs(),
+                  card.summonDeployDelaySecondMs(),
+                  firstIsBuilding);
       units.add(new Unit(k, unit, offset[0], offset[1], cx, cy, lane, start));
     }
     return new Result(0, px, py, interval, originLane, units);

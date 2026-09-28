@@ -257,6 +257,10 @@ public class Standard1v1Battle {
     }
     List<CharacterEntity> units = new ArrayList<>();
     for (CardPlacement.Unit unit : result.units()) {
+      if (unit.tunnels()) {
+        units.add(tunnel(target, unit, level, side, result.x(), result.y(), name));
+        continue;
+      }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
       if (waits && unit.unit().spawnAttach()) {
         throw new UnsupportedOperationException(
@@ -289,6 +293,45 @@ public class Standard1v1Battle {
       units.add(character);
     }
     plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units), 0));
+  }
+
+  /**
+   * Plays a unit that tunnels: made and levelled as any troop, it is handed over onto its own king
+   * tower and aimed at the placed point - not its formation point - in the spawn-pathfinding state,
+   * then queued with its registration visit, in which it searches its route and takes its first
+   * step. It is started as any played unit is.
+   */
+  private CharacterEntity tunnel(
+      Battle target,
+      CardPlacement.Unit unit,
+      int level,
+      int side,
+      int pointX,
+      int pointY,
+      String name) {
+    CharacterEntity character =
+        new CharacterEntity(
+            world,
+            unit.unit(),
+            name + "_" + unit.index(),
+            side,
+            unit.x(),
+            unit.y(),
+            level,
+            unit.lane(),
+            -1);
+    // The king that fills the side's tower slot, which the setup placed; it is never removed.
+    TowerEntity king = null;
+    for (BattleEntity entity : target.getHolder().entities()) {
+      if (entity instanceof TowerEntity tower && tower.getData().king() && tower.side() == side) {
+        king = tower;
+      }
+    }
+    character.tunnelFrom(king.getView().getX(), king.getView().getY(), pointX, pointY);
+    target.getHolder().addRegistered(character);
+    world.characterPlayed(character);
+    character.start();
+    return character;
   }
 
   /**

@@ -253,7 +253,8 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (!HitPoints.alive(target.getHitPoints())) {
       return false;
     }
-    if (target.untouchable()) {
+    // A hidden unit is passed by first, where an effect that reaches hidden units is refused.
+    if (target.passedBy(data.affectsHidden()) || target.untouchable()) {
       return false;
     }
     if (target.getView().getState() == GridEntityState.WAITING_TO_DEPLOY) {
@@ -309,6 +310,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
             area,
             validatorQueries,
             new AreaDamage.Queries() {
+              @Override
+              public boolean untouchable(TargetView victim) {
+                return world.entityOf(victim.getEntity()).passedBy(data.affectsHidden());
+              }
+
               @Override
               public DamageResult damage(TargetView victim, int amount, int hitId) {
                 return world.dealAreaEffectDamage(

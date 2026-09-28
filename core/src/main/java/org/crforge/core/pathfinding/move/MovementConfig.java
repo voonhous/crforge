@@ -189,4 +189,31 @@ public record MovementConfig(
         ingamePathfindSpeed,
         entersWaterWhileSpawnPathfinding);
   }
+
+  /**
+   * This configuration with a spawn-pathfinding speed, which is also the radius at which such a
+   * unit counts a route node as reached.
+   *
+   * @param speed the speed in the spawn-pathfinding state
+   */
+  public MovementConfig withSpawnPathfindSpeed(int speed) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        speed,
+        ingamePathfindSpeed,
+        entersWaterWhileSpawnPathfinding);
+  }
 }

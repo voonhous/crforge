@@ -382,10 +382,12 @@ public class CharacterEntity extends WorldEntity {
             MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs())
                 .withCharge(data.chargeRange())
                 .withJump(data.jumpEnabled(), data.jumpHeight())
-                .withDashConstantTime(data.dashConstantTimeMs()),
+                .withDashConstantTime(data.dashConstantTimeMs())
+                .withSpawnPathfindSpeed(data.spawnPathfindSpeed()),
             SpeedConfig.forGroundUnit(data.speed())
                 .withChargeMultiplier(data.chargeSpeedMultiplier())
-                .withJumpSpeed(data.jumpSpeed()),
+                .withJumpSpeed(data.jumpSpeed())
+                .withSpawnPathfindSpeed(data.spawnPathfindSpeed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs())
                 .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs()),
             getSelection(),
@@ -514,6 +516,30 @@ public class CharacterEntity extends WorldEntity {
       root++;
     }
     return (int) root;
+  }
+
+  /**
+   * Hands a played unit to its tunnel, as the construction does in place of its start: the level
+   * setter has left it walking with no deploy time; it is moved onto its own king tower at its
+   * flying height, its movement aimed at the placed point, and set to the spawn-pathfinding state,
+   * where it walks its route hidden until it surfaces on the point.
+   *
+   * @param kingX its king tower's position along the width
+   * @param kingY its king tower's position along the length
+   * @param pointX the placed point along the width
+   * @param pointY the placed point along the length
+   */
+  void tunnelFrom(int kingX, int kingY, int pointX, int pointY) {
+    GridEntity view = getView();
+    view.setState(GridEntityState.MOVING);
+    view.setDeployCountdown(0);
+    view.setX(kingX);
+    view.setY(kingY);
+    view.setZ(getData().flyingHeight());
+    unit.movement().setExplicitX(pointX);
+    unit.movement().setExplicitY(pointY);
+    setter.setState(view, GridEntityState.SPAWN_PATHFIND);
+    getTargetView().setAcceptsAttacker(false);
   }
 
   /** Sets the character deploying through its own setter, with its row's deploy time. */
@@ -934,13 +960,20 @@ public class CharacterEntity extends WorldEntity {
     world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
+  /** Hidden while it tunnels to its placement, in the spawn-pathfinding state. */
+  @Override
+  public boolean hidden() {
+    return getView().getState() == GridEntityState.SPAWN_PATHFIND;
+  }
+
   /**
-   * Untouchable while it rides on a parent, while it dashes under a row with a dash immunity, and,
-   * when asked, while that immunity lasts after the dash.
+   * Untouchable while it tunnels, while it rides on a parent, while it dashes under a row with a
+   * dash immunity, and, when asked, while that immunity lasts after the dash.
    */
   @Override
   boolean untouchable(boolean dashImmunity) {
-    return parent != null
+    return hidden()
+        || parent != null
         || getView().getState() == GridEntityState.DASHING
             && getData().dashImmuneToDamageTimeMs() > 0
         || dashImmunity && unit.timers().getDashImmunityRemainingMs() >= 1;
@@ -1209,8 +1242,10 @@ public class CharacterEntity extends WorldEntity {
         stateQueries(),
         calls,
         setter);
-    // An attached rider answers no attacker at all; a spawned child none while it is immune.
-    getTargetView().setAcceptsAttacker(!unit.timers().isSpawnImmune() && parent == null);
+    // An attached rider answers no attacker at all; a spawned child none while it is immune, and
+    // a tunnelling unit none while it is hidden.
+    getTargetView()
+        .setAcceptsAttacker(!unit.timers().isSpawnImmune() && parent == null && !hidden());
     // The visit's removal of an object without hit points - the resume at the end of a bomb's
     // deploy - calls its death slot, without the death handler.
     if (calls.contains("remove")) {
