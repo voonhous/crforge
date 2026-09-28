@@ -358,6 +358,12 @@ A Ladder match at level 11 between two decks of eight Knights with no play. Ever
 
 `BattleActionSpawnRunTest` plays both with the spawn runs, and holds every drain step, the trace's rows, the end's tick, crowns and winner, and the stop.
 
+## `golden/match_elixir_sources.json` - elixir from units
+
+A Ladder match at level 11, side 0's deck eight Elixir Golems and side 1's eight Knights, both players' words 0. Side 0's ElixirCollector is placed directly at (14500, 8000) on tick 10 (`units`). It reaches its 13000 ms while side 0's king is full, so its timer is held and it tries each visit; side 0 plays an Elixir Golem on tick 300 (`commands`), and in that step's post-hooks the king regenerates to 70178 and the collector pays it one elixir, 80178 (`match.log`, `collector_elixir`). Side 1 plays three Knights on 400, 420 and 440. They and the princess tower kill the golem on 529, which pays side 1's king 10000 (one elixir), and its two ElixirGolem2 and four ElixirGolem4 children by 674, 5000 each (`death_elixir`). Side 1's Knights take side 0's king on 1413 (winner side 1, crowns 0 : 3); the circle kills the collector on 1423 with no payout, and the battle stops on 1494. `match.trace` holds every step.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, and holds both kings' elixir on every tick and every payout by tick, unit, side and amount.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
