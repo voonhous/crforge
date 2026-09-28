@@ -400,6 +400,12 @@ The towers fight at level 11. A Witch Mother is played for side 0 at (3500, 1200
 
 `BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log, the hogs' creation in it, and every unit's records.
 
+## `golden/electro_dragon_knights.json` - a chained hop
+
+The towers fight at level 11. An Electro Dragon is played for side 0 at (3500, 12000) and three Knights for side 1 at (3500, 19000), (4500, 19000) and (2500, 19500), all on tick 0. ElectroDragonProjectile (homing, Speed 2000, ChainedHitRadius 4000, ChainedHitCount 3, TargetBuff ZapFreeze for 500 ms) counts its launch and lists its target. Its impact deals 192 and freezes the target after the damage, then hops: to the nearest Knight strictly inside 4000 of where it landed that it has not hit, launched again from there, waiting 150 ms. The visits of the next three ticks end on the delay, and it lands on the fourth: on k0_0 on 56, k2_0 on 60 and k1_0 on 64. After the third impact its count is 3 and it stays released. Each freeze lasts ten visits (`buffs`: removed on 66, 70, 74). The Knights die on 224, 310 and 367, the Dragon on 612.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs; every projectile position holds the hops.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
