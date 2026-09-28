@@ -17,13 +17,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
 /**
  * One step of a projectile's flight, and the arrival that ends it.
  *
- * <p>Each step: a limited-time homing projectile re-aims at its homing target and counts its time
- * down; a homing projectile pins its aim onto its target's position; then the distance left to the
- * aim is measured. When it is no more than the projectile's speed, the projectile arrives: it is
- * placed at its aim, released, and its impact runs. Otherwise it moves its speed along the line to
- * the aim, and takes the height the arc gives at the new point: a straight interpolation from the
- * start height to the aim height plus a gravity parabola over the flight's time, where time is
- * distance from the start over speed.
+ * <p>Each step: a limited-time homing projectile re-aims from its launcher at its homing target and
+ * counts its time down; a homing projectile pins its aim onto its target's position; then the
+ * distance left to the aim is measured. When it is no more than the projectile's speed, the
+ * projectile arrives: it is placed at its aim, at the row's constant height or on the ground,
+ * released, and its impact runs. Otherwise it moves its speed along the line to the aim, and takes
+ * the height the arc gives at the new point: a straight interpolation from the start height to the
+ * aim height plus a gravity parabola over the flight's time, where time is distance from the start
+ * over speed.
  *
  * <p>The impact of a projectile that hits one target: the row's damage at the projectile's level,
  * or its crown-tower share for a crown tower, dealt once to a target that still has hit points,
@@ -48,7 +49,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the impact's character spawn by goblin_barrel_tower; the delay, the ring point and"
             + " the chain by arrows_skeletons; a flying body's pass after every step, and the"
             + " projectile the impact spawns beyond the aim, by log_goblins and"
-            + " barb_barrel_knight, the pass at the arrival held by no run. Supplied, not settled:"
+            + " barb_barrel_knight, the pass at the arrival held by no run; the limited-time homing"
+            + " re-aim by elite_archer_knight, and the landing at the constant height by"
+            + " royal_giant_tower. Supplied, not settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
             + " of one that only heals, the area buff, the height toward a moving target under the"
@@ -151,8 +154,8 @@ final class ProjectileFlight {
     // A homing projectile that has not hooked hands its pending damage back to the target here;
     // no pending damage is registered, so there is nothing to hand back.
     p.release();
-    // The aim's height would be the constant-height column, which no row carried here has.
-    p.moveTo(p.getAimX(), p.getAimY(), 0);
+    // It lands at the aim, at the row's constant height, or on the ground without one.
+    p.moveTo(p.getAimX(), p.getAimY(), Math.max(p.getData().constantHeight(), 0));
     impact(p, world);
   }
 
