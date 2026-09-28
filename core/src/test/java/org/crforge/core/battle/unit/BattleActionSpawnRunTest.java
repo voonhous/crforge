@@ -142,6 +142,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the card names no unit, so it is cast as a spell, its area effect zapping or chilling the Knights
  * while its starting action makes the wizard in the same tick. Both end before the wizard's own
  * first attack.
+ *
+ * <p>{@code royal_giant_tower} and {@code elite_archer_knight} fire a projectile at a constant
+ * height: the Royal Giant's cannonball starts at 1500 and descends onto the tower it homes on, and
+ * the Elite Archer's arrow flies level at 2000 past a Knight, the first two arrows re-aiming at it
+ * on their first two steps.
  */
 class BattleActionSpawnRunTest {
 
@@ -206,7 +211,9 @@ class BattleActionSpawnRunTest {
         "match_elixir_sources",
         "match_building_cards",
         "electro_wizard_knights",
-        "ice_wizard_knights"
+        "ice_wizard_knights",
+        "royal_giant_tower",
+        "elite_archer_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

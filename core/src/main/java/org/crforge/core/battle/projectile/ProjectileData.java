@@ -55,6 +55,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param spawnProjectile the projectile the impact launches beyond the aim, or null
  * @param spawnChain how many links of spawned projectiles are left: at least one when the row names
  *     a spawned projectile, else 0
+ * @param constantHeight the height the projectile starts at and aims at, in place of its
+ *     launcher's, and lands at; 0 for none
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -62,7 +64,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
-            + " point from one flying to a target. Not carried yet: the constant height, the far"
+            + " point from one flying to a target. Not carried yet: the far"
             + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
             + " columns, the deflect behaviour, the chained hit, the target buff and the spawned"
             + " projectile and area effect; the impact's pushback and its spawned characters are"
@@ -98,6 +100,7 @@ public record ProjectileData(
     boolean pushbackAll,
     String spawnProjectile,
     int spawnChain,
+    int constantHeight,
     List<String> unmodelledColumns) {
 
   public ProjectileData {

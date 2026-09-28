@@ -36,9 +36,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * released, which is what makes it removable, and its impact deals its damage to its target, or,
  * for a row with a radius, to everything in the circle around its aim.
  *
- * <p>The launch fixes the start and the aim; a homing projectile re-pins its aim onto its target
- * every step, and, when the target leaves the battle, the removal notice leaves the aim where the
- * target last stood and forgets the target, so the projectile flies on and lands on nothing.
+ * <p>The launch fixes the start and the aim, at the row's constant height when it has one; a homing
+ * projectile re-pins its aim onto its target every step, and, when the target leaves the battle,
+ * the removal notice leaves the aim where the target last stood and forgets the target, so the
+ * projectile flies on and lands on nothing.
  *
  * <p>A projectile that kills something is the cause of the death hooks it runs, so it has an action
  * holder too, made the first time it causes one, which carries its level and nothing else.
@@ -48,20 +49,21 @@ import org.crforge.core.pathfinding.target.TargetingState;
     note =
         "Settled: the projectile's kind and id band, its flight as the post-hook from the tick"
             + " after its launch, the launch geometry from the owner's launch columns, the level"
-            + " re-based on the projectile row's rarity, the homing re-aim, the straight flight"
+            + " re-based on the projectile row's rarity, the constant height, the homing re-aim, the"
+            + " straight flight"
             + " with the arc height, the arrival on the step that reaches the aim, the release"
             + " that makes it removable, the single impact on a target that still has hit points"
             + " with the crown-tower damage for a crown tower, the area impact of a row with a"
             + " radius, and the removal notice for a target, a homing target, an owner and a root"
             + " owner that left. Held by the Musketeer and Wizard runs' launches, positions and"
-            + " impacts; an action holder, made when the projectile first causes an action, as the"
+            + " impacts, the constant height by the Royal Giant's and the Elite Archer's; an action holder, made when the projectile first causes an action, as the"
             + " cause of the death hooks of what it kills, held by the Tombstone's death."
             + " Supplied, not settled: the deflection pass finds nothing, the projectile's"
             + " own collision radius is zero, and no buff changes its damage. A spell's cast from"
             + " the king tower, its delay, its chain and ring point, a thrown projectile's aim at"
             + " its spawned one's body height, and a spawned projectile's launch from its parent"
-            + " are held by the spell runs. Not modelled: the chained hop, the limited-time homing"
-            + " beyond the columns carried, the pingpong sweep, the random delays, the drag-back"
+            + " are held by the spell runs; the limited-time homing by the Elite Archer's."
+            + " Not modelled: the chained hop, the pingpong sweep, the random delays, the drag-back"
             + " hook, the custom movement, and the far-distance clamp with its cell pull.")
 public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -323,6 +325,14 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
                 ? spawned.projectileRadius()
                 : Math.min(spawned.projectileRadius(), spawned.projectileRadiusY());
       }
+    }
+    if (data.constantHeight() != 0) {
+      // A constant height replaces the launcher's height as the start and the aim: the flight's arc
+      // runs from it to the aim height, which a homing projectile's re-aim still moves onto its
+      // target's. No hit test reads a height, so it moves no hit and no arrival.
+      z = data.constantHeight();
+      startZ = z;
+      aimZ = z;
     }
     boolean homingNow = this.target != null && data.homing();
     int dx = (homingNow ? this.target.getView().getX() : aimX) - x;

@@ -61,9 +61,9 @@ public final class BattleRecords {
    * The columns of a projectile the impact does not model: the buff it applies to its target, the
    * area effect it spawns, several spawned projectiles or ones laid along an axis, its chained hop,
    * the push's floor and a push along the flight, a stop at the first entity it touches, the
-   * pingpong sweep, the flight back to a shooter that walks on, and a constant height. A spell
-   * whose projectile, or the projectile that one spawns, sets one is refused as it is cast or
-   * spawned, and a unit's shot as it is fired.
+   * pingpong sweep, and the flight back to a shooter that walks on. A spell whose projectile, or
+   * the projectile that one spawns, sets one is refused as it is cast or spawned, and a unit's shot
+   * as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
@@ -79,8 +79,7 @@ public final class BattleRecords {
           "DoDirectionalPushback",
           "CheckCollisions",
           "PingpongVisualTime",
-          "PingpongMovingShooter",
-          "ConstantHeight");
+          "PingpongMovingShooter");
 
   /** The card columns the placement does not model; a card that sets one is refused. */
   private static final List<String> UNMODELLED_CARD_COLUMNS =
@@ -742,6 +741,7 @@ public final class BattleRecords {
         .spawnProjectile(set(row, "SpawnProjectile") ? row.string("SpawnProjectile") : null)
         // The loader stores at least one link for a row that names a spawned projectile.
         .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
+        .constantHeight(row.intValue("ConstantHeight"))
         .unmodelledColumns(
             UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList())
         .build();

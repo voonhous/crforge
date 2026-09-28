@@ -379,6 +379,15 @@ The towers fight at level 11. Two side-1 Knights are played at (3000, 17500) and
 
 `BattleActionSpawnRunTest` plays both with the spawn runs.
 
+## `golden/royal_giant_tower.json` and `golden/elite_archer_knight.json` - a projectile at a constant height
+
+The towers fight at level 11, and the unit is played by a command on tick 0.
+
+- `royal_giant_tower`: a Royal Giant played for side 0 at (3500, 10000) walks to PrincessTower_1_1 and shoots it from 248. RoyalGiantProjectile (homing, ConstantHeight 1500) starts 1200 ahead of the Giant at z 1500, not at the Giant's height plus its launch height, and aims at 1500 too. Each step the homing re-aim pins the aim height onto the tower's, 0, so the arc descends 300 a step: 1500, 1200, 900, 600, 300 on 249..253 (`projectiles`). On 254 it arrives, placed at 1500 over its aim, and deals 307. The constant height moves neither the arrival nor the hit. The tower falls on 578, and the king's arrows kill the Giant on 735.
+- `elite_archer_knight`: an Elite Archer for side 0 at (3500, 12000) against a Knight for side 1 at (3500, 20000). EliteArcherArrow flies to a point (a body of 250, ProjectileRange 11000, no homing), so its aim is its range from the Archer and its target is forgotten; ConstantHeight 2000 replaces its start height, and it keeps z 2000 on every step. It hits the Knight as its body passes, 143 each (on 39, 60, 80, 101, ...), and flies on. HomingTime 100 with HomingMinDistance 5000: an arrow launched more than 5000 from the Knight re-aims from the Archer at the Knight on its first two steps, so the first two bend toward it (x 3468 and 3449 on 34 and 35) and the later ones, launched nearer, fly straight. The Archer dies on 173 and the Knight on 239.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
