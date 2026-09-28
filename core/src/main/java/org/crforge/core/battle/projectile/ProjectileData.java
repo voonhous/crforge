@@ -4,6 +4,7 @@ import java.util.List;
 import lombok.Builder;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 
@@ -57,6 +58,12 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     a spawned projectile, else 0
  * @param constantHeight the height the projectile starts at and aims at, in place of its
  *     launcher's, and lands at; 0 for none
+ * @param targetBuff the buff its impact applies to what its area holds, or null
+ * @param buffTimeMs how long that buff lasts at the first level
+ * @param buffTimeIncreasePerLevel how much longer it lasts for each step of the projectile's level
+ * @param maximumTargets the most entities its area buff reaches: 1000 for an empty column, as the
+ *     loader stores
+ * @param onlyOwnTroops true when its area buff reaches only the launcher's own side
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -66,8 +73,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the far"
             + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
-            + " columns, the deflect behaviour, the chained hit, the target buff and the spawned"
-            + " projectile and area effect; the impact's pushback and its spawned characters are"
+            + " columns, the deflect behaviour, the chained hit, the target buff on one target or"
+            + " before the damage, and the spawned area effect; the impact's pushback and its spawned characters are"
             + " carried.")
 @Builder(toBuilder = true)
 public record ProjectileData(
@@ -101,6 +108,11 @@ public record ProjectileData(
     String spawnProjectile,
     int spawnChain,
     int constantHeight,
+    String targetBuff,
+    int buffTimeMs,
+    int buffTimeIncreasePerLevel,
+    int maximumTargets,
+    boolean onlyOwnTroops,
     List<String> unmodelledColumns) {
 
   public ProjectileData {
@@ -123,5 +135,15 @@ public record ProjectileData(
       return true;
     }
     return checkCollisions || circleScatter;
+  }
+
+  /**
+   * How long the target buff lasts for a projectile at a level: the first level's time plus the
+   * increase for each step, the steps being the packed level's low byte.
+   *
+   * @param packedLevel the projectile's level, packed
+   */
+  public int buffTime(int packedLevel) {
+    return buffTimeIncreasePerLevel * PackedLevel.steps(packedLevel) + buffTimeMs;
   }
 }

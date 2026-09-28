@@ -331,6 +331,19 @@ public interface WorldObserver {
   default void areaBuff(
       int tick, AreaEffectEntity areaEffect, BuffData buff, int time, List<WorldEntity> targets) {}
 
+  /**
+   * A projectile's impact reached the characters its target buff applies to, before each is
+   * applied.
+   *
+   * @param tick the tick
+   * @param projectile the projectile
+   * @param buff the buff's row
+   * @param time the time it is applied for
+   * @param targets the characters that passed its test, in the order they are applied to
+   */
+  default void projectileBuff(
+      int tick, ProjectileEntity projectile, BuffData buff, int time, List<WorldEntity> targets) {}
+
   /** A new buff instance was listed on an entity. */
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
 

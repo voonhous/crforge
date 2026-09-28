@@ -34,8 +34,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * <p>The impact of a row with a radius does not look at the target at all: everything the area
  * damage collects in the circle around the aim takes the damage, or the crown-tower share, and the
  * launcher's own side is spared only when the row says so; the victims are pushed the row's
- * pushback away from the aim. A row that spawns characters then makes them in formation around the
- * aim.
+ * pushback away from the aim. A row with a target buff then buffs the same circle. A row that
+ * spawns characters then makes them in formation around the aim.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -51,10 +51,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " projectile the impact spawns beyond the aim, by log_goblins and"
             + " barb_barrel_knight, the pass at the arrival held by no run; the limited-time homing"
             + " re-aim by elite_archer_knight, and the landing at the constant height by"
-            + " royal_giant_tower. Supplied, not settled:"
+            + " royal_giant_tower; the target buff on the circle after the damage by"
+            + " snowball_knights. Supplied, not settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
-            + " of one that only heals, the area buff, the height toward a moving target under the"
+            + " of one that only heals, the target buff on one target or before the damage, the"
+            + " height toward a moving target under the"
             + " z-distance column, the random delays, the pingpong sweep, the drag-back hook, the"
             + " hit effects, and the on-impact area effect.")
 final class ProjectileFlight {
@@ -174,6 +176,11 @@ final class ProjectileFlight {
     int py = onRing ? p.getRingY() : p.getAimY();
     if (data.radius() >= 1) {
       areaImpact(p, world, px, py, damage, towerDamage, hitId);
+      // The target buff reaches the same circle after the damage, so a victim the damage killed
+      // takes none.
+      if (data.targetBuff() != null) {
+        world.projectileAreaBuff(p, px, py);
+      }
     } else {
       TargetView target = p.targetView();
       if (target != null) {

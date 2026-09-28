@@ -58,7 +58,7 @@ public final class BattleRecords {
       List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
 
   /**
-   * The columns of a projectile the impact does not model: the buff it applies to its target, the
+   * The columns of a projectile the impact does not model: the buff applied before the damage, the
    * area effect it spawns, several spawned projectiles or ones laid along an axis, its chained hop,
    * the push's floor and a push along the flight, a stop at the first entity it touches, the
    * pingpong sweep, and the flight back to a shooter that walks on. A spell whose projectile, or
@@ -67,8 +67,6 @@ public final class BattleRecords {
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
-          "TargetBuff",
-          "BuffTime",
           "ApplyBuffBeforeDamage",
           "SpawnAreaEffectObject",
           "SpawnCount",
@@ -80,6 +78,9 @@ public final class BattleRecords {
           "CheckCollisions",
           "PingpongVisualTime",
           "PingpongMovingShooter");
+
+  /** The target limit the loader stores for a projectile row that leaves it empty. */
+  private static final int DEFAULT_MAXIMUM_TARGETS = 1000;
 
   /** The card columns the placement does not model; a card that sets one is refused. */
   private static final List<String> UNMODELLED_CARD_COLUMNS =
@@ -708,43 +709,60 @@ public final class BattleRecords {
     GameTable table = tables.table(PROJECTILES);
     checkArgument(table.has(name), () -> "the game tables have no projectile " + name);
     GameRow row = table.row(name);
-    return ProjectileData.builder()
-        .name(row.name())
-        .rarity(rarity(row.string("Rarity")))
-        .speed(row.intValue("Speed"))
-        .gravity(row.intValue("Gravity"))
-        .homing(row.bool("Homing"))
-        .homingTimeMs(row.intValue("HomingTime"))
-        .homingMinDistance(row.intValue("HomingMinDistance"))
-        .damage(row.intValue("Damage"))
-        .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
-        .damageMode(damageMode(row.string("DamageScalingMode")))
-        .radius(row.intValue("Radius"))
-        .aoeToAir(row.bool("AoeToAir"))
-        .aoeToGround(row.bool("AoeToGround"))
-        .onlyEnemies(row.bool("OnlyEnemies"))
-        .projectileRadius(row.intValue("ProjectileRadius"))
-        .projectileRange(row.intValue("ProjectileRange"))
-        .checkCollisions(row.bool("CheckCollisions"))
-        .minDistance(row.intValue("MinDistance"))
-        .circleScatter("Circle".equals(row.string("Scatter")))
-        .pushback(row.intValue("Pushback"))
-        .spawnCharacter(set(row, "SpawnCharacter") ? row.string("SpawnCharacter") : null)
-        // The loader stores at least one child for a row that names a spawned character.
-        .spawnCharacterCount(
-            set(row, "SpawnCharacter") ? Math.max(row.intValue("SpawnCharacterCount"), 1) : 0)
-        .spawnCharacterDeployTimeMs(row.intValue("SpawnCharacterDeployTime"))
-        .radiusY(row.intValue("RadiusY"))
-        .projectileRadiusY(row.intValue("ProjectileRadiusY"))
-        .projectileStartExtraRadius(row.intValue("ProjectileStartExtraRadius"))
-        .pushbackAll(row.bool("PushbackAll"))
-        .spawnProjectile(set(row, "SpawnProjectile") ? row.string("SpawnProjectile") : null)
-        // The loader stores at least one link for a row that names a spawned projectile.
-        .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
-        .constantHeight(row.intValue("ConstantHeight"))
-        .unmodelledColumns(
-            UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList())
-        .build();
+    ProjectileData data =
+        ProjectileData.builder()
+            .name(row.name())
+            .rarity(rarity(row.string("Rarity")))
+            .speed(row.intValue("Speed"))
+            .gravity(row.intValue("Gravity"))
+            .homing(row.bool("Homing"))
+            .homingTimeMs(row.intValue("HomingTime"))
+            .homingMinDistance(row.intValue("HomingMinDistance"))
+            .damage(row.intValue("Damage"))
+            .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
+            .damageMode(damageMode(row.string("DamageScalingMode")))
+            .radius(row.intValue("Radius"))
+            .aoeToAir(row.bool("AoeToAir"))
+            .aoeToGround(row.bool("AoeToGround"))
+            .onlyEnemies(row.bool("OnlyEnemies"))
+            .projectileRadius(row.intValue("ProjectileRadius"))
+            .projectileRange(row.intValue("ProjectileRange"))
+            .checkCollisions(row.bool("CheckCollisions"))
+            .minDistance(row.intValue("MinDistance"))
+            .circleScatter("Circle".equals(row.string("Scatter")))
+            .pushback(row.intValue("Pushback"))
+            .spawnCharacter(set(row, "SpawnCharacter") ? row.string("SpawnCharacter") : null)
+            // The loader stores at least one child for a row that names a spawned character.
+            .spawnCharacterCount(
+                set(row, "SpawnCharacter") ? Math.max(row.intValue("SpawnCharacterCount"), 1) : 0)
+            .spawnCharacterDeployTimeMs(row.intValue("SpawnCharacterDeployTime"))
+            .radiusY(row.intValue("RadiusY"))
+            .projectileRadiusY(row.intValue("ProjectileRadiusY"))
+            .projectileStartExtraRadius(row.intValue("ProjectileStartExtraRadius"))
+            .pushbackAll(row.bool("PushbackAll"))
+            .spawnProjectile(set(row, "SpawnProjectile") ? row.string("SpawnProjectile") : null)
+            // The loader stores at least one link for a row that names a spawned projectile.
+            .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
+            .constantHeight(row.intValue("ConstantHeight"))
+            .targetBuff(set(row, "TargetBuff") ? row.string("TargetBuff") : null)
+            .buffTimeMs(row.intValue("BuffTime"))
+            .buffTimeIncreasePerLevel(row.intValue("BuffTimeIncreasePerLevel"))
+            // The loader stores 1000 for an empty target limit.
+            .maximumTargets(
+                set(row, "MaximumTargets")
+                    ? row.intValue("MaximumTargets")
+                    : DEFAULT_MAXIMUM_TARGETS)
+            .onlyOwnTroops(row.bool("OnlyOwnTroops"))
+            .build();
+    List<String> unmodelled =
+        new ArrayList<>(
+            UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList());
+    // The target buff is modelled on the circle of a projectile with a radius; one that hits its
+    // target alone, or flies to a point and buffs through its hits on the way, is not.
+    if (data.targetBuff() != null && (data.radius() < 1 || data.homingLike())) {
+      unmodelled.add(0, "TargetBuff");
+    }
+    return data.toBuilder().unmodelledColumns(unmodelled).build();
   }
 
   /**

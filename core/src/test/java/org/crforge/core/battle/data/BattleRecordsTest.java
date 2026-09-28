@@ -95,6 +95,23 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "a projectile's target buff is carried for its circle, and refused on its one target or"
+          + " before the damage")
+  void aProjectileTargetBuff() {
+    ProjectileData snowball = records.projectile("SnowballSpell");
+    assertThat(snowball.targetBuff()).isEqualTo("IceWizardSlowDown");
+    assertThat(snowball.buffTimeMs()).isEqualTo(3000);
+    // An empty target limit is the loader's 1000.
+    assertThat(snowball.maximumTargets()).isEqualTo(1000);
+    assertThat(snowball.unmodelledColumns()).isEmpty();
+    assertThat(records.projectile("ElectroDragonProjectile").unmodelledColumns())
+        .containsExactly("TargetBuff", "ChainedHitRadius");
+    assertThat(records.projectile("VoodooProjectile").unmodelledColumns())
+        .containsExactly("TargetBuff", "ApplyBuffBeforeDamage");
+  }
+
+  @Test
   @DisplayName("a row the tables do not have is refused, naming it")
   void anUnknownRow() {
     assertThatThrownBy(() -> records.unit("NoSuchUnit"))
@@ -267,7 +284,7 @@ class BattleRecordsTest {
     assertThat(rider.ignoreTargetsWithBuff()).isEqualTo("BolaSnare");
     assertThat(rider.deprioritizeTargetsWithBuff()).isTrue();
     assertThat(rider.projectile().unmodelledColumns())
-        .contains("TargetBuff", "BuffTime", "PingpongMovingShooter");
+        .containsExactly("TargetBuff", "PingpongMovingShooter");
     UnitData knight = records.unit("Knight");
     assertThat(knight.targetOnlyTroops()).isFalse();
     assertThat(knight.ignoreTargetsWithBuff()).isNull();

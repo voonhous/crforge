@@ -18,13 +18,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
 /**
  * The buffs listed on a character or a tower, in slot 3, and what they make of its speeds.
  *
- * <p><b>Apply.</b> A buff reaches an entity from an area effect's hit. A building takes nothing of
- * a buff that ignores buildings, an entity tagged against buffs takes nothing, and a crown tower
- * nothing of one that spares them. Otherwise an instance of the same row is refreshed instead of a
- * second one listed: any instance of the row, or with stacking only the one the same source
- * applied, or for a buff specific to a player only one from the same side. A refresh keeps the
- * longer time, growing the whole by the difference, and the higher level. With nothing to refresh a
- * new instance is listed last, its level packed against the buff's rarity.
+ * <p><b>Apply.</b> A buff reaches an entity from an area effect's hit or a projectile's impact. A
+ * building takes nothing of a buff that ignores buildings, an entity tagged against buffs takes
+ * nothing, and a crown tower nothing of one that spares them. Otherwise an instance of the same row
+ * is refreshed instead of a second one listed: any instance of the row, or with stacking only the
+ * one the same source applied, or for a buff specific to a player only one from the same side. A
+ * refresh keeps the longer time, growing the whole by the difference, and the higher level. With
+ * nothing to refresh a new instance is listed last, its level packed against the buff's rarity.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
  * ms and is removed once its time is 0; the damage over time due on the visit lands once it is
@@ -39,7 +39,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Held by rage_knight, zap_knight and poison_knight_tower: the apply with its refresh by"
+        "Held by rage_knight, zap_knight, poison_knight_tower and snowball_knights, the last"
+            + " with a projectile as the source: the apply with its refresh by"
             + " row, by source under stacking, the new instance and its level; the visit in pass"
             + " 3, the 50 ms step and the removal, the damage over time on a unit and a crown"
             + " tower; the speed, hit speed and spawn speed scales. Translated but held by no"
