@@ -436,6 +436,17 @@ The towers fight at level 11. A Ram Rider is played for side 0 at (3500, 10000) 
 
 `BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log.
 
+## `golden/kamikaze_battle_ram.json`, `kamikaze_fire_spirits.json`, `kamikaze_wall_breakers.json`, `kamikaze_ice_spirits.json` - a hit that kills its unit
+
+The towers fight at level 11 in each. A Kamikaze row's hit ends in the unit killing itself: its whole hit points as one kill (`kamikaze_kill`, the hit points it had and 0), with itself as the attacker on its own side, in the pass of the hit, whether the hit was direct or a launch. It leaves at the closing cleanup of that tick.
+
+- `kamikaze_battle_ram`: the Battle Ram charges on 69, hits PrincessTower_1_1 for its charged 573 on 152 and kills itself for 640 in the same visit. Its death slot makes its two Barbarians in that pass; they die on 272 and 393.
+- `kamikaze_fire_spirits`: a Fire Spirit launches at k0_0 from (3283, 13032) and kills itself on 76; the projectile flies on without it and lands on 83 on both Knights for 207.
+- `kamikaze_wall_breakers`: a Wall Breaker's row fires a projectile that aims one unit ahead and lands on the next tick on its own spot. wb_0 explodes on 130 and the tower and the Knight beside it take 350 on 131; wb_1 explodes on 141 and the tower takes 350 on 142.
+- `kamikaze_ice_spirits`: an Ice Spirit launches and kills itself on 75; its projectile lands on 82 on three Knights for 110 and freezes them for 1100 ms with the projectile as the source, removed on 104.
+
+`BattleActionSpawnRunTest` plays them with the spawn runs; the events list every self-kill with its death, and the buff log holds the Ice Spirit's freeze.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
