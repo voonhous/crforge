@@ -137,6 +137,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * towers. {@code match_building_cards} plays building cards from the hand: a Cannon snapped to its
  * tile corner, a Tombstone moved off the Cannon's tiles, a Cannon pulled back from across the river
  * and an Elixir Collector that pays its king, each living as the same building placed directly.
+ *
+ * <p>{@code electro_wizard_knights} and {@code ice_wizard_knights} play a wizard onto two Knights:
+ * the card names no unit, so it is cast as a spell, its area effect zapping or chilling the Knights
+ * while its starting action makes the wizard in the same tick. Both end before the wizard's own
+ * first attack.
  */
 class BattleActionSpawnRunTest {
 
@@ -199,7 +204,9 @@ class BattleActionSpawnRunTest {
         "match_overtime_tiebreak",
         "match_overtime_draw",
         "match_elixir_sources",
-        "match_building_cards"
+        "match_building_cards",
+        "electro_wizard_knights",
+        "ice_wizard_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

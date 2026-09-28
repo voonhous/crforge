@@ -144,6 +144,9 @@ class BattleRecordsTest {
     // A card's name is its own: the unit's row may be named otherwise.
     assertThat(records.card("Elixir Collector").unit().name()).isEqualTo("ElixirCollector");
     assertThat(records.card("GoblinHut").unit().name()).isEqualTo("GoblinHut_Rework");
+    // Deploying as a spell changes nothing for the Goblin Drill: its dig is its unit, which tunnels
+    // in and is refused where it is played.
+    assertThat(records.card("GoblinDrill").unit().name()).isEqualTo("GoblinDrillDig");
   }
 
   @Test
@@ -160,13 +163,6 @@ class BattleRecordsTest {
     assertThatThrownBy(() -> records.card("ThreeMusketeers"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("SummonCharactersList");
-    assertThatThrownBy(() -> records.card("IceWizard"))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SpellAsDeploy");
-    // A building card deploys as a spell too: the Goblin Drill digs its way in.
-    assertThatThrownBy(() -> records.card("GoblinDrill"))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SpellAsDeploy");
     assertThatThrownBy(() -> records.card("NoSuchCard"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NoSuchCard");

@@ -370,6 +370,15 @@ A Ladder match at level 11, side 0's deck Cannons, Tombstones and Elixir Collect
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, and holds every play's placed point and units, both kings' elixir on every tick, every spawner firing and decay, and the collector's payout.
 
+## `golden/electro_wizard_knights.json` and `golden/ice_wizard_knights.json` - a card that deploys as a spell
+
+The towers fight at level 11. Two side-1 Knights are played at (3000, 17500) and (4000, 17500) on tick 0 and walk down the left lane; on 110 side 0 plays a wizard at (3300, 12100) (`commands`). The card names no unit, so it is cast as a spell: the search snaps the point to the tile centre (3500, 12500), with no unit and so no step left, and the cast creates the card's area effect there in the command pass (`area_effects`, `how` "cast"), at the card's level. The area effect's starting action makes the wizard in its first pending pass of the same tick (`actions`: ElectroWizardZap_3000000_0 or IceWizardCold_3000000_0, state 4, deploy 1000), before the area effect's own hit.
+
+- `electro_wizard_knights`: ElectroWizardZap hits both Knights for 192 and stuns them with ZapFreeze from 110 to 120 (`buffs`). The wizard, 714 hit points, deploys until 130, when both Knights hit it. The run ends on 141, before the wizard's first hit on 142, which reaches two targets and stuns them.
+- `ice_wizard_knights`: IceWizardCold hits both Knights for 84 and slows them with IceWizardCold for 1000 ms. The wizard, 688 hit points, is hit by both Knights on 125. The run ends on 139, before its first shot, whose impact slows its target.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

@@ -35,6 +35,55 @@ class SpellCardTest {
   }
 
   @Test
+  @DisplayName(
+      "a card that names no unit but casts is a spell from the characters card table too: the"
+          + " wizards cast their area effect, which makes the wizard")
+  void theWizardsAreSpells() {
+    DeployCard electro = GameData.card("ElectroWizard");
+    assertThat(electro.spell()).isTrue();
+    assertThat(electro.areaEffect()).isEqualTo("ElectroWizardZap");
+    assertThat(electro.placementUnit()).isNull();
+    assertThat(GameData.card("IceWizard").areaEffect()).isEqualTo("IceWizardCold");
+    // Deploying as a spell changes nothing for a card with a unit and no cast.
+    DeployCard heal = GameData.card("Heal");
+    assertThat(heal.spell()).isFalse();
+    assertThat(heal.unit().name()).isEqualTo("HealSpirit");
+  }
+
+  @Test
+  @DisplayName(
+      "the Electro Wizard's first hit is refused: it hits two targets and stuns them, which is not"
+          + " modelled")
+  void theElectroWizardsHitIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 11, true);
+    match.play(0, GameData.card("Knight"), 11, 1, 3000, 17500, "KnightA");
+    match.play(0, GameData.card("Knight"), 11, 1, 4000, 17500, "KnightB");
+    match.play(110, GameData.card("ElectroWizard"), 11, 0, 3300, 12100, "Wiz");
+    // The reference runs through 141; the wizard's first hit lands on 142.
+    while (match.getBattle().getTick() < 142) {
+      match.getBattle().step();
+    }
+    assertThatThrownBy(() -> match.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("MultipleTargets");
+  }
+
+  @Test
+  @DisplayName("a unit that tunnels to its point from its king tower is refused as it is played")
+  void theMinerIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.play(0, GameData.card("Miner"), 11, 0, 3500, 25000, "Miner");
+    assertThatThrownBy(() -> match.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("tunnel");
+    Standard1v1Battle drill = new Standard1v1Battle(GameData.tables());
+    drill.play(0, GameData.card("GoblinDrill"), 11, 0, 3500, 25000, "Drill");
+    assertThatThrownBy(() -> drill.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("tunnel");
+  }
+
+  @Test
   @DisplayName("a spell that summons a character is a troop play")
   void rageIsATroopPlay() {
     DeployCard rage = GameData.card("Rage");
