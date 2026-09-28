@@ -153,7 +153,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * witch_mother_skeletons} shoots Skeletons with a curse applied before the damage, so each dies
  * carrying it and leaves a Voodoo Hog for the other side. {@code electro_dragon_knights} hops an
  * Electro Dragon's bolt across three Knights, freezing each. {@code firecracker_knight} bursts a
- * Firecracker's shell into a fan of five explosions.
+ * Firecracker's shell into a fan of five explosions. {@code axe_man_knights} sweeps an Axe Man's
+ * axe out past two Knights and back, hitting each on the way out and again on the way back, while
+ * the thrower waits for its return.
  */
 class BattleActionSpawnRunTest {
 
@@ -224,7 +226,8 @@ class BattleActionSpawnRunTest {
         "snowball_knights",
         "witch_mother_skeletons",
         "electro_dragon_knights",
-        "firecracker_knight"
+        "firecracker_knight",
+        "axe_man_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

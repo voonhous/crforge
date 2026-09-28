@@ -24,7 +24,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the reference drop, the pending-damage answer, the three retarget loads and the"
             + " previous reference, held by the kill run's five standing ticks after the princess"
             + " tower's death. Not modelled: the forgetting of a held pingpong projectile and the"
-            + " morph back it triggers; the held projectile is read as the suspended flag.")
+            + " morph back it triggers; the held projectile is read as the suspended flag, and a"
+            + " pingpong projectile's return to an owner whose targeting is off, the one case that"
+            + " would leave the forgetting to this notice, is refused.")
 public final class RemovalNotice {
 
   private RemovalNotice() {}

@@ -60,9 +60,9 @@ public final class BattleRecords {
   /**
    * The columns of a projectile the impact does not model: the area effect it spawns, spawned
    * projectiles laid along an axis, the push's floor and a push along the flight, a stop at the
-   * first entity it touches, the pingpong sweep, and the flight back to a shooter that walks on. A
-   * spell whose projectile, or the projectile that one spawns, sets one is refused as it is cast or
-   * spawned, and a unit's shot as it is fired.
+   * first entity it touches, and the flight back to a shooter that walks on. A spell whose
+   * projectile, or the projectile that one spawns, sets one is refused as it is cast or spawned,
+   * and a unit's shot as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
@@ -72,7 +72,6 @@ public final class BattleRecords {
           "MinPushback",
           "DoDirectionalPushback",
           "CheckCollisions",
-          "PingpongVisualTime",
           "PingpongMovingShooter");
 
   /** The target limit the loader stores for a projectile row that leaves it empty. */
@@ -770,6 +769,7 @@ public final class BattleRecords {
             .spawnRadius(row.intValue("SpawnRadius"))
             .chainedHitRadius(row.intValue("ChainedHitRadius"))
             .chainedHitCount(row.intValue("ChainedHitCount"))
+            .pingpongVisualTimeMs(row.intValue("PingpongVisualTime"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

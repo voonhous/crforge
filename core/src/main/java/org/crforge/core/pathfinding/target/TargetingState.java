@@ -141,13 +141,19 @@ public class TargetingState {
   /** Countdown that suspends the attack; while it runs the visit only advances its timers. */
   private int attackBlockTimerMs;
 
-  /** True while the whole visit is suspended after its timers have been advanced. */
+  /**
+   * True while the whole visit is suspended after its timers have been advanced: the hold a
+   * pingpong projectile the owner launched keeps until it comes back.
+   */
   private boolean visitSuspended;
 
-  /** Elapsed part of the resume delay. */
+  /** Elapsed part of the resume delay, which a pingpong launch restarts from zero. */
   private int resumeDelayElapsedMs;
 
-  /** Length of the resume delay; zero when no delay is running. */
+  /**
+   * Length of the resume delay; zero when no delay is running. A pingpong launch sets it to the
+   * sweep's time.
+   */
   private int resumeDelayMs;
 
   /** Countdown that makes the visit return as soon as its two leading timers have stepped. */

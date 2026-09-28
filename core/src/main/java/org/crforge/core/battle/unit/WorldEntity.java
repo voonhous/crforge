@@ -860,6 +860,22 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Lets the entity's targeting go on after a pingpong projectile it launched came back: the hold
+   * the launch set is cleared, so the visit passes its reference check again once the resume delay
+   * has run. The return tells only a targeting component that is on; one that is off would keep the
+   * hold until the projectile's removal cleared it, which is not modelled.
+   *
+   * @param projectile the name of the projectile that came back, for the refusal
+   */
+  public void pingpongReturned(String projectile) {
+    if (!isActive(GATED_SLOT)) {
+      throw new UnsupportedOperationException(
+          projectile + " came back to " + name() + " with its targeting off, not modelled");
+    }
+    targeting.setVisitSuspended(false);
+  }
+
+  /**
    * Stores an attack sequence index, as an index-setting action does: only below the length of the
    * order, a longer one dropped and the old one kept, and, unless the action asks otherwise, only
    * while the targeting component is on.

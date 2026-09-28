@@ -63,12 +63,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " royal_giant_tower; the target buff on the circle after the damage by"
             + " snowball_knights, and on the one target before it by witch_mother_skeletons, after"
             + " it by electro_dragon_knights, whose chained hop is held there too; the"
-            + " circle's before the damage by no run. Supplied, not"
+            + " circle's before the damage by no run; the pingpong sweep, its halfway forgetting,"
+            + " its landing at the start and its launcher's release by axe_man_knights, the sweep's"
+            + " step under a buff by no run. Supplied, not"
             + " settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
             + " of one that only heals, the height toward a moving target under the"
-            + " z-distance column, the random delays, the pingpong sweep, the drag-back hook, the"
+            + " z-distance column, the random delays, the drag-back hook, the"
             + " hit effects, and the on-impact area effect.")
 final class ProjectileFlight {
 
@@ -76,7 +78,14 @@ final class ProjectileFlight {
     // Utility class
   }
 
-  /** Runs one flight step for the projectile. */
+  /**
+   * Runs one flight step for the projectile.
+   *
+   * <p>A pingpong projectile sweeps out to its aim and back on the sine of its time, and arrives
+   * once its time is up: back at its start, on the ground, where it lets its launcher's targeting
+   * go on. Its hits are its body's on the way, each entity once out and once back; its impact hits
+   * nothing at its aim.
+   */
   static void fly(ProjectileEntity p, BattleWorld world) {
     ProjectileData data = p.getData();
     // The first step would spawn a following area effect and run the initial collision check,
@@ -102,6 +111,16 @@ final class ProjectileFlight {
     snapToTarget(p);
     int remaining = FixedMath.guardedDistance(p.getX() - p.getAimX(), p.getY() - p.getAimY());
     int speed = data.speed();
+    if (data.pingpongVisualTimeMs() >= 1) {
+      // A pingpong projectile sweeps on its time, not its speed, and arrives on the step after
+      // its time is up.
+      if (p.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
+        arrive(p, world);
+      } else {
+        sweep(p, world);
+      }
+      return;
+    }
     if (remaining <= speed) {
       arrive(p, world);
     } else {
@@ -124,6 +143,41 @@ final class ProjectileFlight {
     // The aim height is the target's height plus half the projectile's own collision radius,
     // which is zero for every row carried here.
     p.setAim(target.x(), target.y(), target.z());
+  }
+
+  /**
+   * One step of a pingpong sweep: the time moves on by the step, and the projectile stands at the
+   * start plus the sine of 180 degrees times the share of the time gone of the way to the aim, so
+   * it reaches the aim halfway and is back at the start when the time is up; its height does not
+   * change. On the step that crosses the halfway time it does not move but forgets what it has hit,
+   * so it hits all of it again on the way back. A projectile that flies to a point hits what its
+   * body covers where it stood before the step.
+   */
+  private static void sweep(ProjectileEntity p, BattleWorld world) {
+    int total = p.getData().pingpongVisualTimeMs();
+    int before = p.getPingpongTimeMs();
+    int half = total >> 1;
+    int after = before + p.getPingpongStepMs();
+    p.setPingpongTimeMs(after);
+    if (after >= half && before < half) {
+      p.getHitIds().clear();
+      return;
+    }
+    int x = p.getX();
+    int y = p.getY();
+    int sine = FixedMath.sine1024(FixedMath.div(after * 180, total));
+    int nx = p.getStartX() + shiftTowardZero(sine * (p.getAimX() - p.getStartX()));
+    int ny = p.getStartY() + shiftTowardZero(sine * (p.getAimY() - p.getStartY()));
+    // The distance flown so far is stored here too; nothing the battle reads uses it.
+    if (p.getData().homingLike()) {
+      world.cellPass(p, x, y, 0);
+    }
+    p.moveTo(nx, ny, p.getZ());
+  }
+
+  /** A value scaled by 1024 brought back down, truncating toward zero. */
+  private static int shiftTowardZero(int value) {
+    return (value + (value < 0 ? 1023 : 0)) >> 10;
   }
 
   /** One step of the speed along the line to the aim, at the height the arc gives there. */
@@ -162,13 +216,24 @@ final class ProjectileFlight {
     return parabola * gravityHalf + linear + sz;
   }
 
-  /** The arrival: the deflection pass finds nothing, the projectile is released and impacts. */
+  /**
+   * The arrival: the deflection pass finds nothing, the projectile is released and impacts. A
+   * pingpong projectile lands back at its start, on the ground, and lets its launcher's targeting
+   * go on; one whose launcher left has only its death effect, which is presentation.
+   */
   private static void arrive(ProjectileEntity p, BattleWorld world) {
     // A homing projectile that has not hooked hands its pending damage back to the target here;
     // no pending damage is registered, so there is nothing to hand back.
     p.release();
-    // It lands at the aim, at the row's constant height, or on the ground without one.
-    p.moveTo(p.getAimX(), p.getAimY(), Math.max(p.getData().constantHeight(), 0));
+    if (p.getPingpongTimeMs() < 1) {
+      // It lands at the aim, at the row's constant height, or on the ground without one.
+      p.moveTo(p.getAimX(), p.getAimY(), Math.max(p.getData().constantHeight(), 0));
+    } else {
+      p.moveTo(p.getStartX(), p.getStartY(), 0);
+      if (p.getOwner() != null) {
+        p.getOwner().pingpongReturned(p.name());
+      }
+    }
     impact(p, world);
   }
 
@@ -250,8 +315,10 @@ final class ProjectileFlight {
     ProjectileData data = p.getData();
     if (data.homingLike()) {
       // A projectile that flies to a point has hit along its way already, and only runs that pass
-      // once more at its aim.
-      world.cellPass(p, p.getAimX(), p.getAimY(), 0);
+      // once more at its aim; a pingpong one, back at its start, does not.
+      if (data.pingpongVisualTimeMs() < 1) {
+        world.cellPass(p, p.getAimX(), p.getAimY(), 0);
+      }
       return;
     }
     if (damage <= 0) {
