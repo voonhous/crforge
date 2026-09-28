@@ -239,6 +239,244 @@ public final class BattleRecords {
   private static final List<String> UNMODELLED_SPAWNER_COLUMNS =
       List.of("SpawnLimit", "SpawnPushback");
 
+  /**
+   * The columns of a unit's row that only show something: its art, texts, effects, shadows,
+   * animation, skin and health bar. They name client assets rather than rows of the battle's
+   * tables, and no traced battle path reads one; they are classified by what they name, not each by
+   * a trace. The effect columns the record has followed (DashStartEffect, LandingEffect) reach only
+   * the entity's view object.
+   */
+  private static final Set<String> PRESENTATION_UNIT_COLUMNS =
+      Set.of(
+          "AbilityPendingEffect",
+          "AppearEffect",
+          "AttackStartEffect",
+          "AttackStartEffect2",
+          "BlueExportName",
+          "BlueShieldExportName",
+          "BlueTopExportName",
+          "ChargeEffect",
+          "ContinuousEffect",
+          "CrowdEffects",
+          "DamageEffect",
+          "DamageEffectSpecial",
+          "DamageExportName",
+          "DashEffect",
+          "DashHitEffect",
+          "DashStartEffect",
+          "DeathEffect",
+          "DeathSpawnDeployBaseAnim",
+          "DeployAnimationOverride",
+          "DeployBaseAnimExportName",
+          "DestroyAtLimitEffect",
+          "FileName",
+          "HealthBar",
+          "HealthBarOffsetY",
+          "HealthBarOffsetY2v2Blue",
+          "HealthBarOffsetYBlue",
+          "HealthBarOffsetYRed",
+          "HideEffect",
+          "HideHealthbar",
+          "IngamePathfindEffect",
+          "IngamePathfindStartEffect",
+          "IngamePathfindStopDeployBaseAnim",
+          "IngamePathfindStopEffect",
+          "KamikazeEffect",
+          "LandingEffect",
+          "LoopMoveEffect",
+          "MoveEffect",
+          "NewHealthBarOffsetXBlue",
+          "NewHealthBarOffsetXRed",
+          "PrestigeExportName2",
+          "PrestigeExportName3",
+          "PrestigeRedExportName",
+          "PrestigeRedExportName2",
+          "PrestigeRedExportName3",
+          "PrefabAsset",
+          "PrestigeSWF",
+          "ProjectileEffect",
+          "ProjectileEffectSpecial",
+          "RedExportName",
+          "RedShieldExportName",
+          "RedTopExportName",
+          "ReflectedAttackEffect",
+          "ReflectedAttackTargetedEffect",
+          "ReflectedAttackTargetedEffectSources",
+          "Scale",
+          "ShaderFXBase",
+          "ShaderFXTop",
+          "ShadowCustom",
+          "ShadowCustomLow",
+          "ShadowScaleX",
+          "ShadowScaleY",
+          "ShadowSkew",
+          "ShadowX",
+          "ShadowY",
+          "ShieldLostEffect",
+          "ShowHealthNumber",
+          "SkinType",
+          "SpawnCharacterEffect",
+          "SpawnDeployBaseAnim",
+          "SpawnEffect",
+          "SpawnEffectOnce",
+          "SpawnPathfindEffect",
+          "SpecialAttackRangeForStats",
+          "TID",
+          "UseAnimator");
+
+  /**
+   * The columns of a unit's row the record shows no battle logic reads, or reads to no effect for
+   * every row the battle builds while another mechanic stays refused.
+   */
+  private static final Set<String> INERT_UNIT_COLUMNS =
+      Set.of(
+          // The row's own name, read as the row's key.
+          "Name",
+          // Read only by the placement, into a slot of the entity's view object.
+          "DeployDelay",
+          // Presentation only, by the attack sequence's getter scan.
+          "LoadAttackEffect1",
+          "LoadAttackEffect2",
+          "LoadAttackEffect3",
+          "LoadAttackEffectReady",
+          "FlameEffect1",
+          "FlameEffect2",
+          "FlameEffect3",
+          "TargettedDamageEffect1",
+          "TargettedDamageEffect2",
+          "TargettedDamageEffect3",
+          "VisualHitSpeed",
+          "VisualHitSpeed2",
+          "VisualHitSpeed3",
+          // Handed by the hit application to slots of the entity's view object.
+          "TargetedHitEffect",
+          "TargetEffectY",
+          "TargetedEffectVisualPushback",
+          // No reader found.
+          "VisualActions",
+          "SpawnAreaObjectLevelIndex",
+          // Read by client code only.
+          "DashFilter",
+          // Resolved when the tables are derived: the row already carries what it inherits.
+          "Base",
+          // Read only by a Clone, which the battle refuses.
+          "IgnoreClone",
+          // By its name, the row a Clone makes of this one; the battle refuses a Clone.
+          "ClonedVersion",
+          // Paid only for an entity of side 100, which a battle of two players never has.
+          "ManaOnDeath",
+          // Gates only the statistics calls of the buff add.
+          "AvoidCountingForBuffAmountStats",
+          // Read only by the deflection, which finds nothing: no object the battle builds deflects.
+          "GroupProjectiles",
+          // A later entry's columns load into no entry without an order or VariableDamageTime1; a
+          // row that builds its entries reads them.
+          "VariableDamage2",
+          "VariableDamage3",
+          "MeleePushback2",
+          "MeleePushback3",
+          "IsMeleePushbackAll2",
+          "IsMeleePushbackAll3",
+          // Asked only about an invisible unit; every buff that makes one invisible is refused.
+          "AllowAreaDmgWhenInvisible");
+
+  /**
+   * The columns of a unit's row whose role in the battle is not yet established, or whose value the
+   * references do not yet hold, carried unread until a trace settles them. The sight clips run at
+   * 1000 and 0, LoadFirstHit and AttackDashTime as unset, and the rest as absent.
+   */
+  private static final Set<String> PENDING_UNIT_COLUMNS =
+      Set.of(
+          "SightClip",
+          "SightClipSide",
+          "LoadFirstHit",
+          "AttackDashTime",
+          "WalkingSpeedTweakPercentage",
+          "IgnoreResurrect",
+          "RotateAngleSpeed",
+          "HasRotationOnTimeline",
+          "TurretMovement",
+          "CustomSpawnFilter",
+          "CustomCloneFilter",
+          "LoopingFilter",
+          "AttackShakeTime",
+          "AttachedCharacter",
+          "AttachedCharacterHeight",
+          "TryToFinishAttackAnimation",
+          "DontStopMoveAnim",
+          "AttackStateCount",
+          // Only the Mighty Miner sets it, and its attack sequence is refused first.
+          "IngamePathfindSpeed");
+
+  /**
+   * The columns of a projectile's row that only show something: its art, effects, sounds, shadow
+   * and the shakes it makes, classified by what they name, not each by a trace.
+   */
+  private static final Set<String> PRESENTATION_PROJECTILE_COLUMNS =
+      Set.of(
+          "AlwaysResetAnimation",
+          "DeathEffect",
+          "DragEffect",
+          "ExportName",
+          "FileName",
+          "HitEffect",
+          "HitSoundWhenParentAlive",
+          "PingpongDeathEffect",
+          "PrestigeExportName",
+          "PrestigeExportName2",
+          "PrestigeExportName3",
+          "PrestigeRedExportName2",
+          "PrestigeRedExportName3",
+          "PrestigeSWF",
+          "RedExportName",
+          "Scale",
+          "ShadowDisableRotate",
+          "ShadowExportName",
+          "ShakesShooter",
+          "ShakesTargets",
+          "SpawnDeployBaseAnim",
+          "TargettedEffect",
+          "TrailEffect");
+
+  /** The columns of a projectile's row the record shows no battle logic reads to any effect. */
+  private static final Set<String> INERT_PROJECTILE_COLUMNS =
+      Set.of(
+          "Name",
+          "Base",
+          // Nothing in the battle logic reads it; carried as presentation.
+          "PingpongMovingShooter",
+          // Read only by the deflection and the reflect, which find nothing: no object the battle
+          // builds deflects or reflects.
+          "DeflectBehaviour",
+          "DeflectRadius",
+          "ActionOnDeflector",
+          "IgnoreReflectedAttack");
+
+  /** The columns of a projectile's row whose role is not yet established. */
+  private static final Set<String> PENDING_PROJECTILE_COLUMNS =
+      Set.of("use360Frames", "HideWhenDelayed", "SpawnConstPriority");
+
+  /**
+   * The columns of an area effect's row that only show something: its effects and art, classified
+   * by what they name.
+   */
+  private static final Set<String> PRESENTATION_AREA_EFFECT_COLUMNS =
+      Set.of(
+          "DeflectedProjectileEffect",
+          "DeflectionFBEffect",
+          "LoopingEffect",
+          "OneShotEffect",
+          "ScaledEffect",
+          "ScaledEffectFollowAeO",
+          "SpawnDeployBaseAnim",
+          "SpawnEffect");
+
+  /** The columns of an area effect's row the record shows no battle logic reads. */
+  private static final Set<String> INERT_AREA_EFFECT_COLUMNS = Set.of("Name", "Base");
+
+  /** The columns of an area effect's row whose role is not yet established. */
+  private static final Set<String> PENDING_AREA_EFFECT_COLUMNS = Set.of("BuffNumber");
+
   private final GameTables tables;
 
   /**
@@ -255,128 +493,181 @@ public final class BattleRecords {
    * @param name the row's name
    */
   public UnitData unit(String name) {
-    GameRow row = unitRow(name);
+    GameRow row = unitRow(name).tracking();
     String deathSpawn = row.string("DeathSpawnCharacter");
-    return UnitData.builder()
-        .name(row.name())
-        .speed(row.intValue("Speed"))
-        .range(row.intValue("Range"))
-        .sightRange(row.intValue("SightRange"))
-        .collisionRadius(row.intValue("CollisionRadius"))
-        .mass(row.intValue("Mass"))
-        .hitSpeedMs(row.intValue("HitSpeed"))
-        .loadTimeMs(row.intValue("LoadTime"))
-        .deployTimeMs(row.intValue("DeployTime"))
-        .attacksGround(row.bool("AttacksGround"))
-        .attacksAir(row.bool("AttacksAir"))
-        .air(row.intValue("FlyingHeight") > 0)
-        .building(row.bool("IsBuilding"))
-        .king(row.bool("IsSummoner"))
-        .summonerTower(row.bool("IsSummonerTower"))
-        .hitpoints(row.intValue("Hitpoints"))
-        .damage(row.intValue("Damage"))
-        .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
-        .rarity(rarity(row.string("Rarity")))
-        .projectile(
-            row.string("Projectile").isEmpty() ? null : projectile(row.string("Projectile")))
-        .customFirstProjectile(
-            row.string("CustomFirstProjectile").isEmpty()
-                ? null
-                : projectile(row.string("CustomFirstProjectile")))
-        .projectileStartRadius(row.intValue("ProjectileStartRadius"))
-        .projectileStartZ(row.intValue("ProjectileStartZ"))
-        .projectileYOffset(row.intValue("ProjectileYOffset"))
-        .multipleProjectiles(row.intValue("MultipleProjectiles"))
-        .areaDamageRadius(row.intValue("AreaDamageRadius"))
-        .selfAsAoeCenter(row.bool("SelfAsAoeCenter"))
-        .overrideAttackFinishTime(row.bool("OverrideAttackFinishTime"))
-        .attackFinishTimeMs(row.intValue("AttackFinishTime"))
-        .spawnRadius(row.intValue("SpawnRadius"))
-        .spawnAngleShift(row.intValue("SpawnAngleShift"))
-        .flyingHeight(row.intValue("FlyingHeight"))
-        .spawnPathfindSpeed(row.intValue("SpawnPathfindSpeed"))
-        .spawnPathfindMorph(
-            row.string("SpawnPathfindMorph").isEmpty() ? null : row.string("SpawnPathfindMorph"))
-        .spawnAreaObject(
-            row.string("SpawnAreaObject").isEmpty() ? null : row.string("SpawnAreaObject"))
-        .tileSizeOverride(row.intValue("TileSizeOverride"))
-        .noDeploySizeW(row.intValue("NoDeploySizeW"))
-        .noDeploySizeH(row.intValue("NoDeploySizeH"))
-        .attackPushBack(row.intValue("AttackPushBack"))
-        .ignorePushback(row.bool("IgnorePushback"))
-        .onStartingAction(actionName(row, "OnStartingAction"))
-        .onDeathAction(actionName(row, "OnDeathAction"))
-        .onKilledAction(actionName(row, "OnKilledAction"))
-        .deathDamage(row.intValue("DeathDamage"))
-        .deathDamageRadius(row.intValue("DeathDamageRadius"))
-        .deathPushBack(row.intValue("DeathPushBack"))
-        .deathSpawnCharacter(deathSpawn.isEmpty() ? null : deathSpawn)
-        // The loader keeps at least one child for a row that spawns on its death.
-        .deathSpawnCount(deathSpawn.isEmpty() ? 0 : Math.max(row.intValue("DeathSpawnCount"), 1))
-        .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
-        .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
-        .deathAreaEffect(
-            row.string("DeathAreaEffect").isEmpty() ? null : row.string("DeathAreaEffect"))
-        .deathSpawnPushback(row.bool("DeathSpawnPushback"))
-        .deathSpawnMinRadius(row.intValue("DeathSpawnMinRadius"))
-        .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
-        .champion(champion(row))
-        .ability(ability(row))
-        .globalId(row.globalId())
-        .lifeTimeMs(row.intValue("LifeTime"))
-        .targetOnlyBuildings(row.bool("TargetOnlyBuildings"))
-        .attackSequence(attackSequence(row))
-        .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
-        .onAttackAction(actionName(row, "OnAttackAction"))
-        .minimumRange(row.intValue("MinimumRange"))
-        .spawnCharacter(
-            row.string("SpawnCharacter").isEmpty() ? null : row.string("SpawnCharacter"))
-        .spawnNumber(row.intValue("SpawnNumber"))
-        .spawnIntervalMs(row.intValue("SpawnInterval"))
-        .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
-        .spawnStartTimeMs(row.intValue("SpawnStartTime"))
-        .manaCollectAmount(row.intValue("ManaCollectAmount"))
-        .manaGenerateTimeMs(row.intValue("ManaGenerateTimeMs"))
-        .manaOnDeathForOpponent(row.intValue("ManaOnDeathForOpponent"))
-        .ignoreBuffs(namesOf(row, "IgnoreBuff"))
-        .shieldHitpoints(row.intValue("ShieldHitpoints"))
-        .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))
-        .waitMs(row.intValue("WaitMS"))
-        .deathInheritIgnoreList(row.bool("DeathInheritIgnoreList"))
-        .spawnAttach(row.bool("SpawnAttach"))
-        .spawnMaxAngle(row.intValue("SpawnMaxAngle"))
-        .spawnAttachMaxRotation(row.intValue("SpawnAttachMaxRotation"))
-        .chargeRange(row.intValue("ChargeRange"))
-        .chargeSpeedMultiplier(row.intValue("ChargeSpeedMultiplier"))
-        .damageSpecial(row.intValue("DamageSpecial"))
-        .keepChargingAfterAttack(row.bool("KeepChargingAfterAttack"))
-        .jumpEnabled(row.bool("JumpEnabled"))
-        .jumpHeight(row.intValue("JumpHeight"))
-        .jumpSpeed(row.intValue("JumpSpeed"))
-        .kamikaze(row.bool("Kamikaze"))
-        .multipleTargets(row.intValue("MultipleTargets"))
-        .allTargetsHit(row.bool("AllTargetsHit"))
-        .uniqueMultipleTargets(row.bool("UniqueMultipleTargets"))
-        .buffOnDamage(set(row, "BuffOnDamage") ? row.string("BuffOnDamage") : null)
-        .buffOnDamageTimeMs(row.intValue("BuffOnDamageTime"))
-        .dashCooldown(row.intValue("DashCooldown"))
-        .dashMinRange(row.intValue("DashMinRange"))
-        .dashMaxRange(row.intValue("DashMaxRange"))
-        .dashDamage(row.intValue("DashDamage"))
-        .dashRadius(row.intValue("DashRadius"))
-        .dashPushBack(row.intValue("DashPushBack"))
-        .dashLandingTimeMs(row.intValue("DashLandingTime"))
-        .dashConstantTimeMs(row.intValue("DashConstantTime"))
-        .dashImmuneToDamageTimeMs(row.intValue("DashImmuneToDamageTime"))
-        .dashToTargetRadius(row.bool("DashToTargetRadius"))
-        .targetOnlyTroops(row.bool("TargetOnlyTroops"))
-        .ignoreTargetsWithBuff(
-            row.string("IgnoreTargetsWithBuff").isEmpty()
-                ? null
-                : row.string("IgnoreTargetsWithBuff"))
-        .deprioritizeTargetsWithBuff(row.bool("DeprioritizeTargetsWithBuff"))
-        .unmodelledColumns(unmodelledColumns(row))
+    UnitData data =
+        UnitData.builder()
+            .name(row.name())
+            .speed(row.intValue("Speed"))
+            .range(row.intValue("Range"))
+            .sightRange(row.intValue("SightRange"))
+            .collisionRadius(row.intValue("CollisionRadius"))
+            .mass(row.intValue("Mass"))
+            .hitSpeedMs(row.intValue("HitSpeed"))
+            .loadTimeMs(row.intValue("LoadTime"))
+            .deployTimeMs(row.intValue("DeployTime"))
+            .attacksGround(row.bool("AttacksGround"))
+            .attacksAir(row.bool("AttacksAir"))
+            .air(row.intValue("FlyingHeight") > 0)
+            .building(row.bool("IsBuilding"))
+            .king(row.bool("IsSummoner"))
+            .summonerTower(row.bool("IsSummonerTower"))
+            .hitpoints(row.intValue("Hitpoints"))
+            .damage(row.intValue("Damage"))
+            .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
+            .rarity(rarity(row.string("Rarity")))
+            .projectile(
+                row.string("Projectile").isEmpty() ? null : projectile(row.string("Projectile")))
+            .customFirstProjectile(
+                row.string("CustomFirstProjectile").isEmpty()
+                    ? null
+                    : projectile(row.string("CustomFirstProjectile")))
+            .projectileStartRadius(row.intValue("ProjectileStartRadius"))
+            .projectileStartZ(row.intValue("ProjectileStartZ"))
+            .projectileYOffset(row.intValue("ProjectileYOffset"))
+            .multipleProjectiles(row.intValue("MultipleProjectiles"))
+            .areaDamageRadius(row.intValue("AreaDamageRadius"))
+            .selfAsAoeCenter(row.bool("SelfAsAoeCenter"))
+            .overrideAttackFinishTime(row.bool("OverrideAttackFinishTime"))
+            .attackFinishTimeMs(row.intValue("AttackFinishTime"))
+            .spawnRadius(row.intValue("SpawnRadius"))
+            .spawnAngleShift(row.intValue("SpawnAngleShift"))
+            .flyingHeight(row.intValue("FlyingHeight"))
+            .spawnPathfindSpeed(row.intValue("SpawnPathfindSpeed"))
+            .spawnPathfindMorph(
+                row.string("SpawnPathfindMorph").isEmpty()
+                    ? null
+                    : row.string("SpawnPathfindMorph"))
+            .spawnAreaObject(
+                row.string("SpawnAreaObject").isEmpty() ? null : row.string("SpawnAreaObject"))
+            .tileSizeOverride(row.intValue("TileSizeOverride"))
+            .noDeploySizeW(row.intValue("NoDeploySizeW"))
+            .noDeploySizeH(row.intValue("NoDeploySizeH"))
+            .attackPushBack(row.intValue("AttackPushBack"))
+            .ignorePushback(row.bool("IgnorePushback"))
+            .onStartingAction(actionName(row, "OnStartingAction"))
+            .onDeathAction(actionName(row, "OnDeathAction"))
+            .onKilledAction(actionName(row, "OnKilledAction"))
+            .deathDamage(row.intValue("DeathDamage"))
+            .deathDamageRadius(row.intValue("DeathDamageRadius"))
+            .deathPushBack(row.intValue("DeathPushBack"))
+            .deathSpawnCharacter(deathSpawn.isEmpty() ? null : deathSpawn)
+            // The loader keeps at least one child for a row that spawns on its death.
+            .deathSpawnCount(
+                deathSpawn.isEmpty() ? 0 : Math.max(row.intValue("DeathSpawnCount"), 1))
+            .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
+            .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
+            .deathAreaEffect(
+                row.string("DeathAreaEffect").isEmpty() ? null : row.string("DeathAreaEffect"))
+            .deathSpawnPushback(row.bool("DeathSpawnPushback"))
+            .deathSpawnMinRadius(row.intValue("DeathSpawnMinRadius"))
+            .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
+            .champion(champion(row))
+            .ability(ability(row))
+            .globalId(row.globalId())
+            .lifeTimeMs(row.intValue("LifeTime"))
+            .targetOnlyBuildings(row.bool("TargetOnlyBuildings"))
+            .attackSequence(attackSequence(row))
+            .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
+            .onAttackAction(actionName(row, "OnAttackAction"))
+            .minimumRange(row.intValue("MinimumRange"))
+            .spawnCharacter(
+                row.string("SpawnCharacter").isEmpty() ? null : row.string("SpawnCharacter"))
+            .spawnNumber(row.intValue("SpawnNumber"))
+            .spawnIntervalMs(row.intValue("SpawnInterval"))
+            .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
+            .spawnStartTimeMs(row.intValue("SpawnStartTime"))
+            .manaCollectAmount(row.intValue("ManaCollectAmount"))
+            .manaGenerateTimeMs(row.intValue("ManaGenerateTimeMs"))
+            .manaOnDeathForOpponent(row.intValue("ManaOnDeathForOpponent"))
+            .ignoreBuffs(namesOf(row, "IgnoreBuff"))
+            .shieldHitpoints(row.intValue("ShieldHitpoints"))
+            .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))
+            .waitMs(row.intValue("WaitMS"))
+            .deathInheritIgnoreList(row.bool("DeathInheritIgnoreList"))
+            .spawnAttach(row.bool("SpawnAttach"))
+            .spawnMaxAngle(row.intValue("SpawnMaxAngle"))
+            .spawnAttachMaxRotation(row.intValue("SpawnAttachMaxRotation"))
+            .chargeRange(row.intValue("ChargeRange"))
+            .chargeSpeedMultiplier(row.intValue("ChargeSpeedMultiplier"))
+            .damageSpecial(row.intValue("DamageSpecial"))
+            .keepChargingAfterAttack(row.bool("KeepChargingAfterAttack"))
+            .jumpEnabled(row.bool("JumpEnabled"))
+            .jumpHeight(row.intValue("JumpHeight"))
+            .jumpSpeed(row.intValue("JumpSpeed"))
+            .kamikaze(row.bool("Kamikaze"))
+            .multipleTargets(row.intValue("MultipleTargets"))
+            .allTargetsHit(row.bool("AllTargetsHit"))
+            .uniqueMultipleTargets(row.bool("UniqueMultipleTargets"))
+            .buffOnDamage(set(row, "BuffOnDamage") ? row.string("BuffOnDamage") : null)
+            .buffOnDamageTimeMs(row.intValue("BuffOnDamageTime"))
+            .groupMaxSize(row.intValue("GroupMaxSize"))
+            .buffAfterHits(namesOf(row, "BuffAfterHits"))
+            .buffAfterHitsCounts(intsOf(row, "BuffAfterHitsCount"))
+            .buffAfterHitsTimesMs(intsOf(row, "BuffAfterHitsTime"))
+            .dashCooldown(row.intValue("DashCooldown"))
+            .dashMinRange(row.intValue("DashMinRange"))
+            .dashMaxRange(row.intValue("DashMaxRange"))
+            .dashDamage(row.intValue("DashDamage"))
+            .dashRadius(row.intValue("DashRadius"))
+            .dashPushBack(row.intValue("DashPushBack"))
+            .dashLandingTimeMs(row.intValue("DashLandingTime"))
+            .dashConstantTimeMs(row.intValue("DashConstantTime"))
+            .dashImmuneToDamageTimeMs(row.intValue("DashImmuneToDamageTime"))
+            .dashToTargetRadius(row.bool("DashToTargetRadius"))
+            .targetOnlyTroops(row.bool("TargetOnlyTroops"))
+            .ignoreTargetsWithBuff(
+                row.string("IgnoreTargetsWithBuff").isEmpty()
+                    ? null
+                    : row.string("IgnoreTargetsWithBuff"))
+            .deprioritizeTargetsWithBuff(row.bool("DeprioritizeTargetsWithBuff"))
+            .unmodelledColumns(unmodelledColumns(row))
+            .build();
+    return data.toBuilder()
+        .unmodelledColumns(
+            withUnread(
+                data.unmodelledColumns(),
+                row,
+                PRESENTATION_UNIT_COLUMNS,
+                INERT_UNIT_COLUMNS,
+                PENDING_UNIT_COLUMNS))
         .build();
+  }
+
+  /**
+   * The unmodelled columns a row already lists, followed by every other column it sets that its
+   * loader never read and that is neither inert nor pending a trace, in name order.
+   *
+   * @param listed the columns already listed as not modelled
+   * @param row the tracking view the row was loaded through
+   * @param presentation the columns that only show something
+   * @param inert the columns the record shows no battle logic reads
+   * @param pending the columns whose role is not yet established, carried unread until it is
+   */
+  private static List<String> withUnread(
+      List<String> listed,
+      GameRow row,
+      Set<String> presentation,
+      Set<String> inert,
+      Set<String> pending) {
+    List<String> unread = new ArrayList<>();
+    for (String column : row.columns().keySet()) {
+      if (!row.read().contains(column)
+          && !listed.contains(column)
+          && !presentation.contains(column)
+          && !inert.contains(column)
+          && !pending.contains(column)
+          && sets(row, column)) {
+        unread.add(column);
+      }
+    }
+    if (unread.isEmpty()) {
+      return listed;
+    }
+    Collections.sort(unread);
+    List<String> all = new ArrayList<>(listed);
+    all.addAll(unread);
+    return all;
   }
 
   /**
@@ -391,6 +682,22 @@ public final class BattleRecords {
       return name.isEmpty() ? List.of() : List.of(name);
     }
     return row.strings(column);
+  }
+
+  /** A column of numbers, written as one number or a list of them; empty when the row sets none. */
+  private static List<Integer> intsOf(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    if (value == null) {
+      return List.of();
+    }
+    if (!value.isArray()) {
+      return List.of(value.asInt());
+    }
+    List<Integer> out = new ArrayList<>();
+    for (JsonNode element : value) {
+      out.add(element.asInt());
+    }
+    return List.copyOf(out);
   }
 
   private static List<String> unmodelledColumns(GameRow row) {
@@ -603,42 +910,52 @@ public final class BattleRecords {
   public AreaEffectData areaEffect(String name) {
     GameTable table = tables.table(AREA_EFFECT_OBJECTS);
     checkArgument(table.has(name), () -> "the game tables have no area effect " + name);
-    GameRow row = table.row(name);
+    GameRow row = table.row(name).tracking();
     List<String> unmodelled = new ArrayList<>();
     for (String column : UNMODELLED_AREA_EFFECT_COLUMNS) {
       if (sets(row, column)) {
         unmodelled.add(column);
       }
     }
-    return AreaEffectData.builder()
-        .name(row.name())
-        .rarity(rarity(row.string("Rarity")))
-        .lifeDurationMs(row.intValue("LifeDuration"))
-        .radius(row.intValue("Radius"))
-        .maxRadius(row.intValue("MaxRadius"))
-        .hitSpeedMs(row.intValue("HitSpeed"))
-        .hitSpeedOffsetMs(row.intValue("HitSpeedOffset"))
-        .damage(row.intValue("Damage"))
-        .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
-        .hitsAir(row.bool("HitsAir"))
-        .hitsGround(row.bool("HitsGround"))
-        .onlyEnemies(row.bool("OnlyEnemies"))
-        .ignoreBuildings(row.bool("IgnoreBuildings"))
-        .affectsHidden(row.bool("AffectsHidden"))
-        .pushback(row.intValue("Pushback"))
-        .maximumTargets(row.intValue("MaximumTargets"))
-        .sharedDamage(row.bool("SharedDamage"))
-        .onStartingAction(actionName(row, "OnStartingAction"))
-        .onLifeTimeEndAction(actionName(row, "OnLifeTimeEndAction"))
-        .buff(row.string("Buff").isEmpty() ? null : row.string("Buff"))
-        .buffTimeMs(row.intValue("BuffTime"))
-        .capBuffTimeToAreaEffectTime(row.bool("CapBuffTimeToAreaEffectTime"))
-        .onlyOwnTroops(row.bool("OnlyOwnTroops"))
-        .spawnAreaEffectObject(
-            row.string("SpawnAreaEffectObject").isEmpty()
-                ? null
-                : row.string("SpawnAreaEffectObject"))
-        .unmodelledColumns(unmodelled)
+    AreaEffectData data =
+        AreaEffectData.builder()
+            .name(row.name())
+            .rarity(rarity(row.string("Rarity")))
+            .lifeDurationMs(row.intValue("LifeDuration"))
+            .radius(row.intValue("Radius"))
+            .maxRadius(row.intValue("MaxRadius"))
+            .hitSpeedMs(row.intValue("HitSpeed"))
+            .hitSpeedOffsetMs(row.intValue("HitSpeedOffset"))
+            .damage(row.intValue("Damage"))
+            .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
+            .hitsAir(row.bool("HitsAir"))
+            .hitsGround(row.bool("HitsGround"))
+            .onlyEnemies(row.bool("OnlyEnemies"))
+            .ignoreBuildings(row.bool("IgnoreBuildings"))
+            .affectsHidden(row.bool("AffectsHidden"))
+            .pushback(row.intValue("Pushback"))
+            .maximumTargets(row.intValue("MaximumTargets"))
+            .sharedDamage(row.bool("SharedDamage"))
+            .onStartingAction(actionName(row, "OnStartingAction"))
+            .onLifeTimeEndAction(actionName(row, "OnLifeTimeEndAction"))
+            .buff(row.string("Buff").isEmpty() ? null : row.string("Buff"))
+            .buffTimeMs(row.intValue("BuffTime"))
+            .capBuffTimeToAreaEffectTime(row.bool("CapBuffTimeToAreaEffectTime"))
+            .onlyOwnTroops(row.bool("OnlyOwnTroops"))
+            .spawnAreaEffectObject(
+                row.string("SpawnAreaEffectObject").isEmpty()
+                    ? null
+                    : row.string("SpawnAreaEffectObject"))
+            .unmodelledColumns(unmodelled)
+            .build();
+    return data.toBuilder()
+        .unmodelledColumns(
+            withUnread(
+                unmodelled,
+                row,
+                PRESENTATION_AREA_EFFECT_COLUMNS,
+                INERT_AREA_EFFECT_COLUMNS,
+                PENDING_AREA_EFFECT_COLUMNS))
         .build();
   }
 
@@ -793,7 +1110,7 @@ public final class BattleRecords {
   public ProjectileData projectile(String name) {
     GameTable table = tables.table(PROJECTILES);
     checkArgument(table.has(name), () -> "the game tables have no projectile " + name);
-    GameRow row = table.row(name);
+    GameRow row = table.row(name).tracking();
     ProjectileData data =
         ProjectileData.builder()
             .name(row.name())
@@ -857,7 +1174,15 @@ public final class BattleRecords {
     if (data.targetBuff() != null && data.homingLike()) {
       unmodelled.add(0, "TargetBuff");
     }
-    return data.toBuilder().unmodelledColumns(unmodelled).build();
+    return data.toBuilder()
+        .unmodelledColumns(
+            withUnread(
+                unmodelled,
+                row,
+                PRESENTATION_PROJECTILE_COLUMNS,
+                INERT_PROJECTILE_COLUMNS,
+                PENDING_PROJECTILE_COLUMNS))
+        .build();
   }
 
   /**

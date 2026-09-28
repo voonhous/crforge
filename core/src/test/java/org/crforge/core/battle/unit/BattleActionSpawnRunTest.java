@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +27,8 @@ import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.target.TargetView;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -121,9 +124,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * hit lands at once for its special damage; and {@code hog_river}, a Hog Rider whose route crosses
  * the river and which jumps it to the first land cell beyond. Two hold the dash: {@code
  * bandit_knight}, a Bandit's wind-up, its dash stopped in range of a Knight and its single landing
- * hit; and {@code mega_knight_group}, a Mega Knight's timed dash, its landing over three Knights
- * with a push and its landing hold. Each is also held to every charge completed and lost, every
- * state a movement pass asked for, every dash started and every landing.
+ * hit. Each is also held to every charge completed and lost, every state a movement pass asked for,
+ * every dash started and every landing. {@code mega_knight_group}, a Mega Knight's timed dash and
+ * its landing over three Knights, is not played: the battle refuses the Mega Knight, whose push as
+ * it deploys is not modelled, and the reference leaves that push out.
  *
  * <p>{@code ram_rider_tower} plays a Ram Rider: the Ram charges into the princess tower while its
  * rider, which targets troops only, takes no target; the run lists no actions, so the rider's
@@ -183,6 +187,21 @@ class BattleActionSpawnRunTest {
   /** Writes a match's trace row as the reference lists it. */
   private static final ObjectMapper JSON = new ObjectMapper();
 
+  @Test
+  @DisplayName("mega_knight_group's Mega Knight is refused: its push as it deploys is not modelled")
+  void theMegaKnightRunIsRefused() {
+    JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/mega_knight_group.json");
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            GameData.tables(),
+            reference.path("tower_level").asInt(11),
+            reference.path("towers_attack").asBoolean(false));
+    assertThatThrownBy(() -> BattleTowerRunTest.deployAll(match, reference))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("MegaKnight sets columns the battle does not model")
+        .hasMessageContaining("SpawnPushback");
+  }
+
   @ParameterizedTest(name = "{0}")
   @ValueSource(
       strings = {
@@ -232,7 +251,6 @@ class BattleActionSpawnRunTest {
         "dark_prince_tower",
         "hog_river",
         "bandit_knight",
-        "mega_knight_group",
         "ram_rider_tower",
         "match_elixir_150s",
         "match_knights_king",

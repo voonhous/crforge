@@ -135,6 +135,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param uniqueMultipleTargets true when the extra targets are drawn from one list, each hit once
  * @param buffOnDamage the buff its hit applies to what it hits, or null for none
  * @param buffOnDamageTimeMs how long that buff lasts on what it hits
+ * @param groupMaxSize the most children of its row a spawn group holds; 0 for no limit
+ * @param buffAfterHits the buffs the unit gives itself after so many hits; empty for none
+ * @param buffAfterHitsCounts how many hits each takes
+ * @param buffAfterHitsTimesMs how long each lasts
  * @param dashCooldown the wind-up before a dash, in milliseconds; 0 for a unit that does not dash
  * @param dashMinRange how far beyond its own collision radius a target must be for a dash
  * @param dashMaxRange how far a target may be for a dash
@@ -250,6 +254,10 @@ public record UnitData(
     boolean uniqueMultipleTargets,
     String buffOnDamage,
     int buffOnDamageTimeMs,
+    int groupMaxSize,
+    List<String> buffAfterHits,
+    List<Integer> buffAfterHitsCounts,
+    List<Integer> buffAfterHitsTimesMs,
     int dashCooldown,
     int dashMinRange,
     int dashMaxRange,
@@ -268,6 +276,11 @@ public record UnitData(
   public UnitData {
     unmodelledColumns = unmodelledColumns == null ? List.of() : List.copyOf(unmodelledColumns);
     ignoreBuffs = ignoreBuffs == null ? List.of() : List.copyOf(ignoreBuffs);
+    buffAfterHits = buffAfterHits == null ? List.of() : List.copyOf(buffAfterHits);
+    buffAfterHitsCounts =
+        buffAfterHitsCounts == null ? List.of() : List.copyOf(buffAfterHitsCounts);
+    buffAfterHitsTimesMs =
+        buffAfterHitsTimesMs == null ? List.of() : List.copyOf(buffAfterHitsTimesMs);
     unmodelledDeathColumns =
         unmodelledDeathColumns == null ? List.of() : List.copyOf(unmodelledDeathColumns);
     attackSequence = attackSequence == null ? AttackSequence.NONE : attackSequence;
