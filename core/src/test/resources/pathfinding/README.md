@@ -418,6 +418,18 @@ The towers fight at level 11. An Axe Man is played for side 0 at (3500, 12000) a
 
 `BattleActionSpawnRunTest` plays it with the spawn runs; every impact and projectile position holds the sweep. Each impact names the projectile where it stood for the hit, before that step's move.
 
+## `golden/hunter_point_blank.json` - a volley of pellets at point blank
+
+The towers fight at level 11. A Hunter is played for side 0 at (3500, 14000) and two Knights for side 1 at (3500, 17500) and (4500, 17500), all on tick 0. The Hunter (MultipleProjectiles 10, AreaDamageRadius 70, CustomFirstProjectile HunterProjectile) fires ten HunterProjectile pellets (Line scatter, CheckCollisions, a body of 300, ProjectileRange 6500, ProjectileStartExtraRadius 650, RandomDelay 200, ConstantHeight 1000) on 33 and 77. Each pellet after the first draws the battle's random source below 53, the spread less its quarter (`draws`, `scatter`); the line scatter throws that point away and fans the pellet about the line to the Knight, alternately to one side and the other, 7 degrees a step. Each launch draws the pellet's delay below 200 (`RandomDelay`), so the draws alternate, nineteen a volley. As each pellet is registered its first pass runs at once, widened to 950, whatever its delay: all ten hit k0_0 on 33, 84 each, and each is finished by that hit, so k1_0 takes none. The second volley does the same on 77. The Hunter dies on 90; the Knights die on 393 and 418.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs and holds the random state after each volley's draws.
+
+## `golden/hunter_range.json` - pellets that stop at the first Knight they hit
+
+The towers fight at level 11. A Hunter is played for side 0 at (3500, 12000) and two Knights for side 1 at (3000, 17500) and (4000, 18500), all on tick 0. The first volley, on 33, draws as in `hunter_point_blank`. Its pellets wait their delays, fly at Speed 550 and hit what they pass: k0_0 on 39, 40, 40 and 41, and k1_0 on 41. Each pellet stops at its first hit; the rest fly out to their range and are released without an impact. The volley on 77 hits k0_0 ten times as the pellets are launched. On 121 the volley kills k0_0 with its fourth pellet; the next six still hit it, at 0 hit points, which lands nothing and finishes none of them, so three of them fly on to hit k1_0 on 124 and 127. The Hunter dies on 148 and k1_0 on 354.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs; every impact and projectile position holds the volleys.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
