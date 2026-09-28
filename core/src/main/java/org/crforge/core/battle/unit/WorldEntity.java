@@ -16,6 +16,7 @@ import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.battle.projectile.ProjectileAmounts;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -241,13 +242,38 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * The death of the entity, in the pass whose hit took its hit points to zero, once the battle has
    * told its observers of that hit: first what the entity itself switches off, then the battle's
-   * death slot and death handler.
+   * death slot and death handler. The killing side is the attacker's, and none without one.
    *
    * @param attacker what killed it, or null for nothing
    */
   void die(BattleEntity attacker) {
+    die(attacker, sideOf(attacker));
+  }
+
+  /**
+   * The death of the entity, with the side of the hit that killed it given apart from the attacker,
+   * as damage over time gives the side its buff was applied for.
+   *
+   * @param attacker what killed it, or null for nothing
+   * @param killingSide the side of the killing hit, or -1 for none
+   */
+  void die(BattleEntity attacker, int killingSide) {
     died();
-    world.entityDied(this, attacker);
+    world.entityDied(this, attacker, killingSide);
+  }
+
+  /** The side of what killed an entity: an arena entity's, a projectile's or an area effect's. */
+  private static int sideOf(BattleEntity attacker) {
+    if (attacker instanceof WorldEntity entity) {
+      return entity.side();
+    }
+    if (attacker instanceof ProjectileEntity projectile) {
+      return projectile.getSide();
+    }
+    if (attacker instanceof AreaEffectEntity areaEffect) {
+      return areaEffect.side();
+    }
+    return -1;
   }
 
   /**

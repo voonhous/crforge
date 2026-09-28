@@ -21,7 +21,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Agrees with the reference line for line: the starting elixir, the regeneration, the cap"
             + " and the waste, the production stop, the whole elixir and the spend. Held by"
-            + " match_elixir_150s, both elixirs on every tick. Not modelled: a boost's scaled rate"
+            + " match_elixir_150s, both elixirs on every tick, and the adds a collector and a"
+            + " death make by match_elixir_sources. Not modelled: a boost's scaled rate"
             + " and a paused regeneration, which no Ladder battle has, and the views' counters.")
 public final class MatchSide {
 
@@ -76,7 +77,6 @@ public final class MatchSide {
     if (fullBarMs == 0) {
       return;
     }
-    int cap = maxMana * SCALE;
     if (productionStopMs >= 1) {
       productionStopMs = Math.max(productionStopMs, 50) - 50;
       return;
@@ -85,11 +85,23 @@ public final class MatchSide {
     if (step < 1) {
       return;
     }
-    int over = elixir + step - cap;
+    add(step, maxMana);
+  }
+
+  /**
+   * Adds elixir, as the regeneration, a collector and a death do: the total is clamped to {@code
+   * [0, MAX_MANA * 10000]}, and what goes above the cap is counted as wasted.
+   *
+   * @param amount the elixir, in ten-thousandths
+   * @param maxMana the published maximum elixir
+   */
+  void add(int amount, int maxMana) {
+    int cap = maxMana * SCALE;
+    int over = elixir + amount - cap;
     if (over >= 1) {
       wasted += over;
     }
-    int total = elixir + step;
+    int total = elixir + amount;
     elixir = total > 0 ? Math.min(total, cap) : 0;
   }
 

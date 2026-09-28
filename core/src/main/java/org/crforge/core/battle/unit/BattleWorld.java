@@ -647,6 +647,21 @@ public class BattleWorld implements HolderPasses {
     return count;
   }
 
+  /** The kings' elixir in a match, which collectors and deaths pay into; null outside one. */
+  @Getter @Setter private KingElixir kingElixir;
+
+  /**
+   * Tells every observer an elixir collector paid its king.
+   *
+   * @param collector the collector
+   * @param amount the whole elixir it paid
+   */
+  void elixirCollected(WorldEntity collector, int amount) {
+    for (WorldObserver observer : observers) {
+      observer.elixirCollected(tick, collector, collector.side(), amount);
+    }
+  }
+
   /**
    * Whether a match has ended: from then every attack timer is held at zero and every ordinary hit
    * is refused. Never outside a match.
@@ -824,12 +839,39 @@ public class BattleWorld implements HolderPasses {
    * with the entity. The cause is the attacker's own holder, where the game hands the hook a copy
    * of the attacker made at the kill; no hook built here reads it beyond its presence.
    *
+   * <p>After the hooks, the death handler's reward: in a match, a player's unit that gives elixir
+   * on its death pays it to the king of the killing side, ten times its column in ten-thousandths;
+   * a death with no killing side pays nothing.
+   *
    * @param dying the entity that died
    * @param attacker what killed it: an arena entity, a projectile, or null for nothing
+   * @param killingSide the side of the killing hit, or -1 for none
    */
-  void entityDied(WorldEntity dying, BattleEntity attacker) {
+  void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide) {
     UnitData data = dying.getData();
     deathSlot(dying, data);
+    deathHooks(dying, attacker, data);
+    deathReward(dying, data, killingSide);
+  }
+
+  /**
+   * The death handler's reward: ManaOnDeathForOpponent, stored by the loader as ten times the
+   * column, paid in ten-thousandths to the king in the killing side's tower slot. Outside a match
+   * no king holds elixir and nothing is paid.
+   */
+  private void deathReward(WorldEntity dying, UnitData data, int killingSide) {
+    int amount = data.manaOnDeathForOpponent() * 10;
+    if (amount < 1 || kingElixir == null || killingSide < 0 || killingSide > 1) {
+      return;
+    }
+    kingElixir.add(killingSide, amount);
+    for (WorldObserver observer : observers) {
+      observer.deathElixirPaid(tick, dying, killingSide, amount);
+    }
+  }
+
+  /** The death handler's hooks: the dying unit's death and killed actions, with their cause. */
+  private void deathHooks(WorldEntity dying, BattleEntity attacker, UnitData data) {
     if (data.onDeathAction() == null && data.onKilledAction() == null) {
       return;
     }
@@ -2085,7 +2127,8 @@ public class BattleWorld implements HolderPasses {
       observer.buffDamaged(tick, target, buff, damage, before, result);
     }
     if (result.died()) {
-      target.die(null);
+      // The killing side is the one the buff was applied for.
+      target.die(null, buff.getSide());
     }
   }
 

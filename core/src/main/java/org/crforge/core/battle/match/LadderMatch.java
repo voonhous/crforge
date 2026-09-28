@@ -11,6 +11,7 @@ import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.CharacterEntity;
+import org.crforge.core.battle.unit.KingElixir;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
@@ -64,7 +65,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " and the entity ticks it allows, the fallen king's circle and the stop, the attack"
             + " timers held and the hits refused from the end; by match_overtime_tiebreak and"
             + " match_overtime_draw: the tiebreaker's steps, its idle window, the drain and its"
-            + " steps, its end by a fallen tower and by equal towers, the winner and the draw."
+            + " steps, its end by a fallen tower and by equal towers, the winner and the draw; by"
+            + " match_elixir_sources: the kings' elixir a collector and a death pay into."
             + " Held by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's"
             + " kills and the update it runs. Not modelled, and refused: a projectile, an area"
             + " effect or an entity without hit points the clearing reaches, which the holder"
@@ -161,6 +163,24 @@ public final class LadderMatch implements BattleMode {
       matchSide.getHand().deal(DeckShuffle.order(deck, draw + playerWords[side]));
       sides.add(matchSide);
     }
+    // The kings' elixir, which a collector's payout and a unit's death pay into.
+    world.setKingElixir(
+        new KingElixir() {
+          @Override
+          public int wholeElixir(int side) {
+            return sides.get(side).wholeElixir();
+          }
+
+          @Override
+          public void add(int side, int amount) {
+            sides.get(side).add(amount, maxMana);
+          }
+
+          @Override
+          public int maxMana() {
+            return maxMana;
+          }
+        });
   }
 
   /**

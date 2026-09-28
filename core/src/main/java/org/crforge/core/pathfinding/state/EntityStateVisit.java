@@ -36,9 +36,10 @@ import org.crforge.core.pathfinding.move.MovementState;
  * to a part of the simulation outside movement and routing: the buff a unit gets while it is not
  * attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, and the
  * morph timer with its growth scale. They sit between blocks 4 and 5 and between 11 and 12 in the
- * order above and none of them changes a state or a position that routing reads. The live spawner,
- * the last block before 12, is announced as {@code spawner} where the visit reaches it, and its
- * caller runs it: nothing after it in the visit reads what it does.
+ * order above and none of them changes a state or a position that routing reads. Two of them are
+ * announced where the visit reaches them, and their caller runs them, since nothing after either in
+ * the visit reads what it does: the elixir generation, right after block 11, as {@code elixir}, and
+ * the live spawner, the last block before 12, as {@code spawner}.
  *
  * <p>Two consequences of leaving them out, which matter to anyone extending this class rather than
  * to a plain ground troop:
@@ -67,7 +68,7 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
             + " deploy countdown ending in the moving state, and the dash landing delay and the"
             + " dash immunity, by mega_knight_group and bandit_knight. Not modelled:"
-            + " the not-attacking buff timer, kamikaze self-damage, elixir generation, hiding,"
+            + " the not-attacking buff timer, kamikaze self-damage, hiding,"
             + " growth, and the targeting visit the standard game runs"
             + " straight after a hidden unit resumes. A removal is requested by name and read"
             + " by nothing.")
@@ -279,6 +280,9 @@ public final class EntityStateVisit {
         setter.setState(entity, GridEntityState.STANDING);
       }
     }
+
+    // The elixir block runs here, after the goal row; the caller runs it.
+    chain.add("elixir");
 
     // The spawner block runs here, between the goal row and the morph countdown; the caller runs
     // it.

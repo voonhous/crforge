@@ -89,4 +89,15 @@ class MatchSideTest {
     side.visit(timeline, MAX_MANA);
     assertThat(side.getHand().slots()).containsExactly(4, 5, 2, 3);
   }
+
+  @Test
+  @DisplayName("an add from a collector or a death clamps at the cap and counts the rest as wasted")
+  void anAddClampsAtTheCap() {
+    MatchSide side = side();
+    side.add(10000, MAX_MANA);
+    assertThat(side.getElixir()).isEqualTo(70000);
+    side.add(35000, MAX_MANA);
+    assertThat(side.getElixir()).isEqualTo(100000);
+    assertThat(side.getWasted()).isEqualTo(5000);
+  }
 }
