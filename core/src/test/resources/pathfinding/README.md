@@ -334,6 +334,14 @@ The towers fight at level 11. A Ram Rider is played for the bottom side at (3500
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, holding the rider's attachment and release from `unit_spawner`, since the run lists no actions.
 
+## `golden/match_elixir_150s.json` - a Ladder match's clock, elixir and hands
+
+The towers fight at level 11 in a Ladder match between two decks of the same eight cards (Knight, Archer, Giant, MiniPekka, Musketeer, Valkyrie, Barbarians, Minions), both players' words 0. Side 0's shuffle draws 270369 from the battle's source and deals Valkyrie, Giant, Archer, Minions, then Barbarians, MiniPekka, Knight, Musketeer; side 1's draws 67601921 and deals Knight, Musketeer, Archer, MiniPekka, then Minions, Giant, Barbarians, Valkyrie (`match.log`, the `hand` entries). Both start with 6 elixir.
+
+Eleven plays run on fixed ticks (`commands`). Side 0's Knight on 20 is refused with code 9: it waits in the queue. Side 1's Knight on 25 is placed and pays 3; its slot takes Minions on the same tick, the cooldown having run out. Side 0's Valkyrie on 300 is refused with 0xd, with 3.34 elixir. `match.trace` holds every tick of the first 3000: both elixirs in ten-thousandths, both hands as deck indices, both cooldowns, the timeline's time, section and rate, both crowns, and the end's four fields at a match that goes on. Between plays each tick adds 178, and 357 from 2400; side 1 takes a princess tower. The units the plays make are held as the other card runs hold theirs.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
