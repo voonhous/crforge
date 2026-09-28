@@ -5,12 +5,17 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import lombok.Getter;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -27,6 +32,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.AttachedParent;
 import org.crforge.core.pathfinding.move.DashStart;
 import org.crforge.core.pathfinding.move.MovementChain;
@@ -392,6 +398,17 @@ public class CharacterEntity extends WorldEntity {
             this::movementChain,
             data.deployTimeMs(),
             unit.movementConfig());
+    // A unit with an ability casts through its setter, which seeds the cast's countdowns and ends a
+    // change into or out of the cast with the combat gate.
+    if (data.ability() != null) {
+      setter.setCasting(
+          new GridStateSetter.Casting(
+              unit.timers(),
+              data.ability().castTimeMs(),
+              data.ability().triggerDelayMs(),
+              false,
+              this::stateTailGate));
+    }
     // The movement component starts tracking a charge for a row with a charge range.
     if (data.chargeRange() != 0) {
       unit.movement().setChargeProgress(0);
@@ -644,6 +661,8 @@ public class CharacterEntity extends WorldEntity {
       refused = "another deploy time";
     } else if (current.champion()) {
       refused = "a champion's controller";
+    } else if (!Objects.equals(current.ability(), next.ability())) {
+      refused = "another ability";
     } else if (current.chargeRange() != 0
         || next.chargeRange() != 0
         || current.jumpEnabled()
@@ -1063,7 +1082,7 @@ public class CharacterEntity extends WorldEntity {
         queries.gridRouteFlag(),
         getHitPoints() != null,
         queries.abilityCastActive(),
-        queries.abilityTriggerReady(),
+        this::abilityGate,
         queries.protectedFromDamage(),
         queries.protectionApplies(),
         queries.goalRow(),
@@ -1213,10 +1232,160 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           name() + " hides until it attacks, whose deploy end runs the gate and a targeting visit");
     }
+    // The ability's effect fires on the visit its trigger delay reaches zero.
+    if (calls.contains("ability_warning")) {
+      abilityFired();
+    }
     // The visit's tail call: the combat gate.
     if (!calls.isEmpty() && calls.get(calls.size() - 1).equals("visit_tail")) {
-      combatGate(isActive(TARGETING_SLOT) && !deploying() && !waiting(), setter::prepareRoute);
+      stateTailGate();
     }
+  }
+
+  /** The combat gate, as the state visit's tail and a change into or out of a cast run it. */
+  private void stateTailGate() {
+    combatGate(isActive(TARGETING_SLOT) && !deploying() && !waiting(), setter::prepareRoute);
+  }
+
+  /**
+   * The ability gate: whether a requested ability may start now. It may when the unit has an
+   * ability, is not a champion's clone, can act - its targeting component on - is in none of the
+   * states from dashing to the follow-up's, carries neither the postponing nor the disabling tag,
+   * and the ability does something: with every other effect refused as it is requested, it runs an
+   * activation action.
+   */
+  private boolean abilityGate() {
+    AbilityData ability = getData().ability();
+    if (ability == null || !isActive(TARGETING_SLOT)) {
+      return false;
+    }
+    int state = getView().getState();
+    if (state >= GridEntityState.DASHING && state <= GridEntityState.COMPONENTS_DISABLED) {
+      return false;
+    }
+    if ((getView().getFlags() & (EntityFlags.ABILITY_POSTPONED | EntityFlags.ABILITY_DISABLED))
+        != 0) {
+      return false;
+    }
+    return ability.onActivationAction() != null;
+  }
+
+  /**
+   * Requests the unit's ability, as a friend collector does: with the gate open the unit enters the
+   * casting state now, through its setter; shut, the ability is left pending, which the state
+   * visit's pending branch turns into the cast on the first visit the gate opens. A unit without an
+   * ability does nothing. An ability that does more than run its activation action, or keeps a buff
+   * on a unit waiting to cast, is refused.
+   */
+  public void requestAbility() {
+    AbilityData ability = getData().ability();
+    if (ability == null) {
+      return;
+    }
+    if (!ability.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " casts "
+              + ability.name()
+              + ", which sets columns the battle does not model: "
+              + ability.unmodelledColumns());
+    }
+    boolean now = abilityGate();
+    world.abilityRequested(this, now);
+    if (now) {
+      setter.setState(getView(), GridEntityState.CASTING);
+      return;
+    }
+    getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
+    unit.timers().setAbilityReady(true);
+  }
+
+  /**
+   * The ability's effect, on the visit its trigger delay reaches zero: its activation action is
+   * scheduled on the unit, the unit as its cause. From the post-hooks it waits for the phase-3
+   * pending pass. Its other effects are refused as it is requested.
+   */
+  private void abilityFired() {
+    AbilityData ability = getData().ability();
+    world.abilityFired(this);
+    if (ability.onActivationAction() != null) {
+      BattleAction action =
+          world.getActions().build(ability.onActivationAction(), world.binding(this));
+      actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder());
+    }
+  }
+
+  /**
+   * What a friend-collecting run of the unit asks of the battle: the object query around it, the
+   * live list by id, the guarded squared distance from it, its tag and hit speed, the target locks,
+   * its ability, and the hooks and projectiles the run schedules and fires.
+   */
+  @Override
+  public FriendCollecting friendCollecting() {
+    return new FriendCollecting() {
+      @Override
+      public int ownerId() {
+        return getId();
+      }
+
+      @Override
+      public List<Integer> query(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.objectQuery(CharacterEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public boolean found(int id) {
+        return world.liveObject(id) instanceof CharacterEntity;
+      }
+
+      @Override
+      public int squaredDistance(int id) {
+        GridEntity other = ((WorldEntity) world.liveObject(id)).getView();
+        return FixedMath.squaredDistance(
+            getView().getX(), getView().getY(), other.getX(), other.getY());
+      }
+
+      @Override
+      public boolean noAttack() {
+        return (getView().getFlags() & EntityFlags.NO_ATTACK) != 0;
+      }
+
+      @Override
+      public int hitSpeed(int stepMs) {
+        return getBuffs().hitSpeed(stepMs);
+      }
+
+      @Override
+      public TargetLocks locks() {
+        return world.locks();
+      }
+
+      @Override
+      public void requestAbility() {
+        CharacterEntity.this.requestAbility();
+      }
+
+      @Override
+      public void schedule(int targetId, BattleAction action) {
+        WorldEntity target = (WorldEntity) world.liveObject(targetId);
+        BattleAction built = world.getActions().build(action.name(), world.binding(target));
+        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder());
+      }
+
+      @Override
+      public void launch(ProjectileData projectile, int friendId) {
+        world.launchAt(CharacterEntity.this, projectile, (WorldEntity) world.liveObject(friendId));
+      }
+    };
+  }
+
+  @Override
+  protected boolean keepsTargetWhileCasting() {
+    return getData().ability() != null && getData().ability().keepCurrentTarget();
   }
 
   /**

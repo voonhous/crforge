@@ -86,6 +86,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     are not established
  * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
  *     unless it says otherwise
+ * @param ability the unit's ability row, or null for a unit without one
  * @param globalId the id the game gives the unit's row, which expressions compare it by
  * @param lifeTimeMs how long the unit lives before its hit points run down; 0 for no limit
  * @param targetOnlyBuildings true for a unit that attacks buildings only
@@ -203,6 +204,7 @@ public record UnitData(
     int deathSpawnMinRadius,
     List<String> unmodelledDeathColumns,
     boolean champion,
+    AbilityData ability,
     int globalId,
     int lifeTimeMs,
     boolean targetOnlyBuildings,

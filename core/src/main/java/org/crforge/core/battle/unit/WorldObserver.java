@@ -227,6 +227,23 @@ public interface WorldObserver {
   default void characterPlayed(int tick, CharacterEntity unit) {}
 
   /**
+   * A unit's ability was requested.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param now true when it entered the casting state at once, false when it was left pending
+   */
+  default void abilityRequested(int tick, CharacterEntity unit, boolean now) {}
+
+  /**
+   * A unit's ability fired: its trigger delay reached zero in its state visit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   */
+  default void abilityFired(int tick, CharacterEntity unit) {}
+
+  /**
    * An area effect was created and handed to the holder, which admits it at the next cleanup.
    *
    * @param tick the battle tick

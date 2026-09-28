@@ -187,7 +187,7 @@ public final class EntityStateVisit {
     // 7. A requested ability starts, or its cooldown is held.
     if (timers.isAbilityReady()) {
       chain.add("ability_trigger_ready");
-      if (queries.abilityTriggerReady()) {
+      if (queries.abilityTriggerReady().getAsBoolean()) {
         timers.setAbilityReady(false);
         setter.setState(entity, GridEntityState.CASTING);
       } else {

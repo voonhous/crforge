@@ -340,6 +340,23 @@ class ActionRuntimeTest {
   }
 
   @Test
+  @DisplayName("a singleton row built twice, as two trees build it, re-triggers the other's run")
+  void singletonAcrossTrees() {
+    ActionHolder h = holder();
+    Row first = new Row("once");
+    first.lasting = true;
+    first.singleton = true;
+    Row second = new Row("once");
+    second.lasting = true;
+    second.singleton = true;
+    h.start(first);
+    take();
+    h.start(second);
+    assertThat(take()).containsExactly("retrigger once");
+    assertThat(running(h)).containsExactly("once");
+  }
+
+  @Test
   @DisplayName(
       "the next action starts after the run with the wait set, alongside the schedule without")
   void chaining() {

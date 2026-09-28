@@ -10,8 +10,10 @@ import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.battle.projectile.ProjectileAmounts;
@@ -30,6 +32,7 @@ import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.target.HitApplication;
@@ -173,7 +176,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     selection.setHitSink(
         (target, sequenceIndex, extraTargets, last) -> {
           refuseHit();
-          return HitApplication.apply(targeting, target, sequenceIndex, hitQueries());
+          return HitApplication.apply(targeting, target, sequenceIndex, last, hitQueries());
         });
     // The attack timer, the dash and the special loads step by the time the buffs scale.
     this.buffs = new BuffComponent(this, world);
@@ -384,7 +387,65 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public void areaDamage(int x, int y, int radius, int damage, int towerDamage, int hitId) {
         damageArea(x, y, radius, damage, towerDamage, hitId);
       }
+
+      @Override
+      public boolean hitListeners() {
+        return !hitListenerRuns().isEmpty();
+      }
+
+      @Override
+      public int listenedDamage(int damage, int hitId, boolean crownTower) {
+        List<GiantBufferBuff.Run> runs = hitListenerRuns();
+        int out = damage;
+        for (int i = runs.size() - 1; i >= 0; i--) {
+          out = runs.get(i).damage(out, hitId, crownTower);
+        }
+        return out;
+      }
+
+      @Override
+      public void attackEnded() {
+        for (GiantBufferBuff.Run run : hitListenerRuns()) {
+          run.attackEnded(actionHolder());
+        }
+      }
     };
+  }
+
+  /**
+   * Tells the entity's listening actions, from the last listed down, of a projectile it is
+   * registering: an enchanting buff on its completing hit hands the projectile a copy, listed on
+   * the projectile's own holder.
+   *
+   * @param projectile the projectile being registered
+   */
+  public void projectileRegistered(ProjectileEntity projectile) {
+    List<GiantBufferBuff.Run> runs = hitListenerRuns();
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      GiantBufferBuff.Run copy = runs.get(i).projectileCopy(projectile);
+      if (copy != null) {
+        projectile.actionHolder().list(copy);
+      }
+    }
+  }
+
+  /**
+   * The entity's running actions that listen to its hits, in list order: its enchanting buffs.
+   * Every other class keeps the base hit slots, which hand a damage on unchanged and do nothing at
+   * an attack's end, so the chains are those of the enchanting buffs alone. The king tower's own
+   * actions are never listed as listeners.
+   */
+  private List<GiantBufferBuff.Run> hitListenerRuns() {
+    if (actionHolder == null || data.king()) {
+      return List.of();
+    }
+    List<GiantBufferBuff.Run> runs = new ArrayList<>();
+    for (ActionInstance instance : actionHolder.running()) {
+      if (instance instanceof GiantBufferBuff.Run run) {
+        runs.add(run);
+      }
+    }
+    return runs;
   }
 
   /** The end of each of the entity's hits; a tower's does nothing. */
@@ -490,7 +551,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             hitSpeed,
             data.hitpoints() != 0,
             routePreparer,
-            this::resumeAfterDrop);
+            this::resumeAfterDrop,
+            keepsTargetWhileCasting());
     if (before != null && targeting.getReference() == null) {
       world.combatGateDropped(this, before, hitSpeed);
     }
@@ -501,6 +563,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     gateStunned = stunned;
     setActive(GATED_SLOT, on);
+  }
+
+  /** Whether the entity's ability keeps its target while it casts; a tower has no ability. */
+  protected boolean keepsTargetWhileCasting() {
+    return false;
   }
 
   /**
@@ -728,6 +795,31 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public int actionPackedLevel() {
     return packedLevel;
+  }
+
+  @Override
+  public int actionId() {
+    return getId();
+  }
+
+  @Override
+  public RarityTable actionRarity() {
+    return data.rarity();
+  }
+
+  @Override
+  public String actionRowName() {
+    return data.name();
+  }
+
+  @Override
+  public boolean actionSpawnsAttached() {
+    return data.spawnAttach();
+  }
+
+  @Override
+  public boolean liveObject(int id) {
+    return world.liveObject(id) != null;
   }
 
   /**

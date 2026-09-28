@@ -108,6 +108,21 @@ public final class ProjectileLauncher {
     }
   }
 
+  /**
+   * Places a collector's projectile at its start and launches it at a friend: the same start as a
+   * hit's single projectile, aimed at where the friend stands now.
+   *
+   * @param projectile the projectile, not yet launched
+   * @param launcher the collecting unit
+   * @param friend the friend it flies to
+   */
+  public static void launchAt(
+      ProjectileEntity projectile, WorldEntity launcher, WorldEntity friend) {
+    refuseUnmodelled(launcher, projectile.getData());
+    GridEntity at = friend.getView();
+    launchOne(projectile, launcher, launcher.getData(), friend, at.getX(), at.getY(), 0, 0);
+  }
+
   /** Refuses a projectile row that sets columns its flight and impact do not model. */
   private static void refuseUnmodelled(WorldEntity launcher, ProjectileData data) {
     if (!data.unmodelledColumns().isEmpty()) {

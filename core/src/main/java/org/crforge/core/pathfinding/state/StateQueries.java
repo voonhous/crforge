@@ -1,5 +1,7 @@
 package org.crforge.core.pathfinding.state;
 
+import java.util.function.BooleanSupplier;
+
 /**
  * The answers the entity state visit and its resume helper pull from the rest of the simulation.
  *
@@ -18,7 +20,8 @@ package org.crforge.core.pathfinding.state;
  *     may not route stands or is removed
  * @param abilityCastActive whether an ability is currently being cast, which holds the casting
  *     state
- * @param abilityTriggerReady whether a requested ability may start this visit
+ * @param abilityTriggerReady whether a requested ability may start this visit, asked when the visit
+ *     reaches its pending ability, so it answers for the state the visit has reached
  * @param protectedFromDamage whether something is currently shielding the entity, which keeps its
  *     dash immunity topped up
  * @param protectionApplies whether that shield applies in this match, asked alongside it
@@ -33,7 +36,7 @@ public record StateQueries(
     boolean gridRouteFlag,
     boolean hasHitPoints,
     boolean abilityCastActive,
-    boolean abilityTriggerReady,
+    BooleanSupplier abilityTriggerReady,
     boolean protectedFromDamage,
     boolean protectionApplies,
     int goalRow,
@@ -60,7 +63,8 @@ public record StateQueries(
    * @param team which player the entity belongs to, 0 or 1
    */
   public static StateQueries forUnitWithRoute(int team) {
-    return new StateQueries(team, true, true, false, true, false, false, false, false, -1, TICK_MS);
+    return new StateQueries(
+        team, true, true, false, true, false, () -> false, false, false, -1, TICK_MS);
   }
 
   /** The same answers with the "can follow a route" question answered differently. */

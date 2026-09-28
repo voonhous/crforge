@@ -18,6 +18,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -158,7 +159,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the thrower waits for its return. {@code hunter_point_blank} fires a Hunter's ten pellets at a
  * Knight close enough for all ten to hit it as they are launched, and {@code hunter_range} fires
  * them from further off, each stopping at the first Knight it hits. {@code ram_rider_bola} has a
- * Ram Rider snare a Knight with her bola, again with each throw while the snare still holds.
+ * Ram Rider snare a Knight with her bola, again with each throw while the snare still holds. {@code
+ * giant_buffer_knights} plays a Giant Buffer behind two Knights: it claims both through the
+ * battle's target locks, casts its ability for eighteen ticks, and fires a projectile at each,
+ * whose impact enchants the Knight, so every third hit either lands on the princess tower carries
+ * the added damage. The looping effect the enchantment chooses only shows something; the reference
+ * leaves such rows out of its runs, and so does the log here.
  */
 class BattleActionSpawnRunTest {
 
@@ -239,7 +245,9 @@ class BattleActionSpawnRunTest {
         "kamikaze_wall_breakers",
         "kamikaze_ice_spirits",
         "moving_cannon_left",
-        "furnace_left"
+        "furnace_left",
+        "giant_buffer_knights",
+        "giant_buffer_musketeer"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1009,6 +1017,10 @@ class BattleActionSpawnRunTest {
     return new ActionHolder.Listener() {
       @Override
       public void starting(BattleAction action, int phase, boolean queued) {
+        // A looping effect row only shows something, and the reference leaves it out.
+        if (action instanceof InertAction inert && inert.isLasting()) {
+          return;
+        }
         actions.add(
             "%d run %s %s %s"
                 .formatted(currentTick[0], owner, action.name(), queued ? phase : "at once"));

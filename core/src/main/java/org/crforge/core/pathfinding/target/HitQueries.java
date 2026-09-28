@@ -99,4 +99,28 @@ public interface HitQueries {
    * forbid: a Kamikaze owner destroys itself here, after its direct hit or its launch.
    */
   default void hitEnded() {}
+
+  /**
+   * Whether the owner's actions listen to its hits: a running action that enchants them. Without
+   * one the hit neither passes its damage through them nor tells them its attack ended.
+   */
+  default boolean hitListeners() {
+    return false;
+  }
+
+  /**
+   * The damage of a landed hit as the owner's listening actions change it, from the last listed
+   * down, each handed the damage the one after it answered.
+   *
+   * @param damage the damage so far
+   * @param hitId the id the hit carries
+   * @param crownTower true for the crown-tower damage, false for the ordinary damage
+   * @return the damage the hit carries on
+   */
+  default int listenedDamage(int damage, int hitId, boolean crownTower) {
+    return damage;
+  }
+
+  /** Tells the owner's listening actions, first to last, that one of its attacks ended. */
+  default void attackEnded() {}
 }

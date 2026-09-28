@@ -28,13 +28,14 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " has_data as the context's own row having that id; rand as one draw from the"
             + " battle's random source, taken as the expression is evaluated; hp as the context's"
             + " hit points and max_hp without a level as its maximum; target_in_range on the"
-            + " context's reference, its edge and the context's. Supplied, not"
+            + " context's reference, its edge and the context's; get_radius as the context's"
+            + " row's collision radius, held by giant_buffer_knights. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
-            + " entity carries every bit of it. Not modelled: the other 32 functions, which fail"
+            + " entity carries every bit of it. Not modelled: the other 31 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -51,6 +52,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int MAP_HEIGHT = BattleFunctions.id("map_height");
   private static final int HAS_DATA = BattleFunctions.id("has_data");
   private static final int RAND = BattleFunctions.id("rand");
+  private static final int GET_RADIUS = BattleFunctions.id("get_radius");
   private static final int TARGET_IN_RANGE = BattleFunctions.id("target_in_range");
   private static final int HP = BattleFunctions.id("hp");
   private static final int MAX_HP = BattleFunctions.id("max_hp");
@@ -222,6 +224,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (id == HAS_DATA) {
       // The context's own row, the exact one: a relative row with an id of its own is not it.
       return arguments[0] == context.getData().globalId() ? 1 : 0;
+    }
+    if (id == GET_RADIUS) {
+      // A character's or a tower's row's collision radius, with no level scaling.
+      return context.getData().collisionRadius();
     }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.

@@ -252,13 +252,18 @@ final class ProjectileFlight {
    */
   private static void impact(ProjectileEntity p, BattleWorld world) {
     ProjectileData data = p.getData();
-    int damage = p.damage();
-    int towerDamage = p.towerDamage();
     int hitId = world.nextHitId();
+    // The enchanting copies it carries change both damages, after the hit id is taken.
+    int damage = p.listenedDamage(p.damage(), hitId, false);
+    int towerDamage = p.listenedDamage(p.towerDamage(), hitId, true);
     ProjectileChain chain = p.getChain();
     boolean onRing = chain != null && chain.isRingPoints();
     int px = onRing ? p.getRingX() : p.getAimX();
     int py = onRing ? p.getRingY() : p.getAimY();
+    // The row's on-hit action goes onto the target before the hit, the projectile as its cause.
+    if (data.onHitTargetAction() != null && p.getTarget() != null) {
+      world.onHitTarget(p, p.getTarget());
+    }
     // The target buff goes before the damage when the row says so, else after it: after, a victim
     // the damage killed has run its death already; before, it dies carrying the buff.
     boolean buffFirst = data.applyBuffBeforeDamage();

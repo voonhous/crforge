@@ -459,6 +459,18 @@ The towers fight at level 11. A Furnace (card FirespiritHut, unit Furnace_rework
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, holding every run of the Furnace's and the spirits' actions.
 
+## `golden/giant_buffer_knights.json` - a friend collector, a cast and enchanted hits
+
+The towers fight at level 11. Two Knights are played for side 0 on tick 0, placed at (3499, 12500) and (4499, 12500), and a Giant Buffer behind them, placed at (3499, 9500). The play starts its collector, giantbuffer_collect_friend_troops, whose own delay of 1000 ms has it run in its phase-1 pass of tick 20 (`actions`: `start`, then `run`). Its first step finds both Knights within 7000, asks the battle's target locks for each with its squared distance flipped against the largest int as the priority, and requests the Giant Buffer's ability: the gate is open, so it enters the casting state at once, 18 ticks of CastTime 933 with a TriggerDelay of 1, its targeting component switched off with its reference kept. Its effect fires in that tick's state visit and schedules the ability's empty activation action, which runs in the phase-3 pass (`run GiantBuffer_0 giantbuffer_ability_OnActivationAction 3`); the locks grant both Knights in the post-pass. The buff delay of 280 ends on 26 (`run ... OnBuffAction 2`), and on 27 it fires a GiantBuffProjectile at each Knight. It stands on 37 and walks again from 38. Both projectiles land on 34 and schedule their on-hit group on their Knight, the projectile as its cause; in the phase-3 pass the group's enchanting buff starts on each, and its effect select, a tick behind, is dropped as the projectile leaves in that tick's cleanup (`dropped`). The looping effect the select chooses only shows something and is not a run of the reference. Each Knight's third hit on PrincessTower_1_1, on 252, deals 422 - 202 and the 220 of AddedDamage 86 at the Giant Buffer's level - and runs the count's action; KnightA's next third hit kills the tower on 324.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, holding every action run, the drops, every hit and every position.
+
+## `golden/giant_buffer_musketeer.json` - an enchanted projectile
+
+The same set-up with a Musketeer placed at (3499, 12500) in place of the Knights. The Giant Buffer collects and enchants it as above. The Musketeer's third shot, launched on 166, is registered while its count stands one short, so the projectile takes a copy of the buff primed one short, and the count's action runs; the copy adds the 220 at the impact, so the shot lands 437 on the tower on 173 against 217 for the others. The Musketeer dies on 208, and the locks drop its lock in the next pre-pass.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

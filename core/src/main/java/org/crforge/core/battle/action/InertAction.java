@@ -1,5 +1,6 @@
 package org.crforge.core.battle.action;
 
+import lombok.Getter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -21,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " run's, and for the forced animation.")
 public final class InertAction extends RowAction {
 
-  private final boolean lasting;
+  /** True for a row that keeps a run, which never finishes by itself. */
+  @Getter private final boolean lasting;
 
   /**
    * A row with no run.

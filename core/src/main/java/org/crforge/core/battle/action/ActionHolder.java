@@ -238,8 +238,10 @@ public class ActionHolder implements EntityActions {
   /** Starts an action, as the pending pass does when it takes it from the queue or otherwise. */
   private void start(BattleAction action, ActionHolder instigator, boolean queued) {
     if (action.singleton()) {
+      // A row is one of the game's rows, whichever entity's tree it was built in: a second tree
+      // built from the same row finds the first one's run.
       for (ActionInstance instance : running) {
-        if (instance.getAction() == action) {
+        if (instance.getAction().name().equals(action.name())) {
           instance.retrigger(this);
           return;
         }
@@ -259,6 +261,17 @@ public class ActionHolder implements EntityActions {
     if (next != null && action.nextActionWait()) {
       schedule(next, OWN_DELAY, false, instigator);
     }
+  }
+
+  /**
+   * Lists a run made elsewhere, as a copy another holder's run hands over is listed: carrying its
+   * row's tags, with no start of its own.
+   *
+   * @param instance the run
+   */
+  public void list(ActionInstance instance) {
+    instance.addTags(instance.getAction().tags());
+    running.add(instance);
   }
 
   /** Whether a pending pass is in progress: the battle's, or this holder's own outside a battle. */
