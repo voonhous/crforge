@@ -68,6 +68,9 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param maximumTargets the most entities its area buff reaches: 1000 for an empty column, as the
  *     loader stores
  * @param onlyOwnTroops true when its area buff reaches only the launcher's own side
+ * @param chainedHitRadius how far from where it lands it hops on to its next target; 0 for a
+ *     projectile that does not hop
+ * @param chainedHitCount how many targets a hopping projectile hits in all, its first included
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -77,8 +80,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the far"
             + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
-            + " columns, the deflect behaviour, the chained hit, the target buff of a projectile"
-            + " that flies to a point, and the spawned area effect; the impact's pushback and its spawned characters are"
+            + " columns, the deflect behaviour, the chained hit's end effect, the target buff of a"
+            + " projectile that flies to a point, and the spawned area effect; the impact's pushback and its spawned characters are"
             + " carried.")
 @Builder(toBuilder = true)
 public record ProjectileData(
@@ -119,6 +122,8 @@ public record ProjectileData(
     int buffTimeIncreasePerLevel,
     int maximumTargets,
     boolean onlyOwnTroops,
+    int chainedHitRadius,
+    int chainedHitCount,
     List<String> unmodelledColumns) {
 
   public ProjectileData {
