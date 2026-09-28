@@ -386,23 +386,30 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Whether a character in the battle names a buff in its IgnoreTargetsWithBuff column, so that its
-   * targeting would read who carries it.
+   * Whether a character in the battle names a buff in its IgnoreTargetsWithBuff column without
+   * ranking its carriers lower instead, so that its validator would pass over them; such a buff is
+   * not modelled. A character that only ranks them lower is answered by its selection's priority.
+   * Queued entities count too, as they will be live by the time anyone targets.
    *
    * @param buff the buff row's name
    */
   boolean passedOverBySomeone(String buff) {
     for (WorldEntity entity : present()) {
-      if (buff.equals(entity.getData().ignoreTargetsWithBuff())) {
+      if (passesOver(entity, buff)) {
         return true;
       }
     }
     for (BattleEntity entity : holder.queued()) {
-      if (entity instanceof WorldEntity w && buff.equals(w.getData().ignoreTargetsWithBuff())) {
+      if (entity instanceof WorldEntity w && passesOver(w, buff)) {
         return true;
       }
     }
     return false;
+  }
+
+  private static boolean passesOver(WorldEntity entity, String buff) {
+    return buff.equals(entity.getData().ignoreTargetsWithBuff())
+        && !entity.getData().deprioritizeTargetsWithBuff();
   }
 
   /** The bits of the game tag of the given index. */
@@ -2369,9 +2376,9 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  void buffRefreshed(WorldEntity target, BuffInstance buff, int before) {
+  void buffRefreshed(WorldEntity target, BuffInstance buff, int before, SpawnHost source) {
     for (WorldObserver observer : observers) {
-      observer.buffRefreshed(tick, target, buff, before);
+      observer.buffRefreshed(tick, target, buff, before, source);
     }
   }
 

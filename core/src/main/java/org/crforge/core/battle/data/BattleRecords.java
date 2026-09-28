@@ -59,9 +59,9 @@ public final class BattleRecords {
 
   /**
    * The columns of a projectile the impact does not model: the area effect it spawns, spawned
-   * projectiles laid along an axis, the push's floor and a push along the flight, and the flight
-   * back to a shooter that walks on. A spell whose projectile, or the projectile that one spawns,
-   * sets one is refused as it is cast or spawned, and a unit's shot as it is fired.
+   * projectiles laid along an axis, and the push's floor and a push along the flight. A spell whose
+   * projectile, or the projectile that one spawns, sets one is refused as it is cast or spawned,
+   * and a unit's shot as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
@@ -69,8 +69,7 @@ public final class BattleRecords {
           "SpawnAxisX",
           "SpawnAxisY",
           "MinPushback",
-          "DoDirectionalPushback",
-          "PingpongMovingShooter");
+          "DoDirectionalPushback");
 
   /** The target limit the loader stores for a projectile row that leaves it empty. */
   private static final int DEFAULT_MAXIMUM_TARGETS = 1000;

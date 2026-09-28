@@ -179,6 +179,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     this.buffs = new BuffComponent(this, world);
     selection.setTimeScaler(buffs::hitSpeed);
     attach(buffs);
+    // Every entity carries a buff component, which the priority rule asks about.
+    targetView.setBuffComponentPresent(true);
+    if (data.ignoreTargetsWithBuff() != null) {
+      // A row that ranks the carriers of a buff lower asks each candidate's buff list for it.
+      String ranked = data.ignoreTargetsWithBuff();
+      selection.setDeprioritizingBuffCarrier(
+          candidate -> world.entityOf(candidate.getEntity()).getBuffs().carries(ranked));
+    }
     this.packedLevel = PackedLevel.fromLevel(level, data.rarity());
     ScalingGlobals globals = ScalingGlobals.standard();
     int maximum =

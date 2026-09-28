@@ -157,7 +157,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * axe out past two Knights and back, hitting each on the way out and again on the way back, while
  * the thrower waits for its return. {@code hunter_point_blank} fires a Hunter's ten pellets at a
  * Knight close enough for all ten to hit it as they are launched, and {@code hunter_range} fires
- * them from further off, each stopping at the first Knight it hits.
+ * them from further off, each stopping at the first Knight it hits. {@code ram_rider_bola} has a
+ * Ram Rider snare a Knight with her bola, again with each throw while the snare still holds.
  */
 class BattleActionSpawnRunTest {
 
@@ -231,7 +232,8 @@ class BattleActionSpawnRunTest {
         "firecracker_knight",
         "axe_man_knights",
         "hunter_point_blank",
-        "hunter_range"
+        "hunter_range",
+        "ram_rider_bola"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1155,7 +1157,9 @@ class BattleActionSpawnRunTest {
       }
 
       @Override
-      public void buffRefreshed(int tick, WorldEntity target, BuffInstance buff, int before) {
+      public void buffRefreshed(
+          int tick, WorldEntity target, BuffInstance buff, int before, SpawnHost source) {
+        // The reference names what the re-application came from.
         lines.add(
             "%d refreshed %s %s %s %d %d %s"
                 .formatted(
@@ -1165,7 +1169,7 @@ class BattleActionSpawnRunTest {
                     buff.getKey(),
                     before,
                     buff.getRemaining(),
-                    buff.getSource() == null ? null : buff.getSource().name()));
+                    source == null ? null : source.name()));
       }
 
       @Override

@@ -155,24 +155,42 @@ class RiderTest {
     }
     assertThat(rider.getTargeting().getReference()).isNull();
 
-    // A red Knight ahead of it: the rider takes it, and its bola, whose slow and pingpong flight
-    // are not modelled, is refused as it fires.
-    match.deploy(41, GameData.unit("Knight"), 11, 1, 3500, 16000);
-    assertThatThrownBy(
-            () -> {
-              for (int tick = 41; tick <= 200; tick++) {
-                match.getBattle().step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("RamRiderBola");
+    // A red Knight ahead of it: the rider takes it, and its bola snares it.
+    CharacterEntity knight = match.deploy(41, GameData.unit("Knight"), 11, 1, 3500, 16000);
+    boolean snared = false;
+    for (int tick = 41; tick <= 200 && !snared; tick++) {
+      match.getBattle().step();
+      snared = knight.getBuffs().carries("BolaSnare");
+    }
+    assertThat(snared).isTrue();
   }
 
   @Test
-  @DisplayName("the buff a character's targeting passes over is refused as it is applied")
-  void aBuffTheTargetingReadsIsRefused() {
+  @DisplayName("the rider ranks a carrier of the buff it names lower")
+  void theRiderRanksASnaredTargetLower() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.play(0, GameData.card("RamRider"), 11, 0, 3500, 10000, "RamRider");
+    CharacterEntity knight = match.deploy(0, GameData.unit("Knight"), 11, 1, 3500, 20000);
+    match.getBattle().step();
+    CharacterEntity rider = match.getPlays().get(0).units().get(0).riders().get(0);
+    assertThat(rider.getSelection().carriesDeprioritizingBuff(knight.getTargetView())).isFalse();
+
+    knight.getBuffs().apply(GameData.records().buff("BolaSnare"), 2000, LEVEL_11, null, 0);
+    assertThat(rider.getSelection().carriesDeprioritizingBuff(knight.getTargetView())).isTrue();
+  }
+
+  @Test
+  @DisplayName("the buff a character's targeting passes over outright is refused as it is applied")
+  void aBuffTheTargetingPassesOverIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    // No row passes over a buff without ranking its carriers lower instead; this one is made to.
+    match.deploy(
+        0,
+        GameData.unit("RamRider").toBuilder().deprioritizeTargetsWithBuff(false).build(),
+        11,
+        0,
+        3500,
+        10000);
     CharacterEntity knight = match.deploy(0, GameData.unit("Knight"), 11, 1, 3500, 20000);
     match.getBattle().step();
 

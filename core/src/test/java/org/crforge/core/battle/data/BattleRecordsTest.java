@@ -315,13 +315,14 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a rider carries what it may target, and its bola's slow is among the columns refused")
+      "a rider carries what it may target, and its bola's flight back to a moving shooter is"
+          + " presentation")
   void riderTargetingColumns() {
     UnitData rider = records.unit("RamRider");
     assertThat(rider.targetOnlyTroops()).isTrue();
     assertThat(rider.ignoreTargetsWithBuff()).isEqualTo("BolaSnare");
     assertThat(rider.deprioritizeTargetsWithBuff()).isTrue();
-    assertThat(rider.projectile().unmodelledColumns()).containsExactly("PingpongMovingShooter");
+    assertThat(rider.projectile().unmodelledColumns()).isEmpty();
     UnitData knight = records.unit("Knight");
     assertThat(knight.targetOnlyTroops()).isFalse();
     assertThat(knight.ignoreTargetsWithBuff()).isNull();
