@@ -134,7 +134,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * after the end, and the stop. {@code match_overtime_tiebreak} and {@code match_overtime_draw} play
  * past overtime with equal crowns into the tiebreaker: its clearing with nothing to clear, its idle
  * window, every step of its drain, and its end by a fallen princess tower, or as a draw by equal
- * towers.
+ * towers. {@code match_building_cards} plays building cards from the hand: a Cannon snapped to its
+ * tile corner, a Tombstone moved off the Cannon's tiles, a Cannon pulled back from across the river
+ * and an Elixir Collector that pays its king, each living as the same building placed directly.
  */
 class BattleActionSpawnRunTest {
 
@@ -196,7 +198,8 @@ class BattleActionSpawnRunTest {
         "match_knights_king",
         "match_overtime_tiebreak",
         "match_overtime_draw",
-        "match_elixir_sources"
+        "match_elixir_sources",
+        "match_building_cards"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

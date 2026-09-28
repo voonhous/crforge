@@ -26,8 +26,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " radius chosen from the card, then the unit's spawn radius, then its collision"
             + " radius, the clamp into the column, the creation inset, the unit's lane from its own"
             + " position with the placed point as the reference, and its start; a spell card"
-            + " placed with no unit, its point handed to the cast. Not modelled: the elixir and the"
-            + " other gates before the map check, and building cards.")
+            + " placed with no unit, its point handed to the cast; a building card placed as a"
+            + " troop card is, its unit a building. Not modelled: the elixir and the other gates"
+            + " before the map check.")
 public final class CardPlacement {
 
   /** How far from every edge of the arena a unit is created. */
