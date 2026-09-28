@@ -121,6 +121,10 @@ class BattleRecordsTest {
     assertThat(explosion.spawnCount()).isEqualTo(5);
     assertThat(explosion.spawnRadius()).isEqualTo(80);
     assertThat(explosion.unmodelledColumns()).isEmpty();
+    // A pingpong row's sweep time.
+    ProjectileData axe = records.projectile("AxeManProjectile");
+    assertThat(axe.pingpongVisualTimeMs()).isEqualTo(1500);
+    assertThat(axe.unmodelledColumns()).isEmpty();
     // A projectile that flies to a point buffs through its hits on the way, which is not modelled.
     assertThat(records.projectile("SuperEliteArcherArrow").unmodelledColumns())
         .contains("TargetBuff");

@@ -63,8 +63,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " the king tower, its delay, its chain and ring point, a thrown projectile's aim at"
             + " its spawned one's body height, and a spawned projectile's launch from its parent"
             + " are held by the spell runs; the limited-time homing by the Elite Archer's."
-            + " The chained hop is held by the Electro Dragon's."
-            + " Not modelled: the pingpong sweep, the random delays, the drag-back"
+            + " The chained hop is held by the Electro Dragon's, and the pingpong launch that holds"
+            + " the launcher's targeting until the projectile comes back by the Axe Man's."
+            + " Not modelled: a pingpong projectile a spell casts or an impact spawns, the random delays, the drag-back"
             + " hook, the custom movement, and the far-distance clamp with its cell pull.")
 public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -152,6 +153,12 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   @Getter private int ringY;
 
+  /** How far into its sweep a pingpong projectile is, in milliseconds. */
+  @Getter private int pingpongTimeMs;
+
+  /** How much of its sweep a pingpong projectile covers each step, fixed at its launch. */
+  @Getter private int pingpongStepMs;
+
   /** The projectile's action holder, made the first time it causes an action; null until then. */
   private ActionHolder actionHolder;
 
@@ -207,6 +214,16 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
         hy,
         view.getX(),
         view.getY());
+    if (data.pingpongVisualTimeMs() >= 1) {
+      // A pingpong projectile is held by its launcher's targeting component, whose visit returns
+      // early until the projectile comes back; the resume delay is started at the sweep's time.
+      TargetingState t = launcher.getTargeting();
+      t.setVisitSuspended(true);
+      t.setResumeDelayElapsedMs(0);
+      t.setResumeDelayMs(data.pingpongVisualTimeMs());
+      // Its sweep advances by the step the launcher's buffs make of 50 ms, as its attack does.
+      pingpongStepMs = launcher.getBuffs().hitSpeed(STEP_MS);
+    }
   }
 
   /**
@@ -225,6 +242,7 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    */
   public void cast(
       WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy, int delayMs) {
+    refusePingpong("cast");
     // The cast has no launcher: a projectile that aims by its range would aim from its start.
     place(king, king, null, cardLevel, sx, sy, sz, hx, hy, sx, sy);
     this.delayMs = delayMs;
@@ -245,6 +263,17 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     chain.markRingPoints();
   }
 
+  /**
+   * Refuses a pingpong projectile that no unit launches: it would be held by a king tower's
+   * targeting component, or, spawned, by none, and no row either way is known.
+   */
+  private void refusePingpong(String how) {
+    if (data.pingpongVisualTimeMs() >= 1) {
+      throw new UnsupportedOperationException(
+          data.name() + " is a pingpong projectile " + how + " without a unit, not modelled");
+    }
+  }
+
   /** One visit's step of the delay before the flight. */
   void stepDelay() {
     delayMs -= STEP_MS;
@@ -261,6 +290,7 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    * @param hy the point it aims beyond the parent's aim, along the length
    */
   public void launchSpawned(ProjectileEntity parent, int hx, int hy) {
+    refusePingpong("spawned");
     place(
         null,
         parent.root,
@@ -416,6 +446,10 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   void setHomingTimeMs(int ms) {
     homingTimeMs = ms;
+  }
+
+  void setPingpongTimeMs(int ms) {
+    pingpongTimeMs = ms;
   }
 
   void forgetHomingTarget() {

@@ -74,6 +74,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param chainedHitRadius how far from where it lands it hops on to its next target; 0 for a
  *     projectile that does not hop
  * @param chainedHitCount how many targets a hopping projectile hits in all, its first included
+ * @param pingpongVisualTimeMs how long a projectile that sweeps out to its aim and back takes for
+ *     the whole sweep; 0 for one that flies once to its aim
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -82,8 +84,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
     note =
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the far"
-            + " distance clamp, the random angle and distance, the delays, the pingpong and drag"
-            + " columns, the deflect behaviour, the chained hit's end effect, the target buff of a"
+            + " distance clamp, the random angle and distance, the delays, the drag columns, the"
+            + " pingpong death effect, which is presentation, the deflect behaviour, the chained hit's end effect, the target buff of a"
             + " projectile that flies to a point, and the spawned area effect; the impact's pushback and its spawned characters are"
             + " carried.")
 @Builder(toBuilder = true)
@@ -129,6 +131,7 @@ public record ProjectileData(
     int spawnRadius,
     int chainedHitRadius,
     int chainedHitCount,
+    int pingpongVisualTimeMs,
     List<String> unmodelledColumns) {
 
   public ProjectileData {
