@@ -131,6 +131,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param dashImmuneToDamageTimeMs how long, after its dash, nothing can hurt it; while it dashes
  *     with one, nothing can
  * @param dashToTargetRadius true when its dash aims at its target's edge rather than its centre
+ * @param targetOnlyTroops true for a unit that attacks troops only, never a building
+ * @param ignoreTargetsWithBuff the buff row whose carriers it passes over as targets, or null
+ * @param deprioritizeTargetsWithBuff true when it ranks such carriers lower instead of passing over
+ *     them
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -227,6 +231,9 @@ public record UnitData(
     int dashConstantTimeMs,
     int dashImmuneToDamageTimeMs,
     boolean dashToTargetRadius,
+    boolean targetOnlyTroops,
+    String ignoreTargetsWithBuff,
+    boolean deprioritizeTargetsWithBuff,
     List<String> unmodelledColumns) {
 
   public UnitData {

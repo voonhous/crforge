@@ -24,7 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the forty-seven runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the forty-eight runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -118,6 +118,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * hit; and {@code mega_knight_group}, a Mega Knight's timed dash, its landing over three Knights
  * with a push and its landing hold. Each is also held to every charge completed and lost, every
  * state a movement pass asked for, every dash started and every landing.
+ *
+ * <p>{@code ram_rider_tower} plays a Ram Rider: the Ram charges into the princess tower while its
+ * rider, which targets troops only, takes no target; the run lists no actions, so the rider's
+ * attachment and release are held from its {@code unit_spawner} log.
  */
 class BattleActionSpawnRunTest {
 
@@ -170,7 +174,8 @@ class BattleActionSpawnRunTest {
         "dark_prince_tower",
         "hog_river",
         "bandit_knight",
-        "mega_knight_group"
+        "mega_knight_group",
+        "ram_rider_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -278,6 +283,9 @@ class BattleActionSpawnRunTest {
 
     List<String> events = new ArrayList<>();
     List<String> positions = new ArrayList<>();
+    // The riders a card play attached, and each let go as its parent left.
+    List<String> riders = new ArrayList<>();
+    List<String> riderLog = new ArrayList<>();
     List<String> groups = new ArrayList<>();
     List<String> deaths = new ArrayList<>();
     Map<String, Integer> spawnTicks = new HashMap<>();
@@ -388,6 +396,35 @@ class BattleActionSpawnRunTest {
                 // A rider is made in the command pass, ahead of the opening cleanup that folds it,
                 // so no record finds it still pending.
                 spawnTicks.remove(rider.name());
+                riders.add(rider.name());
+                riderLog.add(
+                    "%d attached %s %d %s %d %d at %d %d state %d deploy %d dir %d %d"
+                        .formatted(
+                            currentTick[0],
+                            rider.name(),
+                            rider.getId(),
+                            parent.name(),
+                            index,
+                            angle,
+                            rider.getView().getX(),
+                            rider.getView().getY(),
+                            rider.getView().getState(),
+                            rider.getView().getDeployCountdown(),
+                            rider.getView().getDirX(),
+                            rider.getView().getDirY()));
+              }
+
+              @Override
+              public void parentLeft(int tick, CharacterEntity rider, CharacterEntity parent) {
+                riderLog.add(
+                    "%d parent_left %s %s at %d %d state %d"
+                        .formatted(
+                            currentTick[0],
+                            rider.name(),
+                            parent.name(),
+                            rider.getView().getX(),
+                            rider.getView().getY(),
+                            rider.getView().getState()));
               }
 
               @Override
@@ -551,7 +588,52 @@ class BattleActionSpawnRunTest {
     assertThat(dropping)
         .as("every pending action dropped as its instigator left")
         .containsExactlyElementsOf(expectedDrops);
-    assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
+    if (reference.has("actions")) {
+      assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
+    } else {
+      // A run that lists no actions lists its riders under unit_spawner alone: they are its only
+      // spawns.
+      assertThat(spawns)
+          .as("every spawn, a rider each")
+          .allSatisfy(line -> assertThat(riders).contains(line.split(" ")[3]))
+          .hasSameSizeAs(riders);
+    }
+    List<String> expectedRiders = new ArrayList<>();
+    for (JsonNode e : reference.path("unit_spawner")) {
+      String kind = e.get("event").asText();
+      if (kind.equals("attached")) {
+        expectedRiders.add(
+            "%d attached %s %d %s %d %d at %d %d state %d deploy %d dir %d %d"
+                .formatted(
+                    e.get("tick").asInt(),
+                    e.get("unit").asText(),
+                    e.get("id").asInt(),
+                    e.get("parent").asText(),
+                    e.get("index").asInt(),
+                    e.get("angle").asInt(),
+                    e.get("x").asInt(),
+                    e.get("y").asInt(),
+                    e.get("state").asInt(),
+                    e.get("deploy").asInt(),
+                    e.get("dir").get(0).asInt(),
+                    e.get("dir").get(1).asInt()));
+      } else if (kind.equals("parent_left")) {
+        expectedRiders.add(
+            "%d parent_left %s %s at %d %d state %d"
+                .formatted(
+                    e.get("tick").asInt(),
+                    e.get("unit").asText(),
+                    e.get("parent").asText(),
+                    e.get("x").asInt(),
+                    e.get("y").asInt(),
+                    e.get("state").asInt()));
+      }
+    }
+    if (reference.has("unit_spawner")) {
+      assertThat(riderLog)
+          .as("every rider attached and let go")
+          .containsExactlyElementsOf(expectedRiders);
+    }
     List<String> expectedGroups = new ArrayList<>();
     for (JsonNode a : reference.path("actions")) {
       String kind = a.get("event").asText();

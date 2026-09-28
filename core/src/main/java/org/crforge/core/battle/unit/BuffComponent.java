@@ -106,6 +106,12 @@ public final class BuffComponent implements BattleComponent {
       throw new UnsupportedOperationException(
           entity.name() + " rides or carries riders, whose share of a buff is not modelled");
     }
+    // A carrier of a buff some character passes over or ranks lower is not modelled: the
+    // validator and the selector's priority would read it.
+    if (world.passedOverBySomeone(buff.name())) {
+      throw new UnsupportedOperationException(
+          buff.name() + " is a buff a character's targeting reads, which is not modelled");
+    }
     if (buff.noEffectToCrownTowers() && entity.getTargetView().crownTower()) {
       return;
     }

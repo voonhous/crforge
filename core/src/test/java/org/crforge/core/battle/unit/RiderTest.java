@@ -142,4 +142,46 @@ class RiderTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("riders");
   }
+
+  @Test
+  @DisplayName("a Ram Rider's rider takes no building as its target, and fires its bola at a troop")
+  void theRamRidersRiderTargetsTroopsOnly() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.play(0, GameData.card("RamRider"), 11, 0, 3500, 10000, "RamRider");
+    match.getBattle().step();
+    CharacterEntity rider = match.getPlays().get(0).units().get(0).riders().get(0);
+    for (int tick = 1; tick <= 40; tick++) {
+      match.getBattle().step();
+    }
+    assertThat(rider.getTargeting().getReference()).isNull();
+
+    // A red Knight ahead of it: the rider takes it, and its bola, whose slow and pingpong flight
+    // are not modelled, is refused as it fires.
+    match.deploy(41, GameData.unit("Knight"), 11, 1, 3500, 16000);
+    assertThatThrownBy(
+            () -> {
+              for (int tick = 41; tick <= 200; tick++) {
+                match.getBattle().step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("RamRiderBola");
+  }
+
+  @Test
+  @DisplayName("the buff a character's targeting passes over is refused as it is applied")
+  void aBuffTheTargetingReadsIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.play(0, GameData.card("RamRider"), 11, 0, 3500, 10000, "RamRider");
+    CharacterEntity knight = match.deploy(0, GameData.unit("Knight"), 11, 1, 3500, 20000);
+    match.getBattle().step();
+
+    assertThatThrownBy(
+            () ->
+                knight
+                    .getBuffs()
+                    .apply(GameData.records().buff("BolaSnare"), 2000, LEVEL_11, null, 0))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("targeting reads");
+  }
 }
