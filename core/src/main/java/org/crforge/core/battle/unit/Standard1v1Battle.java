@@ -257,10 +257,6 @@ public class Standard1v1Battle {
     }
     List<CharacterEntity> units = new ArrayList<>();
     for (CardPlacement.Unit unit : result.units()) {
-      if (unit.unit().onStartingAction() != null) {
-        throw new UnsupportedOperationException(
-            unit.unit().name() + " has a starting action, whose start by a card play is not held");
-      }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
       if (waits && unit.unit().spawnAttach()) {
         throw new UnsupportedOperationException(
@@ -284,6 +280,12 @@ public class Standard1v1Battle {
         world.attachRiders(character);
       }
       target.getHolder().add(character);
+      // The opening cleanup that admits it starts it, deploying or still waiting its turn: its
+      // row's starting action is queued with its own delay, so one without runs in its phase-1
+      // pending pass of the play tick, before its first component visit. Starting it here queues
+      // the same entry for the same pass.
+      world.characterPlayed(character);
+      character.start();
       units.add(character);
     }
     plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units), 0));

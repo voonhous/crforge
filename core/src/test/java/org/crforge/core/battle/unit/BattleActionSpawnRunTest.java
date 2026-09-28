@@ -237,7 +237,9 @@ class BattleActionSpawnRunTest {
         "kamikaze_battle_ram",
         "kamikaze_fire_spirits",
         "kamikaze_wall_breakers",
-        "kamikaze_ice_spirits"
+        "kamikaze_ice_spirits",
+        "moving_cannon_left",
+        "furnace_left"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -442,6 +444,17 @@ class BattleActionSpawnRunTest {
                         .formatted(currentTick[0], entity.name(), hitPointsBefore));
               }
             });
+    // A played unit's runs are listed from its play, before its start.
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void characterPlayed(int tick, CharacterEntity unit) {
+                unit.actionHolder()
+                    .setListener(listener(unit.name(), currentTick, actions, dropping));
+              }
+            });
     // An area effect's own runs are listed like any owner's, from its creation.
     match
         .getWorld()
@@ -460,6 +473,11 @@ class BattleActionSpawnRunTest {
               @Override
               public void characterSpawned(
                   int tick, SpawnHost owner, CharacterEntity child, int createdX, int createdY) {
+                // A child's runs are listed from its spawn, the action it runs on being spawned
+                // included.
+                child
+                    .actionHolder()
+                    .setListener(listener(child.name(), currentTick, actions, dropping));
                 spawnTicks.put(child.name(), currentTick[0]);
                 spawns.add(
                     "%d spawn %s %s %d at %d %d state %d deploy %d lane %d hp %d then %d %d %d"
@@ -598,6 +616,8 @@ class BattleActionSpawnRunTest {
     Map<String, CharacterEntity> units = new HashMap<>();
     Map<String, String> towerStates = new HashMap<>();
     List<String> locks = new ArrayList<>();
+    // The characters seen walking, which a swap may turn into buildings.
+    Set<String> walkers = new HashSet<>();
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
       battle.step();
@@ -609,6 +629,9 @@ class BattleActionSpawnRunTest {
       for (BattleEntity entity : battle.getHolder().entities()) {
         if (entity instanceof CharacterEntity c) {
           units.putIfAbsent(c.name(), c);
+          if (!c.getData().building()) {
+            walkers.add(c.name());
+          }
         }
         // A building locks on as a tower does.
         if (entity instanceof TowerEntity
@@ -619,6 +642,13 @@ class BattleActionSpawnRunTest {
           // next one.
           String held = tower.getView().getState() + " " + referenceName(tower);
           String before = towerStates.put(tower.name(), held);
+          // The reference logs a building's lock from its visits as a building: the step a
+          // walking unit becomes one, as the Moving Cannon breaks down while it attacks, lists
+          // nothing, and its next visit asks for the attacking state again and is its lock.
+          if (before == null && walkers.contains(tower.name())) {
+            towerStates.put(tower.name(), "first seen");
+            continue;
+          }
           if (tower.getView().getState() == GridEntityState.ATTACKING
               && referenceName(tower) != null
               && !held.equals(before)) {

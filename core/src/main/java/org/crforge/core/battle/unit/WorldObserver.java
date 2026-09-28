@@ -219,6 +219,14 @@ public interface WorldObserver {
   default void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {}
 
   /**
+   * A card play made a unit and handed it to the holder, just before it starts the unit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit, with its id
+   */
+  default void characterPlayed(int tick, CharacterEntity unit) {}
+
+  /**
    * An area effect was created and handed to the holder, which admits it at the next cleanup.
    *
    * @param tick the battle tick

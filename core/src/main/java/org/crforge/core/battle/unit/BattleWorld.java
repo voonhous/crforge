@@ -524,6 +524,13 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** Tells every observer a card play made the unit, before the play starts it. */
+  void characterPlayed(CharacterEntity unit) {
+    for (WorldObserver observer : observers) {
+      observer.characterPlayed(tick, unit);
+    }
+  }
+
   /**
    * Kills a Kamikaze unit at the end of its hit: its whole hit points, with itself as the attacker
    * on its own side, so its death action runs alone. Every observer is told of the kill.
