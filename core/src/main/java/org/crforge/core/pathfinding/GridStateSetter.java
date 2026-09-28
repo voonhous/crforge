@@ -111,6 +111,12 @@ public final class GridStateSetter implements StateSetter {
   @Setter private Casting casting;
 
   /**
+   * What entering the deploying state makes besides its countdown - a row's area object, made and
+   * updated at once - or null for nothing.
+   */
+  @Setter private Runnable deployingEntry;
+
+  /**
    * Creates the setter of one unit.
    *
    * @param owner the unit whose state this sets
@@ -289,14 +295,17 @@ public final class GridStateSetter implements StateSetter {
       case GridEntityState.DASHING -> enterDash();
       case GridEntityState.DEPLOYING -> {
         // Entering the deploying state switches the movement component on, which a unit that
-        // waited its turn had off.
-        if (movement != null) {
+        // waited its turn had off; a building has none to switch.
+        if (movement != null && owner.isMovementComponent()) {
           owner.setMovementActive(true);
         }
         if (deployTimeMs >= 0) {
           // The entry keeps the larger of the running countdown and the deploy time. The guard
           // refuses this state while the countdown is 1 or more, so here it is the deploy time.
           owner.setDeployCountdown(Math.max(owner.getDeployCountdown(), deployTimeMs));
+        }
+        if (deployingEntry != null) {
+          deployingEntry.run();
         }
       }
       default -> {

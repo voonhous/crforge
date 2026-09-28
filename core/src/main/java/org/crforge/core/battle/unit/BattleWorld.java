@@ -613,6 +613,47 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * The area object a unit makes as it enters the deploying state through its setter: at its point,
+   * for its side and at its level, handed to the holder, and updated at once, so it hits on the
+   * tick it is made.
+   *
+   * @param unit the unit
+   */
+  void spawnAreaObject(CharacterEntity unit) {
+    AreaEffectEntity area =
+        createAreaEffect(
+            unit.getData().spawnAreaObject(),
+            unit.getView().getX(),
+            unit.getView().getY(),
+            unit.side(),
+            unit.getPackedLevel(),
+            null,
+            "spawn_area_object",
+            unit.name());
+    area.updateAtOnce();
+  }
+
+  /**
+   * Morphs a unit that has surfaced into its row's morph, as the arrival of a tunnel does: the new
+   * object is made on the unit's point with its level, lane and share of its hit points, a building
+   * facing as the unit did; it is queued with its registration visit in the state it is made in,
+   * then set to the unit's deploying state, whose entry makes its area object. The unit leaves at
+   * the closing cleanup.
+   *
+   * @param old the unit that surfaced
+   */
+  void morph(CharacterEntity old) {
+    UnitData data = records.unit(old.getData().spawnPathfindMorph());
+    CharacterEntity made = CharacterEntity.morphedFrom(old, data);
+    holder.addRegistered(made);
+    made.startDeployingAfterMorph();
+    old.morphedAway();
+    for (WorldObserver observer : observers) {
+      observer.morphed(tick, old, made);
+    }
+  }
+
   /** Tells every observer a card play made the unit, before the play starts it. */
   void characterPlayed(CharacterEntity unit) {
     for (WorldObserver observer : observers) {
@@ -1766,7 +1807,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * The death slot: what a dying object's row does as it dies, in order - its area effect at its
    * point, for its side and at its level; what its buffs leave; its death damage; its death spawn.
-   * A death whose row sets a column of the slot the battle does not model is refused.
+   * A death whose row sets a column of the slot the battle does not model is refused, and so is the
+   * death of one whose area object is still in the battle, which would end it.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -1774,6 +1816,16 @@ public class BattleWorld implements HolderPasses {
           dying.name()
               + " died, and what its row does as it dies is not modelled: "
               + data.unmodelledDeathColumns());
+    }
+    if (data.spawnAreaObject() != null) {
+      for (BattleEntity entity : holder.entities()) {
+        if (entity instanceof AreaEffectEntity area
+            && area.getData().name().equals(data.spawnAreaObject())
+            && (area.side() & 1) == (dying.side() & 1)) {
+          throw new UnsupportedOperationException(
+              dying.name() + " died with its area object in the battle, whose end is not modelled");
+        }
+      }
     }
     if (data.deathAreaEffect() != null) {
       createAreaEffect(

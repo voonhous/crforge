@@ -188,7 +188,6 @@ public final class BattleRecords {
           "DeathSpawnCharacter3",
           "DeathSpawnProjectile",
           "StartingBuff",
-          "SpawnAreaObject",
           "DeathSpawnIsSameUnit");
 
   /**
@@ -207,8 +206,8 @@ public final class BattleRecords {
    * at a share of its hit points, hovering, a flying unit's direct paths, the action a completed
    * charge runs, a chained dash, a dash's contact damage, fixed distance, area effect and closing
    * action, a limit on the elixir a collector makes, a spawner's launches, its second and third
-   * characters, its destruction at the limit, the deploy it gives its children, a Kamikaze row's
-   * drain over a time rather than its kill, and the morph a tunnelling unit takes as it surfaces.
+   * characters, its destruction at the limit, the deploy it gives its children, and a Kamikaze
+   * row's drain over a time rather than its kill.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -231,8 +230,7 @@ public final class BattleRecords {
           "SpawnCharacter3",
           "DestroyAtLimit",
           "SpawnCharacterWithDeploy",
-          "KamikazeTime",
-          "SpawnPathfindMorph");
+          "KamikazeTime");
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
@@ -297,6 +295,10 @@ public final class BattleRecords {
         .spawnAngleShift(row.intValue("SpawnAngleShift"))
         .flyingHeight(row.intValue("FlyingHeight"))
         .spawnPathfindSpeed(row.intValue("SpawnPathfindSpeed"))
+        .spawnPathfindMorph(
+            row.string("SpawnPathfindMorph").isEmpty() ? null : row.string("SpawnPathfindMorph"))
+        .spawnAreaObject(
+            row.string("SpawnAreaObject").isEmpty() ? null : row.string("SpawnAreaObject"))
         .tileSizeOverride(row.intValue("TileSizeOverride"))
         .noDeploySizeW(row.intValue("NoDeploySizeW"))
         .noDeploySizeH(row.intValue("NoDeploySizeH"))
@@ -909,9 +911,10 @@ public final class BattleRecords {
     }
     checkArgument(!row.string("SummonCharacter").isEmpty(), () -> name + " summons no character");
     String second = row.string("SummonCharacterSecond");
+    UnitData summoned = unit(row.string("SummonCharacter"));
     return new DeployCard(
         row.name(),
-        unit(row.string("SummonCharacter")),
+        summoned,
         Math.max(row.intValue("SummonNumber"), 1),
         second.isEmpty() ? null : unit(second),
         second.isEmpty() ? 0 : row.intValue("SummonCharacterSecondCount"),
@@ -929,13 +932,19 @@ public final class BattleRecords {
         row.intValue("DeployEndY"),
         null,
         null,
-        null,
+        // A unit that tunnels and morphs as it surfaces is searched for as its morph.
+        tunnelMorph(summoned),
         false,
         0,
         0,
         0,
         0,
         0);
+  }
+
+  /** The row a unit that tunnels morphs into as it surfaces, or null for none. */
+  private UnitData tunnelMorph(UnitData unit) {
+    return unit.spawnPathfindMorph() == null ? null : unit(unit.spawnPathfindMorph());
   }
 
   /**
@@ -957,6 +966,10 @@ public final class BattleRecords {
       GameRow projectileRow = tables.table(PROJECTILES).row(projectile);
       if (set(projectileRow, "SpawnCharacter")) {
         searchUnit = unit(projectileRow.string("SpawnCharacter"));
+        UnitData morph = tunnelMorph(searchUnit);
+        if (morph != null) {
+          searchUnit = morph;
+        }
       }
     }
     return new DeployCard(

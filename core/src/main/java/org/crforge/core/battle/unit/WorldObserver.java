@@ -227,6 +227,15 @@ public interface WorldObserver {
   default void characterPlayed(int tick, CharacterEntity unit) {}
 
   /**
+   * A unit that surfaced was morphed into a new object, which is queued and deploying.
+   *
+   * @param tick the battle tick
+   * @param old the unit, which leaves at the closing cleanup
+   * @param made the new object
+   */
+  default void morphed(int tick, CharacterEntity old, CharacterEntity made) {}
+
+  /**
    * A unit's ability was requested.
    *
    * @param tick the battle tick

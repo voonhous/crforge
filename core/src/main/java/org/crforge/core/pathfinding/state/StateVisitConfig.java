@@ -69,6 +69,31 @@ public record StateVisitConfig(
   }
 
   /**
+   * This configuration with the morph a unit takes as it arrives at its spawn destination.
+   *
+   * @param morph true for a unit that morphs as it surfaces
+   */
+  public StateVisitConfig withSpawnPathfindMorph(boolean morph) {
+    return new StateVisitConfig(
+        deployTimeMs,
+        dashLandingTimeMs,
+        dashImmuneToDamageTimeMs,
+        flyingHeight,
+        ingamePathfindEndsInDeploy,
+        morph,
+        onIngamePathfindStopAction,
+        kamikaze,
+        kingTowerMiddle,
+        neutralObject,
+        hideBeforeFirstHit,
+        hidesWhenNotAttacking,
+        deployTimeAffectedByCharacterSpeed,
+        abilityPresent,
+        abilityHoldsState,
+        abilityStateFlags);
+  }
+
+  /**
    * This configuration with a dash: the time the entity is held after its dash lands, and how long
    * nothing can hurt it after the dash.
    *

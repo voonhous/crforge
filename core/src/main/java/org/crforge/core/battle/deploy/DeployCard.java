@@ -28,8 +28,9 @@ import org.crforge.core.battle.unit.UnitData;
  * @param deployEndY the row from which the rows close again
  * @param projectile the projectile a spell casts from the king tower, or null
  * @param areaEffect the area effect a spell casts at the placed point, or null
- * @param searchUnit the unit a spell's placement is searched for: its projectile's spawned
- *     character, or null for none
+ * @param searchUnit the unit the placement is searched for in place of the card's own: a spell's
+ *     projectile's spawned character, and for either the row a unit that tunnels morphs into as it
+ *     surfaces; null for none
  * @param spellAsDeploy true for a spell thrown as a projectile at the placed point, which snaps to
  *     the tile centre whatever it spawns
  * @param radius a spell's radius: the circle Arrows' ring and jitter are drawn in
@@ -81,8 +82,11 @@ public record DeployCard(
     return spell() ? 0 : count + (secondary == null ? 0 : secondaryCount);
   }
 
-  /** The unit the placement is searched for: the summoned one, or a spell's search unit. */
+  /**
+   * The unit the placement is searched for: a spell's search unit, a troop card's own search unit
+   * when it has one, else its summoned unit.
+   */
   public UnitData placementUnit() {
-    return spell() ? searchUnit : unit;
+    return spell() || searchUnit != null ? searchUnit : unit;
   }
 }

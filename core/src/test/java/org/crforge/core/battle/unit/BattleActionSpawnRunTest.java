@@ -166,7 +166,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the added damage. The looping effect the enchantment chooses only shows something; the reference
  * leaves such rows out of its runs, and so does the log here. {@code miner_princess} plays a Miner
  * that tunnels from its king tower to a point beside the enemy's princess tower, hidden from the
- * tower until it surfaces there.
+ * tower until it surfaces there. {@code goblin_drill_princess} plays a Goblin Drill, placed as its
+ * building's footprint, whose dig tunnels there and morphs as it surfaces into the building, which
+ * takes its target in its registration visit, deploys, and makes its damage area at once; the area
+ * leaves at the next tick's opening cleanup.
  */
 class BattleActionSpawnRunTest {
 
@@ -250,7 +253,8 @@ class BattleActionSpawnRunTest {
         "furnace_left",
         "giant_buffer_knights",
         "giant_buffer_musketeer",
-        "miner_princess"
+        "miner_princess",
+        "goblin_drill_princess"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -284,9 +288,16 @@ class BattleActionSpawnRunTest {
     if (!reference.get("card").isNull()) {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
     } else if (!reference.has("action_owners")) {
+      // A unit a card play created is listed with its command, and so is what it morphs into; the
+      // command places the one, the battle makes the other, and neither is placed here.
+      Set<String> commanded = new HashSet<>();
       for (JsonNode u : reference.path("units")) {
-        // A unit a card play created is listed with its command; the command places it.
         if (u.has("command")) {
+          commanded.add(u.get("name").asText());
+        }
+      }
+      for (JsonNode u : reference.path("units")) {
+        if (commanded.contains(u.get("name").asText())) {
           continue;
         }
         placed.add(
@@ -627,6 +638,19 @@ class BattleActionSpawnRunTest {
     Map<String, CharacterEntity> units = new HashMap<>();
     Map<String, String> towerStates = new HashMap<>();
     List<String> locks = new ArrayList<>();
+    // A morph's new building takes its target in its registration visit, before it is set
+    // deploying; the reference logs that as its lock, on the tick it is made.
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void morphed(int tick, CharacterEntity old, CharacterEntity made) {
+                if (referenceName(made) != null) {
+                  locks.add(tick + " " + made.name() + " " + referenceName(made));
+                }
+              }
+            });
     // The characters seen walking, which a swap may turn into buildings.
     Set<String> walkers = new HashSet<>();
     for (int tick = 0; tick <= lastTick; tick++) {
@@ -648,9 +672,9 @@ class BattleActionSpawnRunTest {
         if (entity instanceof TowerEntity
             || entity instanceof CharacterEntity c && c.getData().building()) {
           WorldEntity tower = (WorldEntity) entity;
-          // A lock is the tower attacking a target it was not attacking at the end of the last
-          // step: entering the attacking state, or, still in it after its target left, taking the
-          // next one.
+          // A lock is the tower attacking a target it did not hold at the end of the last step:
+          // entering the attacking state with a new target, or, still in it after its target left,
+          // taking the next one. Entering it again with the target it kept is none.
           String held = tower.getView().getState() + " " + referenceName(tower);
           String before = towerStates.put(tower.name(), held);
           // The reference logs a building's lock from its visits as a building: the step a
@@ -660,9 +684,10 @@ class BattleActionSpawnRunTest {
             towerStates.put(tower.name(), "first seen");
             continue;
           }
+          String beforeRef = before == null ? null : before.substring(before.indexOf(' ') + 1);
           if (tower.getView().getState() == GridEntityState.ATTACKING
               && referenceName(tower) != null
-              && !held.equals(before)) {
+              && !referenceName(tower).equals(beforeRef)) {
             locks.add(tick + " " + tower.name() + " " + referenceName(tower));
           }
         }
