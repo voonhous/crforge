@@ -43,8 +43,9 @@ import org.crforge.core.pathfinding.state.StateSetter;
         "Wires the index, the validator, the selector and default selection into one"
             + " answer per tick; held by the 53 reference walks. A reference to an entity that"
             + " leaves is cleared directly and not through the setter's null path. Hits go to"
-            + " a sink that applies nothing.")
-public class SelectionChain implements SelectionQueries, TargetingQueries {
+            + " a sink that applies nothing until the owner installs its own. The extra targets"
+            + " of a hit that reaches several come from the lookup, over a query of its own.")
+public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueries {
 
   /** Arena length in routing cells, used by the default selection's lane bonus. */
   private final int arenaHeightCells;
@@ -276,13 +277,34 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
     }
   }
 
+  /**
+   * The extra target of a hit that reaches several, by the lookup. A list of unique targets is
+   * never asked for: the owner refuses a row that sets one.
+   */
+  @Override
+  public TargetView multiTarget(int index, boolean unique) {
+    if (unique) {
+      throw new UnsupportedOperationException("a list of unique extra targets is not modelled");
+    }
+    return MultiTargetLookup.lookup(state, index, this);
+  }
+
   // -------------------------------------------------------------------------------------------
   // SelectionQueries
   // -------------------------------------------------------------------------------------------
 
   @Override
+  public List<TargetView> lookupCandidates(int x, int y, int radius) {
+    return views(index.query(SpatialQuery.multiTargetCandidates(x, y, radius)));
+  }
+
+  @Override
   public List<TargetView> candidates(int x, int y, int radius) {
-    List<GridEntity> found = index.query(SpatialQuery.targetCandidates(x, y, radius));
+    return views(index.query(SpatialQuery.targetCandidates(x, y, radius)));
+  }
+
+  /** The registered views of what a query found, in its order; the list goes back to the index. */
+  private List<TargetView> views(List<GridEntity> found) {
     if (found == null) {
       return List.of();
     }

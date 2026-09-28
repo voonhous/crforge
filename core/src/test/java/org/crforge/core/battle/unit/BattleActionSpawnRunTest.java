@@ -170,6 +170,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * building's footprint, whose dig tunnels there and morphs as it surfaces into the building, which
  * takes its target in its registration visit, deploys, and makes its damage area at once; the area
  * leaves at the next tick's opening cleanup.
+ *
+ * <p>{@code electro_wizard_tower_defence} plays an Electro Wizard behind a tower two Knights
+ * attack: each attack hits its reference and then the nearest other enemy in range, or its
+ * reference again when there is none, each hit a whole hit with its own hit id followed by its
+ * ZapFreeze, which a later hit refreshes; it goes on to stun a princess tower between its arrows.
+ * {@code mini_sparkys_knight} plays Mini Sparkys at a Knight, each hit one target with the same
+ * buff, so the Knight stays stunned until 500 ms past the last of the three.
  */
 class BattleActionSpawnRunTest {
 
@@ -254,7 +261,9 @@ class BattleActionSpawnRunTest {
         "giant_buffer_knights",
         "giant_buffer_musketeer",
         "miner_princess",
-        "goblin_drill_princess"
+        "goblin_drill_princess",
+        "electro_wizard_tower_defence",
+        "mini_sparkys_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

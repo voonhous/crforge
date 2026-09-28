@@ -95,6 +95,15 @@ public interface HitQueries {
   default void areaDamage(int x, int y, int radius, int damage, int towerDamage, int hitId) {}
 
   /**
+   * The buff the owner's row applies to what its hit reached, right after a direct hit that was not
+   * cancelled, each target of an attack in turn after its own hit. An owner whose row applies none
+   * does nothing.
+   *
+   * @param target what the hit was aimed at, or null when the owner had given it up
+   */
+  default void buffOnDamage(TargetView target) {}
+
+  /**
    * The hit's last call, made whether or not anything landed but not for a hit the owner's tags
    * forbid: a Kamikaze owner destroys itself here, after its direct hit or its launch.
    */

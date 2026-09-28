@@ -67,6 +67,14 @@ class HitApplicationTest {
           "%s %d %d %d %d"
               .formatted(hit.getEntity().getName(), damage, hitId, directionX, directionY));
     }
+
+    /** The targets the buff on damage was asked for, in order; "none" for a hit on nothing. */
+    private final List<String> buffed = new ArrayList<>();
+
+    @Override
+    public void buffOnDamage(TargetView hit) {
+      buffed.add(hit == null ? "none" : hit.getEntity().getName());
+    }
   }
 
   @BeforeEach
@@ -159,6 +167,21 @@ class HitApplicationTest {
     assertThat(queries.dealt).isEmpty();
     assertThat(t.isHitStarted()).as("the hit still counts as started").isTrue();
     assertThat(t.getLoadTimerMs()).as("an ordinary unit reloads even so").isEqualTo(700);
+  }
+
+  @Test
+  @DisplayName("the buff on damage follows a direct hit that lands, not a missed one or a shot")
+  void theBuffOnDamageFollowsALandedDirectHit() {
+    HitApplication.apply(t, target, queries);
+    assertThat(queries.buffed).as("after the damage").containsExactly("target");
+
+    queries.buffed.clear();
+    HitApplication.apply(t, targetAt(3300), queries);
+    assertThat(queries.buffed).as("a hit cancelled for distance").isEmpty();
+
+    t.setConfig(t.getConfig().toBuilder().hasProjectile(true).build());
+    HitApplication.apply(t, target, queries);
+    assertThat(queries.buffed).as("a unit that fires hands its hit to the projectile").isEmpty();
   }
 
   @Test

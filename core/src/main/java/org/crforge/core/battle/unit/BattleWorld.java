@@ -2451,6 +2451,32 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * A hit's buff on damage on what it reached, after its direct hit: nothing for a target
+   * untouchable at that moment, the immunity left after a dash counted; otherwise applied with the
+   * attacker as the source, at its level and for its side, for its row's BuffOnDamageTime. There is
+   * no alive test, so a target the hit has just killed takes it too and leaves at the tick's
+   * closing cleanup; the buff decides for itself whether the target takes it. A second hit, of the
+   * same attack or another attacker, refreshes the one instance.
+   *
+   * @param attacker the entity whose hit it is
+   * @param target what the hit reached
+   */
+  void buffOnDamage(WorldEntity attacker, WorldEntity target) {
+    UnitData data = attacker.getData();
+    BuffData buff = buffData(data.buffOnDamage());
+    if (!target.untouchable()) {
+      target
+          .getBuffs()
+          .apply(
+              buff,
+              data.buffOnDamageTimeMs(),
+              attacker.getPackedLevel(),
+              attacker,
+              attacker.side());
+    }
+  }
+
+  /**
    * A projectile's target buff on its one target: nothing for a target untouchable at that moment -
    * riding, or dashing under a dash immunity, but not the immunity that lingers after a dash -
    * unless the row applies it even then; otherwise applied with the projectile as the source, at

@@ -25,7 +25,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>the hit itself: the direct hit for a unit without a projectile, and for a unit with one the
  *       launch of its projectiles, which a cancelled hit skips. Before a direct hit, a unit that
  *       tracks a charge deals its charged damage when the charge is complete, and has the charge
- *       reset, complete or not, unless its row keeps charging after an attack;
+ *       reset, complete or not, unless its row keeps charging after an attack. After a direct hit
+ *       that was not cancelled, the buff the row applies on damage goes onto the target;
  *   <li>a pending special load is cleared.
  * </ul>
  *
@@ -46,8 +47,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " and projectile, the charged hit of a unit that fires, whose rows are refused, the"
             + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
             + " the targeted hit effect and its"
-            + " pushback, the attack counter and the attacking flag on the owner, the buff a hit"
-            + " applies, and the actions an attack runs and the notifications it ends with. The"
+            + " pushback, the attack counter and the attacking flag on the owner, the buff on"
+            + " damage of a hit every so many or over an area, and the actions an attack runs"
+            + " and the notifications it ends with. The buff on damage after a direct hit is"
+            + " held by electro_wizard_tower_defence and mini_sparkys_knight. The"
             + " dasher's exception to the long-distance cancel is carried and held by no run.")
 public final class HitApplication {
 
@@ -121,6 +124,10 @@ public final class HitApplication {
     if (!cfg.hasProjectile()) {
       damage = charged(cfg, damage, queries);
       DirectHit.resolve(t, target, damage, missed, queries);
+      // The buff on damage follows its own direct hit; a unit that fires never reaches it.
+      if (!missed) {
+        queries.buffOnDamage(target);
+      }
     } else if (!missed) {
       queries.launchProjectiles(t, target, sequenceIndex);
     }

@@ -363,6 +363,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public void buffOnDamage(TargetView target) {
+        WorldEntity.this.buffOnDamage(target);
+      }
+
+      @Override
       public void hitEnded() {
         WorldEntity.this.hitEnded();
       }
@@ -446,6 +451,24 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
     }
     return runs;
+  }
+
+  /**
+   * The buff the entity's row applies to what its direct hit reached, for its BuffOnDamageTime.
+   * Nothing for a row without one. A hit on a target the entity has given up would apply it to
+   * nothing the reference shows, so it is refused.
+   *
+   * @param target what the hit was aimed at, or null
+   */
+  private void buffOnDamage(TargetView target) {
+    if (data.buffOnDamage() == null) {
+      return;
+    }
+    if (target == null) {
+      throw new UnsupportedOperationException(
+          name() + " applies its BuffOnDamage with a hit on nothing, not modelled");
+    }
+    world.buffOnDamage(this, world.entityOf(target.getEntity()));
   }
 
   /** The end of each of the entity's hits; a tower's does nothing. */
