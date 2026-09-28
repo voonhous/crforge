@@ -11,7 +11,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * state and before it counts how many hits the attack time now covers. In order:
  *
  * <ol>
- *   <li>If the battle holds every attack timer, the attack time is cleared and nothing else moves.
+ *   <li>If the battle holds every attack timer, as it does once a match has ended, the attack time
+ *       is cleared and nothing else moves.
  *   <li>The step is one tick, or half the hit speed multiplier of the current attack sequence step
  *       when a step is active, scaled by the unit's status effects. A scaled step under one
  *       millisecond ends the advance.
@@ -39,9 +40,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " credit and reload in all three load-time cases, the round-up, the burst"
             + " timer and the animation freeze. Held by the kill run's hit ticks for a unit with"
             + " one sequence step and no bursts, and the round-up under the charge's strike-now"
-            + " byte by prince_tower and dark_prince_tower. Supplied: the battle never holds the"
-            + " timers,"
-            + " and no status effect scales the step.")
+            + " byte by prince_tower and dark_prince_tower, and the hold from a match's end by"
+            + " match_knights_king. Supplied: no status effect scales the step.")
 public final class AttackTimerAdvance {
 
   private AttackTimerAdvance() {

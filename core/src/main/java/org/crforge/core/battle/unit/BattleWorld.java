@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleRandom;
 import org.crforge.core.battle.EntityHolder;
@@ -515,6 +516,40 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * Kills a character of either side that a tiebreaker's clearing reached: it is resumed first,
+   * then takes its whole hit points with no attacker, told to every observer as the clearing's kill
+   * rather than a hit.
+   *
+   * @param target the character
+   */
+  public void clearingKill(CharacterEntity target) {
+    target.resume();
+    DamageResult result = target.takeKill();
+    for (WorldObserver observer : observers) {
+      observer.clearingKilled(tick, target);
+    }
+    if (result.died()) {
+      target.die(null);
+    }
+  }
+
+  /**
+   * Drains a tower by one step of a tiebreaker, which passes the battle's holds, with no attacker.
+   *
+   * @param target the tower
+   * @param damage the step
+   */
+  public void drain(WorldEntity target, int damage) {
+    DamageResult result = target.takeDrain(damage);
+    for (WorldObserver observer : observers) {
+      observer.drained(tick, target, damage, target.getHitPoints().getHitPoints(), result.died());
+    }
+    if (result.died()) {
+      target.die(null);
+    }
+  }
+
   /** Tells every observer a unit asked to push itself back after a launch. */
   void pushbackRequested(
       WorldEntity unit, boolean started, int fromX, int fromY, MovementState pushback) {
@@ -611,6 +646,18 @@ public class BattleWorld implements HolderPasses {
     }
     return count;
   }
+
+  /**
+   * Whether a match has ended: from then every attack timer is held at zero and every ordinary hit
+   * is refused. Never outside a match.
+   */
+  @Getter @Setter private boolean matchEnded;
+
+  /**
+   * Whether the battle holds every ordinary hit: from the first step of a match's tiebreaker. Never
+   * outside a match.
+   */
+  @Getter @Setter private boolean hitsHeld;
 
   /**
    * What a king's post-hook runs first in a match: its hand refill and elixir; none outside one.

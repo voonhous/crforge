@@ -10,6 +10,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.unit.BattleWorld;
+import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
@@ -40,7 +41,18 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * the timer, until the update that takes it to the end screen's delay ticks no entities and the
  * battle stops: from the next step, nothing runs, not even the tick counter. From the update after
  * a king's fall, a circle grows from it to the arena's length over half that delay and kills every
- * living entity of its side it reaches.
+ * living entity of its side it reaches. From the end, the battle holds every attack timer at zero
+ * and refuses every ordinary hit, so nothing fights on; only the circle kills.
+ *
+ * <p>A Ladder match allows no draws: when the time is up with equal crowns, the tiebreaker replaces
+ * the step. Each of its steps adds 50 to its time, and from its first the battle refuses every
+ * ordinary hit. Its first 30 steps clear the field - every unit and building is killed, the crown
+ * towers left standing - and run the update, with its entity tick, only on a step whose clearing
+ * killed something; then the battle waits, running only the commands, every play refused, until the
+ * step that begins at 3250 ms. From then each step drains every tower of both sides by one step the
+ * lowest tower's hit points pick: 1 below 21, 10 below 200, 20 below 500, 40 below 1000, else 50.
+ * When a tower reaches 0, or the two sides' lowest towers are equal, the holder is cleaned up, and
+ * the next step ends the match by crowns: equal lowest towers end it a draw.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -49,11 +61,15 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " the update's advance before the entity tick, the kings' refill and regeneration in"
             + " their post-hook, the gates 9 and 0xd and the spend and cycle before the placement's"
             + " units; by match_knights_king: the end at a king's fall, the winner, the end timer"
-            + " and the entity ticks it allows, the fallen king's circle and the stop. Held by"
-            + " LadderMatchTest alone: the gate 4 and the timeline's freeze. Not modelled, and"
-            + " refused: the tiebreaker of equal crowns when the time is up; the Mirror. Not"
-            + " carried: the flag set when a fallen king's two towers stand whole, whose readers"
-            + " are not established.")
+            + " and the entity ticks it allows, the fallen king's circle and the stop, the attack"
+            + " timers held and the hits refused from the end; by match_overtime_tiebreak and"
+            + " match_overtime_draw: the tiebreaker's steps, its idle window, the drain and its"
+            + " steps, its end by a fallen tower and by equal towers, the winner and the draw."
+            + " Held by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's"
+            + " kills and the update it runs. Not modelled, and refused: a projectile, an area"
+            + " effect or an entity without hit points the clearing reaches, which the holder"
+            + " removes at once; the Mirror. Not carried: the flag set when a fallen king's two"
+            + " towers stand whole, whose readers are not established.")
 public final class LadderMatch implements BattleMode {
 
   /** The game mode row the match is played under. */
@@ -73,6 +89,12 @@ public final class LadderMatch implements BattleMode {
 
   /** A refused play: the whole elixir does not cover the card's cost. */
   public static final int NOT_ENOUGH_ELIXIR = 0xd;
+
+  /** The tiebreaker clears the field on a step whose time before it is at most this. */
+  private static final int CLEARING_UNTIL_MS = 1450;
+
+  /** The tiebreaker drains the towers from the step whose time before it is this. */
+  private static final int DRAIN_FROM_MS = 3250;
 
   private final BattleWorld world;
 
@@ -105,6 +127,12 @@ public final class LadderMatch implements BattleMode {
 
   /** Whether the last step ticked the entities. */
   private boolean lastTicked;
+
+  /** The tiebreaker's time: 0 until it begins, then 50 more each of its steps. */
+  private int tiebreakMs;
+
+  /** Whether the tiebreaker has decided the match, which the next step ends by crowns. */
+  private boolean tiebreakDone;
 
   /**
    * Sets a match up on a battle whose towers stand.
@@ -163,16 +191,139 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * The head of a step: a match decided since the last step is ended here, unless equal crowns in a
-   * mode with no draws take it to the tiebreaker, which is not modelled.
+   * The head of a step: a match decided since the last step is ended here, unless equal crowns take
+   * it to the tiebreaker.
    */
   @Override
   public void beforeCommands(Battle battle) {
-    if (!decided()) {
+    if (decided() && !tiebreakerArmed()) {
+      end();
+    }
+  }
+
+  /** A decided match with equal crowns runs the tiebreaker's step in place of the battle's. */
+  @Override
+  public boolean replacesStep(Battle battle) {
+    if (!decided() || !tiebreakerArmed()) {
+      return false;
+    }
+    tiebreakStep(battle);
+    return true;
+  }
+
+  /**
+   * One step of the tiebreaker: 50 more on its time, which holds every ordinary hit; then, by its
+   * time before the step, the clearing and an update when it killed something, or nothing, or the
+   * drain; the commands last.
+   */
+  private void tiebreakStep(Battle battle) {
+    int before = tiebreakMs;
+    tiebreakMs += 50;
+    world.setHitsHeld(true);
+    lastTicked = false;
+    if (before <= CLEARING_UNTIL_MS) {
+      if (clearField() >= 1) {
+        afterUpdate(battle.runUpdate());
+      }
+      battle.runCommands();
       return;
     }
-    refuseTiebreaker();
-    end();
+    if (before < DRAIN_FROM_MS) {
+      battle.runCommands();
+      return;
+    }
+    drain();
+    if (lowestTower() < 1 || lowestTied()) {
+      // A dead princess tower leaves the holder here, and its crown counts from now.
+      world.getHolder().cleanup();
+      tiebreakDone = true;
+    }
+    battle.runCommands();
+  }
+
+  /**
+   * The tiebreaker's clearing: every character but a crown tower is resumed and killed, with no
+   * attacker. A projectile, an area effect and a character without hit points would be removed from
+   * the holder at once, which is not modelled.
+   *
+   * @return how many it killed
+   */
+  private int clearField() {
+    int count = 0;
+    for (BattleEntity entity : List.copyOf(world.getHolder().entities())) {
+      if (entity instanceof TowerEntity) {
+        continue;
+      }
+      if (!(entity instanceof CharacterEntity character) || character.getHitPoints() == null) {
+        throw new UnsupportedOperationException(
+            "the tiebreaker's clearing of "
+                + entity
+                + ", which the holder removes at once, is not modelled");
+      }
+      world.clearingKill(character);
+      count++;
+    }
+    return count;
+  }
+
+  /**
+   * The tiebreaker's drain: every princess tower of both sides and both kings, side 0 first, lose
+   * the step the lowest tower's hit points pick.
+   */
+  private void drain() {
+    int step = drainStep(lowestTower());
+    for (int side = 0; side < 2; side++) {
+      for (TowerEntity tower : princessTowers(side)) {
+        world.drain(tower, step);
+      }
+      world.drain(king(side), step);
+    }
+  }
+
+  /** The drain's step for the lowest tower's hit points. */
+  static int drainStep(int lowest) {
+    if (lowest < 21) {
+      return 1;
+    }
+    if (lowest < 200) {
+      return 10;
+    }
+    if (lowest < 500) {
+      return 20;
+    }
+    return lowest < 1000 ? 40 : 50;
+  }
+
+  /** The lowest hit points of any tower of both sides. */
+  private int lowestTower() {
+    return Math.min(lowestTower(0), lowestTower(1));
+  }
+
+  /** The lowest hit points of a side's towers still in the holder, its king included. */
+  private int lowestTower(int side) {
+    int lowest = king(side).getHitPoints().getHitPoints();
+    for (TowerEntity tower : princessTowers(side)) {
+      lowest = Math.min(lowest, tower.getHitPoints().getHitPoints());
+    }
+    return lowest;
+  }
+
+  /** Whether both sides' lowest towers are equal. */
+  private boolean lowestTied() {
+    return lowestTower(0) == lowestTower(1);
+  }
+
+  /** A side's princess towers still in the holder, in placement order. */
+  private List<TowerEntity> princessTowers(int side) {
+    List<TowerEntity> towers = new ArrayList<>();
+    for (BattleEntity entity : world.getHolder().entities()) {
+      if (entity instanceof TowerEntity tower
+          && tower.getData().summonerTower()
+          && tower.side() == side) {
+        towers.add(tower);
+      }
+    }
+    return towers;
   }
 
   /**
@@ -202,24 +353,31 @@ public final class LadderMatch implements BattleMode {
   /** The tail of a step: the crowns-equal byte again, and a match the tick decided is ended. */
   @Override
   public void afterTick(Battle battle, boolean ticked) {
-    lastTicked = ticked;
-    if (ticked) {
-      timeline.setCrownsEqual(crowns(0) == crowns(1));
-    }
+    afterUpdate(ticked);
     if (decided() && !tiebreakerArmed()) {
       end();
     }
   }
 
+  /** The tail of the update: the crowns-equal byte again, after an entity tick. */
+  private void afterUpdate(boolean ticked) {
+    lastTicked = ticked;
+    if (ticked) {
+      timeline.setCrownsEqual(crowns(0) == crowns(1));
+    }
+  }
+
   /**
-   * The end handler, once: the match ended, its timeline frozen, the end timer started at 1, and
-   * the winner the side with more crowns, or none for equal crowns.
+   * The end handler, once: the match ended, which holds the attack timers and refuses the hits, its
+   * timeline frozen, the end timer started at 1, and the winner the side with more crowns, or none
+   * for equal crowns.
    */
   private void end() {
     if (ended) {
       return;
     }
     ended = true;
+    world.setMatchEnded(true);
     timeline.freeze();
     endTimerMs = 1;
     int taken0 = crowns(0);
@@ -228,19 +386,11 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * Whether a decided match goes to the tiebreaker rather than its end: the crowns are equal, the
-   * mode allows no draws, and the match has not ended.
+   * Whether a decided match goes to the tiebreaker rather than its end: the crowns are equal - the
+   * mode allows no draws - the tiebreaker has not decided it, and the match has not ended.
    */
   private boolean tiebreakerArmed() {
-    return crowns(0) == crowns(1) && !ended;
-  }
-
-  private void refuseTiebreaker() {
-    if (tiebreakerArmed()) {
-      throw new UnsupportedOperationException(
-          "the time is up with equal crowns in a mode without draws, whose tiebreaker is not"
-              + " modelled");
-    }
+    return crowns(0) == crowns(1) && !tiebreakDone && !ended;
   }
 
   /**
@@ -292,6 +442,11 @@ public final class LadderMatch implements BattleMode {
   /** Whether the match has ended. */
   public boolean isEnded() {
     return ended;
+  }
+
+  /** The tiebreaker's time: 0 until it begins, then 50 more each of its steps. */
+  public int getTiebreakMs() {
+    return tiebreakMs;
   }
 
   /** The winning side, or -1 for none; 0 until the match ends. */

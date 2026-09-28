@@ -408,6 +408,25 @@ public interface WorldObserver {
   default void circleKilled(int tick, WorldEntity target, int radius) {}
 
   /**
+   * A tiebreaker's clearing killed a character.
+   *
+   * @param tick the battle tick
+   * @param target the character
+   */
+  default void clearingKilled(int tick, WorldEntity target) {}
+
+  /**
+   * A tiebreaker's drain took a step off a tower.
+   *
+   * @param tick the battle tick
+   * @param target the tower
+   * @param damage the step
+   * @param hitPoints the tower's hit points after it
+   * @param died whether the step killed it
+   */
+  default void drained(int tick, WorldEntity target, int damage, int hitPoints, boolean died) {}
+
+  /**
    * A unit's dash wind-up ran out and it started a dash, its state already the dashing one.
    *
    * @param tick the battle tick

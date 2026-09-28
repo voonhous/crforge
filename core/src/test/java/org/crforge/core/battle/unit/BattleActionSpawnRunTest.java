@@ -130,7 +130,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * on every tick both elixirs, hands and cooldowns, the timeline and the crowns held to the
  * reference's trace, and every play's match code - a card still in the queue refused with 9, one
  * the elixir does not cover with 0xd. {@code match_knights_king} plays a match to its end: the
- * king's fall, the winner, the end timer, the fallen king's circle and its kills, and the stop.
+ * king's fall, the winner, the end timer, the fallen king's circle and its kills, nothing attacking
+ * after the end, and the stop. {@code match_overtime_tiebreak} and {@code match_overtime_draw} play
+ * past overtime with equal crowns into the tiebreaker: its clearing with nothing to clear, its idle
+ * window, every step of its drain, and its end by a fallen princess tower, or as a draw by equal
+ * towers.
  */
 class BattleActionSpawnRunTest {
 
@@ -189,7 +193,9 @@ class BattleActionSpawnRunTest {
         "mega_knight_group",
         "ram_rider_tower",
         "match_elixir_150s",
-        "match_knights_king"
+        "match_knights_king",
+        "match_overtime_tiebreak",
+        "match_overtime_draw"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -246,6 +252,7 @@ class BattleActionSpawnRunTest {
     LadderMatch ladder = null;
     Map<Integer, JsonNode> trace = new HashMap<>();
     List<String> circleKills = new ArrayList<>();
+    List<String> drains = new ArrayList<>();
     List<Integer> endTicks = new ArrayList<>();
     if (reference.has("match")) {
       JsonNode m = reference.get("match");
@@ -265,7 +272,7 @@ class BattleActionSpawnRunTest {
         trace.put(row.get(0).asInt(), row);
       }
       assertOpeningHands(ladder, m);
-      match.getWorld().addObserver(circleLog(currentTick, circleKills));
+      match.getWorld().addObserver(matchLog(currentTick, circleKills, drains));
     }
     // A run with card plays plays each as a place-card command due on its tick.
     if (reference.has("commands")) {
@@ -594,6 +601,7 @@ class BattleActionSpawnRunTest {
       assertPlays(match, reference);
       assertEnd(match, ladder, reference.get("match"));
       List<String> expectedKills = new ArrayList<>();
+      List<String> expectedDrains = new ArrayList<>();
       List<Integer> expectedEnd = new ArrayList<>();
       for (JsonNode entry : reference.get("match").get("log")) {
         String kind = entry.get("event").asText();
@@ -604,6 +612,14 @@ class BattleActionSpawnRunTest {
                       entry.get("tick").asInt(),
                       entry.get("target").asText(),
                       entry.get("radius").asInt()));
+        } else if (kind.equals("drain")) {
+          expectedDrains.add(
+              "%d %s %d %d"
+                  .formatted(
+                      entry.get("tick").asInt(),
+                      entry.get("target").asText(),
+                      entry.get("damage").asInt(),
+                      entry.get("hp").asInt()));
         } else if (kind.equals("end")) {
           expectedEnd.add(entry.get("tick").asInt());
           assertThat(List.of(ladder.crowns(0), ladder.crowns(1)))
@@ -613,6 +629,7 @@ class BattleActionSpawnRunTest {
         }
       }
       assertThat(circleKills).as("every kill of a fallen king's circle").isEqualTo(expectedKills);
+      assertThat(drains).as("every step of the tiebreaker's drain").isEqualTo(expectedDrains);
       assertThat(endTicks).as("the tick the match ended on").isEqualTo(expectedEnd);
     }
 
@@ -1436,8 +1453,7 @@ class BattleActionSpawnRunTest {
     values.add(ladder.crowns(1));
     values.add(ladder.getEndTimerMs());
     values.add(ladder.isEnded() ? 1 : 0);
-    // The tiebreaker is not modelled: its time stays 0.
-    values.add(0);
+    values.add(ladder.getTiebreakMs());
     values.add(ladder.isLastTicked() ? 1 : 0);
     return JSON.valueToTree(values).toString();
   }
@@ -1465,7 +1481,7 @@ class BattleActionSpawnRunTest {
     for (Standard1v1Battle.Play play : match.getPlays()) {
       codes.put(play.name(), play.matchCode());
     }
-    for (JsonNode command : reference.get("commands")) {
+    for (JsonNode command : reference.path("commands")) {
       String name = command.get("name").asText();
       int expected =
           command.path("stage").asText().equals("match_gates") ? command.get("code").asInt() : 0;
@@ -1474,12 +1490,21 @@ class BattleActionSpawnRunTest {
     }
   }
 
-  /** Lists every kill of a fallen king's circle with its radius. */
-  private static WorldObserver circleLog(int[] currentTick, List<String> log) {
+  /**
+   * Lists every kill of a fallen king's circle with its radius, and every step of a tiebreaker's
+   * drain with the tower's hit points after it.
+   */
+  private static WorldObserver matchLog(
+      int[] currentTick, List<String> circle, List<String> drain) {
     return new WorldObserver() {
       @Override
       public void circleKilled(int tick, WorldEntity target, int radius) {
-        log.add("%d %s %d".formatted(currentTick[0], target.name(), radius));
+        circle.add("%d %s %d".formatted(currentTick[0], target.name(), radius));
+      }
+
+      @Override
+      public void drained(int tick, WorldEntity target, int damage, int hitPoints, boolean died) {
+        drain.add("%d %s %d %d".formatted(currentTick[0], target.name(), damage, hitPoints));
       }
     };
   }

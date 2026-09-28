@@ -3,13 +3,18 @@ package org.crforge.core.battle.match;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
+import org.crforge.core.battle.unit.TowerEntity;
+import org.crforge.core.battle.unit.WorldEntity;
+import org.crforge.core.battle.unit.WorldObserver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** A Ladder match's gates and its end. */
+/** A Ladder match's gates, its end and its tiebreaker. */
 class LadderMatchTest {
 
   private static final List<String> DECK =
@@ -54,6 +59,11 @@ class LadderMatchTest {
     assertThat(match.getTimeline().isFrozen()).isTrue();
     assertThat(match.getEndTimerMs()).isEqualTo(51);
     assertThat(match.gate(0, match.deckIndex(0, "Archer"))).isEqualTo(LadderMatch.OVER);
+    // From the end every ordinary hit is refused.
+    TowerEntity king = battle.getWorld().kingTower(0);
+    int hitPoints = king.getHitPoints().getHitPoints();
+    assertThat(king.takeDamage(400, 0, 0, 1).landed()).isFalse();
+    assertThat(king.getHitPoints().getHitPoints()).isEqualTo(hitPoints);
     int steps = 0;
     while (!match.isOver()) {
       battle.getBattle().step();
@@ -68,16 +78,107 @@ class LadderMatchTest {
   }
 
   @Test
-  @DisplayName("both kings falling together leave the crowns equal: the tiebreaker, refused")
-  void theTiebreakerIsRefused() {
+  @DisplayName(
+      "both kings falling together leave the crowns equal: the tiebreaker, which idles to 3250 ms,"
+          + " drains once and ends it a draw")
+  void bothKingsFallingTogetherEndInADraw() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
-    battle.startLadderMatch(DECK, DECK, 0, 0);
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.getBattle().step();
     battle.getWorld().kill(battle.getWorld().kingTower(0), null);
     battle.getWorld().kill(battle.getWorld().kingTower(1), null);
 
+    int steps = 0;
+    while (!match.isEnded()) {
+      battle.getBattle().step();
+      steps++;
+    }
+    // 66 steps of the tiebreaker: the 66th, which begins at 3250 ms, drains and finds a king at 0;
+    // the next ends the match.
+    assertThat(steps).isEqualTo(67);
+    assertThat(match.getTiebreakMs()).isEqualTo(3300);
+    assertThat(match.getWinner()).isEqualTo(-1);
+    assertThat(List.of(match.crowns(0), match.crowns(1))).containsExactly(3, 3);
+    assertThat(battle.getWorld().isHitsHeld()).isTrue();
+    assertThat(battle.getWorld().isMatchEnded()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "the tiebreaker's clearing kills every unit, and ticks the entities on that step only")
+  void theClearingKillsEveryUnit() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
+    CharacterEntity knight = battle.deploy(5990, GameData.unit("Knight"), 11, 0, 3500, 5000);
+    List<String> kills = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void clearingKilled(int tick, WorldEntity target) {
+                // The world's tick is the last entity tick's; the battle's is the step's.
+                kills.add(battle.getBattle().getTick() + " " + target.name());
+              }
+            });
+    // The time is up on 6000 with the crowns equal; the tiebreaker's first step is 6001.
+    while (battle.getBattle().getTick() < 6001) {
+      battle.getBattle().step();
+    }
+    assertThat(match.getTiebreakMs()).isZero();
+    assertThat(battle.getWorld().isHitsHeld()).isFalse();
+    assertThat(kills).isEmpty();
+
+    battle.getBattle().step();
+    assertThat(kills).containsExactly("6001 Knight");
+    assertThat(match.getTiebreakMs()).isEqualTo(50);
+    assertThat(match.isLastTicked()).as("the update ran").isTrue();
+    assertThat(battle.getWorld().getHolder().entities()).doesNotContain(knight);
+    // From the tiebreaker's first step every ordinary hit is refused, before any end.
+    assertThat(battle.getWorld().isHitsHeld()).isTrue();
+    assertThat(battle.getWorld().isMatchEnded()).isFalse();
+    TowerEntity king = battle.getWorld().kingTower(1);
+    int hitPoints = king.getHitPoints().getHitPoints();
+    assertThat(king.takeDamage(400, 0, 0, 1).landed()).isFalse();
+    assertThat(king.getHitPoints().getHitPoints()).isEqualTo(hitPoints);
+
+    battle.getBattle().step();
+    assertThat(match.getTiebreakMs()).isEqualTo(100);
+    assertThat(match.isLastTicked()).as("nothing to clear, no update").isFalse();
+    assertThat(match.isEnded()).isFalse();
+  }
+
+  @Test
+  @DisplayName("the clearing refuses an object the holder would remove at once")
+  void theClearingRefusesWhatItRemoves() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(DECK, DECK, 0, 0);
+    battle.addActionOwner("owner", 0, 9000, 5000, 0);
+    while (battle.getBattle().getTick() < 6001) {
+      battle.getBattle().step();
+    }
     assertThatThrownBy(() -> battle.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("tiebreaker");
+        .hasMessageContaining("clearing");
+  }
+
+  @Test
+  @DisplayName("the drain's step by the lowest tower: 1, 10, 20, 40 or 50")
+  void theDrainSteps() {
+    int[][] cases = {
+      {1, 1},
+      {20, 1},
+      {21, 10},
+      {199, 10},
+      {200, 20},
+      {499, 20},
+      {500, 40},
+      {999, 40},
+      {1000, 50},
+      {4824, 50}
+    };
+    for (int[] c : cases) {
+      assertThat(LadderMatch.drainStep(c[0])).as("lowest %d", c[0]).isEqualTo(c[1]);
+    }
   }
 }
