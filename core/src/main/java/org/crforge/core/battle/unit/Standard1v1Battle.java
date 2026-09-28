@@ -15,6 +15,7 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -38,9 +39,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " created at and fighting from the first tick; a card play run as a command at the"
             + " head of its step, stamped with the battle's tick counter and run 20 ticks later,"
             + " its placement worked out against every character, live or queued, and its units"
-            + " created in formation order, each deploying at once or waiting its turn. Not"
-            + " modelled yet: players, hands, elixir, the match clock and how a match ends; the"
-            + " mode never ends the battle.")
+            + " created in formation order, each deploying at once or waiting its turn; played as a"
+            + " Ladder match, the players' hands, elixir and the match clock, held by"
+            + " match_elixir_150s. Not modelled yet: how a match ends.")
 public class Standard1v1Battle {
 
   /** The level the reference runs are played at, and the towers' level when none is given. */
@@ -126,8 +127,9 @@ public class Standard1v1Battle {
    * @param x the requested point
    * @param y the requested point
    * @param tick the tick it ran on
-   * @param result what the play came to
+   * @param result what the placement came to, or null for a play a match's gate refused
    * @param units the units it created, in creation order
+   * @param matchCode the code a match's gate refused the play with, or 0
    */
   public record Play(
       String name,
@@ -136,7 +138,34 @@ public class Standard1v1Battle {
       int y,
       int tick,
       CardPlacement.Result result,
-      List<CharacterEntity> units) {}
+      List<CharacterEntity> units,
+      int matchCode) {}
+
+  /** The match the battle is played as, or null for a battle without players. */
+  @Getter private LadderMatch match;
+
+  /**
+   * Plays the battle as a Ladder match between two players, set up before the first step: each
+   * king's starting elixir and its deck shuffled into its battle order, side 0 first, with the
+   * battle's random source. From then on each card play passes the match's gates and pays for
+   * itself, and the kings regenerate their elixir and refill their hands.
+   *
+   * @param deck0 side 0's deck, by card row name
+   * @param deck1 side 1's deck, by card row name
+   * @param playerWord0 side 0's word, added to its shuffle's draw
+   * @param playerWord1 side 1's word, added to its shuffle's draw
+   * @return the match
+   */
+  public LadderMatch startLadderMatch(
+      List<String> deck0, List<String> deck1, int playerWord0, int playerWord1) {
+    LadderMatch ladder =
+        new LadderMatch(
+            world, world.getRecords(), List.of(deck0, deck1), new int[] {playerWord0, playerWord1});
+    battle.setMode(ladder);
+    world.setKingVisit(ladder::kingVisit);
+    this.match = ladder;
+    return ladder;
+  }
 
   /**
    * Queues a card play as a player makes it, between two steps: the play is stamped with the
@@ -182,6 +211,16 @@ public class Standard1v1Battle {
 
   private void runPlay(
       Battle target, DeployCard card, int level, int side, int x, int y, String name) {
+    // In a match the play first passes the match's gates; a refused play changes nothing.
+    int deckIndex = -1;
+    if (match != null) {
+      deckIndex = match.deckIndex(side, card.name());
+      int code = match.gate(side, deckIndex);
+      if (code != 0) {
+        plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code));
+        return;
+      }
+    }
     // The mask reads every character of the battle: the live list, then the ones still queued.
     List<MaskEntity> entities = new ArrayList<>();
     List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
@@ -207,6 +246,10 @@ public class Standard1v1Battle {
             entities,
             SYMMETRICAL_DEPLOY_SNAP,
             LANE_BASED_DEPLOY_SEQUENCE);
+    // A play placed or cast pays for itself and cycles its card before anything is made.
+    if (match != null && result.placed()) {
+      match.play(side, deckIndex);
+    }
     if (card.spell() && result.placed()) {
       // The card item's level field; the hand is not modelled, so it is the level played, less 1.
       world.castSpell(card, level - 1, side, result.x(), result.y(), name);
@@ -242,7 +285,7 @@ public class Standard1v1Battle {
       target.getHolder().add(character);
       units.add(character);
     }
-    plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units)));
+    plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units), 0));
   }
 
   /**

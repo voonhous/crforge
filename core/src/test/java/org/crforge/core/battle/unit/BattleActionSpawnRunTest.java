@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +16,8 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -24,7 +27,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the forty-eight runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the forty-nine runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -122,8 +125,16 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>{@code ram_rider_tower} plays a Ram Rider: the Ram charges into the princess tower while its
  * rider, which targets troops only, takes no target; the run lists no actions, so the rider's
  * attachment and release are held from its {@code unit_spawner} log.
+ *
+ * <p>{@code match_elixir_150s} is a Ladder match: both decks shuffled with the battle's source, and
+ * on every tick both elixirs, hands and cooldowns, the timeline and the crowns held to the
+ * reference's trace, and every play's match code - a card still in the queue refused with 9, one
+ * the elixir does not cover with 0xd.
  */
 class BattleActionSpawnRunTest {
+
+  /** Writes a match's trace row as the reference lists it. */
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
@@ -175,7 +186,8 @@ class BattleActionSpawnRunTest {
         "hog_river",
         "bandit_knight",
         "mega_knight_group",
-        "ram_rider_tower"
+        "ram_rider_tower",
+        "match_elixir_150s"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -227,6 +239,28 @@ class BattleActionSpawnRunTest {
     }
     for (CharacterEntity unit : placed) {
       unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
+    }
+    // A match is set up before the first step, its decks shuffled with the battle's source.
+    LadderMatch ladder = null;
+    Map<Integer, JsonNode> trace = new HashMap<>();
+    if (reference.has("match")) {
+      JsonNode m = reference.get("match");
+      List<List<String>> decks = new ArrayList<>();
+      for (JsonNode deck : m.get("decks")) {
+        List<String> cards = new ArrayList<>();
+        deck.forEach(card -> cards.add(card.asText()));
+        decks.add(cards);
+      }
+      ladder =
+          match.startLadderMatch(
+              decks.get(0),
+              decks.get(1),
+              m.get("avatar_words").get(0).asInt(),
+              m.get("avatar_words").get(1).asInt());
+      for (JsonNode row : m.get("trace")) {
+        trace.put(row.get(0).asInt(), row);
+      }
+      assertOpeningHands(ladder, m);
     }
     // A run with card plays plays each as a place-card command due on its tick.
     if (reference.has("commands")) {
@@ -502,6 +536,10 @@ class BattleActionSpawnRunTest {
         lastTick = Math.max(lastTick, entry.get("tick").asInt());
       }
     }
+    // A match runs to the end of its trace.
+    for (int traced : trace.keySet()) {
+      lastTick = Math.max(lastTick, traced);
+    }
     Map<String, CharacterEntity> units = new HashMap<>();
     Map<String, String> towerStates = new HashMap<>();
     List<String> locks = new ArrayList<>();
@@ -538,6 +576,14 @@ class BattleActionSpawnRunTest {
         assertThat(unit).as("tick %d: %s is in the battle", tick, record.get("name")).isNotNull();
         assertRecord(battle, unit, record, tick, spawnTicks);
       }
+      if (trace.containsKey(tick)) {
+        assertThat(traceRow(tick, ladder))
+            .as("tick %d: the match", tick)
+            .isEqualTo(trace.get(tick).toString());
+      }
+    }
+    if (ladder != null) {
+      assertPlays(match, reference);
     }
 
     List<String> expectedActions = new ArrayList<>();
@@ -1314,5 +1360,67 @@ class BattleActionSpawnRunTest {
     }
     ordered.addAll(pushes);
     return ordered;
+  }
+
+  /** Both sides' opening hands and queues, and the draws that seeded their shuffles. */
+  private static void assertOpeningHands(LadderMatch ladder, JsonNode m) {
+    for (JsonNode entry : m.get("log")) {
+      if (!entry.get("event").asText().equals("hand")) {
+        continue;
+      }
+      int side = entry.get("side").asInt();
+      MatchSide matchSide = ladder.side(side);
+      assertThat(ladder.shuffleDraw(side))
+          .as("side %d's shuffle draw", side)
+          .isEqualTo(entry.get("seed_draw").asInt());
+      List<Integer> slots = new ArrayList<>();
+      entry.get("slots").forEach(slot -> slots.add(slot.asInt()));
+      List<Integer> queue = new ArrayList<>();
+      entry.get("queue").forEach(index -> queue.add(index.asInt()));
+      assertThat(Arrays.stream(matchSide.getHand().slots()).boxed().toList())
+          .as("side %d's opening hand", side)
+          .isEqualTo(slots);
+      assertThat(matchSide.getHand().queue()).as("side %d's queue", side).isEqualTo(queue);
+      assertThat(matchSide.getElixir()).isEqualTo(entry.get("elixir").asInt());
+    }
+  }
+
+  /**
+   * One step of the match as the reference traces it: both elixirs, both hands, both cooldowns, the
+   * timeline's time, section and rate, both crowns, the end timer, whether the battle ended, the
+   * tiebreaker's time and whether the entities were ticked. The end is not modelled yet, so its
+   * four fields stand at a match that goes on.
+   */
+  private static String traceRow(int tick, LadderMatch ladder) {
+    List<Object> values = new ArrayList<>();
+    values.add(tick);
+    values.add(ladder.side(0).getElixir());
+    values.add(ladder.side(1).getElixir());
+    values.add(Arrays.stream(ladder.side(0).getHand().slots()).boxed().toList());
+    values.add(Arrays.stream(ladder.side(1).getHand().slots()).boxed().toList());
+    values.add(ladder.side(0).getHand().getCooldownMs());
+    values.add(ladder.side(1).getHand().getCooldownMs());
+    values.add(ladder.getTimeline().getTimeMs());
+    values.add(ladder.getTimeline().getSection());
+    values.add(ladder.getTimeline().getRate());
+    values.add(ladder.crowns(0));
+    values.add(ladder.crowns(1));
+    values.addAll(List.of(0, 0, 0, 1));
+    return JSON.valueToTree(values).toString();
+  }
+
+  /** Every play refused by a match's gate with the reference's code, and every other let on. */
+  private static void assertPlays(Standard1v1Battle match, JsonNode reference) {
+    Map<String, Integer> codes = new HashMap<>();
+    for (Standard1v1Battle.Play play : match.getPlays()) {
+      codes.put(play.name(), play.matchCode());
+    }
+    for (JsonNode command : reference.get("commands")) {
+      String name = command.get("name").asText();
+      int expected =
+          command.path("stage").asText().equals("match_gates") ? command.get("code").asInt() : 0;
+      assertThat(codes).as("the play %s ran", name).containsKey(name);
+      assertThat(codes.get(name)).as("the play %s's match code", name).isEqualTo(expected);
+    }
   }
 }

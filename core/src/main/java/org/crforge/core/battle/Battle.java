@@ -35,8 +35,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: 50 ms per step as an integer, one command pass before the entity tick, over"
             + " one queue in the order the commands arrived, a late command running at once, the"
             + " tick counter advancing after both, and a finished match skipping the step and the"
-            + " counter. Not modelled: the replay regime that drops a late command, and the match"
-            + " clock, which the mode will own.")
+            + " counter; a mode set before the first step, a Ladder match owning the clock. Not"
+            + " modelled: the replay regime that drops a late command.")
 public class Battle {
 
   /** Game time one step advances, in milliseconds. */
@@ -46,7 +46,7 @@ public class Battle {
   public static final int STEPS_PER_SECOND = 1000 / STEP_MS;
 
   @Getter private final EntityHolder holder;
-  private final BattleMode mode;
+  @Getter private BattleMode mode;
 
   /** Queued commands in the order they were queued. */
   private final List<BattleCommand> commands = new ArrayList<>();
@@ -59,6 +59,17 @@ public class Battle {
 
   public Battle(EntityHolder holder, BattleMode mode) {
     this.holder = holder;
+    this.mode = mode;
+  }
+
+  /**
+   * Sets the rules of the match, before the first step: a match set up on a battle whose towers
+   * already stand.
+   *
+   * @param mode the match's rules
+   */
+  public void setMode(BattleMode mode) {
+    checkArgument(tick == 0, () -> "the mode is set before the first step, not on tick " + tick);
     this.mode = mode;
   }
 

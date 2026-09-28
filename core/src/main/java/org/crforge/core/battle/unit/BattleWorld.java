@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import lombok.Getter;
@@ -592,6 +593,25 @@ public class BattleWorld implements HolderPasses {
       }
     }
     return count;
+  }
+
+  /**
+   * What a king's post-hook runs first in a match: its hand refill and elixir; none outside one.
+   */
+  private Consumer<TowerEntity> kingVisit = king -> {};
+
+  /**
+   * Sets what a king's post-hook runs before its state visit: a match's refill and regeneration.
+   *
+   * @param kingVisit the visit, given the king
+   */
+  public void setKingVisit(Consumer<TowerEntity> kingVisit) {
+    this.kingVisit = kingVisit;
+  }
+
+  /** Runs a king's match visit, at the head of its post-hook. */
+  void kingVisit(TowerEntity king) {
+    kingVisit.accept(king);
   }
 
   /** The king tower of a side still in the battle, or null. */

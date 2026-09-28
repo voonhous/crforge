@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Set;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.match.BattleTimeline;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.AttackSequence;
@@ -37,6 +39,13 @@ public final class BattleRecords {
   private static final String PROJECTILES = "projectiles";
   private static final String SPELLS_CHARACTERS = "spells_characters";
   private static final String SPELLS_OTHER = "spells_other";
+  private static final String SPELLS_BUILDINGS = "spells_buildings";
+  private static final String GAME_MODES = "game_modes";
+  private static final String BATTLE_TIMELINES = "battle_timelines";
+  private static final String GLOBALS = "globals";
+
+  /** The section types of a battle timeline by name; the order is their number. */
+  private static final List<String> SECTION_TYPES = List.of("Normal", "Overtime", "BonusTime");
 
   /**
    * The columns of a spell card the cast does not model yet: a Mirror, a first projectile of its
@@ -933,5 +942,97 @@ public final class BattleRecords {
       case "PrincessTower" -> ScalingMode.TOWER_DAMAGE;
       default -> ScalingMode.CARD_DAMAGE;
     };
+  }
+
+  /**
+   * The battle timeline of a game mode: its row's BattleTimeline, read from the battle timelines
+   * table. Each array column is as long as the row gives it; section flags left out are 0.
+   *
+   * @param gameMode the game mode row's name
+   */
+  public BattleTimeline gameModeTimeline(String gameMode) {
+    GameTable modes = tables.table(GAME_MODES);
+    checkArgument(modes.has(gameMode), () -> "the game tables have no game mode " + gameMode);
+    String name = modes.row(gameMode).string("BattleTimeline");
+    GameTable timelines = tables.table(BATTLE_TIMELINES);
+    checkArgument(timelines.has(name), () -> "the game tables have no battle timeline " + name);
+    GameRow row = timelines.row(name);
+    List<Integer> types = new ArrayList<>();
+    for (String type : row.strings("SectionType")) {
+      int number = SECTION_TYPES.indexOf(type);
+      checkArgument(number >= 0, () -> name + " has a section of type " + type);
+      types.add(number);
+    }
+    List<Boolean> notify = new ArrayList<>();
+    for (JsonNode element : arrayOf(row, "ElixirNotifyChange")) {
+      notify.add(element.asBoolean());
+    }
+    return new BattleTimeline(
+        row.name(),
+        row.intValue("StartingElixir"),
+        ints(row, "SectionLength"),
+        types,
+        ints(row, "SectionFlags"),
+        ints(row, "ElixirRateLength"),
+        ints(row, "ElixirFullBarMS"),
+        ints(row, "ElixirRateVisible"),
+        notify,
+        ints(row, "NextSpellCooldownLength"),
+        ints(row, "NextSpellCooldownMS"),
+        ints(row, "EventTime"));
+  }
+
+  /**
+   * What the match reads of a card: its cost, its two opening-hand columns, its production stop and
+   * whether it is the Mirror. The card is looked up in the three card tables in turn.
+   *
+   * @param name the card row's name
+   */
+  public MatchCard matchCard(String name) {
+    GameRow row = null;
+    for (String table : List.of(SPELLS_CHARACTERS, SPELLS_BUILDINGS, SPELLS_OTHER)) {
+      if (tables.table(table).has(name)) {
+        row = tables.table(table).row(name);
+        break;
+      }
+    }
+    checkArgument(row != null, () -> "the game tables have no card " + name);
+    return new MatchCard(
+        row.name(),
+        row.intValue("ManaCost"),
+        row.bool("ForceToStartingHand"),
+        row.bool("OmitFromStartingHand"),
+        row.intValue("ElixirProductionStopTime"),
+        row.bool("Mirror"));
+  }
+
+  /**
+   * A published global's number.
+   *
+   * @param name the global's name
+   */
+  public int globalNumber(String name) {
+    GameTable globals = tables.table(GLOBALS);
+    checkArgument(globals.has(name), () -> "the game tables have no global " + name);
+    return globals.row(name).intValue("NumberValue");
+  }
+
+  /** An array column of whole numbers; an empty list for a column left out. */
+  private static List<Integer> ints(GameRow row, String column) {
+    List<Integer> out = new ArrayList<>();
+    for (JsonNode element : arrayOf(row, column)) {
+      out.add(element.asInt());
+    }
+    return out;
+  }
+
+  /** An array column's elements; none for a column left out or not an array. */
+  private static List<JsonNode> arrayOf(GameRow row, String column) {
+    List<JsonNode> out = new ArrayList<>();
+    JsonNode value = row.value(column);
+    if (value != null && value.isArray()) {
+      value.forEach(out::add);
+    }
+    return out;
   }
 }

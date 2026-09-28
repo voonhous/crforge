@@ -245,11 +245,16 @@ public class TowerEntity extends WorldEntity {
 
   /**
    * The entity state visit, which for a standing tower steps its elapsed time and nothing else, and
-   * at its end the combat gate: the targeting component runs while the tower is alive and not
-   * inactive. A king tower that dies drops its reference and is switched off on that tick.
+   * at its end the combat gate - for a king in a match, after its hand refill and elixir: the
+   * targeting component runs while the tower is alive and not inactive. A king tower that dies
+   * drops its reference and is switched off on that tick.
    */
   @Override
   protected void postHook() {
+    // In a match a king first refills its hand and regenerates its elixir.
+    if (getData().king()) {
+      world.kingVisit(this);
+    }
     EntityStateVisit.stateVisit(
         getView(),
         timers,
