@@ -747,8 +747,10 @@ public final class BattleRecords {
   }
 
   /**
-   * A troop card's placement as the battle reads it, from the spells characters table: the units it
-   * summons, built from their own rows, how many, its formation and where it may be placed.
+   * A troop or building card's placement as the battle reads it, from the spells characters table
+   * or the spells buildings table: the units it summons, built from their own rows, how many, its
+   * formation and where it may be placed. A building card is played as a troop card is; its unit is
+   * a buildings-table row, whose footprint the placement snaps and searches over.
    *
    * <p>A card with no count summons one. The level index a card may carry is not read, as the game
    * never reads it: the summoned units take the level the card is played at. A card that summons a
@@ -760,14 +762,16 @@ public final class BattleRecords {
   public DeployCard card(String name) {
     GameTable table = tables.table(SPELLS_CHARACTERS);
     boolean spells = false;
-    if (!table.has(name) && tables.table(SPELLS_OTHER).has(name)) {
+    if (!table.has(name) && tables.table(SPELLS_BUILDINGS).has(name)) {
+      table = tables.table(SPELLS_BUILDINGS);
+    } else if (!table.has(name) && tables.table(SPELLS_OTHER).has(name)) {
       table = tables.table(SPELLS_OTHER);
       spells = true;
     }
     checkArgument(table.has(name), () -> "the game tables have no card " + name);
     GameRow row = table.row(name);
-    // A spell of the spells table summons no character and casts; a card of the characters table
-    // keeps the troop path, and its refusals, whatever it casts besides.
+    // A spell of the spells table summons no character and casts; a card of the characters or the
+    // buildings table keeps the troop path, and its refusals, whatever it casts besides.
     if (spells
         && row.string("SummonCharacter").isEmpty()
         && (set(row, "Projectile") || set(row, "AreaEffectObject"))) {

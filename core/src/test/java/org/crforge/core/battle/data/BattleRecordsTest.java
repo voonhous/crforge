@@ -131,6 +131,22 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "a building card is read from the buildings card table, as a troop card: its unit a building")
+  void aBuildingCardIsATroopCard() {
+    DeployCard cannon = records.card("Cannon");
+    assertThat(cannon.spell()).isFalse();
+    assertThat(cannon.unit().name()).isEqualTo("Cannon");
+    assertThat(cannon.unit().building()).isTrue();
+    assertThat(cannon.count()).isEqualTo(1);
+    assertThat(cannon.summonDeployDelayMs()).isZero();
+
+    // A card's name is its own: the unit's row may be named otherwise.
+    assertThat(records.card("Elixir Collector").unit().name()).isEqualTo("ElixirCollector");
+    assertThat(records.card("GoblinHut").unit().name()).isEqualTo("GoblinHut_Rework");
+  }
+
+  @Test
   @DisplayName("a level index on a card is not read: the summoned unit keeps the card's level")
   void theLevelIndexIsNotRead() {
     DeployCard army = records.card("SkeletonArmy");
@@ -145,6 +161,10 @@ class BattleRecordsTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("SummonCharactersList");
     assertThatThrownBy(() -> records.card("IceWizard"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("SpellAsDeploy");
+    // A building card deploys as a spell too: the Goblin Drill digs its way in.
+    assertThatThrownBy(() -> records.card("GoblinDrill"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("SpellAsDeploy");
     assertThatThrownBy(() -> records.card("NoSuchCard"))
