@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.match.BattleTimeline;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -361,5 +362,23 @@ class BattleRecordsTest {
         .hasMessageContaining("Berserker")
         .hasMessageContaining("OnStartingAction")
         .hasMessageContaining("ActionBerserk");
+  }
+
+  @Test
+  @DisplayName("a game mode's battle timeline, a card's cost and hand columns, and a global")
+  void matchRows() {
+    BattleTimeline ladder = records.gameModeTimeline("Ladder");
+    assertThat(ladder.name()).isEqualTo("Default");
+    assertThat(ladder.startingElixir()).isEqualTo(6);
+    assertThat(ladder.sectionLengths()).containsExactly(180, 120);
+    assertThat(ladder.sectionTypes())
+        .containsExactly(BattleTimeline.NORMAL, BattleTimeline.OVERTIME);
+    assertThat(ladder.fullBarMs()).containsExactly(28000, 14000, 9300);
+    assertThat(ladder.cooldownMs()).containsExactly(1000, 500, 350);
+    assertThat(records.matchCard("Knight").cost()).isEqualTo(3);
+    assertThat(records.matchCard("Mirror").mirror()).isTrue();
+    assertThat(records.matchCard("Mirror").omitFromStartingHand()).isTrue();
+    assertThat(records.matchCard("Elixir Collector").omitFromStartingHand()).isTrue();
+    assertThat(records.globalNumber("MAX_MANA")).isEqualTo(10);
   }
 }
