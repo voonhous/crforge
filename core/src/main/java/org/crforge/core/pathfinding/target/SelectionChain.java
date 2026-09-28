@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.fidelity.Fidelity;
@@ -69,6 +70,12 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
 
   /** Scales a time step by the owner's buffs; unscaled until the owner says how. */
   @Setter private IntUnaryOperator timeScaler = IntUnaryOperator.identity();
+
+  /**
+   * Whether a candidate carries the buff the owner ranks lower; none does until the owner says how
+   * to ask.
+   */
+  @Setter private Predicate<TargetView> deprioritizingBuffCarrier = candidate -> false;
 
   /**
    * How the visit's request for the attacking state is applied: the bare interrupt guard until the
@@ -305,6 +312,11 @@ public class SelectionChain implements SelectionQueries, TargetingQueries {
     }
     index.release(found);
     return result;
+  }
+
+  @Override
+  public boolean carriesDeprioritizingBuff(TargetView candidate) {
+    return deprioritizingBuffCarrier.test(candidate);
   }
 
   @Override

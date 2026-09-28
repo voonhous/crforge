@@ -359,11 +359,14 @@ public interface WorldObserver {
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
 
   /**
-   * A buff instance was refreshed by a re-application.
+   * A buff instance was refreshed by a re-application. The refresh keeps the instance's own source,
+   * which may have left the battle since.
    *
    * @param before what was left of its time before
+   * @param source what the re-application came from, or null for nothing
    */
-  default void buffRefreshed(int tick, WorldEntity target, BuffInstance buff, int before) {}
+  default void buffRefreshed(
+      int tick, WorldEntity target, BuffInstance buff, int before, SpawnHost source) {}
 
   /**
    * A hit met the entity's shield, which took the whole of it up to its value; whatever was left

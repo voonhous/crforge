@@ -84,6 +84,21 @@ public final class BuffComponent implements BattleComponent {
     return SLOT;
   }
 
+  /**
+   * Whether an instance of the named buff row is listed, as the priority rule of a row that ranks
+   * that buff's carriers lower asks.
+   *
+   * @param buff the buff row's name
+   */
+  public boolean carries(String buff) {
+    for (BuffInstance instance : items) {
+      if (instance.getBuff().name().equals(buff)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** The listed instances, oldest first. */
   public List<BuffInstance> items() {
     return Collections.unmodifiableList(items);
@@ -110,8 +125,8 @@ public final class BuffComponent implements BattleComponent {
       throw new UnsupportedOperationException(
           entity.name() + " rides or carries riders, whose share of a buff is not modelled");
     }
-    // A carrier of a buff some character passes over or ranks lower is not modelled: the
-    // validator and the selector's priority would read it.
+    // A carrier of a buff some character passes over, rather than ranks lower, is not modelled:
+    // the validator would read it.
     if (world.passedOverBySomeone(buff.name())) {
       throw new UnsupportedOperationException(
           buff.name() + " is a buff a character's targeting reads, which is not modelled");
@@ -145,7 +160,7 @@ public final class BuffComponent implements BattleComponent {
         if (instance.getRemaining() != before
             || instance.getTotal() != totalBefore
             || instance.getPackedLevel() != levelBefore) {
-          world.buffRefreshed(entity, instance, before);
+          world.buffRefreshed(entity, instance, before, source);
         }
         create = false;
       }
