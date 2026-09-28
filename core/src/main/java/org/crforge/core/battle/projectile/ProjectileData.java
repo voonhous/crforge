@@ -68,6 +68,9 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param maximumTargets the most entities its area buff reaches: 1000 for an empty column, as the
  *     loader stores
  * @param onlyOwnTroops true when its area buff reaches only the launcher's own side
+ * @param spawnCount how many of this row another projectile's impact spawns, in a fan; 0 and 1 both
+ *     mean one
+ * @param spawnRadius the angle, in degrees, of the fan's outermost step once divided by the count
  * @param chainedHitRadius how far from where it lands it hops on to its next target; 0 for a
  *     projectile that does not hop
  * @param chainedHitCount how many targets a hopping projectile hits in all, its first included
@@ -122,6 +125,8 @@ public record ProjectileData(
     int buffTimeIncreasePerLevel,
     int maximumTargets,
     boolean onlyOwnTroops,
+    int spawnCount,
+    int spawnRadius,
     int chainedHitRadius,
     int chainedHitCount,
     List<String> unmodelledColumns) {
