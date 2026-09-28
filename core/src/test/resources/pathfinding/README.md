@@ -342,6 +342,12 @@ Eleven plays run on fixed ticks (`commands`). Side 0's Knight on 20 is refused w
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/match_knights_king.json` - a match to its end
+
+A Ladder match at level 11 between two decks of eight Knights, both players' words 0. A Knight each on tick 20 meet at the left bridge and both die on 324; side 0 plays waves of three Knights on 340..342 and side 1 on 900..902 (`commands`). PrincessTower_1_1 falls on 700 and KingTower_1_0 on 1220: the match ends there, side 0 the winner with crowns 3 : 0 (`match.end`). From the update of 1221 a circle grows from the fallen king, 800 an update, and takes PrincessTower_1_2 on 1229 at a radius of 7200 (`match.log`, `circle_kill`). The entities are ticked while the end timer runs from 51 to 3951; the update of 1300 takes it to 4001 and only cleans the holder up (holder tick 0 in the trace), and from 1301 the battle runs no step (`stopped_at`). `match.trace` holds every step, the end's fields included.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs, and holds the circle's kills, the end's tick, crowns and winner, and the stop.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
