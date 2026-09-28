@@ -344,6 +344,17 @@ public interface WorldObserver {
   default void projectileBuff(
       int tick, ProjectileEntity projectile, BuffData buff, int time, List<WorldEntity> targets) {}
 
+  /**
+   * A buff instance on a dying object made its death spawn's characters, after each was spawned.
+   *
+   * @param tick the tick
+   * @param dying the object that died carrying it
+   * @param buff the instance
+   * @param made the characters, in the order they were made
+   */
+  default void buffDeathSpawn(
+      int tick, WorldEntity dying, BuffInstance buff, List<CharacterEntity> made) {}
+
   /** A new buff instance was listed on an entity. */
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
 

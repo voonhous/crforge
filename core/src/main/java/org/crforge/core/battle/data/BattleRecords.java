@@ -58,16 +58,14 @@ public final class BattleRecords {
       List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
 
   /**
-   * The columns of a projectile the impact does not model: the buff applied before the damage, the
-   * area effect it spawns, several spawned projectiles or ones laid along an axis, its chained hop,
-   * the push's floor and a push along the flight, a stop at the first entity it touches, the
-   * pingpong sweep, and the flight back to a shooter that walks on. A spell whose projectile, or
-   * the projectile that one spawns, sets one is refused as it is cast or spawned, and a unit's shot
-   * as it is fired.
+   * The columns of a projectile the impact does not model: the area effect it spawns, several
+   * spawned projectiles or ones laid along an axis, its chained hop, the push's floor and a push
+   * along the flight, a stop at the first entity it touches, the pingpong sweep, and the flight
+   * back to a shooter that walks on. A spell whose projectile, or the projectile that one spawns,
+   * sets one is refused as it is cast or spawned, and a unit's shot as it is fired.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
-          "ApplyBuffBeforeDamage",
           "SpawnAreaEffectObject",
           "SpawnCount",
           "SpawnAxisX",
@@ -111,7 +109,14 @@ public final class BattleRecords {
           "EnableStacking",
           "PlayerSpecificBuff",
           "NoEffectToCrownTowers",
-          "IgnoreBuildings");
+          "IgnoreBuildings",
+          "DeathSpawn",
+          "DeathSpawnCount",
+          "DeathSpawnRadius",
+          "DeathSpawnSameLocation",
+          "DeathSpawnIsEnemy",
+          "DeathSpawnDeployDelay",
+          "OtherBuffDeathSpawnAllowed");
 
   /** The columns of a buff that only show something: its effects, icons, filters and sounds. */
   private static final Set<String> PRESENTATION_BUFF_COLUMNS =
@@ -188,7 +193,8 @@ public final class BattleRecords {
           "DeathSpawnCharacter3",
           "DeathSpawnProjectile",
           "StartingBuff",
-          "SpawnAreaObject");
+          "SpawnAreaObject",
+          "DeathSpawnIsSameUnit");
 
   /**
    * The columns that change where a unit's death spawn stands or what its children take, which the
@@ -661,6 +667,13 @@ public final class BattleRecords {
         .playerSpecificBuff(row.bool("PlayerSpecificBuff"))
         .noEffectToCrownTowers(row.bool("NoEffectToCrownTowers"))
         .ignoreBuildings(row.bool("IgnoreBuildings"))
+        .deathSpawn(sets(row, "DeathSpawn") ? row.string("DeathSpawn") : null)
+        .deathSpawnCount(row.intValue("DeathSpawnCount"))
+        .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
+        .deathSpawnSameLocation(row.bool("DeathSpawnSameLocation"))
+        .deathSpawnIsEnemy(row.bool("DeathSpawnIsEnemy"))
+        .deathSpawnDeployDelay(row.bool("DeathSpawnDeployDelay"))
+        .otherBuffDeathSpawnAllowed(row.bool("OtherBuffDeathSpawnAllowed"))
         .unmodelledColumns(unmodelled)
         .build();
   }
@@ -745,6 +758,8 @@ public final class BattleRecords {
             .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
             .constantHeight(row.intValue("ConstantHeight"))
             .targetBuff(set(row, "TargetBuff") ? row.string("TargetBuff") : null)
+            .applyBuffBeforeDamage(row.bool("ApplyBuffBeforeDamage"))
+            .applyBuffEvenIfImmuneToDamage(row.bool("ApplyBuffEvenIfImmuneToDamage"))
             .buffTimeMs(row.intValue("BuffTime"))
             .buffTimeIncreasePerLevel(row.intValue("BuffTimeIncreasePerLevel"))
             // The loader stores 1000 for an empty target limit.
@@ -757,9 +772,9 @@ public final class BattleRecords {
     List<String> unmodelled =
         new ArrayList<>(
             UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList());
-    // The target buff is modelled on the circle of a projectile with a radius; one that hits its
-    // target alone, or flies to a point and buffs through its hits on the way, is not.
-    if (data.targetBuff() != null && (data.radius() < 1 || data.homingLike())) {
+    // The target buff is modelled on the circle or the one target of the impact; a projectile that
+    // flies to a point buffs through its hits on the way instead, which is not.
+    if (data.targetBuff() != null && data.homingLike()) {
       unmodelled.add(0, "TargetBuff");
     }
     return data.toBuilder().unmodelledColumns(unmodelled).build();

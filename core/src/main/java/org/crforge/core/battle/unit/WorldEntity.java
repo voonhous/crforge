@@ -498,6 +498,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * never attached and never dashes.
    */
   boolean untouchable() {
+    return untouchable(true);
+  }
+
+  /**
+   * Whether the entity is untouchable, counting the immunity that lingers after a dash only when
+   * asked: a projectile's buff on its one target does not count it.
+   *
+   * @param dashImmunity true to count the immunity left after a dash
+   */
+  boolean untouchable(boolean dashImmunity) {
     return false;
   }
 

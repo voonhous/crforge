@@ -8,6 +8,7 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
@@ -96,19 +97,37 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a projectile's target buff is carried for its circle, and refused on its one target or"
-          + " before the damage")
+      "a projectile's target buff is carried for its circle and its one target, before or after"
+          + " the damage, and refused on a projectile that flies to a point")
   void aProjectileTargetBuff() {
     ProjectileData snowball = records.projectile("SnowballSpell");
     assertThat(snowball.targetBuff()).isEqualTo("IceWizardSlowDown");
     assertThat(snowball.buffTimeMs()).isEqualTo(3000);
+    assertThat(snowball.applyBuffBeforeDamage()).isFalse();
     // An empty target limit is the loader's 1000.
     assertThat(snowball.maximumTargets()).isEqualTo(1000);
     assertThat(snowball.unmodelledColumns()).isEmpty();
+    ProjectileData voodoo = records.projectile("VoodooProjectile");
+    assertThat(voodoo.targetBuff()).isEqualTo("VoodooCurse");
+    assertThat(voodoo.applyBuffBeforeDamage()).isTrue();
+    assertThat(voodoo.unmodelledColumns()).isEmpty();
     assertThat(records.projectile("ElectroDragonProjectile").unmodelledColumns())
-        .containsExactly("TargetBuff", "ChainedHitRadius");
-    assertThat(records.projectile("VoodooProjectile").unmodelledColumns())
-        .containsExactly("TargetBuff", "ApplyBuffBeforeDamage");
+        .containsExactly("ChainedHitRadius");
+    // A projectile that flies to a point buffs through its hits on the way, which is not modelled.
+    assertThat(records.projectile("SuperEliteArcherArrow").unmodelledColumns())
+        .contains("TargetBuff");
+  }
+
+  @Test
+  @DisplayName("a buff's death spawn is carried")
+  void aBuffDeathSpawn() {
+    BuffData curse = records.buff("VoodooCurse");
+    assertThat(curse.deathSpawn()).isEqualTo("VoodooHog");
+    assertThat(curse.deathSpawnCount()).isEqualTo(1);
+    assertThat(curse.deathSpawnIsEnemy()).isTrue();
+    assertThat(curse.deathSpawnDeployDelay()).isTrue();
+    assertThat(curse.otherBuffDeathSpawnAllowed()).isTrue();
+    assertThat(curse.unmodelledColumns()).isEmpty();
   }
 
   @Test
@@ -283,8 +302,7 @@ class BattleRecordsTest {
     assertThat(rider.targetOnlyTroops()).isTrue();
     assertThat(rider.ignoreTargetsWithBuff()).isEqualTo("BolaSnare");
     assertThat(rider.deprioritizeTargetsWithBuff()).isTrue();
-    assertThat(rider.projectile().unmodelledColumns())
-        .containsExactly("TargetBuff", "PingpongMovingShooter");
+    assertThat(rider.projectile().unmodelledColumns()).containsExactly("PingpongMovingShooter");
     UnitData knight = records.unit("Knight");
     assertThat(knight.targetOnlyTroops()).isFalse();
     assertThat(knight.ignoreTargetsWithBuff()).isNull();

@@ -8,8 +8,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
@@ -147,7 +149,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * height: the Royal Giant's cannonball starts at 1500 and descends onto the tower it homes on, and
  * the Elite Archer's arrow flies level at 2000 past a Knight, the first two arrows re-aiming at it
  * on their first two steps. {@code snowball_knights} casts a Snowball onto two Knights, whose
- * impact damages and pushes both and then slows both with its target buff.
+ * impact damages and pushes both and then slows both with its target buff. {@code
+ * witch_mother_skeletons} shoots Skeletons with a curse applied before the damage, so each dies
+ * carrying it and leaves a Voodoo Hog for the other side.
  */
 class BattleActionSpawnRunTest {
 
@@ -215,7 +219,8 @@ class BattleActionSpawnRunTest {
         "ice_wizard_knights",
         "royal_giant_tower",
         "elite_archer_knight",
-        "snowball_knights"
+        "snowball_knights",
+        "witch_mother_skeletons"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -719,10 +724,18 @@ class BattleActionSpawnRunTest {
     if (reference.has("actions")) {
       assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
     } else {
-      // A run that lists no actions lists its riders under unit_spawner alone: they are its only
-      // spawns.
-      assertThat(spawns)
-          .as("every spawn, a rider each")
+      // A run that lists no actions lists its riders under unit_spawner and the children of a
+      // buff's death spawn in its buff log: they are its only spawns.
+      Set<String> buffChildren = new HashSet<>();
+      for (JsonNode b : reference.path("buffs")) {
+        if (b.get("event").asText().equals("death_spawn")) {
+          b.get("units").forEach(u -> buffChildren.add(u.get(0).asText()));
+        }
+      }
+      List<String> riderSpawns =
+          spawns.stream().filter(line -> !buffChildren.contains(line.split(" ")[3])).toList();
+      assertThat(riderSpawns)
+          .as("every spawn but a buff's death spawn, a rider each")
           .allSatisfy(line -> assertThat(riders).contains(line.split(" ")[3]))
           .hasSameSizeAs(riders);
     }
@@ -1091,6 +1104,32 @@ class BattleActionSpawnRunTest {
       }
 
       @Override
+      public void buffDeathSpawn(
+          int tick, WorldEntity dying, BuffInstance buff, List<CharacterEntity> made) {
+        lines.add(
+            "%d death_spawn %s %s %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    dying.name(),
+                    buff.getBuff().deathSpawn(),
+                    made.size(),
+                    buff.getPackedLevel(),
+                    made.stream()
+                        .map(
+                            c ->
+                                "%s %d %d %d %d %d %d"
+                                    .formatted(
+                                        c.name(),
+                                        c.side(),
+                                        c.getView().getX(),
+                                        c.getView().getY(),
+                                        c.getView().getState(),
+                                        c.getView().getDeployCountdown(),
+                                        c.getHitPoints().getMaximum()))
+                        .toList()));
+      }
+
+      @Override
       public void buffApplied(int tick, WorldEntity target, BuffInstance buff) {
         lines.add(
             "%d applied %s %s %s %d %d %s"
@@ -1171,6 +1210,31 @@ class BattleActionSpawnRunTest {
                       b.get("buff").asText(),
                       b.get("time").asInt(),
                       targets));
+        }
+        case "death_spawn" -> {
+          List<String> units = new ArrayList<>();
+          b.get("units")
+              .forEach(
+                  u ->
+                      units.add(
+                          "%s %d %d %d %d %d %d"
+                              .formatted(
+                                  u.get(0).asText(),
+                                  u.get(1).asInt(),
+                                  u.get(2).asInt(),
+                                  u.get(3).asInt(),
+                                  u.get(4).asInt(),
+                                  u.get(5).asInt(),
+                                  u.get(6).asInt())));
+          expected.add(
+              "%d death_spawn %s %s %d %d %s"
+                  .formatted(
+                      tick,
+                      b.get("target").asText(),
+                      b.get("row").asText(),
+                      b.get("count").asInt(),
+                      b.get("level").asInt(),
+                      units));
         }
         case "applied" ->
             expected.add(

@@ -23,6 +23,14 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param playerSpecificBuff true when an instance is refreshed only from its own side
  * @param noEffectToCrownTowers true when a crown tower takes nothing of it
  * @param ignoreBuildings true when a building takes nothing of it
+ * @param deathSpawn the character its carrier leaves as it dies, or null
+ * @param deathSpawnCount how many of it
+ * @param deathSpawnRadius the ring they stand on; 0 for the point in front of the carrier
+ * @param deathSpawnSameLocation true when they stand on the carrier's point itself
+ * @param deathSpawnIsEnemy true when they are made for the carrier's opponent
+ * @param deathSpawnDeployDelay true when they start deploying
+ * @param otherBuffDeathSpawnAllowed true when it may be listed beside another buff with a death
+ *     spawn that allows it too
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -41,6 +49,13 @@ public record BuffData(
     boolean playerSpecificBuff,
     boolean noEffectToCrownTowers,
     boolean ignoreBuildings,
+    String deathSpawn,
+    int deathSpawnCount,
+    int deathSpawnRadius,
+    boolean deathSpawnSameLocation,
+    boolean deathSpawnIsEnemy,
+    boolean deathSpawnDeployDelay,
+    boolean otherBuffDeathSpawnAllowed,
     List<String> unmodelledColumns) {
 
   public BuffData {

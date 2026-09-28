@@ -883,15 +883,15 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Untouchable while it rides on a parent, while it dashes under a row with a dash immunity, and
-   * while that immunity lasts after the dash.
+   * Untouchable while it rides on a parent, while it dashes under a row with a dash immunity, and,
+   * when asked, while that immunity lasts after the dash.
    */
   @Override
-  boolean untouchable() {
+  boolean untouchable(boolean dashImmunity) {
     return parent != null
         || getView().getState() == GridEntityState.DASHING
             && getData().dashImmuneToDamageTimeMs() > 0
-        || unit.timers().getDashImmunityRemainingMs() >= 1;
+        || dashImmunity && unit.timers().getDashImmunityRemainingMs() >= 1;
   }
 
   /** A dasher that lost its reference resumes, as the state visit's resume does. */
@@ -1063,7 +1063,7 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Refuses a Kamikaze row's hit, which destroys the unit, and a hit that reaches several targets
-   * or applies a buff to what it hits: none of them is modelled.
+   * or, without a projectile, applies a buff to what it hits: none of them is modelled.
    */
   @Override
   protected void refuseHit() {
@@ -1072,7 +1072,9 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           name() + " hits as a Kamikaze row, which destroys it and is not modelled");
     }
-    if (data.multipleTargets() >= 2 || data.buffOnDamage() != null) {
+    // A unit that fires hands its hit to its projectile, so its own buff on damage is never
+    // applied: the Witch Mother's curse comes from her projectile's target buff.
+    if (data.multipleTargets() >= 2 || data.buffOnDamage() != null && data.projectile() == null) {
       throw new UnsupportedOperationException(
           name()
               + " hits with MultipleTargets "
