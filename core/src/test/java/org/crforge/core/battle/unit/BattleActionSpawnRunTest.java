@@ -192,6 +192,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * battle_healer_knights} plays a Battle Healer whose area object heals the friendly Knight beside
  * it as it deploys, and whose every hit makes an area effect that heals its friends where it
  * stands.
+ *
+ * <p>{@code bush_princess_tower} plays a Suspicious Bush, invisible from its creation, that walks
+ * past the towers untaken until its one hit on a princess tower kills it: its death makes an area
+ * effect that never hits and whose starting action spawns two Bush Goblins beside where it died.
+ * {@code bush_valkyrie_knight} plays one that a Valkyrie's swing kills on its way while it is still
+ * invisible, its goblins coming where it died.
  */
 class BattleActionSpawnRunTest {
 
@@ -283,7 +289,9 @@ class BattleActionSpawnRunTest {
         "inferno_dragon_zap",
         "mighty_miner_knight_tower",
         "ghost_river_wizard_tower",
-        "battle_healer_knights"
+        "battle_healer_knights",
+        "bush_princess_tower",
+        "bush_valkyrie_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

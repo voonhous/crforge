@@ -17,7 +17,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "The range test, the squared distance, the minimum range and the"
             + " reference-in-range answer agree with the reference line for line and decide"
-            + " the lock tick of all 53 reference walks.")
+            + " the lock tick of all 53 reference walks. The touch test agrees with its record;"
+            + " no reference run turns on its answer.")
 public final class RangeTest {
 
   private RangeTest() {
@@ -69,5 +70,17 @@ public final class RangeTest {
     int minimum = AttackRange.minRange(t);
     return rangeTest(
         target, t.getOwner().getX(), t.getOwner().getY(), range + extension, minimum, false);
+  }
+
+  /**
+   * The touch test of a not-attacking countdown whose row has no range gate: the owner stands
+   * within the target's radius plus half its own current sight range of the target. The half is a C
+   * division, and the bound is squared in 32 bits and compared signed, so a bound of 46,341 or more
+   * wraps. The state visit asks it only with a reference.
+   */
+  public static boolean touch(TargetingState t, TargetView target) {
+    int bound = target.radius() + SightRange.sightRange(t) / 2;
+    int squared = squaredDistance(t.getOwner().getX(), t.getOwner().getY(), target.x(), target.y());
+    return squared <= bound * bound;
   }
 }

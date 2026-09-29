@@ -740,11 +740,6 @@ public final class BattleRecords {
         columns.add(column);
       }
     }
-    // Without its range gate the not-attacking countdown is held by a touch test that is not
-    // modelled.
-    if (sets(row, "BuffWhenNotAttacking") && !row.bool("BuffWhenNotAttackingUseAttackRange")) {
-      columns.add("BuffWhenNotAttacking");
-    }
     if (!row.string("SpawnCharacter").isEmpty()) {
       for (String column : UNMODELLED_SPAWNER_COLUMNS) {
         if (sets(row, column)) {
