@@ -63,7 +63,8 @@
   {"tick": 208, "event": "impact", "projectile": "proj_4000011", "target": "Musketeer_0", "damage": 109, "hp": 0, "x": 3909, "y": 19833, "z": 0},
   {"tick": 208, "event": "death", "target": "Musketeer_0"},
   {"tick": 212, "event": "impact", "projectile": "proj_4000012", "target": "PrincessTower_1_1", "damage": 217, "hp": 1747, "x": 3500, "y": 25500, "z": 0},
-  {"tick": 229, "event": "launch", "projectile": "proj_4000013", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_1", "target": "GiantBuffer_0", "x": 3453, "y": 25204, "z": 3000, "aim": [2722, 20648], "aim_z": 0}
+  {"tick": 215, "event": "launch", "projectile": "proj_4000013", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_1", "target": "GiantBuffer_0", "x": 3459, "y": 25203, "z": 3000, "aim": [2708, 19808], "aim_z": 0},
+  {"tick": 224, "event": "impact", "projectile": "proj_4000013", "target": "GiantBuffer_0", "damage": 109, "hp": 2553, "x": 2718, "y": 20408, "z": 0}
  ],
  "tower_events": [
   {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
@@ -74,11 +75,11 @@
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 88, "event": "reference", "tower": "PrincessTower_1_1", "target": "Musketeer_0", "in_range": 1},
   {"tick": 88, "event": "lock", "tower": "PrincessTower_1_1", "target": "Musketeer_0"},
-  {"tick": 208, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "Musketeer_0", "target_lost_timer": 1},
+  {"tick": 208, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "Musketeer_0", "target_lost_timer": 0},
   {"tick": 208, "event": "reference_dropped", "tower": "PrincessTower_1_1", "removed": "Musketeer_0"},
   {"tick": 208, "event": "removed", "entity": "Musketeer_0"},
-  {"tick": 214, "event": "reference", "tower": "PrincessTower_1_1", "target": "GiantBuffer_0", "in_range": 1},
-  {"tick": 214, "event": "lock", "tower": "PrincessTower_1_1", "target": "GiantBuffer_0"}
+  {"tick": 209, "event": "reference", "tower": "PrincessTower_1_1", "target": "GiantBuffer_0", "in_range": 1},
+  {"tick": 209, "event": "lock", "tower": "PrincessTower_1_1", "target": "GiantBuffer_0"}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp", "delay", "deploy", "immune", "pending"],
@@ -519,12 +520,12 @@
    [221, 2715, 20228, 1, "PrincessTower_1_1", 2662, 10100, 0, null, null],
    [222, 2716, 20288, 1, "PrincessTower_1_1", 2662, 10150, 0, null, null],
    [223, 2717, 20348, 1, "PrincessTower_1_1", 2662, 10200, 0, null, null],
-   [224, 2718, 20408, 1, "PrincessTower_1_1", 2662, 10250, 0, null, null],
-   [225, 2719, 20468, 1, "PrincessTower_1_1", 2662, 10300, 0, null, null],
-   [226, 2720, 20528, 1, "PrincessTower_1_1", 2662, 10350, 0, null, null],
-   [227, 2721, 20588, 1, "PrincessTower_1_1", 2662, 10400, 0, null, null],
-   [228, 2722, 20648, 1, "PrincessTower_1_1", 2662, 10450, 0, null, null],
-   [229, 2723, 20708, 1, "PrincessTower_1_1", 2662, 10500, 0, null, null]
+   [224, 2718, 20408, 1, "PrincessTower_1_1", 2553, 10250, 0, null, null],
+   [225, 2719, 20468, 1, "PrincessTower_1_1", 2553, 10300, 0, null, null],
+   [226, 2720, 20528, 1, "PrincessTower_1_1", 2553, 10350, 0, null, null],
+   [227, 2721, 20588, 1, "PrincessTower_1_1", 2553, 10400, 0, null, null],
+   [228, 2722, 20648, 1, "PrincessTower_1_1", 2553, 10450, 0, null, null],
+   [229, 2723, 20708, 1, "PrincessTower_1_1", 2553, 10500, 0, null, null]
   ]
  },
  "records": [
@@ -637,6 +638,14 @@
   [208, 4000012, 3680, 22240, 360],
   [209, 4000012, 3625, 23238, 270],
   [210, 4000012, 3570, 24236, 180],
-  [211, 4000012, 3515, 25235, 90]
+  [211, 4000012, 3515, 25235, 90],
+  [216, 4000013, 3375, 24609, 3000],
+  [217, 4000013, 3290, 24016, 2835],
+  [218, 4000013, 3204, 23423, 2610],
+  [219, 4000013, 3117, 22830, 2325],
+  [220, 4000013, 3028, 22237, 1980],
+  [221, 4000013, 2936, 21645, 1575],
+  [222, 4000013, 2840, 21053, 1110],
+  [223, 4000013, 2737, 20462, 585]
  ]
 }

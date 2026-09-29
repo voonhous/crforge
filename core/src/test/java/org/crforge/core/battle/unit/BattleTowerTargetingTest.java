@@ -109,7 +109,7 @@ class BattleTowerTargetingTest {
         BattleTowerRunTest.VALKYRIE_TWO_VICTIMS_REFERENCE,
         BattleTowerRunTest.VALKYRIE_OWN_TOWER_REFERENCE
       })
-  void theRemovalOfTheUnitLeavesEveryTowerThatHeldItWithTheTargetLostCountdownStarted(
+  void theRemovalOfTheUnitLeavesEveryTowerThatHeldItWithTheTargetLostCountdownTheReferenceGives(
       String resource) {
     JsonNode reference = BattleMusketeerRunTest.load(resource);
     String unitName = reference.get("card").asText();
@@ -140,10 +140,12 @@ class BattleTowerTargetingTest {
         assertThat(tower.getView().getState())
             .as(tower.name())
             .isEqualTo(GridEntityState.ATTACKING);
+        // A tower whose own arrow in flight was the kill held the unit through it, so the removal
+        // skips the retarget load and starts no countdown; one that did not hold it that way, as
+        // in valkyrie_two_victims, starts the countdown at 1.
         assertThat(tower.getTargeting().getTargetLostTimerMs())
             .as(tower.name())
-            .isEqualTo(event.get("target_lost_timer").asInt())
-            .isEqualTo(1);
+            .isEqualTo(event.get("target_lost_timer").asInt());
         towersThatHeldIt++;
       }
     }

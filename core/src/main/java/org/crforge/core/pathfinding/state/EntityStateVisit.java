@@ -70,7 +70,8 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
             + " deploy countdown ending in the moving state, and the dash landing delay and the"
             + " dash immunity, by bandit_knight; the not-attacking section's place, by"
-            + " ghost_river_wizard_tower. Not modelled: kamikaze self-damage, hiding,"
+            + " ghost_river_wizard_tower; the pending-damage countdown, by the battle references'"
+            + " re-locks and drops. Not modelled: kamikaze self-damage, hiding,"
             + " growth, and the targeting visit the standard game runs"
             + " straight after a hidden unit resumes. A removal is requested by name and read"
             + " by nothing.")
@@ -158,8 +159,8 @@ public final class EntityStateVisit {
     queries.notAttacking().run();
 
     // 6. Pending damage, and removal of a unit that has no hit points left.
-    timers.setPendingDamageDurationMs(
-        Math.max(timers.getPendingDamageDurationMs(), TICK_MS) - TICK_MS);
+    entity.setPendingDamageDurationMs(
+        Math.max(entity.getPendingDamageDurationMs(), TICK_MS) - TICK_MS);
     chain.add("has_hit_points");
     if (!queries.hasHitPoints()
         && !config.kingTowerMiddle()

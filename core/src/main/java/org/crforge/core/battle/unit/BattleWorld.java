@@ -134,6 +134,9 @@ public class BattleWorld implements HolderPasses {
   /** The spatial index, populated only between the pre-pass and the post-pass. */
   @Getter private final SpatialIndex index;
 
+  /** The validator's answers only the battle can give, about the damage on its way to a target. */
+  @Getter private final ValidatorQueries validatorQueries = new BattleValidatorQueries(this);
+
   @Getter private final CellCosts costs = CellCosts.standard();
   @Getter private final MovementGlobals movementGlobals;
 
@@ -658,8 +661,8 @@ public class BattleWorld implements HolderPasses {
    * Morphs a unit that has surfaced into its row's morph, as the arrival of a tunnel does: the new
    * object is made on the unit's point with its level, lane and share of its hit points, a building
    * facing as the unit did; it is queued with its registration visit in the state it is made in,
-   * then set to the unit's deploying state, whose entry makes its area object. The unit leaves at
-   * the closing cleanup.
+   * then set to the unit's deploying state, whose entry makes its area object. The damage on its
+   * way to the unit passes to the new object. The unit leaves at the closing cleanup.
    *
    * <p>A morph hands the new object to the removal notice of every entity that referenced the old
    * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not

@@ -971,6 +971,8 @@ public class CharacterEntity extends WorldEntity {
         .targetOnlyTroops(data.targetOnlyTroops())
         .ignoreTargetsWithBuff(data.ignoreTargetsWithBuff() != null)
         .deprioritizeTargetsWithBuff(data.deprioritizeTargetsWithBuff())
+        .keepTargetWithPendingDamage(data.keepTargetWithPendingDamage())
+        .lifeTime(data.lifeTimeMs())
         .build();
   }
 
@@ -1315,6 +1317,9 @@ public class CharacterEntity extends WorldEntity {
     view.setDirX(from.getDirX());
     view.setDirY(from.getDirY());
     made.takeHitPointShare(old);
+    // The damage on its way to the old unit passes to the new object through its pending-damage
+    // slot, with what is left of its flight.
+    made.addPendingDamage(from.getPendingDamageAmount(), from.getPendingDamageDurationMs());
     return made;
   }
 

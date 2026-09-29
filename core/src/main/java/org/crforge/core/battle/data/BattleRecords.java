@@ -654,6 +654,9 @@ public final class BattleRecords {
                     || row.bool("StartWithBuffWhenNotAttacking"))
             .allowAreaDamageWhenInvisible(row.bool("AllowAreaDmgWhenInvisible"))
             .areaEffectOnHit(set(row, "AreaEffectOnHit") ? row.string("AreaEffectOnHit") : null)
+            // The loader's default is true: only a row that sets it false lets its target go.
+            .keepTargetWithPendingDamage(
+                !row.has("KeepTargetWithPendingDamage") || row.bool("KeepTargetWithPendingDamage"))
             .unmodelledColumns(unmodelledColumns(row))
             .build();
     return data.toBuilder()

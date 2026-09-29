@@ -242,10 +242,12 @@ class BattleMusketeerRunTest {
     assertThat(battle.getHolder().entities())
         .as("the tower has left the holder in the tick it died")
         .doesNotContain(tower);
-    // The removal took the reference with it and started the attack finish countdown.
+    // The removal took the reference with it. The Musketeer had held the tower through its own
+    // killing shot in flight, whose damage covered the tower's last hit points, so the removal
+    // skipped the retarget load and started no attack finish countdown.
     assertThat(musketeer.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
     assertThat(referenceName(musketeer)).isNull();
-    assertThat(musketeer.getUnit().targeting().getTargetLostTimerMs()).isEqualTo(1);
+    assertThat(musketeer.getUnit().targeting().getTargetLostTimerMs()).isZero();
   }
 
   @Test

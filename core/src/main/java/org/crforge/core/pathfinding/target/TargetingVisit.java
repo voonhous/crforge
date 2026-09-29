@@ -52,9 +52,11 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " comparisons and the order of timer reads and writes. Held: selection, keeping"
             + " and dropping a reference, and the lock, by the 53 reference walks; the attack"
             + " tick and the hit cadence by the kill run; the dash wind-up, its ring and its start"
-            + " by bandit_knight and mega_knight_group. Not held by any fixture: a dash's contact"
-            + " hits, the dash to a target's edge, special loads, bursts, several targets, the"
-            + " block timer and pending damage.")
+            + " by bandit_knight and mega_knight_group; the keep of a reference the pending-damage"
+            + " rule refuses, by an owner that has hit, by every tower's re-lock after its arrow's"
+            + " kill in the battle references. Not held by any fixture: a dash's contact"
+            + " hits, the dash to a target's edge, special loads, bursts, several targets and the"
+            + " block timer.")
 public final class TargetingVisit {
 
   /** Entity states in which the targeting pass does nothing at all. */

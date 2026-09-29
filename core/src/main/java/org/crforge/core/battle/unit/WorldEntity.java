@@ -36,6 +36,8 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
+import org.crforge.core.pathfinding.target.DefaultSelectionQueries;
+import org.crforge.core.pathfinding.target.DefaultTargetSelection;
 import org.crforge.core.pathfinding.target.HitApplication;
 import org.crforge.core.pathfinding.target.HitQueries;
 import org.crforge.core.pathfinding.target.RemovalNotice;
@@ -89,7 +91,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " level by the card hit-points rule, every hit it takes reported, the excess of a"
             + " hit lost, and its break resetting an attacker with an attack sequence, held by"
             + " recruit_tower, guards_knight, poison_guards and tombstone_crazy_life - the reset,"
-            + " and a shield through a level change or a swap, held by no run.")
+            + " and a shield through a level change or a swap, held by no run; the pending-damage"
+            + " slot summing the damage of the shots on their way and raising the duration to a"
+            + " shot's flight rounded up to 50 ms, at most 1000, and the level the pending-damage"
+            + " rule reads the row's full hit points at, held by the battle references' re-locks"
+            + " and drops, the rounding, the raise, the cap and the level by unit tests alone.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -100,6 +106,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** The slot of the targeting component the combat gate switches, on a character and a tower. */
   private static final int GATED_SLOT = 0;
+
+  /** The longest flight the pending duration is raised to, in milliseconds. */
+  private static final int MAX_PENDING_DURATION_MS = 1000;
 
   /** The battle's shared arena state. */
   protected final BattleWorld world;
@@ -171,7 +180,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     this.targeting = new TargetingState();
     targeting.setOwner(view);
     targeting.setConfig(targetingConfig);
-    this.selection = new SelectionChain(world.getIndex(), targeting, world.getTileMap().height());
+    // The selection asks the battle the validator's pending-damage questions about a candidate.
+    this.selection =
+        new SelectionChain(
+            world.getIndex(),
+            targeting,
+            world.getTileMap().height(),
+            world.getValidatorQueries(),
+            DefaultSelectionQueries.standard1v1(),
+            DefaultTargetSelection.Rules.standard());
     // A match's end holds every attack timer at zero.
     selection.setAttackTimersHeld(world::isMatchEnded);
     selection.setHitSink(
@@ -194,6 +211,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
           candidate -> world.entityOf(candidate.getEntity()).getBuffs().carries(ranked));
     }
     this.packedLevel = PackedLevel.fromLevel(level, data.rarity());
+    targetView.setPendingDamageKey(packedLevel);
     ScalingGlobals globals = ScalingGlobals.standard();
     int maximum =
         LevelScaling.hitpoints(
@@ -682,6 +700,26 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * The entity's pending-damage slot, which a homing shot calls on its target: the shot's damage is
+   * added to what is on its way to the entity, and a shot starting its flight raises the pending
+   * duration to its flight time rounded up to 50 ms, at most 1000. A shot handing its damage back
+   * passes the damage negated and a time of -1, which leaves the duration alone. A sum below zero
+   * is kept, as the game keeps it after reporting it.
+   *
+   * @param amount the damage to add, negative to hand it back
+   * @param flightMs the shot's flight time in milliseconds, or -1 for none
+   */
+  public void addPendingDamage(int amount, int flightMs) {
+    view.setPendingDamageAmount(view.getPendingDamageAmount() + amount);
+    if (flightMs < 0) {
+      return;
+    }
+    int rounded = (flightMs + 49) / 50 * 50;
+    view.setPendingDamageDurationMs(
+        Math.min(Math.max(view.getPendingDamageDurationMs(), rounded), MAX_PENDING_DURATION_MS));
+  }
+
+  /**
    * Takes one hit of a buff's damage over time: refused only where damage is forbidden, with no
    * dedupe id and no heading.
    */
@@ -963,6 +1001,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
           "changing the level of " + name() + ", whose hit points decay, is not established");
     }
     packedLevel = PackedLevel.pack(packed, data.rarity());
+    targetView.setPendingDamageKey(packedLevel);
     damage = damageAt(packedLevel);
     if (hitPoints == null) {
       return;

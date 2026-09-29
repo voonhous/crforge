@@ -126,14 +126,14 @@
   {"tick": 56, "event": "lock", "tower": "PrincessTower_1_1", "target": "Gift2_0"},
   {"tick": 81, "event": "reference", "tower": "PrincessTower_1_2", "target": "Gift_0", "in_range": 1},
   {"tick": 81, "event": "lock", "tower": "PrincessTower_1_2", "target": "Gift_0"},
-  {"tick": 267, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "Gift2_0", "target_lost_timer": 1},
+  {"tick": 267, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "Gift2_0", "target_lost_timer": 0},
   {"tick": 267, "event": "reference_dropped", "tower": "PrincessTower_1_1", "removed": "Gift2_0"},
   {"tick": 267, "event": "removed", "entity": "Gift2_0"},
-  {"tick": 273, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
-  {"tick": 356, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Gift_0", "target_lost_timer": 1},
+  {"tick": 268, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
+  {"tick": 356, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Gift_0", "target_lost_timer": 0},
   {"tick": 356, "event": "reference_dropped", "tower": "PrincessTower_1_2", "removed": "Gift_0"},
   {"tick": 356, "event": "removed", "entity": "Gift_0"},
-  {"tick": 362, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
+  {"tick": 357, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp", "delay", "deploy", "immune", "pending"],

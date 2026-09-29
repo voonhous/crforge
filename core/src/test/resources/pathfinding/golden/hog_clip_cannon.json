@@ -104,14 +104,14 @@
   {"tick": 112, "event": "reference_dropped", "tower": "Cannon", "removed": "proj_4000013"},
   {"tick": 112, "event": "reference", "tower": "KingTower_0_0", "target": null, "removed": "Cannon", "target_lost_timer": 1},
   {"tick": 112, "event": "reference_dropped", "tower": "KingTower_0_0", "removed": "Cannon"},
-  {"tick": 112, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "Cannon", "target_lost_timer": 1},
+  {"tick": 112, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "Cannon", "target_lost_timer": 0},
   {"tick": 112, "event": "reference_dropped", "tower": "PrincessTower_0_1", "removed": "Cannon"},
   {"tick": 112, "event": "removed", "entity": "Cannon"},
-  {"tick": 118, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
-  {"tick": 304, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "HogRider", "target_lost_timer": 1},
+  {"tick": 113, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0},
+  {"tick": 304, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "HogRider", "target_lost_timer": 0},
   {"tick": 304, "event": "reference_dropped", "tower": "PrincessTower_1_1", "removed": "HogRider"},
   {"tick": 304, "event": "removed", "entity": "HogRider"},
-  {"tick": 310, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0}
+  {"tick": 305, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp"],

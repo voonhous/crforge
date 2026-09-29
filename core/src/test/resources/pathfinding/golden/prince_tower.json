@@ -91,13 +91,13 @@
   {"tick": 381, "event": "activating_removed", "tower": "KingTower_1_0"},
   {"tick": 383, "event": "reference", "tower": "KingTower_1_0", "target": "Prince", "in_range": 1},
   {"tick": 383, "event": "lock", "tower": "KingTower_1_0", "target": "Prince"},
-  {"tick": 428, "event": "reference", "tower": "KingTower_1_0", "target": null, "removed": "Prince", "target_lost_timer": 1},
+  {"tick": 428, "event": "reference", "tower": "KingTower_1_0", "target": null, "removed": "Prince", "target_lost_timer": 0},
   {"tick": 428, "event": "reference_dropped", "tower": "KingTower_1_0", "removed": "Prince"},
-  {"tick": 428, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Prince", "target_lost_timer": 1},
+  {"tick": 428, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Prince", "target_lost_timer": 0},
   {"tick": 428, "event": "reference_dropped", "tower": "PrincessTower_1_2", "removed": "Prince"},
   {"tick": 428, "event": "removed", "entity": "Prince"},
-  {"tick": 434, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_1", "in_range": 0},
-  {"tick": 434, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
+  {"tick": 429, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_1", "in_range": 0},
+  {"tick": 429, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "records": [

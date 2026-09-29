@@ -26,8 +26,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
  *     accumulators.
  * @param targeting The working state of the troop's targeting component: its reference and attack
  *     timing.
- * @param timers The countdowns the per-entity state visit owns, such as the pending-damage
- *     duration.
+ * @param timers The countdowns the per-entity state visit owns, such as the immunity left after a
+ *     dash.
  * @param movementConfig The troop's movement configuration columns.
  * @param speedConfig The troop's speed columns.
  * @param stateConfig The troop's state-visit configuration columns.

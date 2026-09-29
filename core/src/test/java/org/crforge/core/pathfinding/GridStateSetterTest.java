@@ -176,6 +176,23 @@ class GridStateSetterTest {
   }
 
   @Test
+  @DisplayName(
+      "entering either pathfinding state drops the damage pending on the unit and keeps its"
+          + " duration")
+  void enteringAPathfindingStateDropsThePendingDamage() {
+    for (int state : new int[] {GridEntityState.SPAWN_PATHFIND, GridEntityState.INGAME_PATHFIND}) {
+      unit.setState(GridEntityState.MOVING);
+      unit.setPendingDamageAmount(120);
+      unit.setPendingDamageDurationMs(300);
+      setter.setState(unit, state);
+
+      assertThat(unit.getState()).isEqualTo(state);
+      assertThat(unit.getPendingDamageAmount()).isZero();
+      assertThat(unit.getPendingDamageDurationMs()).isEqualTo(300);
+    }
+  }
+
+  @Test
   @DisplayName("entering the standing, clone-setup and casting states empties the route too")
   void theOtherStoppingStatesEmptyTheRoute() {
     setter.setCasting(new GridStateSetter.Casting(new StateTimers(), 933, 50, false, () -> {}));

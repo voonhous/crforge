@@ -71,10 +71,11 @@
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 25, "event": "reference", "tower": "PrincessTower_1_1", "target": "RageBarbarian", "in_range": 1},
   {"tick": 25, "event": "lock", "tower": "PrincessTower_1_1", "target": "RageBarbarian"},
-  {"tick": 220, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "RageBarbarian", "target_lost_timer": 1},
+  {"tick": 220, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "RageBarbarian", "target_lost_timer": 0},
   {"tick": 220, "event": "reference_dropped", "tower": "PrincessTower_1_1", "removed": "RageBarbarian"},
   {"tick": 220, "event": "removed", "entity": "RageBarbarian"},
-  {"tick": 221, "event": "reference", "tower": "RageBarbarianDummyForSpawn_3000000_0", "target": "PrincessTower_1_1", "in_range": 0}
+  {"tick": 221, "event": "reference", "tower": "RageBarbarianDummyForSpawn_3000000_0", "target": "PrincessTower_1_1", "in_range": 0},
+  {"tick": 221, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp", "delay", "deploy", "immune", "pending"],

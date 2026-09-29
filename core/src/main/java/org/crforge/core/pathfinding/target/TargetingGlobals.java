@@ -21,8 +21,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     visit counts its attack-finish latch against
  * @param preserveTargetIfHitStarted true when a reference that is slightly out of range is kept
  *     while a projectile attack is already under way
- * @param currentTargetIgnoresPendingDamage true when a reference that has taken damage may be kept
- *     although the ordinary check rejects it
+ * @param currentTargetIgnoresPendingDamage true when an owner that has hit may keep a reference the
+ *     pending-damage rule refuses, one its shots in flight will kill
  * @param compareUsingHitStarted true when the hit timing is read from the hit-started flag rather
  *     than recomputed from the attack timer
  * @param clearSpecialLoadOnReferenceLoss true when losing the reference also clears a pending
@@ -33,8 +33,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     attack
  * @param loadFirstHitKeepLoadedAfterDiscard true when such a unit stays loaded after a hit that did
  *     not land
- * @param pendingDamageIgnoreIfDurationLess longest pending-damage duration, in milliseconds, that
- *     still lets the validator keep a dying target
+ * @param pendingDamageIgnoreIfDurationLess longest pending-damage duration, in milliseconds, the
+ *     pending-damage rule acts on: damage that lands later than this refuses no target
  * @param cancelHitFromLongDistance true when a hit whose target has left the attack range during
  *     the wind-up is cancelled and lands on nothing
  * @param cancelHitFromLongDistanceRange extra range, in game units, the cancel test allows on top

@@ -105,10 +105,10 @@
   {"tick": 277, "event": "lock", "tower": "MovingCannon_0", "target": "PrincessTower_1_1"},
   {"tick": 371, "event": "reference", "tower": "MovingCannon_0", "target": null, "removed": "proj_4000025", "target_lost_timer": 0},
   {"tick": 371, "event": "reference_dropped", "tower": "MovingCannon_0", "removed": "proj_4000025"},
-  {"tick": 371, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "MovingCannon_0", "target_lost_timer": 1},
+  {"tick": 371, "event": "reference", "tower": "PrincessTower_1_1", "target": null, "removed": "MovingCannon_0", "target_lost_timer": 0},
   {"tick": 371, "event": "reference_dropped", "tower": "PrincessTower_1_1", "removed": "MovingCannon_0"},
   {"tick": 371, "event": "removed", "entity": "MovingCannon_0"},
-  {"tick": 377, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0}
+  {"tick": 372, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp", "delay", "deploy", "immune", "pending"],
