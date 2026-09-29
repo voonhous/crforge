@@ -206,6 +206,8 @@ public class TowerEntity extends WorldEntity {
             data.summonerTower())
         .toBuilder()
         .hasProjectile(data.hasProjectile())
+        .sightClip(data.sightClip())
+        .sightClipSide(data.sightClipSide())
         .build();
   }
 

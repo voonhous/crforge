@@ -1585,6 +1585,10 @@ public class BattleWorld implements HolderPasses {
               cx,
               cy,
               PackedLevel.level(PackedLevel.pack(projectile.getPackedLevel(), child.rarity())));
+      // A fixed priority per child: the k-th is taken as (20k)^2 nearer by a selection.
+      if (data.spawnConstPriority()) {
+        spawned.getView().setSquaredDistanceReduction((i * 20) * (i * 20));
+      }
       if (data.spawnCharacterDeployTimeMs() >= 1) {
         spawned.deployFor(data.spawnCharacterDeployTimeMs());
       }

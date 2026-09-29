@@ -21,6 +21,7 @@ import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
+import org.crforge.core.pathfinding.target.TargetingConfig;
 
 /**
  * The battle's records built from the game's own rows.
@@ -380,35 +381,42 @@ public final class BattleRecords {
           "IsMeleePushbackAll2",
           "IsMeleePushbackAll3",
           // Asked only about an invisible unit; every buff that makes one invisible is refused.
-          "AllowAreaDmgWhenInvisible");
-
-  /**
-   * The columns of a unit's row whose role in the battle is not yet established, or whose value the
-   * references do not yet hold, carried unread until a trace settles them. The sight clips run at
-   * 1000 and 0, LoadFirstHit and AttackDashTime as unset, and the rest as absent.
-   */
-  private static final Set<String> PENDING_UNIT_COLUMNS =
-      Set.of(
-          "SightClip",
-          "SightClipSide",
-          "LoadFirstHit",
-          "AttackDashTime",
+          "AllowAreaDmgWhenInvisible",
+          // Read only by the character view: the walk animation's rate, the sprite's rotation, the
+          // attack animation's choice and states, the sprite's shake, the filters its sprite and
+          // its card show, and the move animation.
           "WalkingSpeedTweakPercentage",
-          "IgnoreResurrect",
           "RotateAngleSpeed",
           "HasRotationOnTimeline",
-          "TurretMovement",
-          "CustomSpawnFilter",
-          "CustomCloneFilter",
-          "LoopingFilter",
-          "AttackShakeTime",
-          "AttachedCharacter",
-          "AttachedCharacterHeight",
+          "AttackStateCount",
           "TryToFinishAttackAnimation",
           "DontStopMoveAnim",
-          "AttackStateCount",
-          // Only the Mighty Miner sets it, and its attack sequence is refused first.
+          "AttackShakeTime",
+          "LoopingFilter",
+          "CustomSpawnFilter",
+          "CustomCloneFilter",
+          // An object of the view only: no entity is made of it, and a building fires its own
+          // shots.
+          "AttachedCharacter",
+          "AttachedCharacterHeight",
+          // Stored and never read.
+          "TurretMovement",
+          // Times only the attack's turn toward its target and a call of the view, 150 ms before
+          // the period's boundary for the Bats; the turn is modelled for no unit, and no hit, timer
+          // or readiness reads it.
+          "AttackDashTime",
+          // Read only by the soul count of a unit whose ability resurrects, which only that
+          // ability spends, and a card play never requests it.
+          "IgnoreResurrect",
+          // Read only in the in-game pathfinding state, which only an ability's lane switch
+          // enters, and that switch is refused.
           "IngamePathfindSpeed");
+
+  /**
+   * The columns of a unit's row whose role in the battle is not yet established, carried unread
+   * until a trace settles them: none now.
+   */
+  private static final Set<String> PENDING_UNIT_COLUMNS = Set.of();
 
   /**
    * The columns of a projectile's row that only show something: its art, effects, sounds, shadow
@@ -452,11 +460,13 @@ public final class BattleRecords {
           "DeflectBehaviour",
           "DeflectRadius",
           "ActionOnDeflector",
-          "IgnoreReflectedAttack");
+          "IgnoreReflectedAttack",
+          // Read only by the projectile view: its frame set and whether it shows while delayed.
+          "use360Frames",
+          "HideWhenDelayed");
 
-  /** The columns of a projectile's row whose role is not yet established. */
-  private static final Set<String> PENDING_PROJECTILE_COLUMNS =
-      Set.of("use360Frames", "HideWhenDelayed", "SpawnConstPriority");
+  /** The columns of a projectile's row whose role is not yet established: none now. */
+  private static final Set<String> PENDING_PROJECTILE_COLUMNS = Set.of();
 
   /**
    * The columns of an area effect's row that only show something: its effects and art, classified
@@ -473,11 +483,14 @@ public final class BattleRecords {
           "SpawnDeployBaseAnim",
           "SpawnEffect");
 
-  /** The columns of an area effect's row the record shows no battle logic reads. */
-  private static final Set<String> INERT_AREA_EFFECT_COLUMNS = Set.of("Name", "Base");
+  /**
+   * The columns of an area effect's row the record shows no battle logic reads. BuffNumber is
+   * declared by the table and never looked up.
+   */
+  private static final Set<String> INERT_AREA_EFFECT_COLUMNS = Set.of("Name", "Base", "BuffNumber");
 
-  /** The columns of an area effect's row whose role is not yet established. */
-  private static final Set<String> PENDING_AREA_EFFECT_COLUMNS = Set.of("BuffNumber");
+  /** The columns of an area effect's row whose role is not yet established: none now. */
+  private static final Set<String> PENDING_AREA_EFFECT_COLUMNS = Set.of();
 
   private final GameTables tables;
 
@@ -573,6 +586,9 @@ public final class BattleRecords {
             .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
             .onAttackAction(actionName(row, "OnAttackAction"))
             .minimumRange(row.intValue("MinimumRange"))
+            .sightClip(sightClip(row))
+            .sightClipSide(row.intValue("SightClipSide"))
+            .loadFirstHit(row.bool("LoadFirstHit"))
             .spawnCharacter(
                 row.string("SpawnCharacter").isEmpty() ? null : row.string("SpawnCharacter"))
             .spawnNumber(row.intValue("SpawnNumber"))
@@ -780,6 +796,18 @@ public final class BattleRecords {
       bits |= 1L << tags.row(tag).index();
     }
     return bits;
+  }
+
+  /**
+   * A row's sight clip as the loader leaves it after its post-load pass: 1000 for a row that leaves
+   * it 0, and 0 for a building, whatever the row says.
+   */
+  private static int sightClip(GameRow row) {
+    if (row.bool("IsBuilding")) {
+      return 0;
+    }
+    int clip = row.intValue("SightClip");
+    return clip == 0 ? TargetingConfig.STANDARD_SIGHT_CLIP : clip;
   }
 
   /** The attack sequence modes by name; any other name is 0. */
@@ -1141,6 +1169,7 @@ public final class BattleRecords {
             .spawnCharacterCount(
                 set(row, "SpawnCharacter") ? Math.max(row.intValue("SpawnCharacterCount"), 1) : 0)
             .spawnCharacterDeployTimeMs(row.intValue("SpawnCharacterDeployTime"))
+            .spawnConstPriority(row.bool("SpawnConstPriority"))
             .radiusY(row.intValue("RadiusY"))
             .projectileRadiusY(row.intValue("ProjectileRadiusY"))
             .projectileStartExtraRadius(row.intValue("ProjectileStartExtraRadius"))

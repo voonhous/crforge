@@ -99,6 +99,12 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     hit, or null
  * @param onAttackAction the action row the unit runs as it attacks, or null
  * @param minimumRange the closest distance to a target's edge it may attack from; 0 for none
+ * @param sightClip how far short of its reach behind the unit a candidate may stand, as the loader
+ *     leaves it: 1000 for a row that leaves it 0, 0 for a building
+ * @param sightClipSide how far short of its reach to the unit's side a candidate may stand; 0 for
+ *     no clip
+ * @param loadFirstHit true when the unit winds up its load before its first hit and again after
+ *     each, rather than having it credited
  * @param spawnCharacter the row of the units its spawner makes while it lives, or null for none
  * @param spawnNumber how many children one wave of its spawner makes
  * @param spawnIntervalMs the time between the children of a wave; 0 to make a wave at once
@@ -225,6 +231,9 @@ public record UnitData(
     String onStartingAttackAction,
     String onAttackAction,
     int minimumRange,
+    int sightClip,
+    int sightClipSide,
+    boolean loadFirstHit,
     String spawnCharacter,
     int spawnNumber,
     int spawnIntervalMs,
