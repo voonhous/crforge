@@ -137,6 +137,47 @@ class BattleHoveringTest {
 
   @Test
   @DisplayName(
+      "a row without the range gate holds its countdown while the unit touches its reference within"
+          + " the reference's radius plus half its own sight range, and counts down beyond it")
+  void aRowWithoutTheRangeGateIsHeldByTheTouchTest() {
+    // A Ghost's sight range is 5500 and a Knight's radius 500: the touch bound is 3250.
+    assertThat(visitsUntilInvisible(false, 3000)).as("touching").isEqualTo(-1);
+    assertThat(visitsUntilInvisible(false, 3250)).as("at the bound").isEqualTo(-1);
+    assertThat(visitsUntilInvisible(false, 3500)).as("beyond the touch").isEqualTo(40);
+    assertThat(visitsUntilInvisible(true, 3000))
+        .as("with the range gate, out of its attack range")
+        .isEqualTo(40);
+  }
+
+  /**
+   * The visits a still Ghost that starts without its buff takes to become invisible with a still
+   * enemy Knight as its reference the given distance ahead, or -1 when it is still visible after
+   * 200.
+   */
+  private static int visitsUntilInvisible(boolean useAttackRange, int distance) {
+    Standard1v1Battle match = passiveTowers();
+    UnitData ghostRow =
+        GameData.unit("Ghost").toBuilder()
+            .speed(0)
+            .startWithBuffWhenNotAttacking(false)
+            .buffWhenNotAttackingUseAttackRange(useAttackRange)
+            .build();
+    UnitData knightRow =
+        GameData.unit("Knight").toBuilder().speed(0).attacksGround(false).attacksAir(false).build();
+    CharacterEntity ghost = match.deploy(0, ghostRow, LEVEL, 0, 9000, 10000, "Ghost");
+    CharacterEntity knight = match.deploy(0, knightRow, LEVEL, 1, 9000, 10000 + distance, "Knight");
+    for (int visits = 1; visits <= 200; visits++) {
+      match.getBattle().step();
+      if (ghost.invisible()) {
+        return visits;
+      }
+    }
+    assertThat(ghost.getTargeting().getReference()).isSameAs(knight.getTargetView());
+    return -1;
+  }
+
+  @Test
+  @DisplayName(
       "a Fireball's push leaves a hovering Ghost on the river, where it moves a unit that does not"
           + " hover off the water")
   void aPushLeavesAHoveringUnitOnTheWater() {

@@ -156,14 +156,16 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " in the state visit of a hit's tick, back after its row's time once its attack"
             + " ends - and its answer to an asker while invisible, held by"
             + " ghost_river_wizard_tower; a troop's area object as a card play deploys it and an"
-            + " area effect after each direct hit, held by battle_healer_knights. Held by"
-            + " no run: a spawner's start time other than 0, the not-attacking countdown held by a"
-            + " reference within the attack range outside the attacking state, a top-side"
+            + " area effect after each direct hit, held by battle_healer_knights. A buff while not"
+            + " attacking whose row has no range gate, taken off in the state visit of the hit that"
+            + " kills the unit and kept by a unit an area kills, held by bush_princess_tower and"
+            + " bush_valkyrie_knight. Held by no run: a spawner's start time other than 0, the"
+            + " not-attacking countdown held outside the attacking state by a reference within the"
+            + " attack range or by the touch test, a top-side"
             + " building's in-front point, a Kamikaze end after a cancelled hit, and the facing a"
             + " death-spawned child takes with a deploy time. Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
-            + " hit points, a buff while not attacking without its range gate, direct"
-            + " paths, a completed charge's action, a chained dash, a dash's contact damage,"
+            + " hit points, direct paths, a completed charge's action, a chained dash, a dash's contact damage,"
             + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
             + " deploy for its children, a Kamikaze drain over a time), a charge on a unit that"
@@ -538,8 +540,12 @@ public class CharacterEntity extends WorldEntity {
     }
     TargetingState t = getTargeting();
     TargetView reference = isActive(TARGETING_SLOT) ? t.getReference() : null;
-    // The range gate is the row's: a row without it is refused as it is created.
-    if (reference != null && RangeTest.referenceInRange(t, reference, 0)) {
+    // A row with the range gate holds the countdown while the reference is within its attack
+    // range; a row without it, while the unit touches the reference within half its sight range.
+    if (reference != null
+        && (getData().buffWhenNotAttackingUseAttackRange()
+            ? RangeTest.referenceInRange(t, reference, 0)
+            : RangeTest.touch(t, reference))) {
       return;
     }
     if (getBuffs().carries(buff)) {

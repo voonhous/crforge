@@ -505,8 +505,7 @@ class BattleRecordsTest {
   void everyUnreadColumnIsListed() {
     BattleRecords records = GameData.records();
     // Read by nothing: the Electro Giant's reflect, the Fisherman's special and the Fisherman's
-    // hook's drag. The Suspicious Bush's invisibility when it does not attack is refused: without
-    // its range gate a touch test holds its countdown.
+    // hook's drag.
     assertThat(records.unit("ElectroGiant").unmodelledColumns())
         .containsExactly(
             "ReflectAttackCrownTowerDamage",
@@ -516,8 +515,6 @@ class BattleRecordsTest {
             "ReflectedAttackRadius");
     assertThat(records.unit("Fisherman").unmodelledColumns())
         .containsExactly("ProjectileSpecial", "SpecialLoadTime", "SpecialMinRange", "SpecialRange");
-    assertThat(records.unit("SuspiciousBush").unmodelledColumns())
-        .containsExactly("BuffWhenNotAttacking");
     assertThat(records.projectile("FishermanProjectile").unmodelledColumns())
         .containsExactly("DragBackAsAttractor", "DragBackSpeed", "DragMargin", "DragSelfSpeed");
     assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns())
@@ -589,9 +586,17 @@ class BattleRecordsTest {
     assertThat(healer.unmodelledColumns()).isEmpty();
     assertThat(records.unit("Knight").areaEffectOnHit()).isNull();
 
-    // A buff while not attacking without its range gate is refused.
-    for (String unit : List.of("SuperKnight", "Hunter_crazy_2", "RageBarbarianEvoGhost")) {
-      assertThat(records.unit(unit).unmodelledColumns()).as(unit).contains("BuffWhenNotAttacking");
+    // A buff while not attacking without its range gate is read: a touch test holds its countdown.
+    UnitData bush = records.unit("SuspiciousBush");
+    assertThat(bush.buffWhenNotAttacking()).isEqualTo("BushInvisibility");
+    assertThat(bush.buffWhenNotAttackingUseAttackRange()).isFalse();
+    assertThat(bush.startWithBuffWhenNotAttacking()).isTrue();
+    assertThat(bush.unmodelledColumns()).isEmpty();
+    for (String unit :
+        List.of("SuspiciousBush", "SuperKnight", "Hunter_crazy_2", "RageBarbarianEvoGhost")) {
+      assertThat(records.unit(unit).unmodelledColumns())
+          .as(unit)
+          .doesNotContain("BuffWhenNotAttacking");
     }
   }
 
