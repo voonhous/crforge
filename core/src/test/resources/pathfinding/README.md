@@ -319,14 +319,13 @@ The towers fight at level 11, and each run places its unit for the bottom side o
 
 `BattleActionSpawnRunTest` plays them with the spawn runs.
 
-## `golden/bandit_knight.json` and `golden/mega_knight_group.json` - the dash
+## `golden/bandit_knight.json` - the dash
 
-The towers fight at level 11. Each run places its dasher for the bottom side on tick 0 and red Knights ahead of it, and lists, under `jump_charge_dash`, every dash started - its reference, where it stood, the point it aimed at, its route, its stop-in-range byte, its dash time and its wind-up - every state its movement pass asked for, and every landing with its hit, its landing hold and its state.
+The towers fight at level 11. The run places its dasher for the bottom side on tick 0 and red Knights ahead of it, and lists, under `jump_charge_dash`, every dash started - its reference, where it stood, the point it aimed at, its route, its stop-in-range byte, its dash time and its wind-up - every state its movement pass asked for, and every landing with its hit, its landing hold and its state.
 
 - `bandit_knight`: a Bandit at (3500, 10000) and a Knight at (3500, 18000). The Knight is inside the Bandit's ring from tick 30; the wind-up of 800 holds the Bandit still from 31, and on 46 it dashes from (3665, 10965) toward the Knight at (3687, 16486), its route the single node 1087, short of the Knight by both radii. It flies 500 a visit and, after the second step of 53, at (3727, 14465), finds the Knight in range: it lands 389 on it, walks on at once, and its reset attack hits for 194 on 72, 92 and every 20 ticks. The Knight first hits it on 62; it dies on 158, and the reference its death drops asks for a resume. The reference was regenerated after its generator was corrected to test the range after each step at the position that step left the Bandit, as the game does; it first stopped the Bandit a tick later.
-- `mega_knight_group`: a Mega Knight at (3500, 9000) and three Knights at (3500, 17500), (2700, 18000) and (4300, 18000). The wind-up of 900 holds it from 43; on 60 it dashes toward Knight_0 on node 979 for its constant 800 ms, 250 a visit, its height following the profile up to 3000 and back. It lands on 76 at (3750, 13750): 537 on each Knight over its radius of 2200, each pushed 1000 away, and a Knight's hit on it the same tick, since it has no immunity. Its landing hold keeps it standing until it walks on from 80. The run lists an area's pushes after all of its hits, where the battle pushes each victim right after its own; the test orders them the same way.
 
-`BattleActionSpawnRunTest` plays `bandit_knight` with the spawn runs. It holds `mega_knight_group` only to its refusal: the battle refuses the Mega Knight, whose push as it deploys (SpawnPushback 1000 over SpawnPushbackRadius 1000) is not modelled, and the reference leaves that push out; nothing stands within it there, but the push is not traced. `BattleDashTest` holds the Mega Knight's dash, landing and hold with those columns taken off its row.
+`BattleActionSpawnRunTest` plays `bandit_knight` with the spawn runs. A Mega Knight run, `mega_knight_group`, was withdrawn with its reference: its push as it deploys (SpawnPushback 1000 over SpawnPushbackRadius 1000) was never composed, and the battle refuses the Mega Knight. `BattleDashTest` holds the Mega Knight's dash, landing and hold with those columns taken off its row.
 
 ## `golden/ram_rider_tower.json` - the Ram Rider
 
@@ -501,6 +500,12 @@ The towers fight at level 11. Each attacker's row makes a Hittime sequence from 
 - `mighty_miner_knight_tower`: side 0 plays a Mighty Miner at (3500, 13000), placed at (3499, 13500), and side 1 a Knight at (3500, 17500). The Miner locks on the Knight on 20 and stops to attack it on 37, 500 inside its reach; it hits from 44: 40 four times, 204 from 76, 409 from 116, and the Knight dies on 124. It locks on PrincessTower_1_1 on 130, reaches it on 271 and hits it from 278, 40, 204 and 409 again, until the tower falls on 382; it locks on KingTower_1_0 on 388 and dies to the towers on 465. It is played without its ability, whose lane switch the battle refuses.
 
 `BattleActionSpawnRunTest` plays all three with the spawn runs.
+
+## `golden/hog_clip_cannon.json` - a sight clip
+
+The towers fight at level 11. A Hog Rider is placed for side 0 at (3500, 13500), and a side-1 Cannon is placed directly behind it at (3500, 6000). The Cannon is 7,500 down the lane: inside the Hog Rider's sight, whose reach to it is 600 + 9500 = 10,100, but more than 10,100 less its SightClip of 4000 behind it, so the selector skips it. The Hog Rider's first targeting visit, on 20, takes PrincessTower_1_1, 12,000 away within its reach of 12,500; the tower locks on it on 45 and kills it on 304, and no record of the Hog Rider names the Cannon. Side 0's towers kill the Cannon on 112. With the clip of 1000 every unit carried before, the Hog Rider turns back to the Cannon on 20.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
 
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
