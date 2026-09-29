@@ -104,6 +104,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " on the character at the first attack step, at each hit and on a new reference in"
             + " range, running in its phase-2 pass, and the attack sequence entry at the index"
             + " launching in place of the row's projectile, held by the evolved Archer's runs; a"
+            + " continuous-damage attacker's ramp, the index the window its attack timer has"
+            + " reached on every attack step, reset for a new reference or none, as a stun drops"
+            + " it, and as its reference's shield breaks, kept through its reference's death, and"
+            + " its range 500 less while it walks, to itself and to the rest of the battle, held"
+            + " by inferno_tower_giant_knight, inferno_dragon_zap and mighty_miner_knight_tower; a"
             + " spawned child without a speed standing, held by area_effect_death; a death spawn"
             + " child put on the dying unit and flown back to its ring point in steps of 250, held"
             + " by golem_death_pushback; and an object without hit points running its death slot"
@@ -158,8 +163,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " deploy for its children, a Kamikaze drain over a time), a charge on a unit that"
             + " fires, a Kamikaze hit's end on a unit carrying a death-spawn buff or a shield, a"
             + " lifetime's death"
-            + " with a death action, an attack sequence whose mode moves the index itself or whose"
-            + " entries set more than a projectile and a damage, an action run as it attacks, and"
+            + " with a death action, an attack sequence whose mode moves the index itself other"
+            + " than a continuous-damage attacker's or whose entries set more than a projectile, a"
+            + " damage and such an attacker's windows, a morph of a unit such an attacker"
+            + " references, the lane switch of a champion's ability, an action run as it attacks, and"
             + " a row that attaches riders placed directly, spawned or waiting its turn, a buff on a"
             + " parent or a rider, a rider whose parent may not attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
@@ -725,18 +732,20 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
-   * mode moves the index by itself, an entry that sets more than its damage and projectile, an
+   * mode moves the index by itself other than a continuous-damage attacker's, an entry that sets
+   * more than its damage and projectile (and, for a continuous-damage attacker, its window), an
    * entry without a projectile on a unit that fires, and an action run as the character attacks.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
+    boolean windowed = sequence.mode() == AttackSequence.MODE_HITTIME;
     String refused = null;
-    if (sequence.mode() != AttackSequence.MODE_NONE) {
+    if (sequence.mode() != AttackSequence.MODE_NONE && !windowed) {
       refused = "an attack sequence whose mode " + sequence.mode() + " moves the index itself";
     } else if (sequence.replacesAttack()) {
       for (int index = 0; index < sequence.order().size(); index++) {
         AttackSequence.Entry entry = sequence.entryAt(index);
-        if (entry.overridesMore()) {
+        if (windowed ? entry.overridesMoreThanItsWindow() : entry.overridesMore()) {
           refused = "an attack sequence entry that sets more than its damage and projectile";
         } else if (entry.projectile() == null && data.hasProjectile()) {
           refused = "an attack sequence entry without a projectile on a unit that fires";

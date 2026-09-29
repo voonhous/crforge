@@ -345,6 +345,8 @@ public final class BattleRecords {
           "TargettedDamageEffect1",
           "TargettedDamageEffect2",
           "TargettedDamageEffect3",
+          "DamageLevelTransitionEffect12",
+          "DamageLevelTransitionEffect23",
           "VisualHitSpeed",
           "VisualHitSpeed2",
           "VisualHitSpeed3",

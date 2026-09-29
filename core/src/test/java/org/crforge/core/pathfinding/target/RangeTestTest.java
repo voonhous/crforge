@@ -141,15 +141,18 @@ class RangeTestTest {
   }
 
   @Test
-  @DisplayName("the range a walking unit advertises keeps the 500 units it gives up for itself")
-  void theAdvertisedRangeDoesNotWalkCloser() {
+  @DisplayName("the range a walking unit advertises gives up the same 500 units it does")
+  void theAdvertisedRangeWalksCloser() {
     knight.setConfig(knight.getConfig().toBuilder().attackSequenceMode(1).build());
     knight.getOwner().setState(1);
 
     assertThat(AttackRange.attackRange(knight)).as("what the unit stops at").isEqualTo(1200);
     assertThat(AttackRange.attackRangeWithRadius(knight))
         .as("what the unit advertises")
-        .isEqualTo(1700);
+        .isEqualTo(1200);
+
+    knight.getOwner().setState(2);
+    assertThat(AttackRange.attackRangeWithRadius(knight)).isEqualTo(1700);
   }
 
   @Test

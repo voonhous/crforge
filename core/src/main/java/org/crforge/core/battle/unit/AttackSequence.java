@@ -20,6 +20,12 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
   /** The mode in which only an action moves the index. */
   public static final int MODE_NONE = 0;
 
+  /**
+   * The mode of a continuous-damage attacker: the attack timer carries a ramp, and every attack
+   * step stores the window its timer has reached into the index.
+   */
+  public static final int MODE_HITTIME = 3;
+
   /** The sequence of a row without one: one element, no entry read. */
   public static final AttackSequence NONE = new AttackSequence(MODE_NONE, List.of(0), List.of());
 
@@ -58,8 +64,15 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
 
     /** True when the entry sets anything but its damage and projectile. */
     public boolean overridesMore() {
-      return variableDamageTime != 0
-          || hitSpeedMultiplier != 100
+      return variableDamageTime != 0 || overridesMoreThanItsWindow();
+    }
+
+    /**
+     * True when the entry sets anything but its damage, its projectile and its variable damage
+     * time, the window a timer-driven mode walks.
+     */
+    public boolean overridesMoreThanItsWindow() {
+      return hitSpeedMultiplier != 100
           || customRange != -1
           || customSightRange != -1
           || customMinimumRange != -1
@@ -75,6 +88,22 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
    */
   public boolean replacesAttack() {
     return order.size() >= 2;
+  }
+
+  /**
+   * The window walk of an attack timer: the first index in the order whose window the timer has not
+   * used up, taking each entry's variable damage time off it in turn, else the order's last index.
+   * The timer-driven modes store it into the index on every attack step.
+   */
+  public int windowAt(int attackTimerMs) {
+    int left = attackTimerMs;
+    for (int index = 0; index < order.size(); index++) {
+      left -= entryAt(index).variableDamageTime();
+      if (left < 0) {
+        return index;
+      }
+    }
+    return order.size() - 1;
   }
 
   /** The entry the order names at an index. */

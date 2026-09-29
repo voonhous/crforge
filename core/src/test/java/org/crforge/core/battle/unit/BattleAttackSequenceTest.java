@@ -77,13 +77,13 @@ class BattleAttackSequenceTest {
   @DisplayName("a sequence the runs do not hold is refused as the unit is made")
   void unheldSequencesAreRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    // MightyMiner's variable damage makes a Hittime sequence, whose index moves by itself.
+    // The Princess_crazy_1's StaticLoop moves its index on every hit by itself.
     assertThatThrownBy(
             () ->
                 new CharacterEntity(
-                    match.getWorld(), GameData.unit("MightyMiner"), "M", 0, 3500, 10000, 11))
+                    match.getWorld(), GameData.unit("Princess_crazy_1"), "P", 0, 3500, 10000, 11))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("attack sequence");
+        .hasMessageContaining("mode 1 moves the index itself");
   }
 
   private static int evaluate(String text, BattleExpressionEnvironment environment) {

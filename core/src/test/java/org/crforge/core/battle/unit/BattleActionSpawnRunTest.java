@@ -181,6 +181,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * ZapFreeze, which a later hit refreshes; it goes on to stun a princess tower between its arrows.
  * {@code mini_sparkys_knight} plays Mini Sparkys at a Knight, each hit one target with the same
  * buff, so the Knight stays stunned until 500 ms past the last of the three.
+ *
+ * <p>{@code inferno_tower_giant_knight}, {@code inferno_dragon_zap} and {@code
+ * mighty_miner_knight_tower} play continuous-damage attackers, whose hits ramp through the windows
+ * their attack timer walks: an Inferno Tower that keeps its ramp through a Giant's death and starts
+ * over on a Knight, an Inferno Dragon whose ramp a Zap resets as its stun drops the target, and a
+ * Mighty Miner that walks 500 closer than its range before it stops.
  */
 class BattleActionSpawnRunTest {
 
@@ -281,7 +287,10 @@ class BattleActionSpawnRunTest {
         "miner_princess",
         "goblin_drill_princess",
         "electro_wizard_tower_defence",
-        "mini_sparkys_knight"
+        "mini_sparkys_knight",
+        "inferno_tower_giant_knight",
+        "inferno_dragon_zap",
+        "mighty_miner_knight_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

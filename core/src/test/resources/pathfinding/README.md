@@ -492,6 +492,16 @@ The towers fight at level 11.
 
 `BattleActionSpawnRunTest` plays both with the spawn runs, and holds every buff applied, refreshed and removed.
 
+## `golden/inferno_tower_giant_knight.json`, `golden/inferno_dragon_zap.json` and `golden/mighty_miner_knight_tower.json` - continuous damage
+
+The towers fight at level 11. Each attacker's row makes a Hittime sequence from its numbered VariableDamage columns: three windows, the first two 2000 ms each, whose damage the hit takes from the window its attack timer has reached.
+
+- `inferno_tower_giant_knight`: side 0 plays an Inferno Tower at (3500, 10000), placed at (3500, 10500), and side 1 a Giant at (3500, 17500) on 0 and a Knight there on 120. The tower locks on the Giant on 20 and hits it from 27 every 8 ticks: 43 four times, 158 from 59, 847 from 99. The Giant dies on 123 with the tower's ramp in its last window; the ramp is kept, and the target-lost countdown holds the tower's selection until it locks on the Knight, in range, on 129. The first attack step walks the reset timer back to the first window: 43 again from 146, 158 from 178, and 847 on 218 kills the Knight. On 224 the tower takes PrincessTower_1_1 as its default reference, out of range, and its decay kills it on 620.
+- `inferno_dragon_zap`: side 0 plays an Inferno Dragon at (3500, 14500). It takes PrincessTower_1_1 on 20 and flies at it, 500 closer than its range while it moves, and hits it from 138: 35 four times, 120 from 170. On 190 side 1's Zap at (3500, 21500) deals it 192, and its stun drops the tower and resets the ramp at the combat gate; the dragon's combat is off from 190 and back on 200, it locks on the tower again on 201, and its hits start over at 35 on 219. The tower's arrows kill it on 236.
+- `mighty_miner_knight_tower`: side 0 plays a Mighty Miner at (3500, 13000), placed at (3499, 13500), and side 1 a Knight at (3500, 17500). The Miner locks on the Knight on 20 and stops to attack it on 37, 500 inside its reach; it hits from 44: 40 four times, 204 from 76, 409 from 116, and the Knight dies on 124. It locks on PrincessTower_1_1 on 130, reaches it on 271 and hits it from 278, 40, 204 and 409 again, until the tower falls on 382; it locks on KingTower_1_0 on 388 and dies to the towers on 465. It is played without its ability, whose lane switch the battle refuses.
+
+`BattleActionSpawnRunTest` plays all three with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
