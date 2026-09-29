@@ -49,6 +49,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param spawnCharacter the character the impact spawns around the impact point, or null
  * @param spawnCharacterCount how many of it: at least one when the row names one, else 0
  * @param spawnCharacterDeployTimeMs the deploy time the impact gives its children; 0 for none
+ * @param spawnConstPriority true when the impact gives its k-th child a fixed priority, (20k)^2 off
+ *     its squared distance as a candidate
  * @param radiusY the half height of the area of the impact, which makes it a box; 0 for a circle
  * @param projectileRadiusY the half height of a flying body's box; 0 for a circle
  * @param projectileStartExtraRadius how much wider a flying body's first pass is, at its
@@ -120,6 +122,7 @@ public record ProjectileData(
     String spawnCharacter,
     int spawnCharacterCount,
     int spawnCharacterDeployTimeMs,
+    boolean spawnConstPriority,
     int radiusY,
     int projectileRadiusY,
     int projectileStartExtraRadius,

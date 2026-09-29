@@ -177,8 +177,9 @@ public class GridEntity {
 
   /**
    * Amount by which the target selector lowers this candidate's squared distance before it ranks
-   * the candidate, in squared game units. Ordinary entities answer zero. Its writers are not
-   * established.
+   * the candidate, in squared game units. Ordinary entities answer zero. The battle sets it only
+   * where a projectile's impact fixes its children's priority, as the Goblin Barrel's does: the
+   * k-th child it makes answers (20k)^2. An action spawn's fixed priority is refused.
    */
   private int squaredDistanceReduction;
 }

@@ -521,8 +521,8 @@ class BattleRecordsTest {
         .containsExactly("DragBackAsAttractor", "DragBackSpeed", "DragMargin", "DragSelfSpeed");
     assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns())
         .containsExactly("OnHitAction");
-    // Carried: art and effects, inert columns (a Monk's later entries, a collector's ManaOnDeath),
-    // and pending ones (a Hog Rider's sight clips, a Sparky's LoadFirstHit, a tower's turret).
+    // Carried: art and effects, and inert columns (a Monk's later entries, a collector's
+    // ManaOnDeath, a Bat's filter and attack dash time, a tower's turret and attached character).
     for (String unit :
         List.of(
             "Knight",
@@ -537,5 +537,37 @@ class BattleRecordsTest {
     }
     assertThat(records.projectile("ArrowsSpell").unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Freeze").unmodelledColumns()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit carries its sight clips as the loader leaves them - 1000 behind for a row without"
+          + " one, none for a building - and its LoadFirstHit")
+  void aUnitCarriesItsSightClips() {
+    BattleRecords records = GameData.records();
+    UnitData hog = records.unit("HogRider");
+    assertThat(hog.sightClip()).isEqualTo(4000);
+    assertThat(hog.sightClipSide()).isEqualTo(4000);
+    UnitData golem = records.unit("Golem");
+    assertThat(golem.sightClip()).isEqualTo(2000);
+    assertThat(golem.sightClipSide()).isEqualTo(1900);
+    UnitData balloon = records.unit("Balloon");
+    assertThat(balloon.sightClip()).as("the row leaves it 0").isEqualTo(1000);
+    assertThat(balloon.sightClipSide()).isEqualTo(2000);
+    UnitData knight = records.unit("Knight");
+    assertThat(knight.sightClip()).isEqualTo(1000);
+    assertThat(knight.sightClipSide()).isZero();
+    assertThat(records.unit("Cannon").sightClip()).as("a building").isZero();
+
+    assertThat(records.unit("ZapMachine").loadFirstHit()).isTrue();
+    assertThat(knight.loadFirstHit()).isFalse();
+  }
+
+  @Test
+  @DisplayName("a projectile carries whether its impact fixes its children's priority")
+  void aProjectileCarriesItsSpawnPriority() {
+    BattleRecords records = GameData.records();
+    assertThat(records.projectile("GoblinBarrelSpell").spawnConstPriority()).isTrue();
+    assertThat(records.projectile("ArrowsSpell").spawnConstPriority()).isFalse();
   }
 }
