@@ -279,9 +279,13 @@ public class Standard1v1Battle {
               unit.lane(),
               waits ? unit.start().waitMs() : -1);
       // The construction sets the unit deploying before it queues it, and entering that state
-      // makes the riders of a row that attaches its children: they are queued first.
+      // makes the riders of a row that attaches its children: they are queued first. It makes a
+      // row's area object after them, updated at once, while the unit is not yet in the battle.
       if (unit.unit().spawnAttach()) {
         world.attachRiders(character);
+      }
+      if (!waits && unit.unit().spawnAreaObject() != null) {
+        world.spawnAreaObject(character);
       }
       target.getHolder().add(character);
       // The opening cleanup that admits it starts it, deploying or still waiting its turn: its

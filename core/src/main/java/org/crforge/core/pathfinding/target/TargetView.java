@@ -34,20 +34,42 @@ public class TargetView {
   private boolean hitPointsPresent = true;
 
   /**
-   * The answer the entity gives when asked whether it accepts this attacker. It is the validator's
-   * last question and is not documented further; every ordinary entity answers yes.
+   * The entity's own answer to whether an asker may select, hit or buff it: the validator's last
+   * question, asked with the asker and with the flag of an area's query.
    */
-  private boolean acceptsAttacker = true;
+  @FunctionalInterface
+  public interface Acceptance {
+
+    /**
+     * @param asker the entity that asks: a character or tower (type 5), a projectile (type 4) or an
+     *     area effect (type 3); null for none
+     * @param areaQuery true when an area's damage asks about one of its victims
+     * @return true when the asker may take the entity
+     */
+    boolean accepts(GridEntity asker, boolean areaQuery);
+  }
+
+  /** The entity's answer to an asker; every ordinary entity accepts every asker. */
+  private Acceptance acceptance = (asker, areaQuery) -> true;
 
   /**
-   * The same answer, asked the way the validator asks it: with the acceptance flag of the call it
-   * is deciding. No entity varies its answer with the flag today and what would is not documented,
-   * so the flag is carried to the answer and the standing answer is given.
+   * Whether the entity accepts an asker, asked the way the validator asks it: with the asker and
+   * the acceptance flag of the call it is deciding, which an area's damage sets.
    *
+   * @param asker the entity that asks, or null for none
    * @param acceptanceFlag the flag the validator was called with
    */
-  public boolean acceptsAttacker(boolean acceptanceFlag) {
-    return acceptsAttacker;
+  public boolean acceptsAttacker(GridEntity asker, boolean acceptanceFlag) {
+    return acceptance.accepts(asker, acceptanceFlag);
+  }
+
+  /**
+   * Gives the entity one answer for every asker.
+   *
+   * @param accepts true to accept every asker, false to refuse every one
+   */
+  public void setAcceptsAttacker(boolean accepts) {
+    this.acceptance = (asker, areaQuery) -> accepts;
   }
 
   /**

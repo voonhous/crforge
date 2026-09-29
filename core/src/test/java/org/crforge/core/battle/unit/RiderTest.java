@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.move.ContactRule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,7 +50,7 @@ class RiderTest {
     CharacterEntity rider = giant.riders().get(0);
 
     assertThat(rider.untouchable()).isTrue();
-    assertThat(rider.getTargetView().acceptsAttacker(true)).isFalse();
+    assertThat(rider.getTargetView().acceptsAttacker(new GridEntity(), false)).isFalse();
     assertThat(ContactRule.collides(rider.getView())).isZero();
     assertThat(rider.filterSubject().attachedChild()).isTrue();
     assertThat(giant.untouchable()).isFalse();

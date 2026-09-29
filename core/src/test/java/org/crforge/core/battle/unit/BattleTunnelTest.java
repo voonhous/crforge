@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +40,7 @@ class BattleTunnelTest {
               public void afterPrePass(int tick, List<WorldEntity> present) {
                 for (WorldEntity entity : present) {
                   if (entity.name().equals("Miner_0")) {
-                    accepts.add(entity.getTargetView().acceptsAttacker(true));
+                    accepts.add(entity.getTargetView().acceptsAttacker(new GridEntity(), false));
                   }
                 }
               }
@@ -60,7 +61,9 @@ class BattleTunnelTest {
 
     assertThat(miner.getView().getState()).isEqualTo(GridEntityState.SPAWN_PATHFIND);
     assertThat(miner.hidden()).isTrue();
-    assertThat(miner.getTargetView().acceptsAttacker(true)).as("no attacker takes it").isFalse();
+    assertThat(miner.getTargetView().acceptsAttacker(new GridEntity(), false))
+        .as("no attacker takes it")
+        .isFalse();
     // Its registration visit took the first step off the king at (9000, 3000).
     assertThat(miner.getView().getY()).isGreaterThan(3000);
 
@@ -69,7 +72,7 @@ class BattleTunnelTest {
     }
     assertThat(miner.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
     assertThat(miner.hidden()).isFalse();
-    assertThat(miner.getTargetView().acceptsAttacker(true)).isTrue();
+    assertThat(miner.getTargetView().acceptsAttacker(new GridEntity(), false)).isTrue();
     assertThat(miner.getView().getX()).as("on the placed point").isEqualTo(3500);
   }
 

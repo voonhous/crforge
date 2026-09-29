@@ -75,6 +75,7 @@ public final class DirectHit {
     int directionY = t.getLastReferenceY() - t.getOwner().getY();
     int dealt = target.isCrownTowerTarget() ? crownTowerDamage : damage;
     queries.dealDamage(target, dealt, hitId, directionX, directionY);
+    queries.directHitDealt();
   }
 
   /**

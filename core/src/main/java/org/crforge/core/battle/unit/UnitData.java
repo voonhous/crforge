@@ -162,6 +162,18 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param ignoreTargetsWithBuff the buff row whose carriers it passes over as targets, or null
  * @param deprioritizeTargetsWithBuff true when it ranks such carriers lower instead of passing over
  *     them
+ * @param hovering true for a unit that hovers: its route may cross water, at the water cost, and a
+ *     push never moves it off water
+ * @param buffWhenNotAttacking the buff row it takes while it is not attacking, or null for none
+ * @param buffWhenNotAttackingTimeMs how long after its attack ends, with no reference in its attack
+ *     range, it takes that buff again
+ * @param buffWhenNotAttackingUseAttackRange true when a reference within its attack range holds
+ *     that countdown
+ * @param startWithBuffWhenNotAttacking true when it takes that buff as it is created; the loader
+ *     makes it true for a row that leaves it empty
+ * @param allowAreaDamageWhenInvisible true when an area's damage reaches it while it is invisible
+ * @param areaEffectOnHit the area effect each of its direct hits makes where it stands, or null for
+ *     none
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -280,6 +292,13 @@ public record UnitData(
     boolean targetOnlyTroops,
     String ignoreTargetsWithBuff,
     boolean deprioritizeTargetsWithBuff,
+    boolean hovering,
+    String buffWhenNotAttacking,
+    int buffWhenNotAttackingTimeMs,
+    boolean buffWhenNotAttackingUseAttackRange,
+    boolean startWithBuffWhenNotAttacking,
+    boolean allowAreaDamageWhenInvisible,
+    String areaEffectOnHit,
     List<String> unmodelledColumns) {
 
   public UnitData {

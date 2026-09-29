@@ -143,20 +143,26 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " ring, its start short of its reference by both radii, its flight at its jump speed"
             + " with its stop in range or its constant time and height, its landing hit on its"
             + " reference or over its radius with a push, its landing hold, its immunity while it"
-            + " dashes and after, and the resume when it loses its reference, held by bandit_knight"
-            + " and mega_knight_group; a card play's rider that targets troops only, its buff"
+            + " dashes and after, and the resume when it loses its reference, held by"
+            + " bandit_knight; a card play's rider that targets troops only, its buff"
             + " priority fed, held by ram_rider_tower; an elixir collector's payout to its king,"
             + " held at the cap and paid once the king can take it, and an Elixir Golem's death"
             + " paying the killing side, held by match_elixir_sources (the carry a payout leaves"
             + " when the spawn step does not divide the generation time is held by no run); the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. The Kamikaze hit's end, the unit's kill of itself after its hit, is"
-            + " held by the Battle Ram's, Fire Spirits', Wall Breakers' and Ice Spirits' runs. Held by"
-            + " no run: a spawner's start time other than 0, a top-side"
+            + " held by the Battle Ram's, Fire Spirits', Wall Breakers' and Ice Spirits' runs."
+            + " Hovering over the river, the buff while not attacking - taken at its creation, off"
+            + " in the state visit of a hit's tick, back after its row's time once its attack"
+            + " ends - and its answer to an asker while invisible, held by"
+            + " ghost_river_wizard_tower; a troop's area object as a card play deploys it and an"
+            + " area effect after each direct hit, held by battle_healer_knights. Held by"
+            + " no run: a spawner's start time other than 0, the not-attacking countdown held by a"
+            + " reference within the attack range outside the attacking state, a top-side"
             + " building's in-front point, a Kamikaze end after a cancelled hit, and the facing a"
             + " death-spawned child takes with a deploy time. Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
-            + " hit points, hovering, direct"
+            + " hit points, a buff while not attacking without its range gate, direct"
             + " paths, a completed charge's action, a chained dash, a dash's contact damage,"
             + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
@@ -249,6 +255,22 @@ public class CharacterEntity extends WorldEntity {
 
   /** True when its charge was complete at the end of its last movement visit. */
   private boolean charged;
+
+  /**
+   * The countdown to its buff while it is not attacking, in milliseconds: one tick from each hit,
+   * its row's time from the end of each attack, counted down by the state visit while it neither
+   * attacks nor has a reference in its attack range.
+   */
+  @Getter private int notAttackingTimerMs;
+
+  /** Milliseconds its buff while it is not attacking lasts when it is created with it. */
+  private static final int START_BUFF_TIME_MS = 100_000;
+
+  /** Milliseconds its buff while it is not attacking lasts when its countdown gives it. */
+  private static final int NOT_ATTACKING_BUFF_TIME_MS = 180_000;
+
+  /** Milliseconds its countdown is set to by a hit, one tick. */
+  private static final int HIT_NOT_ATTACKING_MS = 50;
 
   /**
    * The character's answers to its movement pass's requests: a state change goes to its state
@@ -385,14 +407,15 @@ public class CharacterEntity extends WorldEntity {
             new StateTimers(),
             // The movement config's flying height is read only for direct paths, which are
             // refused; its stop and wait make the follower walk in bursts, its charge range
-            // builds the charge, its jump leaps the river and gives a dash its height, and its
-            // constant dash time times a dash.
+            // builds the charge, its jump leaps the river and gives a dash its height, its
+            // constant dash time times a dash, and hovering lets its route cross water.
             MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs())
                 .withCharge(data.chargeRange())
                 .withJump(data.jumpEnabled(), data.jumpHeight())
                 .withDashConstantTime(data.dashConstantTimeMs())
                 .withSpawnPathfindSpeed(data.spawnPathfindSpeed())
-                .withEntersWaterWhileSpawnPathfinding(data.spawnPathfindMorph() != null),
+                .withEntersWaterWhileSpawnPathfinding(data.spawnPathfindMorph() != null)
+                .withHovering(data.hovering()),
             SpeedConfig.forGroundUnit(data.speed())
                 .withChargeMultiplier(data.chargeSpeedMultiplier())
                 .withJumpSpeed(data.jumpSpeed())
@@ -422,9 +445,15 @@ public class CharacterEntity extends WorldEntity {
               this::stateTailGate));
     }
     // A row with an area object makes it each time it enters the deploying state through its
-    // setter.
+    // setter, a troop's as a building's.
     if (data.spawnAreaObject() != null) {
       setter.setDeployingEntry(() -> world.spawnAreaObject(this));
+    }
+    // Who may select, hit or buff it is its own answer, asked with the asker.
+    getTargetView().setAcceptance(this::accepts);
+    // Leaving the attacking state starts the countdown to a row's buff while it is not attacking.
+    if (data.buffWhenNotAttacking() != null) {
+      setter.setAttackingExit(() -> notAttackingTimerMs = data.buffWhenNotAttackingTimeMs());
     }
     // The movement component starts tracking a charge for a row with a charge range.
     if (data.chargeRange() != 0) {
@@ -463,6 +492,75 @@ public class CharacterEntity extends WorldEntity {
     }
     if (getHitPoints() != null) {
       attach(new HitPointsComponent());
+    }
+    startNotAttacking();
+  }
+
+  /**
+   * The level setter's tail for a row with a buff while it is not attacking: the buff at once, for
+   * 100,000 ms, from the character itself at its level and for its side, when the row starts with
+   * it; otherwise the countdown loaded with the row's time.
+   */
+  private void startNotAttacking() {
+    UnitData data = getData();
+    if (data.buffWhenNotAttacking() == null) {
+      return;
+    }
+    if (data.startWithBuffWhenNotAttacking()) {
+      world.notAttackingBuff(this, START_BUFF_TIME_MS);
+    } else {
+      notAttackingTimerMs = data.buffWhenNotAttackingTimeMs();
+    }
+  }
+
+  /**
+   * The state visit's section for a row with a buff while it is not attacking. While it attacks, a
+   * countdown a hit set is counted down and at 0 the buff's instances are taken off: a hitting unit
+   * loses the buff in the state visit of its hit's tick. Otherwise, unless its reference is within
+   * its attack range, the countdown runs while the buff is not listed - on its first visit too -
+   * and at 0 the buff is applied for 180,000 ms, from the character itself at its level.
+   */
+  private void notAttackingSection() {
+    String buff = getData().buffWhenNotAttacking();
+    if (buff == null) {
+      return;
+    }
+    GridEntity view = getView();
+    if (view.getState() == GridEntityState.ATTACKING) {
+      if (getBuffs().carries(buff) && notAttackingTimerMs >= 1) {
+        notAttackingTimerMs -= HIT_NOT_ATTACKING_MS;
+        if (notAttackingTimerMs <= 0) {
+          notAttackingTimerMs = 0;
+          getBuffs().removeRow(buff);
+        }
+      }
+      return;
+    }
+    TargetingState t = getTargeting();
+    TargetView reference = isActive(TARGETING_SLOT) ? t.getReference() : null;
+    // The range gate is the row's: a row without it is refused as it is created.
+    if (reference != null && RangeTest.referenceInRange(t, reference, 0)) {
+      return;
+    }
+    if (getBuffs().carries(buff)) {
+      return;
+    }
+    if (notAttackingTimerMs > 0 || view.getDelay() == 0) {
+      notAttackingTimerMs -= HIT_NOT_ATTACKING_MS;
+      if (notAttackingTimerMs <= 0) {
+        notAttackingTimerMs = 0;
+        world.notAttackingBuff(this, NOT_ATTACKING_BUFF_TIME_MS);
+      }
+    }
+  }
+
+  /**
+   * A hit its tags let through sets the countdown of a row's buff while not attacking to a tick.
+   */
+  @Override
+  protected void hitAllowed() {
+    if (getData().buffWhenNotAttacking() != null) {
+      notAttackingTimerMs = HIT_NOT_ATTACKING_MS;
     }
   }
 
@@ -554,7 +652,6 @@ public class CharacterEntity extends WorldEntity {
     unit.movement().setExplicitX(pointX);
     unit.movement().setExplicitY(pointY);
     setter.setState(view, GridEntityState.SPAWN_PATHFIND);
-    getTargetView().setAcceptsAttacker(false);
   }
 
   /** Sets the character deploying through its own setter, with its row's deploy time. */
@@ -580,7 +677,6 @@ public class CharacterEntity extends WorldEntity {
   void startSpawnImmunity() {
     unit.timers().setSpawnImmune(true);
     unit.timers().setSpawnImmuneElapsedMs(0);
-    getTargetView().setAcceptsAttacker(false);
   }
 
   /** True while the character is a spawned child that may not be targeted yet. */
@@ -983,6 +1079,45 @@ public class CharacterEntity extends WorldEntity {
     world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
+  /**
+   * Whether an asker may select, hit or buff the character, as the character answers it. Never
+   * while it rides on a parent. While it is a spawned child still immune, no character or tower,
+   * and no asker at all. While it is invisible, a character or tower only when it is a building
+   * without hit points, and an area's damage from anyone when its row lets that reach it invisible.
+   * Otherwise whoever asks, while it is not hidden. An area effect that reaches hidden units would
+   * take it hidden as well; the battle refuses such an area effect before it asks.
+   *
+   * @param asker the entity that asks, or null for none
+   * @param areaQuery true when an area's damage asks about one of its victims
+   */
+  private boolean accepts(GridEntity asker, boolean areaQuery) {
+    if (parent != null) {
+      return false;
+    }
+    boolean character = asker != null && asker.getType() == ReferenceValidator.TYPE_CHARACTER;
+    if (unit.timers().isSpawnImmune() && (asker == null || character)) {
+      return false;
+    }
+    if (invisible()
+        && character
+        && !(areaQuery && getData().allowAreaDamageWhenInvisible())
+        && !buildingWithoutHitPoints(asker)) {
+      return false;
+    }
+    return !hidden();
+  }
+
+  /** Whether an asker is a building whose row has no hit points, as the bombs and bottles are. */
+  private boolean buildingWithoutHitPoints(GridEntity asker) {
+    WorldEntity entity = world.entityOf(asker);
+    return entity != null && entity.getData().building() && entity.getData().hitpoints() == 0;
+  }
+
+  /** Whether the character is invisible: a listed buff makes it so. */
+  public boolean invisible() {
+    return getBuffs().invisibleCount() >= 1;
+  }
+
   /** Hidden while it tunnels to its placement, in the spawn-pathfinding state. */
   @Override
   public boolean hidden() {
@@ -1089,7 +1224,6 @@ public class CharacterEntity extends WorldEntity {
     parent.riders.add(this);
     getView().setAttached(true);
     unit.timers().setAttached(true);
-    getTargetView().setAcceptsAttacker(false);
   }
 
   /** The characters riding on this one, in the order they were made. */
@@ -1208,7 +1342,8 @@ public class CharacterEntity extends WorldEntity {
         queries.protectedFromDamage(),
         queries.protectionApplies(),
         queries.goalRow(),
-        getBuffs().speed(DEPLOY_STEP_MS));
+        getBuffs().speed(DEPLOY_STEP_MS),
+        this::notAttackingSection);
   }
 
   /** The movement pass's answers for the character as it stands now, reference included. */
@@ -1345,10 +1480,6 @@ public class CharacterEntity extends WorldEntity {
         stateQueries(),
         calls,
         setter);
-    // An attached rider answers no attacker at all; a spawned child none while it is immune, and
-    // a tunnelling unit none while it is hidden.
-    getTargetView()
-        .setAcceptsAttacker(!unit.timers().isSpawnImmune() && parent == null && !hidden());
     // The visit's removal of an object without hit points - the resume at the end of a bomb's
     // deploy - calls its death slot, without the death handler.
     if (calls.contains("remove")) {

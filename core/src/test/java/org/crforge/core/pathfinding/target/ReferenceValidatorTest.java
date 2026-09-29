@@ -257,7 +257,7 @@ class ReferenceValidatorTest {
     }
 
     @Override
-    public boolean acceptsAttacker(boolean acceptanceFlag) {
+    public boolean acceptsAttacker(GridEntity asker, boolean acceptanceFlag) {
       flagsSeen.add(acceptanceFlag);
       return true;
     }

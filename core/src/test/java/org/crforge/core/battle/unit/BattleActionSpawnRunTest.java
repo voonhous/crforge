@@ -184,6 +184,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * their attack timer walks: an Inferno Tower that keeps its ramp through a Giant's death and starts
  * over on a Knight, an Inferno Dragon whose ramp a Zap resets as its stun drops the target, and a
  * Mighty Miner that walks 500 closer than its range before it stops.
+ *
+ * <p>{@code ghost_river_wizard_tower} plays a Ghost that hovers over the river, invisible from its
+ * creation: a Knight cannot take it until its first hit makes it visible, and two seconds after its
+ * attacks end it is invisible again, so the princess tower that had locked on it falls back to its
+ * default target while the arrow and fireball already in flight still land on it. {@code
+ * battle_healer_knights} plays a Battle Healer whose area object heals the friendly Knight beside
+ * it as it deploys, and whose every hit makes an area effect that heals its friends where it
+ * stands.
  */
 class BattleActionSpawnRunTest {
 
@@ -273,7 +281,9 @@ class BattleActionSpawnRunTest {
         "mini_sparkys_knight",
         "inferno_tower_giant_knight",
         "inferno_dragon_zap",
-        "mighty_miner_knight_tower"
+        "mighty_miner_knight_tower",
+        "ghost_river_wizard_tower",
+        "battle_healer_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -657,6 +667,10 @@ class BattleActionSpawnRunTest {
     Map<String, CharacterEntity> units = new HashMap<>();
     Map<String, String> towerStates = new HashMap<>();
     List<String> locks = new ArrayList<>();
+    // The reference logs a tower's lock only while the tower holds none: a lock holds until a visit
+    // leaves the tower with no reference at all, so a tower that falls back to its default seed and
+    // takes its target again logs no second lock.
+    Set<String> locked = new HashSet<>();
     // A morph's new building takes its target in its registration visit, before it is set
     // deploying; the reference logs that as its lock, on the tick it is made.
     match
@@ -706,8 +720,12 @@ class BattleActionSpawnRunTest {
           String beforeRef = before == null ? null : before.substring(before.indexOf(' ') + 1);
           if (tower.getView().getState() == GridEntityState.ATTACKING
               && referenceName(tower) != null
-              && !referenceName(tower).equals(beforeRef)) {
+              && !referenceName(tower).equals(beforeRef)
+              && locked.add(tower.name())) {
             locks.add(tick + " " + tower.name() + " " + referenceName(tower));
+          }
+          if (referenceName(tower) == null) {
+            locked.remove(tower.name());
           }
         }
       }
@@ -1285,6 +1303,20 @@ class BattleActionSpawnRunTest {
                 .formatted(
                     currentTick[0], target.name(), damage, target.getTargetView().getHitPoints()));
       }
+
+      @Override
+      public void buffHealed(
+          int tick, WorldEntity target, BuffInstance buff, int amount, int hitPointsBefore) {
+        lines.add(
+            "%d heal %s %d %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    amount,
+                    hitPointsBefore,
+                    target.getHitPoints().getHitPoints(),
+                    target.getHitPoints().getMaximum()));
+      }
     };
   }
 
@@ -1382,6 +1414,16 @@ class BattleActionSpawnRunTest {
                         b.get("target").asText(),
                         b.get("damage").asInt(),
                         b.get("hp").asInt()));
+        case "heal" ->
+            expected.add(
+                "%d heal %s %d %d %d %d"
+                    .formatted(
+                        tick,
+                        b.get("target").asText(),
+                        b.get("amount").asInt(),
+                        b.get("hp").get(0).asInt(),
+                        b.get("hp").get(1).asInt(),
+                        b.get("max").asInt()));
         default -> throw new IllegalStateException("unknown buff event " + b);
       }
     }

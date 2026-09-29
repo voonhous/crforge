@@ -28,10 +28,19 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * buff with a death spawn that would make another with a death spawn give way is refused.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
- * ms and is removed once its time is 0; the damage over time due on the visit lands once it is
- * over. The damage is the damage per second at the instance's level, rounded down to a multiple of
- * what one hit can deal, for the period of the hit; a crown tower takes the per-hit column or that
- * share raised by the crown-tower percent, and a building the building percent of it.
+ * ms and is removed once its time is 0; the damage and the heal over time due on the visit land
+ * once it is over, each instance's damage before its heal. The damage is the damage per second at
+ * the instance's level, rounded down to a multiple of what one hit can deal, for the period of the
+ * hit; a crown tower takes the per-hit column or that share raised by the crown-tower percent, and
+ * a building the building percent of it. The heal is the heal per second at the instance's level
+ * for the period of the hit, a crown tower's that heal raised by the crown-tower percent.
+ *
+ * <p><b>Invisibility.</b> Each listed instance of a buff that makes its carrier invisible counts
+ * once, from its listing to its removal; the carrier is invisible while the count is 1 or more.
+ *
+ * <p><b>Parents.</b> An instance keeps the parent it was applied with only for a buff that stacks,
+ * and no path of the battle applies such a buff with a parent, so every instance has none: the
+ * removal of a row's instances without a parent is the removal of all of them.
  *
  * <p><b>Scales.</b> The speed, the attack time step and the spawn time step each take the largest
  * boost of the listed rows, from 100, times what the largest slow leaves of 100: Rage makes a step
@@ -44,14 +53,16 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " with a projectile as the source: the apply with its refresh by"
             + " row, by source under stacking, the new instance and its level; the visit in pass"
             + " 3, the 50 ms step and the removal, the damage over time on a unit and a crown"
-            + " tower; the speed, hit speed and spawn speed scales. Translated but held by no"
-            + " run: a building's damage percent, a player-specific refresh, the per-hit crown"
-            + " tower column, a negative hit frequency and the forgotten source. A death spawn is"
-            + " left by the dying carrier (see the battle's death slot), held by"
-            + " witch_mother_skeletons; one giving way to another is refused. Refused by the"
-            + " row: projectiles, chains, spawns, morphs, actions, tags, switching"
-            + " team, invisibility, shields, hit point and damage multipliers, damage reduction,"
-            + " heal over time, pull and push, and a parent that controls the buff.")
+            + " tower; the speed, hit speed and spawn speed scales. Held by"
+            + " battle_healer_knights and ghost_river_wizard_tower: the heal over time on a unit,"
+            + " the invisible count and the removal of a row's instances. Translated but held by"
+            + " no run: a building's damage percent, a player-specific refresh, the per-hit crown"
+            + " tower column, a crown tower's heal, a negative hit frequency and the forgotten"
+            + " source. A death spawn is left by the dying carrier (see the battle's death slot),"
+            + " held by witch_mother_skeletons; one giving way to another is refused. Refused by"
+            + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
+            + " shields, hit point and damage multipliers, damage reduction, pull and push, and a"
+            + " parent that controls the buff.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -73,6 +84,9 @@ public final class BuffComponent implements BattleComponent {
 
   /** The listed instances, oldest first. */
   private final List<BuffInstance> items = new ArrayList<>();
+
+  /** How many listed instances make the carrier invisible. */
+  private int invisibleCount;
 
   BuffComponent(WorldEntity entity, BattleWorld world) {
     this.entity = entity;
@@ -97,6 +111,11 @@ public final class BuffComponent implements BattleComponent {
       }
     }
     return false;
+  }
+
+  /** How many listed instances make the carrier invisible; it is invisible at 1 or more. */
+  public int invisibleCount() {
+    return invisibleCount;
   }
 
   /** The listed instances, oldest first. */
@@ -186,7 +205,34 @@ public final class BuffComponent implements BattleComponent {
       BuffInstance instance =
           new BuffInstance(world.nextBuffKey(), buff, time, level, source, side);
       items.add(instance);
+      if (buff.invisible()) {
+        invisibleCount++;
+      }
       world.buffApplied(entity, instance);
+    }
+  }
+
+  /**
+   * Removes every listed instance of a row, from the last to the first, as the not-attacking
+   * section asks for its buff's instances without a parent, which are all of them.
+   *
+   * @param buff the buff row's name
+   */
+  void removeRow(String buff) {
+    for (int i = items.size() - 1; i >= 0; i--) {
+      BuffInstance instance = items.get(i);
+      if (instance.getBuff().name().equals(buff)) {
+        items.remove(i);
+        onRemoved(instance);
+        world.buffRemoved(entity, instance);
+      }
+    }
+  }
+
+  /** What the removal of an instance undoes at once: its share of the invisible count. */
+  private void onRemoved(BuffInstance instance) {
+    if (instance.getBuff().invisible()) {
+      invisibleCount--;
     }
   }
 
@@ -210,6 +256,7 @@ public final class BuffComponent implements BattleComponent {
         periods.add(period);
       }
       if (instance.getRemaining() == 0 && items.remove(instance)) {
+        onRemoved(instance);
         removed.add(instance);
       }
     }
@@ -222,15 +269,22 @@ public final class BuffComponent implements BattleComponent {
     }
   }
 
-  /** One hit of an instance's damage over time, for the period it covers. */
+  /**
+   * One hit of an instance's damage and heal over time, for the period it covers: the damage first,
+   * then the heal. The heal is dropped for a unit whose Kamikaze hit has landed; the battle
+   * destroys such a unit at the end of that hit, so none is left to take one.
+   */
   private void overTime(BuffInstance instance, int period) {
     BuffData buff = instance.getBuff();
     int level = instance.getPackedLevel();
     int damage;
+    int heal;
     if (entity.getTargetView().crownTower()) {
       damage = crownTowerDamage(buff, level);
+      heal = crownTowerHeal(buff, level);
     } else {
       damage = damagePerSecond(buff, level) * period / 1000;
+      heal = atLevel(buff, buff.healPerSecond(), level) * period / 1000;
       if (entity.getTargetView().building() && buff.buildingDamagePercent() != 0) {
         damage = buff.buildingDamagePercent() * damage / PERCENT;
       }
@@ -238,6 +292,16 @@ public final class BuffComponent implements BattleComponent {
     if (damage >= 1 && entity.getHitPoints() != null) {
       world.dealBuffDamage(entity, instance, damage);
     }
+    if (heal >= 1 && entity.getHitPoints() != null) {
+      world.dealBuffHeal(entity, instance, heal);
+    }
+  }
+
+  /** A crown tower's heal per hit: the heal per second at the level raised by the percent. */
+  static int crownTowerHeal(BuffData buff, int packedLevel) {
+    int value = atLevel(buff, buff.healPerSecond(), packedLevel);
+    int percent = Math.max(buff.crownTowerDamagePercent(), -100) + 100;
+    return (percent * value + 99) / 100;
   }
 
   /**

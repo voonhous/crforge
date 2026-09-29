@@ -31,6 +31,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param deathSpawnDeployDelay true when they start deploying
  * @param otherBuffDeathSpawnAllowed true when it may be listed beside another buff with a death
  *     spawn that allows it too
+ * @param invisible true when it makes its carrier invisible while it is listed
+ * @param healPerSecond the heal over time at the first level, per second, dealt at its hit
+ *     frequency
+ * @param allowedOverHealPercent the share of its carrier's maximum, in percent, its heal may raise
+ *     the hit points to; 0 for the maximum
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -56,6 +61,9 @@ public record BuffData(
     boolean deathSpawnIsEnemy,
     boolean deathSpawnDeployDelay,
     boolean otherBuffDeathSpawnAllowed,
+    boolean invisible,
+    int healPerSecond,
+    int allowedOverHealPercent,
     List<String> unmodelledColumns) {
 
   public BuffData {
