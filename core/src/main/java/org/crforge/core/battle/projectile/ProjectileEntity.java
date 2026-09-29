@@ -44,6 +44,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * the removal notice leaves the aim where the target last stood and forgets the target, so the
  * projectile flies on and lands on nothing.
  *
+ * <p>A homing projectile with a target puts the damage it will deal on the target as pending, with
+ * its flight time, when the holder admits it, and again at each chained hop; it hands the damage
+ * back as it arrives, or as it is released or finished early. A target the damage will kill is then
+ * refused to a projectile attacker, and kept by the one whose shot it is.
+ *
  * <p>A projectile that kills something is the cause of the death hooks it runs, so it has an action
  * holder too, made the first time it causes one, which carries its level and nothing else.
  */
@@ -68,9 +73,17 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " are held by the spell runs; the limited-time homing by the Elite Archer's."
             + " The chained hop is held by the Electro Dragon's, and the pingpong launch that holds"
             + " the launcher's targeting until the projectile comes back by the Axe Man's."
-            + " The random delay a unit's launch draws is held by the Hunter's."
+            + " The random delay a unit's launch draws is held by the Hunter's. The pending damage"
+            + " a homing shot registers as it starts, with its flight time from where it stands,"
+            + " is held by every tower's re-lock after its arrow's kill in the battle references,"
+            + " and the registration at a chained hop by electro_dragon_knights; the crown-tower"
+            + " amount, the homing gate and the hand-backs at a release and a collision's finish"
+            + " by unit tests alone, since every reference shot hands its damage back as it"
+            + " arrives."
             + " Not modelled: a pingpong projectile, or one with a random delay, that a spell casts or an impact spawns, the angular delay, the drag-back"
-            + " hook, the custom movement, and the far-distance clamp with its cell pull.")
+            + " hook, the custom movement, the far-distance clamp with its cell pull, the row's"
+            + " starting action the start would schedule, which no projectile row carried here"
+            + " has, and a deflection's hand-back of the pending damage.")
 public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Game time one flight step advances, in milliseconds. */
@@ -165,6 +178,12 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /** The projectile's action holder, made the first time it causes an action; null until then. */
   private ActionHolder actionHolder;
+
+  /**
+   * True while the projectile's damage is registered on its target as pending: from its start, or a
+   * hop's relaunch, until it hands the damage back.
+   */
+  @Getter private boolean pendingRegistered;
 
   /**
    * Creates an unlaunched projectile. The launch places it; see {@link ProjectileLauncher}.
@@ -435,6 +454,8 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     int hy = 2 * aimY - startY;
     target = null;
     place(owner, root, next, packedLevel, x, y, aimZ, hx, hy, x, y);
+    // The relaunch registers its damage on the next target, from where the hop starts.
+    registerPending();
     released = false;
     delayMs = HOP_DELAY_MS;
   }
@@ -470,17 +491,75 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     homingTimeMs = 0;
   }
 
-  /** Ends the flight: the projectile takes no further step and leaves at the next cleanup. */
+  /**
+   * Ends the flight: the projectile takes no further step and leaves at the next cleanup. A damage
+   * still registered on its target is handed back.
+   */
   void release() {
     released = true;
+    releasePending();
   }
 
   /**
    * Ends the flight of a projectile that stops at collisions, on the first hit its body lands: it
-   * takes no further hit or step and leaves at the next cleanup, without an impact.
+   * takes no further hit or step and leaves at the next cleanup, without an impact, and hands back
+   * a damage still registered on its target.
    */
   public void finishOnCollision() {
     released = true;
+    releasePending();
+  }
+
+  /**
+   * The projectile's start, as the holder admits it to its live list at the closing cleanup of its
+   * launch tick: a homing projectile registers its damage on its target, from where it stands. The
+   * start would first schedule the row's starting action, which no projectile row carried here has.
+   */
+  @Override
+  protected void onRegistered() {
+    registerPending();
+  }
+
+  /**
+   * Registers the projectile's damage on its target as pending, when the projectile is homing and
+   * still has a target: its damage, and its flight time, the distance from where it stands to the
+   * target over its speed per 50 ms.
+   */
+  private void registerPending() {
+    if (!data.homing() || target == null) {
+      return;
+    }
+    GridEntity at = target.getView();
+    int distance = FixedMath.guardedDistance(x - at.getX(), y - at.getY());
+    int flightMs = FixedMath.divOrZero(distance * STEP_MS, data.speed());
+    target.addPendingDamage(pendingAmount(), flightMs);
+    pendingRegistered = true;
+  }
+
+  /**
+   * Hands the damage registered on the target back, as a homing projectile does as it arrives,
+   * before its impact: its damage off the target, recomputed, and the pending duration left alone.
+   * A projectile whose target has left hands nothing back.
+   */
+  void handBackPending() {
+    target.addPendingDamage(-pendingAmount(), -1);
+    pendingRegistered = false;
+  }
+
+  /** The release's hand-back: only while the damage is registered and the target is still there. */
+  private void releasePending() {
+    if (pendingRegistered && target != null) {
+      handBackPending();
+    }
+  }
+
+  /**
+   * What the projectile will deal its target: its damage at its level, or its crown-tower damage
+   * for a crown tower. The enchanting copies it carries are asked with no hit, so they change
+   * nothing.
+   */
+  private int pendingAmount() {
+    return target.getTargetView().isCrownTowerTarget() ? towerDamage() : damage();
   }
 
   /** True on the first flight step only. */

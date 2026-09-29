@@ -90,8 +90,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     only announces the dash hit and is not ported, so nothing reads it today
  * @param attackFinishTime milliseconds a unit keeps attacking after losing its target
  * @param overrideAttackFinishTime true when {@code attackFinishTime} replaces the global default
- * @param keepTargetWithPendingDamage true when a target that has taken damage is kept although the
- *     ordinary check rejects it
+ * @param keepTargetWithPendingDamage true when an owner that has hit keeps a reference the
+ *     pending-damage rule refuses, one its shots in flight will kill, rather than selecting again
  * @param jumpHeight jump height in game units, non-zero for a jumping unit
  * @param hasOnStartingAttackAction true when the first hit of an attack runs an action
  * @param hasHitEffect true when a dash hit and a missing extra target play an effect; the effect

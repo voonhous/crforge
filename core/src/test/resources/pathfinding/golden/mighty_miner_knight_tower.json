@@ -110,13 +110,13 @@
   {"tick": 451, "event": "activating_removed", "tower": "KingTower_1_0"},
   {"tick": 453, "event": "reference", "tower": "KingTower_1_0", "target": "Miner_0", "in_range": 1},
   {"tick": 453, "event": "lock", "tower": "KingTower_1_0", "target": "Miner_0"},
-  {"tick": 465, "event": "reference", "tower": "KingTower_1_0", "target": null, "removed": "Miner_0", "target_lost_timer": 1},
+  {"tick": 465, "event": "reference", "tower": "KingTower_1_0", "target": null, "removed": "Miner_0", "target_lost_timer": 0},
   {"tick": 465, "event": "reference_dropped", "tower": "KingTower_1_0", "removed": "Miner_0"},
-  {"tick": 465, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Miner_0", "target_lost_timer": 1},
+  {"tick": 465, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Miner_0", "target_lost_timer": 0},
   {"tick": 465, "event": "reference_dropped", "tower": "PrincessTower_1_2", "removed": "Miner_0"},
   {"tick": 465, "event": "removed", "entity": "Miner_0"},
-  {"tick": 471, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_1", "in_range": 0},
-  {"tick": 471, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
+  {"tick": 466, "event": "reference", "tower": "KingTower_1_0", "target": "PrincessTower_0_1", "in_range": 0},
+  {"tick": 466, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp"],

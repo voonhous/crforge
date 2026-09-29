@@ -208,6 +208,7 @@ public class TowerEntity extends WorldEntity {
         .hasProjectile(data.hasProjectile())
         .sightClip(data.sightClip())
         .sightClipSide(data.sightClipSide())
+        .keepTargetWithPendingDamage(data.keepTargetWithPendingDamage())
         .build();
   }
 

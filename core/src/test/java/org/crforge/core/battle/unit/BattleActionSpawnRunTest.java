@@ -30,7 +30,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the fifty runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the eighty-six runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -198,6 +198,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * effect that never hits and whose starting action spawns two Bush Goblins beside where it died.
  * {@code bush_valkyrie_knight} plays one that a Valkyrie's swing kills on its way while it is still
  * invisible, its goblins coming where it died.
+ *
+ * <p>{@code pending_shield_guards} plays Guards at a Musketeer's range: the Musketeer's shot on its
+ * way to a Guard would kill it, but the Guard's shield is up, so the princess tower that has not
+ * fired yet keeps the same Guard rather than turning to another.
  */
 class BattleActionSpawnRunTest {
 
@@ -291,7 +295,8 @@ class BattleActionSpawnRunTest {
         "ghost_river_wizard_tower",
         "battle_healer_knights",
         "bush_princess_tower",
-        "bush_valkyrie_knight"
+        "bush_valkyrie_knight",
+        "pending_shield_guards"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -689,6 +694,24 @@ class BattleActionSpawnRunTest {
               public void morphed(int tick, CharacterEntity old, CharacterEntity made) {
                 if (referenceName(made) != null) {
                   locks.add(tick + " " + made.name() + " " + referenceName(made));
+                }
+              }
+
+              // A tower that takes a new target in its visit and dies later in the same step has
+              // it dropped by its combat gate before the step ends; the reference logs the lock
+              // from the visit all the same.
+              @Override
+              public void combatGateDropped(
+                  int tick, WorldEntity entity, TargetView reference, int hitSpeed) {
+                if (!(entity instanceof TowerEntity)
+                    || entity.getView().getState() != GridEntityState.ATTACKING) {
+                  return;
+                }
+                String before = towerStates.get(entity.name());
+                String beforeRef =
+                    before == null ? null : before.substring(before.indexOf(' ') + 1);
+                if (!reference.name().equals(beforeRef) && locked.add(entity.name())) {
+                  locks.add(tick + " " + entity.name() + " " + reference.name());
                 }
               }
             });

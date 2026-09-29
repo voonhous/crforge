@@ -32,9 +32,6 @@ public final class StateTimers {
   /** Milliseconds the immunity has lasted; once past the attack-finish time it clears the flag. */
   private int spawnImmuneElapsedMs;
 
-  /** Milliseconds of pending damage still to be applied, counted down 50 per visit. */
-  private int pendingDamageDurationMs;
-
   /** Milliseconds of remaining immunity after a dash, reset while the entity is protected. */
   private int dashImmunityRemainingMs;
 

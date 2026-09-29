@@ -59,25 +59,34 @@ public interface ValidatorQueries {
     return false;
   }
 
-  /** True when the target's buff component answers the pending-damage question. */
+  /**
+   * True when a buff the target carries heals it: the pending-damage rule then keeps a target whose
+   * full hit points exceed the damage on its way.
+   */
   default boolean pendingDamageBuffHolds(TargetView target) {
     return false;
   }
 
-  /** True when the pending damage on the target is recent enough to keep it. */
+  /**
+   * True when the target will start a dash that makes it immune to damage before the damage on its
+   * way lands, so the pending-damage rule keeps it: the question is the dash test, not an age.
+   */
   default boolean pendingDamageIsRecent(TargetView target, int duration) {
     return false;
   }
 
   /**
-   * Measure of the damage already committed to the target, compared against the pending amount. A
-   * measure at or below the amount means the target is about to die.
+   * The target row's full hit points at the level the validator hands over, the target's own. A
+   * healing target is kept only while they exceed the damage on its way.
    */
   default int committedDamage(TargetView target, int key) {
     return 0;
   }
 
-  /** True when the object holding the target's hit points accepts the pending damage. */
+  /**
+   * True when the damage on its way is lethal to the object holding the target's hit points: no
+   * shield up, the target not untouchable, and the damage at least the hit points left.
+   */
   default boolean pendingDamageAccepted(TargetView target, int amount) {
     return false;
   }

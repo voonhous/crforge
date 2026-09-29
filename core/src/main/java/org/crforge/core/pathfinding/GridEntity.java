@@ -182,4 +182,19 @@ public class GridEntity {
    * k-th child it makes answers (20k)^2. An action spawn's fixed priority is refused.
    */
   private int squaredDistanceReduction;
+
+  /**
+   * Damage on its way to this entity and not yet landed, in hit points: the sum of what every
+   * homing projectile fired at it will deal, put here as the projectile starts its flight and taken
+   * off again as it arrives. The validator refuses a projectile attacker a target this damage will
+   * kill. Zero for an entity nothing is shooting at.
+   */
+  private int pendingDamageAmount;
+
+  /**
+   * How long the longest of those shots still has to fly, in milliseconds, at most 1000: raised by
+   * each shot as it starts, left alone as one arrives, and counted down by 50 in every state visit.
+   * The validator ignores pending damage that lands later than a global limit.
+   */
+  private int pendingDamageDurationMs;
 }

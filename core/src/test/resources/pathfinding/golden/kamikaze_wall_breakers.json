@@ -118,10 +118,10 @@
   {"tick": 157, "event": "reference", "tower": "PrincessTower_1_1", "target": "PrincessTower_0_1", "in_range": 0},
   {"tick": 277, "event": "reference", "tower": "PrincessTower_0_1", "target": "k0_0", "in_range": 1},
   {"tick": 277, "event": "lock", "tower": "PrincessTower_0_1", "target": "k0_0"},
-  {"tick": 488, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "k0_0", "target_lost_timer": 1},
+  {"tick": 488, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "k0_0", "target_lost_timer": 0},
   {"tick": 488, "event": "reference_dropped", "tower": "PrincessTower_0_1", "removed": "k0_0"},
   {"tick": 488, "event": "removed", "entity": "k0_0"},
-  {"tick": 494, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0}
+  {"tick": 489, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp"],

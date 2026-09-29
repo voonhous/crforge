@@ -90,10 +90,10 @@
   {"tick": 0, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 81, "event": "reference", "tower": "PrincessTower_1_2", "target": "Gift_0", "in_range": 1},
   {"tick": 81, "event": "lock", "tower": "PrincessTower_1_2", "target": "Gift_0"},
-  {"tick": 356, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Gift_0", "target_lost_timer": 1},
+  {"tick": 356, "event": "reference", "tower": "PrincessTower_1_2", "target": null, "removed": "Gift_0", "target_lost_timer": 0},
   {"tick": 356, "event": "reference_dropped", "tower": "PrincessTower_1_2", "removed": "Gift_0"},
   {"tick": 356, "event": "removed", "entity": "Gift_0"},
-  {"tick": 362, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
+  {"tick": 357, "event": "reference", "tower": "PrincessTower_1_2", "target": "PrincessTower_0_2", "in_range": 0},
   {"tick": 402, "event": "reference", "tower": "PrincessTower_1_2", "target": "Gift_1", "in_range": 1},
   {"tick": 402, "event": "lock", "tower": "PrincessTower_1_2", "target": "Gift_1"}
  ],

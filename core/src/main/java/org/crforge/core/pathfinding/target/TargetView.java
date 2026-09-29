@@ -72,14 +72,15 @@ public class TargetView {
     this.acceptance = (asker, areaQuery) -> accepts;
   }
 
-  /**
-   * Damage already on its way to this entity but not yet applied, in hit points. Zero for an entity
-   * that is not about to be hit.
-   */
-  private int pendingDamageAmount;
+  /** Damage already on its way to the entity but not yet landed; see {@link GridEntity}. */
+  public int getPendingDamageAmount() {
+    return entity.getPendingDamageAmount();
+  }
 
-  /** How long that pending damage has been on its way, in milliseconds. */
-  private int pendingDamageDuration;
+  /** How long the pending damage still has to fly, in milliseconds; see {@link GridEntity}. */
+  public int getPendingDamageDuration() {
+    return entity.getPendingDamageDurationMs();
+  }
 
   /**
    * True when the entity carries a buff component the validator and the priority rule ask about.
@@ -87,8 +88,8 @@ public class TargetView {
   private boolean buffComponentPresent;
 
   /**
-   * Value the validator hands to its pending-damage comparison along with the pending amount; its
-   * meaning is not documented.
+   * The level the validator hands to its pending-damage comparison along with the pending amount:
+   * the entity's packed level, at which the comparison reads its row's full hit points.
    */
   private int pendingDamageKey;
 

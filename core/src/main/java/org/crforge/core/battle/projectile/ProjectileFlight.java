@@ -42,6 +42,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * again at it, waits 150 ms and flies on, so a hop within one step of its speed lands four ticks
  * after the impact.
  *
+ * <p>A homing projectile hands the damage it registered on its target back as it arrives, before
+ * its impact, so the damage lands on a target that no longer carries it as pending.
+ *
  * <p>A row with a target buff buffs the same circle, or the one target of a projectile without a
  * radius, after the damage, or before it when the row says so. A row that spawns characters then
  * makes them in formation around the aim.
@@ -67,7 +70,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " its landing at the start and its launcher's release by axe_man_knights, the sweep's"
             + " step under a buff by no run; the random delay, the stop at the first landed hit and"
             + " the arrival without an impact of a projectile that stops at collisions by"
-            + " hunter_point_blank and hunter_range. Supplied, not"
+            + " hunter_point_blank and hunter_range; the hand-back of the damage registered on"
+            + " the target at the arrival, before the impact, by every tower's re-lock after its"
+            + " arrow's kill. Supplied, not"
             + " settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. Not modelled: the area impact"
@@ -231,8 +236,11 @@ final class ProjectileFlight {
       p.release();
       return;
     }
-    // A homing projectile that has not hooked hands its pending damage back to the target here;
-    // no pending damage is registered, so there is nothing to hand back.
+    // A homing projectile hands the damage registered on its target back before its impact, so the
+    // target no longer carries it as the damage lands.
+    if (p.getData().homing() && p.getTarget() != null) {
+      p.handBackPending();
+    }
     p.release();
     if (p.getPingpongTimeMs() < 1) {
       // It lands at the aim, at the row's constant height, or on the ground without one.

@@ -46,6 +46,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * component's strike-now byte cleared - loads its dash timer with the row's constant dash time and
  * clears its landing hold.
  *
+ * <p>Entering either pathfinding state drops the damage pending on the unit, as the unit's own
+ * entry hook does; the pending duration is kept.
+ *
  * <p>Entering the casting state, for a unit given its casting, raises the casting flag and seeds
  * the ability's two countdowns in whole ticks, and empties the route. Leaving it before the effect
  * fired leaves the ability pending again, and a unit with a movement component has its charge
@@ -69,7 +72,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " deploy countdown cleared on leaving the deploying and pathfinding states and"
             + " raised to the unit's deploy time on entering the deploying state; the dashing"
             + " state's entry, held by bandit_knight; the casting state's entry and exit"
-            + " with the combat gate after them, held by giant_buffer_knights. Held by the 53"
+            + " with the combat gate after them, held by giant_buffer_knights; the pending"
+            + " damage dropped on entering either pathfinding state, held by no run, since no"
+            + " shot is ever on its way to a unit as it goes underground. Held by the 53"
             + " reference walks, whose route empties at the lock, and the staggered placements."
             + " Not modelled: switching components, the countdown seeded on entering the morphing"
             + " state, the chained dash and closing action on leaving the dashing state, whose"
@@ -304,6 +309,10 @@ public final class GridStateSetter implements StateSetter {
       }
       case GridEntityState.MOVING -> prepareRoute();
       case GridEntityState.DASHING -> enterDash();
+      // The entity's own entry hook: a unit that goes underground or pathfinds in the battle drops
+      // the damage pending on it, whose duration it keeps.
+      case GridEntityState.SPAWN_PATHFIND, GridEntityState.INGAME_PATHFIND ->
+          owner.setPendingDamageAmount(0);
       case GridEntityState.DEPLOYING -> {
         // Entering the deploying state switches the movement component on, which a unit that
         // waited its turn had off; a building has none to switch.

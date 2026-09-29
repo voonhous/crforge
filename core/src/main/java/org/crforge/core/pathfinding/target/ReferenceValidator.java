@@ -22,8 +22,12 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
         "Every rule agrees with the reference in order and in comparison. Held for"
             + " towers as the only targets. Not held by any fixture: the restriction columns"
             + " other than air and ground, the excluded configuration, buffs that hide a"
-            + " target, the jumping and in-game-pathfind states, and the whole pending-damage"
-            + " rule. Supplied: a target is ground exactly when it is not air, which the"
+            + " target, and the jumping and in-game-pathfind states. The pending-damage rule's"
+            + " refusal is held by the battle references whose selections and drops it"
+            + " decides, lava_hound_river, tombstone_death_hook, match_knights_king and"
+            + " match_elixir_150s among them, and its shield gate by pending_shield_guards; its"
+            + " dash, healing and timed-unit keeps by unit tests alone. Supplied: a target is"
+            + " ground exactly when it is not air, which the"
             + " standard game reads from two separate columns.")
 public final class ReferenceValidator {
 

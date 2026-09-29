@@ -165,9 +165,9 @@
   {"tick": 393, "event": "impact", "projectile": "proj_4000036", "target": "k1_0", "damage": 109, "hp": 0, "x": 3769, "y": 9175, "z": 0},
   {"tick": 393, "event": "death", "target": "k1_0"},
   {"tick": 402, "event": "hit", "target": "PrincessTower_0_1", "damage": 202, "hp": 22},
-  {"tick": 414, "event": "launch", "projectile": "proj_4000037", "config": "TowerPrincessProjectile", "owner": "PrincessTower_0_1", "target": "k0_0", "x": 3418, "y": 6788, "z": 3000, "aim": [2769, 9062], "aim_z": 0},
-  {"tick": 418, "event": "impact", "projectile": "proj_4000037", "target": "k0_0", "damage": 109, "hp": 0, "x": 2769, "y": 9062, "z": 0},
-  {"tick": 418, "event": "death", "target": "k0_0"}
+  {"tick": 405, "event": "launch", "projectile": "proj_4000037", "config": "TowerPrincessProjectile", "owner": "PrincessTower_0_1", "target": "k0_0", "x": 3418, "y": 6788, "z": 3000, "aim": [2769, 9062], "aim_z": 0},
+  {"tick": 409, "event": "impact", "projectile": "proj_4000037", "target": "k0_0", "damage": 109, "hp": 0, "x": 2769, "y": 9062, "z": 0},
+  {"tick": 409, "event": "death", "target": "k0_0"}
  ],
  "tower_events": [
   {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
@@ -179,15 +179,15 @@
   {"tick": 90, "event": "removed", "entity": "Hunter_0"},
   {"tick": 118, "event": "reference", "tower": "PrincessTower_0_1", "target": "k1_0", "in_range": 1},
   {"tick": 118, "event": "lock", "tower": "PrincessTower_0_1", "target": "k1_0"},
-  {"tick": 393, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "k1_0", "target_lost_timer": 1},
+  {"tick": 393, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "k1_0", "target_lost_timer": 0},
   {"tick": 393, "event": "reference_dropped", "tower": "PrincessTower_0_1", "removed": "k1_0"},
   {"tick": 393, "event": "removed", "entity": "k1_0"},
-  {"tick": 399, "event": "reference", "tower": "PrincessTower_0_1", "target": "k0_0", "in_range": 1},
-  {"tick": 399, "event": "lock", "tower": "PrincessTower_0_1", "target": "k0_0"},
-  {"tick": 418, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "k0_0", "target_lost_timer": 1},
-  {"tick": 418, "event": "reference_dropped", "tower": "PrincessTower_0_1", "removed": "k0_0"},
-  {"tick": 418, "event": "removed", "entity": "k0_0"},
-  {"tick": 424, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0}
+  {"tick": 394, "event": "reference", "tower": "PrincessTower_0_1", "target": "k0_0", "in_range": 1},
+  {"tick": 394, "event": "lock", "tower": "PrincessTower_0_1", "target": "k0_0"},
+  {"tick": 409, "event": "reference", "tower": "PrincessTower_0_1", "target": null, "removed": "k0_0", "target_lost_timer": 0},
+  {"tick": 409, "event": "reference_dropped", "tower": "PrincessTower_0_1", "removed": "k0_0"},
+  {"tick": 409, "event": "removed", "entity": "k0_0"},
+  {"tick": 410, "event": "reference", "tower": "PrincessTower_0_1", "target": "PrincessTower_1_1", "in_range": 0}
  ],
  "fields": ["tick", "x", "y", "state", "ref", "route", "speed", "hp", "own_hp"],
  "unit_fields": ["tick", "x", "y", "state", "ref", "own_hp"],
@@ -695,16 +695,7 @@
    [406, 2769, 9062, 2, "PrincessTower_0_1", 86],
    [407, 2769, 9062, 2, "PrincessTower_0_1", 86],
    [408, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [409, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [410, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [411, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [412, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [413, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [414, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [415, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [416, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [417, 2769, 9062, 2, "PrincessTower_0_1", 86],
-   [418, 2769, 9062, 2, null, 0]
+   [409, 2769, 9062, 2, null, 0]
   ],
   "k1_0": [
    [0, 4499, 17499, 4, null, 1766],
@@ -1185,8 +1176,8 @@
   [390, 4000036, 3590, 7395, 2060],
   [391, 4000036, 3650, 7992, 1060],
   [392, 4000036, 3710, 8589, 0],
-  [415, 4000037, 3254, 7365, 3000],
-  [416, 4000037, 3090, 7942, 2060],
-  [417, 4000037, 2925, 8518, 1060]
+  [406, 4000037, 3254, 7365, 3000],
+  [407, 4000037, 3090, 7942, 2060],
+  [408, 4000037, 2925, 8518, 1060]
  ]
 }

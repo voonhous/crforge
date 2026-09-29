@@ -174,6 +174,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param allowAreaDamageWhenInvisible true when an area's damage reaches it while it is invisible
  * @param areaEffectOnHit the area effect each of its direct hits makes where it stands, or null for
  *     none
+ * @param keepTargetWithPendingDamage true when, having hit, it keeps a reference that its own shots
+ *     in flight will kill rather than turning to another; the loader's default is true, and no row
+ *     sets it false
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
  *     parts of a spawner that are not established
@@ -299,6 +302,7 @@ public record UnitData(
     boolean startWithBuffWhenNotAttacking,
     boolean allowAreaDamageWhenInvisible,
     String areaEffectOnHit,
+    boolean keepTargetWithPendingDamage,
     List<String> unmodelledColumns) {
 
   public UnitData {
