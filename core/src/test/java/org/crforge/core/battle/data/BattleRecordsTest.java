@@ -357,7 +357,7 @@ class BattleRecordsTest {
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).contains("ShieldLostAction");
     assertThat(records.unit("Tesla").unmodelledColumns())
-        .containsExactly("HidesWhenNotAttacking", "HideTimeMs", "UpTimeMs");
+        .containsExactly("HidesWhenNotAttacking", "UpTimeMs");
     // An elixir collector is modelled: one elixir every 13000 ms; an Elixir Golem's death pays
     // 1000.
     UnitData collector = records.unit("ElixirCollector");
@@ -504,8 +504,9 @@ class BattleRecordsTest {
           + " columns are carried")
   void everyUnreadColumnIsListed() {
     BattleRecords records = GameData.records();
-    // Read by nothing: the Electro Giant's reflect, the Fisherman's special, the Suspicious Bush's
-    // invisibility when it does not attack, and the Fisherman's hook's drag.
+    // Read by nothing: the Electro Giant's reflect, the Fisherman's special and the Fisherman's
+    // hook's drag. The Suspicious Bush's invisibility when it does not attack is refused: without
+    // its range gate a touch test holds its countdown.
     assertThat(records.unit("ElectroGiant").unmodelledColumns())
         .containsExactly(
             "ReflectAttackCrownTowerDamage",
@@ -561,6 +562,53 @@ class BattleRecordsTest {
 
     assertThat(records.unit("ZapMachine").loadFirstHit()).isTrue();
     assertThat(knight.loadFirstHit()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a hovering row carries its buff while not attacking, its countdown and its gate, whether it"
+          + " starts with the buff - true unless the row says not - its area flag and its area"
+          + " effect on hit")
+  void aHoveringRowCarriesItsColumns() {
+    BattleRecords records = GameData.records();
+    UnitData ghost = records.unit("Ghost");
+    assertThat(ghost.hovering()).isTrue();
+    assertThat(ghost.buffWhenNotAttacking()).isEqualTo("Invisibility");
+    assertThat(ghost.buffWhenNotAttackingTimeMs()).isEqualTo(2000);
+    assertThat(ghost.buffWhenNotAttackingUseAttackRange()).isTrue();
+    assertThat(ghost.startWithBuffWhenNotAttacking()).as("the row leaves it empty").isTrue();
+    assertThat(ghost.allowAreaDamageWhenInvisible()).isTrue();
+    assertThat(ghost.unmodelledColumns()).as("its overlay is the view's").isEmpty();
+    assertThat(records.unit("Ghost_EV1_Summon_Base").startWithBuffWhenNotAttacking()).isFalse();
+
+    UnitData healer = records.unit("BattleHealer");
+    assertThat(healer.hovering()).isTrue();
+    assertThat(healer.areaEffectOnHit()).isEqualTo("BattleHealerHeal");
+    assertThat(healer.spawnAreaObject()).isEqualTo("BattleHealerSpawnHeal");
+    assertThat(healer.buffWhenNotAttacking()).isNull();
+    assertThat(healer.unmodelledColumns()).isEmpty();
+    assertThat(records.unit("Knight").areaEffectOnHit()).isNull();
+
+    // A buff while not attacking without its range gate is refused.
+    for (String unit : List.of("SuperKnight", "Hunter_crazy_2", "RageBarbarianEvoGhost")) {
+      assertThat(records.unit(unit).unmodelledColumns()).as(unit).contains("BuffWhenNotAttacking");
+    }
+  }
+
+  @Test
+  @DisplayName("a buff carries whether it makes its carrier invisible, and its heal over time")
+  void aBuffCarriesItsInvisibilityAndHeal() {
+    BattleRecords records = GameData.records();
+    BuffData invisibility = records.buff("Invisibility");
+    assertThat(invisibility.invisible()).isTrue();
+    assertThat(invisibility.unmodelledColumns()).isEmpty();
+    BuffData heal = records.buff("BattleHealerAll");
+    assertThat(heal.invisible()).isFalse();
+    assertThat(heal.healPerSecond()).isEqualTo(40);
+    assertThat(heal.hitFrequency()).isEqualTo(250);
+    assertThat(heal.allowedOverHealPercent()).isZero();
+    assertThat(heal.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("BatsEV1_Heal").allowedOverHealPercent()).isEqualTo(200);
   }
 
   @Test

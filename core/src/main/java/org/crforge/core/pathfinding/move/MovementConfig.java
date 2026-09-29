@@ -26,6 +26,8 @@ package org.crforge.core.pathfinding.move;
  *     destination
  * @param entersWaterWhileSpawnPathfinding whether the entity may enter water while spawn
  *     pathfinding
+ * @param hovering whether the entity hovers: its route may cross water, at the water cost, and it
+ *     is not moved off water after a push
  */
 public record MovementConfig(
     int spawnAngleShift,
@@ -44,7 +46,8 @@ public record MovementConfig(
     int waitMs,
     int spawnPathfindSpeed,
     int ingamePathfindSpeed,
-    boolean entersWaterWhileSpawnPathfinding) {
+    boolean entersWaterWhileSpawnPathfinding,
+    boolean hovering) {
 
   /**
    * The configuration of a plain ground unit: no attachment, no flight, no charge, no jump, no dash
@@ -83,6 +86,7 @@ public record MovementConfig(
         0,
         0,
         0,
+        false,
         false);
   }
 
@@ -93,7 +97,7 @@ public record MovementConfig(
    */
   public static MovementConfig forParent(int spawnRadius) {
     return new MovementConfig(
-        0, 0, 0, spawnRadius, 0, false, 0, null, null, false, 0, 0, 0, 0, 0, 0, false);
+        0, 0, 0, spawnRadius, 0, false, 0, null, null, false, 0, 0, 0, 0, 0, 0, false, false);
   }
 
   /**
@@ -105,7 +109,24 @@ public record MovementConfig(
    */
   public static MovementConfig forGroundUnit(int stopMovementAfterMs, int waitMs) {
     return new MovementConfig(
-        0, 0, 0, 0, 0, false, 0, null, null, false, 0, 0, stopMovementAfterMs, waitMs, 0, 0, false);
+        0,
+        0,
+        0,
+        0,
+        0,
+        false,
+        0,
+        null,
+        null,
+        false,
+        0,
+        0,
+        stopMovementAfterMs,
+        waitMs,
+        0,
+        0,
+        false,
+        false);
   }
 
   /**
@@ -132,7 +153,8 @@ public record MovementConfig(
         waitMs,
         spawnPathfindSpeed,
         ingamePathfindSpeed,
-        entersWaterWhileSpawnPathfinding);
+        entersWaterWhileSpawnPathfinding,
+        hovering);
   }
 
   /**
@@ -160,7 +182,8 @@ public record MovementConfig(
         waitMs,
         spawnPathfindSpeed,
         ingamePathfindSpeed,
-        entersWaterWhileSpawnPathfinding);
+        entersWaterWhileSpawnPathfinding,
+        hovering);
   }
 
   /**
@@ -187,7 +210,8 @@ public record MovementConfig(
         waitMs,
         spawnPathfindSpeed,
         ingamePathfindSpeed,
-        entersWaterWhileSpawnPathfinding);
+        entersWaterWhileSpawnPathfinding,
+        hovering);
   }
 
   /**
@@ -214,7 +238,8 @@ public record MovementConfig(
         waitMs,
         speed,
         ingamePathfindSpeed,
-        entersWaterWhileSpawnPathfinding);
+        entersWaterWhileSpawnPathfinding,
+        hovering);
   }
 
   /**
@@ -241,6 +266,35 @@ public record MovementConfig(
         waitMs,
         spawnPathfindSpeed,
         ingamePathfindSpeed,
-        enters);
+        enters,
+        hovering);
+  }
+
+  /**
+   * This configuration with hovering: the entity's route may cross water, at the water cost, and a
+   * push never moves it off water.
+   *
+   * @param hovers true for a unit whose row hovers
+   */
+  public MovementConfig withHovering(boolean hovers) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        entersWaterWhileSpawnPathfinding,
+        hovers);
   }
 }

@@ -420,8 +420,19 @@ public interface WorldObserver {
   default void shieldHit(
       int tick, WorldEntity target, int damage, int shieldBefore, int shieldAfter) {}
 
-  /** A buff instance's time ran out and it was removed. */
+  /**
+   * A buff instance was removed: its time ran out, or the not-attacking section took its row off.
+   */
   default void buffRemoved(int tick, WorldEntity target, BuffInstance buff) {}
+
+  /**
+   * A buff instance's heal over time was given to its entity, whether or not it raised anything.
+   *
+   * @param amount the heal
+   * @param hitPointsBefore the entity's hit points before the heal
+   */
+  default void buffHealed(
+      int tick, WorldEntity target, BuffInstance buff, int amount, int hitPointsBefore) {}
 
   /**
    * A buff instance's damage over time landed on its entity.

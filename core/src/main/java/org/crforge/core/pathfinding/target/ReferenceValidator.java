@@ -82,8 +82,8 @@ public final class ReferenceValidator {
    *
    * @param skipTeamCheck true to let an attacker take a target on its own team
    * @param onlyBuildings the building filter, normally the owner's TargetOnlyBuildings column
-   * @param acceptanceFlag value handed to the target's own acceptance answer, which every ordinary
-   *     entity ignores
+   * @param acceptanceFlag true for an area's query about one of its victims, handed to the target's
+   *     own acceptance answer: an invisible unit that lets an area's damage reach it reads it
    * @param mode true when the caller is deciding to keep or take the target
    */
   public static boolean sharedValidate(
@@ -110,14 +110,15 @@ public final class ReferenceValidator {
 
     TargetingConfig cfg = t.getConfig();
     if (owner.getType() == TYPE_CHARACTER) {
-      if (target.getEntity().getType() == TYPE_CONTACT && target.acceptsAttacker(acceptanceFlag)) {
+      if (target.getEntity().getType() == TYPE_CONTACT
+          && target.acceptsAttacker(owner, acceptanceFlag)) {
         return true;
       }
     } else {
       if (owner.getType() == TYPE_CONTACT && !queries.nonCharacterOwnerAccepts(target)) {
         return false;
       }
-      return accepted(target, acceptanceFlag);
+      return accepted(t, target, acceptanceFlag);
     }
 
     TargetingConfig targetConfig = target.getConfig();
@@ -197,7 +198,7 @@ public final class ReferenceValidator {
     if (cfg.hasProjectile() && mode) {
       return pendingDamageRule(t, target, queries, acceptanceFlag);
     }
-    return accepted(target, acceptanceFlag);
+    return accepted(t, target, acceptanceFlag);
   }
 
   /**
@@ -209,7 +210,7 @@ public final class ReferenceValidator {
     int amount = target.getPendingDamageAmount();
     int duration = target.getPendingDamageDuration();
     if (amount == 0) {
-      return accepted(target, acceptanceFlag);
+      return accepted(t, target, acceptanceFlag);
     }
     boolean hitPointsObject = target.isHitPointsPresent();
     boolean notBuffed = true;
@@ -229,27 +230,27 @@ public final class ReferenceValidator {
       alreadyCommitted = queries.committedDamage(target, target.getPendingDamageKey()) <= amount;
     }
     if (!hitPointsObject) {
-      return accepted(target, acceptanceFlag);
+      return accepted(t, target, acceptanceFlag);
     }
     if (!queries.pendingDamageAccepted(target, amount)) {
-      return accepted(target, acceptanceFlag);
+      return accepted(t, target, acceptanceFlag);
     }
     if (duration > t.getGlobals().pendingDamageIgnoreIfDurationLess()) {
-      return accepted(target, acceptanceFlag);
+      return accepted(t, target, acceptanceFlag);
     }
     boolean keep = recent || keepsAttacker || !(notBuffed || alreadyCommitted);
     if (!keep) {
       return false;
     }
-    return accepted(target, acceptanceFlag);
+    return accepted(t, target, acceptanceFlag);
   }
 
   /**
-   * The target's own last word: it must carry hit points and accept the attacker, asked with the
-   * acceptance flag the validator was called with.
+   * The target's own last word: it must carry hit points and accept the owner as its asker, asked
+   * with the acceptance flag the validator was called with.
    */
-  private static boolean accepted(TargetView target, boolean acceptanceFlag) {
-    return target.isHitPointsPresent() && target.acceptsAttacker(acceptanceFlag);
+  private static boolean accepted(TargetingState t, TargetView target, boolean acceptanceFlag) {
+    return target.isHitPointsPresent() && target.acceptsAttacker(t.getOwner(), acceptanceFlag);
   }
 
   /**

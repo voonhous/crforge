@@ -44,6 +44,18 @@ public interface HitQueries {
    */
   default void resetCharge() {}
 
+  /**
+   * Told once the owner's tags let the hit through, before the cancel for distance: a row with a
+   * buff while it is not attacking restarts that countdown at one tick here, on every hit.
+   */
+  default void hitAllowed() {}
+
+  /**
+   * Told after a direct hit's damage was dealt to its one target: a row with an area effect on its
+   * hits makes it here, where the owner stands.
+   */
+  default void directHitDealt() {}
+
   /** True when the owner may not attack at all, which discards the hit before any other step. */
   default boolean attackForbidden() {
     return false;

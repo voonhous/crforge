@@ -95,6 +95,9 @@ public final class BattleRecords {
       Set.of(
           "Name",
           "Rarity",
+          "Invisible",
+          "HealPerSecond",
+          "AllowedOverHealPerc",
           "SpeedMultiplier",
           "HitSpeedMultiplier",
           "SpawnSpeedMultiplier",
@@ -204,11 +207,11 @@ public final class BattleRecords {
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield, hiding while not attacking or before the first hit, a buff
-   * at a share of its hit points, hovering, a flying unit's direct paths, the action a completed
-   * charge runs, a chained dash, a dash's contact damage, fixed distance, area effect and closing
-   * action, a limit on the elixir a collector makes, a spawner's launches, its second and third
-   * characters, its destruction at the limit, the deploy it gives its children, and a Kamikaze
-   * row's drain over a time rather than its kill.
+   * at a share of its hit points, a flying unit's direct paths, the action a completed charge runs,
+   * a chained dash, a dash's contact damage, fixed distance, area effect and closing action, a
+   * limit on the elixir a collector makes, a spawner's launches, its second and third characters,
+   * its destruction at the limit, the deploy it gives its children, and a Kamikaze row's drain over
+   * a time rather than its kill.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -217,7 +220,6 @@ public final class BattleRecords {
           "HidesWhenNotAttacking",
           "HideBeforeFirstHit",
           "BuffOnXHP",
-          "Hovering",
           "FlyDirectPaths",
           "OnStartChargingAction",
           "DashCount",
@@ -256,6 +258,8 @@ public final class BattleRecords {
           "BlueExportName",
           "BlueShieldExportName",
           "BlueTopExportName",
+          "BuffWhenNotAttackingEffect",
+          "BuffWhenNotAttackingRemoveEffect",
           "ChargeEffect",
           "ContinuousEffect",
           "CrowdEffects",
@@ -380,8 +384,6 @@ public final class BattleRecords {
           "MeleePushback3",
           "IsMeleePushbackAll2",
           "IsMeleePushbackAll3",
-          // Asked only about an invisible unit; every buff that makes one invisible is refused.
-          "AllowAreaDmgWhenInvisible",
           // Read only by the character view: the walk animation's rate, the sprite's rotation, the
           // attack animation's choice and states, the sprite's shake, the filters its sprite and
           // its card show, and the move animation.
@@ -395,8 +397,8 @@ public final class BattleRecords {
           "LoopingFilter",
           "CustomSpawnFilter",
           "CustomCloneFilter",
-          // An object of the view only: no entity is made of it, and a building fires its own
-          // shots.
+          // No battle logic reads it: an object of the view only, of which no entity is made, and
+          // a building fires its own shots.
           "AttachedCharacter",
           "AttachedCharacterHeight",
           // Stored and never read.
@@ -410,7 +412,9 @@ public final class BattleRecords {
           "IgnoreResurrect",
           // Read only in the in-game pathfinding state, which only an ability's lane switch
           // enters, and that switch is refused.
-          "IngamePathfindSpeed");
+          "IngamePathfindSpeed",
+          // Read only while hiding when not attacking or before the first hit, both refused.
+          "HideTimeMs");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread
@@ -639,6 +643,17 @@ public final class BattleRecords {
                     ? null
                     : row.string("IgnoreTargetsWithBuff"))
             .deprioritizeTargetsWithBuff(row.bool("DeprioritizeTargetsWithBuff"))
+            .hovering(row.bool("Hovering"))
+            .buffWhenNotAttacking(
+                set(row, "BuffWhenNotAttacking") ? row.string("BuffWhenNotAttacking") : null)
+            .buffWhenNotAttackingTimeMs(row.intValue("BuffWhenNotAttackingTime"))
+            .buffWhenNotAttackingUseAttackRange(row.bool("BuffWhenNotAttackingUseAttackRange"))
+            // The loader's default is true: only a row that sets it false starts without the buff.
+            .startWithBuffWhenNotAttacking(
+                !row.has("StartWithBuffWhenNotAttacking")
+                    || row.bool("StartWithBuffWhenNotAttacking"))
+            .allowAreaDamageWhenInvisible(row.bool("AllowAreaDmgWhenInvisible"))
+            .areaEffectOnHit(set(row, "AreaEffectOnHit") ? row.string("AreaEffectOnHit") : null)
             .unmodelledColumns(unmodelledColumns(row))
             .build();
     return data.toBuilder()
@@ -724,6 +739,11 @@ public final class BattleRecords {
       if (sets(row, column)) {
         columns.add(column);
       }
+    }
+    // Without its range gate the not-attacking countdown is held by a touch test that is not
+    // modelled.
+    if (sets(row, "BuffWhenNotAttacking") && !row.bool("BuffWhenNotAttackingUseAttackRange")) {
+      columns.add("BuffWhenNotAttacking");
     }
     if (!row.string("SpawnCharacter").isEmpty()) {
       for (String column : UNMODELLED_SPAWNER_COLUMNS) {
@@ -1030,6 +1050,9 @@ public final class BattleRecords {
         .deathSpawnIsEnemy(row.bool("DeathSpawnIsEnemy"))
         .deathSpawnDeployDelay(row.bool("DeathSpawnDeployDelay"))
         .otherBuffDeathSpawnAllowed(row.bool("OtherBuffDeathSpawnAllowed"))
+        .invisible(row.bool("Invisible"))
+        .healPerSecond(row.intValue("HealPerSecond"))
+        .allowedOverHealPercent(row.intValue("AllowedOverHealPerc"))
         .unmodelledColumns(unmodelled)
         .build();
   }

@@ -28,6 +28,8 @@ import java.util.function.BooleanSupplier;
  * @param goalRow the row of the entity's own side's goal line, in routing cells, or -1 for none
  * @param scaledDeployStepMs the deploy countdown's step in milliseconds when the entity's speed
  *     modifiers scale it; the unscaled step is 50
+ * @param notAttacking the section of a row with a buff while it is not attacking, run where the
+ *     visit reaches it: its countdown, and the buff's removal or apply; nothing for any other row
  */
 public record StateQueries(
     int team,
@@ -40,7 +42,8 @@ public record StateQueries(
     boolean protectedFromDamage,
     boolean protectionApplies,
     int goalRow,
-    int scaledDeployStepMs) {
+    int scaledDeployStepMs,
+    Runnable notAttacking) {
 
   /** Milliseconds one tick advances every countdown by. */
   public static final int TICK_MS = 50;
@@ -64,7 +67,7 @@ public record StateQueries(
    */
   public static StateQueries forUnitWithRoute(int team) {
     return new StateQueries(
-        team, true, true, false, true, false, () -> false, false, false, -1, TICK_MS);
+        team, true, true, false, true, false, () -> false, false, false, -1, TICK_MS, () -> {});
   }
 
   /** The same answers with the "can follow a route" question answered differently. */
@@ -80,6 +83,7 @@ public record StateQueries(
         protectedFromDamage,
         protectionApplies,
         goalRow,
-        scaledDeployStepMs);
+        scaledDeployStepMs,
+        notAttacking);
   }
 }

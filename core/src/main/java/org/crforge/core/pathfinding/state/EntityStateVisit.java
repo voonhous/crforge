@@ -22,6 +22,7 @@ import org.crforge.core.pathfinding.move.MovementState;
  *       unit's first-tick immunity advances in every state;
  *   <li>a staggered unit counts its stagger down and nothing else happens this visit;
  *   <li>a landed dash releases the unit back into movement;
+ *   <li>a row with a buff while it is not attacking runs its section, which its caller supplies;
  *   <li>the pending-damage duration counts down and a unit with no hit points asks to be removed;
  *   <li>the dash immunity is either topped up or counted down;
  *   <li>a requested ability starts;
@@ -33,13 +34,14 @@ import org.crforge.core.pathfinding.move.MovementState;
  * </ol>
  *
  * <p>Blocks this class does not carry, because each is gated by a configuration column that belongs
- * to a part of the simulation outside movement and routing: the buff a unit gets while it is not
- * attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, and the
- * morph timer with its growth scale. They sit between blocks 4 and 5 and between 11 and 12 in the
- * order above and none of them changes a state or a position that routing reads. Two of them are
- * announced where the visit reaches them, and their caller runs them, since nothing after either in
- * the visit reads what it does: the elixir generation, right after block 11, as {@code elixir}, and
- * the live spawner, the last block before 12, as {@code spawner}.
+ * to a part of the simulation outside movement and routing: the self-damage of a kamikaze unit,
+ * elixir generation, the hide handling, and the morph timer with its growth scale. They sit between
+ * blocks 5 and 6 and between 12 and 13 in the order above and none of them changes a state or a
+ * position that routing reads. Two of them are announced where the visit reaches them, and their
+ * caller runs them, since nothing after either in the visit reads what it does: the elixir
+ * generation, right after block 12, as {@code elixir}, and the live spawner, the last block before
+ * 13, as {@code spawner}. The not-attacking section, block 5, is its caller's too, but run in its
+ * place, since it reads the state the visit has reached and the elapsed time.
  *
  * <p>Two consequences of leaving them out, which matter to anyone extending this class rather than
  * to a plain ground troop:
@@ -67,8 +69,8 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " delay, pending damage, dash immunity, the ability countdowns, the follow"
             + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
             + " deploy countdown ending in the moving state, and the dash landing delay and the"
-            + " dash immunity, by mega_knight_group and bandit_knight. Not modelled:"
-            + " the not-attacking buff timer, kamikaze self-damage, hiding,"
+            + " dash immunity, by bandit_knight; the not-attacking section's place, by"
+            + " ghost_river_wizard_tower. Not modelled: kamikaze self-damage, hiding,"
             + " growth, and the targeting visit the standard game runs"
             + " straight after a hidden unit resumes. A removal is requested by name and read"
             + " by nothing.")
@@ -152,7 +154,10 @@ public final class EntityStateVisit {
       }
     }
 
-    // 5. Pending damage, and removal of a unit that has no hit points left.
+    // 5. The section of a row with a buff while it is not attacking, which the caller runs.
+    queries.notAttacking().run();
+
+    // 6. Pending damage, and removal of a unit that has no hit points left.
     timers.setPendingDamageDurationMs(
         Math.max(timers.getPendingDamageDurationMs(), TICK_MS) - TICK_MS);
     chain.add("has_hit_points");
@@ -166,7 +171,7 @@ public final class EntityStateVisit {
       timers.setRemovalRequested(true);
     }
 
-    // 6. Dash immunity is topped up while the unit is protected and counted down otherwise.
+    // 7. Dash immunity is topped up while the unit is protected and counted down otherwise.
     boolean topUp;
     if (queries.protectedFromDamage() && queries.protectionApplies()) {
       topUp = true;
@@ -184,7 +189,7 @@ public final class EntityStateVisit {
       timers.setDashImmunityRemainingMs(timers.getDashImmunityRemainingMs() - TICK_MS);
     }
 
-    // 7. A requested ability starts, or its cooldown is held.
+    // 8. A requested ability starts, or its cooldown is held.
     if (timers.isAbilityReady()) {
       chain.add("ability_trigger_ready");
       if (queries.abilityTriggerReady().getAsBoolean()) {
@@ -195,7 +200,7 @@ public final class EntityStateVisit {
       }
     }
 
-    // 8. The casting and follow-up countdowns.
+    // 9. The casting and follow-up countdowns.
     if (entity.getState() == GridEntityState.CASTING) {
       entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.CASTING_ABILITY);
       chain.add("ability_cast_active");
@@ -226,7 +231,7 @@ public final class EntityStateVisit {
       }
     }
 
-    // 9. A unit removed from play follows whatever it was attached to.
+    // 10. A unit removed from play follows whatever it was attached to.
     if (!holdingFollowUp) {
       if (entity.getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING
           && timers.getFollowTarget() == null) {
@@ -250,7 +255,7 @@ public final class EntityStateVisit {
       word = entity.getState();
     }
 
-    // 10. The deployment countdown, and the resume that ends it.
+    // 11. The deployment countdown, and the resume that ends it.
     if (word == GridEntityState.CLONE_SETUP || entity.getDeployCountdown() >= 1) {
       int remaining;
       if (config.deployTimeAffectedByCharacterSpeed()) {
@@ -273,7 +278,7 @@ public final class EntityStateVisit {
       }
     }
 
-    // 11. A unit that has walked to its own goal row stops there.
+    // 12. A unit that has walked to its own goal row stops there.
     if (entity.getState() == GridEntityState.MOVING && timers.isStopsAtGoalRow()) {
       chain.add("goal_row");
       if (queries.goalRow() == FixedMath.divOrZero(entity.getY(), 500)) {
@@ -288,7 +293,7 @@ public final class EntityStateVisit {
     // it.
     chain.add("spawner");
 
-    // 12. A morph counts down and the unit stands when it ends.
+    // 13. A morph counts down and the unit stands when it ends.
     if (entity.getState() == GridEntityState.MORPHING) {
       timers.setMorphCountdownMs(Math.max(timers.getMorphCountdownMs(), TICK_MS) - TICK_MS);
       if (timers.getMorphCountdownMs() == 0) {

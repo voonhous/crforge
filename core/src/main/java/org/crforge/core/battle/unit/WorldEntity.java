@@ -29,6 +29,7 @@ import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageApplication;
 import org.crforge.core.pathfinding.combat.DamageQueries;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.Healing;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
@@ -375,6 +376,19 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public void hitAllowed() {
+        WorldEntity.this.hitAllowed();
+      }
+
+      @Override
+      public void directHitDealt() {
+        // A row with an area effect on its hits makes it where the entity stands.
+        if (data.areaEffectOnHit() != null) {
+          world.areaEffectOnHit(WorldEntity.this);
+        }
+      }
+
+      @Override
       public int nextHitId() {
         return world.nextHitId();
       }
@@ -471,6 +485,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
           name() + " applies its BuffOnDamage with a hit on nothing, not modelled");
     }
     world.buffOnDamage(this, world.entityOf(target.getEntity()));
+  }
+
+  /** Each of the entity's hits its tags let through; a tower's does nothing. */
+  protected void hitAllowed() {
+    // A tower takes no buff while it is not attacking.
   }
 
   /** The end of each of the entity's hits; a tower's does nothing. */
@@ -715,6 +734,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     HitPoints old = from.getHitPoints();
     long share = (long) old.getHitPoints() * hitPoints.getMaximum() / old.getMaximum();
     hitPoints.setHitPoints((int) share);
+    refreshHitPoints();
+  }
+
+  /**
+   * Takes one heal of a buff's heal over time, capped as the hit-point object caps it: a king tower
+   * below its maximum stops one short of it.
+   *
+   * @param amount the heal
+   * @param overHealPercent the share of the maximum the heal may reach; 0 for the maximum
+   */
+  void takeHeal(int amount, int overHealPercent) {
+    Healing.heal(hitPoints, amount, overHealPercent, data.king());
     refreshHitPoints();
   }
 

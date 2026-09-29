@@ -106,6 +106,7 @@ public final class HitApplication {
     if (queries.attackForbidden()) {
       return true;
     }
+    queries.hitAllowed();
     boolean missed = cancelledForDistance(t, target, cfg, globals);
     if (!(cfg.loadFirstHit() && globals.loadFirstHitKeepLoadedAfterDiscard() && missed)) {
       t.setLoadTimerMs(cfg.loadTime());

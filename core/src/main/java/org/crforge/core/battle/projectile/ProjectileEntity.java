@@ -509,6 +509,14 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
    * The projectile as the owner of the area its impact damages: an entity of the projectile's kind
    * on its side, which is all the validator asks of an owner that is not a character.
    */
+  /**
+   * The projectile as it asks a target whether it may hit it: an entity of the projectile's type
+   * and side.
+   */
+  public GridEntity askerView() {
+    return areaOwner().getOwner();
+  }
+
   TargetingState areaOwner() {
     GridEntity view = new GridEntity();
     view.setName(name());

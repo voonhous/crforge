@@ -18,12 +18,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * runs on the unit's movement and targeting components.
  *
  * <p>A state change is more than a store. Leaving the attacking state clears the targeting
- * component's target-lost timer; leaving the deploying or either pathfinding state clears the
- * deploy countdown, unless the unit is leaving for clone setup. Entering the standing, attacking,
- * clone-setup or casting state empties the route and clears the route-leads-away bit, so a unit
- * that stops holds no route. Entering the moving state prepares a route at once, over whatever
- * reference the targeting component holds at that moment, rather than waiting for the next movement
- * visit. The actions run in that order: exit actions, the store, entry actions.
+ * component's target-lost timer and starts a row's not-attacking countdown; leaving the deploying
+ * or either pathfinding state clears the deploy countdown, unless the unit is leaving for clone
+ * setup. Entering the standing, attacking, clone-setup or casting state empties the route and
+ * clears the route-leads-away bit, so a unit that stops holds no route. Entering the moving state
+ * prepares a route at once, over whatever reference the targeting component holds at that moment,
+ * rather than waiting for the next movement visit. The actions run in that order: exit actions, the
+ * store, entry actions.
  *
  * <p>The guard comes first: while the deploy countdown is running, only clone setup and the two
  * removed-and-following states may be set, so nothing pulls a unit that is still being placed into
@@ -63,10 +64,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
     note =
         "Settled: the interrupt guard; the route emptied on entering the standing, attacking,"
             + " clone-setup and casting states; the route prepared on entering the moving"
-            + " state; the target-lost timer cleared on leaving the attacking state; the deploy"
-            + " countdown cleared on leaving the deploying and pathfinding states and raised to"
-            + " the unit's deploy time on entering the deploying state; the dashing state's entry,"
-            + " held by bandit_knight and mega_knight_group; the casting state's entry and exit"
+            + " state; the target-lost timer cleared, and the not-attacking countdown started,"
+            + " on leaving the attacking state, the second held by ghost_river_wizard_tower; the"
+            + " deploy countdown cleared on leaving the deploying and pathfinding states and"
+            + " raised to the unit's deploy time on entering the deploying state; the dashing"
+            + " state's entry, held by bandit_knight; the casting state's entry and exit"
             + " with the combat gate after them, held by giant_buffer_knights. Held by the 53"
             + " reference walks, whose route empties at the lock, and the staggered placements."
             + " Not modelled: switching components, the countdown seeded on entering the morphing"
@@ -115,6 +117,12 @@ public final class GridStateSetter implements StateSetter {
    * updated at once - or null for nothing.
    */
   @Setter private Runnable deployingEntry;
+
+  /**
+   * What leaving the attacking state does besides clearing the target-lost timer - a row with a
+   * buff while it is not attacking starts that countdown - or null for nothing.
+   */
+  @Setter private Runnable attackingExit;
 
   /**
    * Creates the setter of one unit.
@@ -214,6 +222,9 @@ public final class GridStateSetter implements StateSetter {
       case GridEntityState.ATTACKING -> {
         if (targeting != null) {
           targeting.setTargetLostTimerMs(0);
+        }
+        if (attackingExit != null) {
+          attackingExit.run();
         }
       }
       case GridEntityState.DEPLOYING,

@@ -11,9 +11,10 @@ import org.crforge.core.pathfinding.GridEntity;
     note =
         "Answered from the entity: its kind, team, tag word, crown tower, building, alive, flying,"
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
-            + " pushback; the summoner is the king tower. Supplied: a princess tower is a row with"
-            + " the summoner-tower column, and nothing is hidden, underground, a clone, invisible or"
-            + " immune while dashing, none of which the battle models yet.")
+            + " pushback, and its buffs' invisible count; the summoner is the king tower. Supplied:"
+            + " a princess tower is a row with the summoner-tower column, and nothing is hidden,"
+            + " underground, a clone or immune while dashing, none of which the battle models"
+            + " yet.")
 final class EntityFilterSubject implements FilterSubject {
 
   private final WorldEntity entity;
@@ -118,7 +119,7 @@ final class EntityFilterSubject implements FilterSubject {
 
   @Override
   public int invisibleCounter() {
-    return 0;
+    return entity.getBuffs().invisibleCount();
   }
 
   @Override

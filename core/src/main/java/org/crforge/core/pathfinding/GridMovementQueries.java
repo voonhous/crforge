@@ -39,8 +39,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
     status = FidelityStatus.PARTIAL,
     note =
         "Answers the movement pass from the live grid and the unit's own state; held by"
-            + " the 53 reference walks. Supplied: the hovering water permission off, every map cell"
-            + " an acceptable endpoint, no status effects in the speed inputs, and a unit that"
+            + " the 53 reference walks. Supplied: every map cell an acceptable endpoint, no status effects in the speed inputs, and a unit that"
             + " always carries both components.")
 public final class GridMovementQueries implements MovementQueries {
 
@@ -113,14 +112,13 @@ public final class GridMovementQueries implements MovementQueries {
   @Override
   public Route search(int startCol, int startRow, int goalCol, int goalRow, int adjust) {
     GridEntity entity = unit.entity();
-    // A unit that jumps the river may route over water, at the water cost; a hovering unit, which
-    // may too, is not managed here.
+    // A hovering unit, and one that jumps the river, may route over water, at the water cost.
     return GridSearchService.route(
         grid,
         costs,
         entity.getState(),
         entity.getLane(),
-        false,
+        unit.movementConfig().hovering(),
         unit.movementConfig().jumpEnabled(),
         startCol,
         startRow,
@@ -159,6 +157,12 @@ public final class GridMovementQueries implements MovementQueries {
   /** The last endpoint this visit asked for, or -1 when it asked for none. */
   public int lastEndpoint() {
     return lastEndpoint;
+  }
+
+  /** 1 for a hovering unit, which a push does not move off water. */
+  @Override
+  public int hovering() {
+    return unit.movementConfig().hovering() ? 1 : 0;
   }
 
   @Override

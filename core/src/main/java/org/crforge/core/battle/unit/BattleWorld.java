@@ -635,6 +635,26 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The area effect a unit's direct hit makes, once its damage was dealt to its one target: at the
+   * unit's point, not the target's, for its side and at its level, handed to the holder, which
+   * gives it its id at once and admits it at the tick's closing cleanup, so it first updates on the
+   * next tick. An area hit makes none.
+   *
+   * @param unit the unit whose hit it is
+   */
+  void areaEffectOnHit(WorldEntity unit) {
+    createAreaEffect(
+        unit.getData().areaEffectOnHit(),
+        unit.getView().getX(),
+        unit.getView().getY(),
+        unit.side(),
+        unit.getPackedLevel(),
+        null,
+        "area_effect_on_hit",
+        unit.name());
+  }
+
+  /**
    * Morphs a unit that has surfaced into its row's morph, as the arrival of a tunnel does: the new
    * object is made on the unit's point with its level, lane and share of its hit points, a building
    * facing as the unit did; it is queued with its registration visit in the state it is made in,
@@ -2469,6 +2489,18 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * A unit's buff while it is not attacking, applied to itself: from the unit, at its level and for
+   * its side, for the given time, as its creation and its state visit's countdown apply it.
+   *
+   * @param unit the unit
+   * @param time how long the buff lasts
+   */
+  void notAttackingBuff(CharacterEntity unit, int time) {
+    BuffData buff = buffData(unit.getData().buffWhenNotAttacking());
+    unit.getBuffs().apply(buff, time, unit.getPackedLevel(), unit, unit.side());
+  }
+
+  /**
    * A hit's buff on damage on what it reached, after its direct hit: nothing for a target
    * untouchable at that moment, the immunity left after a dash counted; otherwise applied with the
    * attacker as the source, at its level and for its side, for its row's BuffOnDamageTime. There is
@@ -2482,6 +2514,12 @@ public class BattleWorld implements HolderPasses {
   void buffOnDamage(WorldEntity attacker, WorldEntity target) {
     UnitData data = attacker.getData();
     BuffData buff = buffData(data.buffOnDamage());
+    // A hit applies its buff with the attacker as its parent, which a stacking buff keeps: its
+    // instance would leave with the attacker and bar another from the same parent. No row does.
+    if (buff.enableStacking()) {
+      throw new UnsupportedOperationException(
+          data.name() + " applies a stacking BuffOnDamage kept with its parent, not modelled");
+    }
     if (!target.untouchable()) {
       target
           .getBuffs()
@@ -2539,7 +2577,7 @@ public class BattleWorld implements HolderPasses {
           || (entity.getView().getFlags() & EntityFlags.UNTARGETABLE) != 0
           || projectile.getHitIds().contains(entity.getId())
           || entity.getHitPoints() == null
-          || !entity.getTargetView().acceptsAttacker(true)) {
+          || !entity.getTargetView().acceptsAttacker(projectile.askerView(), false)) {
         continue;
       }
       int d =
@@ -2638,6 +2676,18 @@ public class BattleWorld implements HolderPasses {
     if (result.died()) {
       // The killing side is the one the buff was applied for.
       target.die(null, buff.getSide());
+    }
+  }
+
+  /**
+   * Gives one heal of a buff's heal over time to its entity, capped by the buff's over-heal share,
+   * and tells the observers.
+   */
+  void dealBuffHeal(WorldEntity target, BuffInstance buff, int heal) {
+    int before = target.getHitPoints().getHitPoints();
+    target.takeHeal(heal, buff.getBuff().allowedOverHealPercent());
+    for (WorldObserver observer : observers) {
+      observer.buffHealed(tick, target, buff, heal, before);
     }
   }
 

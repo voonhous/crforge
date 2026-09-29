@@ -113,7 +113,10 @@ public interface MovementQueries {
     return -1;
   }
 
-  /** 1 when the entity hovers, which exempts it from the relocation off water. Supplied as 0. */
+  /**
+   * 1 when the entity hovers, which exempts it from the relocation off water and from the push's
+   * handling of water. The default answers 0; a grid-driven unit answers its row's Hovering.
+   */
   default int hovering() {
     return 0;
   }
