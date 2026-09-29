@@ -12,12 +12,12 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * The order of operations matters and is the one below.
  */
 @Fidelity(
-    status = FidelityStatus.PARTIAL,
+    status = FidelityStatus.TRACED,
     note =
-        "The attack range of a unit agrees with the reference. Not settled: the range a"
-            + " unit advertises to route preparation is worked out as though it had no"
-            + " movement component, which differs from the standard game for a walking unit"
-            + " with an attack sequence; no driven unit has one.")
+        "The attack range of a unit agrees with the reference, and so does the range it"
+            + " advertises to the rest of the battle, which reads the owner's real movement"
+            + " component: a walking continuous-damage attacker advertises the 500 units less it"
+            + " stops at. Held by inferno_dragon_zap and mighty_miner_knight_tower.")
 public final class AttackRange {
 
   /** Attack range against a type-3 reference, which is fought at contact distance. */
@@ -45,17 +45,6 @@ public final class AttackRange {
    * </ol>
    */
   public static int attackRange(TargetingState t) {
-    return attackRange(t, t.isMovementComponentActive());
-  }
-
-  /**
-   * The component's current attack range, with the "does the owner move" answer supplied.
-   *
-   * @param t the targeting component
-   * @param movementComponentActive whether the owner counts as having an active movement component
-   *     for the walk-closer rule
-   */
-  private static int attackRange(TargetingState t, boolean movementComponentActive) {
     TargetView reference = t.getReference();
     if (reference != null && reference.getEntity().getType() == CONTACT_RANGE_TYPE) {
       return CONTACT_RANGE;
@@ -77,7 +66,7 @@ public final class AttackRange {
     if (PathfindingGlobals.LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER == 0) {
       return range;
     }
-    if (!movementComponentActive) {
+    if (!t.isMovementComponentActive()) {
       return range;
     }
     if (cfg.attackSequenceMode() == 0) {
@@ -113,18 +102,16 @@ public final class AttackRange {
    * the radius it stops at, the flying waypoint rule uses it as the distance it keeps, and the
    * default target selection uses it as the reach it compares candidates against.
    *
-   * <p>The advertised range is worked out as though the entity had no movement component, so the
-   * walk-closer allowance of {@link
-   * PathfindingGlobals#LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER} is never subtracted from
-   * it. A unit with an attack sequence therefore advertises the same reach whether it is walking or
-   * standing, while {@link #attackRange(TargetingState)} - what the unit itself stops at - still
-   * gives up those 500 units while it walks.
+   * <p>The advertised range reads the entity's real movement component, as {@link
+   * #attackRange(TargetingState)} does, so a walking continuous-damage attacker advertises the
+   * reach less the {@link PathfindingGlobals#LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER} it
+   * gives up while it walks, and routes to the point it will stop at.
    */
   public static int attackRangeWithRadius(TargetingState t) {
     if (t == null || !t.isTargetingComponentActive()) {
       return 0;
     }
-    return attackRange(t, false);
+    return attackRange(t);
   }
 
   /**

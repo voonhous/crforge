@@ -73,6 +73,12 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
   @Setter private IntUnaryOperator timeScaler = IntUnaryOperator.identity();
 
   /**
+   * The index a timer-driven attack sequence's window walk gives for an attack timer; 0 until the
+   * owner says how to walk its sequence.
+   */
+  @Setter private IntUnaryOperator windowWalk = attackTimerMs -> 0;
+
+  /**
    * Whether a candidate carries the buff the owner ranks lower; none does until the owner says how
    * to ask.
    */
@@ -206,6 +212,11 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
   @Override
   public int scaleTimeStep(int baseMs) {
     return timeScaler.applyAsInt(baseMs);
+  }
+
+  @Override
+  public int nextAttackSequenceStep(int attackTimerMs) {
+    return windowWalk.applyAsInt(attackTimerMs);
   }
 
   @Override

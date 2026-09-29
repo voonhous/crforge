@@ -641,9 +641,23 @@ public class BattleWorld implements HolderPasses {
    * then set to the unit's deploying state, whose entry makes its area object. The unit leaves at
    * the closing cleanup.
    *
+   * <p>A morph hands the new object to the removal notice of every entity that referenced the old
+   * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not
+   * established, so a morph of a unit such an attacker references is refused.
+   *
    * @param old the unit that surfaced
    */
   void morph(CharacterEntity old) {
+    for (WorldEntity entity : present) {
+      if (entity.getData().attackSequence().mode() != AttackSequence.MODE_NONE
+          && entity.getTargeting().getReference() == old.getTargetView()) {
+        throw new UnsupportedOperationException(
+            entity.name()
+                + " is a continuous-damage attacker referencing "
+                + old.name()
+                + " as it morphs, whose replacement is not modelled");
+      }
+    }
     UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
     CharacterEntity made = CharacterEntity.morphedFrom(old, data);
     holder.addRegistered(made);

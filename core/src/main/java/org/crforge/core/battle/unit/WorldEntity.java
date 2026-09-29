@@ -181,6 +181,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     // The attack timer, the dash and the special loads step by the time the buffs scale.
     this.buffs = new BuffComponent(this, world);
     selection.setTimeScaler(buffs::hitSpeed);
+    // A timer-driven sequence's index is the window its attack timer has reached.
+    selection.setWindowWalk(attackTimerMs -> this.data.attackSequence().windowAt(attackTimerMs));
     attach(buffs);
     // Every entity carries a buff component, which the priority rule asks about.
     targetView.setBuffComponentPresent(true);
