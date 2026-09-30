@@ -206,18 +206,17 @@ public final class BattleRecords {
 
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
-   * refused as it is created. A shield, hiding while not attacking or before the first hit, a buff
-   * at a share of its hit points, a flying unit's direct paths, the action a completed charge runs,
-   * a chained dash, a dash's contact damage, fixed distance, area effect and closing action, a
-   * limit on the elixir a collector makes, a spawner's launches, its second and third characters,
-   * its destruction at the limit, the deploy it gives its children, and a Kamikaze row's drain over
-   * a time rather than its kill.
+   * refused as it is created. A shield, hiding before the first hit, a buff at a share of its hit
+   * points, a flying unit's direct paths, the action a completed charge runs, a chained dash, a
+   * dash's contact damage, fixed distance, area effect and closing action, a limit on the elixir a
+   * collector makes, a spawner's launches, its second and third characters, its destruction at the
+   * limit, the deploy it gives its children, and a Kamikaze row's drain over a time rather than its
+   * kill.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
           "ShieldDiePushback",
           "ShieldLostAction",
-          "HidesWhenNotAttacking",
           "HideBeforeFirstHit",
           "BuffOnXHP",
           "FlyDirectPaths",
@@ -412,9 +411,7 @@ public final class BattleRecords {
           "IgnoreResurrect",
           // Read only in the in-game pathfinding state, which only an ability's lane switch
           // enters, and that switch is refused.
-          "IngamePathfindSpeed",
-          // Read only while hiding when not attacking or before the first hit, both refused.
-          "HideTimeMs");
+          "IngamePathfindSpeed");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread
@@ -657,6 +654,9 @@ public final class BattleRecords {
             // The loader's default is true: only a row that sets it false lets its target go.
             .keepTargetWithPendingDamage(
                 !row.has("KeepTargetWithPendingDamage") || row.bool("KeepTargetWithPendingDamage"))
+            .hidesWhenNotAttacking(row.bool("HidesWhenNotAttacking"))
+            .hideTimeMs(row.intValue("HideTimeMs"))
+            .upTimeMs(row.intValue("UpTimeMs"))
             .unmodelledColumns(unmodelledColumns(row))
             .build();
     return data.toBuilder()

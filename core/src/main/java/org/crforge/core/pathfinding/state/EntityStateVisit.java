@@ -41,7 +41,9 @@ import org.crforge.core.pathfinding.move.MovementState;
  * caller runs them, since nothing after either in the visit reads what it does: the elixir
  * generation, right after block 12, as {@code elixir}, and the live spawner, the last block before
  * 13, as {@code spawner}. The not-attacking section, block 5, is its caller's too, but run in its
- * place, since it reads the state the visit has reached and the elapsed time.
+ * place, since it reads the state the visit has reached and the elapsed time; so are the hide
+ * handler, right after the elixir generation, and a hiding row's combat gate and targeting visit at
+ * the end of its deploy, right after block 11's resume.
  *
  * <p>Two consequences of leaving them out, which matter to anyone extending this class rather than
  * to a plain ground troop:
@@ -71,10 +73,9 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " deploy countdown ending in the moving state, and the dash landing delay and the"
             + " dash immunity, by bandit_knight; the not-attacking section's place, by"
             + " ghost_river_wizard_tower; the pending-damage countdown, by the battle references'"
-            + " re-locks and drops. Not modelled: kamikaze self-damage, hiding,"
-            + " growth, and the targeting visit the standard game runs"
-            + " straight after a hidden unit resumes. A removal is requested by name and read"
-            + " by nothing.")
+            + " re-locks and drops; a hiding row's deploy-end targeting visit and hide handler,"
+            + " by tesla_giant_passing. Not modelled: kamikaze self-damage and growth. A removal"
+            + " is requested by name and read by nothing.")
 public final class EntityStateVisit {
 
   /** Milliseconds one tick advances every countdown by. */
@@ -273,9 +274,11 @@ public final class EntityStateVisit {
         return;
       }
       ResumeHelper.resume(entity, config, queries, chain, setter);
+      // A hiding row runs the combat gate and its targeting visit here, which the caller runs in
+      // place: the hide handler below reads the state that visit leaves.
       if (config.hideBeforeFirstHit() || config.hidesWhenNotAttacking()) {
-        chain.add("visit_tail");
-        chain.add("targeting_visit");
+        chain.add("deploy_end_visit");
+        queries.deployEndVisit().run();
       }
     }
 
@@ -289,6 +292,14 @@ public final class EntityStateVisit {
 
     // The elixir block runs here, after the goal row; the caller runs it.
     chain.add("elixir");
+
+    // The hide handler of a hiding row, which the caller runs in place. The standard game also runs
+    // it for a row whose buff while not attacking makes it invisible, where it leaves the counter
+    // at 0 and does nothing else.
+    if (config.hidesWhenNotAttacking() || config.hideBeforeFirstHit()) {
+      chain.add("hide");
+      queries.hide().run();
+    }
 
     // The spawner block runs here, between the goal row and the morph countdown; the caller runs
     // it.

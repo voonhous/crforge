@@ -356,8 +356,14 @@ class BattleRecordsTest {
         .containsExactly("OnStartChargingAction");
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).contains("ShieldLostAction");
-    assertThat(records.unit("Tesla").unmodelledColumns())
-        .containsExactly("HidesWhenNotAttacking", "UpTimeMs");
+    // The Tesla hides while it does not attack, 800 ms to go down and 800 to come up; its
+    // evolution's actions as it rises and hides are not modelled.
+    UnitData tesla = records.unit("Tesla");
+    assertThat(tesla.unmodelledColumns()).isEmpty();
+    assertThat(tesla.hidesWhenNotAttacking()).isTrue();
+    assertThat(new int[] {tesla.hideTimeMs(), tesla.upTimeMs()}).containsExactly(800, 800);
+    assertThat(records.unit("Tesla_EV1").unmodelledColumns())
+        .containsExactly("OnAppearAction", "OnDisappearAction");
     // An elixir collector is modelled: one elixir every 13000 ms; an Elixir Golem's death pays
     // 1000.
     UnitData collector = records.unit("ElixirCollector");

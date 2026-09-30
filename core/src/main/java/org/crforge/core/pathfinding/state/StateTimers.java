@@ -61,4 +61,12 @@ public final class StateTimers {
 
   /** The entity this one follows while it is removed from play, or null. */
   private GridEntity followTarget;
+
+  /**
+   * The hide counter of an entity that hides while it does not attack, stepped by {@link
+   * HideHandler}: 0 while it is up, climbing to the hide time as it goes down, exactly the hide
+   * time while it is hidden, and on to the hide time plus the up time as it comes back up. A
+   * negative value counts towards 0 as it comes back up from part-way down.
+   */
+  private int hideCounterMs;
 }

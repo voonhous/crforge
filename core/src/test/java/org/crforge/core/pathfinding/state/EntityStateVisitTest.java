@@ -260,4 +260,52 @@ class EntityStateVisitTest {
 
     assertThat(entity.getState()).isEqualTo(GridEntityState.MORPHING);
   }
+
+  /** The answers of a unit that may not route, with a hiding row's two runs recorded in order. */
+  private StateQueries hidingQueries(List<String> runs) {
+    StateQueries plain = StateQueries.forUnitWithRoute(0).withMayHoldRoute(false);
+    return new StateQueries(
+        plain.team(),
+        plain.mayHoldRoute(),
+        plain.gridAllowsRoute(),
+        plain.gridRouteFlag(),
+        plain.hasHitPoints(),
+        plain.abilityCastActive(),
+        plain.abilityTriggerReady(),
+        plain.protectedFromDamage(),
+        plain.protectionApplies(),
+        plain.goalRow(),
+        plain.scaledDeployStepMs(),
+        plain.notAttacking(),
+        () -> runs.add("deploy_end_visit " + entity.getState()),
+        () -> runs.add("hide " + entity.getState()));
+  }
+
+  @Test
+  void aHidingRowRunsItsTargetingVisitAsItsDeployEndsAndItsHideHandlerFromThenOn() {
+    StateVisitConfig hiding = CONFIG.withHidesWhenNotAttacking(true);
+    List<String> runs = new ArrayList<>();
+    StateQueries queries = hidingQueries(runs);
+    for (int tick = 0; tick < 19; tick++) {
+      visit(hiding, queries);
+    }
+    assertThat(runs).as("nothing while it deploys").isEmpty();
+
+    visit(hiding, queries);
+
+    // After the resume, which stands it; the hide handler reads the state the visit leaves.
+    assertThat(runs).containsExactly("deploy_end_visit 0", "hide 0");
+    visit(hiding, queries);
+    assertThat(runs).containsExactly("deploy_end_visit 0", "hide 0", "hide 0");
+  }
+
+  @Test
+  void aRowThatDoesNotHideRunsNeither() {
+    List<String> runs = new ArrayList<>();
+    StateQueries queries = hidingQueries(runs);
+    for (int tick = 0; tick < 25; tick++) {
+      visit(CONFIG, queries);
+    }
+    assertThat(runs).isEmpty();
+  }
 }

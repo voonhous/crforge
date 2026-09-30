@@ -177,9 +177,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param keepTargetWithPendingDamage true when, having hit, it keeps a reference that its own shots
  *     in flight will kill rather than turning to another; the loader's default is true, and no row
  *     sets it false
+ * @param hidesWhenNotAttacking true when it hides while it does not attack, by a hide counter its
+ *     state visit steps from the end of its deploy
+ * @param hideTimeMs the hide counter's value at which it is hidden, the time it takes to go down
+ * @param upTimeMs the time it takes to come back up from hidden
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
- *     as it is created: a shield, hiding, a buff at a share of its hit points, elixir, and the
- *     parts of a spawner that are not established
+ *     as it is created: a shield, hiding before its first hit, a buff at a share of its hit points,
+ *     elixir, and the parts of a spawner that are not established
  */
 @Builder(toBuilder = true)
 public record UnitData(
@@ -303,6 +307,9 @@ public record UnitData(
     boolean allowAreaDamageWhenInvisible,
     String areaEffectOnHit,
     boolean keepTargetWithPendingDamage,
+    boolean hidesWhenNotAttacking,
+    int hideTimeMs,
+    int upTimeMs,
     List<String> unmodelledColumns) {
 
   public UnitData {

@@ -70,7 +70,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " boosting one target or lasting longer by level, clones, the hit action, the shape,"
             + " the filter, the spawns, the launches, the life condition, following, tags,"
             + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
-            + " hit per target; hidden units are not modelled. Not created yet by a spell, a projectile"
+            + " hit per target. An area that reaches hidden units takes, damages and buffs a hidden"
+            + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. Not"
+            + " created yet by a spell, a projectile"
             + " or an action.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
@@ -142,6 +144,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
             return accepts(target);
           }
         };
+  }
+
+  /** Whether the entity that asks the validator is this area effect. */
+  boolean asks(GridEntity asker) {
+    return owner.getOwner() == asker;
   }
 
   /** Names the area effect once its id is known. */
@@ -260,7 +267,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (!HitPoints.alive(target.getHitPoints())) {
       return false;
     }
-    // A hidden unit is passed by first, where an effect that reaches hidden units is refused.
+    // A hidden unit is passed by first, unless the effect reaches hidden units.
     if (target.passedBy(data.affectsHidden()) || target.untouchable()) {
       return false;
     }
