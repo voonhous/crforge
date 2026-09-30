@@ -529,6 +529,18 @@ The towers fight at level 11. Side 0 plays Guards at (3500, 15000) on tick 0 (pl
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/tesla_giant_passing.json` - a Tesla that hides, rises and hides again
+
+The towers fight at level 11. Side 0 plays a Tesla at (10000, 12000) on tick 0, and side 1 a Giant at (3500, 17500) on tick 60 (placed at (3499, 17499)). The Tesla's deploy ends on 19: its state visit runs the combat gate and its targeting visit right after the resume, so it takes PrincessTower_1_2, its default target, on that tick, and its hide handler starts its counter (HideEffect). The counter climbs 50 a visit and reaches 800, hidden, on 34. The Giant walks down x 3273, past the Tesla, and never takes it. The Tesla takes the Giant on 207, 6,743 away against its reach of 6,750, and rises (AppearEffect, visible at 850); it hits the Giant once, for 220 on 214, and is up (0) on 222. On 234 the Giant is out of its reach: as a building, the Tesla keeps a target with no range extension, so it lets the Giant go for its default target and starts to hide again, hidden on 249. PrincessTower_0_1 falls on 654 and the Giant on 758.
+
+The file's `hiding` list holds the deploy end's targeting visit, with the reference it took and the state it left, and every visit of the hide handler that shows something: the effects it plays, the counter reaching 800 (`hidden`) or leaving it (`visible`), reaching 0 (`up`), and a change of its step (`step`). `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/tesla_hidden_spells.json` - what reaches a hidden Tesla
+
+The towers fight at level 11. Side 0 plays a Tesla at (10000, 12000) on tick 0; side 1 casts, each at (10000, 12000) and placed at (10500, 12500), a Fireball on 0, another on 10, a Zap on 60 and a Freeze on 100. The first Fireball, cast on the first tick from the king tower, lands on 27 while the Tesla is going down (its counter at 400) and deals 688. The second is in flight when the Tesla is hidden on 34 and lands on 37 for nothing: its area asks for the Tesla and is refused. The Zap on the hidden Tesla neither damages nor stuns it. The Freeze reaches hidden units: its area takes the Tesla, deals 148 and freezes it for 4000 ms, and while the freeze lasts the hide handler's step is 0 and the counter holds at 800; the step is 50 again when the freeze goes on 180.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
