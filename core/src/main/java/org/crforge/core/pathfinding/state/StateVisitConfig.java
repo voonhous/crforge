@@ -94,6 +94,32 @@ public record StateVisitConfig(
   }
 
   /**
+   * This configuration with the row's hiding while it does not attack, whose deploy end runs its
+   * targeting visit and whose every visit from then on runs its hide handler.
+   *
+   * @param hides true for a row that hides while it does not attack
+   */
+  public StateVisitConfig withHidesWhenNotAttacking(boolean hides) {
+    return new StateVisitConfig(
+        deployTimeMs,
+        dashLandingTimeMs,
+        dashImmuneToDamageTimeMs,
+        flyingHeight,
+        ingamePathfindEndsInDeploy,
+        spawnPathfindMorph,
+        onIngamePathfindStopAction,
+        kamikaze,
+        kingTowerMiddle,
+        neutralObject,
+        hideBeforeFirstHit,
+        hides,
+        deployTimeAffectedByCharacterSpeed,
+        abilityPresent,
+        abilityHoldsState,
+        abilityStateFlags);
+  }
+
+  /**
    * This configuration with a dash: the time the entity is held after its dash lands, and how long
    * nothing can hurt it after the dash.
    *

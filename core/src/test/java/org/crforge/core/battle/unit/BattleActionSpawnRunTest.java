@@ -25,14 +25,15 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the eighty-six runs in which an action, a death, a building or a unit's own spawner spawns
- * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
- * them tick for tick.
+ * Plays the eighty-eight runs in which an action, a death, a building or a unit's own spawner
+ * spawns characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the
+ * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -202,6 +203,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>{@code pending_shield_guards} plays Guards at a Musketeer's range: the Musketeer's shot on its
  * way to a Guard would kill it, but the Guard's shield is up, so the princess tower that has not
  * fired yet keeps the same Guard rather than turning to another.
+ *
+ * <p>{@code tesla_giant_passing} plays a Tesla that takes its default target as its deploy ends,
+ * hides once its counter reaches its hide time and rises when a Giant walks into its reach: it hits
+ * the Giant once, loses it as the Giant walks on, and hides again. {@code tesla_hidden_spells}
+ * holds who may reach a hidden Tesla: a Fireball that lands while it is going down deals its
+ * damage, one still in flight as it goes down lands for nothing, a Zap passes it by, and a Freeze,
+ * which reaches hidden units, damages and freezes it, the freeze holding its counter. Each is held
+ * to the deploy end's targeting visit and to every change of the hide counter that shows something.
  */
 class BattleActionSpawnRunTest {
 
@@ -296,7 +305,9 @@ class BattleActionSpawnRunTest {
         "battle_healer_knights",
         "bush_princess_tower",
         "bush_valkyrie_knight",
-        "pending_shield_guards"
+        "pending_shield_guards",
+        "tesla_giant_passing",
+        "tesla_hidden_spells"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -508,6 +519,9 @@ class BattleActionSpawnRunTest {
                         .formatted(currentTick[0], entity.name(), hitPointsBefore));
               }
             });
+    // A hiding building's deploy end, and every change of its hide counter that shows something.
+    List<String> hidingLog = new ArrayList<>();
+    match.getWorld().addObserver(hidingLog(currentTick, hidingLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1017,6 +1031,10 @@ class BattleActionSpawnRunTest {
     assertThat(buildingLog)
         .as("every spawner firing and every death by a lifetime's decay")
         .containsExactlyElementsOf(expectedBuildingLog);
+
+    assertThat(hidingLog)
+        .as("every deploy end's targeting visit and every hide counter change that shows something")
+        .containsExactlyElementsOf(expectedHidingLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -1592,6 +1610,85 @@ class BattleActionSpawnRunTest {
   }
 
   /** The reference's charges, their losses and the states movement passes asked for, as listed. */
+  /**
+   * Logs a hiding building's deploy end, which runs its targeting visit from the state visit, and
+   * each visit of its hide handler that shows something, as the reference marks it: the effects the
+   * handler plays, the counter reaching the hide time (hidden) or leaving it (visible), reaching 0
+   * (up), and a change of the step from the last one logged.
+   */
+  private static WorldObserver hidingLog(int[] currentTick, List<String> log) {
+    Map<String, Integer> lastStep = new HashMap<>();
+    return new WorldObserver() {
+      @Override
+      public void deployEndVisited(int tick, CharacterEntity unit) {
+        log.add(
+            "%d deploy_end_visit %s %s %d"
+                .formatted(
+                    currentTick[0], unit.name(), referenceName(unit), unit.getView().getState()));
+      }
+
+      @Override
+      public void hideVisited(
+          int tick,
+          CharacterEntity unit,
+          int state,
+          int before,
+          int after,
+          int step,
+          List<String> effects) {
+        int hide = unit.getData().hideTimeMs();
+        List<String> marks = new ArrayList<>(effects);
+        if (after == hide && before != hide) {
+          marks.add("hidden");
+        }
+        if (before == hide && after != hide) {
+          marks.add("visible");
+        }
+        if (after == 0 && before != 0) {
+          marks.add("up");
+        }
+        if (step != lastStep.getOrDefault(unit.name(), StateQueries.TICK_MS)) {
+          marks.add("step");
+          lastStep.put(unit.name(), step);
+        }
+        if (!marks.isEmpty()) {
+          log.add(
+              "%d hide %s %d %d %d %d %s"
+                  .formatted(currentTick[0], unit.name(), state, before, after, step, marks));
+        }
+      }
+    };
+  }
+
+  private static List<String> expectedHidingLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("hiding")) {
+      if (e.get("event").asText().equals("deploy_end_visit")) {
+        expected.add(
+            "%d deploy_end_visit %s %s %d"
+                .formatted(
+                    e.get("tick").asInt(),
+                    e.get("unit").asText(),
+                    e.get("ref").asText(),
+                    e.get("state").asInt()));
+      } else {
+        List<String> marks = new ArrayList<>();
+        e.get("marks").forEach(mark -> marks.add(mark.asText()));
+        expected.add(
+            "%d hide %s %d %d %d %d %s"
+                .formatted(
+                    e.get("tick").asInt(),
+                    e.get("unit").asText(),
+                    e.get("state").asInt(),
+                    e.get("before").asInt(),
+                    e.get("after").asInt(),
+                    e.get("step").asInt(),
+                    marks));
+      }
+    }
+    return expected;
+  }
+
   private static List<String> expectedJumpChargeDash(JsonNode reference) {
     List<String> expected = new ArrayList<>();
     for (JsonNode e : reference.path("jump_charge_dash")) {

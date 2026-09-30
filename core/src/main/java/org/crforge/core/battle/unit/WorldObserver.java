@@ -396,6 +396,31 @@ public interface WorldObserver {
    */
   default void kamikazeKilled(int tick, WorldEntity unit, int damage, DamageResult result) {}
 
+  /**
+   * A hiding building's deploy ended, and its state visit ran the combat gate and its targeting
+   * visit, one tick before its targeting component's own first visit.
+   */
+  default void deployEndVisited(int tick, CharacterEntity unit) {}
+
+  /**
+   * A hiding building's hide handler visited its hide counter.
+   *
+   * @param state the state the visit had reached
+   * @param before the counter before the visit
+   * @param after the counter after it
+   * @param step the step the visit took, 0 under a stun that stops time
+   * @param effects the effects it played, in order: HideEffect as it starts to hide, AppearEffect
+   *     as it rises
+   */
+  default void hideVisited(
+      int tick,
+      CharacterEntity unit,
+      int state,
+      int before,
+      int after,
+      int step,
+      List<String> effects) {}
+
   /** A new buff instance was listed on an entity. */
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
 

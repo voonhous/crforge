@@ -72,6 +72,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
+import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.ValidatorQueries;
 
@@ -923,14 +924,51 @@ public class BattleWorld implements HolderPasses {
     kingVisit.accept(king);
   }
 
-  /** The king tower of a side still in the battle, or null. */
+  /**
+   * The king tower of a side still in the battle, or null. It is looked up in the holder, where the
+   * setup placed it, so a spell cast in the command pass of the first tick, before the world has
+   * learnt its entities, finds it too.
+   */
   public TowerEntity kingTower(int side) {
-    for (WorldEntity entity : known.values()) {
+    for (BattleEntity entity : holder.entities()) {
       if (entity instanceof TowerEntity tower && tower.getData().king() && tower.side() == side) {
         return tower;
       }
     }
     return null;
+  }
+
+  /**
+   * Whether an asker is an area effect that reaches hidden units, which the validator lets take a
+   * visible character even while it is hidden.
+   *
+   * @param asker the entity that asks, or null for none
+   */
+  boolean reachesHidden(GridEntity asker) {
+    if (asker == null || asker.getType() != ReferenceValidator.TYPE_CONTACT) {
+      return false;
+    }
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof AreaEffectEntity area && area.asks(asker)) {
+        return area.getData().affectsHidden();
+      }
+    }
+    return false;
+  }
+
+  /** Tells every observer that a hiding building's deploy end ran its targeting visit. */
+  void deployEndVisited(CharacterEntity unit) {
+    for (WorldObserver observer : observers) {
+      observer.deployEndVisited(tick, unit);
+    }
+  }
+
+  /** Tells every observer of one visit of a hiding building's hide handler. */
+  void hideVisited(
+      CharacterEntity unit, int state, int before, int after, int step, List<String> effects) {
+    for (WorldObserver observer : observers) {
+      observer.hideVisited(tick, unit, state, before, after, step, List.copyOf(effects));
+    }
   }
 
   /** Tells every observer of one step of a king tower's activation. */
@@ -2730,7 +2768,9 @@ public class BattleWorld implements HolderPasses {
     if (victim == null || known.get(victim.getView()) != victim) {
       return DamageResult.NOTHING;
     }
-    DamageResult result = victim.takeDamage(damage, 0, 0, 0);
+    // The damage entry lets the hit of an area effect that reaches hidden units through while its
+    // victim is hidden.
+    DamageResult result = victim.takeDamage(damage, 0, 0, 0, areaEffect.getData().affectsHidden());
     for (WorldObserver observer : observers) {
       observer.areaEffectHit(tick, areaEffect, victim, damage, result);
     }

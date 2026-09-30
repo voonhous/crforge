@@ -30,6 +30,10 @@ import java.util.function.BooleanSupplier;
  *     modifiers scale it; the unscaled step is 50
  * @param notAttacking the section of a row with a buff while it is not attacking, run where the
  *     visit reaches it: its countdown, and the buff's removal or apply; nothing for any other row
+ * @param deployEndVisit what a hiding row's deploy end runs right after its resume: the combat
+ *     gate, then, with its targeting component on, its targeting visit
+ * @param hide the hide handler of a hiding row, run where the visit reaches it, since it reads the
+ *     state the visit has reached
  */
 public record StateQueries(
     int team,
@@ -43,7 +47,9 @@ public record StateQueries(
     boolean protectionApplies,
     int goalRow,
     int scaledDeployStepMs,
-    Runnable notAttacking) {
+    Runnable notAttacking,
+    Runnable deployEndVisit,
+    Runnable hide) {
 
   /** Milliseconds one tick advances every countdown by. */
   public static final int TICK_MS = 50;
@@ -67,7 +73,20 @@ public record StateQueries(
    */
   public static StateQueries forUnitWithRoute(int team) {
     return new StateQueries(
-        team, true, true, false, true, false, () -> false, false, false, -1, TICK_MS, () -> {});
+        team,
+        true,
+        true,
+        false,
+        true,
+        false,
+        () -> false,
+        false,
+        false,
+        -1,
+        TICK_MS,
+        () -> {},
+        () -> {},
+        () -> {});
   }
 
   /** The same answers with the "can follow a route" question answered differently. */
@@ -84,6 +103,8 @@ public record StateQueries(
         protectionApplies,
         goalRow,
         scaledDeployStepMs,
-        notAttacking);
+        notAttacking,
+        deployEndVisit,
+        hide);
   }
 }

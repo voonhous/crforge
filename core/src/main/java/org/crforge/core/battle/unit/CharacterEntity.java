@@ -46,6 +46,7 @@ import org.crforge.core.pathfinding.move.PushbackRequest;
 import org.crforge.core.pathfinding.move.SpeedBudget;
 import org.crforge.core.pathfinding.move.SpeedConfig;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
+import org.crforge.core.pathfinding.state.HideHandler;
 import org.crforge.core.pathfinding.state.ResumeHelper;
 import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.state.StateTimers;
@@ -159,12 +160,18 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " area effect after each direct hit, held by battle_healer_knights. A buff while not"
             + " attacking whose row has no range gate, taken off in the state visit of the hit that"
             + " kills the unit and kept by a unit an area kills, held by bush_princess_tower and"
-            + " bush_valkyrie_knight. Held by no run: a spawner's start time other than 0, the"
+            + " bush_valkyrie_knight. A hiding building's deploy end running the combat gate and"
+            + " its targeting visit, its hide counter, hidden only at its hide time, its targets"
+            + " kept with no range extension as a building's, and its hidden answer to every"
+            + " asker but an area effect that reaches hidden units, whose damage and buff get"
+            + " through, held by tesla_giant_passing and tesla_hidden_spells. Held by no run: a"
+            + " spawner's start time other than 0, the"
             + " not-attacking countdown held outside the attacking state by a reference within the"
             + " attack range or by the touch test, a top-side"
             + " building's in-front point, a Kamikaze end after a cancelled hit, and the facing a"
             + " death-spawned child takes with a deploy time. Refused: the columns its row sets that the battle does"
-            + " not model (a shield's push or action as it breaks, hiding, a buff at a share of its"
+            + " not model (a shield's push or action as it breaks, hiding before its first hit,"
+            + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
             + " hit points, direct paths, a completed charge's action, a chained dash, a dash's contact damage,"
             + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
@@ -218,6 +225,9 @@ public class CharacterEntity extends WorldEntity {
 
   /** Applies every state change the character asks for, with the actions the change carries. */
   private final GridStateSetter setter;
+
+  /** The targeting component, which a hiding row's deploy end also visits from the state visit. */
+  private final TargetingComponent targetingComponent;
 
   /**
    * The movement budget the last movement visit asked for, in game units per tick; zero when it
@@ -424,7 +434,8 @@ public class CharacterEntity extends WorldEntity {
                 .withSpawnPathfindSpeed(data.spawnPathfindSpeed()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs())
                 .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs())
-                .withSpawnPathfindMorph(data.spawnPathfindMorph() != null),
+                .withSpawnPathfindMorph(data.spawnPathfindMorph() != null)
+                .withHidesWhenNotAttacking(data.hidesWhenNotAttacking()),
             getSelection(),
             getTargetView());
     this.setter =
@@ -488,7 +499,8 @@ public class CharacterEntity extends WorldEntity {
       unit.selection().setDasher(dasher);
     }
 
-    attach(new TargetingComponent());
+    targetingComponent = new TargetingComponent();
+    attach(targetingComponent);
     if (!data.building()) {
       attach(new MovementComponent());
     }
@@ -943,6 +955,7 @@ public class CharacterEntity extends WorldEntity {
             data.attacksAir())
         .toBuilder()
         .configKey(data.name())
+        .isBuilding(data.building())
         .targetOnlyBuildings(data.targetOnlyBuildings())
         .multipleTargets(data.multipleTargets())
         .uniqueMultipleTargets(data.uniqueMultipleTargets())
@@ -1091,9 +1104,9 @@ public class CharacterEntity extends WorldEntity {
    * Whether an asker may select, hit or buff the character, as the character answers it. Never
    * while it rides on a parent. While it is a spawned child still immune, no character or tower,
    * and no asker at all. While it is invisible, a character or tower only when it is a building
-   * without hit points, and an area's damage from anyone when its row lets that reach it invisible.
-   * Otherwise whoever asks, while it is not hidden. An area effect that reaches hidden units would
-   * take it hidden as well; the battle refuses such an area effect before it asks.
+   * without hit points, and an area's damage from anyone when its row lets that reach it invisible,
+   * each while it is not hidden. Otherwise an area effect that reaches hidden units, hidden or not,
+   * and whoever else asks while it is not hidden.
    *
    * @param asker the entity that asks, or null for none
    * @param areaQuery true when an area's damage asks about one of its victims
@@ -1106,11 +1119,16 @@ public class CharacterEntity extends WorldEntity {
     if (unit.timers().isSpawnImmune() && (asker == null || character)) {
       return false;
     }
-    if (invisible()
-        && character
-        && !(areaQuery && getData().allowAreaDamageWhenInvisible())
-        && !buildingWithoutHitPoints(asker)) {
-      return false;
+    if (invisible()) {
+      if (character
+          && !(areaQuery && getData().allowAreaDamageWhenInvisible())
+          && !buildingWithoutHitPoints(asker)) {
+        return false;
+      }
+      return !hidden();
+    }
+    if (world.reachesHidden(asker)) {
+      return true;
     }
     return !hidden();
   }
@@ -1126,19 +1144,39 @@ public class CharacterEntity extends WorldEntity {
     return getBuffs().invisibleCount() >= 1;
   }
 
-  /** Hidden while it tunnels to its placement, in the spawn-pathfinding state. */
+  /**
+   * Hidden while it tunnels to its placement, in the spawn-pathfinding state, and, for a row that
+   * hides while it does not attack, while its hide counter stands exactly at its hide time.
+   */
   @Override
   public boolean hidden() {
+    return tunnelling()
+        || getData().hidesWhenNotAttacking()
+            && HideHandler.hidden(unit.timers().getHideCounterMs(), getData().hideTimeMs());
+  }
+
+  /** Whether it tunnels to its placement, in the spawn-pathfinding state. */
+  private boolean tunnelling() {
     return getView().getState() == GridEntityState.SPAWN_PATHFIND;
   }
 
   /**
+   * An area effect that reaches hidden units reaches it hidden by its hide counter. One reaching it
+   * in its tunnel is not modelled.
+   */
+  @Override
+  protected boolean reachableWhileHidden() {
+    return !tunnelling();
+  }
+
+  /**
    * Untouchable while it tunnels, while it rides on a parent, while it dashes under a row with a
-   * dash immunity, and, when asked, while that immunity lasts after the dash.
+   * dash immunity, and, when asked, while that immunity lasts after the dash. Hiding by its hide
+   * counter does not make it untouchable.
    */
   @Override
   boolean untouchable(boolean dashImmunity) {
-    return hidden()
+    return tunnelling()
         || parent != null
         || getView().getState() == GridEntityState.DASHING
             && getData().dashImmuneToDamageTimeMs() > 0
@@ -1354,7 +1392,45 @@ public class CharacterEntity extends WorldEntity {
         queries.protectionApplies(),
         queries.goalRow(),
         getBuffs().speed(DEPLOY_STEP_MS),
-        this::notAttackingSection);
+        this::notAttackingSection,
+        this::deployEndVisit,
+        this::hideVisit);
+  }
+
+  /**
+   * A hiding row's deploy end, right after its resume: the combat gate, then, with its targeting
+   * component on, its targeting visit, one tick before that component's own first visit. The hide
+   * handler that follows in the same state visit reads the state the targeting visit leaves.
+   */
+  private void deployEndVisit() {
+    stateTailGate();
+    if (isActive(TARGETING_SLOT)) {
+      targetingComponent.visit();
+    }
+    world.deployEndVisited(this);
+  }
+
+  /**
+   * The hide handler: one step of the hide counter, by the step the character's speed buffs make of
+   * 50, 0 under a stun that stops time.
+   */
+  private void hideVisit() {
+    int state = getView().getState();
+    int before = unit.timers().getHideCounterMs();
+    int step = getBuffs().speed(StateQueries.TICK_MS);
+    List<String> effects = new ArrayList<>();
+    int after =
+        HideHandler.visit(
+            before,
+            state,
+            step,
+            getData().hidesWhenNotAttacking(),
+            getData().hideTimeMs(),
+            getData().upTimeMs(),
+            getData().building(),
+            effects);
+    unit.timers().setHideCounterMs(after);
+    world.hideVisited(this, state, before, after, step, effects);
   }
 
   /** The movement pass's answers for the character as it stands now, reference included. */
@@ -1511,10 +1587,6 @@ public class CharacterEntity extends WorldEntity {
     if (calls.contains("dash_landed") && isActive(TARGETING_SLOT)) {
       unit.targeting().clearAttack();
       unit.targeting().setLoadTimerMs(getData().loadTimeMs());
-    }
-    if (calls.contains("targeting_visit")) {
-      throw new UnsupportedOperationException(
-          name() + " hides until it attacks, whose deploy end runs the gate and a targeting visit");
     }
     // The ability's effect fires on the visit its trigger delay reaches zero.
     if (calls.contains("ability_warning")) {

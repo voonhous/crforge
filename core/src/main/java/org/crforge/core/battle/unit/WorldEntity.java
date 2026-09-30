@@ -252,13 +252,24 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param directionY direction of the hit along the arena's length
    */
   public DamageResult takeDamage(int damage, int dedupeId, int directionX, int directionY) {
+    return takeDamage(damage, dedupeId, directionX, directionY, false);
+  }
+
+  /**
+   * Deals one damage event to the entity, as {@link #takeDamage(int, int, int, int)} does.
+   *
+   * @param passesHidden true for a hit the damage entry lets through while the entity is hidden: an
+   *     area effect's that reaches hidden units
+   */
+  public DamageResult takeDamage(
+      int damage, int dedupeId, int directionX, int directionY, boolean passesHidden) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.damage(
-            hitPoints, damage, dedupeId, directionX, directionY, damageQueries());
+            hitPoints, damage, dedupeId, directionX, directionY, damageQueries(passesHidden));
     shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;
@@ -573,6 +584,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * tiebreaker holds every hit from its first step, and its end refuses every hit's subtraction.
    */
   protected DamageQueries damageQueries() {
+    return damageQueries(false);
+  }
+
+  /**
+   * What the damage chain asks about the entity.
+   *
+   * @param passesHidden true for a hit the damage entry lets through while the entity is hidden: an
+   *     area effect's that reaches hidden units
+   */
+  protected DamageQueries damageQueries(boolean passesHidden) {
     return new DamageQueries() {
       @Override
       public boolean crownTowerTarget() {
@@ -584,10 +605,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return world.isHitsHeld();
       }
 
-      // The damage entry refuses a hidden entity.
+      // The damage entry refuses a hidden entity, unless the hit passes it.
       @Override
       public boolean untouchable() {
-        return hidden();
+        return !passesHidden && hidden();
       }
 
       @Override
@@ -653,7 +674,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * Whether an area or a buff passes the entity by: while it is hidden, unless it comes from an
-   * area effect that reaches hidden units, which the battle does not model and refuses.
+   * area effect that reaches hidden units. Such an area effect reaching an entity hidden in a way
+   * the battle does not model is refused.
    *
    * @param reachesHidden true for an area effect's that reaches hidden units
    */
@@ -662,10 +684,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       return false;
     }
     if (reachesHidden) {
-      throw new UnsupportedOperationException(
-          "an area effect that reaches hidden units reaches " + name() + ", which is not modelled");
+      if (!reachableWhileHidden()) {
+        throw new UnsupportedOperationException(
+            "an area effect that reaches hidden units reaches "
+                + name()
+                + ", which is not modelled");
+      }
+      return false;
     }
     return true;
+  }
+
+  /**
+   * Whether an area effect that reaches hidden units reaches the entity while it is hidden, as the
+   * battle models it. A tower never hides.
+   */
+  protected boolean reachableWhileHidden() {
+    return false;
   }
 
   /** Whether the entity's ability keeps its target while it casts; a tower has no ability. */
