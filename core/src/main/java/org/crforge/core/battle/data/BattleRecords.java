@@ -465,12 +465,10 @@ public final class BattleRecords {
           "Base",
           // Nothing in the battle logic reads it; carried as presentation.
           "PingpongMovingShooter",
-          // Read only by the deflection and the reflect, which find nothing: no object the battle
-          // builds deflects or reflects.
+          // Read only by the deflection, which finds nothing: no object the battle builds deflects.
           "DeflectBehaviour",
           "DeflectRadius",
           "ActionOnDeflector",
-          "IgnoreReflectedAttack",
           // Read only by the projectile view: its frame set and whether it shows while delayed.
           "use360Frames",
           "HideWhenDelayed");
@@ -669,6 +667,12 @@ public final class BattleRecords {
             .hideTimeMs(row.intValue("HideTimeMs"))
             .upTimeMs(row.intValue("UpTimeMs"))
             .ignoreClone(row.bool("IgnoreClone"))
+            .reflectedAttackBuff(
+                set(row, "ReflectedAttackBuff") ? row.string("ReflectedAttackBuff") : null)
+            .reflectedAttackBuffDurationMs(row.intValue("ReflectedAttackBuffDuration"))
+            .reflectedAttackRadius(row.intValue("ReflectedAttackRadius"))
+            .reflectedAttackDamage(row.intValue("ReflectedAttackDamage"))
+            .reflectAttackCrownTowerDamage(row.intValue("ReflectAttackCrownTowerDamage"))
             .clonedVersion(set(row, "ClonedVersion") ? row.string("ClonedVersion") : null)
             .unmodelledColumns(unmodelledColumns(row))
             .build();
@@ -1277,6 +1281,7 @@ public final class BattleRecords {
             .onHitTargetAction(inlineActionName(row, "OnHitTargetAction"))
             .spawnAreaEffectObject(
                 set(row, "SpawnAreaEffectObject") ? row.string("SpawnAreaEffectObject") : null)
+            .ignoreReflectedAttack(row.bool("IgnoreReflectedAttack"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

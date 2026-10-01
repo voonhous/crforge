@@ -38,9 +38,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " match_overtime_tiebreak. The battle's two holds - the tiebreaker's and the end's -"
             + " are the battle's answers. Supplied, not settled: nothing is untouchable or immune,"
             + " no buff changes the amount. Not modelled: the death handler, the"
-            + " credit to the attacker, the reflected attack, an absorber, the shield break, a"
+            + " credit to the attacker, an absorber, the shield break, a"
             + " target both sides may damage, the presentation and the actions a hit runs on"
-            + " arrival.")
+            + " arrival. The reflected attack, which runs between the subtraction and the death"
+            + " test, is the battle's: it runs around this chain, held by electro_giant_struck and"
+            + " electro_giant_tower.")
 public final class DamageApplication {
 
   private DamageApplication() {

@@ -32,9 +32,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ninety-eight runs in which an action, a death, a building or a unit's own spawner
- * spawns characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the
- * battle to them tick for tick.
+ * Plays the hundred runs in which an action, a death, a building or a unit's own spawner spawns
+ * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
+ * them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -252,6 +252,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the clones step back while the units step forward for ten visits; the Golem's clone dies to
  * Arrows a tick later, its two Golemites clones too, and the Musketeer's shoots a Knight dead. Each
  * is held to every clone scheduled, made and moved apart, and to the buffs copied.
+ *
+ * <p>{@code electro_giant_struck} plays an Electro Giant into two Knights and a Musketeer: every
+ * Knight hit and every shot from inside its reach is struck back with 192 and a stun, which drops
+ * the attacker's reference that tick, and the hit that kills it is still struck back. {@code
+ * electro_giant_tower} walks one into a princess tower, whose arrows from inside its reach take 128
+ * back each, the crown-tower column, until the tower falls to its own reflected arrow. Each is held
+ * to every hit that reached the reflect, what it struck back with, and every reflected hit.
  */
 class BattleActionSpawnRunTest {
 
@@ -358,7 +365,9 @@ class BattleActionSpawnRunTest {
         "lightning_defenders_tower",
         "royal_delivery_group",
         "heal_spirit_group",
-        "clone_golem_group"
+        "clone_golem_group",
+        "electro_giant_struck",
+        "electro_giant_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -582,6 +591,17 @@ class BattleActionSpawnRunTest {
     // What every Clone did, and every area effect a projectile's impact made.
     List<String> cloneLog = new ArrayList<>();
     match.getWorld().addObserver(cloneLog(currentTick, cloneLog));
+    // Every hit that reached a reflecting unit's reflect.
+    List<String> reflectLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void reflected(int tick, Reflection r) {
+                reflectLog.add(reflectLine(currentTick[0], r));
+              }
+            });
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1121,6 +1141,36 @@ class BattleActionSpawnRunTest {
     assertThat(cloneLog)
         .as("every clone scheduled, made and moved apart, and every area effect an impact made")
         .containsExactlyElementsOf(expectedCloneLog(reference));
+    List<String> expectedReflects = new ArrayList<>();
+    for (JsonNode r : reference.path("reflects")) {
+      String line =
+          "%d reflect %s by %s kind %s source %s struck %s speed %d"
+              .formatted(
+                  r.get("tick").asInt(),
+                  r.get("target").asText(),
+                  r.get("attacker").isNull() ? null : r.get("attacker").asText(),
+                  r.get("kind").isNull() ? null : r.get("kind").asText(),
+                  r.get("source").isNull() ? null : r.get("source").asText(),
+                  r.get("struck").isNull() ? null : r.get("struck").asText(),
+                  r.get("hit_speed").asInt());
+      if (r.has("buff")) {
+        line +=
+            " buff %s %d %d"
+                .formatted(r.get("buff").asText(), r.get("time").asInt(), r.get("level").asInt());
+      }
+      if (r.has("damage")) {
+        line +=
+            " damage %d %d %d"
+                .formatted(
+                    r.get("damage").asInt(),
+                    r.get("hp").get(0).asInt(),
+                    r.get("hp").get(1).asInt());
+      }
+      expectedReflects.add(line);
+    }
+    assertThat(reflectLog)
+        .as("every hit that reached a reflect, and what it struck back with")
+        .containsExactlyElementsOf(expectedReflects);
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -1877,6 +1927,27 @@ class BattleActionSpawnRunTest {
       }
     }
     return expected;
+  }
+
+  /** A reflect in the reference's layout. */
+  private static String reflectLine(int tick, Reflection r) {
+    String line =
+        "%d reflect %s by %s kind %s source %s struck %s speed %d"
+            .formatted(
+                tick,
+                r.target().name(),
+                r.attacker() instanceof AreaEffectEntity a ? a.name() : attackerName(r.attacker()),
+                r.attacker() == null ? null : String.valueOf(r.attacker().getKind()),
+                r.source() == null ? null : r.source().name(),
+                r.struck() == null ? null : r.struck().name(),
+                r.hitSpeed());
+    if (r.buff() != null) {
+      line += " buff %s %d %d".formatted(r.buff(), r.buffTimeMs(), r.buffLevel());
+    }
+    if (r.damage() != 0) {
+      line += " damage %d %d %d".formatted(r.damage(), r.hitPointsBefore(), r.hitPointsAfter());
+    }
+    return line;
   }
 
   /** An attacker as the reference names it: a projectile by its id. */

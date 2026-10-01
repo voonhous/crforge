@@ -301,6 +301,22 @@ class BattleTowerRunTest {
   static WorldObserver eventCollector(int[] currentTick, List<String> events) {
     return new WorldObserver() {
       @Override
+      public void reflectedHit(
+          int tick, WorldEntity reflector, WorldEntity struck, int damage, DamageResult result) {
+        events.add(
+            "%d reflected_hit %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    reflector.name(),
+                    struck.name(),
+                    damage,
+                    struck.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], struck.name()));
+        }
+      }
+
+      @Override
       public void damageDealt(int tick, WorldEntity target, int damage, DamageResult result) {
         // The reference lists every hit handed to the damage entry, one of no damage as well,
         // which the entry refuses at once, as a building without damage lands its attacks.
@@ -613,6 +629,14 @@ class BattleTowerRunTest {
                   event.get("damage").asInt(),
                   event.get("hp").asInt());
       case "death" -> "%d death %s".formatted(tick, event.get("target").asText());
+      case "reflected_hit" ->
+          "%d reflected_hit %s %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("attacker").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
       case "kamikaze_kill" ->
           "%d kamikaze_kill %s %d %d"
               .formatted(

@@ -729,4 +729,26 @@ public interface WorldObserver {
    * @param resumed true when it was still in its clone state and was resumed
    */
   default void cloneMoveEnded(int tick, CharacterEntity unit, boolean resumed) {}
+
+  /**
+   * A hit reached a reflecting unit's reflect, which has run: whether it struck back, whom, and
+   * with what.
+   *
+   * @param tick the battle tick
+   * @param reflection what the reflect did
+   */
+  default void reflected(int tick, Reflection reflection) {}
+
+  /**
+   * A reflecting unit's reflect dealt its damage to the unit it struck, before the unit's death, if
+   * the damage killed it, runs.
+   *
+   * @param tick the battle tick
+   * @param reflector the reflecting unit
+   * @param struck the unit struck
+   * @param damage the damage dealt
+   * @param result what the damage did
+   */
+  default void reflectedHit(
+      int tick, WorldEntity reflector, WorldEntity struck, int damage, DamageResult result) {}
 }

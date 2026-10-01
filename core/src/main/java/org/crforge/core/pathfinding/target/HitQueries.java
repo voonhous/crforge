@@ -51,6 +51,13 @@ public interface HitQueries {
   default void hitAllowed() {}
 
   /**
+   * Told once a hit is not cancelled for distance, before its damage or its launch: the owner
+   * counts its attacks, the count and its id the key a reflecting target deals its damage back once
+   * by.
+   */
+  default void attackCounted() {}
+
+  /**
    * Told after a direct hit's damage was dealt to its one target: a row with an area effect on its
    * hits makes it here, where the owner stands.
    */

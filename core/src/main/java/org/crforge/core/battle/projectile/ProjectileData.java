@@ -86,6 +86,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     as the cause, before the hit lands; null for none
  * @param spawnAreaEffectObject the area effect its impact makes at the impact point, after its hit
  *     and its spawned characters; null for none
+ * @param ignoreReflectedAttack true for a projectile whose hits a reflecting unit does not reflect
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -147,6 +148,7 @@ public record ProjectileData(
     int randomDelayMs,
     String onHitTargetAction,
     String spawnAreaEffectObject,
+    boolean ignoreReflectedAttack,
     List<String> unmodelledColumns) {
 
   public ProjectileData {

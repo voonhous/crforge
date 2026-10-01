@@ -186,6 +186,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param upTimeMs the time it takes to come back up from hidden
  * @param ignoreClone true for a unit a Clone passes by
  * @param clonedVersion the row a Clone makes of this one instead of its own, or null for its own
+ * @param reflectedAttackBuff the buff a reflecting unit puts on the attacker of a hit it reflects,
+ *     or null for a unit that reflects nothing
+ * @param reflectedAttackBuffDurationMs how long that buff lasts
+ * @param reflectedAttackRadius how far beyond both radii an attacker is still reached
+ * @param reflectedAttackDamage the damage a reflected attack deals, at the first level
+ * @param reflectAttackCrownTowerDamage the damage it deals a crown tower instead, at the first
+ *     level
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding before its first hit, a buff at a share of its hit points,
  *     elixir, and the parts of a spawner that are not established
@@ -319,6 +326,11 @@ public record UnitData(
     int upTimeMs,
     boolean ignoreClone,
     String clonedVersion,
+    String reflectedAttackBuff,
+    int reflectedAttackBuffDurationMs,
+    int reflectedAttackRadius,
+    int reflectedAttackDamage,
+    int reflectAttackCrownTowerDamage,
     List<String> unmodelledColumns) {
 
   public UnitData {

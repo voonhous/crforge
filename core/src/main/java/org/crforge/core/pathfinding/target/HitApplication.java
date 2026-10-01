@@ -47,11 +47,13 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " and projectile, the charged hit of a unit that fires, whose rows are refused, the"
             + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
             + " the targeted hit effect and its"
-            + " pushback, the attack counter and the attacking flag on the owner, the buff on"
+            + " pushback, the attacking flag on the owner, the buff on"
             + " damage of a hit every so many or over an area, and the actions an attack runs"
             + " and the notifications it ends with. The buff on damage after a direct hit is"
             + " held by electro_wizard_tower_defence and mini_sparkys_knight. The"
-            + " dasher's exception to the long-distance cancel is carried and held by no run.")
+            + " dasher's exception to the long-distance cancel is carried and held by no run. The"
+            + " attack counter, raised by a hit not cancelled for distance, is held by"
+            + " electro_giant_struck and electro_giant_tower, whose reflect keys on it.")
 public final class HitApplication {
 
   private HitApplication() {
@@ -119,6 +121,9 @@ public final class HitApplication {
       t.setSpecialChargeTimerMs(t.getSpecialChargeTimerMs() + 1);
     }
     int damage = special ? queries.specialDamage() : queries.damage();
+    if (!missed) {
+      queries.attackCounted();
+    }
     if (cfg.stopTimeAfterAttack() >= 1) {
       t.setAttackBlockTimerMs(cfg.stopTimeAfterAttack());
     }
