@@ -553,6 +553,18 @@ The towers fight at level 11. Side 1 plays a Tesla at (3500, 20000) on tick 0 (p
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/tornado_group_off_lane.json` - a Tornado drags Barbarians off their lane
+
+The towers fight at level 11. Side 1 plays Barbarians at (3500, 22000) on tick 0 (placed at (3499, 22499)), and side 0 casts a Tornado at (7500, 21500) on 25. The Tornado is one area effect at the point, updated as it is cast; its 21 hits, from 25 to 45, each pull every Barbarian in its circle toward its centre before the buff is applied. A pull is 360 percent of a Barbarian's configured speed of 60 a step of about 216 along the way to the centre once each axis is truncated, and waits in the unit's push accumulators for its next movement visit, which adds it to the route step with the 150 cap lifted. The Barbarians are dragged off their lane; their reference, PrincessTower_0_1, and their routes are kept. The buff stacks with the Tornado as its parent, refreshed to 500 by each hit: each Barbarian takes 84 and PrincessTower_1_1 25 on 36, and the tower is not moved. The Tornado leaves at the closing cleanup of 45, its instances with it; the last pull moves the Barbarians on 46, and they walk back toward their lane.
+
+The file's `pulls` list holds every hit's pull: the area effect, its centre, and each unit pulled with the vector to the centre and its push accumulators (x, y, count, the water clamp and the lifted cap) before and after. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/tornado_heavy_light_tower.json` - a Tornado over a Giant and a Knight
+
+The towers fight at level 11. Side 1 plays a Giant at (3000, 22500) and a Knight at (5500, 23500) on tick 0 (placed at (3499, 22499) and (5499, 23499)), and side 0 casts a Tornado at (7500, 21500) on 30. The pull is a share of each unit's own configured speed, not of its mass: the Giant's first is (160, -20) and the Knight's (183, -114), 162 and 216 along their ways to the centre. The pulls run from 30 to 50; on 41 the Giant and the Knight take 84 and PrincessTower_1_1 25, which is not moved. The Tornado and its instances go at the closing cleanup of 50, and the last pull moves the units on 51.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
