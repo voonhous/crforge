@@ -20,6 +20,7 @@ import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
@@ -201,6 +202,9 @@ public class BattleWorld implements HolderPasses {
 
   /** How many children each source has spawned so far, by the source's name. */
   private final Map<String, Integer> spawnCounts = new HashMap<>();
+
+  /** How many clones the battle has made of each unit, by its name. */
+  private final Map<String, Integer> cloneCounts = new HashMap<>();
 
   /** Those watching the arena from outside the tick, in the order they were added. */
   private final List<WorldObserver> observers = new ArrayList<>();
@@ -1372,6 +1376,7 @@ public class BattleWorld implements HolderPasses {
               x,
               y,
               PackedLevel.level(PackedLevel.pack(spawner.getPackedLevel(), child.rarity())));
+      cloneSpawn(spawner, spawned);
       holder.addRegistered(spawned);
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, spawner, spawned, x, y);
@@ -1670,15 +1675,19 @@ public class BattleWorld implements HolderPasses {
    * @param y the impact point along the length
    */
   public void impactAreaEffect(ProjectileEntity projectile, int x, int y) {
-    createAreaEffect(
-        projectile.getData().spawnAreaEffectObject(),
-        x,
-        y,
-        projectile.side(),
-        projectile.getPackedLevel(),
-        null,
-        "projectile",
-        projectile.name());
+    AreaEffectEntity areaEffect =
+        createAreaEffect(
+            projectile.getData().spawnAreaEffectObject(),
+            x,
+            y,
+            projectile.side(),
+            projectile.getPackedLevel(),
+            null,
+            "projectile",
+            projectile.name());
+    for (WorldObserver observer : observers) {
+      observer.projectileAreaEffect(tick, projectile, areaEffect);
+    }
   }
 
   /**
@@ -2090,6 +2099,7 @@ public class BattleWorld implements HolderPasses {
           spawned.getView().setDirX(dying.getView().getDirX());
           spawned.getView().setDirY(dying.getView().getDirY());
         }
+        cloneSpawn(dying, spawned);
         holder.addRegistered(spawned);
         for (WorldObserver observer : observers) {
           observer.characterSpawned(tick, dying, spawned, x, y);
@@ -2320,6 +2330,7 @@ public class BattleWorld implements HolderPasses {
         spawned.getView().setDirX(dying.getView().getDirX());
         spawned.getView().setDirY(dying.getView().getDirY());
       }
+      cloneSpawn(dying, spawned);
       // Where it is made: on its point, or on the dying object for one that flies back.
       int madeX = spawned.getView().getX();
       int madeY = spawned.getView().getY();
@@ -2790,6 +2801,126 @@ public class BattleWorld implements HolderPasses {
   /** The name of the next buff instance listed in the battle. */
   String nextBuffKey() {
     return "buff_" + ++buffKeys;
+  }
+
+  /**
+   * A buff-spawning action's buff on its owner: for its time, at its source's level and for its
+   * source's side, with the source as the buff's.
+   *
+   * @param owner the entity the buff goes on
+   * @param action the action's name
+   * @param buff the buff row's name
+   * @param timeMs how long it lasts
+   * @param source what applies it
+   */
+  void spawnBuff(WorldEntity owner, String action, String buff, int timeMs, SpawnHost source) {
+    BuffData data = buffData(buff);
+    for (WorldObserver observer : observers) {
+      observer.buffSpawned(tick, owner, action, data, timeMs, source.packedLevel(), source);
+    }
+    owner.getBuffs().apply(data, timeMs, source.packedLevel(), source, source.side());
+  }
+
+  /**
+   * A Clone's creator: makes a clone of a unit on the unit's point, kept inside the arena, of the
+   * unit's row and side, at the Clone's level re-based on the row's rarity, named after the unit
+   * and how many clones of it came before. The clone setter gives it 1 hit point of 1; it is set up
+   * as a clone through its setter, which with the combat gate after it leaves its movement
+   * component on and its targeting component off, faces as the unit faces, and is handed to the
+   * holder with its registration visit - in the clone state with no route, which moves nothing -
+   * and joins the live list at the tick's closing cleanup. It takes a copy of every buff the unit
+   * carries, the Clone's own buff, just put on the unit, among them, with the time each has left.
+   * Then the two move apart: the clone back toward its own side, and the unit, set up as a clone
+   * too unless it dashes, forward.
+   *
+   * @param original the unit
+   * @param instigator the Clone's area effect
+   * @param action the Clone's action
+   */
+  void makeClone(CharacterEntity original, AreaEffectEntity instigator, Clone action) {
+    UnitData row = original.getData();
+    GridEntity at = original.getView();
+    int fromX = at.getX();
+    int fromY = at.getY();
+    int made = cloneCounts.merge(original.name(), 1, Integer::sum) - 1;
+    CharacterEntity clone =
+        CharacterEntity.spawned(
+            this,
+            row,
+            original.name() + "_clone" + made,
+            original.side(),
+            inset(fromX, tileMap.width()),
+            inset(fromY, tileMap.height()),
+            PackedLevel.level(PackedLevel.pack(instigator.packedLevel(), row.rarity())));
+    clone.markClone(original);
+    clone.enterCloneSetup();
+    clone.getView().setDirX(at.getDirX());
+    clone.getView().setDirY(at.getDirY());
+    List<Integer> visits = new ArrayList<>();
+    for (int slot : new int[] {CharacterEntity.TARGETING_SLOT, CharacterEntity.MOVEMENT_SLOT}) {
+      if (clone.isActive(slot)) {
+        visits.add(slot);
+      }
+    }
+    holder.addRegistered(clone);
+    for (WorldObserver observer : observers) {
+      observer.cloned(tick, original, clone, instigator, visits);
+    }
+    clone.getBuffs().copyFrom(original.getBuffs());
+    clone.startCloneMove(fromX, fromY, action);
+    // A unit that dashes, or is in its ability's follow-up, keeps its state and does not move.
+    int state = at.getState();
+    if (state != GridEntityState.DASHING && state != GridEntityState.ABILITY_FOLLOW_UP) {
+      original.enterCloneSetup();
+      original.startCloneMove(fromX, fromY, action);
+    }
+  }
+
+  /**
+   * A clone's spawn is a clone: the clone setter on the child, the spawner as the unit it stands
+   * for. A clone that deploys is refused: it would be out of collisions while it does, which is not
+   * modelled.
+   */
+  private static void cloneSpawn(WorldEntity spawner, CharacterEntity child) {
+    if (!(spawner instanceof CharacterEntity source) || !source.isClone()) {
+      return;
+    }
+    child.markClone(spawner);
+    if (child.getView().getState() == GridEntityState.DEPLOYING
+        || child.getView().getDeployCountdown() > 0) {
+      throw new UnsupportedOperationException(
+          child.name() + " is a clone that deploys, which is not modelled");
+    }
+  }
+
+  void cloneRefused(WorldEntity original, String reason, SpawnHost instigator) {
+    for (WorldObserver observer : observers) {
+      observer.cloneRefused(tick, original, reason, instigator);
+    }
+  }
+
+  void buffCopied(WorldEntity original, WorldEntity clone, BuffInstance copy) {
+    for (WorldObserver observer : observers) {
+      observer.buffCopied(tick, original, clone, copy);
+    }
+  }
+
+  void cloneMoveStarted(CharacterEntity unit, int targetX, int targetY) {
+    for (WorldObserver observer : observers) {
+      observer.cloneMoveStarted(tick, unit, targetX, targetY);
+    }
+  }
+
+  void cloneMoveEnded(CharacterEntity unit, boolean resumed) {
+    for (WorldObserver observer : observers) {
+      observer.cloneMoveEnded(tick, unit, resumed);
+    }
+  }
+
+  void onHitActionScheduled(AreaEffectEntity areaEffect, WorldEntity target, BattleAction action) {
+    for (WorldObserver observer : observers) {
+      observer.onHitActionScheduled(tick, areaEffect, target, action);
+    }
   }
 
   void buffApplied(WorldEntity target, BuffInstance buff) {

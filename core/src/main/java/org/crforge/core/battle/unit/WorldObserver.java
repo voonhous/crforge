@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -631,4 +632,101 @@ public interface WorldObserver {
    */
   default void dashLanded(
       int tick, CharacterEntity unit, WorldEntity hit, int damage, boolean area) {}
+
+  /**
+   * A projectile's impact made the area effect its row names, at the impact point.
+   *
+   * @param tick the battle tick
+   * @param projectile the landing projectile
+   * @param areaEffect the area effect it made, already given its id
+   */
+  default void projectileAreaEffect(
+      int tick, ProjectileEntity projectile, AreaEffectEntity areaEffect) {}
+
+  /**
+   * An area effect's hit scheduled its on-hit action on a unit in its circle, the area effect as
+   * the cause.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param target the unit
+   * @param action the action scheduled
+   */
+  default void onHitActionScheduled(
+      int tick, AreaEffectEntity areaEffect, WorldEntity target, BattleAction action) {}
+
+  /**
+   * A buff-spawning action put its buff on its owner.
+   *
+   * @param tick the battle tick
+   * @param owner the entity the buff went on
+   * @param action the action's name
+   * @param buff the buff's row
+   * @param time how long it was put on for, in milliseconds
+   * @param packedLevel the level it was put on at, packed against its source's rarity
+   * @param source what applied it: the action's cause, or the owner for none
+   */
+  default void buffSpawned(
+      int tick,
+      WorldEntity owner,
+      String action,
+      BuffData buff,
+      int time,
+      int packedLevel,
+      SpawnHost source) {}
+
+  /**
+   * A Clone's perform refused to clone a unit.
+   *
+   * @param tick the battle tick
+   * @param original the unit
+   * @param reason why: "ignore clone", "is clone", "dead" or "attached"
+   * @param instigator what caused the clone
+   */
+  default void cloneRefused(int tick, WorldEntity original, String reason, SpawnHost instigator) {}
+
+  /**
+   * A clone was made and registered, set up in its clone state; its buffs are not copied yet.
+   *
+   * @param tick the battle tick
+   * @param original the unit it is a clone of
+   * @param clone the clone
+   * @param instigator what caused it
+   * @param registrationVisits the component slots its registration visit visited
+   */
+  default void cloned(
+      int tick,
+      CharacterEntity original,
+      CharacterEntity clone,
+      SpawnHost instigator,
+      List<Integer> registrationVisits) {}
+
+  /**
+   * A buff a unit carries was copied onto its clone, with the time it has left.
+   *
+   * @param tick the battle tick
+   * @param original the unit
+   * @param clone its clone
+   * @param copy the clone's new instance
+   */
+  default void buffCopied(int tick, WorldEntity original, WorldEntity clone, BuffInstance copy) {}
+
+  /**
+   * A clone or its original started its move apart, toward a point straight ahead or behind it.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param targetX the point, along the width
+   * @param targetY the point, along the length
+   */
+  default void cloneMoveStarted(int tick, CharacterEntity unit, int targetX, int targetY) {}
+
+  /**
+   * A clone's or its original's move apart finished.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param resumed true when it was still in its clone state and was resumed
+   */
+  default void cloneMoveEnded(int tick, CharacterEntity unit, boolean resumed) {}
 }

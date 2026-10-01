@@ -25,13 +25,14 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ninety-seven runs in which an action, a death, a building or a unit's own spawner
+ * Plays the ninety-eight runs in which an action, a death, a building or a unit's own spawner
  * spawns characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the
  * battle to them tick for tick.
  *
@@ -245,6 +246,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>{@code heal_spirit_group} places a Heal Spirit that jumps at two enemy Knights fighting its
  * own: its projectile's impact makes the HealSpirit area effect at the impact point, whose one hit
  * on the next tick buffs the own Knights and Minion in its circle, healing the Knights four times.
+ *
+ * <p>{@code clone_golem_group} casts a Clone over a Golem and a Musketeer: its hit clones both in
+ * the tick's last pending pass, each clone of 1 hit point copying the Clone buff its unit took, and
+ * the clones step back while the units step forward for ten visits; the Golem's clone dies to
+ * Arrows a tick later, its two Golemites clones too, and the Musketeer's shoots a Knight dead. Each
+ * is held to every clone scheduled, made and moved apart, and to the buffs copied.
  */
 class BattleActionSpawnRunTest {
 
@@ -350,7 +357,8 @@ class BattleActionSpawnRunTest {
         "mega_knight_jump",
         "lightning_defenders_tower",
         "royal_delivery_group",
-        "heal_spirit_group"
+        "heal_spirit_group",
+        "clone_golem_group"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -571,6 +579,9 @@ class BattleActionSpawnRunTest {
     // Every push of a unit entering its deploying state.
     List<String> deployPushLog = new ArrayList<>();
     match.getWorld().addObserver(deployPushLog(currentTick, deployPushLog));
+    // What every Clone did, and every area effect a projectile's impact made.
+    List<String> cloneLog = new ArrayList<>();
+    match.getWorld().addObserver(cloneLog(currentTick, cloneLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -622,6 +633,20 @@ class BattleActionSpawnRunTest {
                             child.getView().getX(),
                             child.getView().getY(),
                             child.getView().getState()));
+              }
+
+              @Override
+              public void cloned(
+                  int tick,
+                  CharacterEntity original,
+                  CharacterEntity clone,
+                  SpawnHost instigator,
+                  List<Integer> registrationVisits) {
+                // A clone is listed from its making, as a spawned child is.
+                clone
+                    .actionHolder()
+                    .setListener(listener(clone.name(), currentTick, actions, dropping));
+                spawnTicks.put(clone.name(), currentTick[0]);
               }
 
               @Override
@@ -1093,6 +1118,10 @@ class BattleActionSpawnRunTest {
         .as("every push of a unit entering its deploying state, what it found and whom it pushed")
         .containsExactlyElementsOf(expectedDeployPushLog(reference));
 
+    assertThat(cloneLog)
+        .as("every clone scheduled, made and moved apart, and every area effect an impact made")
+        .containsExactlyElementsOf(expectedCloneLog(reference));
+
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
         .containsExactlyElementsOf(expectedBuffLog(reference));
@@ -1452,6 +1481,21 @@ class BattleActionSpawnRunTest {
       }
 
       @Override
+      public void buffCopied(int tick, WorldEntity original, WorldEntity clone, BuffInstance copy) {
+        lines.add(
+            "%d copied %s %s %s %d %d %s from %s"
+                .formatted(
+                    currentTick[0],
+                    clone.name(),
+                    copy.getBuff().name(),
+                    copy.getKey(),
+                    copy.getRemaining(),
+                    copy.getPackedLevel(),
+                    copy.getSource() == null ? null : copy.getSource().name(),
+                    original.name()));
+      }
+
+      @Override
       public void buffRefreshed(
           int tick, WorldEntity target, BuffInstance buff, int before, SpawnHost source) {
         // The reference names what the re-application came from.
@@ -1571,6 +1615,18 @@ class BattleActionSpawnRunTest {
                         b.get("time").asInt(),
                         b.get("level").asInt(),
                         source));
+        case "copied" ->
+            expected.add(
+                "%d copied %s %s %s %d %d %s from %s"
+                    .formatted(
+                        tick,
+                        b.get("target").asText(),
+                        b.get("buff").asText(),
+                        b.get("key").asText(),
+                        b.get("remaining").asInt(),
+                        b.get("level").asInt(),
+                        source,
+                        b.get("original").asText()));
         case "refreshed" ->
             expected.add(
                 "%d refreshed %s %s %s %d %d %s"
@@ -1609,6 +1665,215 @@ class BattleActionSpawnRunTest {
                         b.get("hp").get(1).asInt(),
                         b.get("max").asInt()));
         default -> throw new IllegalStateException("unknown buff event " + b);
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * Lists what every Clone does, and every area effect an impact makes, in the reference's layout.
+   */
+  static WorldObserver cloneLog(int[] currentTick, List<String> lines) {
+    return new WorldObserver() {
+      @Override
+      public void projectileAreaEffect(int tick, ProjectileEntity p, AreaEffectEntity a) {
+        lines.add(
+            "%d area_effect_from_projectile %s %s at %d %d level %d target %s"
+                .formatted(
+                    currentTick[0],
+                    a.name(),
+                    p.name(),
+                    a.getX(),
+                    a.getY(),
+                    a.getPackedLevel(),
+                    p.getTarget() == null ? null : p.getTarget().name()));
+      }
+
+      @Override
+      public void onHitActionScheduled(
+          int tick, AreaEffectEntity a, WorldEntity target, BattleAction action) {
+        lines.add(
+            "%d scheduled %s %s %s"
+                .formatted(currentTick[0], a.name(), target.name(), action.name()));
+      }
+
+      @Override
+      public void buffSpawned(
+          int tick,
+          WorldEntity owner,
+          String action,
+          BuffData buff,
+          int time,
+          int packedLevel,
+          SpawnHost source) {
+        lines.add(
+            "%d buff_spawn %s %s %s %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    action,
+                    buff.name(),
+                    time,
+                    packedLevel,
+                    source.name()));
+      }
+
+      @Override
+      public void cloneRefused(
+          int tick, WorldEntity original, String reason, SpawnHost instigator) {
+        lines.add(
+            "%d refused %s %s %s"
+                .formatted(currentTick[0], original.name(), reason, instigator.name()));
+      }
+
+      @Override
+      public void cloned(
+          int tick,
+          CharacterEntity original,
+          CharacterEntity clone,
+          SpawnHost instigator,
+          List<Integer> registrationVisits) {
+        HitPoints hp = clone.getHitPoints();
+        lines.add(
+            "%d clone %s %s %d %s at %d %d side %d level %d hp %d shield %s state %d deploy %d"
+                    .formatted(
+                        currentTick[0],
+                        original.name(),
+                        clone.name(),
+                        clone.getId(),
+                        clone.getData().name(),
+                        clone.getView().getX(),
+                        clone.getView().getY(),
+                        clone.side(),
+                        clone.getPackedLevel(),
+                        hp.getHitPoints(),
+                        List.of(hp.getShield(), hp.getShieldMaximum()),
+                        clone.getView().getState(),
+                        clone.getView().getDeployCountdown())
+                + " visits %s by %s".formatted(registrationVisits, instigator.name()));
+      }
+
+      @Override
+      public void cloneMoveStarted(int tick, CharacterEntity unit, int targetX, int targetY) {
+        lines.add(
+            "%d move_start %s at %d %d target %d %d route %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    targetX,
+                    targetY,
+                    Arrays.toString(unit.getUnit().movement().getRoute().toArray())));
+      }
+
+      @Override
+      public void cloneMoveEnded(int tick, CharacterEntity unit, boolean resumed) {
+        lines.add(
+            "%d move_end %s at %d %d state %d resumed %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    unit.getView().getState(),
+                    resumed));
+      }
+    };
+  }
+
+  /** The reference's Clone log in the same layout. */
+  static List<String> expectedCloneLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode c : reference.path("clones")) {
+      int tick = c.get("tick").asInt();
+      switch (c.get("event").asText()) {
+        case "area_effect_from_projectile" ->
+            expected.add(
+                "%d area_effect_from_projectile %s %s at %d %d level %d target %s"
+                    .formatted(
+                        tick,
+                        c.get("area_effect").asText(),
+                        c.get("projectile").asText(),
+                        c.get("x").asInt(),
+                        c.get("y").asInt(),
+                        c.get("level").asInt(),
+                        c.get("target").isNull() ? null : c.get("target").asText()));
+        case "scheduled" ->
+            expected.add(
+                "%d scheduled %s %s %s"
+                    .formatted(
+                        tick,
+                        c.get("area_effect").asText(),
+                        c.get("target").asText(),
+                        c.get("action").asText()));
+        case "buff_spawn" ->
+            expected.add(
+                "%d buff_spawn %s %s %s %d %d %s"
+                    .formatted(
+                        tick,
+                        c.get("owner").asText(),
+                        c.get("action").asText(),
+                        c.get("buff").asText(),
+                        c.get("time").asInt(),
+                        c.get("level").asInt(),
+                        c.get("source").asText()));
+        case "refused" ->
+            expected.add(
+                "%d refused %s %s %s"
+                    .formatted(
+                        tick,
+                        c.get("original").asText(),
+                        c.get("reason").asText(),
+                        c.get("instigator").asText()));
+        case "clone" -> {
+          List<Integer> shield = new ArrayList<>();
+          c.get("shield").forEach(v -> shield.add(v.asInt()));
+          List<Integer> visits = new ArrayList<>();
+          c.get("registration_visits").forEach(v -> visits.add(v.asInt()));
+          expected.add(
+              "%d clone %s %s %d %s at %d %d side %d level %d hp %d shield %s state %d deploy %d"
+                      .formatted(
+                          tick,
+                          c.get("original").asText(),
+                          c.get("clone").asText(),
+                          c.get("id").asInt(),
+                          c.get("row").asText(),
+                          c.get("x").asInt(),
+                          c.get("y").asInt(),
+                          c.get("side").asInt(),
+                          c.get("level").asInt(),
+                          c.get("hp").asInt(),
+                          shield,
+                          c.get("state").asInt(),
+                          c.get("deploy").asInt())
+                  + " visits %s by %s".formatted(visits, c.get("instigator").asText()));
+        }
+        case "move_start" -> {
+          List<Integer> route = new ArrayList<>();
+          c.get("route").forEach(v -> route.add(v.asInt()));
+          expected.add(
+              "%d move_start %s at %d %d target %d %d route %s"
+                  .formatted(
+                      tick,
+                      c.get("unit").asText(),
+                      c.get("x").asInt(),
+                      c.get("y").asInt(),
+                      c.get("target").get(0).asInt(),
+                      c.get("target").get(1).asInt(),
+                      route));
+        }
+        case "move_end" ->
+            expected.add(
+                "%d move_end %s at %d %d state %d resumed %s"
+                    .formatted(
+                        tick,
+                        c.get("unit").asText(),
+                        c.get("x").asInt(),
+                        c.get("y").asInt(),
+                        c.get("state").asInt(),
+                        c.get("resumed").asBoolean()));
+        default -> throw new IllegalStateException("unknown clone event " + c);
       }
     }
     return expected;

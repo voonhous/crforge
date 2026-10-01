@@ -88,6 +88,9 @@
   {"tick": 128, "event": "removed", "target": "Minions_0", "buff": "HealSpiritBuff", "key": "buff_3"},
   {"tick": 128, "event": "heal", "target": "Minions_0", "amount": 100, "hp": [230, 230], "max": 230}
  ],
+ "clones": [
+  {"tick": 107, "event": "area_effect_from_projectile", "area_effect": "HealSpirit_3000000", "projectile": "proj_4000013", "x": 4399, "y": 17099, "level": 10, "target": "E2_0", "clone": 0}
+ ],
  "events": [
   {"tick": 29, "event": "launch", "projectile": "proj_4000000", "config": "MinionSpit", "owner": "Minions_0", "target": "E2_0", "x": 4438, "y": 14594, "z": 1950, "aim": [4399, 17099], "aim_z": 0},
   {"tick": 32, "event": "impact", "projectile": "proj_4000000", "target": "E2_0", "damage": 107, "hp": 1659, "x": 4399, "y": 17099, "z": 0},

@@ -124,7 +124,10 @@ public final class BattleRecords {
           "DeathSpawnSameLocation",
           "DeathSpawnIsEnemy",
           "DeathSpawnDeployDelay",
-          "OtherBuffDeathSpawnAllowed");
+          "OtherBuffDeathSpawnAllowed",
+          // Read only by the apply, to keep the buff off a unit's riders; a buff on a rider or on
+          // a unit that carries riders is refused as it is applied.
+          "Clone");
 
   /** The columns of a buff that only show something: its effects, icons, filters and sounds. */
   private static final Set<String> PRESENTATION_BUFF_COLUMNS =
@@ -160,18 +163,16 @@ public final class BattleRecords {
 
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
-   * area effect is created. A buff that boosts one target or lasts longer by level, clones, the hit
-   * action, the shape, the filter, the spawns, the life condition, the following, the tags, the
+   * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
+   * on itself, the shape, the filter, the spawns, the life condition, the following, the tags, the
    * deflection, the per-level lifetime and the push's floor and gate lift. Its projectile is
-   * modelled, but not a launch from its source or a spread one.
+   * modelled, but not a launch from its source or a spread one; its hit action only for a Clone.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
           "Boost",
           "BuffTimeIncreasePerLevel",
           "BuffTimeIncreaseAfterTournamentCap",
-          "Clone",
-          "OnHitAction",
           "OnHitSelfAction",
           "Shape",
           "Filter",
@@ -373,10 +374,6 @@ public final class BattleRecords {
           "DashFilter",
           // Resolved when the tables are derived: the row already carries what it inherits.
           "Base",
-          // Read only by a Clone, which the battle refuses.
-          "IgnoreClone",
-          // By its name, the row a Clone makes of this one; the battle refuses a Clone.
-          "ClonedVersion",
           // Paid only for an entity of side 100, which a battle of two players never has.
           "ManaOnDeath",
           // Gates only the statistics calls of the buff add.
@@ -671,6 +668,8 @@ public final class BattleRecords {
             .hidesWhenNotAttacking(row.bool("HidesWhenNotAttacking"))
             .hideTimeMs(row.intValue("HideTimeMs"))
             .upTimeMs(row.intValue("UpTimeMs"))
+            .ignoreClone(row.bool("IgnoreClone"))
+            .clonedVersion(set(row, "ClonedVersion") ? row.string("ClonedVersion") : null)
             .unmodelledColumns(unmodelledColumns(row))
             .build();
     return data.toBuilder()
@@ -1012,8 +1011,21 @@ public final class BattleRecords {
             .projectile(row.string("Projectile").isEmpty() ? null : row.string("Projectile"))
             .hitBiggestTargets(row.bool("HitBiggestTargets"))
             .projectileStartHeight(row.intValue("ProjectileStartHeight"))
+            .cloning(row.bool("Clone"))
+            .onHitAction(actionName(row, "OnHitAction"))
             .unmodelledColumns(unmodelled)
             .build();
+    // The hit action is modelled for a Clone alone: a Clone row whose hit action clones, and which
+    // neither deals damage nor applies a buff, as the shipped Clone does.
+    boolean cloning =
+        data.onHitAction() != null
+            && tables.action(data.onHitAction()).classType().equals("ActionClone");
+    if (data.onHitAction() != null && !(data.cloning() && cloning)) {
+      unmodelled.add("OnHitAction");
+    }
+    if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
+      unmodelled.add("Clone");
+    }
     if (data.projectile() != null) {
       // A start height of -1 launches from the area effect's source at height 1000, which no row
       // carried here does.

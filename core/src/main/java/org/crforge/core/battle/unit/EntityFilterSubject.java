@@ -10,11 +10,12 @@ import org.crforge.core.pathfinding.GridEntity;
     status = FidelityStatus.PARTIAL,
     note =
         "Answered from the entity: its kind, team, tag word, crown tower, building, alive, flying,"
+            + " whether it is a clone,"
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
             + " pushback, and its buffs' invisible count; the summoner is the king tower. Supplied:"
             + " a princess tower is a row with the summoner-tower column, and nothing is"
-            + " underground, a clone or immune while dashing, none of which the battle models"
-            + " yet; nothing is hidden either, though a unit in its tunnel and a hidden Tesla"
+            + " underground or immune while dashing, neither of which the battle models yet;"
+            + " nothing is hidden either, though a unit in its tunnel and a hidden Tesla"
             + " are hidden to the validator: which test a filter's hidden flag asks is not"
             + " established, and no run's filter meets a hidden entity.")
 final class EntityFilterSubject implements FilterSubject {
@@ -91,7 +92,7 @@ final class EntityFilterSubject implements FilterSubject {
 
   @Override
   public boolean isClone() {
-    return false;
+    return entity instanceof CharacterEntity character && character.isClone();
   }
 
   @Override

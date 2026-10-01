@@ -413,6 +413,32 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a Clone carries its hit action, a unit what a Clone makes of it; any other hit action, and a"
+          + " Clone that also deals damage, is listed as not modelled")
+  void cloneColumns(@TempDir Path folder) throws IOException {
+    AreaEffectData clone = records.areaEffect("Clone");
+    assertThat(clone.cloning()).isTrue();
+    assertThat(clone.onHitAction()).isEqualTo("CloneAction");
+    assertThat(clone.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Zap").cloning()).isFalse();
+    assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns()).contains("OnHitAction");
+    assertThat(records.unit("Recruit_Chess").ignoreClone()).isTrue();
+    assertThat(records.unit("Knight").ignoreClone()).isFalse();
+    assertThat(records.unit("Knight_EV1").clonedVersion()).isEqualTo("Knight");
+    assertThat(records.unit("Knight").clonedVersion()).isNull();
+    assertThat(records.buff("Clone").unmodelledColumns()).isEmpty();
+
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> GameData.columns(rows, "Clone").put("Damage", 100));
+    assertThat(new BattleRecords(tables).areaEffect("Clone").unmodelledColumns())
+        .containsExactly("Clone");
+  }
+
+  @Test
+  @DisplayName(
       "a rider carries what it may target, and its bola's flight back to a moving shooter is"
           + " presentation")
   void riderTargetingColumns() {

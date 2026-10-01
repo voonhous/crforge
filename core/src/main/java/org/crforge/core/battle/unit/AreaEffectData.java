@@ -40,6 +40,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param affectsHidden true when it reaches a hidden unit, which nothing else does
  * @param controlsBuff true when its slot that removes the instances it is the parent of acts; no
  *     path the battle models reaches that slot, and a parent's instances go as the parent leaves
+ * @param cloning true for a Clone: its on-hit action passes a clone, a unit a Clone passes by and
+ *     one tagged against clones by
+ * @param onHitAction the action each of its hits schedules on every unit in its circle it reaches,
+ *     or null for none; only a Clone's is modelled
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)
@@ -72,6 +76,8 @@ public record AreaEffectData(
     int projectileStartHeight,
     boolean affectsHidden,
     boolean controlsBuff,
+    boolean cloning,
+    String onHitAction,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

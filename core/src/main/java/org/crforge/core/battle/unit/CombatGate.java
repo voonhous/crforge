@@ -33,8 +33,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
         "The gate agrees with the reference for the tags, the waiting state, the acting test and"
             + " the drop and switch of a dead, deploying or stunned entity, held by zap_knight for"
             + " the stun, and the casting state's KeepCurrentTarget, held by giant_buffer_knights."
-            + " Not modelled: a Projectile buff (refused with its row),"
-            + " a clone's setup state with CLONE_RESET_TARGET,"
+            + " A clone's setup state switches it off and keeps the reference, as the standard"
+            + " game does not reset a clone's target, held by clone_golem_group."
+            + " Not modelled: a Projectile buff (refused with its row)"
             + " and the touchdown query (Ladder answers 0). A dashing row's null path asks for a"
             + " resume, which the gate runs, held by bandit_knight's death.")
 final class CombatGate {
@@ -83,21 +84,18 @@ final class CombatGate {
     if (state == GridEntityState.CASTING && keepCurrentTarget) {
       return false;
     }
-    if (state == GridEntityState.CLONE_SETUP) {
-      throw new UnsupportedOperationException(
-          "the combat gate of an entity set up as a clone, which no run holds yet");
-    }
     // A Projectile buff, which keeps a stunned entity acting, is refused with its row.
     if (alive && view.getDeployCountdown() <= 0 && hitSpeed != 0) {
       if (state == GridEntityState.ABILITY_FOLLOW_UP) {
         return false;
       }
-      if (state != GridEntityState.FOLLOWING_REMOVED) {
+      if (state != GridEntityState.FOLLOWING_REMOVED && state != GridEntityState.CLONE_SETUP) {
         return true;
       }
     }
-    // Not acting: the reference goes through the setter's null path while the component is on.
-    if (targetingOn && targeting.getReference() != null) {
+    // Not acting: the reference goes through the setter's null path while the component is on,
+    // but for a clone's setup, which keeps it.
+    if (state != GridEntityState.CLONE_SETUP && targetingOn && targeting.getReference() != null) {
       TargetingOutcome outcome = new TargetingOutcome();
       outcome.setRoutePreparer(routePreparer);
       TargetingVisit.clearReference(targeting, view, outcome);
