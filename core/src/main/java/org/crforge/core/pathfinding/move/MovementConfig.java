@@ -297,4 +297,34 @@ public record MovementConfig(
         entersWaterWhileSpawnPathfinding,
         hovers);
   }
+
+  /**
+   * This configuration with a flight: the height the entity flies at and whether it flies direct
+   * paths, which the waypoint selector reads together.
+   *
+   * @param height the row's flying height; 0 for a ground unit
+   * @param directPaths true for a row that flies straight at the point at its attack range from its
+   *     reference
+   */
+  public MovementConfig withFlight(int height, boolean directPaths) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        height,
+        directPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        ingamePathfindSpeed,
+        entersWaterWhileSpawnPathfinding,
+        hovering);
+  }
 }

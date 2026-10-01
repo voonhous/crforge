@@ -279,6 +279,22 @@ public final class GridMovementQueries implements MovementQueries {
     return AttackRange.attackRangeWithRadius(unit.targeting());
   }
 
+  /**
+   * The point a flying unit with direct paths heads for: its attack range away from its reference,
+   * on the line from the reference to where the unit stands as the selector asks. A unit standing
+   * on the reference's point takes the line along the arena's length.
+   */
+  @Override
+  public int[] specialWaypoint() {
+    GridEntity owner = unit.entity();
+    int[] toward = {owner.getX() - reference.x(), owner.getY() - reference.y()};
+    if (FixedMath.guardedDistance(toward[0], toward[1]) == 0) {
+      toward[1] = 1;
+    }
+    FixedMath.normalize(toward, attackRange());
+    return new int[] {reference.x() + toward[0], reference.y() + toward[1]};
+  }
+
   @Override
   public int farther() {
     return RouteBeyondReference.routeBeyondReference(

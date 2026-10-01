@@ -48,6 +48,16 @@ class GridMovementAnswersTest {
     assertThat(answersFor(unitWithReferenceAt(2701)).referenceInRange()).isZero();
   }
 
+  @Test
+  @DisplayName(
+      "a unit flying direct paths heads for its attack range from its reference, on the line to"
+          + " itself, or along the length when it stands on the reference")
+  void theSpecialWaypointIsAtTheAttackRange() {
+    // The attack range is the range column plus the unit's own radius: 1700 short of the reference.
+    assertThat(answersFor(unitWithReferenceAt(5000)).specialWaypoint()).containsExactly(0, 3300);
+    assertThat(answersFor(unitWithReferenceAt(0)).specialWaypoint()).containsExactly(0, 1700);
+  }
+
   /**
    * The movement answers for one visit of the unit. The range answer reads nothing but the unit's
    * own targeting state, so no routing grid, costs or neighbours are needed.

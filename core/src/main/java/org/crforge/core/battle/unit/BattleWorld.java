@@ -110,7 +110,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the killing hit - the death damage around the dying entity with its pushback, and"
             + " the death spawn on its ring - held by golemite_convert, golemite_death_damage and"
             + " tombstone_death_hook; the death spawn's children flying back to the ring, held by"
-            + " golem_death_pushback; a single child on the dying object's point and a bomb's"
+            + " golem_death_pushback; a ring turned over by the dying object's lane and team, its"
+            + " children given a fixed priority, held by skeleton_barrel_tower and"
+            + " skeleton_barrel_shot_down; a single child on the dying object's point and a bomb's"
             + " death slot as its deploy ends, without the death hooks, held by"
             + " giant_skeleton_bomb; several death spawn children in front of the dying object,"
             + " a lifetime's death without the death handler and a building spawner's children in"
@@ -1059,6 +1061,37 @@ public class BattleWorld implements HolderPasses {
     DamageResult result = unit.takeKill();
     for (WorldObserver observer : observers) {
       observer.kamikazeKilled(tick, unit, before, result);
+    }
+    if (result.died()) {
+      unit.die(unit);
+    }
+  }
+
+  /**
+   * Tells every observer a Kamikaze unit's hit ended, before the kill it may run.
+   *
+   * @param unit the unit
+   * @param kills true when the end kills it
+   */
+  void kamikazeHitEnded(WorldEntity unit, boolean kills) {
+    for (WorldObserver observer : observers) {
+      observer.kamikazeHitEnded(tick, unit, kills);
+    }
+  }
+
+  /**
+   * Deals one step of a Kamikaze unit's drain over its time, with itself as the attacker on its own
+   * side: refused where damage is forbidden, passing the battle's holds, so that a step that takes
+   * the last hit point runs its death as its own killer. Every observer is told of the step.
+   *
+   * @param unit the unit
+   * @param damage the step
+   */
+  void kamikazeDrain(WorldEntity unit, int damage) {
+    int before = unit.getHitPoints().getHitPoints();
+    DamageResult result = unit.takeKamikazeDrain(damage);
+    for (WorldObserver observer : observers) {
+      observer.kamikazeDrained(tick, unit, damage, before, result);
     }
     if (result.died()) {
       unit.die(unit);
@@ -2572,10 +2605,13 @@ public class BattleWorld implements HolderPasses {
    * (n - 1 - i) * 360 / n}, turned by the row's angle shift and the angle the dying object faces
    * when the row sets a shift - the ring untested for passability; a least radius equal to the
    * radius draws nothing. A row that pushes its children puts each on the dying object and flies it
-   * back to its ring point. With no radius a single child stands on the dying object, and several
-   * stand together in front of it, the dying object's collision radius and the child's away toward
-   * the enemy, the first quarter turn of that offset the in-front test accepts; where it accepts
-   * none, the children stand one unit right of the dying object.
+   * back to its ring point. A row that gives its children a fixed priority turns its ring over
+   * across the width when the dying object stands in lane 1 and along the length for the top team,
+   * asking the lane before each child, and the i-th child is taken as (80i)^2 nearer by a
+   * selection. With no radius a single child stands on the dying object, and several stand together
+   * in front of it, the dying object's collision radius and the child's away toward the enemy, the
+   * first quarter turn of that offset the in-front test accepts; where it accepts none, the
+   * children stand one unit right of the dying object.
    *
    * <p>Refused rather than guessed: a child that is a building with hit points, which replaces the
    * dying object, paths to its point or has a starting action of its own; a least radius below the
@@ -2628,6 +2664,24 @@ public class BattleWorld implements HolderPasses {
                 0,
                 0,
                 (px, py) -> true);
+        // A ring whose children take a fixed priority asks the lane of the dying object's point
+        // before each child, and is turned over by it and by the dying object's team.
+        if (data.spawnConstPriority()) {
+          int lane =
+              LaneAssignment.lane(
+                  tileMap.width(),
+                  tileMap.height(),
+                  tileMap.width(),
+                  fromX,
+                  fromY,
+                  -1,
+                  0,
+                  tileMap::bits);
+          for (WorldObserver observer : observers) {
+            observer.ringLaneAsked(tick, dying, fromX, fromY, lane);
+          }
+          at = SpawnPlacement.mirrored(at, fromX, fromY, lane, dying.side() & 1);
+        }
       } else {
         // A single child has no in-front offset; several share the one in-front point.
         at =
@@ -2665,6 +2719,10 @@ public class BattleWorld implements HolderPasses {
               PackedLevel.level(PackedLevel.pack(dying.getPackedLevel(), child.rarity())));
       if (radius != 0 && data.deathSpawnPushback()) {
         spawned.flyBackFrom(fromX, fromY);
+      }
+      // A fixed priority per child: the i-th is taken as (80i)^2 nearer by a selection.
+      if (data.spawnConstPriority()) {
+        spawned.getView().setSquaredDistanceReduction((i * 80) * (i * 80));
       }
       if (child.hitpoints() <= 0 && child.deployTimeMs() >= 1) {
         spawned.startDeploying();

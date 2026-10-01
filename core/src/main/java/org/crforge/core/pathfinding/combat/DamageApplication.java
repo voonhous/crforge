@@ -35,7 +35,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " kill run; a kill as that hit of the whole hit points ignoring the holds, held by"
             + " the worked kills; a typed hit's entry, its refusals, its id listed without a"
             + " refresh and what it answers; the tiebreaker's drain passing the holds, held by"
-            + " match_overtime_tiebreak. The battle's two holds - the tiebreaker's and the end's -"
+            + " match_overtime_tiebreak; a Kamikaze drain, refused where damage is forbidden and"
+            + " passing the holds, held by skeleton_barrel_tower. The battle's two holds - the tiebreaker's and the end's -"
             + " are the battle's answers. Supplied, not settled: nothing is untouchable or immune,"
             + " no buff changes the amount. Not modelled: the death handler, the"
             + " credit to the attacker, an absorber, the shield break, a"
@@ -132,6 +133,23 @@ public final class DamageApplication {
       return DamageResult.NOTHING;
     }
     return subtract(hitPoints, damage, 0, 0, queries, true);
+  }
+
+  /**
+   * Deals one step of a Kamikaze unit's drain over its time, the unit its own attacker: the damage
+   * entry the drain calls refuses a target damage is forbidden on, then enters the bookkeeping with
+   * the flag that passes the battle's holds, as a tiebreaker's drain does. Only an untouchable
+   * target is spared there; the amount takes no modifier and lists no dedupe id.
+   *
+   * @param hitPoints the unit's hit points
+   * @param damage the drain's step
+   * @param queries what the chain asks about the unit and the battle
+   */
+  public static DamageResult kamikazeDrain(HitPoints hitPoints, int damage, DamageQueries queries) {
+    if (queries.damageForbidden()) {
+      return DamageResult.NOTHING;
+    }
+    return drain(hitPoints, damage, queries);
   }
 
   /**

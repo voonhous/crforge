@@ -557,12 +557,26 @@ class BattleRecordsTest {
     assertThat(rider.flyingHeight()).isEqualTo(4000);
     assertThat(rider.deathInheritIgnoreList()).isTrue();
     // The listed columns first, then those the row sets that nothing reads, in name order.
-    assertThat(records.unit("SkeletonBalloon").unmodelledColumns())
-        .containsExactly(
-            "FlyDirectPaths",
-            "KamikazeTime",
-            "CustomDummyObjectLabelEnd",
-            "CustomDummyObjectLabelStart");
+    assertThat(records.unit("GoldenKnight").unmodelledColumns())
+        .containsExactly("DashCount", "BackDashRadius", "DashSecondaryRange");
+  }
+
+  @Test
+  @DisplayName(
+      "the Skeleton Barrel flies direct paths and drains over its Kamikaze time; its container"
+          + " gives its ring a fixed priority, which a spawner may not")
+  void skeletonBarrelColumns() {
+    UnitData barrel = records.unit("SkeletonBalloon");
+    assertThat(barrel.unmodelledColumns()).isEmpty();
+    assertThat(barrel.flyDirectPaths()).isTrue();
+    assertThat(barrel.kamikaze()).isTrue();
+    assertThat(barrel.kamikazeTimeMs()).isEqualTo(500);
+    assertThat(barrel.deathSpawnCharacter()).isEqualTo("SkeletonContainerNew");
+    UnitData container = records.unit("SkeletonContainerNew");
+    assertThat(container.unmodelledColumns()).isEmpty();
+    assertThat(container.unmodelledDeathColumns()).isEmpty();
+    assertThat(container.spawnConstPriority()).isTrue();
+    assertThat(records.unit("Knight").spawnConstPriority()).isFalse();
   }
 
   @Test

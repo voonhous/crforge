@@ -164,7 +164,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " when the spawn step does not divide the generation time is held by no run); the"
             + " building's targeting and attack there rest on the verified translations, not"
             + " a native run. The Kamikaze hit's end, the unit's kill of itself after its hit, is"
-            + " held by the Battle Ram's, Fire Spirits', Wall Breakers' and Ice Spirits' runs."
+            + " held by the Battle Ram's, Fire Spirits', Wall Breakers' and Ice Spirits' runs;"
+            + " a Kamikaze row with a time, its hit killing nothing and its state visit draining"
+            + " it from that tick, and a flying row's direct path to its attack range from its"
+            + " reference, held by skeleton_barrel_tower and skeleton_barrel_shot_down."
             + " Hovering over the river, the buff while not attacking - taken at its creation, off"
             + " in the state visit of a hit's tick, back after its row's time once its attack"
             + " ends - and its answer to an asker while invisible, held by"
@@ -192,11 +195,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding before its first hit,"
             + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
-            + " hit points, direct paths, a completed charge's action, a chained dash, a dash's contact damage,"
+            + " hit points, a completed charge's action, a chained dash, a dash's contact damage,"
             + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
-            + " deploy for its children, a Kamikaze drain over a time), a charge on a unit that"
+            + " deploy for its children, a fixed priority for them), a charge on a unit that"
             + " fires, a Kamikaze hit's end on a unit carrying a death-spawn buff or a shield, a"
+            + " Kamikaze drain on a unit without hit points or with a shield, a"
             + " lifetime's death"
             + " with a death action, an attack sequence whose mode moves the index itself other"
             + " than a continuous-damage attacker's or whose entries set more than a projectile, a"
@@ -303,6 +307,12 @@ public class CharacterEntity extends WorldEntity {
    * attacks nor has a reference in its attack range.
    */
   @Getter private int notAttackingTimerMs;
+
+  /**
+   * True once a Kamikaze row's hit has ended: from then on the state visit of a row with a Kamikaze
+   * time drains its hit points.
+   */
+  @Getter private boolean kamikazeHitEnded;
 
   /** Milliseconds its buff while it is not attacking lasts when it is created with it. */
   private static final int START_BUFF_TIME_MS = 100_000;
@@ -448,11 +458,13 @@ public class CharacterEntity extends WorldEntity {
             MovementState.forSide(side, x, y),
             targeting,
             new StateTimers(),
-            // The movement config's flying height is read only for direct paths, which are
-            // refused; its stop and wait make the follower walk in bursts, its charge range
-            // builds the charge, its jump leaps the river and gives a dash its height, its
-            // constant dash time times a dash, and hovering lets its route cross water.
+            // The movement config's flying height is read only with direct paths, which send a
+            // flying unit straight at the point at its attack range from its reference; its stop
+            // and wait make the follower walk in bursts, its charge range builds the charge, its
+            // jump leaps the river and gives a dash its height, its constant dash time times a
+            // dash, and hovering lets its route cross water.
             MovementConfig.forGroundUnit(data.stopMovementAfterMs(), data.waitMs())
+                .withFlight(data.flyingHeight(), data.flyDirectPaths())
                 .withCharge(data.chargeRange())
                 .withJump(data.jumpEnabled(), data.jumpHeight())
                 .withDashConstantTime(data.dashConstantTimeMs())
@@ -1803,6 +1815,7 @@ public class CharacterEntity extends WorldEntity {
         queries.goalRow(),
         getBuffs().speed(DEPLOY_STEP_MS),
         this::notAttackingSection,
+        this::kamikazeDrain,
         this::deployEndVisit,
         this::hideVisit);
   }
@@ -1907,10 +1920,19 @@ public class CharacterEntity extends WorldEntity {
    * runs in the same pass and it leaves at the tick's closing cleanup; a projectile it launched
    * flies on without it. A death-spawn buff it carries would be deleted without its death spawn,
    * and a shield of its own would take the kill; neither is modelled.
+   *
+   * <p>A row with a Kamikaze time only marks its hit ended: it deletes no buff, drains no shield
+   * and kills nothing, and its state visit drains its hit points from this tick on, while its hits
+   * go on landing.
    */
   @Override
   protected void hitEnded() {
     if (!getData().kamikaze()) {
+      return;
+    }
+    kamikazeHitEnded = true;
+    if (getData().kamikazeTimeMs() != 0) {
+      world.kamikazeHitEnded(this, false);
       return;
     }
     for (BuffInstance instance : getBuffs().items()) {
@@ -1926,7 +1948,28 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           name() + " ends a Kamikaze hit without hit points or with a shield, not modelled");
     }
+    world.kamikazeHitEnded(this, true);
     world.kamikazeKill(this);
+  }
+
+  /**
+   * The drain of a Kamikaze row with a time, once its hit has ended: each state visit takes its
+   * maximum hit points over its time in visits, at least one, with itself as the attacker, until it
+   * dies, which runs its death as its own killer. A row without hit points would be removed instead
+   * and one carrying a shield would have it taken first; no row does either, so both are refused.
+   */
+  private void kamikazeDrain() {
+    if (getData().kamikazeTimeMs() < 1 || !kamikazeHitEnded) {
+      return;
+    }
+    if (getHitPoints() == null || getHitPoints().getShield() > 0) {
+      throw new UnsupportedOperationException(
+          name() + " drains as a Kamikaze row without hit points or with a shield, not modelled");
+    }
+    int visits = getData().kamikazeTimeMs() / StateQueries.TICK_MS;
+    int share = FixedMath.divOrZero(getHitPoints().getMaximum(), visits);
+    // At least one, as an unsigned comparison takes it.
+    world.kamikazeDrain(this, Integer.compareUnsigned(share, 1) > 0 ? share : 1);
   }
 
   /** The progress of the character's charge, while its movement component is on. */

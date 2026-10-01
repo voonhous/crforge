@@ -273,6 +273,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * position expressions work out from the area effect's own point and side, a point beyond the
  * arena's edge going one unit right and then clamped into it. {@code graveyard_right_side1} casts
  * one for the top side on the right half, where the offsets across the width are turned over.
+ *
+ * <p>{@code skeleton_barrel_tower} flies a Skeleton Barrel straight at a princess tower: its hits
+ * deal nothing and kill it no more, and from its first hit its state visit drains its hit points a
+ * share at a time until it dies, dropping its container, which dies as its deploy ends and makes
+ * seven Skeletons on a ring turned over across the width in the left lane. {@code
+ * skeleton_barrel_shot_down} has a Musketeer and the tower shoot one down before it hits, and the
+ * container falls where it died. Each is held to every Kamikaze end and drain, and to the lane each
+ * ring child asked for.
  */
 class BattleActionSpawnRunTest {
 
@@ -389,7 +397,9 @@ class BattleActionSpawnRunTest {
         "graveyard_tower_defender",
         "graveyard_right_side1",
         "phoenix_egg_hatch",
-        "phoenix_egg_killed"
+        "phoenix_egg_killed",
+        "skeleton_barrel_tower",
+        "skeleton_barrel_shot_down"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -631,6 +641,10 @@ class BattleActionSpawnRunTest {
     // Every death projectile, every egg made untargetable and every spawner destroyed at its limit.
     List<String> phoenixLog = new ArrayList<>();
     match.getWorld().addObserver(phoenixLog(currentTick, phoenixLog));
+    // Every Kamikaze end and drain, and every lane a ring's mirror asked for.
+    List<String> kamikazeLog = new ArrayList<>();
+    List<String> laneLog = new ArrayList<>();
+    match.getWorld().addObserver(kamikazeLog(currentTick, kamikazeLog, laneLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1235,6 +1249,17 @@ class BattleActionSpawnRunTest {
     assertThat(phoenixLog)
         .as("every death projectile, egg made untargetable and spawner destroyed at its limit")
         .containsExactlyElementsOf(expectedPhoenixLog(reference));
+
+    // The runs with a drain list their Kamikaze ends and drains; a ring's lanes are listed with the
+    // actions.
+    if (reference.has("kamikaze")) {
+      assertThat(kamikazeLog)
+          .as("every Kamikaze end and every drain")
+          .containsExactlyElementsOf(expectedKamikazeLog(reference));
+    }
+    assertThat(laneLog)
+        .as("every lane a const-priority ring asked for")
+        .containsExactlyElementsOf(expectedLaneLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -2140,6 +2165,89 @@ class BattleActionSpawnRunTest {
                         p.get("y").asInt(),
                         p.get("hp").asInt()));
         default -> throw new IllegalStateException("unknown Phoenix event " + p);
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * Logs every Kamikaze end with the hit points it found and whether it killed, every drain with
+   * what it took and the hit points before and after, and every lane a const-priority ring asked
+   * for at its source's point.
+   */
+  private static WorldObserver kamikazeLog(
+      int[] currentTick, List<String> log, List<String> lanes) {
+    return new WorldObserver() {
+      @Override
+      public void kamikazeHitEnded(int tick, WorldEntity unit, boolean kills) {
+        log.add(
+            "%d end %s hp %d kill %s"
+                .formatted(currentTick[0], unit.name(), unit.getHitPoints().getHitPoints(), kills));
+      }
+
+      @Override
+      public void kamikazeDrained(
+          int tick, WorldEntity unit, int damage, int hitPointsBefore, DamageResult result) {
+        log.add(
+            "%d drain %s %d hp %d before %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    damage,
+                    unit.getHitPoints().getHitPoints(),
+                    hitPointsBefore));
+      }
+
+      @Override
+      public void ringLaneAsked(int tick, SpawnHost source, int x, int y, int lane) {
+        lanes.add(
+            "%d const_priority_lane %s %d %d lane %d"
+                .formatted(currentTick[0], source.name(), x, y, lane));
+      }
+    };
+  }
+
+  /**
+   * The reference's Kamikaze ends and drains, in the Kamikaze log's layout. An end of a unit with
+   * hit points never sets the no-hit-points byte.
+   */
+  private static List<String> expectedKamikazeLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode k : reference.path("kamikaze")) {
+      int tick = k.get("tick").asInt();
+      if (k.has("drain")) {
+        expected.add(
+            "%d drain %s %d hp %d before %d"
+                .formatted(
+                    tick,
+                    k.get("unit").asText(),
+                    k.get("drain").asInt(),
+                    k.get("hp").asInt(),
+                    k.get("before").asInt()));
+      } else {
+        assertThat(k.get("f173").asInt()).as("%s: the no-hit-points byte", k).isZero();
+        expected.add(
+            "%d end %s hp %d kill %s"
+                .formatted(
+                    tick, k.get("unit").asText(), k.get("hp").asInt(), k.get("kill").asBoolean()));
+      }
+    }
+    return expected;
+  }
+
+  /** The lanes the reference's const-priority rings asked for, in the lane log's layout. */
+  private static List<String> expectedLaneLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode a : reference.path("actions")) {
+      if (a.get("event").asText().equals("const_priority_lane")) {
+        expected.add(
+            "%d const_priority_lane %s %d %d lane %d"
+                .formatted(
+                    a.get("tick").asInt(),
+                    a.get("owner").asText(),
+                    a.get("x").asInt(),
+                    a.get("y").asInt(),
+                    a.get("lane").asInt()));
       }
     }
     return expected;

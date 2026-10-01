@@ -370,6 +370,19 @@ class BattleTowerRunTest {
         }
       }
 
+      /** A step of a Kamikaze unit's drain, listed as the reference lists it, then its death. */
+      @Override
+      public void kamikazeDrained(
+          int tick, WorldEntity unit, int damage, int hitPointsBefore, DamageResult result) {
+        events.add(
+            "%d kamikaze_drain %s %d %d"
+                .formatted(
+                    currentTick[0], unit.name(), damage, unit.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], unit.name()));
+        }
+      }
+
       /** A fallen king's circle kills with no hit of its own: the reference lists the death. */
       @Override
       public void circleKilled(int tick, WorldEntity target, int radius) {
@@ -674,6 +687,13 @@ class BattleTowerRunTest {
                   event.get("hp").asInt());
       case "kamikaze_kill" ->
           "%d kamikaze_kill %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "kamikaze_drain" ->
+          "%d kamikaze_drain %s %d %d"
               .formatted(
                   tick,
                   event.get("unit").asText(),

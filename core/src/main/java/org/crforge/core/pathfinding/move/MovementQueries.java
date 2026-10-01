@@ -173,7 +173,7 @@ public interface MovementQueries {
 
   /**
    * The waypoint a flying unit with direct paths heads for instead of a route node, as {@code {x,
-   * y}}. Supplied as the origin, and unreachable while no unit flies direct paths.
+   * y}}: asked only with a reference. Supplied as the origin where no reference is kept.
    */
   default int[] specialWaypoint() {
     return new int[] {0, 0};

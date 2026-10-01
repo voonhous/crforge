@@ -3,6 +3,9 @@ package org.crforge.core.battle.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -14,12 +17,14 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The battle's actions built from the game's action rows: each class from its columns, the actions
@@ -121,6 +126,42 @@ class ActionRowsTest {
   }
 
   @Test
+  @DisplayName("the Skeleton Barrel's pop keeps a run that is stepped doing nothing")
+  void thePopRunLasts() {
+    BattleAction pop = GameData.actions().build("skeleton_balloon_pop_balloons", INERT_BINDING);
+    assertThat(pop).isInstanceOf(PopBalloons.class);
+    ActionHolder holder = new ActionHolder();
+    holder.start(pop);
+    for (int tick = 1; tick <= 100; tick++) {
+      holder.runPass(tick);
+    }
+    assertThat(holder.running()).as("still listed after a hundred steps").hasSize(1);
+    assertThat(holder.running().get(0).isFinished()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a Skeleton Barrel pop that drops containers is refused for its columns, and a singleton one"
+          + " for its second start")
+  void aContainerPopIsRefused(@TempDir Path folder) throws IOException {
+    assertThatThrownBy(
+            () -> GameData.actions().build("skeleton_balloon_evo_pop_balloon", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("ContainerAeoList");
+    GameTables singleton =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("skeleton_balloon_pop_balloons").get("fields"))
+                    .put("Singleton", true));
+    ActionRows rows = new ActionRows(singleton, new BattleRecords(singleton));
+    assertThatThrownBy(() -> rows.build("skeleton_balloon_pop_balloons", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("singleton");
+  }
+
+  @Test
   @DisplayName("an effect row that loops keeps a run that never finishes by itself")
   void aLoopingEffectLasts() {
     BattleAction effect = GameData.actions().build("goblin_machine_signal_core", INERT_BINDING);
@@ -188,11 +229,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 557 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 558 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters and buffs, or a spawned buff the battle does not model.
-    assertThat(built).as("rows built").isEqualTo(557);
+    assertThat(built).as("rows built").isEqualTo(558);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 183, "column", 107, "spawn type", 99));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 179, "column", 110, "spawn type", 99));
   }
 }

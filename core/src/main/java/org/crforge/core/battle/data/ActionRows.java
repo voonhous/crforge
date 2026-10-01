@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
+import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunOnInstigator;
@@ -190,6 +191,25 @@ public final class ActionRows {
                   "OffsetZ",
                   "TargetOffsetZ",
                   "PauseIfTrue")),
+          // The Skeleton Barrel's pop action has no perform: its run is started and stepped and
+          // does nothing. The balloons it pops as the hit points fall, their frames and effects
+          // reach its view object alone. The columns of a singleton's second start, which drops
+          // containers, are not read and so refused.
+          Map.entry(
+              "ActionSkeletonBarrelPopBalloon",
+              Set.of(
+                  "TransitionTime",
+                  "DropBalloonAtHpList",
+                  "BalloonPopStartFrameList",
+                  "BalloonPopEndFrameList",
+                  "BalloonFlyStartFrameList",
+                  "BalloonFlyEndFrameList",
+                  "UseSpecialKamikaze",
+                  "SpecialKamikazeStartFrameList",
+                  "SpecialKamikazeEndFrameList",
+                  "SpecialDeployStartFrameLabel",
+                  "SpecialDeployEndFrameLabel",
+                  "OnPopBalloonEffectList")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -407,6 +427,15 @@ public final class ActionRows {
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
+            case "ActionSkeletonBarrelPopBalloon" -> {
+              if (shared.singleton()) {
+                throw new UnsupportedOperationException(
+                    name
+                        + " is a singleton Skeleton Barrel pop, whose second start drops"
+                        + " containers, which is not modelled");
+              }
+              yield new PopBalloons(shared);
+            }
             default -> {
               if (INERT.contains(type)) {
                 yield new InertAction(shared);
