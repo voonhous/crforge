@@ -2485,7 +2485,8 @@ public class BattleWorld implements HolderPasses {
    * Creates an area effect at a point and hands it to the holder, which gives it its id at once and
    * admits it at the next cleanup. It is named after its row and its id unless given a name.
    *
-   * <p>Refused rather than guessed: a row that sets a column the area effect does not model.
+   * <p>Refused rather than guessed: a row that sets a column the area effect does not model, and
+   * one that launches a projectile whose row sets a column its impact does not model.
    *
    * @param row the area effect's row
    * @param x its point along the width
@@ -2506,6 +2507,18 @@ public class BattleWorld implements HolderPasses {
     }
     if (data.buff() != null) {
       buffData(data.buff());
+    }
+    if (data.projectile() != null) {
+      ProjectileData launched = records.projectile(data.projectile());
+      if (!launched.unmodelledColumns().isEmpty()) {
+        throw new UnsupportedOperationException(
+            "the area effect "
+                + row
+                + " launches "
+                + launched.name()
+                + ", which sets columns its impact does not model: "
+                + launched.unmodelledColumns());
+      }
     }
     AreaEffectEntity areaEffect =
         new AreaEffectEntity(this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()));
@@ -2805,6 +2818,26 @@ public class BattleWorld implements HolderPasses {
   void areaPulled(AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulls) {
     for (WorldObserver observer : observers) {
       observer.areaPulled(tick, areaEffect, pulls);
+    }
+  }
+
+  /**
+   * Tells the observers of an area effect's launch on a step whose hit count rose.
+   *
+   * @param areaEffect the area effect
+   * @param hit the hits due by the end of the step
+   * @param bound the hits due by its start
+   * @param choice what its chooser saw, or null for a row that drops its projectile on its point
+   * @param projectile the projectile launched, or null when the chooser found nobody
+   */
+  void areaEffectLaunched(
+      AreaEffectEntity areaEffect,
+      int hit,
+      int bound,
+      AreaEffectEntity.Choice choice,
+      ProjectileEntity projectile) {
+    for (WorldObserver observer : observers) {
+      observer.areaEffectLaunched(tick, areaEffect, hit, bound, choice, projectile);
     }
   }
 

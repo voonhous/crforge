@@ -14,6 +14,7 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.battle.unit.AreaEffectEntity;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
@@ -42,7 +43,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p>The launch fixes the start and the aim, at the row's constant height when it has one; a homing
  * projectile re-pins its aim onto its target every step, and, when the target leaves the battle,
  * the removal notice leaves the aim where the target last stood and forgets the target, so the
- * projectile flies on and lands on nothing.
+ * projectile flies on and lands on nothing. One that does not home keeps its target too and lands
+ * on it wherever it stands, unless the target has left.
  *
  * <p>A homing projectile with a target puts the damage it will deal on the target as pending, with
  * its flight time, when the holder admits it, and again at each chained hop; it hands the damage
@@ -108,6 +110,13 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /** The launcher, or the launcher's own root for a projectile fired by a projectile. */
   @Getter private WorldEntity root;
+
+  /**
+   * The area effect that launched the projectile, which is its owner and root as well, while it is
+   * in the battle; null for one a unit, a cast or an impact launched. The owner and the root are
+   * then null: they hold units only.
+   */
+  @Getter private AreaEffectEntity areaLauncher;
 
   /** What the projectile was fired at, or null once it has left or was never aimed at one. */
   @Getter private WorldEntity target;
@@ -273,6 +282,37 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     // The cast has no launcher: a projectile that aims by its range would aim from its start.
     place(king, king, null, cardLevel, sx, sy, sz, hx, hy, sx, sy);
     this.delayMs = delayMs;
+  }
+
+  /**
+   * Places a projectile an area effect launches: with the area effect as its launcher, owner and
+   * root, at the area effect's level re-based on the row's rarity, from the start to the hit
+   * position, at a target or none.
+   *
+   * @param area the area effect
+   * @param target what the projectile is dropped onto, or null
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   * @param hx the hit position along the arena's width
+   * @param hy the hit position along the arena's length
+   */
+  public void launchFromArea(
+      AreaEffectEntity area, WorldEntity target, int sx, int sy, int sz, int hx, int hy) {
+    refuseUnitOnly("launched by an area effect");
+    place(null, null, target, area.getPackedLevel(), sx, sy, sz, hx, hy, area.getX(), area.getY());
+    areaLauncher = area;
+  }
+
+  /**
+   * The name of what launched the projectile while it is in the battle: its owner, or the area
+   * effect that launched it; null for none.
+   */
+  public String launcherName() {
+    if (owner != null) {
+      return owner.name();
+    }
+    return areaLauncher == null ? null : areaLauncher.name();
   }
 
   /**
@@ -663,11 +703,14 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /**
    * The projectile's notice of a removal: a homing projectile whose target left pins its aim where
-   * the target last stood; the target, the homing target, the owner and the root are forgotten when
-   * they are the one that left.
+   * the target last stood; the target, the homing target, the owner, the root and the area effect
+   * that launched it are forgotten when they are the one that left.
    */
   @Override
   protected void entityRemoved(BattleEntity removed) {
+    if (removed == areaLauncher) {
+      areaLauncher = null;
+    }
     if (!(removed instanceof WorldEntity gone)) {
       return;
     }
@@ -755,10 +798,13 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     return true;
   }
 
-  /** Its launcher, while it is still in the battle; the removal notice forgets it. */
+  /**
+   * Its launcher, a unit or an area effect, while it is still in the battle; the removal notice
+   * forgets it.
+   */
   @Override
   public ActionOwner actionCreator() {
-    return owner;
+    return owner != null ? owner : areaLauncher;
   }
 
   @Override

@@ -265,6 +265,25 @@ public interface WorldObserver {
       int tick, AreaEffectEntity areaEffect, String how, String source) {}
 
   /**
+   * An area effect launched its projectile, after the hits of a step whose hit count rose, or found
+   * nobody to drop it onto.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param hit the hits due by the end of the step
+   * @param bound the hits due by its start
+   * @param choice what its chooser saw, or null for a row that drops its projectile on its point
+   * @param projectile the projectile launched, or null when the chooser found nobody
+   */
+  default void areaEffectLaunched(
+      int tick,
+      AreaEffectEntity areaEffect,
+      int hit,
+      int bound,
+      AreaEffectEntity.Choice choice,
+      ProjectileEntity projectile) {}
+
+  /**
    * An area effect's hit pulled units toward its centre, before its buff was applied: each pulled
    * unit with the vector to the centre and its push accumulators before and after.
    *
