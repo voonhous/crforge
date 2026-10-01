@@ -184,7 +184,8 @@ public class Standard1v1Battle {
    * Queues a card play to run on the given tick: at the head of that step the play is worked out
    * against the battle as it stands, and its units are handed to the holder in creation order, so
    * the tick's entity tick admits and visits them. A spell's play casts instead, at the placed
-   * point: its area effect, or its projectile from the side's king tower. A refused play creates
+   * point: its area effect, or its projectile from the side's king tower. A troop card with a
+   * projectile casts it onto the placed point before its units are made. A refused play creates
    * nothing.
    *
    * @param tick the tick the play runs on
@@ -251,7 +252,8 @@ public class Standard1v1Battle {
     if (match != null && result.placed()) {
       match.play(side, deckIndex);
     }
-    if (card.spell() && result.placed()) {
+    // The cast comes before the units are made: a troop card's projectile is queued ahead of them.
+    if (card.casts() && result.placed()) {
       // The card item's level field; the hand is not modelled, so it is the level played, less 1.
       world.castSpell(card, level - 1, side, result.x(), result.y(), name);
     }
@@ -280,12 +282,14 @@ public class Standard1v1Battle {
               waits ? unit.start().waitMs() : -1);
       // The construction sets the unit deploying before it queues it, and entering that state
       // makes the riders of a row that attaches its children: they are queued first. It makes a
-      // row's area object after them, updated at once, while the unit is not yet in the battle.
+      // row's area object after them, updated at once, while the unit is not yet in the battle,
+      // and then a row's push, which finds nobody: the command pass runs between the holder's
+      // post-pass, which empties the spatial index, and the next pre-pass, which fills it.
       if (unit.unit().spawnAttach()) {
         world.attachRiders(character);
       }
-      if (!waits && unit.unit().spawnAreaObject() != null) {
-        world.spawnAreaObject(character);
+      if (!waits) {
+        character.enteredDeploying();
       }
       target.getHolder().add(character);
       // The opening cleanup that admits it starts it, deploying or still waiting its turn: its
@@ -374,6 +378,12 @@ public class Standard1v1Battle {
     if (data.spawnAttach()) {
       throw new UnsupportedOperationException(
           data.name() + " makes its riders as a card play sets it deploying; play it by its card");
+    }
+    if (data.pushesOnDeploy()) {
+      throw new UnsupportedOperationException(
+          data.name()
+              + " pushes as a card play sets it deploying, and its card casts as it plays; play"
+              + " it by its card");
     }
     CharacterEntity character = new CharacterEntity(world, data, name, side, x, y, level);
     battle.queue(

@@ -275,6 +275,25 @@ public interface WorldObserver {
   default void areaPulled(
       int tick, AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulls) {}
 
+  /**
+   * A unit entering the deploying state pushed the enemies around it: what its query found, and
+   * whom it asked to push, after the pushback of each was asked for.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param radius the query's radius
+   * @param distance how far each is pushed
+   * @param found what the query found, in its order, before any test
+   * @param pushed the ones asked to be pushed, in the same order
+   */
+  default void deployPushed(
+      int tick,
+      CharacterEntity unit,
+      int radius,
+      int distance,
+      List<WorldEntity> found,
+      List<WorldEntity> pushed) {}
+
   /** An area effect was admitted to the live list, and its starting action scheduled. */
   default void areaEffectAdmitted(int tick, AreaEffectEntity areaEffect) {}
 

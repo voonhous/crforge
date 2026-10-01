@@ -3,7 +3,6 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
@@ -13,17 +12,16 @@ import org.junit.jupiter.api.Test;
 class BattleDashTest {
 
   /**
-   * A dasher's row. The Mega Knight's deploy push is not modelled, so its row is refused; nothing
-   * stands within its reach as it deploys here, so these tests take the columns off the row.
+   * A dasher's row. The Mega Knight is played by its card, which pushes as it deploys and casts its
+   * appearance; placed directly here, with nothing in its reach, it is placed without its push.
    */
   private static UnitData dasherRow(String row) {
     UnitData data = GameData.unit(row);
     if (!row.equals("MegaKnight")) {
       return data;
     }
-    assertThat(data.unmodelledColumns())
-        .containsExactly("SpawnLimit", "SpawnPushback", "SpawnPushbackRadius");
-    return data.toBuilder().unmodelledColumns(List.of()).build();
+    assertThat(data.pushesOnDeploy()).isTrue();
+    return data.toBuilder().spawnPushback(0).build();
   }
 
   /** A dasher placed for the bottom side with a red Knight ahead of it, the towers passive. */

@@ -457,10 +457,10 @@ public class CharacterEntity extends WorldEntity {
               false,
               this::stateTailGate));
     }
-    // A row with an area object makes it each time it enters the deploying state through its
-    // setter, a troop's as a building's.
-    if (data.spawnAreaObject() != null) {
-      setter.setDeployingEntry(() -> world.spawnAreaObject(this));
+    // A row with an area object or a push makes them each time it enters the deploying state
+    // through its setter, a troop's as a building's.
+    if (data.spawnAreaObject() != null || data.pushesOnDeploy()) {
+      setter.setDeployingEntry(this::enteredDeploying);
     }
     // Who may select, hit or buff it is its own answer, asked with the asker.
     getTargetView().setAcceptance(this::accepts);
@@ -1070,6 +1070,24 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The push of a unit entering the deploying state near the character: a pushback away from the
+   * unit with the gates lifted, so even a row that ignores pushback is pushed, refused only while a
+   * pushback is in flight or the character is hidden. Its movement is not switched on: only one
+   * whose movement is on is asked.
+   *
+   * @param x the unit's position along the width
+   * @param y the unit's position along the length
+   * @param distance how far
+   */
+  void pushedOnDeploy(int x, int y, int distance) {
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement, getView(), pushbackQueries, x, y, distance, true, false, false, false, false);
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+  }
+
+  /**
    * A push from a hit along a projectile's way: only a character whose movement is on and that is
    * not waiting to deploy is pushed, away from the projectile, with the gates that would refuse it
    * lifted when the projectile's row pushes all.
@@ -1368,6 +1386,21 @@ public class CharacterEntity extends WorldEntity {
    */
   void startDeployingAfterMorph() {
     setter.setState(getView(), GridEntityState.DEPLOYING);
+  }
+
+  /**
+   * What the setter's entry to the deploying state makes of the character's row, in its order: the
+   * row's area object, then its push on the enemies around it. A card play's construction enters
+   * the state before it hands the character to the holder, and runs this then.
+   */
+  void enteredDeploying() {
+    UnitData data = getData();
+    if (data.spawnAreaObject() != null) {
+      world.spawnAreaObject(this);
+    }
+    if (data.pushesOnDeploy()) {
+      world.spawnPush(this);
+    }
   }
 
   /** True while the character waits its turn to deploy: none of its components is visited. */

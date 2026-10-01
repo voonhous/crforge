@@ -61,6 +61,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     or null for none
  * @param spawnAreaObject the area effect the unit makes each time it enters the deploying state
  *     through its setter, or null for none
+ * @param spawnPushback the radius of the push the unit makes each time it enters the deploying
+ *     state through its setter: the enemies standing within it are pushed away; 0 for none
+ * @param spawnPushbackRadius how far that push sends each of them; 0 for none
  * @param tileSizeOverride the tiles a building's footprint spans, when not derived from its
  *     collision radius; 0 for none
  * @param noDeploySizeW the width, in tiles, of the box around a building that the other side may
@@ -222,6 +225,8 @@ public record UnitData(
     int spawnPathfindSpeed,
     String spawnPathfindMorph,
     String spawnAreaObject,
+    int spawnPushback,
+    int spawnPushbackRadius,
     int tileSizeOverride,
     int noDeploySizeW,
     int noDeploySizeH,
@@ -328,5 +333,13 @@ public record UnitData(
   /** True for a unit that fires a projectile rather than hitting its target directly. */
   public boolean hasProjectile() {
     return projectile != null;
+  }
+
+  /**
+   * True for a unit that pushes the enemies around it each time it enters the deploying state
+   * through its setter: one with both a push radius and a push distance.
+   */
+  public boolean pushesOnDeploy() {
+    return spawnPushback != 0 && spawnPushbackRadius != 0;
   }
 }
