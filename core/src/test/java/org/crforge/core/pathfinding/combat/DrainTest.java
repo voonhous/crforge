@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * A tiebreaker's drain step passes the battle's two holds, which refuse every ordinary hit: the
- * tiebreaker's, from its first step, and the end's.
+ * tiebreaker's, from its first step, and the end's. A Kamikaze unit's drain over its time passes
+ * them too, but is refused where damage is forbidden.
  */
 class DrainTest {
 
@@ -61,5 +62,29 @@ class DrainTest {
         };
     assertThat(DamageApplication.drain(spared, 50, untouchable).landed()).isFalse();
     assertThat(spared.getHitPoints()).isEqualTo(3052);
+  }
+
+  @Test
+  @DisplayName(
+      "a Kamikaze drain passes both holds as a tiebreaker's does, but not a target that takes no"
+          + " damage")
+  void aKamikazeDrainIsRefusedWhereDamageIsForbidden() {
+    for (DamageQueries holds : new DamageQueries[] {TIEBREAKER, ENDED}) {
+      HitPoints hp = new HitPoints(532);
+      assertThat(DamageApplication.kamikazeDrain(hp, 53, holds).landed()).isTrue();
+      assertThat(hp.getHitPoints()).isEqualTo(479);
+    }
+    HitPoints forbidden = new HitPoints(532);
+    DamageQueries noDamage =
+        new DamageQueries() {
+          @Override
+          public boolean damageForbidden() {
+            return true;
+          }
+        };
+    assertThat(DamageApplication.kamikazeDrain(forbidden, 53, noDamage).landed()).isFalse();
+    assertThat(forbidden.getHitPoints()).isEqualTo(532);
+    // The tiebreaker's drain does not ask.
+    assertThat(DamageApplication.drain(forbidden, 53, noDamage).landed()).isTrue();
   }
 }

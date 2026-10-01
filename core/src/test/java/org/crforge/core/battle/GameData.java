@@ -67,7 +67,7 @@ public final class GameData {
    *
    * @param folder the folder to copy them into
    * @param table the table's file name, without its extension
-   * @param edit what is done to its rows, by name
+   * @param edit what is done to its rows, by name; the actions table keeps them under its own name
    * @return the altered tables
    */
   public static GameTables altered(Path folder, String table, Consumer<ObjectNode> edit)
@@ -81,7 +81,7 @@ public final class GameData {
     Path file = folder.resolve(table + ".json");
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-    edit.accept((ObjectNode) document.get("rows"));
+    edit.accept((ObjectNode) document.get(document.has("rows") ? "rows" : table));
     mapper.writeValue(file.toFile(), document);
     return GameTables.load(folder);
   }

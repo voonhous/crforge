@@ -198,16 +198,14 @@ public final class BattleRecords {
    * rider let go under a parent that sets it, which is refused, so every list stays empty and the
    * column changes nothing.
    */
-  private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS =
-      List.of("SpawnConstPriority", "SpawnLimit");
+  private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS = List.of("SpawnLimit");
 
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield, hiding before the first hit, a buff at a share of its hit
-   * points, a flying unit's direct paths, the action a completed charge runs, a chained dash, a
-   * dash's contact damage, fixed distance, area effect and closing action, a limit on the elixir a
-   * collector makes, a spawner's launches, its second and third characters, and a Kamikaze row's
-   * drain over a time rather than its kill.
+   * points, the action a completed charge runs, a chained dash, a dash's contact damage, fixed
+   * distance, area effect and closing action, a limit on the elixir a collector makes, a spawner's
+   * launches, and its second and third characters.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -215,7 +213,6 @@ public final class BattleRecords {
           "ShieldLostAction",
           "HideBeforeFirstHit",
           "BuffOnXHP",
-          "FlyDirectPaths",
           "OnStartChargingAction",
           "DashCount",
           "DashingDamage",
@@ -225,14 +222,15 @@ public final class BattleRecords {
           "ManaGenerateLimit",
           "SpawnProjectile",
           "SpawnCharacter2",
-          "SpawnCharacter3",
-          "KamikazeTime");
+          "SpawnCharacter3");
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
-   * characters: its push on its children.
+   * characters: its push on its children, and a fixed priority for them, which is held only for a
+   * death spawn.
    */
-  private static final List<String> UNMODELLED_SPAWNER_COLUMNS = List.of("SpawnPushback");
+  private static final List<String> UNMODELLED_SPAWNER_COLUMNS =
+      List.of("SpawnPushback", "SpawnConstPriority");
 
   /**
    * The tags a unit's own row may set: those of the Phoenix's egg, each read where the battle reads
@@ -246,7 +244,8 @@ public final class BattleRecords {
    * animation, skin and health bar. They name client assets rather than rows of the battle's
    * tables, and no traced battle path reads one; they are classified by what they name, not each by
    * a trace. The effect columns the record has followed (DashStartEffect, LandingEffect) reach only
-   * the entity's view object.
+   * the entity's view object, and the custom dummy labels are read only by the character's view, as
+   * the labels of its animation.
    */
   private static final Set<String> PRESENTATION_UNIT_COLUMNS =
       Set.of(
@@ -262,6 +261,8 @@ public final class BattleRecords {
           "ChargeEffect",
           "ContinuousEffect",
           "CrowdEffects",
+          "CustomDummyObjectLabelEnd",
+          "CustomDummyObjectLabelStart",
           "DamageEffect",
           "DamageEffectSpecial",
           "DamageExportName",
@@ -544,6 +545,7 @@ public final class BattleRecords {
             .spawnRadius(row.intValue("SpawnRadius"))
             .spawnAngleShift(row.intValue("SpawnAngleShift"))
             .flyingHeight(row.intValue("FlyingHeight"))
+            .flyDirectPaths(row.bool("FlyDirectPaths"))
             .spawnPathfindSpeed(row.intValue("SpawnPathfindSpeed"))
             .spawnPathfindMorph(
                 row.string("SpawnPathfindMorph").isEmpty()
@@ -575,6 +577,7 @@ public final class BattleRecords {
             .deathAreaEffect(
                 row.string("DeathAreaEffect").isEmpty() ? null : row.string("DeathAreaEffect"))
             .deathSpawnPushback(row.bool("DeathSpawnPushback"))
+            .spawnConstPriority(row.bool("SpawnConstPriority"))
             .deathSpawnMinRadius(row.intValue("DeathSpawnMinRadius"))
             .deathSpawnProjectile(deathProjectile.isEmpty() ? null : projectile(deathProjectile))
             .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
@@ -620,6 +623,7 @@ public final class BattleRecords {
             .jumpHeight(row.intValue("JumpHeight"))
             .jumpSpeed(row.intValue("JumpSpeed"))
             .kamikaze(row.bool("Kamikaze"))
+            .kamikazeTimeMs(row.intValue("KamikazeTime"))
             .multipleTargets(row.intValue("MultipleTargets"))
             .allTargetsHit(row.bool("AllTargetsHit"))
             .uniqueMultipleTargets(row.bool("UniqueMultipleTargets"))

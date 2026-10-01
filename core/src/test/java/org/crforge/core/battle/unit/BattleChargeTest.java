@@ -50,18 +50,6 @@ class BattleChargeTest {
   }
 
   @Test
-  @DisplayName("a Kamikaze row that drains over a time is refused as it is created")
-  void aKamikazeTimeIsRefused() {
-    BattleWorld world = passiveTowers().getWorld();
-    assertThatThrownBy(
-            () ->
-                new CharacterEntity(
-                    world, GameData.unit("SkeletonBalloon"), "SkeletonBalloon", 0, 3500, 10000, 11))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("KamikazeTime");
-  }
-
-  @Test
   @DisplayName("a row whose completed charge runs an action is refused as it is created")
   void aChargeActionIsRefused() {
     BattleWorld world = passiveTowers().getWorld();

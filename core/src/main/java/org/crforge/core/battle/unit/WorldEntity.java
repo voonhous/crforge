@@ -1428,6 +1428,25 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Takes one step of its own Kamikaze drain, which is refused where damage is forbidden and passes
+   * the battle's holds.
+   *
+   * @param damage the drain's step
+   * @return what the step did; the death it causes is the battle's to run
+   */
+  DamageResult takeKamikazeDrain(int damage) {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    refuseReflect("a Kamikaze drain");
+    int shieldBefore = hitPoints.getShield();
+    DamageResult result = DamageApplication.kamikazeDrain(hitPoints, damage, damageQueries());
+    shieldHit(damage, shieldBefore);
+    refreshHitPoints();
+    return result;
+  }
+
+  /**
    * Takes one step of a tiebreaker's drain, which passes the battle's holds.
    *
    * @param damage the drain's step

@@ -24,9 +24,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " character, a single child on the point or one unit right of it, and children in"
             + " front of a character source by its collision radius and theirs, held by"
             + " tombstone_life and goblin_hut_life; the ring turned by a character source's angle"
-            + " shift and facing, held by night_witch. Not modelled: the in-front offset of a source"
-            + " that is not a character; a character source's minimum radius on a ring; the ring's"
-            + " lane mirror; and the step back a unit without hit points takes.")
+            + " shift and facing, held by night_witch; the ring turned over by the lane and the"
+            + " team, held by skeleton_barrel_tower and skeleton_barrel_shot_down. Not modelled:"
+            + " the in-front offset of a source that is not a character; a character source's"
+            + " minimum radius on a ring; and the step back a unit without hit points takes.")
 public final class SpawnPlacement {
 
   /** The in-front test, asked of a point. */
@@ -154,6 +155,30 @@ public final class SpawnPlacement {
       }
     }
     return new int[] {x + 1, y};
+  }
+
+  /**
+   * A ring position turned over as a spawn that gives its children a fixed priority turns it: its
+   * offset from the point is negated across the arena's width when the point lies in lane 1, and
+   * along its length unless the source is on team 0.
+   *
+   * @param at the ring position {@link #position} gave
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param lane the lane of the point
+   * @param team the source's team, 0 or 1
+   * @return the turned position as {x, y}
+   */
+  public static int[] mirrored(int[] at, int x, int y, int lane, int team) {
+    int ox = at[0] - x;
+    int oy = at[1] - y;
+    if (team != 0) {
+      oy = -oy;
+    }
+    if (lane == 1) {
+      ox = -ox;
+    }
+    return new int[] {ox + x, oy + y};
   }
 
   /** A value over 1024, rounded toward zero. */

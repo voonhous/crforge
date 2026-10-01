@@ -25,10 +25,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "The ordinary waypoint agrees with the reference. Not modelled: the special"
-            + " waypoint of a unit that flies direct paths, which is answered as the arena"
-            + " origin and is unreachable while no such unit is driven; the touchdown override"
-            + " is not held by a fixture.")
+        "The ordinary waypoint agrees with the reference, and so does the special waypoint of a"
+            + " unit that flies direct paths, held by skeleton_barrel_tower and"
+            + " skeleton_barrel_shot_down. Not modelled: the touchdown override is not held by a"
+            + " fixture.")
 public final class WaypointSelector {
 
   private WaypointSelector() {

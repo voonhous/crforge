@@ -277,6 +277,7 @@ class EntityStateVisitTest {
         plain.goalRow(),
         plain.scaledDeployStepMs(),
         plain.notAttacking(),
+        plain.kamikazeDrain(),
         () -> runs.add("deploy_end_visit " + entity.getState()),
         () -> runs.add("hide " + entity.getState()));
   }

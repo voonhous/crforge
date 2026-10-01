@@ -55,6 +55,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnAngleShift degrees its spawner's ring is turned by, with the angle it faces; for an
  *     attached unit, degrees its place around its parent is turned by
  * @param flyingHeight how high the unit flies; 0 for a ground unit
+ * @param flyDirectPaths true for a flying unit that, holding a reference, flies straight at the
+ *     point at its attack range from the reference instead of toward its route's cell
  * @param spawnPathfindSpeed the speed of a unit that walks to its placement; 0 for one placed at
  *     once
  * @param spawnPathfindMorph the row a unit that walks to its placement morphs into as it arrives,
@@ -87,6 +89,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     to their ring points
  * @param deathSpawnMinRadius the least radius a death spawn's child is drawn at; 0 for the ring's
  *     own radius
+ * @param spawnConstPriority true when the death spawn gives its children a fixed priority: its ring
+ *     turned over by the lane of the unit's point and its team, and the i-th child taken as (80i)^2
+ *     nearer by a selection
  * @param deathSpawnProjectile the projectile the unit launches as it dies, as many as its death
  *     spawn's count, or null for none
  * @param unmodelledDeathColumns the columns of what the unit does as it dies that its row sets and
@@ -149,6 +154,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param jumpHeight the height of its jump arc
  * @param jumpSpeed its speed while it jumps, in game units per tick
  * @param kamikaze true for a unit whose hit destroys it
+ * @param kamikazeTimeMs for a Kamikaze unit, the time its hit points drain over from its first hit
+ *     instead of that hit killing it; 0 for one that the hit kills
  * @param multipleTargets how many targets one hit reaches, below two for one
  * @param allTargetsHit true when an extra target the lookup does not find is its reference again
  * @param uniqueMultipleTargets true when the extra targets are drawn from one list, each hit once
@@ -247,6 +254,7 @@ public record UnitData(
     int spawnRadius,
     int spawnAngleShift,
     int flyingHeight,
+    boolean flyDirectPaths,
     int spawnPathfindSpeed,
     String spawnPathfindMorph,
     String spawnAreaObject,
@@ -269,6 +277,7 @@ public record UnitData(
     int deathSpawnDeployTimeMs,
     String deathAreaEffect,
     boolean deathSpawnPushback,
+    boolean spawnConstPriority,
     int deathSpawnMinRadius,
     ProjectileData deathSpawnProjectile,
     List<String> unmodelledDeathColumns,
@@ -313,6 +322,7 @@ public record UnitData(
     int jumpHeight,
     int jumpSpeed,
     boolean kamikaze,
+    int kamikazeTimeMs,
     int multipleTargets,
     boolean allTargetsHit,
     boolean uniqueMultipleTargets,

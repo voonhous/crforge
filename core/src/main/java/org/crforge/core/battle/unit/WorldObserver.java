@@ -482,6 +482,39 @@ public interface WorldObserver {
   default void kamikazeKilled(int tick, WorldEntity unit, int damage, DamageResult result) {}
 
   /**
+   * A Kamikaze unit's hit ended, before the kill it may run.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param kills true when the end kills it; false for a row that drains its hit points instead
+   */
+  default void kamikazeHitEnded(int tick, WorldEntity unit, boolean kills) {}
+
+  /**
+   * One step of a Kamikaze unit's drain landed on it, in its state visit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit, its own attacker
+   * @param damage the step
+   * @param hitPointsBefore its hit points before the step
+   * @param result what the step did
+   */
+  default void kamikazeDrained(
+      int tick, WorldEntity unit, int damage, int hitPointsBefore, DamageResult result) {}
+
+  /**
+   * A spawn whose children take a fixed priority asked the lane of its source's point before
+   * placing a child on its ring.
+   *
+   * @param tick the battle tick
+   * @param source what spawns
+   * @param x the source's point along the width
+   * @param y the source's point along the length
+   * @param lane the lane, 1 for the one whose ring is turned over across the width
+   */
+  default void ringLaneAsked(int tick, SpawnHost source, int x, int y, int lane) {}
+
+  /**
    * A hiding building's deploy ended, and its state visit ran the combat gate and its targeting
    * visit, one tick before its targeting component's own first visit.
    */

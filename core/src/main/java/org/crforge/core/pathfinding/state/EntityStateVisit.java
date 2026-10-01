@@ -22,7 +22,8 @@ import org.crforge.core.pathfinding.move.MovementState;
  *       unit's first-tick immunity advances in every state;
  *   <li>a staggered unit counts its stagger down and nothing else happens this visit;
  *   <li>a landed dash releases the unit back into movement;
- *   <li>a row with a buff while it is not attacking runs its section, which its caller supplies;
+ *   <li>a row with a buff while it is not attacking runs its section, which its caller supplies,
+ *       and then a Kamikaze row with a time drains its hit points, which its caller supplies too;
  *   <li>the pending-damage duration counts down and a unit with no hit points asks to be removed;
  *   <li>the dash immunity is either topped up or counted down;
  *   <li>a requested ability starts;
@@ -34,16 +35,16 @@ import org.crforge.core.pathfinding.move.MovementState;
  * </ol>
  *
  * <p>Blocks this class does not carry, because each is gated by a configuration column that belongs
- * to a part of the simulation outside movement and routing: the self-damage of a kamikaze unit,
- * elixir generation, the hide handling, and the morph timer with its growth scale. They sit between
- * blocks 5 and 6 and between 12 and 13 in the order above and none of them changes a state or a
- * position that routing reads. Two of them are announced where the visit reaches them, and their
- * caller runs them, since nothing after either in the visit reads what it does: the elixir
- * generation, right after block 12, as {@code elixir}, and the live spawner, the last block before
- * 13, as {@code spawner}. The not-attacking section, block 5, is its caller's too, but run in its
- * place, since it reads the state the visit has reached and the elapsed time; so are the hide
- * handler, right after the elixir generation, and a hiding row's combat gate and targeting visit at
- * the end of its deploy, right after block 11's resume.
+ * to a part of the simulation outside movement and routing: elixir generation, the hide handling,
+ * and the morph timer with its growth scale. They sit between blocks 12 and 13 in the order above
+ * and none of them changes a state or a position that routing reads. Two of them are announced
+ * where the visit reaches them, and their caller runs them, since nothing after either in the visit
+ * reads what it does: the elixir generation, right after block 12, as {@code elixir}, and the live
+ * spawner, the last block before 13, as {@code spawner}. The not-attacking section, block 5, is its
+ * caller's too, but run in its place, since it reads the state the visit has reached and the
+ * elapsed time; so are a Kamikaze row's drain over its time, right after it, the hide handler,
+ * right after the elixir generation, and a hiding row's combat gate and targeting visit at the end
+ * of its deploy, right after block 11's resume.
  *
  * <p>Two consequences of leaving them out, which matter to anyone extending this class rather than
  * to a plain ground troop:
@@ -74,8 +75,9 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " dash immunity, by bandit_knight; the not-attacking section's place, by"
             + " ghost_river_wizard_tower; the pending-damage countdown, by the battle references'"
             + " re-locks and drops; a hiding row's deploy-end targeting visit and hide handler,"
-            + " by tesla_giant_passing. Not modelled: kamikaze self-damage and growth. A removal"
-            + " is requested by name and read by nothing.")
+            + " by tesla_giant_passing; a Kamikaze row's drain right after the not-attacking"
+            + " section, by skeleton_barrel_tower. Not modelled: growth. A removal is requested by"
+            + " name and read by nothing.")
 public final class EntityStateVisit {
 
   /** Milliseconds one tick advances every countdown by. */
@@ -156,8 +158,10 @@ public final class EntityStateVisit {
       }
     }
 
-    // 5. The section of a row with a buff while it is not attacking, which the caller runs.
+    // 5. The section of a row with a buff while it is not attacking, which the caller runs, then a
+    // Kamikaze row's drain over its time, also the caller's.
     queries.notAttacking().run();
+    queries.kamikazeDrain().run();
 
     // 6. Pending damage, and removal of a unit that has no hit points left.
     entity.setPendingDamageDurationMs(

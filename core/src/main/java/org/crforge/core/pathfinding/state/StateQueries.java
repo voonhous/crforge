@@ -30,6 +30,9 @@ import java.util.function.BooleanSupplier;
  *     modifiers scale it; the unscaled step is 50
  * @param notAttacking the section of a row with a buff while it is not attacking, run where the
  *     visit reaches it: its countdown, and the buff's removal or apply; nothing for any other row
+ * @param kamikazeDrain the drain of a Kamikaze row with a time, run where the visit reaches it,
+ *     right after the not-attacking section: one step from the tick its hit ended on; nothing for
+ *     any other row
  * @param deployEndVisit what a hiding row's deploy end runs right after its resume: the combat
  *     gate, then, with its targeting component on, its targeting visit
  * @param hide the hide handler of a hiding row, run where the visit reaches it, since it reads the
@@ -48,6 +51,7 @@ public record StateQueries(
     int goalRow,
     int scaledDeployStepMs,
     Runnable notAttacking,
+    Runnable kamikazeDrain,
     Runnable deployEndVisit,
     Runnable hide) {
 
@@ -86,6 +90,7 @@ public record StateQueries(
         TICK_MS,
         () -> {},
         () -> {},
+        () -> {},
         () -> {});
   }
 
@@ -104,6 +109,7 @@ public record StateQueries(
         goalRow,
         scaledDeployStepMs,
         notAttacking,
+        kamikazeDrain,
         deployEndVisit,
         hide);
   }
