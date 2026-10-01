@@ -15,6 +15,7 @@ import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.junit.jupiter.api.BeforeAll;
@@ -368,8 +369,6 @@ class BattleRecordsTest {
     // It takes both: a radius to search and a distance to push.
     assertThat(megaKnight.toBuilder().spawnPushback(0).build().pushesOnDeploy()).isFalse();
     assertThat(megaKnight.toBuilder().spawnPushbackRadius(0).build().pushesOnDeploy()).isFalse();
-    // A spawner's limit is still refused where it counts.
-    assertThat(records.unit("PhoenixEgg").unmodelledColumns()).contains("SpawnLimit");
   }
 
   @Test
@@ -558,13 +557,45 @@ class BattleRecordsTest {
     assertThat(rider.flyingHeight()).isEqualTo(4000);
     assertThat(rider.deathInheritIgnoreList()).isTrue();
     // The listed columns first, then those the row sets that nothing reads, in name order.
-    assertThat(records.unit("PhoenixEgg").unmodelledColumns())
+    assertThat(records.unit("SkeletonBalloon").unmodelledColumns())
         .containsExactly(
-            "DestroyAtLimit",
-            "SpawnCharacterWithDeploy",
-            "SpawnLimit",
-            "GameTagsToSet",
-            "UntargetableWhenSpawned");
+            "FlyDirectPaths",
+            "KamikazeTime",
+            "CustomDummyObjectLabelEnd",
+            "CustomDummyObjectLabelStart");
+  }
+
+  @Test
+  @DisplayName(
+      "the Phoenix launches its fireball as it dies; its egg fires once and leaves, immune as it is"
+          + " made, with its three tags")
+  void phoenixColumns() {
+    UnitData phoenix = records.unit("Phoenix");
+    assertThat(phoenix.unmodelledColumns()).isEmpty();
+    assertThat(phoenix.unmodelledDeathColumns()).isEmpty();
+    assertThat(phoenix.deathSpawnProjectile().name()).isEqualTo("PhoenixFireball");
+    // The loader keeps a count of at least one under a death projectile, as under a death spawn.
+    assertThat(phoenix.deathSpawnCount()).isEqualTo(1);
+    assertThat(phoenix.deathSpawnCharacter()).isNull();
+    assertThat(records.unit("Knight").deathSpawnCount()).isZero();
+    UnitData egg = records.unit("PhoenixEgg");
+    assertThat(egg.unmodelledColumns()).isEmpty();
+    assertThat(egg.spawnCharacter()).isEqualTo("PhoenixNoRespawn");
+    assertThat(egg.spawnLimit()).isEqualTo(1);
+    assertThat(egg.destroyAtLimit()).isTrue();
+    assertThat(egg.spawnCharacterWithDeploy()).isTrue();
+    assertThat(egg.untargetableWhenSpawned()).isTrue();
+    assertThat(egg.gameTagsToSet())
+        .isEqualTo(
+            EntityFlags.NO_GIANTBUFFER_CHEF_ENCHANTMENT
+                | EntityFlags.AVOIDANCE_AS_OBSTACLE
+                | EntityFlags.NO_MOVE_ALLOW_ATTRACT);
+    // The same three written with spaces are the same tags.
+    assertThat(records.unit("EliteArcherHero_Dummy").gameTagsToSet())
+        .isEqualTo(egg.gameTagsToSet());
+    // Any other tag a row sets is refused.
+    assertThat(records.unit("RageBarbarianEvoGhost").unmodelledColumns())
+        .containsExactly("GameTagsToSet");
   }
 
   @Test

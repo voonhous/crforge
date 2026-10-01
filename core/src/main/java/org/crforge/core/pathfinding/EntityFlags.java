@@ -69,6 +69,12 @@ public final class EntityFlags {
   /** The entity takes no damage: the damage entry and a typed hit's pipeline answer zero. */
   public static final long NO_DAMAGE = 1L << 42;
 
+  /**
+   * A Giant Buffer's or a Chef's friendly filter passes the entity by: no battle code reads the bit
+   * itself, only a filter whose excluded tags name it.
+   */
+  public static final long NO_GIANTBUFFER_CHEF_ENCHANTMENT = 1L << 44;
+
   /** The entity has been captured by the other side. */
   public static final long CAPTURED = 1L << 46;
 
