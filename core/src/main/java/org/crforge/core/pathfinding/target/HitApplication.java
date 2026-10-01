@@ -27,7 +27,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  *       projectile when the row has one. Before a direct hit, a unit that tracks a charge deals its
  *       charged damage when the charge is complete, and has the charge reset, complete or not,
  *       unless its row keeps charging after an attack. After a direct hit that was not cancelled,
- *       the buff the row applies on damage goes onto the target;
+ *       the buff the row applies on damage goes onto the target. An attack sequence entry with an
+ *       action replaces both: the action is scheduled on the owner with the target as its cause,
+ *       cancelled or not, and the buff on damage follows a hit that was not;
  *   <li>a pending special load is cleared.
  * </ul>
  *
@@ -49,9 +51,12 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
             + " the targeted hit effect and its"
             + " pushback, the attacking flag on the owner, the buff on"
-            + " damage of a hit every so many or over an area, and the actions an attack runs"
-            + " and the notifications it ends with. The buff on damage after a direct hit is"
-            + " held by electro_wizard_tower_defence and mini_sparkys_knight. The"
+            + " damage of a hit every so many or over an area, the row's own actions an attack"
+            + " runs and the notifications it ends with. The buff on damage after a direct hit is"
+            + " held by electro_wizard_tower_defence and mini_sparkys_knight. An attack sequence"
+            + " entry's action in place of the launch and the direct hit, with the target as its"
+            + " cause and no end told to the listening actions, is held by"
+            + " three_musketeers_pekka and three_musketeers_air_building. The"
             + " dasher's exception to the long-distance cancel is carried and held by no run. The"
             + " attack counter, raised by a hit not cancelled for distance, is held by"
             + " electro_giant_struck and electro_giant_tower, whose reflect keys on it.")
@@ -130,7 +135,16 @@ public final class HitApplication {
     }
     // A special hit fires the special projectile when there is one, any other hit the row's own.
     boolean fires = cfg.hasProjectile() || (special && cfg.hasSpecialProjectile());
-    if (!fires) {
+    // An attack sequence entry with an action runs it in place of the launch and the direct hit,
+    // even for a hit cancelled for distance; the buff on damage follows one that landed, as the
+    // entry has no projectile.
+    boolean entryAction = queries.entryAction();
+    if (entryAction) {
+      queries.runEntryAction(target);
+      if (!missed) {
+        queries.buffOnDamage(target);
+      }
+    } else if (!fires) {
       damage = charged(cfg, damage, queries);
       DirectHit.resolve(t, target, damage, missed, queries);
       // The buff on damage follows its own direct hit; a unit that fires never reaches it.
@@ -142,9 +156,9 @@ public final class HitApplication {
     }
     boolean specialLoad = t.isSpecialLoadPending();
     t.setSpecialLoadPending(false);
-    // A landed hit that ends a single-target attack, not a special one, is counted by the owner's
-    // listening actions.
-    if (!missed && !specialLoad && last && queries.hitListeners()) {
+    // A landed hit that ends a single-target attack, not a special one and not an entry's action,
+    // is counted by the owner's listening actions.
+    if (!missed && !entryAction && !specialLoad && last && queries.hitListeners()) {
       queries.attackEnded();
     }
     queries.hitEnded();

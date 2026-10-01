@@ -145,6 +145,17 @@ public final class GameRow {
     return List.copyOf(out);
   }
 
+  /** The column as a list of integers; empty when the row does not set it. */
+  public List<Integer> ints(String column) {
+    List<Integer> out = new ArrayList<>();
+    if (has(column)) {
+      for (JsonNode element : columns.get(column)) {
+        out.add(element.asInt());
+      }
+    }
+    return List.copyOf(out);
+  }
+
   @Override
   public String toString() {
     return name;

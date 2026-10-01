@@ -15,9 +15,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * <p>In the order the play runs: the map check on the raw point; the placement search over the
  * deploy mask; the column the placed point's units may stand in along the arena's length, from the
  * same mask built as if the card could not be placed on buildings; then, unit by unit in creation
- * order, the formation offset around the placed point, the length clamped into the column unless
- * the unit flies, the creation inset of 250 from every edge, the lane of the unit's own position
- * with the placed point as the reference, and whether it starts deploying or waits its turn.
+ * order, the formation offset around the placed point - or, for a character of the card's list, its
+ * own offset - the length clamped into the column unless the unit flies, the creation inset of 250
+ * from every edge, the lane of the unit's own position with the placed point as the reference, and
+ * whether it starts deploying or waits its turn.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -27,7 +28,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " radius, the clamp into the column, the creation inset, the unit's lane from its own"
             + " position with the placed point as the reference, and its start; a spell card"
             + " placed with no unit, its point handed to the cast; a building card placed as a"
-            + " troop card is, its unit a building. Not modelled: the elixir and the other gates"
+            + " troop card is, its unit a building; a card's list of characters after its groups,"
+            + " each at its own offset, the bottom side's negated, the top side's across the"
+            + " width on the right half when the card mirrors it; the first unit's radius, angle"
+            + " shift and deploy time for every index. Not modelled: the elixir and the other gates"
             + " before the map check. A card whose first row tunnels hands its units to the tunnel"
             + " in place of a start, held by miner_princess.")
 public final class CardPlacement {
@@ -147,7 +151,9 @@ public final class CardPlacement {
             card.multipleProjectiles(),
             card.projectileWaves(),
             card.projectileWaveIntervalMs(),
-            card.projectileIntervalMs());
+            card.projectileIntervalMs(),
+            card.listed(),
+            card.listOffsetsXMirrored());
     int[] interval =
         columnInterval(
             PlacementSearch.mask(tileMap, offBuildings, side, entities),
@@ -157,31 +163,40 @@ public final class CardPlacement {
             side,
             h);
     int originLane = LaneAssignment.lane(w, h, w, px, py, -1, 0, tileMap::bits);
-    int secondaryCount = card.secondary() == null ? 0 : card.secondaryCount();
     boolean firstIsBuilding = card.unit().building();
-    // The construction asks the card's first row whether its units tunnel: each is then handed to
-    // its tunnel from its king tower in place of the delay selection, as the Miner and the Goblin
-    // Drill's dig are.
-    boolean tunnels = card.unitAt(0).spawnPathfindSpeed() != 0;
+    // The construction reads the card's first row for every index: the formation's radius and
+    // angle shift, the deploy time of the delay selection, and whether its units tunnel - each is
+    // then handed to its tunnel from its king tower in place of the delay selection, as the Miner
+    // and the Goblin Drill's dig are.
+    UnitData first = card.unitAt(0);
+    boolean tunnels = first.spawnPathfindSpeed() != 0;
+    int groups = card.primaryCount() + card.secondaryTotal();
     List<Unit> units = new ArrayList<>();
     for (int k = 0; k < card.total(); k++) {
       UnitData unit = card.unitAt(k);
-      int radius =
-          card.summonRadius() != 0
-              ? card.summonRadius()
-              : unit.spawnRadius() != 0 ? unit.spawnRadius() : unit.collisionRadius();
-      int[] offset =
-          Formation.offset(
-              k,
-              card.count(),
-              radius,
-              card.summonWidth(),
-              (side & 1) == 0 ? 1 : 0,
-              originLane,
-              unit.spawnAngleShift(),
-              secondaryCount,
-              true,
-              laneSequence);
+      int[] offset;
+      if (k < groups) {
+        int radius =
+            card.summonRadius() != 0
+                ? card.summonRadius()
+                : first.spawnRadius() != 0 ? first.spawnRadius() : first.collisionRadius();
+        // The formation is handed the second count as the row sets it, with or without its unit.
+        offset =
+            Formation.offset(
+                k,
+                card.count(),
+                radius,
+                card.summonWidth(),
+                (side & 1) == 0 ? 1 : 0,
+                originLane,
+                first.spawnAngleShift(),
+                card.secondaryCount(),
+                true,
+                laneSequence);
+      } else {
+        offset =
+            listOffset(card.listed().get(k - groups), card.listOffsetsXMirrored(), side, px, w);
+      }
       int ux = px + offset[0];
       int uy = py + offset[1];
       if (interval != null && unit.flyingHeight() <= 0) {
@@ -200,13 +215,27 @@ public final class CardPlacement {
               : InitialDelay.select(
                   k,
                   card.count(),
-                  unit.deployTimeMs(),
+                  first.deployTimeMs(),
                   card.summonDeployDelayMs(),
                   card.summonDeployDelaySecondMs(),
                   firstIsBuilding);
       units.add(new Unit(k, unit, offset[0], offset[1], cx, cy, lane, start));
     }
     return new Result(0, px, py, interval, originLane, units);
+  }
+
+  /**
+   * A listed character's offset from the placed point: the bottom side's play negates both, and the
+   * top side's negates the one across the width when the card mirrors it and the placed point
+   * stands on the right half of the arena, from its middle on.
+   */
+  static int[] listOffset(
+      DeployCard.Listed listed, boolean mirrored, int side, int x, int widthCells) {
+    boolean bottom = (side & 1) == 0;
+    boolean turnX = bottom || mirrored && x >= widthCells * 250;
+    return new int[] {
+      turnX ? -listed.offsetX() : listed.offsetX(), bottom ? -listed.offsetY() : listed.offsetY()
+    };
   }
 
   /**

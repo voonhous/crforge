@@ -2674,7 +2674,7 @@ public class BattleWorld implements HolderPasses {
                 hit.source() == null ? null : hit.source().actionHolder());
       }
       for (WorldObserver observer : observers) {
-        observer.damageDealt(tick, target, amount, result);
+        observer.typedHitDealt(tick, source, target, amount, damageId, result);
       }
     }
   }

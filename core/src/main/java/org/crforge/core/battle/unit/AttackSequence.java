@@ -62,14 +62,14 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
       int meleePushback,
       String doAttackAction) {
 
-    /** True when the entry sets anything but its damage and projectile. */
+    /** True when the entry sets anything but its damage, its projectile and its action. */
     public boolean overridesMore() {
       return variableDamageTime != 0 || overridesMoreThanItsWindow();
     }
 
     /**
-     * True when the entry sets anything but its damage, its projectile and its variable damage
-     * time, the window a timer-driven mode walks.
+     * True when the entry sets anything but its damage, its projectile, its action and its variable
+     * damage time, the window a timer-driven mode walks.
      */
     public boolean overridesMoreThanItsWindow() {
       return hitSpeedMultiplier != 100
@@ -78,8 +78,7 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
           || customMinimumRange != -1
           || customProjectileStartZ != -1
           || customProjectileStartRadius != -1
-          || meleePushback != 0
-          || doAttackAction != null;
+          || meleePushback != 0;
     }
   }
 

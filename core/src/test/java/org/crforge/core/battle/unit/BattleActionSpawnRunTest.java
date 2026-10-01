@@ -377,7 +377,9 @@ class BattleActionSpawnRunTest {
         "electro_giant_struck",
         "electro_giant_tower",
         "fisherman_knight",
-        "fisherman_tower"
+        "fisherman_tower",
+        "three_musketeers_pekka",
+        "three_musketeers_air_building"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

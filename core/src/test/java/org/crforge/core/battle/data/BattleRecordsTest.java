@@ -219,14 +219,54 @@ class BattleRecordsTest {
   }
 
   @Test
-  @DisplayName("a card whose placement the battle does not model is refused, naming the column")
-  void unmodelledCardsAreRefused() {
-    assertThatThrownBy(() -> records.card("ThreeMusketeers"))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SummonCharactersList");
+  @DisplayName(
+      "a card that lists its characters summons each at its offset after no group, its first as"
+          + " the card's unit")
+  void aListedCardSummonsItsList() {
+    DeployCard card = records.card("ThreeMusketeers");
+    assertThat(card.unit().name()).isEqualTo("ThreeMusketeer_Rework_Character_1");
+    assertThat(card.primaryCount()).isZero();
+    assertThat(card.secondaryTotal()).isZero();
+    assertThat(card.total()).isEqualTo(3);
+    assertThat(card.listed())
+        .extracting(l -> l.unit().name() + " " + l.offsetX() + " " + l.offsetY())
+        .containsExactly(
+            "ThreeMusketeer_Rework_Character_1 0 -1000",
+            "ThreeMusketeer_Rework_Character_2 -1000 1000",
+            "ThreeMusketeer_Rework_Character_3 1000 1000");
+    assertThat(card.listOffsetsXMirrored()).isTrue();
+    assertThat(card.summonDeployDelayMs()).isEqualTo(100);
+    // A card without a list summons its groups as before.
+    DeployCard knight = records.card("Knight");
+    assertThat(knight.listed()).isEmpty();
+    assertThat(knight.primaryCount()).isEqualTo(1);
     assertThatThrownBy(() -> records.card("NoSuchCard"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NoSuchCard");
+  }
+
+  @Test
+  @DisplayName(
+      "a card listing its characters besides a group, or more of them than offsets, is refused")
+  void aListBesidesAGroupIsRefused(@TempDir Path folder) throws IOException {
+    BattleRecords altered =
+        new BattleRecords(
+            GameData.altered(
+                folder,
+                "spells_characters",
+                rows -> {
+                  GameData.columns(rows, "ThreeMusketeers").put("SummonCharacter", "Knight");
+                  GameData.columns(rows, "Barbarians")
+                      .set(
+                          "SummonCharactersList",
+                          GameData.columns(rows, "ThreeMusketeers").get("SummonCharactersList"));
+                }));
+    assertThatThrownBy(() -> altered.card("ThreeMusketeers"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("besides a group");
+    assertThatThrownBy(() -> altered.card("Barbarians"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("more characters than offsets");
   }
 
   @Test

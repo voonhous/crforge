@@ -45,8 +45,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " finished action; held by giant_buffer_knights for the hook and the count, and by"
             + " giant_buffer_musketeer for a projectile's copy. Not"
             + " modelled: the enemy-target visual it hands a landed hit to, which is presentation."
-            + " Refused: a unit with attached children, which would get copies, and the"
-            + " Berserker's attack sequence step.")
+            + " Refused: a unit with attached children, which would get copies, a unit whose"
+            + " attack sequence replaces its attack, and the Berserker's attack sequence step.")
 public final class GiantBufferBuff extends RowAction {
 
   /**
@@ -117,6 +117,15 @@ public final class GiantBufferBuff extends RowAction {
               + owner.actionRowName()
               + ", whose attached children get copies,"
               + " which is not modelled");
+    }
+    if (owner.actionAttackSequence()) {
+      // The hits of a unit whose attack sequence replaces its attack - an entry's projectile, or
+      // an entry's action in place of a hit - are not established under an enchanting run.
+      throw new UnsupportedOperationException(
+          name()
+              + " on "
+              + owner.actionRowName()
+              + ", whose attack sequence replaces its attack, which is not modelled");
     }
     Run run = new Run(this, owner);
     ActionOwner giver = instigator == null ? null : instigator.getOwner();

@@ -77,14 +77,6 @@ public final class BattleRecords {
   /** The target limit the loader stores for a projectile row that leaves it empty. */
   private static final int DEFAULT_MAXIMUM_TARGETS = 1000;
 
-  /** The card columns the placement does not model; a card that sets one is refused. */
-  private static final List<String> UNMODELLED_CARD_COLUMNS =
-      List.of(
-          "SummonCharactersList",
-          "SummonCharactersOffsetsX",
-          "SummonCharactersOffsetsY",
-          "CustomDeployTime");
-
   private static final String CHARACTER_ABILITIES = "character_abilities";
   private static final String GAME_OBJECT_FILTERS = "game_object_filters";
   private static final String AREA_EFFECT_OBJECTS = "area_effect_objects";
@@ -892,7 +884,7 @@ public final class BattleRecords {
     JsonNode list = row.value("AttackSequenceList");
     if (list != null && list.isArray() && !list.isEmpty()) {
       for (JsonNode element : list) {
-        entries.add(listEntry(element));
+        entries.add(listEntry(row, element));
       }
       if (order.isEmpty()) {
         order.add(0);
@@ -951,9 +943,8 @@ public final class BattleRecords {
   }
 
   /** An entry of an AttackSequenceList element, with the entry columns' defaults. */
-  private AttackSequence.Entry listEntry(JsonNode element) {
+  private AttackSequence.Entry listEntry(GameRow row, JsonNode element) {
     String projectile = element.path("Projectile").asText("");
-    JsonNode action = element.path("DoAttackAction");
     return new AttackSequence.Entry(
         element.path("Damage").asInt(0),
         projectile.isEmpty() ? null : projectile(projectile),
@@ -965,7 +956,7 @@ public final class BattleRecords {
         element.path("CustomProjectileStartZ").asInt(-1),
         element.path("CustomProjectileStartRadius").asInt(-1),
         element.path("MeleePushback").asInt(0),
-        action.isMissingNode() || action.isNull() ? null : action.toString());
+        actionName(row.name(), "DoAttackAction", element.path("DoAttackAction")));
   }
 
   /** The columns of a row's death that are not modelled, those of its death spawn only with one. */
@@ -1355,9 +1346,10 @@ public final class BattleRecords {
    * placed point. A card with a unit and an area effect is refused: no card has one.
    *
    * <p>A card with no count summons one. The level index a card may carry is not read, as the game
-   * never reads it: the summoned units take the level the card is played at. A card that summons a
-   * list of characters, places them at offsets of its own or has a deploy time of its own is
-   * refused, naming the column: the placement does not model those.
+   * never reads it: the summoned units take the level the card is played at. A card may summon a
+   * list of characters, each at an offset of its own, in place of its groups; one that lists them
+   * besides a group is refused, as no card does. The card's deploy time of its own is read nowhere
+   * on the placement's path, and is not read here.
    *
    * @param name the card row's name
    */
@@ -1391,21 +1383,25 @@ public final class BattleRecords {
       throw new UnsupportedOperationException(
           name + " makes an area effect as well as a unit, which the cast does not model");
     }
-    for (String column : UNMODELLED_CARD_COLUMNS) {
-      if (set(row, column)) {
-        throw new UnsupportedOperationException(
-            name + " sets " + column + ", which the card placement does not model");
-      }
+    List<DeployCard.Listed> listed = listed(row);
+    if (!listed.isEmpty() && (set(row, "SummonCharacter") || set(row, "SummonCharacterSecond"))) {
+      throw new UnsupportedOperationException(
+          name + " summons a list of characters besides a group, which no card does");
     }
-    checkArgument(!row.string("SummonCharacter").isEmpty(), () -> name + " summons no character");
+    checkArgument(
+        !listed.isEmpty() || !row.string("SummonCharacter").isEmpty(),
+        () -> name + " summons no character");
     String second = row.string("SummonCharacterSecond");
-    UnitData summoned = unit(row.string("SummonCharacter"));
+    // The card's first unit, which the map check and the search read: its summoned character, else
+    // its list's first.
+    UnitData summoned =
+        listed.isEmpty() ? unit(row.string("SummonCharacter")) : listed.get(0).unit();
     return new DeployCard(
         row.name(),
         summoned,
         Math.max(row.intValue("SummonNumber"), 1),
         second.isEmpty() ? null : unit(second),
-        second.isEmpty() ? 0 : row.intValue("SummonCharacterSecondCount"),
+        row.intValue("SummonCharacterSecondCount"),
         row.intValue("SummonRadius"),
         row.intValue("SummonWidth"),
         row.intValue("SummonDeployDelay"),
@@ -1427,7 +1423,28 @@ public final class BattleRecords {
         row.intValue("MultipleProjectiles"),
         row.intValue("ProjectileWaves"),
         row.intValue("ProjectileWaveInterval"),
-        row.intValue("ProjectileInterval"));
+        row.intValue("ProjectileInterval"),
+        listed,
+        row.bool("CharactersOffsetsXMirrored"));
+  }
+
+  /**
+   * The characters a card lists, each with its offsets at its index in the two offset lists, which
+   * the placement reads unchecked: a list longer than either is refused.
+   */
+  private List<DeployCard.Listed> listed(GameRow row) {
+    List<String> names = row.strings("SummonCharactersList");
+    List<Integer> xs = row.ints("SummonCharactersOffsetsX");
+    List<Integer> ys = row.ints("SummonCharactersOffsetsY");
+    if (xs.size() < names.size() || ys.size() < names.size()) {
+      throw new UnsupportedOperationException(
+          row.name() + " lists more characters than offsets, which the placement reads past");
+    }
+    List<DeployCard.Listed> listed = new ArrayList<>();
+    for (int j = 0; j < names.size(); j++) {
+      listed.add(new DeployCard.Listed(unit(names.get(j)), xs.get(j), ys.get(j)));
+    }
+    return listed;
   }
 
   /** The row a unit that tunnels morphs into as it surfaces, or null for none. */
@@ -1486,7 +1503,9 @@ public final class BattleRecords {
         row.intValue("MultipleProjectiles"),
         row.intValue("ProjectileWaves"),
         row.intValue("ProjectileWaveInterval"),
-        row.intValue("ProjectileInterval"));
+        row.intValue("ProjectileInterval"),
+        List.of(),
+        false);
   }
 
   /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */
@@ -1513,13 +1532,24 @@ public final class BattleRecords {
    * read as no hook at all.
    */
   private static String actionName(GameRow row, String column) {
-    JsonNode value = row.value(column);
-    if (value == null || value.isNull()) {
+    return actionName(row.name(), column, row.value(column));
+  }
+
+  /**
+   * The action row a column's value names, as a reference or by its name; null for none. A value
+   * written as an inline row of its own is refused.
+   *
+   * @param owner the row the value belongs to, for the refusal
+   * @param column the column, for the refusal
+   * @param value the column's value, or null
+   */
+  private static String actionName(String owner, String column, JsonNode value) {
+    if (value == null || value.isNull() || value.isMissingNode()) {
       return null;
     }
     if (value.isObject() && !value.has("action")) {
       throw new UnsupportedOperationException(
-          row.name()
+          owner
               + " writes its "
               + column
               + " inline, as "

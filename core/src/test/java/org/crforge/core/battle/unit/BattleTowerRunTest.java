@@ -332,6 +332,32 @@ class BattleTowerRunTest {
         }
       }
 
+      /**
+       * A typed hit from the drain, listed with what it took, the hit points left, its damage id
+       * and its source, then its death.
+       */
+      @Override
+      public void typedHitDealt(
+          int tick,
+          WorldEntity source,
+          WorldEntity target,
+          int amount,
+          int damageId,
+          DamageResult result) {
+        events.add(
+            "%d typed_hit %s %d %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    result.applied(),
+                    target.getTargetView().getHitPoints(),
+                    damageId,
+                    source == null ? null : source.name()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
       /** A Kamikaze unit's kill of itself, listed as the reference lists it, then its death. */
       @Override
       public void kamikazeKilled(int tick, WorldEntity unit, int damage, DamageResult result) {
@@ -629,6 +655,15 @@ class BattleTowerRunTest {
                   event.get("damage").asInt(),
                   event.get("hp").asInt());
       case "death" -> "%d death %s".formatted(tick, event.get("target").asText());
+      case "typed_hit" ->
+          "%d typed_hit %s %d %d %d %s"
+              .formatted(
+                  tick,
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("hit_id").asInt(),
+                  event.get("source").asText());
       case "reflected_hit" ->
           "%d reflected_hit %s %s %d %d"
               .formatted(

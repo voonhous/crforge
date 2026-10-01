@@ -1,19 +1,26 @@
 package org.crforge.core.battle.deploy;
 
+import java.util.List;
 import org.crforge.core.battle.unit.UnitData;
 
 /**
  * The columns of a card that its placement reads: the units a troop card summons and how many, the
  * shape and stagger of their formation, where the card may be placed, and what a spell card casts.
  *
+ * <p>A troop card may summon a list of characters in place of its groups: each at an offset of its
+ * own, after the groups' units in creation order. Only the Three Musketeers' does.
+ *
  * <p>A spell card summons no unit: it casts a projectile from its side's king tower or an area
  * effect at the placed point. A troop card may cast a projectile too, before its units are made.
  *
  * @param name the card's name
- * @param unit the unit the card summons first, or null for a spell
- * @param count how many of it
+ * @param unit the unit the card summons first, or null for a spell: its summoned character, else
+ *     its list's first character
+ * @param count how many of it, at least one; the first group counts it only when the card names its
+ *     summoned character
  * @param secondary the unit of the card's second group, or null
- * @param secondaryCount how many of that
+ * @param secondaryCount how many of that, as the row sets it; the second group counts it only with
+ *     its unit
  * @param summonRadius the formation's radius; 0 falls back to the unit's own
  * @param summonWidth the width of a line formation; 0 for the ring
  * @param summonDeployDelayMs the stagger between the first group's units
@@ -39,6 +46,10 @@ import org.crforge.core.battle.unit.UnitData;
  * @param projectileWaves how many waves; 0 for one
  * @param projectileWaveIntervalMs the time between two waves
  * @param projectileIntervalMs the time between two projectiles of a wave
+ * @param listed the characters the card summons after its groups, each with its offset; empty for
+ *     none
+ * @param listOffsetsXMirrored whether a list's offsets across the width turn over for the top
+ *     side's play on the right half of the arena
  */
 public record DeployCard(
     String name,
@@ -66,7 +77,23 @@ public record DeployCard(
     int multipleProjectiles,
     int projectileWaves,
     int projectileWaveIntervalMs,
-    int projectileIntervalMs) {
+    int projectileIntervalMs,
+    List<Listed> listed,
+    boolean listOffsetsXMirrored) {
+
+  public DeployCard {
+    listed = List.copyOf(listed);
+  }
+
+  /**
+   * One character of a card's list, with its offset from the placed point as the row lists it; the
+   * placement turns it by the playing side and the half of the arena.
+   *
+   * @param unit the character
+   * @param offsetX its listed offset across the width
+   * @param offsetY its listed offset along the length
+   */
+  public record Listed(UnitData unit, int offsetX, int offsetY) {}
 
   /** True for a spell card, which summons no unit and casts instead. */
   public boolean spell() {
@@ -78,14 +105,33 @@ public record DeployCard(
     return spell() || projectile != null;
   }
 
-  /** The unit of the index-th place of the formation: the first group, then the second. */
+  /**
+   * How many units the first group places: its count when the card names its summoned character,
+   * none for a card that only lists its characters.
+   */
+  public int primaryCount() {
+    return listed.isEmpty() ? count : 0;
+  }
+
+  /** How many units the second group places: its count when it has a unit, else none. */
+  public int secondaryTotal() {
+    return secondary == null ? 0 : secondaryCount;
+  }
+
+  /**
+   * The unit of the index-th place of the card: the first group, then the second, then the list.
+   */
   public UnitData unitAt(int index) {
+    int listIndex = index - primaryCount() - secondaryTotal();
+    if (listIndex >= 0 && listIndex < listed.size()) {
+      return listed.get(listIndex).unit();
+    }
     return index < count || secondary == null ? unit : secondary;
   }
 
   /** How many units the card places in all; none for a spell. */
   public int total() {
-    return spell() ? 0 : count + (secondary == null ? 0 : secondaryCount);
+    return spell() ? 0 : primaryCount() + secondaryTotal() + listed.size();
   }
 
   /**
