@@ -565,6 +565,16 @@ The towers fight at level 11. Side 1 plays a Giant at (3000, 22500) and a Knight
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/mega_knight_group.json` - a Mega Knight played onto three Knights
+
+The towers fight at level 11. Side 1 places three Knights directly at (3500, 13000), (2700, 13000) and (4300, 13000) on tick 0, and side 0 plays a Mega Knight at (3500, 11000) on 25, placed at (3499, 11500). The card casts MegaKnightAppear before it makes the unit: from (3499, 4500) at 4200, the placed point less five times the king tower's collision radius of 1400 along the length, onto the placed point, 1000 a visit. It lands on 31 for 430 on each Knight and pushes each away from the point, a budget of 225. The unit's push as it enters the deploying state, on 25, finds nobody: the play runs in the command pass, while the spatial index is empty. Its deploy ends on 44, and its first area attack is on 54.
+
+The reference lists a run's played units only; the three Knights are listed in `units` as the run placed them. The file's `deploy_push` list holds each push of a unit entering its deploying state: the unit, the query's radius, the distance, what the query found and whom it asked to push. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/mega_knight_jump.json` - a Mega Knight jumps onto a Knight
+
+The towers fight at level 11. Side 1 places a Knight directly at (3500, 17500) on tick 0, and side 0 plays a Mega Knight at (3500, 9000) on the same tick, placed at (3499, 9500). Its appearance lands on 6 and hits no one, its deploy ends on 19, it starts its jump on 59 and lands on 75 at (3750, 13750) for 537 with a push of 1000, resumes on 79 and hits for 268 on 112. Its push as it deploys finds nobody, as in `mega_knight_group`, and the Knight is listed in `units` the same way. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
