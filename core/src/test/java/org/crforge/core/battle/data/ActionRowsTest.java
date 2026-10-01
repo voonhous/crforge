@@ -12,7 +12,9 @@ import java.util.function.LongSupplier;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
@@ -61,6 +63,26 @@ class ActionRowsTest {
             "SuspiciousBush_SpawnBushGoblin1 13",
             "SuspiciousBush_SpawnBushGoblin2 12");
     assertThat(holder.queued().get(1).action()).isInstanceOf(SpawnCharacters.class);
+  }
+
+  @Test
+  @DisplayName(
+      "a Clone's action clones for its default duration and spawns its buff first; a buff spawn"
+          + " written inline is refused")
+  void theCloneRows() {
+    BattleAction clone = GameData.actions().build("CloneAction", INERT_BINDING);
+    assertThat(clone).isInstanceOf(Clone.class);
+    assertThat(((Clone) clone).getCloneDurationMs()).isEqualTo(500);
+    assertThat(GameData.actions().build("SpawnCloneBufAction", INERT_BINDING))
+        .isInstanceOf(SpawnBuff.class);
+    assertThatThrownBy(
+            () ->
+                GameData.actions()
+                    .build(
+                        "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList0",
+                        INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("written inline");
   }
 
   @Test
@@ -166,11 +188,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 518 are built; the
-    // rest are refused for their class, a column the battle does not model or a spawn type other
-    // than characters.
-    assertThat(built).as("rows built").isEqualTo(518);
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 548 are built; the
+    // rest are refused for their class, a column the battle does not model, a spawn type other
+    // than characters and buffs, or a spawned buff the battle does not model.
+    assertThat(built).as("rows built").isEqualTo(548);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 181, "column", 38, "spawn type", 209));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 183, "column", 116, "spawn type", 99));
   }
 }

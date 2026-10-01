@@ -119,6 +119,39 @@ public interface ActionOwner {
   }
 
   /**
+   * Whether a Clone's perform may clone the owner, as it tests it: no unit a Clone passes by, no
+   * clone, a living one, riding nothing. A refusal is told to the battle's observers; a clone the
+   * battle does not model is refused outright.
+   *
+   * @param instigator what caused the clone
+   */
+  default boolean mayBeCloned(ActionOwner instigator) {
+    throw new UnsupportedOperationException("this owner cannot be cloned");
+  }
+
+  /**
+   * Makes the owner's clone, as a Clone's creator does, and moves the two apart.
+   *
+   * @param instigator what caused the clone, whose level it takes
+   * @param action the Clone's action, whose clone duration the two move apart for
+   */
+  default void makeClone(ActionOwner instigator, Clone action) {
+    throw new UnsupportedOperationException("this owner cannot be cloned");
+  }
+
+  /**
+   * Puts a buff on the owner, as a buff-spawning action does.
+   *
+   * @param action the action's name
+   * @param buff the buff row's name
+   * @param timeMs how long it lasts
+   * @param source what applies it, whose level and side it takes
+   */
+  default void spawnBuff(String action, String buff, int timeMs, ActionOwner source) {
+    throw new UnsupportedOperationException("this owner takes no buff from an action");
+  }
+
+  /**
    * Kills the owner, as a hit of its whole hit points that ignores the battle's holds.
    *
    * @param killer the entity that caused it, or null for none

@@ -67,6 +67,19 @@ public final class BuffInstance {
   }
 
   /**
+   * A copy of the instance under a new key, as a clone takes its original's buffs: the time it has
+   * left and its whole time, the visits it has counted, its level, source, side and parent.
+   *
+   * @param key the copy's name in logs
+   */
+  BuffInstance copy(String key) {
+    BuffInstance copy = new BuffInstance(key, buff, remaining, packedLevel, source, side, parent);
+    copy.total = total;
+    copy.hitCounter = hitCounter;
+    return copy;
+  }
+
+  /**
    * Whether the visit removes it: its parent is removable, or its time has run out.
    *
    * @return true when it is finished

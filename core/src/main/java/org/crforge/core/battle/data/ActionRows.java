@@ -12,6 +12,7 @@ import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ChangeGameObjectData;
+import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
@@ -31,6 +32,7 @@ import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
+import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.spawn.SpawnCharacters;
@@ -185,6 +187,11 @@ public final class ActionRows {
               "ActionRunForcedAnimationOnce",
               Set.of(
                   "PlaybackDuration", "CustomStateNumber", "PointToInstigator", "ForcedDuration")),
+          // The deploy animation it names only shows something, and the card it names only
+          // counts toward the statistics.
+          Map.entry(
+              "ActionClone",
+              Set.of("OnClonedAction", "CloneDuration", "SpawnDeployBaseAnim", "CardDataForStats")),
           Map.entry("ActionSpawn", spawnColumns()),
           Map.entry("ActionSpawnToLocation", spawnColumns()));
 
@@ -378,8 +385,17 @@ public final class ActionRows {
             case "ActionDealDamage" ->
                 new DealDamage(
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));
+            case "ActionClone" ->
+                new Clone(
+                    shared,
+                    action(f.get("OnClonedAction")),
+                    integer(f, "CloneDuration") != 0
+                        ? integer(f, "CloneDuration")
+                        : Clone.DEFAULT_CLONE_DURATION_MS);
             case "ActionSpawn", "ActionSpawnToLocation" ->
-                new SpawnCharacters(shared, spawn(name, type, f));
+                f.path("SpawnType").asText("").equals("BuffType") && type.equals("ActionSpawn")
+                    ? spawnBuff(name, shared, f)
+                    : new SpawnCharacters(shared, spawn(name, type, f));
             case "ActionGiantBufferCollectFriends" -> collectFriends(name, shared, f);
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
@@ -494,6 +510,41 @@ public final class ActionRows {
               .characterMultipliers(characters)
               .projectileMultipliers(projectiles)
               .build());
+    }
+
+    /**
+     * A buff spawn row's columns: the buff and its time, nothing more. A row that sets any other
+     * spawn column, writes its buff inline, names a buff the battle does not model or one its
+     * parent controls, or gives it a time below 1 is refused.
+     */
+    private SpawnBuff spawnBuff(String name, ActionRow shared, JsonNode f) {
+      f.fieldNames()
+          .forEachRemaining(
+              column -> {
+                if (spawnColumns().contains(column)
+                    && !Set.of("SpawnData", "SpawnType", "SpawnTime").contains(column)) {
+                  throw new UnsupportedOperationException(
+                      name + " spawns a buff and sets " + column + ", which is not modelled");
+                }
+              });
+      if (!f.path("SpawnData").isTextual()) {
+        throw new UnsupportedOperationException(
+            name + " spawns a buff written inline, which is not modelled");
+      }
+      String buff = f.path("SpawnData").asText();
+      if (!records.buff(buff).unmodelledColumns().isEmpty()) {
+        throw new UnsupportedOperationException(
+            name
+                + " spawns "
+                + buff
+                + ", which sets columns not modelled: "
+                + records.buff(buff).unmodelledColumns());
+      }
+      if (records.buff(buff).controlledByParent() || integer(f, "SpawnTime") < 1) {
+        throw new UnsupportedOperationException(
+            name + " spawns a buff its parent controls or for no time, which is not modelled");
+      }
+      return new SpawnBuff(shared, buff, integer(f, "SpawnTime"));
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */

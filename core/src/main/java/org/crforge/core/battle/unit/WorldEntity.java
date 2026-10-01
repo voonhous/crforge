@@ -1230,6 +1230,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   @Override
+  public void spawnBuff(String action, String buff, int timeMs, ActionOwner source) {
+    if (!(source instanceof SpawnHost host)) {
+      throw new UnsupportedOperationException(
+          action + " puts a buff on " + name() + " from no object, which is not modelled");
+    }
+    world.spawnBuff(this, action, buff, timeMs, host);
+  }
+
+  @Override
   public void killBy(ActionOwner killer) {
     world.kill(this, killer instanceof WorldEntity entity ? entity : null);
   }

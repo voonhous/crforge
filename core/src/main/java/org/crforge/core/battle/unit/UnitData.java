@@ -184,6 +184,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     state visit steps from the end of its deploy
  * @param hideTimeMs the hide counter's value at which it is hidden, the time it takes to go down
  * @param upTimeMs the time it takes to come back up from hidden
+ * @param ignoreClone true for a unit a Clone passes by
+ * @param clonedVersion the row a Clone makes of this one instead of its own, or null for its own
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding before its first hit, a buff at a share of its hit points,
  *     elixir, and the parts of a spawner that are not established
@@ -315,6 +317,8 @@ public record UnitData(
     boolean hidesWhenNotAttacking,
     int hideTimeMs,
     int upTimeMs,
+    boolean ignoreClone,
+    String clonedVersion,
     List<String> unmodelledColumns) {
 
   public UnitData {

@@ -28,6 +28,7 @@ import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.index.ShapeTests;
+import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.move.BuffPush;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
@@ -62,8 +63,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * parent of the buff it applies when the buff says so. A row with a projectile launches one after
  * the hits of a step whose hit count rose, onto the enemy with the most hit points and shield in
  * its circle that it has not struck before, or onto its own point; with nobody to strike, the
- * update ends there. When the countdown reaches 0 its life-end action is scheduled on itself; it
- * leaves at the cleanup that finds the countdown below 1.
+ * update ends there. A Clone's hit, before any damage, schedules its hit action on every unit of
+ * its own side in its circle that the index finds - alive, not hidden, not untouchable, not a
+ * building, no unit a Clone passes by and no clone - with itself as the cause, which clones it in
+ * the tick's last pending pass. When the countdown reaches 0 its life-end action is scheduled on
+ * itself; it leaves at the cleanup that finds the countdown below 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -77,7 +81,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " its circle it reaches, its time capped by its own life, and the area effect its row"
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
-            + " boosting one target or lasting longer by level, clones, the hit action, the shape,"
+            + " boosting one target or lasting longer by level, a hit action but a Clone's, the"
+            + " shape,"
             + " the filter, the spawns, a launch from its source or spread about its point, the"
             + " life condition, following, tags,"
             + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
@@ -90,9 +95,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " of a row with HitBiggestTargets, the start on the target or on its own point, and"
             + " the area effect as the projectile's launcher, held by lightning_defenders_tower and"
             + " royal_delivery_group; the update ending without its life-end action when the"
-            + " chooser finds nobody, which no run meets. Not"
-            + " created yet by a spell, a projectile"
-            + " or an action.")
+            + " chooser finds nobody, which no run meets. A Clone's hit action on the units its"
+            + " index query finds, in the query's order, and its filter, held by clone_golem_group;"
+            + " an area effect with a buff reaching a clone, whose filter asks an untraced query of"
+            + " the buff, is refused. Not created yet by an action.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -190,6 +196,17 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (target.building() && data.ignoreBuildings()) {
       return false;
     }
+    // For a clone the filter asks a query of the row's buff, which is not traced.
+    if (data.buff() != null
+        && world.entityOf(target.getEntity()) instanceof CharacterEntity unit
+        && unit.isClone()) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + name
+              + " with a buff reaches the clone "
+              + unit.name()
+              + ", whose filter's test of the buff is not modelled");
+    }
     if (target.getEntity().getType() != ReferenceValidator.TYPE_CHARACTER) {
       return true;
     }
@@ -261,6 +278,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       world.createAreaEffect(
           data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", name);
     }
+    if (data.onHitAction() != null && hits >= 1) {
+      onHitActions(radius, hits);
+    }
     for (int i = 0; i < hits; i++) {
       if (damage >= 1) {
         hit(radius, damage);
@@ -289,6 +309,85 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
     }
+  }
+
+  /** The type bit of a character in the index's type mask: the query keeps characters alone. */
+  private static final int CHARACTER_TYPE_MASK = 1 << ReferenceValidator.TYPE_CHARACTER;
+
+  /**
+   * The hit action of each hit: the index's query of its circle, buildings by their square and
+   * characters alone, in the query's order, each object on where it stands now. For every hit, each
+   * object that is alive, not a building when the row ignores them, not hidden unless it reaches
+   * hidden units, on the side the row reaches, in the air or on the ground as the row reaches it,
+   * not untouchable and passing its own filter gets the row's hit action scheduled, the area effect
+   * as the cause: from the post-hook, so it starts in the phase-3 pending pass of the tick.
+   */
+  private void onHitActions(int radius, int hits) {
+    List<GridEntity> views =
+        world
+            .getIndex()
+            .query(new SpatialQuery(x, y, radius, 0, false, true, CHARACTER_TYPE_MASK, -1));
+    if (views == null) {
+      return;
+    }
+    List<WorldEntity> found = new ArrayList<>();
+    for (GridEntity view : views) {
+      found.add(world.entityOf(view));
+    }
+    for (int i = 0; i < hits; i++) {
+      for (WorldEntity target : found) {
+        if (!HitPoints.alive(target.getHitPoints())) {
+          continue;
+        }
+        if (data.ignoreBuildings() && target.getTargetView().building()) {
+          continue;
+        }
+        if (!data.affectsHidden() && target.hidden()) {
+          continue;
+        }
+        boolean sameTeam = (target.side() & 1) == (side & 1);
+        if (sameTeam ? data.onlyEnemies() : data.onlyOwnTroops()) {
+          continue;
+        }
+        boolean air = target.getTargetView().air();
+        if (!data.hitsAir() && air || !data.hitsGround() && !air) {
+          continue;
+        }
+        if (target.untouchable(true) || !onHitFilter(target)) {
+          continue;
+        }
+        BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
+        world.onHitActionScheduled(this, target, action);
+        target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
+      }
+    }
+    world.getIndex().release(views);
+  }
+
+  /**
+   * The area effect's own filter of a target its hit action reaches: no building when the row
+   * ignores them; nothing untargetable; for a Clone nothing tagged against clones, no unit a Clone
+   * passes by, no clone and no dead unit; then the air and the ground it reaches.
+   */
+  private boolean onHitFilter(WorldEntity target) {
+    if (target.getTargetView().building() && data.ignoreBuildings()) {
+      return false;
+    }
+    long flags = target.getView().getFlags();
+    if ((flags & EntityFlags.UNTARGETABLE) != 0
+        || data.cloning() && (flags & EntityFlags.NO_CLONE) != 0) {
+      return false;
+    }
+    if (data.cloning()
+        && (target.getData().ignoreClone()
+            || target instanceof CharacterEntity unit && unit.isClone()
+            || !HitPoints.alive(target.getHitPoints()))) {
+      return false;
+    }
+    if (!data.cloning() && target.untouchable(true)) {
+      return false;
+    }
+    return accepts(target.getTargetView());
   }
 
   /**

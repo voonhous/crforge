@@ -90,6 +90,9 @@ public final class EntityFlags {
   /** The entity's ability cooldown is held. */
   public static final long ABILITY_COOLDOWN_PAUSED = 1L << 55;
 
+  /** A Clone passes the entity by. */
+  public static final long NO_CLONE = 1L << 57;
+
   /** Movement is forbidden except when the entity is pulled by something else. */
   public static final long NO_MOVE_ALLOW_ATTRACT = 1L << 58;
 }

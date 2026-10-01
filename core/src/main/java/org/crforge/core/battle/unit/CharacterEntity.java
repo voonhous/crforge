@@ -11,7 +11,10 @@ import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.filter.GameObjectFilter;
@@ -43,8 +46,10 @@ import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.MovementVisit;
 import org.crforge.core.pathfinding.move.PushbackQueries;
 import org.crforge.core.pathfinding.move.PushbackRequest;
+import org.crforge.core.pathfinding.move.SingleNodeRoute;
 import org.crforge.core.pathfinding.move.SpeedBudget;
 import org.crforge.core.pathfinding.move.SpeedConfig;
+import org.crforge.core.pathfinding.move.SpeedGlobals;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.HideHandler;
 import org.crforge.core.pathfinding.state.ResumeHelper;
@@ -130,8 +135,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the combat gate at the state visit's tail, which drops a dead character's"
             + " reference and switches its targeting off, held by every run's death tick; its"
             + " buffs scaling its speed budget and its attack timer, held by rage_knight,"
-            + " zap_knight and poison_knight_tower, and the follower's step, the deploy step and"
-            + " the spawner's rate, which no run holds; an air unit created at its flying height"
+            + " zap_knight and poison_knight_tower, and the follower's step, held by"
+            + " clone_golem_group, the deploy step and the spawner's rate, which no run holds; a"
+            + " clone made by a Clone - 1 hit point of 1, the shield it keeps, the Clone's level,"
+            + " the buffs it copies, its clone state with its targeting off and its reference kept,"
+            + " its move apart from its original and the resume that ends it - and a clone's death"
+            + " spawns made clones, held by clone_golem_group; an air unit created at its flying height"
             + " and keeping it, its layer answered from it - one route node, the flat endpoint"
             + " rank, flight over water, contact only with units on its side of height 0, targets"
             + " by the validator's air and ground pairing, projectiles from its height - held by"
@@ -164,7 +173,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " its targeting visit, its hide counter, hidden only at its hide time, its targets"
             + " kept with no range extension as a building's, and its hidden answer to every"
             + " asker but an area effect that reaches hidden units, whose damage and buff get"
-            + " through, held by tesla_giant_passing and tesla_hidden_spells. Held by no run: a"
+            + " through, held by tesla_giant_passing and tesla_hidden_spells. Refused for a clone: a"
+            + " building, a unit whose hit destroys it, a champion, one with a cloned version or"
+            + " riders, one still deploying or running an action, and a clone that deploys. Held"
+            + " by no run: a"
             + " spawner's start time other than 0, the"
             + " not-attacking countdown held outside the attacking state by a reference within the"
             + " attack range or by the touch test, a top-side"
@@ -700,6 +712,192 @@ public class CharacterEntity extends WorldEntity {
   /** True while the character is a spawned child that may not be targeted yet. */
   public boolean isSpawnImmune() {
     return unit.timers().isSpawnImmune();
+  }
+
+  /** Whether a Clone may clone a clone: not in the standard game. */
+  private static final boolean CLONE_CLONED_UNITS = false;
+
+  /** Whether a clone keeps a shield its original still has up: so in the standard game. */
+  private static final boolean CLONE_PRESERVE_SHIELD = true;
+
+  /**
+   * Whether a clone and its original move apart, rather than both one way: so in the standard game.
+   */
+  private static final boolean CLONE_MOVE_PARENT = true;
+
+  /** True for a clone: one a Clone made, or a child a clone spawned. */
+  @Getter private boolean clone;
+
+  /**
+   * The clone setter: the character becomes a clone of 1 hit point of 1. Its shield follows the
+   * unit it stands for: none when that unit's shield is broken or it has none, its maximum 1 for a
+   * row with a shield; otherwise 1 of 1 while its own shield is up, the standard game preserving a
+   * clone's shield, and none without one.
+   *
+   * <p>Refused rather than guessed: a building, whose lifetime a clone counts differently, a unit
+   * whose hit destroys it, whose projectile's spawns would be clones, and a champion, which the
+   * ability controller leaves out.
+   *
+   * @param original the unit it stands for, or null for none
+   */
+  void markClone(WorldEntity original) {
+    UnitData data = getData();
+    if (data.building() || data.kamikaze() || data.champion()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " would be a clone of a building, a unit whose hit destroys it or a champion,"
+              + " which is not modelled");
+    }
+    clone = true;
+    HitPoints hp = getHitPoints();
+    if (hp == null) {
+      return;
+    }
+    hp.setHitPoints(1);
+    hp.setMaximum(1);
+    if (original != null
+        && original.getHitPoints() != null
+        && original.getHitPoints().getShield() == 0) {
+      hp.setShield(0);
+      hp.setShieldMaximum(hp.getShieldMaximum() > 0 ? 1 : 0);
+      return;
+    }
+    boolean kept = hp.getShield() != 0 && CLONE_PRESERVE_SHIELD;
+    hp.setShield(kept ? 1 : 0);
+    hp.setShieldMaximum(kept ? 1 : 0);
+  }
+
+  /**
+   * The perform's tests of a Clone's action: a unit a Clone passes by, a clone, a dead unit and a
+   * rider are refused, and the refusal told. A clone the battle does not model is refused outright:
+   * one made by anything but an area effect, of a row with a cloned version or with riders, of a
+   * unit still deploying or with a run of an action listed, whose clone would take it over.
+   */
+  @Override
+  public boolean mayBeCloned(ActionOwner instigator) {
+    String reason = null;
+    if (getData().ignoreClone()) {
+      reason = "ignore clone";
+    } else if (clone && !CLONE_CLONED_UNITS) {
+      reason = "is clone";
+    } else if (!HitPoints.alive(getHitPoints())) {
+      reason = "dead";
+    } else if (parent != null) {
+      reason = "attached";
+    }
+    if (!(instigator instanceof AreaEffectEntity cause)) {
+      throw new UnsupportedOperationException(
+          name() + " is cloned by something other than an area effect, which is not modelled");
+    }
+    if (reason != null) {
+      world.cloneRefused(this, reason, cause);
+      return false;
+    }
+    UnitData data = getData();
+    if (data.clonedVersion() != null
+        || data.spawnAttach()
+        || getView().getDeployCountdown() > 0
+        || !actionHolder().running().isEmpty()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " is cloned with a cloned version, riders, a deploy countdown or a run of an"
+              + " action listed, which is not modelled");
+    }
+    return true;
+  }
+
+  @Override
+  public void makeClone(ActionOwner instigator, Clone action) {
+    world.makeClone(this, (AreaEffectEntity) instigator, action);
+  }
+
+  /**
+   * Sets the character up as a clone, through its setter, and runs the combat gate that ends the
+   * change: its targeting component goes off and keeps its reference.
+   */
+  void enterCloneSetup() {
+    setter.setState(getView(), GridEntityState.CLONE_SETUP);
+    stateTailGate();
+  }
+
+  /**
+   * Starts the character's move apart from its clone or original: a run listed on its own holder,
+   * toward the point the clone distances away along each axis, in steps of 500 - back toward its
+   * own side for a clone, forward for the original - kept inside the arena. The point is its
+   * explicit destination and its route the point's single cell. The run steps 50 ms a visit of the
+   * run pass, from the next tick on; at the clone duration it resumes the character, still set up
+   * as a clone, and finishes.
+   *
+   * <p>Refused rather than guessed: a character without its movement component on, which keeps no
+   * route.
+   *
+   * @param fromX the original's position, along the width
+   * @param fromY the original's position, along the length
+   * @param action the Clone's action
+   */
+  void startCloneMove(int fromX, int fromY, Clone action) {
+    actionHolder().list(new CloneMove(action));
+    if (!getView().isMovementComponent() || !getView().isMovementActive()) {
+      throw new UnsupportedOperationException(
+          name() + " moves apart from its clone without its movement component, not modelled");
+    }
+    int direction = CLONE_MOVE_PARENT && !clone ? -1 : 1;
+    // The side whose team answers 1, the bottom one, moves the other way.
+    if ((side() & 1) == 0) {
+      direction = -direction;
+    }
+    int step = direction * TileMap.CELL_UNITS;
+    int width = world.getGrid().getWidth();
+    int height = world.getGrid().getHeight();
+    SpeedGlobals globals = SpeedGlobals.standard();
+    int x = clampInto(globals.cloneDistanceX() * step + fromX, width * TileMap.CELL_UNITS - 1);
+    int y = clampInto(globals.cloneDistanceY() * step + fromY, height * TileMap.CELL_UNITS - 1);
+    MovementState movement = unit.movement();
+    movement.setExplicitX(x);
+    movement.setExplicitY(y);
+    SingleNodeRoute.set(movement, getView(), unit.movementConfig(), x, y, 1, width, height);
+    world.cloneMoveStarted(this, x, y);
+  }
+
+  /** A coordinate kept between 0 and the arena's last unit. */
+  private static int clampInto(int value, int last) {
+    return value > 0 ? Math.min(value, last) : 0;
+  }
+
+  /** The run of a clone's or its original's move apart, stepped by the run pass. */
+  private final class CloneMove extends ActionInstance {
+
+    /** Milliseconds one step adds. */
+    private static final int STEP_MS = 50;
+
+    private final int durationMs;
+
+    /** What the steps have counted. */
+    private int elapsedMs;
+
+    CloneMove(Clone action) {
+      super(action);
+      this.durationMs = action.getCloneDurationMs();
+    }
+
+    @Override
+    protected void update(ActionHolder holder) {
+      elapsedMs += STEP_MS;
+      if (elapsedMs < durationMs) {
+        return;
+      }
+      // With its deploy countdown still running, the run holds the unit still and waits.
+      if (getView().getDeployCountdown() > 0) {
+        throw new UnsupportedOperationException(
+            name() + "'s move apart waits on its deploy countdown, which is not modelled");
+      }
+      boolean resumed = getView().getState() == GridEntityState.CLONE_SETUP;
+      if (resumed) {
+        resume();
+      }
+      finish();
+      world.cloneMoveEnded(CharacterEntity.this, resumed);
+    }
   }
 
   /**

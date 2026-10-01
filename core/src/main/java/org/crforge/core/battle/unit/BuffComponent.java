@@ -253,6 +253,27 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
+   * Lists a copy of each instance another entity's component lists, in its order, as a clone takes
+   * its original's buffs: each with the time it has left. The component must list nothing yet.
+   *
+   * @param original the original's component
+   */
+  void copyFrom(BuffComponent original) {
+    if (!items.isEmpty()) {
+      throw new UnsupportedOperationException(
+          entity.name() + " takes a copy of buffs while it carries some, which is not modelled");
+    }
+    for (BuffInstance instance : original.items) {
+      BuffInstance copy = instance.copy(world.nextBuffKey());
+      items.add(copy);
+      if (copy.getBuff().invisible()) {
+        invisibleCount++;
+      }
+      world.buffCopied(original.entity, entity, copy);
+    }
+  }
+
+  /**
    * Removes every listed instance of a row without a parent, from the last to the first, as the
    * not-attacking section asks for its buff's instances.
    *

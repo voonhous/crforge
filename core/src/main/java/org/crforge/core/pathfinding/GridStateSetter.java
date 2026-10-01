@@ -21,10 +21,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * component's target-lost timer and starts a row's not-attacking countdown; leaving the deploying
  * or either pathfinding state clears the deploy countdown, unless the unit is leaving for clone
  * setup. Entering the standing, attacking, clone-setup or casting state empties the route and
- * clears the route-leads-away bit, so a unit that stops holds no route. Entering the moving state
- * prepares a route at once, over whatever reference the targeting component holds at that moment,
- * rather than waiting for the next movement visit. The actions run in that order: exit actions, the
- * store, entry actions.
+ * clears the route-leads-away bit, so a unit that stops holds no route; entering clone setup also
+ * switches the movement component on, and leaving it empties the route and clears the movement
+ * component's destination. Entering the moving state prepares a route at once, over whatever
+ * reference the targeting component holds at that moment, rather than waiting for the next movement
+ * visit. The actions run in that order: exit actions, the store, entry actions.
  *
  * <p>The guard comes first: while the deploy countdown is running, only clone setup and the two
  * removed-and-following states may be set, so nothing pulls a unit that is still being placed into
@@ -57,10 +58,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
  * change, seeds the morph countdown on entering the morphing state, chains a further dash on
  * leaving the dashing state and runs the row's closing action, resets the charge on leaving the
- * follow-up states, clears the movement component's destination on leaving clone setup, relocates a
- * unit leaving a following state to a free cell, makes a building asked to follow stand instead,
- * and ends every other change with two notifications. None of that is reachable from a plain ground
- * unit, which is all the grid drives.
+ * follow-up states, relocates a unit leaving a following state to a free cell, makes a building
+ * asked to follow stand instead, and ends every other change with two notifications. None of that
+ * is reachable from a plain ground unit, which is all the grid drives.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -74,7 +74,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " state's entry, held by bandit_knight; the casting state's entry and exit"
             + " with the combat gate after them, held by giant_buffer_knights; the pending"
             + " damage dropped on entering either pathfinding state, held by no run, since no"
-            + " shot is ever on its way to a unit as it goes underground. Held by the 53"
+            + " shot is ever on its way to a unit as it goes underground; the clone setup's entry"
+            + " and exit, held by clone_golem_group. Held by the 53"
             + " reference walks, whose route empties at the lock, and the staggered placements."
             + " Not modelled: switching components, the countdown seeded on entering the morphing"
             + " state, the chained dash and closing action on leaving the dashing state, whose"
@@ -240,6 +241,14 @@ public final class GridStateSetter implements StateSetter {
         }
       }
       case GridEntityState.CASTING -> exitCasting();
+      // Leaving a clone's setup empties the route and forgets the point the move aimed at.
+      case GridEntityState.CLONE_SETUP -> {
+        if (movement != null) {
+          resetRoute();
+          movement.setExplicitX(-1);
+          movement.setExplicitY(-1);
+        }
+      }
       default -> {
         // No ported action.
       }
@@ -301,8 +310,15 @@ public final class GridStateSetter implements StateSetter {
   /** The actions keyed by the state being entered, run after it is stored. */
   private void enter(int newState) {
     switch (newState) {
-      case GridEntityState.STANDING, GridEntityState.ATTACKING, GridEntityState.CLONE_SETUP ->
-          resetRoute();
+      case GridEntityState.STANDING, GridEntityState.ATTACKING -> resetRoute();
+      // A clone's setup switches the movement component on and empties the route; the charge is
+      // kept, the standard game not resetting it there.
+      case GridEntityState.CLONE_SETUP -> {
+        if (movement != null && owner.isMovementComponent()) {
+          owner.setMovementActive(true);
+        }
+        resetRoute();
+      }
       case GridEntityState.CASTING -> {
         enterCasting();
         resetRoute();

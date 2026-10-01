@@ -40,7 +40,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
     note =
         "Answers the movement pass from the live grid and the unit's own state; held by"
             + " the 53 reference walks. Supplied: every map cell an acceptable endpoint, no status effects in the speed inputs, and a unit that"
-            + " always carries both components.")
+            + " always carries both components. Given its buffs, as a battle's unit is, it carries"
+            + " the modifier component, and the follower's time step is scaled by them, held by"
+            + " clone_golem_group.")
 public final class GridMovementQueries implements MovementQueries {
 
   /** Every relocation this visit asked for, in order. */
@@ -57,6 +59,12 @@ public final class GridMovementQueries implements MovementQueries {
 
   /** The follower's time step, 100 scaled by the unit's buffs. */
   private int followerStep = 100;
+
+  /**
+   * Whether the unit carries the buff list, the modifier component the follower's time step is
+   * scaled through: given with its buffs.
+   */
+  private boolean modifierComponent;
 
   /** The last budget this visit asked for, kept so the tick driver can report it afterwards. */
   private int lastSpeedBudget;
@@ -92,7 +100,9 @@ public final class GridMovementQueries implements MovementQueries {
 
   /**
    * Gives the answers the unit's buffs: the speed percents the budget scales by and the follower's
-   * time step.
+   * time step, which makes the unit one with the modifier component. Of that component's other two
+   * answers, a charge range and a facing held still, neither comes from a buff the battle models,
+   * so both stay 0.
    *
    * @param speedPercents the speed percent of each listed buff
    * @param followerStep 100 scaled by the buffs' speed
@@ -101,7 +111,13 @@ public final class GridMovementQueries implements MovementQueries {
   public GridMovementQueries withBuffs(int[] speedPercents, int followerStep) {
     this.speedPercents = speedPercents.clone();
     this.followerStep = followerStep;
+    this.modifierComponent = true;
     return this;
+  }
+
+  @Override
+  public boolean hasModifierComponent() {
+    return modifierComponent;
   }
 
   @Override
