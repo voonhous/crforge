@@ -491,7 +491,9 @@ public class BattleWorld implements HolderPasses {
     if (entity == null) {
       return DamageResult.NOTHING;
     }
+    int before = hitPointsOf(entity);
     DamageResult result = entity.takeDamage(damage, 0, directionX, directionY);
+    reflect(entity, attacker, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
     }
@@ -499,6 +501,161 @@ public class BattleWorld implements HolderPasses {
       entity.die(attacker);
     }
     return result;
+  }
+
+  /** An entity's hit points as a hit reaches them, 0 for one without. */
+  private static int hitPointsOf(WorldEntity entity) {
+    return entity.getHitPoints() == null ? 0 : entity.getHitPoints().getHitPoints();
+  }
+
+  /** True while a reflect runs, inside which another is not modelled. */
+  private boolean reflecting;
+
+  /**
+   * The reflect of a unit whose row sets a reflected-attack buff, the Electro Giant's, run inside a
+   * hit that reached its hit points alive, after they took the hit and before its death runs.
+   *
+   * <p>Nothing happens while the unit is stunned - its own hit-speed scale of 100 below 1 - or for
+   * a hit without an attacker. The attacker must be a character, building or tower; a projectile is
+   * traced to its root, a character, unless its row ignores the reflect; an area effect and what it
+   * launched are never struck back. A source riding on a parent is replaced by the parent. The one
+   * struck must not be untouchable, must be of the other team, and must stand strictly inside the
+   * reflect radius plus both collision radii. It takes the reflect's buff, at the unit's level and
+   * for its side, on every reflected hit; and once per attack - the source's attack count and id,
+   * listed on the unit and never cleared - the reflected damage at the unit's level, its crown
+   * tower column against a crown tower, through the damage entry with the unit as the attacker, the
+   * battle's holds and the hidden test lifted. A death it causes runs at once, before the unit's
+   * own.
+   */
+  private void reflect(
+      WorldEntity target,
+      BattleEntity attacker,
+      int hitPointsBefore,
+      DamageResult result,
+      int directionX,
+      int directionY) {
+    UnitData row = target.getData();
+    if (row.reflectedAttackBuff() == null || !result.landed() || hitPointsBefore < 1) {
+      return;
+    }
+    if (reflecting) {
+      throw new UnsupportedOperationException(
+          target.name() + " reflects inside another reflect, which is not modelled");
+    }
+    reflecting = true;
+    try {
+      reflectHit(target, attacker, directionX, directionY);
+    } finally {
+      reflecting = false;
+    }
+  }
+
+  private void reflectHit(
+      WorldEntity target, BattleEntity attacker, int directionX, int directionY) {
+    UnitData row = target.getData();
+    int hitSpeed = target.getBuffs().hitSpeed(REFLECT_SCALE_BASE);
+    WorldEntity source = null;
+    if (attacker instanceof WorldEntity character) {
+      source = character;
+    } else if (attacker instanceof ProjectileEntity projectile) {
+      source = projectile.getRoot();
+    }
+    WorldEntity struck =
+        source instanceof CharacterEntity rider && rider.getParent() != null
+            ? rider.getParent()
+            : source;
+    Reflection none =
+        new Reflection(target, attacker, source, struck, hitSpeed, null, 0, 0, 0, 0, 0);
+    if (hitSpeed < 1
+        || source == null
+        || attacker instanceof ProjectileEntity projectile
+            && projectile.getData().ignoreReflectedAttack()
+        || struck.untouchable(true)
+        || (struck.side() & 1) == (target.side() & 1)
+        || !withinReflect(target, struck, row.reflectedAttackRadius())) {
+      reflected(none);
+      return;
+    }
+    if (struck.getData().reflectedAttackBuff() != null) {
+      throw new UnsupportedOperationException(
+          target.name()
+              + " strikes back at "
+              + struck.name()
+              + ", which reflects too, not modelled");
+    }
+    int level = target.getPackedLevel();
+    struck
+        .getBuffs()
+        .apply(
+            buffData(row.reflectedAttackBuff()),
+            row.reflectedAttackBuffDurationMs(),
+            level,
+            target,
+            target.side());
+    if (struck.getHitPoints() == null || !target.reflectOnce(source)) {
+      reflected(
+          new Reflection(
+              target,
+              attacker,
+              source,
+              struck,
+              hitSpeed,
+              row.reflectedAttackBuff(),
+              row.reflectedAttackBuffDurationMs(),
+              level,
+              0,
+              0,
+              0));
+      return;
+    }
+    int base =
+        struck.getTargetView().isCrownTowerTarget()
+            ? row.reflectAttackCrownTowerDamage()
+            : row.reflectedAttackDamage();
+    int damage =
+        LevelScaling.scale(
+            ScalingGlobals.standard(), base, level, ScalingMode.CARD_DAMAGE, row.rarity());
+    int before = struck.getHitPoints().getHitPoints();
+    DamageResult hit = struck.takeReflectedDamage(damage, directionX, directionY);
+    for (WorldObserver observer : observers) {
+      observer.reflectedHit(tick, target, struck, damage, hit);
+    }
+    reflected(
+        new Reflection(
+            target,
+            attacker,
+            source,
+            struck,
+            hitSpeed,
+            row.reflectedAttackBuff(),
+            row.reflectedAttackBuffDurationMs(),
+            level,
+            damage,
+            before,
+            struck.getHitPoints().getHitPoints()));
+    if (hit.died()) {
+      struck.die(target);
+    }
+  }
+
+  /** The base the reflect scales its unit's hit speed from, which below 1 means a stun. */
+  private static final int REFLECT_SCALE_BASE = 100;
+
+  /**
+   * Whether the one struck stands strictly inside the reflect radius plus both collision radii, the
+   * squares compared as the game compares them: unsigned, in 32 bits.
+   */
+  private static boolean withinReflect(WorldEntity target, WorldEntity struck, int radius) {
+    int dx = target.getView().getX() - struck.getView().getX();
+    int dy = target.getView().getY() - struck.getView().getY();
+    int reach = radius + target.getData().collisionRadius() + struck.getData().collisionRadius();
+    return Integer.compareUnsigned(dx * dx + dy * dy, reach * reach) < 0;
+  }
+
+  private void reflected(Reflection reflection) {
+    for (WorldObserver observer : observers) {
+      observer.reflected(tick, reflection);
+    }
   }
 
   /**
@@ -875,7 +1032,9 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     // A character's area carries no dedupe id and no direction.
+    int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, 0, 0);
+    reflect(victim, attacker, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.areaHit(tick, attacker, victim, damage, hitId, result);
     }
@@ -915,7 +1074,9 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     // A projectile carries no dedupe id unless it belongs to a group, which none here does.
+    int before = hitPointsOf(target);
     DamageResult result = target.takeDamage(damage, 0, directionX, directionY);
+    reflect(target, projectile, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.projectileImpacted(tick, projectile, target, damage, result);
     }
@@ -2947,7 +3108,15 @@ public class BattleWorld implements HolderPasses {
    */
   void dealBuffDamage(WorldEntity target, BuffInstance buff, int damage) {
     int before = target.getHitPoints().getHitPoints();
+    // The damage of a buff comes from its source: an area effect, which is never struck back, or a
+    // character, whose buff on a reflecting unit is not modelled.
+    SpawnHost source = buff.getSource();
+    if (target.getData().reflectedAttackBuff() != null && source instanceof WorldEntity) {
+      throw new UnsupportedOperationException(
+          target.name() + " reflects and takes a buff's damage from a character, not modelled");
+    }
     DamageResult result = target.takeDamageOverTime(damage);
+    reflect(target, (BattleEntity) source, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.buffDamaged(tick, target, buff, damage, before, result);
     }
@@ -3034,7 +3203,9 @@ public class BattleWorld implements HolderPasses {
     }
     // The damage entry lets the hit of an area effect that reaches hidden units through while its
     // victim is hidden.
+    int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, 0, 0, areaEffect.getData().affectsHidden());
+    reflect(victim, areaEffect, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.areaEffectHit(tick, areaEffect, victim, damage, result);
     }

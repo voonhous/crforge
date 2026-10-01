@@ -152,6 +152,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The buffs listed on the entity, in slot 3, and what they make of its speeds. */
   @Getter private final BuffComponent buffs;
 
+  /**
+   * How many attacks the entity has made that were not cancelled for distance: with its id, the key
+   * a reflecting target deals its damage back by, once per attack.
+   */
+  @Getter private int attackCount;
+
+  /**
+   * The attack keys a reflecting entity has dealt its damage back for, never cleared: each the
+   * attacker's attack count and its id.
+   */
+  private final List<Long> reflectedKeys = new ArrayList<>();
+
   /** Whether the hit speed was 0 at the last combat gate: a stun was holding the entity. */
   private boolean gateStunned;
 
@@ -273,6 +285,56 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;
+  }
+
+  /**
+   * Takes a reflected attack's damage: the damage entry as any hit's, with the battle's holds, the
+   * hidden test and the untouchable test lifted, the one struck never riding on a parent.
+   */
+  DamageResult takeReflectedDamage(int damage, int directionX, int directionY) {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    int shieldBefore = hitPoints.getShield();
+    boolean crownTower = targetView.isCrownTowerTarget();
+    DamageResult result =
+        DamageApplication.damage(
+            hitPoints,
+            damage,
+            0,
+            directionX,
+            directionY,
+            new DamageQueries() {
+              @Override
+              public boolean crownTowerTarget() {
+                return crownTower;
+              }
+            });
+    shieldHit(damage, shieldBefore);
+    refreshHitPoints();
+    return result;
+  }
+
+  /** Refuses a hit whose path to a reflecting entity's reflect is not modelled. */
+  private void refuseReflect(String hit) {
+    if (data.reflectedAttackBuff() != null) {
+      throw new UnsupportedOperationException(
+          name() + " reflects and takes " + hit + ", whose reflect is not modelled");
+    }
+  }
+
+  /**
+   * Lists the attack a hit on this reflecting entity came from, by its source's attack count and
+   * id: true the first time, when the reflect deals its damage, and false for every later hit of
+   * the same attack.
+   */
+  boolean reflectOnce(WorldEntity source) {
+    long key = ((long) source.getAttackCount() << 32) | (source.getId() & 0xffffffffL);
+    if (reflectedKeys.contains(key)) {
+      return false;
+    }
+    reflectedKeys.add(key);
+    return true;
   }
 
   /**
@@ -407,6 +469,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void hitAllowed() {
         WorldEntity.this.hitAllowed();
+      }
+
+      @Override
+      public void attackCounted() {
+        attackCount++;
       }
 
       @Override
@@ -1254,6 +1321,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @return what the hit did; a death it causes is the battle's to run
    */
   DamageResult takeTypedHit(int amount, int damageId, int directionX, int directionY) {
+    refuseReflect("a typed hit");
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.typedHit(
@@ -1273,6 +1341,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
+    refuseReflect("a kill");
     int shieldBefore = hitPoints.getShield();
     int whole = hitPoints.getHitPoints();
     DamageResult result = DamageApplication.kill(hitPoints, damageQueries());

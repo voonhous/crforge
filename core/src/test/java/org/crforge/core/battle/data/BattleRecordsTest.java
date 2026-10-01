@@ -439,6 +439,23 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "the Electro Giant carries its reflect, and a projectile whether its hits are reflected")
+  void reflectColumns() {
+    UnitData giant = records.unit("ElectroGiant");
+    assertThat(giant.unmodelledColumns()).isEmpty();
+    assertThat(giant.reflectedAttackBuff()).isEqualTo("ZapFreeze");
+    assertThat(giant.reflectedAttackBuffDurationMs()).isEqualTo(500);
+    assertThat(giant.reflectedAttackRadius()).isEqualTo(2000);
+    assertThat(giant.reflectedAttackDamage()).isEqualTo(75);
+    assertThat(giant.reflectAttackCrownTowerDamage()).isEqualTo(50);
+    assertThat(records.unit("Knight").reflectedAttackBuff()).isNull();
+    assertThat(records.projectile("BarbLogHeroProjectileReRolling").ignoreReflectedAttack())
+        .isTrue();
+    assertThat(records.projectile("MusketeerProjectile").ignoreReflectedAttack()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
       "a rider carries what it may target, and its bola's flight back to a moving shooter is"
           + " presentation")
   void riderTargetingColumns() {
@@ -627,15 +644,7 @@ class BattleRecordsTest {
           + " columns are carried")
   void everyUnreadColumnIsListed() {
     BattleRecords records = GameData.records();
-    // Read by nothing: the Electro Giant's reflect, the Fisherman's special and the Fisherman's
-    // hook's drag.
-    assertThat(records.unit("ElectroGiant").unmodelledColumns())
-        .containsExactly(
-            "ReflectAttackCrownTowerDamage",
-            "ReflectedAttackBuff",
-            "ReflectedAttackBuffDuration",
-            "ReflectedAttackDamage",
-            "ReflectedAttackRadius");
+    // Read by nothing: the Fisherman's special and the Fisherman's hook's drag.
     assertThat(records.unit("Fisherman").unmodelledColumns())
         .containsExactly("ProjectileSpecial", "SpecialLoadTime", "SpecialMinRange", "SpecialRange");
     assertThat(records.projectile("FishermanProjectile").unmodelledColumns())
