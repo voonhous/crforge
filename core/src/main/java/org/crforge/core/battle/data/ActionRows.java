@@ -51,9 +51,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * ActionRow}.
  *
  * <p>The builder is strict. Every column of a row is either read, listed as one that only shows
- * something and ignored, or refused; a column it does not know is refused too, so nothing a row
- * sets is dropped unnoticed. A row of a class the battle does not have is refused, naming the
- * class; so is a character spawn row of any other spawn type.
+ * something or one the derived tables have already resolved and ignored, or refused; a column it
+ * does not know is refused too, so nothing a row sets is dropped unnoticed. A row of a class the
+ * battle does not have is refused, naming the class; so is a character spawn row of any other spawn
+ * type.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -83,6 +84,12 @@ public final class ActionRows {
 
   /** Columns that only show something, which the simulation never reads. */
   private static final Set<String> PRESENTATION = Set.of("StatsTags");
+
+  /**
+   * Columns resolved when the tables are derived: a row that names a base already carries every
+   * column it inherits, as the Graveyard's skeleton spawns carry their base's.
+   */
+  private static final Set<String> RESOLVED = Set.of("Base");
 
   /** The four classes that override none of the runtime's three places. */
   private static final Set<String> INERT =
@@ -422,6 +429,7 @@ public final class ActionRows {
               column -> {
                 if (!SHARED.contains(column)
                     && !PRESENTATION.contains(column)
+                    && !RESOLVED.contains(column)
                     && !reads.contains(column)
                     && !INERT.contains(row.classType())) {
                   throw new UnsupportedOperationException(
