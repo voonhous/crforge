@@ -87,10 +87,12 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     to their ring points
  * @param deathSpawnMinRadius the least radius a death spawn's child is drawn at; 0 for the ring's
  *     own radius
+ * @param deathSpawnProjectile the projectile the unit launches as it dies, as many as its death
+ *     spawn's count, or null for none
  * @param unmodelledDeathColumns the columns of what the unit does as it dies that its row sets and
- *     the battle does not model: a second or third death spawn, a death projectile, a starting buff
- *     taken back, a spawned area object ended, and the parts of the death spawn's placement that
- *     are not established
+ *     the battle does not model: a second or third death spawn, a starting buff taken back, a
+ *     spawned area object ended, and the parts of the death spawn's placement that are not
+ *     established
  * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
  *     unless it says otherwise
  * @param ability the unit's ability row, or null for a unit without one
@@ -113,6 +115,14 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnIntervalMs the time between the children of a wave; 0 to make a wave at once
  * @param spawnPauseTimeMs the time between waves
  * @param spawnStartTimeMs the time before the first wave, counted from the end of its deploy
+ * @param spawnLimit how many firings its spawner makes in all; 0 for no limit
+ * @param destroyAtLimit true when the unit leaves the battle, without a death, on the visit after
+ *     its spawner's last firing
+ * @param spawnCharacterWithDeploy true when its spawner's children deploy for their own deploy time
+ * @param untargetableWhenSpawned true when the unit starts with the immunity of a spawned child,
+ *     refusing every character that asks to target it until its sixth state visit
+ * @param gameTagsToSet the tags the unit's own row sets, in its tag word from the tick after it is
+ *     made; 0 for none
  * @param manaCollectAmount the whole elixir it pays its king each time its collector's timer runs
  *     out; 0 for no collector
  * @param manaGenerateTimeMs the time its collector counts between payouts
@@ -260,6 +270,7 @@ public record UnitData(
     String deathAreaEffect,
     boolean deathSpawnPushback,
     int deathSpawnMinRadius,
+    ProjectileData deathSpawnProjectile,
     List<String> unmodelledDeathColumns,
     boolean champion,
     AbilityData ability,
@@ -278,6 +289,11 @@ public record UnitData(
     int spawnIntervalMs,
     int spawnPauseTimeMs,
     int spawnStartTimeMs,
+    int spawnLimit,
+    boolean destroyAtLimit,
+    boolean spawnCharacterWithDeploy,
+    boolean untargetableWhenSpawned,
+    long gameTagsToSet,
     int manaCollectAmount,
     int manaGenerateTimeMs,
     int manaOnDeathForOpponent,

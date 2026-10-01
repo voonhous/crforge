@@ -1584,9 +1584,9 @@ public class BattleWorld implements HolderPasses {
   /**
    * One firing of a character's spawner: its row's spawn character, as many as the firing makes,
    * each created for the spawner's side at its level re-based on the child's rarity, walking at
-   * once when it has a speed, with no deploy and no first-tick immunity, registered inside the
-   * post-hook pass with its registration visit, and joining the live list at the tick's closing
-   * cleanup.
+   * once when it has a speed - or deploying for its own deploy time when the spawner's row gives
+   * its children their deploy - with no first-tick immunity, registered inside the post-hook pass
+   * with its registration visit, and joining the live list at the tick's closing cleanup.
    *
    * <p>With a radius the children stand on its ring, as a death spawn's do. With none each stands
    * in front of the spawner, the spawner's collision radius and its own away toward the enemy, at
@@ -1652,11 +1652,21 @@ public class BattleWorld implements HolderPasses {
               x,
               y,
               PackedLevel.level(PackedLevel.pack(spawner.getPackedLevel(), child.rarity())));
+      // A row whose children deploy sets each deploying for its own deploy time.
+      if (data.spawnCharacterWithDeploy()) {
+        spawned.startDeploying();
+      }
       cloneSpawn(spawner, spawned);
       holder.addRegistered(spawned);
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, spawner, spawned, x, y);
       }
+    }
+  }
+
+  void destroyedAtLimit(CharacterEntity spawner) {
+    for (WorldObserver observer : observers) {
+      observer.destroyedAtLimit(tick, spawner);
     }
   }
 
@@ -2260,9 +2270,10 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The death slot: what a dying object's row does as it dies, in order - its area effect at its
-   * point, for its side and at its level; what its buffs leave; its death damage; its death spawn.
-   * A death whose row sets a column of the slot the battle does not model is refused, and so is the
-   * death of one whose area object is still in the battle, which would end it.
+   * point, for its side and at its level; what its buffs leave; its death damage; its death spawn;
+   * its death projectiles. A death whose row sets a column of the slot the battle does not model is
+   * refused, and so is the death of one whose area object is still in the battle, which would end
+   * it.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -2295,6 +2306,65 @@ public class BattleWorld implements HolderPasses {
     buffDeathSpawns(dying);
     deathDamage(dying, data);
     deathSpawn(dying, data);
+    deathProjectiles(dying, data);
+  }
+
+  /**
+   * The death slot's projectiles, after its death spawn: as many as the death spawn's count, each
+   * on the dying object's side, launched from its point and height with the dying object as
+   * launcher and owner, at its level re-based on the row's rarity, with no target and no delay.
+   * Each is aimed at the row's spawn radius from that point, at an angle that starts at the row's
+   * angle shift and steps by an equal share of the circle: the sine of the angle times the radius
+   * over 1024 across the width, the sine of the angle and a quarter turn along the length, each
+   * toward zero, the bottom side's turned across the width and the top side's along the length.
+   * With no spawn radius - the Phoenix - the projectile is aimed at its own start. Each has its id
+   * at once, joins the live list at the tick's closing cleanup and runs its registration pass.
+   *
+   * <p>Refused rather than guessed: a least radius, which draws each radius from the battle's
+   * random source; a row with a spawner limit, whose count is what the limit has left; and a clone,
+   * whose projectiles carry its clone answer to what their impacts make.
+   */
+  private void deathProjectiles(WorldEntity dying, UnitData data) {
+    ProjectileData row = data.deathSpawnProjectile();
+    if (row == null) {
+      return;
+    }
+    String refused = null;
+    if (data.deathSpawnMinRadius() != 0) {
+      refused = "draws each one's radius";
+    } else if (data.spawnLimit() > 0) {
+      refused = "counts them by what its spawner's limit has left";
+    } else if (dying instanceof CharacterEntity character && character.isClone()) {
+      refused = "is a clone, whose projectiles carry it";
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " launches "
+              + row.name()
+              + " as it dies and "
+              + refused
+              + ", not modelled");
+    }
+    int count = data.deathSpawnCount();
+    int step = 360 / count;
+    int radius = data.spawnRadius();
+    int angle = data.spawnAngleShift();
+    int x = dying.getView().getX();
+    int y = dying.getView().getY();
+    boolean bottom = (dying.side() & 1) == 0;
+    for (int i = 0; i < count; i++) {
+      int dx = FixedMath.div(FixedMath.sine1024(angle) * radius, 1024);
+      int dy = FixedMath.div(FixedMath.sine1024(angle + 90) * radius, 1024);
+      ProjectileEntity projectile = new ProjectileEntity(this, row, dying.side());
+      ProjectileLauncher.launchOnDeath(
+          projectile, dying, bottom ? x - dx : x + dx, bottom ? y + dy : y - dy);
+      launch(projectile);
+      for (WorldObserver observer : observers) {
+        observer.deathProjectileLaunched(tick, dying, projectile);
+      }
+      angle += step;
+    }
   }
 
   /**

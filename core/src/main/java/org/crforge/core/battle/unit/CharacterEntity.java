@@ -273,6 +273,15 @@ public class CharacterEntity extends WorldEntity {
   /** How many children of the current wave the spawner has made. */
   private int spawnWaveMade;
 
+  /**
+   * How many firings a limited spawner has left, from its row's limit at placement; 0 for a spawner
+   * without a limit, which never counts it.
+   */
+  private int spawnsLeft;
+
+  /** True once a limited spawner's row has it leave as its firings are spent. */
+  private boolean destroyedAtLimit;
+
   /** The character this one rides on, or null while it rides on none. */
   @Getter private CharacterEntity parent;
 
@@ -425,8 +434,10 @@ public class CharacterEntity extends WorldEntity {
           data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
     }
     refuseAttack(data);
-    // The level setter copies the spawner's start time into its timer.
+    // The level setter copies the spawner's start time into its timer, and its limit into the
+    // count of firings it has left.
     this.spawnTimer = data.spawnStartTimeMs();
+    this.spawnsLeft = data.spawnLimit();
 
     GridEntity view = getView();
     TargetingState targeting = getTargeting();
@@ -487,6 +498,11 @@ public class CharacterEntity extends WorldEntity {
     setter.setFollowing(new HookStates());
     // Who may select, hit or buff it is its own answer, asked with the asker.
     getTargetView().setAcceptance(this::accepts);
+    // A row untargetable when spawned starts with the immunity of a death spawn's children, set by
+    // the constructor whatever makes it.
+    if (data.untargetableWhenSpawned()) {
+      startSpawnImmunity();
+    }
     // Leaving the attacking state starts the countdown to a row's buff while it is not attacking.
     if (data.buffWhenNotAttacking() != null) {
       setter.setAttackingExit(() -> notAttackingTimerMs = data.buffWhenNotAttackingTimeMs());
@@ -1664,10 +1680,19 @@ public class CharacterEntity extends WorldEntity {
     released = true;
   }
 
-  /** The state visit's removal request, or the release by a parent that left. */
+  /**
+   * The state visit's removal request - its own, or a limited spawner's at its limit - or the
+   * release by a parent that left.
+   */
   @Override
   protected boolean removalRequested() {
-    return released || morphed || unit.timers().isRemovalRequested();
+    return released || morphed || destroyedAtLimit || unit.timers().isRemovalRequested();
+  }
+
+  /** A character's row tags: those its own row sets. */
+  @Override
+  protected long rowTags() {
+    return getData().gameTagsToSet();
   }
 
   /** True once it has been morphed into another object, which removes it at the next cleanup. */
@@ -2170,12 +2195,24 @@ public class CharacterEntity extends WorldEntity {
     world.elixirCollected(this, amount);
   }
 
+  /**
+   * The spawner block of the state visit. A limited spawner whose firings are spent and whose row
+   * destroys it at its limit asks to leave: the tick's closing cleanup removes it, with no death
+   * slot and no death handler. Then a spawner fires while it has firings left, or, with no limit,
+   * whenever it has a time between its firings; its timer runs only then. Each firing of a limited
+   * spawner takes one from what it has left.
+   */
   private void spawner() {
     UnitData data = getData();
     int interval = data.spawnIntervalMs();
     int pause = data.spawnPauseTimeMs();
-    // With no limit, a spawner fires only with a time between its firings.
-    if (data.spawnCharacter() == null || interval + pause <= 0) {
+    int limit = data.spawnLimit();
+    if (limit >= 1 && spawnsLeft <= 0 && data.destroyAtLimit() && !destroyedAtLimit) {
+      destroyedAtLimit = true;
+      world.destroyedAtLimit(this);
+    }
+    boolean due = spawnsLeft > 0 ? interval + pause >= 1 : limit <= 0 && interval + pause > 0;
+    if (data.spawnCharacter() == null || !due) {
       return;
     }
     spawnTimer -= getBuffs().spawnRate() / 2;
@@ -2186,6 +2223,9 @@ public class CharacterEntity extends WorldEntity {
     int count = interval != 0 ? 1 : number;
     int radius = interval != 0 ? 0 : data.spawnRadius();
     world.liveSpawn(this, count, radius);
+    if (limit >= 1) {
+      spawnsLeft--;
+    }
     spawnWaveMade += count;
     int next;
     if (spawnWaveMade < number) {

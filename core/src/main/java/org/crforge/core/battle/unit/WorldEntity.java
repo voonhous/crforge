@@ -981,19 +981,26 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * The tag recompute every entity runs first thing in its pre-hook: the tag word every reader sees
    * becomes the one-step word handlers wrote since the last recompute, which is then cleared,
-   * together with the tags of every action the entity runs. A tag a handler sets therefore lasts
-   * one step, and a tag an action sets lasts as long as the action is listed.
+   * together with the tags of every action the entity runs and, for a character, the tags its own
+   * row sets. A tag a handler sets therefore lasts one step, a tag an action sets lasts as long as
+   * the action is listed, and a row's tags are there from the first pre-hook after the entity is
+   * made.
    */
   @Override
   protected void preHook() {
     GridEntity view = getView();
-    view.setFlags(view.getPendingFlags() | actionTags());
+    view.setFlags(view.getPendingFlags() | actionTags() | rowTags());
     view.setPendingFlags(0);
   }
 
   /** The tags of every action the entity lists, finished ones included. */
   protected long actionTags() {
     return actionHolder == null ? 0 : actionHolder.tags();
+  }
+
+  /** The tags the entity's own row sets, which the recompute adds only for a character: none. */
+  protected long rowTags() {
+    return 0;
   }
 
   /**

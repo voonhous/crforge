@@ -387,7 +387,9 @@ class BattleActionSpawnRunTest {
         "three_musketeers_pekka",
         "three_musketeers_air_building",
         "graveyard_tower_defender",
-        "graveyard_right_side1"
+        "graveyard_right_side1",
+        "phoenix_egg_hatch",
+        "phoenix_egg_killed"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -626,6 +628,9 @@ class BattleActionSpawnRunTest {
     // its leaving ended.
     List<String> hookLog = new ArrayList<>();
     match.getWorld().addObserver(hookLog(currentTick, hookLog));
+    // Every death projectile, every egg made untargetable and every spawner destroyed at its limit.
+    List<String> phoenixLog = new ArrayList<>();
+    match.getWorld().addObserver(phoenixLog(currentTick, phoenixLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1007,16 +1012,43 @@ class BattleActionSpawnRunTest {
     if (reference.has("actions")) {
       assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
     } else {
-      // A run that lists no actions lists its riders under unit_spawner and the children of a
-      // buff's death spawn in its buff log: they are its only spawns.
+      // A run that lists no actions lists its riders under unit_spawner, the children of a
+      // buff's death spawn in its buff log and a Phoenix's egg, made by its death projectile's
+      // impact, in its Phoenix log: they are its only spawns. The egg is made where and when the
+      // log says.
       Set<String> buffChildren = new HashSet<>();
       for (JsonNode b : reference.path("buffs")) {
         if (b.get("event").asText().equals("death_spawn")) {
           b.get("units").forEach(u -> buffChildren.add(u.get(0).asText()));
         }
       }
+      List<String> eggs = new ArrayList<>();
+      for (JsonNode p : reference.path("phoenix")) {
+        if (p.get("event").asText().equals("untargetable_when_spawned")) {
+          eggs.add(
+              "%d %s %d %d"
+                  .formatted(
+                      p.get("tick").asInt(),
+                      p.get("unit").asText(),
+                      p.get("x").asInt(),
+                      p.get("y").asInt()));
+        }
+      }
+      List<String> eggSpawns = new ArrayList<>();
+      for (String line : spawns) {
+        String[] f = line.split(" ");
+        if (eggs.stream().anyMatch(egg -> egg.split(" ")[1].equals(f[3]))) {
+          eggSpawns.add(f[0] + " " + f[3] + " " + f[6] + " " + f[7]);
+        }
+      }
+      assertThat(eggSpawns).as("every egg the Phoenix log lists").containsExactlyElementsOf(eggs);
+      Set<String> eggNames = new HashSet<>();
+      eggs.forEach(egg -> eggNames.add(egg.split(" ")[1]));
       List<String> riderSpawns =
-          spawns.stream().filter(line -> !buffChildren.contains(line.split(" ")[3])).toList();
+          spawns.stream()
+              .filter(line -> !buffChildren.contains(line.split(" ")[3]))
+              .filter(line -> !eggNames.contains(line.split(" ")[3]))
+              .toList();
       assertThat(riderSpawns)
           .as("every spawn but a buff's death spawn, a rider each")
           .allSatisfy(line -> assertThat(riders).contains(line.split(" ")[3]))
@@ -1199,6 +1231,10 @@ class BattleActionSpawnRunTest {
     assertThat(hookLog)
         .as("every special load armed, every state a drag set, and every hold and pull let go")
         .containsExactlyElementsOf(expectedHookLog(reference));
+
+    assertThat(phoenixLog)
+        .as("every death projectile, egg made untargetable and spawner destroyed at its limit")
+        .containsExactlyElementsOf(expectedPhoenixLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -2020,6 +2056,93 @@ class BattleActionSpawnRunTest {
                     view.getY()));
       }
     };
+  }
+
+  /**
+   * Logs every death projectile with its start and aim, every unit made with the immunity its row
+   * starts it with, and every spawner destroyed at its limit with its hit points.
+   */
+  private static WorldObserver phoenixLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void deathProjectileLaunched(
+          int tick, WorldEntity dying, ProjectileEntity projectile) {
+        log.add(
+            "%d death_projectile %s %s %s start %d %d %d aim %d %d"
+                .formatted(
+                    currentTick[0],
+                    dying.name(),
+                    projectile.name(),
+                    projectile.getData().name(),
+                    projectile.getStartX(),
+                    projectile.getStartY(),
+                    projectile.getStartZ(),
+                    projectile.getAimX(),
+                    projectile.getAimY()));
+      }
+
+      @Override
+      public void characterSpawned(
+          int tick, SpawnHost source, CharacterEntity child, int x, int y) {
+        if (child.getData().untargetableWhenSpawned() && child.isSpawnImmune()) {
+          log.add(
+              "%d untargetable_when_spawned %s at %d %d"
+                  .formatted(currentTick[0], child.name(), x, y));
+        }
+      }
+
+      @Override
+      public void destroyedAtLimit(int tick, CharacterEntity spawner) {
+        GridEntity view = spawner.getView();
+        log.add(
+            "%d destroy_at_limit %s at %d %d hp %d"
+                .formatted(
+                    currentTick[0],
+                    spawner.name(),
+                    view.getX(),
+                    view.getY(),
+                    spawner.getHitPoints().getHitPoints()));
+      }
+    };
+  }
+
+  /** The reference's Phoenix log, in the Phoenix log's layout. */
+  private static List<String> expectedPhoenixLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode p : reference.path("phoenix")) {
+      int tick = p.get("tick").asInt();
+      switch (p.get("event").asText()) {
+        case "death_projectile" ->
+            expected.add(
+                "%d death_projectile %s %s %s start %d %d %d aim %d %d"
+                    .formatted(
+                        tick,
+                        p.get("unit").asText(),
+                        p.get("projectile").asText(),
+                        p.get("config").asText(),
+                        p.get("start").get(0).asInt(),
+                        p.get("start").get(1).asInt(),
+                        p.get("start").get(2).asInt(),
+                        p.get("aim").get(0).asInt(),
+                        p.get("aim").get(1).asInt()));
+        case "untargetable_when_spawned" ->
+            expected.add(
+                "%d untargetable_when_spawned %s at %d %d"
+                    .formatted(
+                        tick, p.get("unit").asText(), p.get("x").asInt(), p.get("y").asInt()));
+        case "destroy_at_limit" ->
+            expected.add(
+                "%d destroy_at_limit %s at %d %d hp %d"
+                    .formatted(
+                        tick,
+                        p.get("unit").asText(),
+                        p.get("x").asInt(),
+                        p.get("y").asInt(),
+                        p.get("hp").asInt()));
+        default -> throw new IllegalStateException("unknown Phoenix event " + p);
+      }
+    }
+    return expected;
   }
 
   /** The reference's special loads, drag states, holds and pulls, in the hook log's layout. */

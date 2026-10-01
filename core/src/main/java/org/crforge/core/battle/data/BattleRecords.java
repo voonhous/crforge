@@ -189,11 +189,7 @@ public final class BattleRecords {
    */
   private static final List<String> UNMODELLED_DEATH_COLUMNS =
       List.of(
-          "DeathSpawnCharacter2",
-          "DeathSpawnCharacter3",
-          "DeathSpawnProjectile",
-          "StartingBuff",
-          "DeathSpawnIsSameUnit");
+          "DeathSpawnCharacter2", "DeathSpawnCharacter3", "StartingBuff", "DeathSpawnIsSameUnit");
 
   /**
    * The columns that change where a unit's death spawn stands or what its children take, which the
@@ -210,9 +206,8 @@ public final class BattleRecords {
    * refused as it is created. A shield, hiding before the first hit, a buff at a share of its hit
    * points, a flying unit's direct paths, the action a completed charge runs, a chained dash, a
    * dash's contact damage, fixed distance, area effect and closing action, a limit on the elixir a
-   * collector makes, a spawner's launches, its second and third characters, its destruction at the
-   * limit, the deploy it gives its children, and a Kamikaze row's drain over a time rather than its
-   * kill.
+   * collector makes, a spawner's launches, its second and third characters, and a Kamikaze row's
+   * drain over a time rather than its kill.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -231,16 +226,20 @@ public final class BattleRecords {
           "SpawnProjectile",
           "SpawnCharacter2",
           "SpawnCharacter3",
-          "DestroyAtLimit",
-          "SpawnCharacterWithDeploy",
           "KamikazeTime");
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
-   * characters: a limit on its waves and its push on its children.
+   * characters: its push on its children.
    */
-  private static final List<String> UNMODELLED_SPAWNER_COLUMNS =
-      List.of("SpawnLimit", "SpawnPushback");
+  private static final List<String> UNMODELLED_SPAWNER_COLUMNS = List.of("SpawnPushback");
+
+  /**
+   * The tags a unit's own row may set: those of the Phoenix's egg, each read where the battle reads
+   * the tag word. A row that sets any other is refused as the unit is created.
+   */
+  private static final Set<String> MODELLED_ROW_TAGS =
+      Set.of("NO_GIANTBUFFER_CHEF_ENCHANTMENT", "AVOIDANCE_AS_OBSTACLE", "NO_MOVE_ALLOW_ATTRACT");
 
   /**
    * The columns of a unit's row that only show something: its art, texts, effects, shadows,
@@ -408,11 +407,7 @@ public final class BattleRecords {
           "IgnoreResurrect",
           // Read only in the in-game pathfinding state, which only an ability's lane switch
           // enters, and that switch is refused.
-          "IngamePathfindSpeed",
-          // The count a spawner has left, which only its firing, its destruction at the limit and
-          // its death spawn read: a spawner that sets it, the destruction and a death spawn that
-          // sets it are each refused, so for every other row it changes nothing.
-          "SpawnLimit");
+          "IngamePathfindSpeed");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread
@@ -510,6 +505,7 @@ public final class BattleRecords {
   public UnitData unit(String name) {
     GameRow row = unitRow(name).tracking();
     String deathSpawn = row.string("DeathSpawnCharacter");
+    String deathProjectile = row.string("DeathSpawnProjectile");
     UnitData data =
         UnitData.builder()
             .name(row.name())
@@ -569,15 +565,18 @@ public final class BattleRecords {
             .deathDamageRadius(row.intValue("DeathDamageRadius"))
             .deathPushBack(row.intValue("DeathPushBack"))
             .deathSpawnCharacter(deathSpawn.isEmpty() ? null : deathSpawn)
-            // The loader keeps at least one child for a row that spawns on its death.
+            // The loader keeps at least one for a row that spawns or launches on its death.
             .deathSpawnCount(
-                deathSpawn.isEmpty() ? 0 : Math.max(row.intValue("DeathSpawnCount"), 1))
+                deathSpawn.isEmpty() && deathProjectile.isEmpty()
+                    ? 0
+                    : Math.max(row.intValue("DeathSpawnCount"), 1))
             .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
             .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
             .deathAreaEffect(
                 row.string("DeathAreaEffect").isEmpty() ? null : row.string("DeathAreaEffect"))
             .deathSpawnPushback(row.bool("DeathSpawnPushback"))
             .deathSpawnMinRadius(row.intValue("DeathSpawnMinRadius"))
+            .deathSpawnProjectile(deathProjectile.isEmpty() ? null : projectile(deathProjectile))
             .unmodelledDeathColumns(unmodelledDeathColumns(row, !deathSpawn.isEmpty()))
             .champion(champion(row))
             .ability(ability(row))
@@ -597,6 +596,11 @@ public final class BattleRecords {
             .spawnIntervalMs(row.intValue("SpawnInterval"))
             .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
             .spawnStartTimeMs(row.intValue("SpawnStartTime"))
+            .spawnLimit(row.intValue("SpawnLimit"))
+            .destroyAtLimit(row.bool("DestroyAtLimit"))
+            .spawnCharacterWithDeploy(row.bool("SpawnCharacterWithDeploy"))
+            .untargetableWhenSpawned(row.bool("UntargetableWhenSpawned"))
+            .gameTagsToSet(tagBits(row.string("GameTagsToSet")))
             .manaCollectAmount(row.intValue("ManaCollectAmount"))
             .manaGenerateTimeMs(row.intValue("ManaGenerateTimeMs"))
             .manaOnDeathForOpponent(row.intValue("ManaOnDeathForOpponent"))
@@ -779,6 +783,12 @@ public final class BattleRecords {
       }
       if (row.intValue("SpawnNumber") == 0 && row.intValue("SpawnInterval") == 0) {
         columns.add("SpawnCharacter");
+      }
+    }
+    for (String tag : row.string("GameTagsToSet").split(",")) {
+      if (!tag.isBlank() && !MODELLED_ROW_TAGS.contains(tag.trim())) {
+        columns.add("GameTagsToSet");
+        break;
       }
     }
     return columns;

@@ -128,6 +128,30 @@ public final class ProjectileLauncher {
     launchOne(projectile, launcher, launcher.getData(), friend, at.getX(), at.getY(), 0, 0);
   }
 
+  /**
+   * Places a projectile a dying object launches and aims it: from the object's point and height,
+   * with the object as launcher and owner and no target, at the given point. Refused: a pingpong or
+   * hooking row, which its launcher's targeting component would hold.
+   *
+   * @param projectile the projectile, not yet launched
+   * @param dying the dying object
+   * @param hx the aim along the arena's width
+   * @param hy the aim along the arena's length
+   */
+  public static void launchOnDeath(ProjectileEntity projectile, WorldEntity dying, int hx, int hy) {
+    ProjectileData data = projectile.getData();
+    refuseUnmodelled(dying, data);
+    if (data.pingpongVisualTimeMs() >= 1 || data.dragBackSpeed() >= 1) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " launches "
+              + data.name()
+              + " as it dies, which its targeting component would hold, not modelled");
+    }
+    GridEntity view = dying.getView();
+    projectile.launch(dying, null, view.getX(), view.getY(), view.getZ(), hx, hy);
+  }
+
   /** Refuses a projectile row that sets columns its flight and impact do not model. */
   private static void refuseUnmodelled(WorldEntity launcher, ProjectileData data) {
     if (!data.unmodelledColumns().isEmpty()) {

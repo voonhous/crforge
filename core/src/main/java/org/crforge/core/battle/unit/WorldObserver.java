@@ -376,6 +376,20 @@ public interface WorldObserver {
   default void diedAtRemoval(int tick, WorldEntity entity) {}
 
   /**
+   * A dying object's death slot launched one of its death projectiles, handed to the holder.
+   *
+   * @param dying the dying object, its launcher and owner
+   * @param projectile the projectile
+   */
+  default void deathProjectileLaunched(int tick, WorldEntity dying, ProjectileEntity projectile) {}
+
+  /**
+   * A limited spawner whose firings are spent asked to leave, as its row destroys it at its limit:
+   * the tick's closing cleanup removes it, with no death.
+   */
+  default void destroyedAtLimit(int tick, CharacterEntity spawner) {}
+
+  /**
    * A character's spawner fired, after its children were made.
    *
    * @param spawner the character
