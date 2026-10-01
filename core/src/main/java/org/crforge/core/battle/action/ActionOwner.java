@@ -75,6 +75,15 @@ public interface ActionOwner {
     throw new UnsupportedOperationException("this owner cannot collect friends");
   }
 
+  /**
+   * What a Goblin Hut's life state asks of the battle around the owner.
+   *
+   * @return the owner's answers
+   */
+  default GoblinHutLife goblinHutLife() {
+    throw new UnsupportedOperationException("this owner cannot run a Goblin Hut's life state");
+  }
+
   /** The owner's id in the battle's holder. */
   default int actionId() {
     throw new UnsupportedOperationException("this owner has no id");

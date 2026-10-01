@@ -17,6 +17,8 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.GoblinHutLife;
+import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -2188,6 +2190,127 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void launch(ProjectileData projectile, int friendId) {
         world.launchAt(CharacterEntity.this, projectile, (WorldEntity) world.liveObject(friendId));
+      }
+    };
+  }
+
+  /**
+   * What a Goblin Hut's life state on the character asks of the battle: the object query around it
+   * testing buildings by their squares, the live list by id, where objects stand and their radii,
+   * its own validator, its targeting component, its spawn speed, the actions it schedules on itself
+   * and the children it makes.
+   */
+  @Override
+  public GoblinHutLife goblinHutLife() {
+    return new GoblinHutLife() {
+      @Override
+      public int ownerX() {
+        return getView().getX();
+      }
+
+      @Override
+      public int ownerY() {
+        return getView().getY();
+      }
+
+      @Override
+      public int reach() {
+        return getData().collisionRadius() + getData().range();
+      }
+
+      @Override
+      public List<Integer> query(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.shapeQuery(CharacterEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public boolean live(int id) {
+        return world.liveObject(id) instanceof WorldEntity;
+      }
+
+      @Override
+      public int x(int id) {
+        return object(id).getView().getX();
+      }
+
+      @Override
+      public int y(int id) {
+        return object(id).getView().getY();
+      }
+
+      @Override
+      public int radius(int id) {
+        return object(id).getView().getCollisionRadius();
+      }
+
+      @Override
+      public boolean valid(int id) {
+        return ReferenceValidator.sharedValidate(
+            unit.targeting(),
+            object(id).getTargetView(),
+            false,
+            getData().targetOnlyBuildings(),
+            false,
+            false,
+            world.getValidatorQueries());
+      }
+
+      @Override
+      public boolean active() {
+        return isActive(TARGETING_SLOT);
+      }
+
+      @Override
+      public int spawnSpeed(int stepMs) {
+        return getBuffs().spawnSpeed(stepMs);
+      }
+
+      @Override
+      public void schedule(BattleAction action) {
+        if (action != null) {
+          actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder());
+        }
+      }
+
+      @Override
+      public int arenaWidth() {
+        return world.getGrid().getWidth();
+      }
+
+      @Override
+      public int arenaHeight() {
+        return world.getGrid().getHeight();
+      }
+
+      @Override
+      public int[] relocated(int x, int y) {
+        int packed =
+            Relocation.relocate(
+                world.getGrid().getWidth(),
+                world.getGrid().getHeight(),
+                x,
+                y,
+                -1,
+                world.getGrid()::water);
+        return new int[] {Relocation.unpackX(packed), Relocation.unpackY(packed)};
+      }
+
+      @Override
+      public void spawn(String row, int x, int y) {
+        world.spawnOne(CharacterEntity.this, row, x, y);
+      }
+
+      @Override
+      public void log(GoblinHutLifeState.Event event) {
+        world.goblinHutLogged(CharacterEntity.this, event);
+      }
+
+      private WorldEntity object(int id) {
+        return (WorldEntity) world.liveObject(id);
       }
     };
   }

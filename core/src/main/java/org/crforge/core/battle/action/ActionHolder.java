@@ -54,7 +54,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " singleton re-trigger, the next action scheduled after the run or alongside with"
             + " the carried delay, the row's tags on the run, the run pass removing a finished run"
             + " at its next pass and a stopped one at once, the tags of every listed run folded in,"
-            + " and the delay taken off in the end pass. Held by the recorded runtime cases. Not"
+            + " and the delay taken off in the end pass. Held by the recorded runtime cases. The"
+            + " notice to every running instance of an object that leaves, before the drop of"
+            + " what it caused, held by goblin_hut_passing. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
             + " the target an entry carries, and the notice to an action's instigator. The cause"
             + " an entry carries is the holder of the entity that caused it.")
@@ -352,6 +354,14 @@ public class ActionHolder implements EntityActions {
         listener.finished(instance);
       }
       i++;
+    }
+  }
+
+  /** Tells every running instance, in its listed order, of an object that left the battle. */
+  @Override
+  public void objectLeft(int leftId) {
+    for (ActionInstance instance : new ArrayList<>(running)) {
+      instance.objectLeft(leftId);
     }
   }
 

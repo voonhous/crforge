@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.FlipFlop;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
@@ -191,6 +192,21 @@ public final class ActionRows {
                   "OffsetZ",
                   "TargetOffsetZ",
                   "PauseIfTrue")),
+          // The Goblin Hut's life state: its spawns, their point and child, the filter its finder
+          // asks, the actions it runs on its owner, and the tag only the owner's effect rows read.
+          Map.entry(
+              "ActionGoblinHutLifeState",
+              Set.of(
+                  "SpawnInterval",
+                  "SpawnData",
+                  "SpawnNumber",
+                  "SpawnOffset",
+                  "SingleDeployOffsetAngle",
+                  "ObjectFilter",
+                  "OnSpawnAction",
+                  "OnStartSpawningAction",
+                  "OnStartWaitingAction",
+                  "ToggleEffectTag")),
           // The Skeleton Barrel's pop action has no perform: its run is started and stepped and
           // does nothing. The balloons it pops as the hit points fall, their frames and effects
           // reach its view object alone. The columns of a singleton's second start, which drops
@@ -427,6 +443,22 @@ public final class ActionRows {
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
+            case "ActionGoblinHutLifeState" ->
+                new GoblinHutLifeState(
+                    shared,
+                    GoblinHutLifeState.Columns.builder()
+                        .spawnIntervalMs(integer(f, "SpawnInterval"))
+                        .spawnData(f.path("SpawnData").asText())
+                        .spawnNumber(integer(f, "SpawnNumber"))
+                        .spawnOffset(integer(f, "SpawnOffset"))
+                        .singleDeployOffsetAngle(integer(f, "SingleDeployOffsetAngle"))
+                        .objectFilter(records.filter(f.path("ObjectFilter").asText()))
+                        .onSpawnAction(action(f.get("OnSpawnAction")))
+                        .onStartSpawningAction(action(f.get("OnStartSpawningAction")))
+                        .onStartWaitingAction(action(f.get("OnStartWaitingAction")))
+                        .toggleEffectTag(
+                            f.has("ToggleEffectTag") ? f.get("ToggleEffectTag").asText() : null)
+                        .build());
             case "ActionSkeletonBarrelPopBalloon" -> {
               if (shared.singleton()) {
                 throw new UnsupportedOperationException(

@@ -14,7 +14,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled: the finished flag a step sets, the removal it leads to at the next run pass,"
             + " the row's tags the holder sets on the run as it starts, and the re-trigger a"
-            + " singleton row's second start sends it. Not modelled: the start and on-finish"
+            + " singleton row's second start sends it, and the notice of an object leaving, which"
+            + " does nothing unless the class overrides it. Not modelled: the start and on-finish"
             + " hooks some classes override.")
 public abstract class ActionInstance {
 
@@ -39,6 +40,14 @@ public abstract class ActionInstance {
    * run carries on as it was.
    */
   protected void retrigger(ActionHolder holder) {}
+
+  /**
+   * What the run does as an object leaves the battle. By default nothing: the run carries on as it
+   * was, whatever it caused or held.
+   *
+   * @param leftId the id of the object that left
+   */
+  protected void objectLeft(int leftId) {}
 
   /** Marks the run finished; it is removed by the next run pass. */
   protected void finish() {

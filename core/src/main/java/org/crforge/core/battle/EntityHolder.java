@@ -172,10 +172,10 @@ public class EntityHolder {
    * One round of the cleanup's removals: every removable entity leaves the live list, and every
    * entity still listed hears of each in turn. The entities handed over this tick hear of it first,
    * then the live list, so a projectile launched on the tick its target dies loses the target in
-   * the same cleanup. Each entity's components hear first, then its action holder drops what the
-   * leaving entity caused and still waits, then an entity attached to it is let go; the side lists
-   * and the level re-read come after all of them. Each notice goes to the entities listed as it
-   * starts, so a child a notice makes does not hear of it.
+   * the same cleanup. Each entity's components hear first, then its action holder's running
+   * actions, then the holder drops what the leaving entity caused and still waits, then an entity
+   * attached to it is let go; the side lists and the level re-read come after all of them. Each
+   * notice goes to the entities listed as it starts, so a child a notice makes does not hear of it.
    *
    * @return true when the round removed anything
    */
@@ -189,6 +189,7 @@ public class EntityHolder {
       listed.addAll(live);
       for (BattleEntity entity : listed) {
         entity.entityRemoved(gone);
+        entity.actions().objectLeft(gone.getId());
         entity.actions().instigatorLeft(gone.actions());
         entity.parentRemoved(gone);
       }

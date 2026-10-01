@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -489,6 +490,16 @@ public interface WorldObserver {
    * @param kills true when the end kills it; false for a row that drains its hit points instead
    */
   default void kamikazeHitEnded(int tick, WorldEntity unit, boolean kills) {}
+
+  /**
+   * A Goblin Hut's life state did something: started or stepped, found, placed a child, or heard
+   * its target leave.
+   *
+   * @param tick the battle tick
+   * @param hut the building running it
+   * @param event what it did
+   */
+  default void goblinHutLogged(int tick, CharacterEntity hut, GoblinHutLifeState.Event event) {}
 
   /**
    * One step of a Kamikaze unit's drain landed on it, in its state visit.
