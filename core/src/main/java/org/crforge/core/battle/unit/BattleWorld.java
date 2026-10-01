@@ -1658,6 +1658,30 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The area effect a projectile's impact makes: at the impact point, for the projectile's side and
+   * at its level re-based on the area effect's rarity, handed to the holder, which gives it its id
+   * at once and admits it at the tick's closing cleanup, where the projectile itself leaves. The
+   * projectile is its parent and the projectile's target its own; the deflection, which is not
+   * modelled, is the only reader known of the one, and none is known of the other, so neither is
+   * carried.
+   *
+   * @param projectile the projectile that landed
+   * @param x the impact point along the width
+   * @param y the impact point along the length
+   */
+  public void impactAreaEffect(ProjectileEntity projectile, int x, int y) {
+    createAreaEffect(
+        projectile.getData().spawnAreaEffectObject(),
+        x,
+        y,
+        projectile.side(),
+        projectile.getPackedLevel(),
+        null,
+        "projectile",
+        projectile.name());
+  }
+
+  /**
    * The character spawn of a projectile's impact: its children in the card formation around the
    * impact point, the spread their collision radius when there are several, each created kept
    * inside the arena, at the projectile's level, deploying for the row's deploy time when it has

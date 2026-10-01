@@ -60,14 +60,14 @@ public final class BattleRecords {
       List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
 
   /**
-   * The columns of a projectile the impact does not model: the area effect it spawns, spawned
-   * projectiles laid along an axis, and the push's floor and a push along the flight. A spell whose
-   * projectile, or the projectile that one spawns, sets one is refused as it is cast or spawned,
-   * and a unit's shot as it is fired.
+   * The columns of a projectile the impact does not model: the action on reaching its target,
+   * spawned projectiles laid along an axis, and the push's floor and a push along the flight. A
+   * spell whose projectile, or the projectile that one spawns, sets one is refused as it is cast or
+   * spawned, and a unit's shot as it is fired. The area effect it spawns is modelled unless its row
+   * is refused.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
       List.of(
-          "SpawnAreaEffectObject",
           "OnTargetReachedAction",
           "SpawnAxisX",
           "SpawnAxisY",
@@ -1263,10 +1263,18 @@ public final class BattleRecords {
             .pingpongVisualTimeMs(row.intValue("PingpongVisualTime"))
             .randomDelayMs(row.intValue("RandomDelay"))
             .onHitTargetAction(inlineActionName(row, "OnHitTargetAction"))
+            .spawnAreaEffectObject(
+                set(row, "SpawnAreaEffectObject") ? row.string("SpawnAreaEffectObject") : null)
             .build();
     List<String> unmodelled =
         new ArrayList<>(
             UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList());
+    // The spawned area effect is refused with its row: one that follows is among them, and one that
+    // follows the projectile is made on its first flight visit, not at its impact.
+    if (data.spawnAreaEffectObject() != null
+        && !areaEffect(data.spawnAreaEffectObject()).unmodelledColumns().isEmpty()) {
+      unmodelled.add("SpawnAreaEffectObject");
+    }
     // The target buff is modelled on the circle or the one target of the impact; a projectile that
     // flies to a point buffs through its hits on the way instead, which is not.
     if (data.targetBuff() != null && data.homingLike()) {

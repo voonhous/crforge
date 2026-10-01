@@ -31,9 +31,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ninety-six runs in which an action, a death, a building or a unit's own spawner spawns
- * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
- * them tick for tick.
+ * Plays the ninety-seven runs in which an action, a death, a building or a unit's own spawner
+ * spawns characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the
+ * battle to them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -241,6 +241,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * update drops its crate onto its own point, the area effect leaving as it does; the crate lands a
  * tick later on the group around it and makes a Recruit. Each is held to every launch of an area
  * effect: its chooser's candidates, those it refused and struck before, and the projectile.
+ *
+ * <p>{@code heal_spirit_group} places a Heal Spirit that jumps at two enemy Knights fighting its
+ * own: its projectile's impact makes the HealSpirit area effect at the impact point, whose one hit
+ * on the next tick buffs the own Knights and Minion in its circle, healing the Knights four times.
  */
 class BattleActionSpawnRunTest {
 
@@ -345,7 +349,8 @@ class BattleActionSpawnRunTest {
         "mega_knight_group",
         "mega_knight_jump",
         "lightning_defenders_tower",
-        "royal_delivery_group"
+        "royal_delivery_group",
+        "heal_spirit_group"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

@@ -84,6 +84,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     flies; 0 for none
  * @param onHitTargetAction the action row its impact schedules on its target, with the projectile
  *     as the cause, before the hit lands; null for none
+ * @param spawnAreaEffectObject the area effect its impact makes at the impact point, after its hit
+ *     and its spawned characters; null for none
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -94,8 +96,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
             + " point from one flying to a target. Not carried yet: the far"
             + " distance clamp, the random angle and distance, the angular delay, the drag columns, the"
             + " pingpong death effect, which is presentation, the deflect behaviour, the chained hit's end effect, the target buff of a"
-            + " projectile that flies to a point, and the spawned area effect; the impact's pushback and its spawned characters are"
-            + " carried.")
+            + " projectile that flies to a point, and a spawned area effect that follows; the impact's pushback, its spawned characters"
+            + " and its spawned area effect are carried.")
 @Builder(toBuilder = true)
 public record ProjectileData(
     String name,
@@ -144,6 +146,7 @@ public record ProjectileData(
     int pingpongVisualTimeMs,
     int randomDelayMs,
     String onHitTargetAction,
+    String spawnAreaEffectObject,
     List<String> unmodelledColumns) {
 
   public ProjectileData {
