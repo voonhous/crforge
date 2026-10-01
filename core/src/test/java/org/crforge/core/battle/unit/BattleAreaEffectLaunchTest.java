@@ -282,7 +282,8 @@ class BattleAreaEffectLaunchTest {
                 folder,
                 "area_effect_objects",
                 rows ->
-                    GameData.columns(rows, "Lightning").put("Projectile", "FishermanProjectile")),
+                    GameData.columns(rows, "Lightning")
+                        .put("Projectile", "WizardHeroAbilityProjectile")),
             LEVEL,
             false);
     match.placeAreaEffect(CAST_TICK, "Lightning", LEVEL, 1, X, Y, "L");
@@ -294,6 +295,6 @@ class BattleAreaEffectLaunchTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("launches FishermanProjectile");
+        .hasMessageContaining("launches WizardHeroAbilityProjectile");
   }
 }

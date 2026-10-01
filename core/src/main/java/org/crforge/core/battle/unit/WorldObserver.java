@@ -751,4 +751,56 @@ public interface WorldObserver {
    */
   default void reflectedHit(
       int tick, WorldEntity reflector, WorldEntity struck, int damage, DamageResult result) {}
+
+  /**
+   * A unit's targeting visit armed its special load on its reference, which lies in the ring.
+   *
+   * @param tick the battle tick
+   * @param unit the unit loading its special attack
+   * @param reference the reference it loads at
+   * @param distanceSquared the squared distance between their centres
+   * @param ringMin the ring's inner bound: the reference's radius plus the special's minimum range
+   * @param ringMax the ring's outer bound: the reference's radius plus the special's range
+   * @param loadMs the load time the special starts from
+   * @param afterMs what is left of it once the arming visit has taken its step
+   */
+  default void specialArmed(
+      int tick,
+      CharacterEntity unit,
+      WorldEntity reference,
+      long distanceSquared,
+      int ringMin,
+      int ringMax,
+      int loadMs,
+      int afterMs) {}
+
+  /**
+   * A dragging projectile's hook or drag asked a unit's state setter for a state.
+   *
+   * @param tick the battle tick
+   * @param projectile the dragging projectile
+   * @param unit the unit asked: its target or its owner
+   * @param oldState the unit's state before the request
+   * @param newState the state asked for
+   */
+  default void dragStateSet(
+      int tick, ProjectileEntity projectile, WorldEntity unit, int oldState, int newState) {}
+
+  /**
+   * A projectile a unit's targeting held on left the battle, and the unit forgot it.
+   *
+   * @param tick the battle tick
+   * @param unit the unit whose targeting held the projectile
+   * @param projectile the projectile that left
+   */
+  default void holdLeft(int tick, WorldEntity unit, ProjectileEntity projectile) {}
+
+  /**
+   * A projectile a unit followed left the battle, and the unit forgot it.
+   *
+   * @param tick the battle tick
+   * @param unit the unit that followed the projectile
+   * @param projectile the projectile that left
+   */
+  default void followLeft(int tick, WorldEntity unit, ProjectileEntity projectile) {}
 }

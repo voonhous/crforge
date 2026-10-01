@@ -652,6 +652,121 @@ public class BattleWorld implements HolderPasses {
     return Integer.compareUnsigned(dx * dx + dy * dy, reach * reach) < 0;
   }
 
+  /**
+   * Whether a hooking projectile has lost its owner: the owner has left the battle, or its
+   * targeting component is off, as a death or a stun switches it.
+   *
+   * @param projectile the hooking projectile
+   */
+  public boolean ownerLost(ProjectileEntity projectile) {
+    WorldEntity owner = projectile.getOwner();
+    return owner == null || !owner.isActive(CharacterEntity.TARGETING_SLOT);
+  }
+
+  /**
+   * Refuses a hook on a target someone else holds a lock on: the battle's locks, made by a
+   * collector's first step, are asked about the owner and the target, and a lock held by another
+   * would end the hook as an ordinary arrival, which no reference holds.
+   *
+   * @param projectile the hooking projectile
+   */
+  public void refuseLockedHook(ProjectileEntity projectile) {
+    WorldEntity target = projectile.getTarget();
+    if (locks != null
+        && target != null
+        && locks.heldByOther(projectile.getOwner().getId(), target.getId(), 0)) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " hooks " + target.name() + ", which another holds, not modelled");
+    }
+  }
+
+  /**
+   * A hooking projectile asks a unit's setter for a state: its target to be pulled, its owner to
+   * wait or to be dragged, and its owner to move on once dragged; every observer is told.
+   *
+   * @param projectile the hooking projectile
+   * @param unit its target or its owner
+   * @param state the state asked for
+   */
+  public void hookRequest(ProjectileEntity projectile, WorldEntity unit, int state) {
+    // Only a character is asked: a building or a crown tower it hooked drags the owner instead.
+    int old = unit.getView().getState();
+    ((CharacterEntity) unit).requestState(state);
+    for (WorldObserver observer : observers) {
+      observer.dragStateSet(tick, projectile, unit, old, state);
+    }
+  }
+
+  /**
+   * Has a unit follow a hooking projectile: its target while it is pulled, its owner while the hook
+   * on a building drags it.
+   *
+   * @param unit the unit
+   * @param projectile the hooking projectile
+   */
+  public void follow(WorldEntity unit, ProjectileEntity projectile) {
+    ((CharacterEntity) unit).follow(projectile);
+  }
+
+  /**
+   * The hook's end of a jump or a dash with a height on the target it pulls, before it is pulled:
+   * such a target would be put down first, which no reference holds; any other is left alone.
+   *
+   * @param projectile the hooking projectile
+   * @param target the target it hooked
+   */
+  public void putDown(ProjectileEntity projectile, WorldEntity target) {
+    int state = target.getView().getState();
+    if (state == GridEntityState.JUMPING
+        || (state == GridEntityState.DASHING && target.getData().jumpHeight() >= 1)) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " hooks " + target.name() + " in the air, not modelled");
+    }
+  }
+
+  /**
+   * Moves the owner a hook on a building drags, on the ground.
+   *
+   * @param owner the owner
+   * @param x the new position along the width
+   * @param y the new position along the length
+   */
+  public void dragTo(WorldEntity owner, int x, int y) {
+    GridEntity view = owner.getView();
+    view.setX(x);
+    view.setY(y);
+    view.setZ(0);
+  }
+
+  /** Tells every observer of a special load a unit's targeting visit armed. */
+  void specialArmed(
+      CharacterEntity unit,
+      WorldEntity reference,
+      long distanceSquared,
+      int ringMin,
+      int ringMax,
+      int loadMs,
+      int afterMs) {
+    for (WorldObserver observer : observers) {
+      observer.specialArmed(
+          tick, unit, reference, distanceSquared, ringMin, ringMax, loadMs, afterMs);
+    }
+  }
+
+  /** Tells every observer that a unit's targeting forgot the hooking projectile it was held on. */
+  void holdLeft(WorldEntity unit, ProjectileEntity projectile) {
+    for (WorldObserver observer : observers) {
+      observer.holdLeft(tick, unit, projectile);
+    }
+  }
+
+  /** Tells every observer that a unit forgot the hooking projectile it followed. */
+  void followLeft(WorldEntity unit, ProjectileEntity projectile) {
+    for (WorldObserver observer : observers) {
+      observer.followLeft(tick, unit, projectile);
+    }
+  }
+
   private void reflected(Reflection reflection) {
     for (WorldObserver observer : observers) {
       observer.reflected(tick, reflection);

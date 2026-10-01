@@ -6,6 +6,7 @@ import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -84,6 +85,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " hit effects.")
 final class ProjectileFlight {
 
+  /** The least speed column a hook that follows its target scales its step by. */
+  private static final int MIN_ATTRACTED_SPEED = 30;
+
+  private static final int PERCENT = 100;
+
   private ProjectileFlight() {
     // Utility class
   }
@@ -118,9 +124,39 @@ final class ProjectileFlight {
       p.stepDelay();
       return;
     }
-    snapToTarget(p);
+    boolean drags = data.dragBackSpeed() >= 1;
+    if (drags && world.ownerLost(p)) {
+      // A hooking projectile whose owner has left, or can no longer act, ends here: no step, no
+      // release where it stands and no impact. The target it pulled stays where it is.
+      p.release();
+      return;
+    }
+    // A hooked projectile no longer pins its aim onto its target: it flies back to its owner.
+    if (!p.isHooked()) {
+      snapToTarget(p);
+    }
     int remaining = FixedMath.guardedDistance(p.getX() - p.getAimX(), p.getY() - p.getAimY());
-    int speed = data.speed();
+    int speed = p.isHooked() ? data.dragBackSpeed() : data.speed();
+    boolean dragsOwner = false;
+    if (drags) {
+      world.refuseLockedHook(p);
+      WorldEntity target = p.getTarget();
+      if (p.isHooked()) {
+        if (p.getOwner().getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
+          // A hook on a building stands and drags its owner instead.
+          speed = 0;
+          dragsOwner = true;
+        } else if (target != null && data.dragBackAsAttractor()) {
+          speed = attracted(target, speed);
+        }
+      }
+      if (target != null && (target.getView().getFlags() & EntityFlags.DASHING) != 0) {
+        // A dashing target the dash keeps out of reach would end the hook as an ordinary
+        // arrival; no reference holds a hook on a dashing unit.
+        throw new UnsupportedOperationException(
+            p.name() + " flies at the dashing " + target.name() + ", not modelled");
+      }
+    }
     if (data.pingpongVisualTimeMs() >= 1) {
       // A pingpong projectile sweeps on its time, not its speed, and arrives on the step after
       // its time is up.
@@ -133,6 +169,8 @@ final class ProjectileFlight {
     }
     if (remaining <= speed) {
       arrive(p, world);
+    } else if (dragsOwner) {
+      dragOwner(p, world);
     } else {
       advance(p, remaining, speed);
       // A projectile that flies to a point hits what its body passes after every step; anything
@@ -142,6 +180,78 @@ final class ProjectileFlight {
         world.cellPass(p, p.getX(), p.getY(), 0);
       }
     }
+  }
+
+  /**
+   * The step of a hook that follows what it hooked: the step scaled by the target's own speed
+   * column, at least 30, as a percentage.
+   */
+  private static int attracted(WorldEntity target, int step) {
+    return Math.max(target.getData().speed(), MIN_ATTRACTED_SPEED) * step / PERCENT;
+  }
+
+  /**
+   * One step of a hook on a building: the projectile stands and moves its owner toward itself, on
+   * the ground, until the owner is within both radii of it; then it is released and the owner is
+   * asked to move on.
+   */
+  private static void dragOwner(ProjectileEntity p, BattleWorld world) {
+    ProjectileData data = p.getData();
+    WorldEntity owner = p.getOwner();
+    WorldEntity target = p.getTarget();
+    GridEntity o = owner.getView();
+    int ox = o.getX();
+    int oy = o.getY();
+    int gap = FixedMath.guardedDistance(p.getX() - ox, p.getY() - oy);
+    int reach = owner.getTargetView().radius();
+    if (target != null) {
+      reach += target.getTargetView().radius();
+    }
+    if (gap <= reach) {
+      p.release();
+      world.hookRequest(p, owner, GridEntityState.MOVING);
+      return;
+    }
+    int step = data.dragBackSpeed();
+    if (target != null && data.dragBackAsAttractor()) {
+      step = target.getTargetView().building() ? data.dragSelfSpeed() : attracted(target, step);
+    }
+    int nx = FixedMath.divOrZero(step * (p.getX() - ox), gap) + ox;
+    int ny = FixedMath.divOrZero(step * (p.getY() - oy), gap) + oy;
+    world.dragTo(owner, nx, ny);
+  }
+
+  /**
+   * The hook, on a hooking projectile's first arrival at its target: the owner's targeting holds
+   * it, it turns around from where it stands, on the ground, toward its owner, and hooks. A
+   * building it hooked drags the owner to it; anything else is pulled to the owner, which waits.
+   * Its aim is the owner's position, pulled in along the line by the margin and both radii. Then it
+   * impacts.
+   */
+  private static void hook(ProjectileEntity p, BattleWorld world) {
+    ProjectileData data = p.getData();
+    WorldEntity owner = p.getOwner();
+    WorldEntity target = p.getTarget();
+    GridEntity o = owner.getView();
+    p.setAim(o.getX(), o.getY(), p.getAimZ());
+    p.setStart(p.getX(), p.getY());
+    p.moveTo(p.getX(), p.getY(), 0);
+    p.hook();
+    if (target.getTargetView().building()) {
+      world.hookRequest(p, owner, GridEntityState.FOLLOWING_REMOVED_BUILDING);
+      world.follow(owner, p);
+    } else {
+      world.putDown(p, target);
+      world.hookRequest(p, target, GridEntityState.FOLLOWING_REMOVED);
+      world.follow(target, p);
+      world.hookRequest(p, owner, GridEntityState.COMPONENTS_DISABLED);
+    }
+    int[] vec = {p.getAimX() - p.getStartX(), p.getAimY() - p.getStartY()};
+    int radii = target.getTargetView().radius() + owner.getTargetView().radius();
+    int length = FixedMath.guardedDistance(vec[0], vec[1]);
+    FixedMath.normalize(vec, length - data.dragMargin() - radii);
+    p.setAim(vec[0] + p.getStartX(), vec[1] + p.getStartY(), p.getAimZ());
+    impact(p, world);
   }
 
   /** A homing projectile with a target pins its aim onto the target's position and height. */
@@ -240,9 +350,21 @@ final class ProjectileFlight {
       return;
     }
     // A homing projectile hands the damage registered on its target back before its impact, so the
-    // target no longer carries it as the damage lands.
+    // target no longer carries it as the damage lands. A hook's second arrival hands back nothing:
+    // no hooking row deals damage.
     if (p.getData().homing() && p.getTarget() != null) {
       p.handBackPending();
+    }
+    if (p.getData().dragBackSpeed() >= 1) {
+      if (p.isHooked() || p.getTarget() == null) {
+        // Back short of its owner, or with nothing hooked: released where it stands, and it
+        // impacts again.
+        p.release();
+        impact(p, world);
+      } else {
+        hook(p, world);
+      }
+      return;
     }
     p.release();
     if (p.getPingpongTimeMs() < 1) {

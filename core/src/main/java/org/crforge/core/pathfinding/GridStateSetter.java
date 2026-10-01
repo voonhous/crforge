@@ -115,6 +115,36 @@ public final class GridStateSetter implements StateSetter {
       boolean championClone,
       Runnable combatGate) {}
 
+  /**
+   * What the hook's states do beyond the setter's own fields: the unit's component switches, the
+   * reference check, the standing test with its relocation, and the combat gate every change into
+   * or out of one of them ends with.
+   */
+  public interface Following {
+
+    /**
+     * Switches both components, the targeting and the movement one, on or off.
+     *
+     * @param on true to switch them on
+     */
+    void components(boolean on);
+
+    /** Switches the movement component back on, as leaving the held state to attack does. */
+    void movementOn();
+
+    /** Drops the targeting reference when it no longer passes the attack range test. */
+    void dropReferenceOutOfRange();
+
+    /** Moves the unit off a cell the standing test refuses, as leaving a pulled state does. */
+    void standOrRelocate();
+
+    /** The combat gate a change into or out of the hook's states ends with. */
+    void tailGate();
+  }
+
+  /** The unit's hook states, or null for a unit the setter refuses to move into them. */
+  @Setter private Following following;
+
   /** The unit's casting, or null for a unit without an ability, which never casts. */
   @Setter private Casting casting;
 
@@ -204,15 +234,30 @@ public final class GridStateSetter implements StateSetter {
     if (owner.getDeployCountdown() >= 1 && !interruptsDeployment(newState)) {
       return;
     }
+    boolean hook = hookState(oldState) || hookState(newState);
+    if (hook && following == null) {
+      throw new UnsupportedOperationException(
+          owner.getName() + " is asked into or out of a hook's state, not modelled for it");
+    }
     exit(oldState, newState);
     owner.setState(newState);
-    enter(newState);
-    // A change into or out of the casting state ends with the combat gate; every other change
-    // leaves the gate to the state visit's tail.
+    enter(oldState, newState);
+    // A change into or out of the casting state, or the hook's states, ends with the combat gate;
+    // every other change leaves the gate to the state visit's tail.
     if ((oldState == GridEntityState.CASTING || newState == GridEntityState.CASTING)
         && casting != null) {
       casting.combatGate().run();
     }
+    if (hook) {
+      following.tailGate();
+    }
+  }
+
+  /** The two pulled states and the held state a hook sets. */
+  private static boolean hookState(int state) {
+    return state == GridEntityState.FOLLOWING_REMOVED
+        || state == GridEntityState.FOLLOWING_REMOVED_BUILDING
+        || state == GridEntityState.COMPONENTS_DISABLED;
   }
 
   /** The three states that may be set while the deploy countdown is still running. */
@@ -241,6 +286,8 @@ public final class GridStateSetter implements StateSetter {
         }
       }
       case GridEntityState.CASTING -> exitCasting();
+      case GridEntityState.FOLLOWING_REMOVED, GridEntityState.FOLLOWING_REMOVED_BUILDING ->
+          exitPulled(newState);
       // Leaving a clone's setup empties the route and forgets the point the move aimed at.
       case GridEntityState.CLONE_SETUP -> {
         if (movement != null) {
@@ -253,6 +300,31 @@ public final class GridStateSetter implements StateSetter {
         // No ported action.
       }
     }
+  }
+
+  /**
+   * Leaving a pulled state: both components switched on and, with a movement component, the point
+   * the unit aimed at, the charge and the pushback's bytes reset and a reference out of range
+   * dropped; then the standing test on the unit's cell, which moves it off a cell it may not stand
+   * on. The route the standard game empties here too is emptied, or prepared afresh, by the entry
+   * of the standing or the moving state, the only two a pulled unit is asked into.
+   */
+  private void exitPulled(int newState) {
+    following.components(true);
+    if (movement != null) {
+      movement.setExplicitX(-1);
+      movement.setExplicitY(-1);
+      resetCharge();
+      movement.setPushbackInFlight(0);
+      movement.setAttackPushback(0);
+      following.dropReferenceOutOfRange();
+    }
+    if (newState == GridEntityState.CLONE_SETUP) {
+      // Cloned while pulled, the unit would go straight into the clone's setup.
+      throw new UnsupportedOperationException(
+          owner.getName() + " leaves a pulled state for a clone's setup, not modelled");
+    }
+    following.standOrRelocate();
   }
 
   /**
@@ -308,9 +380,25 @@ public final class GridStateSetter implements StateSetter {
   }
 
   /** The actions keyed by the state being entered, run after it is stored. */
-  private void enter(int newState) {
+  private void enter(int oldState, int newState) {
     switch (newState) {
-      case GridEntityState.STANDING, GridEntityState.ATTACKING -> resetRoute();
+      case GridEntityState.STANDING -> resetRoute();
+      case GridEntityState.ATTACKING -> {
+        if (oldState == GridEntityState.COMPONENTS_DISABLED) {
+          following.movementOn();
+        }
+        resetRoute();
+      }
+      // Pulled: a reference out of range is dropped, and both components are switched off; held:
+      // both are switched off. The combat gate after it switches the targeting one back on in all
+      // but the troop's pulled state.
+      // A building, which the standard game makes stand instead, is never asked: a hook on one
+      // drags its owner.
+      case GridEntityState.FOLLOWING_REMOVED, GridEntityState.FOLLOWING_REMOVED_BUILDING -> {
+        following.dropReferenceOutOfRange();
+        following.components(false);
+      }
+      case GridEntityState.COMPONENTS_DISABLED -> following.components(false);
       // A clone's setup switches the movement component on and empties the route; the charge is
       // kept, the standard game not resetting it there.
       case GridEntityState.CLONE_SETUP -> {

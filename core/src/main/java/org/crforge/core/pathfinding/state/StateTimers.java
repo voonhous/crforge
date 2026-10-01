@@ -60,7 +60,7 @@ public final class StateTimers {
   private boolean attached;
 
   /** The entity this one follows while it is removed from play, or null. */
-  private GridEntity followTarget;
+  private FollowedObject followTarget;
 
   /**
    * The hide counter of an entity that hides while it does not attack, stepped by {@link

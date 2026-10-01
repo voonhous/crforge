@@ -23,10 +23,11 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>the damage of one hit at the owner's level, the special one for a special hit;
  *   <li>a unit with a stop time after its attack has its attack block timer set to it;
  *   <li>the hit itself: the direct hit for a unit without a projectile, and for a unit with one the
- *       launch of its projectiles, which a cancelled hit skips. Before a direct hit, a unit that
- *       tracks a charge deals its charged damage when the charge is complete, and has the charge
- *       reset, complete or not, unless its row keeps charging after an attack. After a direct hit
- *       that was not cancelled, the buff the row applies on damage goes onto the target;
+ *       launch of its projectiles, which a cancelled hit skips; a special hit fires the special
+ *       projectile when the row has one. Before a direct hit, a unit that tracks a charge deals its
+ *       charged damage when the charge is complete, and has the charge reset, complete or not,
+ *       unless its row keeps charging after an attack. After a direct hit that was not cancelled,
+ *       the buff the row applies on damage goes onto the target;
  *   <li>a pending special load is cleared.
  * </ul>
  *
@@ -127,7 +128,9 @@ public final class HitApplication {
     if (cfg.stopTimeAfterAttack() >= 1) {
       t.setAttackBlockTimerMs(cfg.stopTimeAfterAttack());
     }
-    if (!cfg.hasProjectile()) {
+    // A special hit fires the special projectile when there is one, any other hit the row's own.
+    boolean fires = cfg.hasProjectile() || (special && cfg.hasSpecialProjectile());
+    if (!fires) {
       damage = charged(cfg, damage, queries);
       DirectHit.resolve(t, target, damage, missed, queries);
       // The buff on damage follows its own direct hit; a unit that fires never reaches it.
@@ -135,7 +138,7 @@ public final class HitApplication {
         queries.buffOnDamage(target);
       }
     } else if (!missed) {
-      queries.launchProjectiles(t, target, sequenceIndex);
+      queries.launchProjectiles(t, target, sequenceIndex, special);
     }
     boolean specialLoad = t.isSpecialLoadPending();
     t.setSpecialLoadPending(false);

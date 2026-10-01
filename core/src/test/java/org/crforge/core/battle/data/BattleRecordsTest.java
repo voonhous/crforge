@@ -644,11 +644,13 @@ class BattleRecordsTest {
           + " columns are carried")
   void everyUnreadColumnIsListed() {
     BattleRecords records = GameData.records();
-    // Read by nothing: the Fisherman's special and the Fisherman's hook's drag.
-    assertThat(records.unit("Fisherman").unmodelledColumns())
-        .containsExactly("ProjectileSpecial", "SpecialLoadTime", "SpecialMinRange", "SpecialRange");
-    assertThat(records.projectile("FishermanProjectile").unmodelledColumns())
-        .containsExactly("DragBackAsAttractor", "DragBackSpeed", "DragMargin", "DragSelfSpeed");
+    // Read, and modelled in one shape only: a troop's special in its ring firing its special
+    // projectile. A special projectile without a ring, and a building's special, are refused.
+    assertThat(records.unit("Fisherman").unmodelledColumns()).isEmpty();
+    assertThat(records.projectile("FishermanProjectile").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("Firecracker_EV1").unmodelledColumns())
+        .containsExactly("ProjectileSpecial");
+    assertThat(records.unit("Fisherbarrel").unmodelledColumns()).contains("SpecialRange");
     assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns())
         .containsExactly("OnHitAction");
     // Carried: art and effects, and inert columns (a Monk's later entries, a collector's

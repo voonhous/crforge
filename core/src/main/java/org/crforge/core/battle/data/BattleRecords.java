@@ -674,6 +674,12 @@ public final class BattleRecords {
             .reflectedAttackDamage(row.intValue("ReflectedAttackDamage"))
             .reflectAttackCrownTowerDamage(row.intValue("ReflectAttackCrownTowerDamage"))
             .clonedVersion(set(row, "ClonedVersion") ? row.string("ClonedVersion") : null)
+            .specialRange(row.intValue("SpecialRange"))
+            .specialMinRange(row.intValue("SpecialMinRange"))
+            .specialLoadTimeMs(row.intValue("SpecialLoadTime"))
+            .projectileSpecial(
+                set(row, "ProjectileSpecial") ? projectile(row.string("ProjectileSpecial")) : null)
+            .specialIgnoreBuildings(row.bool("SpecialIgnoreBuildings"))
             .unmodelledColumns(unmodelledColumns(row))
             .build();
     return data.toBuilder()
@@ -759,6 +765,19 @@ public final class BattleRecords {
       if (sets(row, column)) {
         columns.add(column);
       }
+    }
+    // The special attack is modelled in one shape: a troop that loads it in its ring and fires its
+    // special projectile. A special projectile without a ring is another kind of special, a ring
+    // without a projectile a special direct hit, and a building's special one whose owner has no
+    // movement component. A special that lists its targets, which the ring would not re-arm on, is
+    // refused as a column nothing reads.
+    boolean ring = sets(row, "SpecialRange");
+    boolean special = sets(row, "ProjectileSpecial");
+    if (special && !ring) {
+      columns.add("ProjectileSpecial");
+    }
+    if (ring && (!special || row.bool("IsBuilding"))) {
+      columns.add("SpecialRange");
     }
     if (!row.string("SpawnCharacter").isEmpty()) {
       for (String column : UNMODELLED_SPAWNER_COLUMNS) {
@@ -1282,6 +1301,10 @@ public final class BattleRecords {
             .spawnAreaEffectObject(
                 set(row, "SpawnAreaEffectObject") ? row.string("SpawnAreaEffectObject") : null)
             .ignoreReflectedAttack(row.bool("IgnoreReflectedAttack"))
+            .dragBackSpeed(row.intValue("DragBackSpeed"))
+            .dragSelfSpeed(row.intValue("DragSelfSpeed"))
+            .dragMargin(row.intValue("DragMargin"))
+            .dragBackAsAttractor(row.bool("DragBackAsAttractor"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(
@@ -1291,6 +1314,11 @@ public final class BattleRecords {
     if (data.spawnAreaEffectObject() != null
         && !areaEffect(data.spawnAreaEffectObject()).unmodelledColumns().isEmpty()) {
       unmodelled.add("SpawnAreaEffectObject");
+    }
+    // A hook's impacts carry its hooked flag, whose effect on a damage is not established: no
+    // hooking row deals any.
+    if (data.dragBackSpeed() >= 1 && data.damage() != 0) {
+      unmodelled.add("Damage");
     }
     // The target buff is modelled on the circle or the one target of the impact; a projectile that
     // flies to a point buffs through its hits on the way instead, which is not.

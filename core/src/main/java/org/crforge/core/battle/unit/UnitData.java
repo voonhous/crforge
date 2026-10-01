@@ -193,6 +193,12 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param reflectedAttackDamage the damage a reflected attack deals, at the first level
  * @param reflectAttackCrownTowerDamage the damage it deals a crown tower instead, at the first
  *     level
+ * @param specialRange how far beyond its reference's radius the reference may stand for the unit to
+ *     load its special attack at it; 0 for a unit without one
+ * @param specialMinRange how far beyond its reference's radius the reference must stand at least
+ * @param specialLoadTimeMs how long the special attack loads, the unit standing still
+ * @param projectileSpecial the projectile its special attack fires, or null for none
+ * @param specialIgnoreBuildings true for a unit that loads no special attack at a building
  * @param unmodelledColumns the columns its row sets that the battle does not model, which refuse it
  *     as it is created: a shield, hiding before its first hit, a buff at a share of its hit points,
  *     elixir, and the parts of a spawner that are not established
@@ -331,6 +337,11 @@ public record UnitData(
     int reflectedAttackRadius,
     int reflectedAttackDamage,
     int reflectAttackCrownTowerDamage,
+    int specialRange,
+    int specialMinRange,
+    int specialLoadTimeMs,
+    ProjectileData projectileSpecial,
+    boolean specialIgnoreBuildings,
     List<String> unmodelledColumns) {
 
   public UnitData {

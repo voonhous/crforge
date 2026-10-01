@@ -53,6 +53,7 @@ public final class ProjectileLauncher {
    * @param t the launcher's targeting component
    * @param target what the hit is aimed at, or null when the launcher has given it up
    * @param sequenceIndex which hit of the attack this is, -1 for a single-target attack
+   * @param special true for a special hit, which fires the special projectile when there is one
    * @param world the battle, whose holder the projectiles are handed to
    */
   public static void launch(
@@ -60,11 +61,15 @@ public final class ProjectileLauncher {
       TargetingState t,
       TargetView target,
       int sequenceIndex,
+      boolean special,
       BattleWorld world) {
     UnitData unit = launcher.getData();
-    // The attack sequence's entry at the index in place of the row's, for a sequence of two or
-    // more.
-    ProjectileData regular = launcher.attackProjectile();
+    // The special projectile for a special hit; otherwise the attack sequence's entry at the index
+    // in place of the row's, for a sequence of two or more.
+    ProjectileData regular =
+        special && unit.projectileSpecial() != null
+            ? unit.projectileSpecial()
+            : launcher.attackProjectile();
     if (regular == null) {
       return;
     }
