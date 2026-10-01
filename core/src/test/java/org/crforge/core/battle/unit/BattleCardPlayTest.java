@@ -93,7 +93,8 @@ class BattleCardPlayTest {
       "a played unit is started, and a starting action the battle does not have is refused")
   void aUnitWithAnUnknownStartingActionIsRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    match.play(0, GameData.card("GoblinHut"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
+    match.play(
+        0, GameData.card("GoblinCage"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
     assertThatThrownBy(
             () -> {
               // The play runs twenty ticks after its stamp.
@@ -102,7 +103,7 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        // The Goblin Hut's life-state controller is not composed.
-        .hasMessageContaining("ActionGoblinHutLifeState");
+        // The Goblin Cage's shake while it has a target is not composed.
+        .hasMessageContaining("ActionPlayAnimationIfHasTarget");
   }
 }

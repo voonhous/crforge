@@ -18,6 +18,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
@@ -399,7 +400,9 @@ class BattleActionSpawnRunTest {
         "phoenix_egg_hatch",
         "phoenix_egg_killed",
         "skeleton_barrel_tower",
-        "skeleton_barrel_shot_down"
+        "skeleton_barrel_shot_down",
+        "goblin_hut_passing",
+        "goblin_hut_lifetime"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -645,6 +648,10 @@ class BattleActionSpawnRunTest {
     List<String> kamikazeLog = new ArrayList<>();
     List<String> laneLog = new ArrayList<>();
     match.getWorld().addObserver(kamikazeLog(currentTick, kamikazeLog, laneLog));
+    // What every Goblin Hut's life state did, and the children it made, which its log holds.
+    List<String> hutLog = new ArrayList<>();
+    Set<String> hutChildren = new HashSet<>();
+    match.getWorld().addObserver(goblinHutLog(match, currentTick, hutLog, hutChildren));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1024,7 +1031,10 @@ class BattleActionSpawnRunTest {
         .as("every pending action dropped as its instigator left")
         .containsExactlyElementsOf(expectedDrops);
     if (reference.has("actions")) {
-      assertThat(spawns).as("every spawn").containsExactlyElementsOf(expectedSpawns);
+      // A Goblin Hut's children are held by its own log.
+      assertThat(spawns.stream().filter(line -> !hutChildren.contains(line.split(" ")[3])))
+          .as("every spawn")
+          .containsExactlyElementsOf(expectedSpawns);
     } else {
       // A run that lists no actions lists its riders under unit_spawner, the children of a
       // buff's death spawn in its buff log and a Phoenix's egg, made by its death projectile's
@@ -1260,6 +1270,9 @@ class BattleActionSpawnRunTest {
     assertThat(laneLog)
         .as("every lane a const-priority ring asked for")
         .containsExactlyElementsOf(expectedLaneLog(reference));
+    assertThat(hutLog)
+        .as("every start and step of a Goblin Hut's life state, its finds, points and children")
+        .containsExactlyElementsOf(expectedGoblinHutLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -2233,6 +2246,185 @@ class BattleActionSpawnRunTest {
       }
     }
     return expected;
+  }
+
+  /**
+   * Logs what every Goblin Hut's life state does: its start and each step with its four words
+   * before and after and what it called, each find the query answered, each child's point, each
+   * child as it is made, and the notice that its target left. Objects are named as they were when
+   * the run met them.
+   */
+  private static WorldObserver goblinHutLog(
+      Standard1v1Battle match, int[] currentTick, List<String> log, Set<String> children) {
+    Map<Integer, String> names = new HashMap<>();
+    boolean[] childDue = {false};
+    return new WorldObserver() {
+      private String name(int id) {
+        if (id == GoblinHutLifeState.NO_TARGET) {
+          return null;
+        }
+        if (match.getWorld().liveObject(id) instanceof WorldEntity entity) {
+          names.put(id, entity.name());
+        }
+        return names.get(id);
+      }
+
+      @Override
+      public void goblinHutLogged(int tick, CharacterEntity hut, GoblinHutLifeState.Event event) {
+        int t = currentTick[0];
+        if (event instanceof GoblinHutLifeState.Stepped s) {
+          log.add(
+              s.start()
+                  ? "%d start %s calls %s after %s"
+                      .formatted(t, hut.name(), s.calls(), words(s.after()))
+                  : "%d step %s before %s calls %s after %s"
+                      .formatted(t, hut.name(), words(s.before()), s.calls(), words(s.after())));
+        } else if (event instanceof GoblinHutLifeState.Found f) {
+          log.add(
+              "%d find %s listed %s found %s"
+                  .formatted(
+                      t,
+                      hut.name(),
+                      f.listed().stream().map(this::name).toList(),
+                      name(f.found())));
+        } else if (event instanceof GoblinHutLifeState.SpawnPoint p) {
+          log.add(
+              "%d spawn_point %s count %d i %d target %s point %d %d at %d %d"
+                  .formatted(
+                      t,
+                      hut.name(),
+                      p.count(),
+                      p.index(),
+                      name(p.target()),
+                      p.x(),
+                      p.y(),
+                      p.atX(),
+                      p.atY()));
+          childDue[0] = true;
+        } else if (event instanceof GoblinHutLifeState.TargetLeft l) {
+          log.add("%d target_left %s %s".formatted(t, hut.name(), name(l.target())));
+        }
+      }
+
+      @Override
+      public void characterSpawned(
+          int tick, SpawnHost source, CharacterEntity child, int x, int y) {
+        if (!childDue[0]) {
+          return;
+        }
+        childDue[0] = false;
+        children.add(child.name());
+        log.add(
+            "%d spawn %s %s %d %s at %d %d state %d deploy %d hp %d level %d immune %d"
+                .formatted(
+                    currentTick[0],
+                    source.name(),
+                    child.name(),
+                    child.getId(),
+                    child.getData().name(),
+                    x,
+                    y,
+                    child.getView().getState(),
+                    child.getView().getDeployCountdown(),
+                    child.getHitPoints().getHitPoints(),
+                    child.getPackedLevel(),
+                    child.isSpawnImmune() ? 1 : 0));
+      }
+    };
+  }
+
+  /** A life state's four words as the hut log lists them. */
+  private static String words(GoblinHutLifeState.Memory m) {
+    return "%d %d %d %d".formatted(m.timerMs(), m.target(), m.lost() ? 1 : 0, m.count());
+  }
+
+  /** The reference's Goblin Hut log, in the hut log's layout. */
+  private static List<String> expectedGoblinHutLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode h : reference.path("goblin_hut")) {
+      int tick = h.get("tick").asInt();
+      String owner = h.get("owner").asText();
+      switch (h.get("event").asText()) {
+        case "start" ->
+            expected.add(
+                "%d start %s calls %s after %s"
+                    .formatted(tick, owner, calls(h.get("calls")), jsonWords(h.get("after"))));
+        case "step" ->
+            expected.add(
+                "%d step %s before %s calls %s after %s"
+                    .formatted(
+                        tick,
+                        owner,
+                        jsonWords(h.get("before")),
+                        calls(h.get("calls")),
+                        jsonWords(h.get("after"))));
+        case "find" -> {
+          List<String> listed = new ArrayList<>();
+          h.get("listed").forEach(n -> listed.add(n.asText()));
+          expected.add(
+              "%d find %s listed %s found %s"
+                  .formatted(
+                      tick,
+                      owner,
+                      listed,
+                      h.get("found").isNull() ? null : h.get("found").asText()));
+        }
+        case "spawn_point" ->
+            expected.add(
+                "%d spawn_point %s count %d i %d target %s point %d %d at %d %d"
+                    .formatted(
+                        tick,
+                        owner,
+                        h.get("count").asInt(),
+                        h.get("i").asInt(),
+                        h.get("target").asText(),
+                        h.get("point").get(0).asInt(),
+                        h.get("point").get(1).asInt(),
+                        h.get("relocated").get(0).asInt(),
+                        h.get("relocated").get(1).asInt()));
+        case "spawn" ->
+            expected.add(
+                "%d spawn %s %s %d %s at %d %d state %d deploy %d hp %d level %d immune %d"
+                    .formatted(
+                        tick,
+                        owner,
+                        h.get("unit").asText(),
+                        h.get("id").asInt(),
+                        h.get("row").asText(),
+                        h.get("created").get(0).asInt(),
+                        h.get("created").get(1).asInt(),
+                        h.get("state").asInt(),
+                        h.get("deploy").asInt(),
+                        h.get("hp").asInt(),
+                        h.get("level").asInt(),
+                        h.get("immune").asInt()));
+        case "target_left" ->
+            expected.add("%d target_left %s %s".formatted(tick, owner, h.get("target").asText()));
+        default -> throw new IllegalStateException("unknown Goblin Hut event " + h);
+      }
+    }
+    return expected;
+  }
+
+  /** A logged call list as the hut log lists it: each call's words joined by spaces. */
+  private static List<String> calls(JsonNode calls) {
+    List<String> out = new ArrayList<>();
+    for (JsonNode call : calls) {
+      List<String> parts = new ArrayList<>();
+      call.forEach(part -> parts.add(part.isNull() ? "null" : part.asText()));
+      out.add(String.join(" ", parts));
+    }
+    return out;
+  }
+
+  /** The reference's four words as the hut log lists them. */
+  private static String jsonWords(JsonNode m) {
+    return "%d %d %d %d"
+        .formatted(
+            m.get("timer").asInt(),
+            m.get("target").asInt(),
+            m.get("lost").asInt(),
+            m.get("count").asInt());
   }
 
   /** The lanes the reference's const-priority rings asked for, in the lane log's layout. */

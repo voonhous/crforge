@@ -42,6 +42,14 @@ public interface EntityActions {
   void endOfTick();
 
   /**
+   * An entity has left the battle: each running action hears of it first, by its id, and does what
+   * its class does with the notice, most of them nothing.
+   *
+   * @param leftId the id of the entity that left
+   */
+  default void objectLeft(int leftId) {}
+
+  /**
    * An entity has left the battle: the queued actions it caused, and whose rows abort when their
    * cause does, are dropped. Running actions are left as they are.
    *

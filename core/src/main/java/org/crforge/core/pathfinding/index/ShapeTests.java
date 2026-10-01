@@ -16,9 +16,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "All four shape tests agree with the reference line for line. Only the circle"
-            + " test is held by a fixture; the two box tests and the circle-against-shape test"
-            + " are reached by nothing yet.")
+        "All four shape tests agree with the reference line for line. The circle test is held"
+            + " by a fixture, and the circle-against-shape test is reached by the Goblin Hut's"
+            + " finder, though no run finds a building by its square that its circle would miss;"
+            + " the two box tests are reached by nothing yet.")
 public final class ShapeTests {
 
   private ShapeTests() {

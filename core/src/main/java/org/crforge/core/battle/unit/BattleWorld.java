@@ -22,6 +22,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
@@ -836,9 +837,29 @@ public class BattleWorld implements HolderPasses {
    * @return the entities, in the query's order
    */
   public List<WorldEntity> objectQuery(WorldEntity asking, int radius, GameObjectFilter filter) {
+    return objectQuery(asking, radius, filter, false);
+  }
+
+  /**
+   * The object query around a point that tests a building by its square: as {@link
+   * #objectQuery(WorldEntity, int, GameObjectFilter)}, but a building is accepted when the point
+   * clamped into its square lies strictly within the radius, and anything else strictly within the
+   * radius plus its collision radius.
+   *
+   * @param asking the entity running the query
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> shapeQuery(WorldEntity asking, int radius, GameObjectFilter filter) {
+    return objectQuery(asking, radius, filter, true);
+  }
+
+  private List<WorldEntity> objectQuery(
+      WorldEntity asking, int radius, GameObjectFilter filter, boolean shapes) {
     GridEntity at = asking.getView();
     List<GridEntity> found =
-        index.query(new SpatialQuery(at.getX(), at.getY(), radius, 0, false, false, 0, -1));
+        index.query(new SpatialQuery(at.getX(), at.getY(), radius, 0, false, shapes, 0, -1));
     List<WorldEntity> out = new ArrayList<>();
     if (found == null) {
       return out;
@@ -2904,6 +2925,70 @@ public class BattleWorld implements HolderPasses {
       made.add(child);
     }
     return made;
+  }
+
+  /**
+   * The one-child positional spawner, as a Goblin Hut's life state calls it: one child of the row
+   * on the point, or one unit right of it where the in-front test refuses the point, kept 250
+   * inside the arena; created for the source's side at the source's level re-based on the child's
+   * rarity, deploying for its row's deploy time, untargetable at first, and queued with no
+   * registration visit, so it joins the live list at the tick's closing cleanup and is first
+   * visited on the next tick.
+   *
+   * <p>Refused rather than guessed: a building, a unit that paths to its spawn point or limits its
+   * group, and a unit with a starting action of its own.
+   *
+   * @param source what spawns
+   * @param row the child's row
+   * @param x the point along the width
+   * @param y the point along the length
+   */
+  void spawnOne(CharacterEntity source, String row, int x, int y) {
+    UnitData data = spawnedRow(row);
+    if (data.building() || data.spawnPathfindSpeed() != 0 || data.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          source.name()
+              + " spawns "
+              + row
+              + ", a building, a unit that paths to its point or one with a starting action,"
+              + " which is not modelled");
+    }
+    int[] at =
+        SpawnPlacement.position(
+            x,
+            y,
+            0,
+            1,
+            true,
+            0,
+            (px, py) -> SpawnPassable.passable(tileMap, px, py, data.collisionRadius()));
+    int cx = inset(at[0], tileMap.width());
+    int cy = inset(at[1], tileMap.height());
+    int count = spawnCounts.merge(source.name(), 1, Integer::sum) - 1;
+    CharacterEntity child =
+        CharacterEntity.spawned(
+            this,
+            data,
+            source.name() + "_" + count,
+            source.side(),
+            cx,
+            cy,
+            PackedLevel.level(PackedLevel.pack(source.getPackedLevel(), data.rarity())));
+    child.startDeploying();
+    holder.add(child);
+    if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
+      child.startSpawnImmunity();
+    }
+    for (WorldObserver observer : observers) {
+      observer.characterSpawned(tick, source, child, cx, cy);
+    }
+  }
+
+  /** Tells the observers what a Goblin Hut's life state did. */
+  void goblinHutLogged(CharacterEntity hut, GoblinHutLifeState.Event event) {
+    for (WorldObserver observer : observers) {
+      observer.goblinHutLogged(tick, hut, event);
+    }
   }
 
   /**

@@ -450,6 +450,11 @@ public final class BuffComponent implements BattleComponent {
     return scale(BuffData::hitSpeedMultiplier, base);
   }
 
+  /** A spawn time step a base step scales to, as a Goblin Hut's life state advances its timer. */
+  public int spawnSpeed(int base) {
+    return scale(BuffData::spawnSpeedMultiplier, base);
+  }
+
   /** The speed percents of the listed rows, which the speed budget scales by. */
   public int[] speedPercents() {
     return items.stream().mapToInt(i -> i.getBuff().speedMultiplier()).toArray();
