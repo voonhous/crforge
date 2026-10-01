@@ -2452,7 +2452,7 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** A buff's row, refused when it sets a column the battle does not model. */
-  private BuffData buffData(String name) {
+  BuffData buffData(String name) {
     BuffData buff = records.buff(name);
     if (!buff.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
@@ -2464,8 +2464,9 @@ public class BattleWorld implements HolderPasses {
   /**
    * An area effect's buff, applied with one of its hits: to each character of this tick, in the
    * order they joined, inside its circle and reached by it; of the king-class towers only the first
-   * takes a buff that deals damage. Each is applied with the area effect as the source, at its
-   * level and for its side, once every target has been found.
+   * takes a buff that deals damage. Each is applied with the area effect as the source, and as the
+   * parent of a buff its parent controls, at its level and for its side, once every target has been
+   * found.
    *
    * @param areaEffect the area effect
    * @param radius the radius of its hit
@@ -2484,10 +2485,12 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.areaBuff(tick, areaEffect, buff, time, targets);
     }
+    // A buff its parent controls has the area effect as its parent too.
+    AreaEffectEntity parent = buff.controlledByParent() ? areaEffect : null;
     for (WorldEntity target : targets) {
       target
           .getBuffs()
-          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side());
+          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side(), parent);
     }
   }
 
@@ -2729,6 +2732,13 @@ public class BattleWorld implements HolderPasses {
     target.takeHeal(heal, buff.getBuff().allowedOverHealPercent());
     for (WorldObserver observer : observers) {
       observer.buffHealed(tick, target, buff, heal, before);
+    }
+  }
+
+  /** Tells the observers which units an area effect's hit pulled. */
+  void areaPulled(AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulls) {
+    for (WorldObserver observer : observers) {
+      observer.areaPulled(tick, areaEffect, pulls);
     }
   }
 

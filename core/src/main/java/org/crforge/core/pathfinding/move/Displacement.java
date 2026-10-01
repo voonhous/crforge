@@ -45,9 +45,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " update, the blend rotation and a clamped push, by the 53 reference walks and"
             + " its own tests. Settled as off in the standard game's modes: the pushed-ground"
             + " branch, which only a mode with a capturable building on the arena opens. The"
-            + " stuck mark and the lifted push cap are written only by a tornado-type pull,"
-            + " not ported, so both stay clear; a unit pushed off a bridge walks on the water"
-            + " beside it, as the swarm runs record.")
+            + " stuck mark and the lifted push cap are written only by an attracting buff's"
+            + " pull (BuffPush), held by the Tornado runs; without one a unit pushed off a"
+            + " bridge walks on the water beside it, as the swarm runs record.")
 public final class Displacement {
 
   /** Largest distance one displacement may cover, in game units. */

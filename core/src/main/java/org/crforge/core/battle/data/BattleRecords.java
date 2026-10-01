@@ -107,6 +107,13 @@ public final class BattleRecords {
           "CrownTowerDamagePercent",
           "BuildingDamagePercent",
           "HitTickFromSource",
+          "AttractPercentage",
+          "LateralPushPercentage",
+          "PushMassFactor",
+          "PushSpeedFactor",
+          "AttractMinAngle",
+          "AttractMaxAngle",
+          "ControlledByParent",
           "EnableStacking",
           "PlayerSpecificBuff",
           "NoEffectToCrownTowers",
@@ -982,6 +989,7 @@ public final class BattleRecords {
             .onlyEnemies(row.bool("OnlyEnemies"))
             .ignoreBuildings(row.bool("IgnoreBuildings"))
             .affectsHidden(row.bool("AffectsHidden"))
+            .controlsBuff(row.bool("ControlsBuff"))
             .pushback(row.intValue("Pushback"))
             .maximumTargets(row.intValue("MaximumTargets"))
             .sharedDamage(row.bool("SharedDamage"))
@@ -1039,6 +1047,13 @@ public final class BattleRecords {
         .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
         .buildingDamagePercent(row.intValue("BuildingDamagePercent"))
         .hitTickFromSource(row.bool("HitTickFromSource"))
+        .attractPercentage(row.intValue("AttractPercentage"))
+        .lateralPushPercentage(row.intValue("LateralPushPercentage"))
+        .pushMassFactor(row.intValue("PushMassFactor"))
+        .pushSpeedFactor(row.intValue("PushSpeedFactor"))
+        .attractMinAngle(row.intValue("AttractMinAngle"))
+        .attractMaxAngle(row.intValue("AttractMaxAngle"))
+        .controlledByParent(row.bool("ControlledByParent"))
         .enableStacking(row.bool("EnableStacking"))
         .playerSpecificBuff(row.bool("PlayerSpecificBuff"))
         .noEffectToCrownTowers(row.bool("NoEffectToCrownTowers"))

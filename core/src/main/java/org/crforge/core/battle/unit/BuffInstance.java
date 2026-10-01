@@ -1,10 +1,12 @@
 package org.crforge.core.battle.unit;
 
 import lombok.Getter;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 
 /**
- * One buff listed on an entity: its row, what is left of its time, its level, and what applied it.
+ * One buff listed on an entity: its row, what is left of its time, its level, what applied it, and
+ * the parent whose removal removes it.
  */
 @Getter
 public final class BuffInstance {
@@ -35,7 +37,24 @@ public final class BuffInstance {
   /** The side it was applied for. */
   private final int side;
 
+  /**
+   * The entity whose removal, or whose being removable, removes it: the area effect that applied a
+   * buff its parent controls, kept only for a buff that stacks; null for none.
+   */
+  private BattleEntity parent;
+
   BuffInstance(String key, BuffData buff, int time, int packedLevel, SpawnHost source, int side) {
+    this(key, buff, time, packedLevel, source, side, null);
+  }
+
+  BuffInstance(
+      String key,
+      BuffData buff,
+      int time,
+      int packedLevel,
+      SpawnHost source,
+      int side,
+      BattleEntity parent) {
     this.key = key;
     this.buff = buff;
     this.remaining = time;
@@ -43,6 +62,25 @@ public final class BuffInstance {
     this.packedLevel = packedLevel;
     this.source = source;
     this.side = side;
+    // The instance keeps a parent only for a buff that stacks.
+    this.parent = buff.enableStacking() ? parent : null;
+  }
+
+  /**
+   * Whether the visit removes it: its parent is removable, or its time has run out.
+   *
+   * @return true when it is finished
+   */
+  boolean finished() {
+    if (parent != null && parent.isRemovable()) {
+      return true;
+    }
+    return remaining == 0;
+  }
+
+  /** The parent is let go as the instance is removed. */
+  void forgetParent() {
+    parent = null;
   }
 
   /**

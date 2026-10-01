@@ -25,6 +25,9 @@ import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
+import org.crforge.core.pathfinding.index.ShapeTests;
+import org.crforge.core.pathfinding.move.BuffPush;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingState;
@@ -52,8 +55,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * damage deals nothing. A row with a buff applies it with each hit, after the damage, to every
  * character in the circle it reaches, for the row's buff time - no longer than the life it has left
  * and one hit speed more when the row caps it. A row that chains another area effect creates it at
- * its own point and level on its first update. When the countdown reaches 0 its life-end action is
- * scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
+ * its own point and level on its first update. A row whose buff attracts, the Tornado's, pulls
+ * every enemy unit in its circle toward its centre with each hit, before the buff, and is the
+ * parent of the buff it applies when the buff says so. When the countdown reaches 0 its life-end
+ * action is scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -71,7 +76,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the filter, the spawns, the launches, the life condition, following, tags,"
             + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
             + " hit per target. An area that reaches hidden units takes, damages and buffs a hidden"
-            + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. Not"
+            + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. The"
+            + " pull of an attracting buff before the buff, and the area effect as the parent of"
+            + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
+            + " the slot ControlsBuff gates is reached by no path the battle models. Not"
             + " created yet by a spell, a projectile"
             + " or an action.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
@@ -239,6 +247,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         if (data.capBuffTimeToAreaEffectTime()) {
           time = Math.min(time, countdown + speed);
         }
+        BuffData buff = world.buffData(data.buff());
+        // An attracting buff pulls before it is applied, whatever its time.
+        if (buff.attracts()) {
+          pull(radius, buff);
+        }
         if (time >= 1) {
           world.areaBuff(this, radius, time);
         }
@@ -248,6 +261,84 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
     }
+  }
+
+  /**
+   * One unit an area effect's hit pulled: the vector from it to the centre, and its push
+   * accumulators before and after - the push along each axis, the count, the water clamp asked of
+   * the grid move and the lifted cap.
+   *
+   * @param target the unit pulled
+   * @param dx the centre less its position, along the width
+   * @param dy the centre less its position, along the length
+   * @param before its accumulators before the pull
+   * @param after its accumulators after it
+   */
+  public record Pull(WorldEntity target, int dx, int dy, int[] before, int[] after) {}
+
+  /**
+   * The pull of an attracting buff, once per hit and before the buff is applied: every entity of
+   * the battle's live list, in order, inside the circle, not a building, that the shared validator
+   * accepts as an enemy of the area effect in an area's query, and whose movement is on, is pulled
+   * toward the centre. Nothing moves now: the pull waits in the unit's push accumulators for its
+   * next movement visit. The area effect never moves, so the angle window of a moving one is not
+   * asked.
+   */
+  private void pull(int radius, BuffData buff) {
+    List<Pull> pulls = new ArrayList<>();
+    // The live list as it stands, its length read once.
+    for (BattleEntity live : new ArrayList<>(world.getHolder().entities())) {
+      if (!(live instanceof WorldEntity entity)) {
+        continue;
+      }
+      if (!ShapeTests.withinCircleShape(entity.getView(), x, y, radius)) {
+        continue;
+      }
+      if (entity.getTargetView().building()) {
+        continue;
+      }
+      if (!ReferenceValidator.sharedValidate(
+          owner, entity.getTargetView(), false, false, true, false, validatorQueries)) {
+        continue;
+      }
+      if (!(entity instanceof CharacterEntity unit)
+          || !unit.isActive(CharacterEntity.MOVEMENT_SLOT)) {
+        continue;
+      }
+      MovementState movement = unit.getUnit().movement();
+      int dx = x - unit.getView().getX();
+      int dy = y - unit.getView().getY();
+      int[] before = accumulators(movement);
+      UnitData row = unit.getData();
+      BuffPush.push(
+          movement,
+          dx,
+          dy,
+          buff.attractPercentage(),
+          buff.lateralPushPercentage(),
+          buff.pushMassFactor(),
+          buff.pushSpeedFactor(),
+          unit.getView().getState(),
+          row.speed(),
+          row.jumpHeight(),
+          unit.side(),
+          row.mass(),
+          row.air(),
+          row.hovering());
+      pulls.add(new Pull(unit, dx, dy, before, accumulators(movement)));
+    }
+    world.areaPulled(this, pulls);
+  }
+
+  /** A unit's push accumulators: x, y, the count, the water clamp and the lifted cap. */
+  private static int[] accumulators(MovementState movement) {
+    return new int[] {
+      movement.getPushX(),
+      movement.getPushY(),
+      movement.getPushCount(),
+      movement.getPushStuck(),
+      movement.getPushUnclamped()
+    };
   }
 
   /**

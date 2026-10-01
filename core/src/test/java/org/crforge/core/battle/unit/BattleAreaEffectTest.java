@@ -68,8 +68,22 @@ class BattleAreaEffectTest {
     assertThat(earthquake.buildingDamagePercent()).isEqualTo(350);
     assertThat(earthquake.unmodelledColumns()).isEmpty();
     assertThat(poison.hitTickFromSource()).isFalse();
-    assertThat(GameData.records().buff("Tornado").unmodelledColumns())
-        .containsExactly("AttractPercentage", "ControlledByParent", "PushSpeedFactor");
+    BuffData tornado = GameData.records().buff("Tornado");
+    assertThat(tornado.attractPercentage()).isEqualTo(360);
+    assertThat(tornado.pushSpeedFactor()).isEqualTo(100);
+    assertThat(tornado.pushMassFactor()).isZero();
+    assertThat(tornado.lateralPushPercentage()).isZero();
+    assertThat(tornado.controlledByParent()).isTrue();
+    assertThat(tornado.enableStacking()).isTrue();
+    assertThat(tornado.unmodelledColumns()).isEmpty();
+    assertThat(GameData.records().buff("SuperArcherTornado").attractMaxAngle()).isEqualTo(90);
+    assertThat(GameData.records().areaEffect("Tornado").controlsBuff()).isTrue();
+    assertThat(GameData.records().areaEffect("Tornado").unmodelledColumns()).isEmpty();
+    assertThat(tornado.attracts()).isTrue();
+    assertThat(poison.attracts()).isFalse();
+    assertThat(BuffData.builder().name("Sideways").lateralPushPercentage(200).build().attracts())
+        .as("a lateral share alone pulls")
+        .isTrue();
   }
 
   @Test
