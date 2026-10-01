@@ -47,7 +47,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  *
  * <p>A row with a target buff buffs the same circle, or the one target of a projectile without a
  * radius, after the damage, or before it when the row says so. A row that spawns characters then
- * makes them in formation around the aim.
+ * makes them in formation around the aim, and a row that spawns an area effect then makes it at the
+ * aim, before the projectiles it spawns fly on.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -75,10 +76,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " arrow's kill. Supplied, not"
             + " settled:"
             + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
-            + " row's target limit, which is not carried, is none. Not modelled: the area impact"
+            + " row's target limit, which is not carried, is none. The on-impact area effect at"
+            + " the impact point, after the spawned characters and before the spawned projectiles,"
+            + " by heal_spirit_group. Not modelled: the area impact"
             + " of one that only heals, the height toward a moving target under the"
-            + " z-distance column, the drag-back hook, the"
-            + " hit effects, and the on-impact area effect.")
+            + " z-distance column, the drag-back hook, and the"
+            + " hit effects.")
 final class ProjectileFlight {
 
   private ProjectileFlight() {
@@ -303,6 +306,10 @@ final class ProjectileFlight {
     // The impact's character spawn: its children in formation around the impact point.
     if (data.spawnCharacterCount() >= 1) {
       world.impactSpawn(p, px, py);
+    }
+    // The area effect it spawns, made at the impact point once the hit is over.
+    if (data.spawnAreaEffectObject() != null) {
+      world.impactAreaEffect(p, px, py);
     }
     // The projectiles it spawns fly on beyond the aim, fanned about the line it came.
     if (data.spawnProjectile() != null && p.getSpawnChain() >= 1) {

@@ -396,6 +396,23 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a projectile carries the area effect its impact makes, refused when that row follows the"
+          + " projectile or its target")
+  void aProjectileThatSpawnsAnAreaEffect() {
+    ProjectileData spirit = records.projectile("HealSpiritProjectile");
+    assertThat(spirit.spawnAreaEffectObject()).isEqualTo("HealSpirit");
+    assertThat(spirit.unmodelledColumns()).isEmpty();
+    assertThat(records.projectile("FireballSpell").spawnAreaEffectObject()).isNull();
+    // A row that follows the projectile is made on its first flight visit, not at its impact.
+    ProjectileData parent = records.projectile("SuperArcherChargeArrow");
+    assertThat(parent.spawnAreaEffectObject()).isEqualTo("SuperArcherChargePull");
+    assertThat(parent.unmodelledColumns()).contains("SpawnAreaEffectObject");
+    assertThat(records.projectile("IceSpiritsProjectile_EV1").unmodelledColumns())
+        .contains("SpawnAreaEffectObject");
+  }
+
+  @Test
+  @DisplayName(
       "a rider carries what it may target, and its bola's flight back to a moving shooter is"
           + " presentation")
   void riderTargetingColumns() {
