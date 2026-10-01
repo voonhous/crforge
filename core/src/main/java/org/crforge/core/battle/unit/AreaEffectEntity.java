@@ -12,6 +12,8 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.ActionBinding;
+import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
@@ -57,8 +59,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * and one hit speed more when the row caps it. A row that chains another area effect creates it at
  * its own point and level on its first update. A row whose buff attracts, the Tornado's, pulls
  * every enemy unit in its circle toward its centre with each hit, before the buff, and is the
- * parent of the buff it applies when the buff says so. When the countdown reaches 0 its life-end
- * action is scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
+ * parent of the buff it applies when the buff says so. A row with a projectile launches one after
+ * the hits of a step whose hit count rose, onto the enemy with the most hit points and shield in
+ * its circle that it has not struck before, or onto its own point; with nobody to strike, the
+ * update ends there. When the countdown reaches 0 its life-end action is scheduled on itself; it
+ * leaves at the cleanup that finds the countdown below 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -73,13 +78,19 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
             + " boosting one target or lasting longer by level, clones, the hit action, the shape,"
-            + " the filter, the spawns, the launches, the life condition, following, tags,"
+            + " the filter, the spawns, a launch from its source or spread about its point, the"
+            + " life condition, following, tags,"
             + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
             + " hit per target. An area that reaches hidden units takes, damages and buffs a hidden"
             + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. The"
             + " pull of an attracting buff before the buff, and the area effect as the parent of"
             + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
-            + " the slot ControlsBuff gates is reached by no path the battle models. Not"
+            + " the slot ControlsBuff gates is reached by no path the battle models. The launch of"
+            + " its projectile after its hits, one on an update whose hit count rose, the chooser"
+            + " of a row with HitBiggestTargets, the start on the target or on its own point, and"
+            + " the area effect as the projectile's launcher, held by lightning_defenders_tower and"
+            + " royal_delivery_group; the update ending without its life-end action when the"
+            + " chooser finds nobody, which no run meets. Not"
             + " created yet by a spell, a projectile"
             + " or an action.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
@@ -107,6 +118,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /** True once the area effect its row chains has been created, on its first update. */
   private boolean chained;
+
+  /**
+   * The ids of the objects its projectiles were dropped onto, listed as each is chosen, which its
+   * chooser passes by.
+   */
+  private final List<Integer> struck = new ArrayList<>();
 
   private final ActionHolder actionHolder;
 
@@ -212,14 +229,20 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     countdown -= STEP_MS;
     int end = life - countdown;
     int speed = data.hitSpeedMs();
-    int hits;
+    // The hits due by the end of the step, and by its start.
+    int hit;
+    int bound;
     if (speed >= 1) {
-      hits = (data.hitSpeedOffsetMs() + end) / speed - (data.hitSpeedOffsetMs() + start) / speed;
+      hit = (data.hitSpeedOffsetMs() + end) / speed;
+      bound = (data.hitSpeedOffsetMs() + start) / speed;
     } else if (speed == 0) {
-      hits = start > 0 ? 0 : 1;
+      hit = 1;
+      bound = start > 0 ? 1 : 0;
     } else {
-      hits = 0;
+      hit = 0;
+      bound = 0;
     }
+    int hits = hit - bound;
     int radius = radiusNow(life);
     int damage =
         LevelScaling.scale(
@@ -257,10 +280,125 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         }
       }
     }
+    // The launch, after the hits: one projectile at most, on a step whose hit count rose. With
+    // nobody to drop it on, the update ends there, without its life-end action.
+    if (data.projectile() != null && hit > bound && !launch(hit, bound, radius)) {
+      return;
+    }
     if (countdown <= 0 && data.onLifeTimeEndAction() != null) {
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
     }
+  }
+
+  /**
+   * One object a launch's chooser could drop the projectile onto, and its size: its hit points and
+   * its shield.
+   *
+   * @param target the object
+   * @param size its hit points and shield
+   */
+  public record Candidate(WorldEntity target, int size) {}
+
+  /**
+   * What the chooser of one launch saw.
+   *
+   * @param reach the radius it searched
+   * @param candidates every object it could choose, in the order of the battle's live list
+   * @param refused the objects in its circle the validator refused, not counting those already
+   *     struck
+   * @param struck the ids it had struck before
+   * @param chosen the object it chose, or null for none
+   */
+  public record Choice(
+      int reach,
+      List<Candidate> candidates,
+      List<WorldEntity> refused,
+      List<Integer> struck,
+      WorldEntity chosen) {}
+
+  /**
+   * The launch of the row's projectile. With HitBiggestTargets it is dropped onto the object the
+   * chooser picks, at the row's start height, the object kept as its target and listed so that it
+   * is never chosen again, whether the projectile lands or not; without one there is no launch.
+   * Without HitBiggestTargets it is dropped onto the area effect's own point at that height, with
+   * no target. The projectile's side is the area effect's, and the area effect is its launcher,
+   * owner and root, at the area effect's level re-based on the projectile's rarity. It is handed to
+   * the holder, which gives it its id at once and admits it at this tick's closing cleanup, so it
+   * first flies on the next tick, after every area effect's update.
+   *
+   * @return false when the chooser found nobody
+   */
+  private boolean launch(int hit, int bound, int radius) {
+    Choice choice = null;
+    int sx = x;
+    int sy = y;
+    WorldEntity target = null;
+    if (data.hitBiggestTargets()) {
+      choice = choose(radius);
+      target = choice.chosen();
+      if (target == null) {
+        world.areaEffectLaunched(this, hit, bound, choice, null);
+        return false;
+      }
+      struck.add(target.getId());
+      sx = target.getView().getX();
+      sy = target.getView().getY();
+    }
+    ProjectileData row = world.getRecords().projectile(data.projectile());
+    ProjectileEntity projectile = new ProjectileEntity(world, row, side);
+    projectile.launchFromArea(this, target, sx, sy, data.projectileStartHeight(), sx, sy);
+    world.launch(projectile);
+    world.areaEffectLaunched(this, hit, bound, choice, projectile);
+    return true;
+  }
+
+  /**
+   * The chooser: over the battle's live list, in its order, the character or tower not struck
+   * before that the shared validator accepts as the area effect's target - of the other side, the
+   * team test skipped for a row for its own troops; not untargetable; passing its own test; with
+   * hit points and accepting the area effect as an asker - whose air or ground it reaches and that
+   * stands in its circle, with the most hit points and shield; the first of equals stays. Nothing
+   * tests whether it is alive, so a unit killed earlier in the step is still a candidate with no
+   * hit points left.
+   */
+  private Choice choose(int radius) {
+    List<Integer> before = List.copyOf(struck);
+    List<Candidate> candidates = new ArrayList<>();
+    List<WorldEntity> refused = new ArrayList<>();
+    WorldEntity best = null;
+    int most = -1;
+    for (BattleEntity live : new ArrayList<>(world.getHolder().entities())) {
+      if (!(live instanceof WorldEntity entity) || struck.contains(entity.getId())) {
+        continue;
+      }
+      boolean inCircle = ShapeTests.withinCircleShape(entity.getView(), x, y, radius);
+      if (!ReferenceValidator.sharedValidate(
+          owner,
+          entity.getTargetView(),
+          data.onlyOwnTroops(),
+          false,
+          false,
+          true,
+          validatorQueries)) {
+        if (inCircle) {
+          refused.add(entity);
+        }
+        continue;
+      }
+      boolean air = entity.getTargetView().air();
+      if (!data.hitsAir() && air || !data.hitsGround() && !air || !inCircle) {
+        continue;
+      }
+      HitPoints hitPoints = entity.getHitPoints();
+      int size = hitPoints.getHitPoints() + hitPoints.getShield();
+      candidates.add(new Candidate(entity, size));
+      if (best == null || most < size) {
+        best = entity;
+        most = size;
+      }
+    }
+    return new Choice(radius, candidates, refused, before, best);
   }
 
   /**

@@ -31,7 +31,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ninety-four runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the ninety-six runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -233,6 +233,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * empty in the command pass. {@code mega_knight_jump} plays one that jumps onto a Knight and lands
  * on it, its appearance hitting no one. Each is held to every push a unit makes as it enters its
  * deploying state: its radius and distance, what its query found and whom it pushed.
+ *
+ * <p>{@code lightning_defenders_tower} casts a Lightning over a group defending a princess tower:
+ * its three strikes go to the tower, the defending Knight and the Musketeer, each the enemy in its
+ * circle with the most hit points and shield not struck before, and each lands a tick after its
+ * launch and stuns what it hits. {@code royal_delivery_group} casts a Royal Delivery whose last
+ * update drops its crate onto its own point, the area effect leaving as it does; the crate lands a
+ * tick later on the group around it and makes a Recruit. Each is held to every launch of an area
+ * effect: its chooser's candidates, those it refused and struck before, and the projectile.
  */
 class BattleActionSpawnRunTest {
 
@@ -335,7 +343,9 @@ class BattleActionSpawnRunTest {
         "tornado_group_off_lane",
         "tornado_heavy_light_tower",
         "mega_knight_group",
-        "mega_knight_jump"
+        "mega_knight_jump",
+        "lightning_defenders_tower",
+        "royal_delivery_group"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1241,6 +1251,46 @@ class BattleActionSpawnRunTest {
       public void areaEffectRemoved(int tick, AreaEffectEntity a) {
         lines.add("%d removed %s %d".formatted(currentTick[0], a.name(), a.getCountdown()));
       }
+
+      @Override
+      public void areaEffectLaunched(
+          int tick,
+          AreaEffectEntity a,
+          int hit,
+          int bound,
+          AreaEffectEntity.Choice choice,
+          ProjectileEntity p) {
+        String line =
+            "%d launch %s hit %d bound %d".formatted(currentTick[0], a.name(), hit, bound);
+        if (choice != null) {
+          line +=
+              " reach %d candidates %s refused %s listed %s chosen %s"
+                  .formatted(
+                      choice.reach(),
+                      choice.candidates().stream()
+                          .map(c -> c.target().name() + " " + c.size())
+                          .toList(),
+                      choice.refused().stream().map(WorldEntity::name).toList(),
+                      choice.struck(),
+                      choice.chosen() == null ? null : choice.chosen().name());
+        }
+        if (p != null) {
+          line +=
+              " %s %s target %s at %d %d %d aim %d %d level %d side %d"
+                  .formatted(
+                      p.name(),
+                      p.getData().name(),
+                      p.getTarget() == null ? null : p.getTarget().name(),
+                      p.getX(),
+                      p.getY(),
+                      p.getZ(),
+                      p.getAimX(),
+                      p.getAimY(),
+                      p.getPackedLevel(),
+                      p.side());
+        }
+        lines.add(line);
+      }
     };
   }
 
@@ -1283,6 +1333,44 @@ class BattleActionSpawnRunTest {
         }
         case "removed" ->
             expected.add("%d removed %s %d".formatted(tick, name, a.get("countdown").asInt()));
+        case "launch" -> {
+          String line =
+              "%d launch %s hit %d bound %d"
+                  .formatted(tick, name, a.get("hit").asInt(), a.get("bound").asInt());
+          if (a.has("chosen")) {
+            List<String> candidates = new ArrayList<>();
+            a.get("candidates")
+                .forEach(c -> candidates.add(c.get(0).asText() + " " + c.get(1).asInt()));
+            List<String> refused = new ArrayList<>();
+            a.get("refused").forEach(r -> refused.add(r.asText()));
+            List<Integer> listed = new ArrayList<>();
+            a.get("listed").forEach(l -> listed.add(l.asInt()));
+            line +=
+                " reach %d candidates %s refused %s listed %s chosen %s"
+                    .formatted(
+                        a.get("reach").asInt(),
+                        candidates,
+                        refused,
+                        listed,
+                        a.get("chosen").isNull() ? null : a.get("chosen").asText());
+          }
+          if (a.has("projectile")) {
+            line +=
+                " %s %s target %s at %d %d %d aim %d %d level %d side %d"
+                    .formatted(
+                        a.get("projectile").asText(),
+                        a.get("config").asText(),
+                        a.get("target").isNull() ? null : a.get("target").asText(),
+                        a.get("x").asInt(),
+                        a.get("y").asInt(),
+                        a.get("z").asInt(),
+                        a.get("aim").get(0).asInt(),
+                        a.get("aim").get(1).asInt(),
+                        a.get("level").asInt(),
+                        a.get("side").asInt());
+          }
+          expected.add(line);
+        }
         default -> throw new IllegalStateException("unknown area effect event " + a);
       }
     }

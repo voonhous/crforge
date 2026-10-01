@@ -202,7 +202,7 @@ public final class TrajectoryRecorder implements WorldObserver {
     if (firstTick < 0) {
       return;
     }
-    WorldEntity owner = projectile.getOwner();
+    String owner = projectile.launcherName();
     WorldEntity target = projectile.getTarget();
     events.add(
         eventHead(tick)
@@ -211,7 +211,7 @@ public final class TrajectoryRecorder implements WorldObserver {
             + ", \"config\": "
             + quote(projectile.getData().name())
             + ", \"owner\": "
-            + (owner == null ? "null" : quote(owner.name()))
+            + (owner == null ? "null" : quote(owner))
             + ", \"target\": "
             + (target == null ? "null" : quote(target.name()))
             + ", \"x\": "

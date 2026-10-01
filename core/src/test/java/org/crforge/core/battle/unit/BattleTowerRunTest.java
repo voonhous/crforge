@@ -508,7 +508,7 @@ class BattleTowerRunTest {
                     currentTick[0],
                     projectile.name(),
                     projectile.getData().name(),
-                    projectile.getOwner() == null ? null : projectile.getOwner().name(),
+                    projectile.launcherName(),
                     projectile.getTarget() == null ? null : projectile.getTarget().name(),
                     projectile.getX(),
                     projectile.getY(),

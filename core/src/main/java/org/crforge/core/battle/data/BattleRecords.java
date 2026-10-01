@@ -161,8 +161,9 @@ public final class BattleRecords {
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, clones, the hit
-   * action, the shape, the filter, the spawns and launches, the life condition, the following, the
-   * tags, the deflection, the per-level lifetime and the push's floor and gate lift.
+   * action, the shape, the filter, the spawns, the life condition, the following, the tags, the
+   * deflection, the per-level lifetime and the push's floor and gate lift. Its projectile is
+   * modelled, but not a launch from its source or a spread one.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -175,7 +176,6 @@ public final class BattleRecords {
           "Shape",
           "Filter",
           "SpawnCharacter",
-          "Projectile",
           "AliveIfTrue",
           "FollowBehaviour",
           "Tags",
@@ -1009,8 +1009,31 @@ public final class BattleRecords {
                 row.string("SpawnAreaEffectObject").isEmpty()
                     ? null
                     : row.string("SpawnAreaEffectObject"))
+            .projectile(row.string("Projectile").isEmpty() ? null : row.string("Projectile"))
+            .hitBiggestTargets(row.bool("HitBiggestTargets"))
+            .projectileStartHeight(row.intValue("ProjectileStartHeight"))
             .unmodelledColumns(unmodelled)
             .build();
+    if (data.projectile() != null) {
+      // A start height of -1 launches from the area effect's source at height 1000, which no row
+      // carried here does.
+      if (data.projectileStartHeight() == -1) {
+        unmodelled.add("ProjectileStartHeight");
+      }
+      // Without HitBiggestTargets every projectile from the second hit on is spread about the
+      // point by two battle draws; no shipped row has two hits without it.
+      int lifeHits = data.hitSpeedMs() == 0 ? 1 : data.lifeDurationMs() / data.hitSpeedMs();
+      if (!data.hitBiggestTargets() && lifeHits >= 2) {
+        unmodelled.add("Projectile");
+      }
+    }
+    // SpawnInitialDelay and SpawnTime are read only by the character spawner, which a row without a
+    // SpawnCharacter never enters, and by the encoding of the spawner's order list: on such a row,
+    // the Royal Delivery's, they change nothing.
+    if (!sets(row, "SpawnCharacter")) {
+      row.has("SpawnInitialDelay");
+      row.has("SpawnTime");
+    }
     return data.toBuilder()
         .unmodelledColumns(
             withUnread(

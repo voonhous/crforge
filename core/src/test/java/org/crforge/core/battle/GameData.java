@@ -1,5 +1,12 @@
 package org.crforge.core.battle;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
@@ -52,5 +59,35 @@ public final class GameData {
   /** A troop card by its row's name. */
   public static DeployCard card(String name) {
     return records().card(name);
+  }
+
+  /**
+   * The configured tables copied into a folder with one table's rows altered, for a test that needs
+   * a row no table ships.
+   *
+   * @param folder the folder to copy them into
+   * @param table the table's file name, without its extension
+   * @param edit what is done to its rows, by name
+   * @return the altered tables
+   */
+  public static GameTables altered(Path folder, String table, Consumer<ObjectNode> edit)
+      throws IOException {
+    Path source = GameTables.configuredDirectory().orElseThrow();
+    try (Stream<Path> files = Files.list(source)) {
+      for (Path file : files.toList()) {
+        Files.copy(file, folder.resolve(file.getFileName()));
+      }
+    }
+    Path file = folder.resolve(table + ".json");
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
+    edit.accept((ObjectNode) document.get("rows"));
+    mapper.writeValue(file.toFile(), document);
+    return GameTables.load(folder);
+  }
+
+  /** The columns of a row in the rows of a table, to alter. */
+  public static ObjectNode columns(ObjectNode rows, String row) {
+    return (ObjectNode) rows.get(row).get("columns");
   }
 }

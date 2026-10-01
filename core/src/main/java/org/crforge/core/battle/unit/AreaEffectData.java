@@ -32,6 +32,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     hit speed more
  * @param onlyOwnTroops true when its buff reaches only its own side
  * @param spawnAreaEffectObject the area effect it creates at its point on its first update, or null
+ * @param projectile the projectile it launches on each update whose hit count rose, or null for
+ *     none
+ * @param hitBiggestTargets true when it drops each projectile onto the enemy in its circle with the
+ *     most hit points and shield it has not struck yet; false to drop it onto its own point
+ * @param projectileStartHeight the height its projectiles start at
  * @param affectsHidden true when it reaches a hidden unit, which nothing else does
  * @param controlsBuff true when its slot that removes the instances it is the parent of acts; no
  *     path the battle models reaches that slot, and a parent's instances go as the parent leaves
@@ -62,6 +67,9 @@ public record AreaEffectData(
     boolean capBuffTimeToAreaEffectTime,
     boolean onlyOwnTroops,
     String spawnAreaEffectObject,
+    String projectile,
+    boolean hitBiggestTargets,
+    int projectileStartHeight,
     boolean affectsHidden,
     boolean controlsBuff,
     List<String> unmodelledColumns) {

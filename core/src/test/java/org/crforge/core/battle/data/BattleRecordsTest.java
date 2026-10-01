@@ -3,6 +3,8 @@ package org.crforge.core.battle.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -10,6 +12,7 @@ import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
+import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -17,6 +20,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The battle's records built from the game's own rows: every field is its column, in the column's
@@ -342,6 +346,52 @@ class BattleRecordsTest {
     assertThat(knight.projectile()).isNull();
     assertThat(knight.casts()).isFalse();
     assertThat(records.card("Fireball").casts()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect carries its projectile, how it picks a target and its start height; the"
+          + " spawner's delays change nothing without a character to spawn")
+  void anAreaEffectThatLaunches() {
+    AreaEffectData lightning = records.areaEffect("Lightning");
+    assertThat(lightning.projectile()).isEqualTo("LighningSpell");
+    assertThat(lightning.hitBiggestTargets()).isTrue();
+    assertThat(lightning.projectileStartHeight()).isEqualTo(10);
+    assertThat(lightning.unmodelledColumns()).isEmpty();
+    AreaEffectData delivery = records.areaEffect("RoyalDeliveryArea");
+    assertThat(delivery.projectile()).isEqualTo("RoyalDeliveryProjectile");
+    assertThat(delivery.hitBiggestTargets()).isFalse();
+    assertThat(delivery.projectileStartHeight()).isZero();
+    assertThat(delivery.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Zap").projectile()).isNull();
+    // A row that spawns characters reads them, which is not modelled.
+    assertThat(records.areaEffect("Graveyard").unmodelledColumns())
+        .contains("SpawnCharacter", "SpawnInitialDelay", "SpawnTime");
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect launching from its source, or spreading its projectiles over several hits,"
+          + " is listed as not modelled")
+  void anAreaEffectLaunchNotModelled(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> {
+              GameData.columns(rows, "Lightning").put("ProjectileStartHeight", -1);
+              // Two hits over its life, without HitBiggestTargets.
+              GameData.columns(rows, "RoyalDeliveryArea").put("HitSpeed", 1000);
+              // One hit only, the projectile on its own point.
+              GameData.columns(rows, "Zap").put("Projectile", "RoyalDeliveryProjectile");
+            });
+    BattleRecords altered = new BattleRecords(tables);
+
+    assertThat(altered.areaEffect("Lightning").unmodelledColumns())
+        .containsExactly("ProjectileStartHeight");
+    assertThat(altered.areaEffect("RoyalDeliveryArea").unmodelledColumns())
+        .containsExactly("Projectile");
+    assertThat(altered.areaEffect("Zap").unmodelledColumns()).isEmpty();
   }
 
   @Test
