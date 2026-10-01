@@ -541,6 +541,18 @@ The towers fight at level 11. Side 0 plays a Tesla at (10000, 12000) on tick 0; 
 
 `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/earthquake_barbarians_tower.json` - an Earthquake's hits on its own clock
+
+The towers fight at level 11. Side 1 plays Barbarians at (3500, 22000) on tick 0, and side 0 casts an Earthquake at (3500, 23500) on 20 over them and PrincessTower_1_1. The Earthquake's buff sets HitTickFromSource: on every visit an instance's count toward its next hit is set from the area effect's age as its last update left it, so every target is hit when that age is 950 of a second, on 39, 59 and 79, however late its instance was listed. A Barbarian takes 81 a hit and the princess tower 53 (CrownTowerDamagePercent -35). Barbarians_0 walks out of the circle and is still hit on 79, while its instance lasts. The area effect leaves and its instances, their source forgotten, run two more visits without a hit and go on 81.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/earthquake_tesla_overlap.json` - two Earthquakes on a hidden Tesla
+
+The towers fight at level 11. Side 1 plays a Tesla at (3500, 20000) on tick 0 (placed at (3000, 20000)) and a Knight at (5500, 25000) on 30 (placed at (5499, 25499)); side 0 casts an Earthquake at (3500, 19500) on 40 and another at (4500, 19500) on 50. Each reaches hidden units, so each buffs the hidden Tesla. The buff stacks by its source: the Tesla lists one instance of each, and each is hit on its own Earthquake's clock, 283 a hit (BuildingDamagePercent 350), on 59 and 79 for the first and on 69 and 89 for the second, which kills it. A buff's damage over time lands on a hidden Tesla, as the damage entry's hidden test is not on its way. The Knight walks in late: the second Earthquake's instance is listed on 87 and hits on 89, the first's on 91 and hits on 99, and the second's again on 109. Both slows hold the Knight at the one strongest, 30.
+
+`BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

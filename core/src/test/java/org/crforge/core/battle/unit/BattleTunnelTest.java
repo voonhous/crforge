@@ -77,6 +77,20 @@ class BattleTunnelTest {
   }
 
   @Test
+  @DisplayName(
+      "a tunnelling unit is untouchable to the bookkeeping too: it takes no damage over time and"
+          + " no typed hit")
+  void itTakesNoDamageOverTimeInItsTunnel() {
+    Standard1v1Battle match = passiveTowers();
+    CharacterEntity miner = playMiner(match);
+    int before = miner.getHitPoints().getHitPoints();
+
+    assertThat(miner.takeDamageOverTime(100)).isEqualTo(DamageResult.NOTHING);
+    assertThat(miner.takeTypedHit(100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
+    assertThat(miner.getHitPoints().getHitPoints()).isEqualTo(before);
+  }
+
+  @Test
   @DisplayName("a hit's buff on damage passes over a tunnelling unit and reaches it surfaced")
   void aBuffOnDamagePassesItOver() {
     Standard1v1Battle match = passiveTowers();

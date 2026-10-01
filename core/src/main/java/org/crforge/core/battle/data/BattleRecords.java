@@ -106,6 +106,7 @@ public final class BattleRecords {
           "CrownTowerDamagePerHit",
           "CrownTowerDamagePercent",
           "BuildingDamagePercent",
+          "HitTickFromSource",
           "EnableStacking",
           "PlayerSpecificBuff",
           "NoEffectToCrownTowers",
@@ -1037,6 +1038,7 @@ public final class BattleRecords {
         .crownTowerDamagePerHit(row.intValue("CrownTowerDamagePerHit"))
         .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
         .buildingDamagePercent(row.intValue("BuildingDamagePercent"))
+        .hitTickFromSource(row.bool("HitTickFromSource"))
         .enableStacking(row.bool("EnableStacking"))
         .playerSpecificBuff(row.bool("PlayerSpecificBuff"))
         .noEffectToCrownTowers(row.bool("NoEffectToCrownTowers"))

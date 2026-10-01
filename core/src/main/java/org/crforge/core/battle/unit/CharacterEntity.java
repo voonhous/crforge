@@ -1156,7 +1156,8 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /** Whether it tunnels to its placement, in the spawn-pathfinding state. */
-  private boolean tunnelling() {
+  @Override
+  protected boolean tunnelling() {
     return getView().getState() == GridEntityState.SPAWN_PATHFIND;
   }
 

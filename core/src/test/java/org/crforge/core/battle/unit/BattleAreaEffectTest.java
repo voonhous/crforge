@@ -63,8 +63,11 @@ class BattleAreaEffectTest {
     assertThat(rage.unmodelledColumns()).isEmpty();
 
     assertThat(GameData.records().buff("ZapFreeze").hitSpeedMultiplier()).isEqualTo(-100);
-    assertThat(GameData.records().buff("Earthquake").unmodelledColumns())
-        .containsExactly("HitTickFromSource");
+    BuffData earthquake = GameData.records().buff("Earthquake");
+    assertThat(earthquake.hitTickFromSource()).isTrue();
+    assertThat(earthquake.buildingDamagePercent()).isEqualTo(350);
+    assertThat(earthquake.unmodelledColumns()).isEmpty();
+    assertThat(poison.hitTickFromSource()).isFalse();
     assertThat(GameData.records().buff("Tornado").unmodelledColumns())
         .containsExactly("AttractPercentage", "ControlledByParent", "PushSpeedFactor");
   }
@@ -73,10 +76,10 @@ class BattleAreaEffectTest {
   @DisplayName("an area effect whose buff sets a column not modelled is refused as it is created")
   void aBuffNotModelledIsRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    match.placeAreaEffect(1, "Earthquake", 11, 0, 3500, 20000, "Earthquake");
+    match.placeAreaEffect(1, "DarkElixirAOE", 11, 0, 3500, 20000, "DarkElixirAOE");
     match.getBattle().step();
     assertThatThrownBy(() -> match.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("HitTickFromSource");
+        .hasMessageContaining("DamageReduction");
   }
 }
