@@ -31,7 +31,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ninety-two runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the ninety-four runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -226,6 +226,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * pull is a share of each unit's own speed, so the Giant moves less than the Knight, and the tower
  * takes the damage but does not move. Each is held to every pull: the targets, the vector to the
  * centre and the push accumulators before and after.
+ *
+ * <p>{@code mega_knight_group} plays a Mega Knight onto three Knights: its card casts its
+ * appearance before it makes the unit, which lands six ticks after the play for 430 on each Knight
+ * and pushes each, and its push as it enters the deploying state finds nobody, the index being
+ * empty in the command pass. {@code mega_knight_jump} plays one that jumps onto a Knight and lands
+ * on it, its appearance hitting no one. Each is held to every push a unit makes as it enters its
+ * deploying state: its radius and distance, what its query found and whom it pushed.
  */
 class BattleActionSpawnRunTest {
 
@@ -326,7 +333,9 @@ class BattleActionSpawnRunTest {
         "earthquake_barbarians_tower",
         "earthquake_tesla_overlap",
         "tornado_group_off_lane",
-        "tornado_heavy_light_tower"
+        "tornado_heavy_light_tower",
+        "mega_knight_group",
+        "mega_knight_jump"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -544,6 +553,9 @@ class BattleActionSpawnRunTest {
     // Every pull of an attracting area effect's hit.
     List<String> pullLog = new ArrayList<>();
     match.getWorld().addObserver(pullLog(currentTick, pullLog));
+    // Every push of a unit entering its deploying state.
+    List<String> deployPushLog = new ArrayList<>();
+    match.getWorld().addObserver(deployPushLog(currentTick, deployPushLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1061,6 +1073,10 @@ class BattleActionSpawnRunTest {
     assertThat(pullLog)
         .as("every pull, its targets and their push accumulators")
         .containsExactlyElementsOf(expectedPullLog(reference));
+
+    assertThat(deployPushLog)
+        .as("every push of a unit entering its deploying state, what it found and whom it pushed")
+        .containsExactlyElementsOf(expectedDeployPushLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -1716,6 +1732,53 @@ class BattleActionSpawnRunTest {
                     pulled));
       }
     };
+  }
+
+  /**
+   * Logs each push of a unit entering its deploying state: its radius and distance, what its query
+   * found and whom it asked to push.
+   */
+  private static WorldObserver deployPushLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void deployPushed(
+          int tick,
+          CharacterEntity unit,
+          int radius,
+          int distance,
+          List<WorldEntity> found,
+          List<WorldEntity> pushed) {
+        log.add(
+            "%d %s %d %d %s %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    radius,
+                    distance,
+                    found.stream().map(WorldEntity::name).toList(),
+                    pushed.stream().map(WorldEntity::name).toList()));
+      }
+    };
+  }
+
+  private static List<String> expectedDeployPushLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("deploy_push")) {
+      List<String> found = new ArrayList<>();
+      e.get("candidates").forEach(n -> found.add(n.asText()));
+      List<String> pushed = new ArrayList<>();
+      e.get("requested").forEach(n -> pushed.add(n.asText()));
+      expected.add(
+          "%d %s %d %d %s %s"
+              .formatted(
+                  e.get("tick").asInt(),
+                  e.get("unit").asText(),
+                  e.get("radius").asInt(),
+                  e.get("distance").asInt(),
+                  found,
+                  pushed));
+    }
+    return expected;
   }
 
   private static List<String> expectedPullLog(JsonNode reference) {

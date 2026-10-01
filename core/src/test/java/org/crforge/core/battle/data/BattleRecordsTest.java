@@ -315,9 +315,33 @@ class BattleRecordsTest {
     // The chained dash is listed, and so are its further columns, which nothing reads.
     assertThat(records.unit("GoldenKnight").unmodelledColumns())
         .containsExactly("DashCount", "BackDashRadius", "DashSecondaryRange");
-    // The deploy push is read by nothing, so the Mega Knight is refused as it is made.
-    assertThat(megaKnight.unmodelledColumns())
-        .containsExactly("SpawnLimit", "SpawnPushback", "SpawnPushbackRadius");
+    // Its deploy push is read, and its spawner's limit changes nothing without a spawn.
+    assertThat(megaKnight.spawnPushback()).isEqualTo(1000);
+    assertThat(megaKnight.spawnPushbackRadius()).isEqualTo(1000);
+    assertThat(megaKnight.pushesOnDeploy()).isTrue();
+    assertThat(megaKnight.unmodelledColumns()).isEmpty();
+    assertThat(bandit.pushesOnDeploy()).isFalse();
+    // It takes both: a radius to search and a distance to push.
+    assertThat(megaKnight.toBuilder().spawnPushback(0).build().pushesOnDeploy()).isFalse();
+    assertThat(megaKnight.toBuilder().spawnPushbackRadius(0).build().pushesOnDeploy()).isFalse();
+    // A spawner's limit is still refused where it counts.
+    assertThat(records.unit("PhoenixEgg").unmodelledColumns()).contains("SpawnLimit");
+  }
+
+  @Test
+  @DisplayName("the Mega Knight's card keeps its unit and the projectile it casts as it plays")
+  void aTroopCardThatCasts() {
+    DeployCard megaKnight = records.card("MegaKnight");
+    assertThat(megaKnight.spell()).isFalse();
+    assertThat(megaKnight.unit().name()).isEqualTo("MegaKnight");
+    assertThat(megaKnight.projectile()).isEqualTo("MegaKnightAppear");
+    assertThat(megaKnight.casts()).isTrue();
+    assertThat(megaKnight.multipleProjectiles()).isZero();
+    assertThat(megaKnight.projectileWaves()).isZero();
+    DeployCard knight = records.card("Knight");
+    assertThat(knight.projectile()).isNull();
+    assertThat(knight.casts()).isFalse();
+    assertThat(records.card("Fireball").casts()).isTrue();
   }
 
   @Test

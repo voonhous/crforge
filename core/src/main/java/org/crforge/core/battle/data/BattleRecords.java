@@ -419,7 +419,11 @@ public final class BattleRecords {
           "IgnoreResurrect",
           // Read only in the in-game pathfinding state, which only an ability's lane switch
           // enters, and that switch is refused.
-          "IngamePathfindSpeed");
+          "IngamePathfindSpeed",
+          // The count a spawner has left, which only its firing, its destruction at the limit and
+          // its death spawn read: a spawner that sets it, the destruction and a death spawn that
+          // sets it are each refused, so for every other row it changes nothing.
+          "SpawnLimit");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread
@@ -564,6 +568,8 @@ public final class BattleRecords {
                     : row.string("SpawnPathfindMorph"))
             .spawnAreaObject(
                 row.string("SpawnAreaObject").isEmpty() ? null : row.string("SpawnAreaObject"))
+            .spawnPushback(row.intValue("SpawnPushback"))
+            .spawnPushbackRadius(row.intValue("SpawnPushbackRadius"))
             .tileSizeOverride(row.intValue("TileSizeOverride"))
             .noDeploySizeW(row.intValue("NoDeploySizeW"))
             .noDeploySizeH(row.intValue("NoDeploySizeH"))
@@ -1267,6 +1273,11 @@ public final class BattleRecords {
    * card with a unit and a projectile or an area effect, the search's snap, which no card sets
    * together and which is refused.
    *
+   * <p>A card with a unit may cast a projectile as well, which the Mega Knight's does: the cast
+   * launches it before the units are made, from the placed point less five times the king tower's
+   * collision radius along the length, whichever side plays, at three times that radius, onto the
+   * placed point. A card with a unit and an area effect is refused: no card has one.
+   *
    * <p>A card with no count summons one. The level index a card may carry is not read, as the game
    * never reads it: the summoned units take the level the card is played at. A card that summons a
    * list of characters, places them at offsets of its own or has a deploy time of its own is
@@ -1285,7 +1296,7 @@ public final class BattleRecords {
     GameRow row = table.row(name);
     // The card's unit is its summoned character, else its second group, else its list; a card with
     // none of them that casts is a spell, whichever table it is in. A card with a unit keeps the
-    // troop path, and its refusals, whatever it casts besides.
+    // troop path, and its refusals, and casts its projectile besides.
     boolean namesUnit =
         set(row, "SummonCharacter")
             || set(row, "SummonCharacterSecond")
@@ -1299,6 +1310,10 @@ public final class BattleRecords {
           name
               + " deploys as a spell with a unit and a cast, which clears the search's snap and is"
               + " not modelled");
+    }
+    if (set(row, "AreaEffectObject")) {
+      throw new UnsupportedOperationException(
+          name + " makes an area effect as well as a unit, which the cast does not model");
     }
     for (String column : UNMODELLED_CARD_COLUMNS) {
       if (set(row, column)) {
@@ -1327,16 +1342,16 @@ public final class BattleRecords {
         row.intValue("DeployWTileMargin"),
         row.intValue("DeployStartY"),
         row.intValue("DeployEndY"),
-        null,
+        set(row, "Projectile") ? row.string("Projectile") : null,
         null,
         // A unit that tunnels and morphs as it surfaces is searched for as its morph.
         tunnelMorph(summoned),
         false,
-        0,
-        0,
-        0,
-        0,
-        0);
+        row.intValue("Radius"),
+        row.intValue("MultipleProjectiles"),
+        row.intValue("ProjectileWaves"),
+        row.intValue("ProjectileWaveInterval"),
+        row.intValue("ProjectileInterval"));
   }
 
   /** The row a unit that tunnels morphs into as it surfaces, or null for none. */

@@ -115,7 +115,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " a lifetime's death without the death handler and a building spawner's children in"
             + " front of it, held by tombstone_life and goblin_hut_life; an area effect created by"
             + " a death or placed directly and its hits dealt, held by area_effect_direct and"
-            + " area_effect_death. Refused: a death whose row sets a column of the slot not"
+            + " area_effect_death; a troop card's projectile cast before its units and a unit's"
+            + " push as it enters the deploying state, finding nobody in a card play's command"
+            + " pass, held by mega_knight_group and mega_knight_jump, and the push's tests on what"
+            + " it finds by a unit that waits its turn, held by no run. Refused: a death whose row"
+            + " sets a column of the slot not"
             + " modelled, a least radius that draws, a child without hit points that has a range, a"
             + " spawner's turned or drawn ring and a spawner child without hit points, a building,"
             + " pathing or starting an action, and a death hook with no attacker or no pending"
@@ -636,6 +640,61 @@ public class BattleWorld implements HolderPasses {
             "spawn_area_object",
             unit.name());
     area.updateAtOnce();
+  }
+
+  /**
+   * The push a unit makes on the enemies around it as it enters the deploying state through its
+   * setter. Its query is the object query of the spatial index around the unit, as wide as its
+   * SpawnPushback; each found entity of another side - its side as it is, not its team - that is
+   * alive is tested: a flying one is passed by unless the unit attacks both air and ground, a
+   * hidden one is passed by, and one without an active movement component, which every building is,
+   * is left. Each other one is asked for a pushback of SpawnPushbackRadius away from the unit, with
+   * the gates lifted: its row's IgnorePushback, a buff and the no-pushback flag do not refuse it,
+   * and a pushback in flight or its hiding still does. Its mass is not read.
+   *
+   * <p>A card play enters the state in the command pass, while the index is empty, so the query
+   * finds nobody.
+   *
+   * @param unit the unit
+   */
+  void spawnPush(CharacterEntity unit) {
+    UnitData data = unit.getData();
+    int x = unit.getView().getX();
+    int y = unit.getView().getY();
+    int radius = data.spawnPushback();
+    int distance = data.spawnPushbackRadius();
+    // The ground bit is the row's AttacksGround for one that attacks air, else set.
+    boolean ground = !data.attacksAir() || data.attacksGround();
+    boolean air = data.attacksAir();
+    List<WorldEntity> found = new ArrayList<>();
+    List<WorldEntity> pushed = new ArrayList<>();
+    List<GridEntity> views = index.query(new SpatialQuery(x, y, radius, 0, false, false, 0, -1));
+    if (views != null) {
+      for (GridEntity view : views) {
+        found.add(entityOf(view));
+      }
+      index.release(views);
+    }
+    for (WorldEntity entity : found) {
+      if (!entity.getView().isAlive() || entity.side() == unit.side()) {
+        continue;
+      }
+      if (entity.getData().air() && !(air && ground)) {
+        continue;
+      }
+      if (entity.hidden()) {
+        continue;
+      }
+      if (!(entity instanceof CharacterEntity character)
+          || !character.isActive(CharacterEntity.MOVEMENT_SLOT)) {
+        continue;
+      }
+      character.pushedOnDeploy(x, y, distance);
+      pushed.add(character);
+    }
+    for (WorldObserver observer : observers) {
+      observer.deployPushed(tick, unit, radius, distance, found, pushed);
+    }
   }
 
   /**
@@ -1459,9 +1518,11 @@ public class BattleWorld implements HolderPasses {
    * The cast of a spell card at its placed point, in the command pass of its play: the area effect
    * at the point, or the projectile from the side's king tower - from its centre at three times its
    * collision radius, with no target, aimed at the point - both at the card's level and handed to
-   * the holder, whose opening cleanup of the same step admits them.
+   * the holder, whose opening cleanup of the same step admits them. A troop card's projectile is
+   * cast the same way, but from the point less five times that radius along the length, whichever
+   * side plays, before the play makes its units.
    *
-   * @param card the spell card
+   * @param card the spell card, or a troop card that casts a projectile
    * @param cardLevel the card's level as the play gives it, packed
    * @param side the playing side
    * @param x the placed point along the width
@@ -1568,6 +1629,11 @@ public class BattleWorld implements HolderPasses {
               tx,
               ty,
               delay);
+        } else if (!card.spell()) {
+          // A troop card's: from the point less five times the king's collision radius along the
+          // length, whichever side plays, at three times it, onto the point.
+          int collision = king.getData().collisionRadius();
+          projectile.cast(king, cardLevel, tx, ty - 5 * collision, height, tx, ty, delay);
         } else {
           projectile.cast(king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay);
         }

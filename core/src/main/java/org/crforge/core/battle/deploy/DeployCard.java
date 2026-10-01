@@ -7,7 +7,7 @@ import org.crforge.core.battle.unit.UnitData;
  * shape and stagger of their formation, where the card may be placed, and what a spell card casts.
  *
  * <p>A spell card summons no unit: it casts a projectile from its side's king tower or an area
- * effect at the placed point.
+ * effect at the placed point. A troop card may cast a projectile too, before its units are made.
  *
  * @param name the card's name
  * @param unit the unit the card summons first, or null for a spell
@@ -26,14 +26,15 @@ import org.crforge.core.battle.unit.UnitData;
  * @param deployWTileMargin tiles kept closed at each side of the width
  * @param deployStartY the first open row, with {@code deployEndY}; both 0 for no limit
  * @param deployEndY the row from which the rows close again
- * @param projectile the projectile a spell casts from the king tower, or null
+ * @param projectile the projectile a spell casts from the king tower, or the one a troop card casts
+ *     onto its placed point as it plays; null for none
  * @param areaEffect the area effect a spell casts at the placed point, or null
  * @param searchUnit the unit the placement is searched for in place of the card's own: a spell's
  *     projectile's spawned character, and for either the row a unit that tunnels morphs into as it
  *     surfaces; null for none
  * @param spellAsDeploy true for a spell thrown as a projectile at the placed point, which snaps to
  *     the tile centre whatever it spawns
- * @param radius a spell's radius: the circle Arrows' ring and jitter are drawn in
+ * @param radius a casting card's radius: the circle Arrows' ring and jitter are drawn in
  * @param multipleProjectiles how many projectiles a spell casts in one wave; 0 for one
  * @param projectileWaves how many waves; 0 for one
  * @param projectileWaveIntervalMs the time between two waves
@@ -70,6 +71,11 @@ public record DeployCard(
   /** True for a spell card, which summons no unit and casts instead. */
   public boolean spell() {
     return unit == null;
+  }
+
+  /** True for a card that casts as it plays: a spell, or a troop card with a projectile. */
+  public boolean casts() {
+    return spell() || projectile != null;
   }
 
   /** The unit of the index-th place of the formation: the first group, then the second. */
