@@ -98,7 +98,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " chooser finds nobody, which no run meets. A Clone's hit action on the units its"
             + " index query finds, in the query's order, and its filter, held by clone_golem_group;"
             + " an area effect with a buff reaching a clone, whose filter asks an untraced query of"
-            + " the buff, is refused. Not created yet by an action.")
+            + " the buff, is refused. Its starting action's expressions reading the area effect"
+            + " itself, its point and its side, held by graveyard_tower_defender and"
+            + " graveyard_right_side1. Not created yet by an action.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -685,9 +687,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     return countdown < 1;
   }
 
-  /** What an action row built for the area effect reads from it. */
+  /**
+   * What an action row built for the area effect reads from it: its expressions start from the area
+   * effect itself, its point and its side.
+   */
   public ActionBinding binding() {
-    return new RandOnlyBinding(world, name);
+    return new AreaEffectBinding(world, this);
   }
 
   @Override

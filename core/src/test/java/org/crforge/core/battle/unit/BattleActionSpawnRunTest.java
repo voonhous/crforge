@@ -267,6 +267,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * princess tower, which cannot be pulled, so the Fisherman drags himself to it at the self-drag
  * speed and hits it until its arrows kill him. Each is held to every load armed, every state the
  * hook set, and the hold and the pull its projectile's leaving ended.
+ *
+ * <p>{@code graveyard_tower_defender} casts a Graveyard on a princess tower while a Knight walks in
+ * to defend it: the area effect's group spawns a skeleton every half second or so at a point its
+ * position expressions work out from the area effect's own point and side, a point beyond the
+ * arena's edge going one unit right and then clamped into it. {@code graveyard_right_side1} casts
+ * one for the top side on the right half, where the offsets across the width are turned over.
  */
 class BattleActionSpawnRunTest {
 
@@ -379,7 +385,9 @@ class BattleActionSpawnRunTest {
         "fisherman_knight",
         "fisherman_tower",
         "three_musketeers_pekka",
-        "three_musketeers_air_building"
+        "three_musketeers_air_building",
+        "graveyard_tower_defender",
+        "graveyard_right_side1"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

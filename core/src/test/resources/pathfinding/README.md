@@ -631,6 +631,18 @@ The towers fight at level 11. Side 1 plays the Three Musketeers at (14500, 17500
 
 The lists are those of `three_musketeers_pekka`. `BattleActionSpawnRunTest` plays it with the spawn runs, and `CardPlacementTest` works its plays out.
 
+## `golden/graveyard_tower_defender.json` - a Graveyard on a princess tower, a Knight defending it
+
+The towers fight at level 11. Side 1 plays a Knight at (5500, 30500), placed at (5499, 30499), on tick 0, and side 0 casts a Graveyard on PrincessTower_1_1 at (3500, 25500) on 40. The card's area effect, Graveyard_rework, lives 9000 ms; as it is admitted its starting group queues its thirteen skeleton spawns at once, each with its own delay, 2200 to 8700 ms. Each spawn runs in the area effect's phase-1 pass and makes one Graveyard_rework_Skeleton of side 0 at a point its position expressions work out from the area effect's own point and side: (3500, 29000) on 84, then (250, 25500), (1000, 28000), (3500, 22000), (7000, 25500), (6000, 23000) and on to 214. The -3500 row's x of 0 is beyond the arena's edge, so the skeleton is made one unit right and clamped to 250. Each deploys for the spawn row's 500 ms, not the character's 1000, and cannot be targeted until its sixth visit. The Knight kills five, PrincessTower_1_1 shoots seven and PrincessTower_1_2 two; the skeletons hit the tower from 154 and the Knight on 234 and 257. The area effect leaves at the cleanup of 219.
+
+The `actions` list holds the group's run and every spawn with its point, and `area_effects` the area effect's life. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/graveyard_right_side1.json` - a top-side Graveyard on the right half
+
+The towers fight at level 11. Side 1 casts a Graveyard at (14500, 7500), near PrincessTower_0_2, on tick 0. Right of the middle the offsets across the width are turned over, and for side 1 the offsets along the length too: the skeletons come at (14500, 4000) on 44, then (17750, 7500), (17000, 5000), (14500, 11000), (11000, 7500), (12000, 10000) and on to 174, the x + 3500 of 18000 beyond the right edge clamped to 17750. PrincessTower_0_2 shoots ten of them and PrincessTower_0_1 the three at x 11000 and 12000; six hits land on PrincessTower_0_2. The area effect leaves at the cleanup of 179.
+
+The lists are those of `graveyard_tower_defender`. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
