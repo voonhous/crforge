@@ -25,6 +25,7 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.math.FixedMath;
+import org.crforge.core.pathfinding.state.FollowedObject;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingState;
 
@@ -86,7 +87,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " hook, the custom movement, the far-distance clamp with its cell pull, the row's"
             + " starting action the start would schedule, which no projectile row carried here"
             + " has, and a deflection's hand-back of the pending damage.")
-public class ProjectileEntity extends BattleEntity implements ActionOwner, SpawnHost {
+public class ProjectileEntity extends BattleEntity
+    implements ActionOwner, SpawnHost, FollowedObject {
 
   /** Game time one flight step advances, in milliseconds. */
   static final int STEP_MS = 50;
@@ -155,6 +157,12 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
 
   /** True once the projectile has arrived: it is removable and takes no further step. */
   @Getter private boolean released;
+
+  /**
+   * True once a hooking projectile has hooked its target: it flies back to its owner, or holds
+   * still while it drags its owner to a building.
+   */
+  @Getter private boolean hooked;
 
   /** True until the first flight step has run. */
   private boolean firstVisit = true;
@@ -259,6 +267,10 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
       t.setResumeDelayMs(data.pingpongVisualTimeMs());
       // Its sweep advances by the step the launcher's buffs make of 50 ms, as its attack does.
       pingpongStepMs = launcher.getBuffs().hitSpeed(STEP_MS);
+    } else if (data.dragBackSpeed() >= 1) {
+      // A hooking projectile is held by its launcher's targeting component too, with no resume
+      // delay: the visit returns early until the projectile leaves the battle.
+      launcher.hold(this);
     }
   }
 
@@ -505,6 +517,11 @@ public class ProjectileEntity extends BattleEntity implements ActionOwner, Spawn
     x = newX;
     y = newY;
     z = newZ;
+  }
+
+  /** Marks the projectile as having hooked its target. */
+  void hook() {
+    hooked = true;
   }
 
   void setAim(int newAimX, int newAimY, int newAimZ) {

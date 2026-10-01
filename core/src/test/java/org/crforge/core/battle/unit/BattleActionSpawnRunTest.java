@@ -23,6 +23,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -259,6 +260,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * electro_giant_tower} walks one into a princess tower, whose arrows from inside its reach take 128
  * back each, the crown-tower column, until the tower falls to its own reflected arrow. Each is held
  * to every hit that reached the reflect, what it struck back with, and every reflected hit.
+ *
+ * <p>{@code fisherman_knight} walks a Fisherman at a Knight: in the ring past its minimum range it
+ * loads its special standing still and hooks the Knight with it, pulls it back at its speed's share
+ * of the drag speed and lets go short of itself, then fights it. {@code fisherman_tower} hooks a
+ * princess tower, which cannot be pulled, so the Fisherman drags himself to it at the self-drag
+ * speed and hits it until its arrows kill him. Each is held to every load armed, every state the
+ * hook set, and the hold and the pull its projectile's leaving ended.
  */
 class BattleActionSpawnRunTest {
 
@@ -367,7 +375,9 @@ class BattleActionSpawnRunTest {
         "heal_spirit_group",
         "clone_golem_group",
         "electro_giant_struck",
-        "electro_giant_tower"
+        "electro_giant_tower",
+        "fisherman_knight",
+        "fisherman_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -602,6 +612,10 @@ class BattleActionSpawnRunTest {
                 reflectLog.add(reflectLine(currentTick[0], r));
               }
             });
+    // Every special load armed, every state a dragging projectile set, and the hold and the pull
+    // its leaving ended.
+    List<String> hookLog = new ArrayList<>();
+    match.getWorld().addObserver(hookLog(currentTick, hookLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1171,6 +1185,10 @@ class BattleActionSpawnRunTest {
     assertThat(reflectLog)
         .as("every hit that reached a reflect, and what it struck back with")
         .containsExactlyElementsOf(expectedReflects);
+
+    assertThat(hookLog)
+        .as("every special load armed, every state a drag set, and every hold and pull let go")
+        .containsExactlyElementsOf(expectedHookLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -1924,6 +1942,124 @@ class BattleActionSpawnRunTest {
                         c.get("state").asInt(),
                         c.get("resumed").asBoolean()));
         default -> throw new IllegalStateException("unknown clone event " + c);
+      }
+    }
+    return expected;
+  }
+
+  /** Logs every special load armed, every state a drag set, and every hold and pull let go. */
+  private static WorldObserver hookLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void specialArmed(
+          int tick,
+          CharacterEntity unit,
+          WorldEntity reference,
+          long distanceSquared,
+          int ringMin,
+          int ringMax,
+          int loadMs,
+          int afterMs) {
+        log.add(
+            "%d arm %s ref %s distance %d ring %d %d load %d after %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    reference.name(),
+                    distanceSquared,
+                    ringMin,
+                    ringMax,
+                    loadMs,
+                    afterMs));
+      }
+
+      @Override
+      public void dragStateSet(
+          int tick, ProjectileEntity projectile, WorldEntity unit, int oldState, int newState) {
+        GridEntity view = unit.getView();
+        log.add(
+            "%d state %s %s %d to %d now %d at %d %d"
+                .formatted(
+                    currentTick[0],
+                    attackerName(projectile),
+                    unit.name(),
+                    oldState,
+                    newState,
+                    view.getState(),
+                    view.getX(),
+                    view.getY()));
+      }
+
+      @Override
+      public void holdLeft(int tick, WorldEntity unit, ProjectileEntity projectile) {
+        log.add(
+            "%d held_left %s %s".formatted(currentTick[0], unit.name(), attackerName(projectile)));
+      }
+
+      @Override
+      public void followLeft(int tick, WorldEntity unit, ProjectileEntity projectile) {
+        GridEntity view = unit.getView();
+        log.add(
+            "%d follow_left %s %s now %d at %d %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    attackerName(projectile),
+                    view.getState(),
+                    view.getX(),
+                    view.getY()));
+      }
+    };
+  }
+
+  /** The reference's special loads, drag states, holds and pulls, in the hook log's layout. */
+  private static List<String> expectedHookLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode h : reference.path("hooks")) {
+      int tick = h.get("tick").asInt();
+      switch (h.get("event").asText()) {
+        case "arm" ->
+            expected.add(
+                "%d arm %s ref %s distance %d ring %d %d load %d after %d"
+                    .formatted(
+                        tick,
+                        h.get("unit").asText(),
+                        h.get("ref").asText(),
+                        h.get("distance").asLong(),
+                        h.get("ring").get(0).asInt(),
+                        h.get("ring").get(1).asInt(),
+                        h.get("load").asInt(),
+                        h.get("after").asInt()));
+        case "state" ->
+            expected.add(
+                "%d state %s %s %d to %d now %d at %d %d"
+                    .formatted(
+                        tick,
+                        h.get("projectile").asText(),
+                        h.get("unit").asText(),
+                        h.get("old").asInt(),
+                        h.get("new").asInt(),
+                        h.get("state").asInt(),
+                        h.get("x").asInt(),
+                        h.get("y").asInt()));
+        case "held_left" -> {
+          // No owner of a dragging projectile morphs back: the battle refuses one that would.
+          assertThat(h.get("morph_character").isNull()).isTrue();
+          expected.add(
+              "%d held_left %s %s"
+                  .formatted(tick, h.get("unit").asText(), h.get("projectile").asText()));
+        }
+        case "follow_left" ->
+            expected.add(
+                "%d follow_left %s %s now %d at %d %d"
+                    .formatted(
+                        tick,
+                        h.get("unit").asText(),
+                        h.get("projectile").asText(),
+                        h.get("state").asInt(),
+                        h.get("x").asInt(),
+                        h.get("y").asInt()));
+        default -> throw new IllegalStateException("unknown hook event " + h);
       }
     }
     return expected;

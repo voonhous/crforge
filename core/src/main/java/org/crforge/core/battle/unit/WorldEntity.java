@@ -146,6 +146,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The working state of the entity's targeting component: its reference and attack timing. */
   @Getter private final TargetingState targeting;
 
+  /** The hooking projectile the targeting component is held on, or null for none. */
+  private ProjectileEntity held;
+
   /** Answers which target the targeting component should have now. */
   @Getter private final SelectionChain selection;
 
@@ -419,11 +422,30 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     selection.unregister(departed);
   }
 
-  /** The targeting component's notice: a reference to the entity that left is dropped at once. */
+  /**
+   * Holds the targeting component on a hooking projectile the entity launched: its visit returns
+   * early until the projectile leaves the battle.
+   *
+   * @param projectile the hooking projectile
+   */
+  public void hold(ProjectileEntity projectile) {
+    targeting.setVisitSuspended(true);
+    held = projectile;
+  }
+
+  /**
+   * The targeting component's notice: a reference to the entity that left is dropped at once, and a
+   * hooking projectile it was held on is forgotten, which lets its visit go on.
+   */
   @Override
   protected void entityRemoved(BattleEntity removed) {
     if (removed instanceof WorldEntity gone) {
       RemovalNotice.entityRemoved(targeting, gone.getTargetView(), null);
+    }
+    if (removed != null && removed == held) {
+      held = null;
+      targeting.setVisitSuspended(false);
+      world.holdLeft(this, (ProjectileEntity) removed);
     }
     // The buff component hears of it after the targeting component.
     buffs.entityRemoved(removed);
@@ -496,8 +518,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
-      public void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {
-        ProjectileLauncher.launch(WorldEntity.this, t, target, sequenceIndex, world);
+      public void launchProjectiles(
+          TargetingState t, TargetView target, int sequenceIndex, boolean special) {
+        ProjectileLauncher.launch(WorldEntity.this, t, target, sequenceIndex, special, world);
       }
 
       @Override

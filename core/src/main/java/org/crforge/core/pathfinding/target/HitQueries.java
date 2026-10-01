@@ -96,8 +96,10 @@ public interface HitQueries {
    * @param target what the hit is aimed at, or null when the attacker has given it up
    * @param sequenceIndex which hit of the attack this is: -1 for a single-target attack, otherwise
    *     the index within the burst or the multi-target list, which fans the projectiles out
+   * @param special true for a special hit, which fires the special projectile when there is one
    */
-  default void launchProjectiles(TargetingState t, TargetView target, int sequenceIndex) {}
+  default void launchProjectiles(
+      TargetingState t, TargetView target, int sequenceIndex, boolean special) {}
 
   /**
    * Deals the damage of a landed hit to everything in a circle rather than to its target alone,

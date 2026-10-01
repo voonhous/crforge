@@ -312,8 +312,34 @@ class GridStateSetterTest {
     assertThat(unit.getState()).isEqualTo(GridEntityState.DEPLOYING);
     assertThat(movement.getRoute().size()).isEqualTo(3);
 
+    // A hook's state needs what the unit does beyond the setter's fields, here nothing.
+    setter.setFollowing(
+        new GridStateSetter.Following() {
+          @Override
+          public void components(boolean on) {}
+
+          @Override
+          public void movementOn() {}
+
+          @Override
+          public void dropReferenceOutOfRange() {}
+
+          @Override
+          public void standOrRelocate() {}
+
+          @Override
+          public void tailGate() {}
+        });
     setter.setState(unit, GridEntityState.FOLLOWING_REMOVED);
     assertThat(unit.getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+  }
+
+  @Test
+  @DisplayName("a hook's state is refused to a setter not told what the unit does in it")
+  void aHookStateNeedsTheUnit() {
+    assertThatThrownBy(() -> setter.setState(unit, GridEntityState.COMPONENTS_DISABLED))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("hook's state");
   }
 
   @Test

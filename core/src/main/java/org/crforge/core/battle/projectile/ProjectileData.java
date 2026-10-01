@@ -87,6 +87,13 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param spawnAreaEffectObject the area effect its impact makes at the impact point, after its hit
  *     and its spawned characters; null for none
  * @param ignoreReflectedAttack true for a projectile whose hits a reflecting unit does not reflect
+ * @param dragBackSpeed how far a hooking projectile flies back each step once it has hooked its
+ *     target; 0 for a projectile that does not hook
+ * @param dragSelfSpeed how far a hook on a building drags its owner each step, under the attractor
+ *     column
+ * @param dragMargin how much short of its owner a pulled target is aimed, beyond both radii
+ * @param dragBackAsAttractor true for a hook whose speeds follow what it hooked: the target's own
+ *     speed for a pulled troop, the self-drag speed for a building
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -95,7 +102,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
     note =
         "Settled: the columns carried and the homing-like test that tells a projectile flying to a"
             + " point from one flying to a target. Not carried yet: the far"
-            + " distance clamp, the random angle and distance, the angular delay, the drag columns, the"
+            + " distance clamp, the random angle and distance, the angular delay, the"
             + " pingpong death effect, which is presentation, the deflect behaviour, the chained hit's end effect, the target buff of a"
             + " projectile that flies to a point, and a spawned area effect that follows; the impact's pushback, its spawned characters"
             + " and its spawned area effect are carried.")
@@ -149,6 +156,10 @@ public record ProjectileData(
     String onHitTargetAction,
     String spawnAreaEffectObject,
     boolean ignoreReflectedAttack,
+    int dragBackSpeed,
+    int dragSelfSpeed,
+    int dragMargin,
+    boolean dragBackAsAttractor,
     List<String> unmodelledColumns) {
 
   public ProjectileData {

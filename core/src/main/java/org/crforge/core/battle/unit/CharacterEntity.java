@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -33,8 +34,10 @@ import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
+import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
+import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.AttachedParent;
@@ -479,6 +482,9 @@ public class CharacterEntity extends WorldEntity {
     if (data.spawnAreaObject() != null || data.pushesOnDeploy()) {
       setter.setDeployingEntry(this::enteredDeploying);
     }
+    // A hook's states switch its components, check its reference and its cell, and end with the
+    // combat gate.
+    setter.setFollowing(new HookStates());
     // Who may select, hit or buff it is its own answer, asked with the asker.
     getTargetView().setAcceptance(this::accepts);
     // Leaving the attacking state starts the countdown to a row's buff while it is not attacking.
@@ -1147,6 +1153,129 @@ public class CharacterEntity extends WorldEntity {
     return view;
   }
 
+  /**
+   * Asks the unit's setter for a state, as a hooking projectile does of its target and its owner.
+   *
+   * @param state the state asked for
+   */
+  void requestState(int state) {
+    setter.setState(getView(), state);
+  }
+
+  /**
+   * Has the unit follow a hooking projectile: its state visit puts it where the projectile is each
+   * tick while it is pulled, and a hook on a building drags it while it follows.
+   *
+   * @param projectile the hooking projectile
+   */
+  void follow(ProjectileEntity projectile) {
+    unit.timers().setFollowTarget(projectile);
+  }
+
+  /**
+   * The character's notice of a removal: the components hear first; then a projectile it followed
+   * is forgotten and, outside a clone's setup, the unit is resumed. The resume does nothing in a
+   * pulled state, whose next state visit, finding nothing to follow, asks for standing; an owner a
+   * hook dragged to a building has moved on already, and stays moving.
+   */
+  @Override
+  protected void entityRemoved(BattleEntity removed) {
+    super.entityRemoved(removed);
+    if (removed instanceof ProjectileEntity projectile
+        && unit.timers().getFollowTarget() == projectile) {
+      unit.timers().setFollowTarget(null);
+      world.followLeft(this, projectile);
+      if (getView().getState() != GridEntityState.CLONE_SETUP) {
+        ResumeHelper.resume(
+            getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
+      }
+    }
+  }
+
+  /** Tells the battle of a special load the visit armed, with the ring its reference stood in. */
+  private void specialArmed() {
+    TargetView reference = unit.targeting().getReference();
+    long dx = reference.x() - getView().getX();
+    long dy = reference.y() - getView().getY();
+    UnitData data = getData();
+    world.specialArmed(
+        this,
+        world.entityOf(reference.getEntity()),
+        dx * dx + dy * dy,
+        reference.radius() + data.specialMinRange(),
+        reference.radius() + data.specialRange(),
+        data.specialLoadTimeMs(),
+        unit.targeting().getSpecialLoadTimerMs());
+  }
+
+  /** Switches a component on or off, the movement component's view and targeting bits with it. */
+  private void switchComponent(int slot, boolean on) {
+    setActive(slot, on);
+    if (slot == MOVEMENT_SLOT && getView().isMovementComponent()) {
+      getView().setMovementActive(on);
+      unit.targeting().setMovementComponentActive(on);
+    }
+  }
+
+  /** What a hook's states do on the unit beyond its setter's fields. */
+  private final class HookStates implements GridStateSetter.Following {
+
+    @Override
+    public void components(boolean on) {
+      switchComponent(MOVEMENT_SLOT, on);
+      switchComponent(TARGETING_SLOT, on);
+    }
+
+    @Override
+    public void movementOn() {
+      switchComponent(MOVEMENT_SLOT, true);
+    }
+
+    /** The raw clear of a reference the range test no longer passes: no setter, no resume. */
+    @Override
+    public void dropReferenceOutOfRange() {
+      TargetingState t = unit.targeting();
+      TargetView reference = t.getReference();
+      if (reference != null && !RangeTest.referenceInRange(t, reference, 0)) {
+        t.setReference(null);
+        t.setKeptByPendingDamageCheck(false);
+      }
+    }
+
+    /**
+     * A unit let go on a cell it may not stand on is moved to the nearest cell off the water, on
+     * any row: the projectile it followed, whose owner would decide the side, is gone by then.
+     */
+    @Override
+    public void standOrRelocate() {
+      GridEntity view = getView();
+      CellGrid grid = world.getGrid();
+      if (CellTests.cellBlocked(grid, view.getX(), view.getY()) == 0) {
+        return;
+      }
+      if (unit.timers().getFollowTarget() != null) {
+        throw new UnsupportedOperationException(
+            name() + " leaves a pulled state still following, not modelled");
+      }
+      int packed =
+          Relocation.relocate(
+              grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), -1, grid::water);
+      world.relocated(
+          CharacterEntity.this,
+          view.getX(),
+          view.getY(),
+          Relocation.unpackX(packed),
+          Relocation.unpackY(packed));
+      view.setX(Relocation.unpackX(packed));
+      view.setY(Relocation.unpackY(packed));
+    }
+
+    @Override
+    public void tailGate() {
+      stateTailGate();
+    }
+  }
+
   private static TargetingConfig targetingConfig(UnitData data) {
     return TargetingConfig.forUnit(
             data.range(),
@@ -1168,6 +1297,7 @@ public class CharacterEntity extends WorldEntity {
         .hasOnStartingAttackAction(data.onStartingAttackAction() != null)
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .hasProjectile(data.hasProjectile())
+        .hasSpecialProjectile(data.projectileSpecial() != null)
         .areaDamageRadius(data.areaDamageRadius())
         .selfAsAoeCenter(data.selfAsAoeCenter())
         .overrideAttackFinishTime(data.overrideAttackFinishTime())
@@ -1189,6 +1319,10 @@ public class CharacterEntity extends WorldEntity {
         .deprioritizeTargetsWithBuff(data.deprioritizeTargetsWithBuff())
         .keepTargetWithPendingDamage(data.keepTargetWithPendingDamage())
         .lifeTime(data.lifeTimeMs())
+        .specialRange(data.specialRange())
+        .specialMinRange(data.specialMinRange())
+        .specialLoadTime(data.specialLoadTimeMs())
+        .specialIgnoreBuildings(data.specialIgnoreBuildings())
         .build();
   }
 
@@ -2070,8 +2204,12 @@ public class CharacterEntity extends WorldEntity {
       unit.targeting().setRouteLeadsAway(unit.movement().getRouteLeadsAway() != 0);
       SelectionChain selection = unit.selection();
       selection.beginTick();
+      boolean loading = unit.targeting().isSpecialLoadPending();
       TargetingVisit.targetingVisit(
           unit.targeting(), getView(), unit.movement(), selection, selection.getOutcome());
+      if (!loading && unit.targeting().isSpecialLoadPending()) {
+        specialArmed();
+      }
       if (selection.getOutcome().isResumeRequested()) {
         ResumeHelper.resume(
             getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
