@@ -125,10 +125,13 @@ public final class MovementState {
    */
   private final int[] workVector = new int[2];
 
-  /** Set by the push pass when the entity cannot be moved out of its cell. */
+  /**
+   * Set by an attracting buff's pull for a unit that neither flies nor hovers, so the grid move
+   * keeps the pushed unit off the water.
+   */
   private int pushStuck;
 
-  /** Set by the push pass to leave the averaged push vector unclamped. */
+  /** Set by an attracting buff's pull to leave the averaged push vector unclamped. */
   private int pushUnclamped;
 
   /**

@@ -23,7 +23,7 @@ class BattleEarthquakeTest {
 
   /** A Knight standing on the top side's half, and the towers passive. */
   private static CharacterEntity knight(Standard1v1Battle match) {
-    return match.deploy(1, GameData.unit("Knight"), LEVEL, 0, 3500, 23500);
+    return match.deploy(0, GameData.unit("Knight"), LEVEL, 1, 3500, 23500);
   }
 
   /** The Earthquake area effect the battle admits first, once the battle has stepped to it. */

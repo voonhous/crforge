@@ -31,7 +31,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the ninety runs in which an action, a death, a building or a unit's own spawner spawns
+ * Plays the ninety-two runs in which an action, a death, a building or a unit's own spawner spawns
  * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
  * them tick for tick.
  *
@@ -218,6 +218,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * walked out is still hit while its instance lasts. {@code earthquake_tesla_overlap} plays two
  * Earthquakes overlapping on a hidden Tesla and a Knight that walks in late: each Earthquake lists
  * its own instance and hits on its own clock, so the hits interleave.
+ *
+ * <p>{@code tornado_group_off_lane} plays a Tornado over five Barbarians: each update pulls every
+ * one in its circle toward its centre, and the next movement visit adds the pull to the route step,
+ * so they are dragged off their lane and walk back to it once the Tornado has gone. {@code
+ * tornado_heavy_light_tower} plays a Tornado over a Giant and a Knight beside a princess tower: the
+ * pull is a share of each unit's own speed, so the Giant moves less than the Knight, and the tower
+ * takes the damage but does not move. Each is held to every pull: the targets, the vector to the
+ * centre and the push accumulators before and after.
  */
 class BattleActionSpawnRunTest {
 
@@ -316,7 +324,9 @@ class BattleActionSpawnRunTest {
         "tesla_giant_passing",
         "tesla_hidden_spells",
         "earthquake_barbarians_tower",
-        "earthquake_tesla_overlap"
+        "earthquake_tesla_overlap",
+        "tornado_group_off_lane",
+        "tornado_heavy_light_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -531,6 +541,9 @@ class BattleActionSpawnRunTest {
     // A hiding building's deploy end, and every change of its hide counter that shows something.
     List<String> hidingLog = new ArrayList<>();
     match.getWorld().addObserver(hidingLog(currentTick, hidingLog));
+    // Every pull of an attracting area effect's hit.
+    List<String> pullLog = new ArrayList<>();
+    match.getWorld().addObserver(pullLog(currentTick, pullLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1044,6 +1057,10 @@ class BattleActionSpawnRunTest {
     assertThat(hidingLog)
         .as("every deploy end's targeting visit and every hide counter change that shows something")
         .containsExactlyElementsOf(expectedHidingLog(reference));
+
+    assertThat(pullLog)
+        .as("every pull, its targets and their push accumulators")
+        .containsExactlyElementsOf(expectedPullLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -1667,6 +1684,70 @@ class BattleActionSpawnRunTest {
         }
       }
     };
+  }
+
+  /**
+   * Logs each hit of an attracting area effect: its centre, and each unit it pulled with the vector
+   * to the centre and its push accumulators before and after.
+   */
+  private static WorldObserver pullLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void areaPulled(
+          int tick, AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulls) {
+        List<String> pulled = new ArrayList<>();
+        for (AreaEffectEntity.Pull pull : pulls) {
+          pulled.add(
+              "%s %d %d %s %s"
+                  .formatted(
+                      pull.target().name(),
+                      pull.dx(),
+                      pull.dy(),
+                      Arrays.toString(pull.before()),
+                      Arrays.toString(pull.after())));
+        }
+        log.add(
+            "%d pull %s %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    areaEffect.name(),
+                    areaEffect.getX(),
+                    areaEffect.getY(),
+                    pulled));
+      }
+    };
+  }
+
+  private static List<String> expectedPullLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("pulls")) {
+      List<String> pulled = new ArrayList<>();
+      for (JsonNode p : e.get("pushed")) {
+        int[] before = new int[5];
+        int[] after = new int[5];
+        for (int i = 0; i < 5; i++) {
+          before[i] = p.get("before").get(i).asInt();
+          after[i] = p.get("after").get(i).asInt();
+        }
+        pulled.add(
+            "%s %d %d %s %s"
+                .formatted(
+                    p.get("target").asText(),
+                    p.get("vector").get(0).asInt(),
+                    p.get("vector").get(1).asInt(),
+                    Arrays.toString(before),
+                    Arrays.toString(after)));
+      }
+      expected.add(
+          "%d pull %s %d %d %s"
+              .formatted(
+                  e.get("tick").asInt(),
+                  e.get("area_effect").asText(),
+                  e.get("centre").get(0).asInt(),
+                  e.get("centre").get(1).asInt(),
+                  pulled));
+    }
+    return expected;
   }
 
   private static List<String> expectedHidingLog(JsonNode reference) {

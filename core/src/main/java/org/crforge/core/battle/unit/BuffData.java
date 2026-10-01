@@ -21,6 +21,17 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param buildingDamagePercent the share of the damage a building takes, in percent; 0 for all
  * @param hitTickFromSource true when its hits of damage over time follow the clock of the area
  *     effect that applied it rather than each instance's own count
+ * @param attractPercentage the pull toward an area effect's centre, in hundredths of a percent of
+ *     the carrier's configured speed, that each hit of the area effect adds; 0 for none
+ * @param lateralPushPercentage the pull across that direction, in the same units; 0 for none
+ * @param pushMassFactor how much the carrier's mass weakens the pull; 0 for not at all
+ * @param pushSpeedFactor the percent the pull scales the carrier's configured speed by; 0 to take
+ *     the percentages as they are
+ * @param attractMinAngle the smallest angle between a moving area effect's travel and the way to
+ *     its centre at which it pulls
+ * @param attractMaxAngle the largest such angle; below 1 the angle is not tested
+ * @param controlledByParent true when the area effect that applies it is also its parent, whose
+ *     removal removes it
  * @param enableStacking true when an instance is refreshed only by the source that applied it
  * @param playerSpecificBuff true when an instance is refreshed only from its own side
  * @param noEffectToCrownTowers true when a crown tower takes nothing of it
@@ -53,6 +64,13 @@ public record BuffData(
     int crownTowerDamagePercent,
     int buildingDamagePercent,
     boolean hitTickFromSource,
+    int attractPercentage,
+    int lateralPushPercentage,
+    int pushMassFactor,
+    int pushSpeedFactor,
+    int attractMinAngle,
+    int attractMaxAngle,
+    boolean controlledByParent,
     boolean enableStacking,
     boolean playerSpecificBuff,
     boolean noEffectToCrownTowers,
@@ -71,5 +89,10 @@ public record BuffData(
 
   public BuffData {
     unmodelledColumns = unmodelledColumns == null ? List.of() : List.copyOf(unmodelledColumns);
+  }
+
+  /** Whether it pulls: an area effect applying it pulls with each hit, before applying it. */
+  public boolean attracts() {
+    return attractPercentage != 0 || lateralPushPercentage != 0;
   }
 }

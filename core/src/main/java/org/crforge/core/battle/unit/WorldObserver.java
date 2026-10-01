@@ -264,6 +264,17 @@ public interface WorldObserver {
   default void areaEffectCreated(
       int tick, AreaEffectEntity areaEffect, String how, String source) {}
 
+  /**
+   * An area effect's hit pulled units toward its centre, before its buff was applied: each pulled
+   * unit with the vector to the centre and its push accumulators before and after.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param pulls the units pulled, in the order of the battle's live list
+   */
+  default void areaPulled(
+      int tick, AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulls) {}
+
   /** An area effect was admitted to the live list, and its starting action scheduled. */
   default void areaEffectAdmitted(int tick, AreaEffectEntity areaEffect) {}
 

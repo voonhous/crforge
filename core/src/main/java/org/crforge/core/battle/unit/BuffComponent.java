@@ -42,9 +42,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p><b>Invisibility.</b> Each listed instance of a buff that makes its carrier invisible counts
  * once, from its listing to its removal; the carrier is invisible while the count is 1 or more.
  *
- * <p><b>Parents.</b> An instance keeps the parent it was applied with only for a buff that stacks,
- * and no path of the battle applies such a buff with a parent, so every instance has none: the
- * removal of a row's instances without a parent is the removal of all of them.
+ * <p><b>Parents.</b> An instance keeps the parent it was applied with only for a buff that stacks:
+ * an area effect applies a buff its parent controls, the Tornado's, with itself as the parent. An
+ * instance with the same parent already listed, of any row, stops a new one from being listed. The
+ * visit removes an instance whose parent is removable as it removes one whose time has run out, and
+ * a parent that leaves the battle removes its instances at once, where a source that leaves is only
+ * forgotten. The not-attacking section removes only the instances of its row without a parent.
  *
  * <p><b>Scales.</b> The speed, the attack time step and the spawn time step each take the largest
  * boost of the listed rows, from 100, times what the largest slow leaves of 100: Rage makes a step
@@ -68,8 +71,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " tower column, a crown tower's heal and a negative hit frequency. A death spawn is left by the dying carrier (see the battle's death slot),"
             + " held by witch_mother_skeletons; one giving way to another is refused. Refused by"
             + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
-            + " shields, hit point and damage multipliers, damage reduction, pull and push, and a"
-            + " parent that controls the buff.")
+            + " shields, hit point and damage multipliers and damage reduction. Held by"
+            + " tornado_group_off_lane and tornado_heavy_light_tower: the parent an instance"
+            + " keeps, a refresh keeping the damage counter, and the removal of a parent's"
+            + " instances as it leaves. Translated but held by no run: an instance with the same"
+            + " parent stopping a new one, the removal by a parent that is removable at the visit,"
+            + " and the not-attacking section sparing an instance with a parent.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -140,6 +147,23 @@ public final class BuffComponent implements BattleComponent {
    * @param side the side it is applied for
    */
   void apply(BuffData buff, int time, int packedLevel, SpawnHost source, int side) {
+    apply(buff, time, packedLevel, source, side, null);
+  }
+
+  /**
+   * Applies a buff to the entity with a parent: refreshes the instances it matches, or lists a new
+   * one, unless an instance with the same parent is listed already.
+   *
+   * @param buff the buff's row
+   * @param time how long it lasts, in milliseconds
+   * @param packedLevel the level it is applied at, packed against the source's rarity
+   * @param source what applies it
+   * @param side the side it is applied for
+   * @param parent the entity whose removal removes the instance, kept only for a buff that stacks;
+   *     null for none
+   */
+  void apply(
+      BuffData buff, int time, int packedLevel, SpawnHost source, int side, BattleEntity parent) {
     if (entity.getTargetView().building() && buff.ignoreBuildings()) {
       return;
     }
@@ -208,9 +232,18 @@ public final class BuffComponent implements BattleComponent {
         }
       }
     }
+    // An instance with the same parent already listed, of any row, stops a new one.
+    if (parent != null) {
+      for (BuffInstance instance : items) {
+        if (instance.getParent() == parent) {
+          create = false;
+          break;
+        }
+      }
+    }
     if (create) {
       BuffInstance instance =
-          new BuffInstance(world.nextBuffKey(), buff, time, level, source, side);
+          new BuffInstance(world.nextBuffKey(), buff, time, level, source, side, parent);
       items.add(instance);
       if (buff.invisible()) {
         invisibleCount++;
@@ -220,15 +253,15 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
-   * Removes every listed instance of a row, from the last to the first, as the not-attacking
-   * section asks for its buff's instances without a parent, which are all of them.
+   * Removes every listed instance of a row without a parent, from the last to the first, as the
+   * not-attacking section asks for its buff's instances.
    *
    * @param buff the buff row's name
    */
   void removeRow(String buff) {
     for (int i = items.size() - 1; i >= 0; i--) {
       BuffInstance instance = items.get(i);
-      if (instance.getBuff().name().equals(buff)) {
+      if (instance.getBuff().name().equals(buff) && instance.getParent() == null) {
         items.remove(i);
         onRemoved(instance);
         world.buffRemoved(entity, instance);
@@ -236,11 +269,15 @@ public final class BuffComponent implements BattleComponent {
     }
   }
 
-  /** What the removal of an instance undoes at once: its share of the invisible count. */
+  /**
+   * What the removal of an instance undoes at once: its share of the invisible count, and its
+   * parent.
+   */
   private void onRemoved(BuffInstance instance) {
     if (instance.getBuff().invisible()) {
       invisibleCount--;
     }
+    instance.forgetParent();
   }
 
   /**
@@ -263,7 +300,7 @@ public final class BuffComponent implements BattleComponent {
         hitting.add(instance);
         periods.add(period);
       }
-      if (instance.getRemaining() == 0 && items.remove(instance)) {
+      if (instance.finished() && items.remove(instance)) {
         onRemoved(instance);
         removed.add(instance);
       }
@@ -365,11 +402,18 @@ public final class BuffComponent implements BattleComponent {
         ScalingGlobals.standard(), value, packedLevel, ScalingMode.CARD_DAMAGE, buff.rarity());
   }
 
-  /** A source that left the battle is forgotten by the instances it applied. */
+  /**
+   * An entity that left the battle: from the last instance to the first, one it is the parent of is
+   * removed, and one it applied otherwise forgets it.
+   */
   void entityRemoved(BattleEntity removed) {
     for (int i = items.size() - 1; i >= 0; i--) {
       BuffInstance instance = items.get(i);
-      if (instance.getSource() == removed) {
+      if (instance.getParent() == removed) {
+        items.remove(i);
+        onRemoved(instance);
+        world.buffRemoved(entity, instance);
+      } else if (instance.getSource() == removed) {
         instance.forgetSource();
       }
     }
