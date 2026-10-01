@@ -251,6 +251,14 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
+   * Its age in milliseconds: its lifetime less the countdown as its last update left it, so 0
+   * before its first update and 50 more after each.
+   */
+  int age() {
+    return data.lifeDurationMs() - countdown;
+  }
+
+  /**
    * Whether its buff may reach a character: one of its own side when the buff is for its own troops
    * only, of the other side when it hits enemies only; alive; not untouchable; not waiting to
    * deploy; not a building when it ignores buildings; and passing its own test of a target, which

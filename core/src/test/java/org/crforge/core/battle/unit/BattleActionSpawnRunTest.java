@@ -31,9 +31,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the eighty-eight runs in which an action, a death, a building or a unit's own spawner
- * spawns characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the
- * battle to them tick for tick.
+ * Plays the ninety runs in which an action, a death, a building or a unit's own spawner spawns
+ * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
+ * them tick for tick.
  *
  * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
  * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
@@ -211,6 +211,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * damage, one still in flight as it goes down lands for nothing, a Zap passes it by, and a Freeze,
  * which reaches hidden units, damages and freezes it, the freeze holding its counter. Each is held
  * to the deploy end's targeting visit and to every change of the hide counter that shows something.
+ *
+ * <p>{@code earthquake_barbarians_tower} plays an Earthquake over Barbarians and a princess tower:
+ * each hit of its damage over time comes on the Earthquake's own clock, 950 ms into each second of
+ * its age, so every target is hit on the same ticks whenever it walked in, and a Barbarian that has
+ * walked out is still hit while its instance lasts. {@code earthquake_tesla_overlap} plays two
+ * Earthquakes overlapping on a hidden Tesla and a Knight that walks in late: each Earthquake lists
+ * its own instance and hits on its own clock, so the hits interleave.
  */
 class BattleActionSpawnRunTest {
 
@@ -307,7 +314,9 @@ class BattleActionSpawnRunTest {
         "bush_valkyrie_knight",
         "pending_shield_guards",
         "tesla_giant_passing",
-        "tesla_hidden_spells"
+        "tesla_hidden_spells",
+        "earthquake_barbarians_tower",
+        "earthquake_tesla_overlap"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

@@ -29,11 +29,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
  * ms and is removed once its time is 0; the damage and the heal over time due on the visit land
- * once it is over, each instance's damage before its heal. The damage is the damage per second at
- * the instance's level, rounded down to a multiple of what one hit can deal, for the period of the
- * hit; a crown tower takes the per-hit column or that share raised by the crown-tower percent, and
- * a building the building percent of it. The heal is the heal per second at the instance's level
- * for the period of the hit, a crown tower's that heal raised by the crown-tower percent.
+ * once it is over, each instance's damage before its heal. An instance counts visits toward its
+ * next hit, which comes as the count reaches the hit frequency; for a buff whose hits follow their
+ * source, as the Earthquake's do, each visit first sets the count from the age of the area effect
+ * that applied it, so every target of one area effect is hit on the same ticks whenever it entered,
+ * and two of them hit on their own clocks. The damage is the damage per second at the instance's
+ * level, rounded down to a multiple of what one hit can deal, for the period of the hit; a crown
+ * tower takes the per-hit column or that share raised by the crown-tower percent, and a building
+ * the building percent of it. The heal is the heal per second at the instance's level for the
+ * period of the hit, a crown tower's that heal raised by the crown-tower percent.
  *
  * <p><b>Invisibility.</b> Each listed instance of a buff that makes its carrier invisible counts
  * once, from its listing to its removal; the carrier is invisible while the count is 1 or more.
@@ -55,10 +59,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " 3, the 50 ms step and the removal, the damage over time on a unit and a crown"
             + " tower; the speed, hit speed and spawn speed scales. Held by"
             + " battle_healer_knights and ghost_river_wizard_tower: the heal over time on a unit,"
-            + " the invisible count and the removal of a row's instances. Translated but held by"
-            + " no run: a building's damage percent, a player-specific refresh, the per-hit crown"
-            + " tower column, a crown tower's heal, a negative hit frequency and the forgotten"
-            + " source. A death spawn is left by the dying carrier (see the battle's death slot),"
+            + " the invisible count and the removal of a row's instances. Held by"
+            + " earthquake_barbarians_tower and earthquake_tesla_overlap: hits that follow their"
+            + " source area effect's age, one instance per source, a building's damage percent"
+            + " and the damage over time on a hidden Tesla, and the source forgotten as its area"
+            + " effect leaves. Translated but held by"
+            + " no run: a player-specific refresh, the per-hit crown"
+            + " tower column, a crown tower's heal and a negative hit frequency. A death spawn is left by the dying carrier (see the battle's death slot),"
             + " held by witch_mother_skeletons; one giving way to another is refused. Refused by"
             + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
             + " shields, hit point and damage multipliers, damage reduction, pull and push, and a"
@@ -250,6 +257,7 @@ public final class BuffComponent implements BattleComponent {
     for (int k = snapshot.size() - 1; k >= 0; k--) {
       BuffInstance instance = snapshot.get(k);
       instance.step(STEP_MS);
+      followSource(instance);
       int period = instance.countHit(STEP_MS);
       if (period != 0) {
         hitting.add(instance);
@@ -267,6 +275,26 @@ public final class BuffComponent implements BattleComponent {
     for (int i = 0; i < hitting.size(); i++) {
       overTime(hitting.get(i), periods.get(i));
     }
+  }
+
+  /**
+   * For a buff whose hits follow their source, sets the instance's count toward its next hit from
+   * the age of the area effect that applied it, after the step of its time; an instance that never
+   * runs out, or whose source has left, counts on as a plain one.
+   */
+  private void followSource(BuffInstance instance) {
+    if (!instance.getBuff().hitTickFromSource()
+        || instance.getSource() == null
+        || instance.getRemaining() == BuffInstance.FOREVER) {
+      return;
+    }
+    // Only an area effect applies the one row that follows its source; the source is read as one.
+    if (!(instance.getSource() instanceof AreaEffectEntity areaEffect)) {
+      throw new UnsupportedOperationException(
+          instance.getBuff().name()
+              + " follows the clock of a source that is not an area effect, which is not modelled");
+    }
+    instance.followSource(areaEffect.age(), STEP_MS);
   }
 
   /**

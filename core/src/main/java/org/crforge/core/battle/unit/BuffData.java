@@ -19,6 +19,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     percent
  * @param crownTowerDamagePercent how much more or less a crown tower takes, in percent
  * @param buildingDamagePercent the share of the damage a building takes, in percent; 0 for all
+ * @param hitTickFromSource true when its hits of damage over time follow the clock of the area
+ *     effect that applied it rather than each instance's own count
  * @param enableStacking true when an instance is refreshed only by the source that applied it
  * @param playerSpecificBuff true when an instance is refreshed only from its own side
  * @param noEffectToCrownTowers true when a crown tower takes nothing of it
@@ -50,6 +52,7 @@ public record BuffData(
     int crownTowerDamagePerHit,
     int crownTowerDamagePercent,
     int buildingDamagePercent,
+    boolean hitTickFromSource,
     boolean enableStacking,
     boolean playerSpecificBuff,
     boolean noEffectToCrownTowers,

@@ -65,7 +65,11 @@ public final class DamageApplication {
       int directionX,
       int directionY,
       DamageQueries queries) {
-    if (queries.damageForbidden() || queries.immune() || queries.untouchable() || damage < 1) {
+    if (queries.damageForbidden()
+        || queries.immune()
+        || queries.hidden()
+        || queries.untouchable()
+        || damage < 1) {
       return DamageResult.NOTHING;
     }
     if (queries.targetHasBuffComponent()) {
@@ -86,7 +90,8 @@ public final class DamageApplication {
 
   /**
    * Deals a hit of damage over time from a buff: refused only where damage is forbidden, then the
-   * bookkeeping and the subtraction as for an ordinary hit, with no dedupe id and no heading.
+   * bookkeeping and the subtraction as for an ordinary hit, with no dedupe id and no heading. The
+   * bookkeeping does not ask whether the target is hidden, so a hidden target takes it.
    *
    * @param hitPoints the target's hit points
    * @param damage the amount, after the target's damage reduction
@@ -129,8 +134,9 @@ public final class DamageApplication {
 
   /**
    * Deals a typed hit, the pipeline already run: refused while the battle holds damage, when the
-   * target is untouchable and when its id is already listed, which leaves that id's tick as it was;
-   * otherwise the id is listed and the shield and the hit points are lowered as by an ordinary hit.
+   * target is hidden or untouchable and when its id is already listed, which leaves that id's tick
+   * as it was; otherwise the id is listed and the shield and the hit points are lowered as by an
+   * ordinary hit.
    *
    * @param hitPoints the target's hit points
    * @param amount the amount after the type's pipeline
@@ -148,7 +154,9 @@ public final class DamageApplication {
       int directionX,
       int directionY,
       DamageQueries queries) {
-    if (queries.damageHeld() || queries.untouchable()) {
+    // Whether a typed hit asks the hidden test is untraced; it refuses a hidden target as an
+    // ordinary hit's entry does.
+    if (queries.damageHeld() || queries.hidden() || queries.untouchable()) {
       return DamageResult.NOTHING;
     }
     if (damageId != 0 && hitPoints.isDedupeListed(damageId)) {

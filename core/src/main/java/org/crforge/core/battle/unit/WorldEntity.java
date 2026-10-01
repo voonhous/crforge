@@ -607,8 +607,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
       // The damage entry refuses a hidden entity, unless the hit passes it.
       @Override
+      public boolean hidden() {
+        return !passesHidden && WorldEntity.this.hidden();
+      }
+
+      // The entry and the bookkeeping refuse an entity in its tunnel.
+      @Override
       public boolean untouchable() {
-        return !passesHidden && hidden();
+        return tunnelling();
       }
 
       @Override
@@ -669,6 +675,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * area and buff passes it by but an area effect's that reaches hidden units. A tower never hides.
    */
   public boolean hidden() {
+    return false;
+  }
+
+  /** Whether the entity tunnels to its placement, untouchable there. A tower never tunnels. */
+  protected boolean tunnelling() {
     return false;
   }
 

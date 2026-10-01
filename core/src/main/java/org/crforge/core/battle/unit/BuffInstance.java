@@ -88,6 +88,21 @@ public final class BuffInstance {
     return frequency;
   }
 
+  /**
+   * Sets the visits counted toward the next hit from the age of the area effect that applied it, as
+   * a buff whose hits follow their source asks on every visit: the age modulo the hit frequency, in
+   * visits. The hit comes on the visit that counts up to the frequency, so every instance one area
+   * effect applied is hit on the same visits, whenever it was applied.
+   *
+   * @param ageMs the source's age, as its last update left it
+   * @param stepMs the milliseconds of one visit
+   */
+  void followSource(int ageMs, int stepMs) {
+    int frequency = Math.max(buff.hitFrequency(), 0);
+    // The remainder of a division by 0 is the dividend, as the game's own division answers it.
+    hitCounter = (frequency == 0 ? ageMs : ageMs % frequency) / stepMs;
+  }
+
   /** The source that left the battle is forgotten; the instance stays. */
   void forgetSource() {
     source = null;
