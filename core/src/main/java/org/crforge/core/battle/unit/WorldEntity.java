@@ -12,6 +12,7 @@ import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.filter.FilterSubject;
@@ -521,6 +522,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public void launchProjectiles(
           TargetingState t, TargetView target, int sequenceIndex, boolean special) {
         ProjectileLauncher.launch(WorldEntity.this, t, target, sequenceIndex, special, world);
+      }
+
+      @Override
+      public boolean entryAction() {
+        return attackAction() != null;
+      }
+
+      @Override
+      public void runEntryAction(TargetView target) {
+        WorldEntity.this.runEntryAction(target);
       }
 
       @Override
@@ -1102,6 +1113,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   @Override
+  public boolean actionAttackSequence() {
+    return data.attackSequence().replacesAttack();
+  }
+
+  @Override
   public boolean liveObject(int id) {
     return world.liveObject(id) != null;
   }
@@ -1227,6 +1243,36 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return sequence.replacesAttack()
         ? sequence.entryAt(targeting.getAttackSequenceIndex()).projectile()
         : data.projectile();
+  }
+
+  /** The rows of the entity's attack sequence entries' actions, built on first use, by name. */
+  private final Map<String, BattleAction> entryActionRows = new HashMap<>();
+
+  /**
+   * The action the entity's next hit runs in place of hitting: the attack sequence's entry's at the
+   * index, when the sequence has two or more in its order and the entry names one; otherwise null.
+   */
+  private String attackAction() {
+    AttackSequence sequence = data.attackSequence();
+    return sequence.replacesAttack()
+        ? sequence.entryAt(targeting.getAttackSequenceIndex()).doAttackAction()
+        : null;
+  }
+
+  /**
+   * Schedules the entry's action on the entity with the hit's target as its cause, queued as the
+   * row's own delay asks: from the targeting visit it runs in the entity's pending pass of the same
+   * tick.
+   *
+   * @param target what the hit was aimed at, or null for no cause
+   */
+  private void runEntryAction(TargetView target) {
+    BattleAction row =
+        entryActionRows.computeIfAbsent(
+            attackAction(), name -> world.getActions().build(name, world.binding(this)));
+    WorldEntity cause = target == null ? null : world.entityOf(target.getEntity());
+    actionHolder()
+        .schedule(row, ActionHolder.OWN_DELAY, false, cause == null ? null : cause.actionHolder());
   }
 
   /**

@@ -51,6 +51,27 @@ public interface WorldObserver {
   default void damageDealt(int tick, WorldEntity target, int damage, DamageResult result) {}
 
   /**
+   * A typed hit was dealt to an entity by the drain. An observer that does not tell typed hits
+   * apart hears of it as of any hit dealt.
+   *
+   * @param tick the tick the hit landed in
+   * @param source the entity that dealt it, or null for none or one that has left the battle
+   * @param target the entity it was dealt to
+   * @param amount the amount after the type's pipeline
+   * @param damageId the hit's damage id; 0 for none
+   * @param result what the hit did to the target
+   */
+  default void typedHitDealt(
+      int tick,
+      WorldEntity source,
+      WorldEntity target,
+      int amount,
+      int damageId,
+      DamageResult result) {
+    damageDealt(tick, target, amount, result);
+  }
+
+  /**
    * A projectile was launched and handed to the holder; it has its id and its start and aim, and
    * first flies on the next tick.
    */

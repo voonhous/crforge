@@ -103,6 +103,13 @@ public interface ActionOwner {
     return false;
   }
 
+  /**
+   * True for an owner whose attack sequence replaces its row's attack: two or more in its order.
+   */
+  default boolean actionAttackSequence() {
+    return false;
+  }
+
   /** The owner's rarity, which a level is packed against; null for none. */
   default RarityTable actionRarity() {
     throw new UnsupportedOperationException("this owner has no rarity");

@@ -1,5 +1,6 @@
 package org.crforge.core.battle.unit;
 
+import java.util.List;
 import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.ExpressionEnvironment;
 import org.crforge.core.fidelity.Fidelity;
@@ -29,13 +30,16 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " battle's random source, taken as the expression is evaluated; hp as the context's"
             + " hit points and max_hp without a level as its maximum; target_in_range on the"
             + " context's reference, its edge and the context's; get_radius as the context's"
-            + " row's collision radius, held by giant_buffer_knights. Supplied, not"
+            + " row's collision radius, held by giant_buffer_knights; target_is_ground as the"
+            + " context's reference's row's flying height 0, none while its targeting is off,"
+            + " held by three_musketeers_pekka and three_musketeers_air_building. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
-            + " entity carries every bit of it. Not modelled: the other 31 functions, which fail"
+            + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
+            + " would read first, refused; the other 30 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -54,6 +58,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int RAND = BattleFunctions.id("rand");
   private static final int GET_RADIUS = BattleFunctions.id("get_radius");
   private static final int TARGET_IN_RANGE = BattleFunctions.id("target_in_range");
+  private static final int TARGET_IS_GROUND = BattleFunctions.id("target_is_ground");
+
+  /** The game tags that force an object onto a layer, which target_is_ground would read first. */
+  private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
+
   private static final int HP = BattleFunctions.id("hp");
   private static final int MAX_HP = BattleFunctions.id("max_hp");
 
@@ -217,6 +226,9 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
               + context.getView().getCollisionRadius();
       return dx * dx + dy * dy <= reach * reach ? 1 : 0;
     }
+    if (id == TARGET_IS_GROUND) {
+      return targetIsGround();
+    }
     if (id == RAND) {
       // One draw from the battle's source, taken as the expression is evaluated.
       return world.getRandom().next(arguments[0]);
@@ -235,5 +247,31 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     throw new UnsupportedOperationException(
         "the battle does not answer " + BattleFunctions.byId(id).name() + " yet");
+  }
+
+  /**
+   * Whether the context's reference stands on the ground: none while its targeting component is off
+   * or it has no reference, else its row's flying height is 0, so every building and crown tower is
+   * ground and every flying row is not, whatever its height. A reference carrying a game tag that
+   * forces its layer is refused, as the force tags are not modelled.
+   */
+  private int targetIsGround() {
+    TargetView target = context.getTargeting().getReference();
+    if (!context.isActive(0) || target == null) {
+      return 0;
+    }
+    WorldEntity entity = world.entityOf(target.getEntity());
+    if (entity == null) {
+      throw new UnsupportedOperationException(
+          "target_is_ground on " + context.name() + "'s reference, which has left the battle");
+    }
+    for (String tag : FORCE_LAYER_TAGS) {
+      Integer index = world.gameTagIndex(tag);
+      if (index != null && (entity.getView().getFlags() & world.gameTagMask(index)) != 0) {
+        throw new UnsupportedOperationException(
+            "target_is_ground on " + entity.name() + ", which carries " + tag + ", not modelled");
+      }
+    }
+    return entity.getData().flyingHeight() == 0 ? 1 : 0;
   }
 }
