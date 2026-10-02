@@ -597,6 +597,24 @@ The Clone's area effect, Clone_3000000 at level 10 as packed, hits once on 85, t
 
 The first Arrows volley kills the Golem's clone on 86, one step back at (4297, 14370): its death damage hits E1 and E2 for 225 and pushes them 1800, and its two Golemites are clones of 1 hit point, which the next volley kills on 89, their own death damage hitting E1 for 99. The Musketeer's clone steps back 125 a visit, its unit and the Golem forward, ten visits each; the three are resumed on 95, as the Clone buff runs out. The Musketeer's clone takes E1 on 99 and shoots it on 112, 132, 152 and 172; E1 dies on 180. The Golem's burst clock stands still under the Clone buff's speed of -100, so it walks on from 95 to 113 before its next pause, where it would have paused on 104. `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/clone_rage_group.json` - a Rage over clones and their units
+
+The towers fight at level 11. Side 0 plays Knights K1 at (3500, 12000) and K2 at (4500, 12000) and a Musketeer M at (4000, 10000) on tick 0; side 1 plays a Knight E at (3500, 19000). Side 0 casts a Clone at (4000, 12500), placed at (4500, 12500), on 40: K1_0_clone0, K2_0_clone0 and M_0_clone0, at level 10 as packed, each of 1 hit point. K1 meets E from 65. A Rage area effect of side 0, Rage_3000001, is placed at (3500, 15500) on 70, as the area effect alone; its chained RageDamage deals 179 to E on 71, the only unit of its circle it validates.
+
+On 75, 81, 87 and 93 the Rage buffs K1, K2, M and the two Knights' clones; the Musketeer's clone stands outside its circle and is not asked. Its buff, Rage, heals nothing, so its filter's buff test passes each clone as any unit. The `clone_buff_gate` list holds every ask of that test of a clone - the tick, the area effect, its buff, the clone, the path that asked, the buff row's HealPerSecond as the query and whether it refused - 16 here: two clones, four hits, each asked by the buff's walk and again by its apply. E dies on 95, the last tick. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/clone_zap_poison_group.json` - a Zap and a Poison over clones
+
+The towers fight at level 11. The Knights, the Musketeer and the Clone of `clone_rage_group`, with no enemy unit; the clones are made at (3340, 13732), (4341, 13732) and (4341, 11732). Side 1 casts a Zap at (3500, 14500) on 52 and a Poison at (4500, 13500) on 80.
+
+On 52 the Zap's area damage of 192 hits K1, K2, M and the two Knights' clones, which die there; its buff block then puts ZapFreeze on K1, K2 and M only, the walk testing alive before its filter. The area damage's validator asks the filter before its circle test, so the Musketeer's clone, outside the Zap, is asked too. On 84 the Poison's first hit buffs K1, K2, M and the Musketeer's clone, and the buff's first damage on 104 kills that clone. The `clone_buff_gate` list holds three asks by the Zap's area damage and eight by the Poison's buff, each query 0 and none refused. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/clone_heal_spirit_knight.json` - a Heal Spirit's area refusing a clone
+
+The towers fight at level 11. Side 0 plays a Knight K1 at (3500, 12000) and side 1 a Knight E at (3500, 19000) on tick 0, and a Heal Spirit, Spirit, is placed directly for side 0 at (3500, 8500) on the same tick, listed in `units`. Side 0 casts a Clone at (4000, 12500) on 20, which clones K1; the Spirit, 4000 behind, stands outside it. K1 and E fight from 63. The Spirit dies onto E on 76; its projectile lands on 85 and makes HealSpirit_3000001 there.
+
+The area effect's one hit on 86 puts HealSpiritBuff on K1, healed 100 on 91, 96, 101 and 106. K1's clone stands in its reach, but the buff heals 157 a second, so the filter's buff test refuses it: the `clone_buff_gate` list holds the one ask, query 157, refused, and the clone gets nothing. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/electro_giant_struck.json` - an Electro Giant struck by two Knights and a Musketeer
 
 The towers fight at level 11. Side 0 plays an Electro Giant at (3500, 13000), placed at (3499, 13500), on tick 0; side 1 plays Knights K1 at (3500, 17500) and K2 at (4500, 17500) and a Musketeer at (4000, 20000), placed at (4499, 20499), on the same tick. The Giant walks up toward the princess tower and the Knights and the Musketeer take it on.
