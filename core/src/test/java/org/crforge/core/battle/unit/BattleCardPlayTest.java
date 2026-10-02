@@ -3,12 +3,17 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A player's card play is stamped with the battle's tick counter when it is submitted, 1 while the
@@ -91,10 +96,23 @@ class BattleCardPlayTest {
   @Test
   @DisplayName(
       "a played unit is started, and a starting action the battle does not have is refused")
-  void aUnitWithAnUnknownStartingActionIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+  void aUnitWithAnUnknownStartingActionIsRefused(@TempDir Path folder) throws IOException {
+    // A Knight given the net attack of the Hunter's evolution, a class the battle does not have.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows ->
+                GameData.columns(rows, "Knight").put("OnStartingAction", "Hunter_EV1_net_attack"));
+    Standard1v1Battle match = new Standard1v1Battle(tables);
     match.play(
-        0, GameData.card("GoblinMachine"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
+        0,
+        new BattleRecords(tables).card("Knight"),
+        Standard1v1Battle.DEFAULT_LEVEL,
+        0,
+        3500,
+        10000,
+        "B");
     assertThatThrownBy(
             () -> {
               // The play runs twenty ticks after its stamp.
@@ -103,7 +121,6 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        // The Goblin Machine's rocket is not composed.
-        .hasMessageContaining("ActionTargetIndicatorAttack");
+        .hasMessageContaining("ActionHunterNetAttack");
   }
 }

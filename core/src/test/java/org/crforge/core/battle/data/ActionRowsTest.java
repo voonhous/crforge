@@ -28,6 +28,7 @@ import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
@@ -254,6 +255,82 @@ class ActionRowsTest {
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessageContaining(change.getKey());
     }
+  }
+
+  @Test
+  @DisplayName(
+      "the Goblin Machine's rocket reads its clock, its ring, its signal, its projectile and where"
+          + " it starts, the tag a shot sets and the two actions it runs on its owner")
+  void aTargetIndicatorAttackIsBuilt() {
+    BattleAction built = GameData.actions().build("goblin_machine_rocket", INERT_BINDING);
+    assertThat(built).isInstanceOf(TargetIndicatorAttack.class);
+    TargetIndicatorAttack.Columns columns = ((TargetIndicatorAttack) built).getColumns();
+    assertThat(columns.loadTimeMs()).isEqualTo(1500);
+    assertThat(columns.attackDelayMs()).isEqualTo(1000);
+    assertThat(columns.attackCooldownMs()).isEqualTo(2500);
+    assertThat(columns.range()).isEqualTo(5000);
+    assertThat(columns.minimumRange()).isEqualTo(2500);
+    assertThat(columns.targetFilter()).isNotNull();
+    assertThat(columns.targetAoE()).isEqualTo("goblin_machine_rocket_target_signal");
+    assertThat(columns.projectile()).isEqualTo("GoblinMachineRocketProjectile");
+    assertThat(columns.projectileStartZ()).isEqualTo(5000);
+    assertThat(columns.lookOffset()).isEqualTo(-1200);
+    assertThat(columns.stopTags()).isEqualTo(GameData.actions().tagMask("UNIT_CUSTOM_TAG_1"));
+    assertThat(columns.targetStartIndicationAction().name())
+        .isEqualTo("goblin_machine_rocket_load");
+    assertThat(columns.onProjectileShootAction().name()).isEqualTo("goblin_machine_rocket_hide");
+  }
+
+  @Test
+  @DisplayName(
+      "a target indicator attack with an indication delay, a negative attack delay, no minimum"
+          + " range, a next action, a following signal or a homing projectile is refused")
+  void aTargetIndicatorAttackIsRefused(@TempDir Path folder) throws IOException {
+    String row = "goblin_machine_rocket";
+    Map<String, Consumer<ObjectNode>> actions =
+        Map.of(
+            "sets TargetIndicatorDelay", f -> f.put("TargetIndicatorDelay", 100),
+            "a negative AttackDelay", f -> f.put("AttackDelay", -50),
+            "a MinimumRange below 1", f -> f.put("MinimumRange", 0),
+            "sets NextAction", f -> f.put("NextAction", "goblin_machine_rocket_hide"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : actions.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+    Path following = folder.resolve("following");
+    Files.createDirectories(following);
+    GameTables signal =
+        GameData.altered(
+            following,
+            "area_effect_objects",
+            rows ->
+                GameData.columns(rows, "goblin_machine_rocket_target_signal")
+                    .put("FollowBehaviour", "FollowParent"));
+    assertThatThrownBy(
+            () -> new ActionRows(signal, new BattleRecords(signal)).build(row, INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("which follows something");
+    Path homing = folder.resolve("homing");
+    Files.createDirectories(homing);
+    GameTables rocket =
+        GameData.altered(
+            homing,
+            "projectiles",
+            rows -> GameData.columns(rows, "GoblinMachineRocketProjectile").put("Homing", true));
+    assertThatThrownBy(
+            () -> new ActionRows(rocket, new BattleRecords(rocket)).build(row, INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("which homes");
   }
 
   @Test
@@ -647,12 +724,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 680 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 681 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(680);
+    assertThat(built).as("rows built").isEqualTo(681);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 135, "column", 119, "spawn type", 12));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 134, "column", 119, "spawn type", 12));
   }
 }

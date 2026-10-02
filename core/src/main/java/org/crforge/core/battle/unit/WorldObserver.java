@@ -7,6 +7,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -557,6 +558,18 @@ public interface WorldObserver {
    * @param event what it did
    */
   default void goblinHutLogged(int tick, CharacterEntity hut, GoblinHutLifeState.Event event) {}
+
+  /**
+   * A target indicator attack's run did something on a unit: it started, its finder found an
+   * object, it made a signal, launched a projectile or ended a signal, a step did more than ask the
+   * finder for nobody, or it stopped as the unit left.
+   *
+   * @param tick the battle tick
+   * @param unit the unit running it
+   * @param event what it did
+   */
+  default void targetIndicatorLogged(
+      int tick, CharacterEntity unit, TargetIndicatorAttack.Event event) {}
 
   /**
    * A Berserker's run set its unit's attack sequence index: to 0 as it started, or flipped on the

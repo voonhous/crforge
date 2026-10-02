@@ -108,7 +108,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " of a row with HitBiggestTargets, the start on the target or on its own point, and"
             + " the area effect as the projectile's launcher, held by lightning_defenders_tower and"
             + " royal_delivery_group; the update ending without its life-end action when the"
-            + " chooser finds nobody, which no run meets. A Clone's hit action on the units its"
+            + " chooser finds nobody, which no run meets. A target indicator attack's signal at its"
+            + " target's point, for the maker's side and level with the maker as parent, ended by"
+            + " its attack, held by goblin_machine_knight and goblin_machine_tower; one admitted"
+            + " after its maker left, which would be destroyed unread, is refused. A Clone's hit action on the units its"
             + " index query finds, in the query's order, and its filter, held by clone_golem_group;"
             + " an area effect with a buff reaching a clone, whose filter asks an untraced query of"
             + " the buff, is refused. Its starting action's expressions reading the area effect"
@@ -174,6 +177,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   private final List<Integer> struck = new ArrayList<>();
 
   private final ActionHolder actionHolder;
+
+  /**
+   * The id of the object that made it as a target indicator attack's signal, which must still be in
+   * the battle as the area effect is admitted; -1 for one made otherwise.
+   */
+  private int creatorId = -1;
 
   /** The variables its actions write. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -269,9 +278,32 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     return !target.air() && data.hitsGround();
   }
 
-  /** As it is admitted, its row's starting action is scheduled on itself, itself the cause. */
+  /**
+   * Keeps the id of the object that made it, which its admission tests.
+   *
+   * @param id the maker's id
+   */
+  void setCreator(int id) {
+    creatorId = id;
+  }
+
+  /** Ends it: its countdown goes to 0, so the next cleanup after its update removes it. */
+  void end() {
+    countdown = 0;
+  }
+
+  /**
+   * As it is admitted, its row's starting action is scheduled on itself, itself the cause. A signal
+   * whose maker left the battle before it was admitted would be destroyed unread, which is refused.
+   */
   @Override
   protected void onRegistered() {
+    if (creatorId != -1 && world.liveObject(creatorId) == null) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + name
+              + " is admitted after its maker left, which would destroy it unread, not modelled");
+    }
     world.areaEffectAdmitted(this);
     if (data.onStartingAction() != null) {
       BattleAction starting = world.getActions().build(data.onStartingAction(), binding());

@@ -54,7 +54,10 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " tick and the hit cadence by the kill run; the dash wind-up, its ring and its start"
             + " by bandit_knight and mega_knight_group; the keep of a reference the pending-damage"
             + " rule refuses, by an owner that has hit, by every tower's re-lock after its arrow's"
-            + " kill in the battle references. Not held by any fixture: a dash's contact"
+            + " kill in the battle references. The turn toward the reference as an attack starts,"
+            + " which only a target indicator attack's shot reads, by goblin_machine_knight. Not"
+            + " held by any fixture: the turn as a special loads, as a dash winds up and toward no"
+            + " reference, a dash's contact"
             + " hits, the dash to a target's edge, special loads, bursts, several targets and the"
             + " block timer.")
 public final class TargetingVisit {
@@ -501,6 +504,7 @@ public final class TargetingVisit {
     boolean specialReady = t.isSpecialLoadPending() && t.getSpecialLoadTimerMs() < 1;
     if (t.isSpecialLoadPending() && reference != null && t.getSpecialLoadTimerMs() >= 1) {
       t.setSpecialLoadTimerMs(Math.max(t.getSpecialLoadTimerMs() - queries.timeStepMs(), 0));
+      queries.turnToward(reference);
       tail(t, e, cfg, globals, outcome, false);
       return;
     }
@@ -511,6 +515,7 @@ public final class TargetingVisit {
           t.setDashWindupMs(cfg.dashCooldown());
         }
         t.setDashWindupMs(Math.max(t.getDashWindupMs() - queries.timeStepMs(), 0));
+        queries.turnToward(reference);
         if (t.getDashWindupMs() > 0) {
           tail(t, e, cfg, globals, outcome, false);
           return;
@@ -586,6 +591,16 @@ public final class TargetingVisit {
         t.setBurstDelayTimerMs(TargetingQueries.TICK_MS);
       }
       hitReady = true;
+    }
+    // A step that crosses a hit boundary, counted from the dash's attack time, turns the unit
+    // toward its reference; one that lost it mid-hit, and may not go on without it, toward none.
+    int dashTime = cfg.attackDashTime();
+    if ((dashTime + t.getAttackTimerMs()) / hitSpeed > (dashTime + attackTimerOnEntry) / hitSpeed) {
+      if (t.getReference() != null) {
+        queries.turnToward(t.getReference());
+      } else if (t.isHitInProgressWithoutReference() && !queries.continueWithoutReference()) {
+        queries.turnToward(null);
+      }
     }
     if (!(specialHit || hitReady)) {
       tail(t, e, cfg, globals, outcome, false);

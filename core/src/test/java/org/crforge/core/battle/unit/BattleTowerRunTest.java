@@ -564,7 +564,7 @@ class BattleTowerRunTest {
                     projectile.name(),
                     projectile.getData().name(),
                     projectile.launcherName(),
-                    projectile.getTarget() == null ? null : projectile.getTarget().name(),
+                    projectile.targetName(),
                     projectile.getX(),
                     projectile.getY(),
                     projectile.getZ(),

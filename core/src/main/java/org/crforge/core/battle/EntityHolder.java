@@ -56,7 +56,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the next visit; that the cleanup's removals repeat until a round removes nothing,"
             + " so a rider let go by its parent leaves in the same cleanup, and walk the live list"
             + " alone, so an entity handed over spent is admitted and leaves at the next, held by"
-            + " goblin_drill_princess; and that an entity"
+            + " goblin_drill_princess; that the leaving entity's own running actions are stopped"
+            + " after every notice, held by goblin_machine_tower; and that an entity"
             + " killed during a tick is visited by the rest of it, less the components its death"
             + " switches off. Not settled: whether the removed entity is"
             + " told of its own removal, and whether anything reorders the live list between"
@@ -174,8 +175,9 @@ public class EntityHolder {
    * then the live list, so a projectile launched on the tick its target dies loses the target in
    * the same cleanup. Each entity's components hear first, then its action holder's running
    * actions, then the holder drops what the leaving entity caused and still waits, then an entity
-   * attached to it is let go; the side lists and the level re-read come after all of them. Each
-   * notice goes to the entities listed as it starts, so a child a notice makes does not hear of it.
+   * attached to it is let go; the leaving entity's own running actions are stopped after all of
+   * them, then the side lists and the level re-read. Each notice goes to the entities listed as it
+   * starts, so a child a notice makes does not hear of it.
    *
    * @return true when the round removed anything
    */
@@ -193,6 +195,8 @@ public class EntityHolder {
         entity.actions().instigatorLeft(gone.actions());
         entity.parentRemoved(gone);
       }
+      // The leaving entity's own running actions are stopped after every notice.
+      gone.actions().released();
       passes.entityRemoved(gone);
     }
     return !removed.isEmpty();

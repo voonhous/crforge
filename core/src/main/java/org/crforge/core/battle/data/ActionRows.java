@@ -41,12 +41,15 @@ import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnRow;
+import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -198,6 +201,24 @@ public final class ActionRows {
                   "OnAttackActionList",
                   "TargetEffectList",
                   "MainEffectList")),
+          // Its stats tags only fill the card's stats panel.
+          Map.entry(
+              "ActionTargetIndicatorAttack",
+              Set.of(
+                  "LoadTime",
+                  "TargetIndicatorDelay",
+                  "AttackDelay",
+                  "AttackCooldown",
+                  "Range",
+                  "MinimumRange",
+                  "TargetFilter",
+                  "TargetAoE",
+                  "Projectile",
+                  "ProjectileStartZ",
+                  "ProjectileOffsetToCharacterLookDirection",
+                  "GameTagsToSetToStopTargetIndication",
+                  "TargetStartIndicationAction",
+                  "OnProjectileShootAction")),
           Map.entry(
               "ActionRunIfGameObjectExists",
               Set.of(
@@ -482,6 +503,7 @@ public final class ActionRows {
                     shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
             case "ActionTaunt" -> taunt(name, shared, f);
             case "ActionLaserBall" -> laserBall(name, shared, f);
+            case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionChangeGameObjectData" -> {
@@ -867,6 +889,86 @@ public final class ActionRows {
               .hitFilter(records.filter(f.get("HitFilter").asText()))
               .maxUnitPerActionList(ints(f.get("MaxUnitPerActionList")))
               .onDetectedUnitActionList(actions(f.get("OnDetectedUnitActionList")))
+              .build());
+    }
+
+    /**
+     * A target indicator attack's columns: its clock, its ring, its signal, its projectile and
+     * where it starts, the tags a shot sets and the two actions it runs on its owner. A row with an
+     * indication delay, a negative attack delay, a minimum range below 1, a singleton, a next
+     * action, tags or a gate is refused; so is one without a filter, whose signal follows anything
+     * or sets a column not modelled, or whose projectile homes, comes back, waits a random delay or
+     * sets a column not modelled.
+     */
+    private TargetIndicatorAttack targetIndicatorAttack(String name, ActionRow shared, JsonNode f) {
+      for (String column :
+          List.of(
+              "TargetIndicatorDelay",
+              "Singleton",
+              "NextAction",
+              "GameTagsToSet",
+              "ExecuteIfTrue",
+              "ActionPausedIfTrue",
+              "ForceStopIfTrue")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name
+                  + " is a target indicator attack that sets "
+                  + column
+                  + ", which is not modelled");
+        }
+      }
+      if (integer(f, "AttackDelay") < 0 || integer(f, "MinimumRange") < 1) {
+        throw new UnsupportedOperationException(
+            name
+                + " is a target indicator attack that sets a negative AttackDelay or a"
+                + " MinimumRange below 1, which is not modelled");
+      }
+      if (f.path("TargetFilter").asText("").isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " is a target indicator attack without a filter, which is not modelled");
+      }
+      String signal = f.path("TargetAoE").asText();
+      AreaEffectData signalData = records.areaEffect(signal);
+      if (signalData.followsParent() || !signalData.unmodelledColumns().isEmpty()) {
+        throw new UnsupportedOperationException(
+            name
+                + " marks its target with "
+                + signal
+                + ", which follows something or sets columns not modelled");
+      }
+      ProjectileData projectile = records.projectile(f.path("Projectile").asText());
+      if (projectile.homing()
+          || projectile.homingTimeMs() >= 1
+          || projectile.pingpongVisualTimeMs() >= 1
+          || projectile.dragBackSpeed() >= 1
+          || projectile.randomDelayMs() >= 1
+          || !projectile.unmodelledColumns().isEmpty()) {
+        throw new UnsupportedOperationException(
+            name
+                + " shoots "
+                + projectile.name()
+                + ", which homes, comes back, waits or sets columns not modelled");
+      }
+      return new TargetIndicatorAttack(
+          shared,
+          TargetIndicatorAttack.Columns.builder()
+              .loadTimeMs(integer(f, "LoadTime"))
+              .attackDelayMs(integer(f, "AttackDelay"))
+              .attackCooldownMs(integer(f, "AttackCooldown"))
+              .range(integer(f, "Range"))
+              .minimumRange(integer(f, "MinimumRange"))
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              .targetAoE(signal)
+              .projectile(projectile.name())
+              .projectileStartZ(integer(f, "ProjectileStartZ"))
+              .lookOffset(integer(f, "ProjectileOffsetToCharacterLookDirection"))
+              .stopTags(
+                  f.has("GameTagsToSetToStopTargetIndication")
+                      ? tagMask(f.get("GameTagsToSetToStopTargetIndication").asText())
+                      : 0)
+              .targetStartIndicationAction(action(f.get("TargetStartIndicationAction")))
+              .onProjectileShootAction(action(f.get("OnProjectileShootAction")))
               .build());
     }
 
