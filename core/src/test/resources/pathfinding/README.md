@@ -849,6 +849,15 @@ The towers fight at level 11, and side 0 plays a Mini P.E.K.K.A. X on tick 0; ea
 
 `BattleActionSpawnRunTest` plays both with the spawn runs, holding every tower's reference on every tick and the countdown each removal leaves.
 
+## `golden/mighty_miner_ability_tower.json` and `golden/mighty_miner_ability_walk.json` - the Mighty Miner's lane switch
+
+A Ladder match with the towers fighting at level 11. Side 0 plays a Mighty Miner m at (3500, 10000) on 40, placed at (3499, 10500), and later pays one elixir for its ability through its champion's controller: the request enters the casting state, and nine ticks later the ability sends m to (18000 - x, y) in the in-game pathfinding state, which ends the cast, and leaves MightyMinerBomb on its spot. m walks across hidden at 650 a tick, deploys again for 1000 ms on arrival with its reference dropped, and selects anew. The bomb deploys for 1000 ms and dies at its end: 332 to every enemy within 3000, and a push of 1800.
+
+- `mighty_miner_ability_tower`: m attacks PrincessTower_1_1 from 268 at (3269, 22934): 40, 204 from 307, 409 from 347. The command on 361 clears the attack time; on 370 m goes for (14731, 22934), the tower's arrow of 368 loses it and lands on nothing, and the bomb stands at (3269, 22934). The tower drops m on 371. m arrives on 387 and walks again on 406; PrincessTower_1_2 takes it on 388. The bomb dies on 390, 332 on PrincessTower_1_1. m locks PrincessTower_1_2 on 407, in range, and ramps from the start: 40 from 414, 204 from 446, 409 from 486. The run is 500 ticks.
+- `mighty_miner_ability_walk`: side 1 plays a Knight k at (3500, 21000) on 60, placed at (3499, 21499). m locks k on 109 and walks at it; the command on 130 stands it, and on 139 m goes from (3266, 14653) for (14734, 14653), the bomb left at (3266, 14653). k drops m on 140, turns to PrincessTower_0_1 and walks into the bomb's circle: the bomb dies on 159, 332 on k, and pushes it back up the lane. m arrives on 156, walks again on 175 and locks PrincessTower_1_2 on 176, out of range. The run is 260 ticks.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs.
+
 ## `golden/reference_loss_knight.json` and `golden/reference_loss_musketeer_rage.json` - a target lost earlier in the pass and in the preloaded windup
 
 The towers fight at level 11. Side 0 plays a Mini P.E.K.K.A. X at (3500, 12000), placed at (3499, 12500), and side 1 a Knight E at (3500, 19000), placed at (3499, 19499), on tick 0. They fight from 58 and 53: X deals 755 on 67, 99 and 131, E 202 on 62, 86 and 110. A third unit of side 0, A, targets E and starts its first, preloaded attack on 125. On 131 X kills E earlier in the pass than A's visit. A targeting component's bypass byte is 1, so A's validator does not ask whether E is alive: A keeps E through the pass, its attack time going on, until the closing cleanup removes E and starts A's target-lost timer. A's row stops an attack that loses its target in the preloaded windup: on 132..136 its attack time stands while the timer runs to 250, nothing is hit or fired, and on 137 A takes PrincessTower_1_1 and walks. Both runs end on 149.
