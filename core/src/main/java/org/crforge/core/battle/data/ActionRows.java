@@ -40,6 +40,7 @@ import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
+import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.fidelity.Fidelity;
@@ -453,9 +454,14 @@ public final class ActionRows {
                         ? integer(f, "CloneDuration")
                         : Clone.DEFAULT_CLONE_DURATION_MS);
             case "ActionSpawn", "ActionSpawnToLocation" ->
-                f.path("SpawnType").asText("").equals("BuffType") && type.equals("ActionSpawn")
-                    ? spawnBuff(name, shared, f)
-                    : new SpawnCharacters(shared, spawn(name, type, f));
+                switch (f.path("SpawnType").asText("")) {
+                  case "BuffType" ->
+                      type.equals("ActionSpawn")
+                          ? spawnBuff(name, shared, f)
+                          : new SpawnCharacters(shared, spawn(name, type, f));
+                  case "AreaEffectType" -> spawnAreaEffect(name, type, shared, f);
+                  default -> new SpawnCharacters(shared, spawn(name, type, f));
+                };
             case "ActionGiantBufferCollectFriends" -> collectFriends(name, shared, f);
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
@@ -661,6 +667,37 @@ public final class ActionRows {
             name + " spawns a buff its parent controls or for no time, which is not modelled");
       }
       return new SpawnBuff(shared, buff, integer(f, "SpawnTime"));
+    }
+
+    /**
+     * An area-effect spawn row's columns: the area effect, nothing more. A row of the location
+     * class, one that sets any other spawn column, writes its area effect inline, or names one
+     * whose row sets a column not modelled is refused.
+     */
+    private SpawnAreaEffect spawnAreaEffect(
+        String name, String type, ActionRow shared, JsonNode f) {
+      if (!type.equals("ActionSpawn")) {
+        throw new UnsupportedOperationException(
+            name + " spawns an area effect to a location, which is not modelled");
+      }
+      for (Iterator<String> columns = f.fieldNames(); columns.hasNext(); ) {
+        String column = columns.next();
+        if (spawnColumns().contains(column) && !Set.of("SpawnData", "SpawnType").contains(column)) {
+          throw new UnsupportedOperationException(
+              name + " spawns an area effect and sets " + column + ", which is not modelled");
+        }
+      }
+      if (!f.path("SpawnData").isTextual()) {
+        throw new UnsupportedOperationException(
+            name + " spawns an area effect written inline, which is not modelled");
+      }
+      String areaEffect = f.path("SpawnData").asText();
+      List<String> unmodelled = records.areaEffect(areaEffect).unmodelledColumns();
+      if (!unmodelled.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " spawns " + areaEffect + ", which sets columns not modelled: " + unmodelled);
+      }
+      return new SpawnAreaEffect(shared, areaEffect);
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */

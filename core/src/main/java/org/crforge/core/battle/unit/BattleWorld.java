@@ -3032,10 +3032,36 @@ public class BattleWorld implements HolderPasses {
    */
   public AreaEffectEntity createAreaEffect(
       String row, int x, int y, int side, int packedLevel, String name, String how, String source) {
+    return createAreaEffect(row, x, y, side, packedLevel, name, how, source, null);
+  }
+
+  /**
+   * Creates an area effect as {@link #createAreaEffect(String, int, int, int, int, String, String,
+   * String)} does, with a parent. A hit action that does not clone is refused on an area effect no
+   * action made: no other path that makes one is held.
+   *
+   * @param parent the object it keeps as its parent, or null for none
+   */
+  private AreaEffectEntity createAreaEffect(
+      String row,
+      int x,
+      int y,
+      int side,
+      int packedLevel,
+      String name,
+      String how,
+      String source,
+      SpawnHost parent) {
     AreaEffectData data = records.areaEffect(row);
     if (!data.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
           "the area effect " + row + " sets columns not modelled: " + data.unmodelledColumns());
+    }
+    if (data.onHitAction() != null && !data.cloning() && !how.equals("action")) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " has a hit action and was not made by an action, which is not modelled");
     }
     if (data.buff() != null) {
       buffData(data.buff());
@@ -3053,13 +3079,51 @@ public class BattleWorld implements HolderPasses {
       }
     }
     AreaEffectEntity areaEffect =
-        new AreaEffectEntity(this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()));
+        new AreaEffectEntity(
+            this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()), parent);
     holder.add(areaEffect);
     areaEffect.setName(name != null ? name : row + "_" + areaEffect.getId());
     for (WorldObserver observer : observers) {
       observer.areaEffectCreated(tick, areaEffect, how, source);
     }
     return areaEffect;
+  }
+
+  /**
+   * Creates the area effect an action's spawn row names: at the point of the holder's owner, for
+   * the source's side and at its level, re-based on the area effect's own rarity, the source kept
+   * as its parent. It is handed to the holder in the pass that ran the action, so it is admitted at
+   * that tick's closing cleanup and first updates on the next tick. The observers are told after it
+   * is created.
+   *
+   * <p>Refused rather than guessed: a source that is a clone, whose clone byte the area effect
+   * would copy, which nothing the battle models reads.
+   *
+   * @param owner the owner of the holder that ran the action
+   * @param action the spawn row's name
+   * @param row the area effect row's name
+   * @param source the entity that caused the action
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   */
+  void spawnAreaEffect(SpawnHost owner, String action, String row, SpawnHost source, int phase) {
+    if (source instanceof CharacterEntity unit && unit.isClone()) {
+      throw new UnsupportedOperationException(
+          action + " spawns " + row + " from a clone, which is not modelled");
+    }
+    AreaEffectEntity areaEffect =
+        createAreaEffect(
+            row,
+            owner.x(),
+            owner.y(),
+            source.side(),
+            source.packedLevel(),
+            null,
+            "action",
+            source.name(),
+            source);
+    for (WorldObserver observer : observers) {
+      observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
+    }
   }
 
   /** A buff's row, refused when it sets a column the battle does not model. */

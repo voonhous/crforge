@@ -66,8 +66,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * update ends there. A Clone's hit, before any damage, schedules its hit action on every unit of
  * its own side in its circle that the index finds - alive, not hidden, not untouchable, not a
  * building, no unit a Clone passes by and no clone - with itself as the cause, which clones it in
- * the tick's last pending pass. When the countdown reaches 0 its life-end action is scheduled on
- * itself; it leaves at the cleanup that finds the countdown below 1.
+ * the tick's last pending pass. An area effect an action's spawn made keeps the action's cause as
+ * its parent; its hit action may be a group of buff spawns, the Goblin Curse's, scheduled the same
+ * way on every unit in its circle it reaches. When the countdown reaches 0 its life-end action is
+ * scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -81,8 +83,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " its circle it reaches, its time capped by its own life, and the area effect its row"
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
-            + " boosting one target or lasting longer by level, a hit action but a Clone's, the"
-            + " shape,"
+            + " boosting one target or lasting longer by level, a hit action but a Clone's or a"
+            + " group of buff spawns, the shape,"
             + " the filter, the spawns, a launch from its source or spread about its point, the"
             + " life condition, following, tags,"
             + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
@@ -100,7 +102,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " an area effect with a buff reaching a clone, whose filter asks an untraced query of"
             + " the buff, is refused. Its starting action's expressions reading the area effect"
             + " itself, its point and its side, held by graveyard_tower_defender and"
-            + " graveyard_right_side1. Not created yet by an action.")
+            + " graveyard_right_side1. Created by an action's spawn at the point of the holder's"
+            + " owner, for the side and at the level of its cause, the cause kept as its parent,"
+            + " and a hit action that is a group of buff spawns, held by goblin_curse_knights;"
+            + " such a hit action on an area effect no action made is refused.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -123,6 +128,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /** What is left of its life, in milliseconds; it leaves once this is below 1. */
   @Getter private int countdown;
+
+  /**
+   * The object an action's spawn made it from, which it keeps as its parent; null for every other
+   * area effect.
+   */
+  @Getter private final SpawnHost parent;
 
   /** True once the area effect its row chains has been created, on its first update. */
   private boolean chained;
@@ -151,9 +162,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * @param x its point along the width
    * @param y its point along the length
    * @param packedLevel its level, packed against its own rarity
+   * @param parent the object an action's spawn made it from, or null
    */
   AreaEffectEntity(
-      BattleWorld world, AreaEffectData data, int side, int x, int y, int packedLevel) {
+      BattleWorld world,
+      AreaEffectData data,
+      int side,
+      int x,
+      int y,
+      int packedLevel,
+      SpawnHost parent) {
     super(KIND_AREA_EFFECT);
     this.world = world;
     this.data = data;
@@ -161,6 +179,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     this.x = x;
     this.y = y;
     this.packedLevel = packedLevel;
+    this.parent = parent;
     this.countdown = data.lifeDurationMs();
     this.actionHolder = new ActionHolder(this, world.getHolder()::isInPendingPass);
     GridEntity view = new GridEntity();
@@ -753,6 +772,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   @Override
   public void handOverChampion(SpawnHost child) {
     world.handOverChampion(this, child);
+  }
+
+  @Override
+  public void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
+    world.spawnAreaEffect(this, action, areaEffect, source, phase);
   }
 
   /** An area effect has no hit points, so it counts as alive. */

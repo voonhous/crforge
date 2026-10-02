@@ -452,15 +452,24 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a Clone carries its hit action, a unit what a Clone makes of it; any other hit action, and a"
-          + " Clone that also deals damage, is listed as not modelled")
+      "a Clone carries its hit action, and so does a group of buff spawns, a unit what a Clone makes"
+          + " of it; any other hit action, and a Clone that also deals damage, is listed as not"
+          + " modelled")
   void cloneColumns(@TempDir Path folder) throws IOException {
     AreaEffectData clone = records.areaEffect("Clone");
     assertThat(clone.cloning()).isTrue();
     assertThat(clone.onHitAction()).isEqualTo("CloneAction");
     assertThat(clone.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").cloning()).isFalse();
-    assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns()).contains("OnHitAction");
+    // The Goblin Curse's base spawns two buffs with each hit; the Knight's hero taunts with its
+    // group, and the Blowdart Goblin's evolution deals its own damage.
+    AreaEffectData curse = records.areaEffect("GoblinCurseBase");
+    assertThat(curse.onHitAction()).isEqualTo("GoblinCurseCreateBuffs");
+    assertThat(curse.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Knight_hero_TauntAEO").unmodelledColumns())
+        .contains("OnHitAction");
+    assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns())
+        .contains("OnHitAction");
     assertThat(records.unit("Recruit_Chess").ignoreClone()).isTrue();
     assertThat(records.unit("Knight").ignoreClone()).isFalse();
     assertThat(records.unit("Knight_EV1").clonedVersion()).isEqualTo("Knight");
@@ -745,7 +754,7 @@ class BattleRecordsTest {
     assertThat(records.unit("Firecracker_EV1").unmodelledColumns())
         .containsExactly("ProjectileSpecial");
     assertThat(records.unit("Fisherbarrel").unmodelledColumns()).contains("SpecialRange");
-    assertThat(records.areaEffect("GoblinCurseBase").unmodelledColumns())
+    assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns())
         .containsExactly("OnHitAction");
     // Carried: art and effects, and inert columns (a Monk's later entries, a collector's
     // ManaOnDeath, a Bat's filter and attack dash time, a tower's turret and attached character).

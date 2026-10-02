@@ -34,6 +34,19 @@ public interface SpawnHost extends SpawnObject {
   }
 
   /**
+   * Creates an area effect an action's spawn row names, at this object's point, for the source's
+   * side and at its level, the source its parent.
+   *
+   * @param action the spawn row's name
+   * @param areaEffect the area effect row's name
+   * @param source the entity that caused the action
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   */
+  default void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
+    throw new UnsupportedOperationException(name() + " cannot spawn an area effect");
+  }
+
+  /**
    * Hands a champion this object spawned to its side's champion controllers.
    *
    * @param child the champion

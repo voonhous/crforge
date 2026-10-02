@@ -11,7 +11,9 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Held by clone_golem_group: the Clone's buff on the unit it clones, from the Clone. Refused"
+        "Held by clone_golem_group: the Clone's buff on the unit it clones, from the Clone; and by"
+            + " goblin_curse_knights: the curse and its damage over time on every enemy the base's"
+            + " hit reaches, from the base, refreshed every tick. Refused"
             + " as the row is built: a buff its parent controls, a source taken from the owner's"
             + " parent, and a spawn time below 1.")
 public final class SpawnBuff extends RowAction {

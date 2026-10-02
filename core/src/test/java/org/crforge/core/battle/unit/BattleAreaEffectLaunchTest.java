@@ -197,7 +197,8 @@ class BattleAreaEffectLaunchTest {
               .build();
       BattleWorld world = scene.match.getWorld();
       AreaEffectEntity lightning =
-          new AreaEffectEntity(world, row, 1, X, Y, PackedLevel.pack(LEVEL - 1, row.rarity()));
+          new AreaEffectEntity(
+              world, row, 1, X, Y, PackedLevel.pack(LEVEL - 1, row.rarity()), null);
       world.getHolder().add(lightning);
       lightning.setName("L");
       // What its holder has queued or started by the time it leaves.

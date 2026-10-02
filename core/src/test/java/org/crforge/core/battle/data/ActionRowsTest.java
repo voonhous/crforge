@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
@@ -313,6 +314,54 @@ class ActionRowsTest {
   }
 
   @Test
+  @DisplayName("an area-effect spawn is built from its area effect alone")
+  void anAreaEffectSpawnIsBuilt() {
+    assertThat(GameData.actions().build("GoblinCurseCore", INERT_BINDING))
+        .isInstanceOf(SpawnAreaEffect.class);
+  }
+
+  @Test
+  @DisplayName(
+      "an area-effect spawn to a location, with another spawn column, written inline or of an area"
+          + " effect not modelled is refused")
+  void anAreaEffectSpawnIsRefused(@TempDir Path folder) throws IOException {
+    assertThatThrownBy(() -> GameData.actions().build("ElectroWizardAOE", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("to a location");
+    assertThatThrownBy(() -> GameData.actions().build("RoyalGiant_EV1_PushBack", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("sets ParentGOAsSource");
+    assertThatThrownBy(() -> GameData.actions().build("SpawnCancelTauntAEO", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CancelTauntAEO, which sets columns not modelled");
+
+    Files.createDirectories(folder.resolve("offset"));
+    GameTables offset =
+        GameData.altered(
+            folder.resolve("offset"),
+            "actions",
+            rows -> ((ObjectNode) rows.get("GoblinCurseCore").get("fields")).put("OffsetY", 1000));
+    ActionRows offsetRows = new ActionRows(offset, new BattleRecords(offset));
+    assertThatThrownBy(() -> offsetRows.build("GoblinCurseCore", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("sets OffsetY");
+
+    Files.createDirectories(folder.resolve("inline"));
+    GameTables inline =
+        GameData.altered(
+            folder.resolve("inline"),
+            "actions",
+            rows -> {
+              ObjectNode fields = (ObjectNode) rows.get("GoblinCurseCore").get("fields");
+              fields.putObject("SpawnData").put("Radius", 3000);
+            });
+    ActionRows inlineRows = new ActionRows(inline, new BattleRecords(inline));
+    assertThatThrownBy(() -> inlineRows.build("GoblinCurseCore", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("written inline");
+  }
+
+  @Test
   @DisplayName("a Berserker run started beside an enchanting buff is refused")
   void aBerserkBesideAnEnchantingBuffIsRefused() {
     ActionHolder holder = new ActionHolder(new IndexOwner(3, 0));
@@ -392,11 +441,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 566 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 590 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
-    // than characters and buffs, or a spawned buff the battle does not model.
-    assertThat(built).as("rows built").isEqualTo(566);
+    // than characters, buffs and area effects, or a spawned buff or area effect the battle does
+    // not model.
+    assertThat(built).as("rows built").isEqualTo(590);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 171, "column", 110, "spawn type", 99));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 171, "column", 170, "spawn type", 15));
   }
 }

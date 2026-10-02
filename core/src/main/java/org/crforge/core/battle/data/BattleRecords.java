@@ -158,7 +158,8 @@ public final class BattleRecords {
    * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
    * on itself, the shape, the filter, the spawns, the life condition, the following, the tags, the
    * deflection, the per-level lifetime and the push's floor and gate lift. Its projectile is
-   * modelled, but not a launch from its source or a spread one; its hit action only for a Clone.
+   * modelled, but not a launch from its source or a spread one; its hit action only for a Clone and
+   * as a group of buff spawns.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -1046,12 +1047,16 @@ public final class BattleRecords {
             .onHitAction(actionName(row, "OnHitAction"))
             .unmodelledColumns(unmodelled)
             .build();
-    // The hit action is modelled for a Clone alone: a Clone row whose hit action clones, and which
-    // neither deals damage nor applies a buff, as the shipped Clone does.
+    // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
+    // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
+    // a Clone's whose hit action is a group of buff spawns, as the Goblin Curse's base is.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
-    if (data.onHitAction() != null && !(data.cloning() && cloning)) {
+    boolean buffSpawns = data.onHitAction() != null && buffSpawnGroup(data.onHitAction());
+    if (data.onHitAction() != null
+        && !(data.cloning() && cloning)
+        && !(!data.cloning() && buffSpawns)) {
       unmodelled.add("OnHitAction");
     }
     if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
@@ -1086,6 +1091,22 @@ public final class BattleRecords {
                 INERT_AREA_EFFECT_COLUMNS,
                 PENDING_AREA_EFFECT_COLUMNS))
         .build();
+  }
+
+  /** Whether an action row is a group whose every part spawns a buff. */
+  private boolean buffSpawnGroup(String action) {
+    GameAction row = tables.action(action);
+    if (!row.classType().equals("ActionGroup")) {
+      return false;
+    }
+    for (JsonNode part : row.fields().path("SubActions")) {
+      GameAction sub = tables.action(part.path("action").asText());
+      if (!sub.classType().equals("ActionSpawn")
+          || !sub.fields().path("SpawnType").asText("").equals("BuffType")) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

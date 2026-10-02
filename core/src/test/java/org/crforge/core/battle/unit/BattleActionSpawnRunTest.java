@@ -420,7 +420,8 @@ class BattleActionSpawnRunTest {
         "goblin_cage_knight",
         "goblin_cage_lifetime",
         "berserker_knight",
-        "berserker_tower"
+        "berserker_tower",
+        "goblin_curse_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -673,6 +674,8 @@ class BattleActionSpawnRunTest {
     // Every start and notice of a Berserker's index toggle, with the index before and after.
     List<String> berserkLog = new ArrayList<>();
     match.getWorld().addObserver(berserkLog(currentTick, berserkLog));
+    List<String> areaEffectSpawnLog = new ArrayList<>();
+    match.getWorld().addObserver(areaEffectSpawnLog(currentTick, areaEffectSpawnLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1294,6 +1297,9 @@ class BattleActionSpawnRunTest {
     assertThat(hutLog)
         .as("every start and step of a Goblin Hut's life state, its finds, points and children")
         .containsExactlyElementsOf(expectedGoblinHutLog(reference));
+    assertThat(areaEffectSpawnLog)
+        .as("every area effect an action spawned, and every hit action one scheduled")
+        .containsExactlyElementsOf(expectedAreaEffectSpawnLog(reference));
     assertThat(berserkLog)
         .as("every start and notice of a Berserker's index toggle")
         .containsExactlyElementsOf(expectedBerserkLog(reference));
@@ -1424,18 +1430,19 @@ class BattleActionSpawnRunTest {
       public void areaEffectCreated(int tick, AreaEffectEntity a, String how, String source) {
         lines.add(
             "%d created %s %s %d %s %s %d %d %d %d %d"
-                .formatted(
-                    currentTick[0],
-                    a.name(),
-                    a.getData().name(),
-                    a.getId(),
-                    how,
-                    source,
-                    a.side(),
-                    a.getX(),
-                    a.getY(),
-                    a.getPackedLevel(),
-                    a.getCountdown()));
+                    .formatted(
+                        currentTick[0],
+                        a.name(),
+                        a.getData().name(),
+                        a.getId(),
+                        how,
+                        source,
+                        a.side(),
+                        a.getX(),
+                        a.getY(),
+                        a.getPackedLevel(),
+                        a.getCountdown())
+                + (a.getParent() == null ? "" : " parent " + a.getParent().name()));
       }
 
       @Override
@@ -1514,18 +1521,22 @@ class BattleActionSpawnRunTest {
         case "created" ->
             expected.add(
                 "%d created %s %s %d %s %s %d %d %d %d %d"
-                    .formatted(
-                        tick,
-                        name,
-                        a.get("row").asText(),
-                        a.get("id").asInt(),
-                        a.get("how").asText(),
-                        a.get("source").isNull() ? null : a.get("source").asText(),
-                        a.get("side").asInt(),
-                        a.get("x").asInt(),
-                        a.get("y").asInt(),
-                        a.get("level").asInt(),
-                        a.get("countdown").asInt()));
+                        .formatted(
+                            tick,
+                            name,
+                            a.get("row").asText(),
+                            a.get("id").asInt(),
+                            a.get("how").asText(),
+                            a.get("source").isNull() ? null : a.get("source").asText(),
+                            a.get("side").asInt(),
+                            a.get("x").asInt(),
+                            a.get("y").asInt(),
+                            a.get("level").asInt(),
+                            a.get("countdown").asInt())
+                    // The battle keeps the parent of an area effect an action made, and only that.
+                    + (a.get("how").asText().equals("action") && !a.get("parent").isNull()
+                        ? " parent " + a.get("parent").asText()
+                        : ""));
         case "folded" -> expected.add("%d folded %s".formatted(tick, name));
         case "update" -> {
           List<Integer> damages = new ArrayList<>();
@@ -1868,9 +1879,12 @@ class BattleActionSpawnRunTest {
       @Override
       public void onHitActionScheduled(
           int tick, AreaEffectEntity a, WorldEntity target, BattleAction action) {
-        lines.add(
-            "%d scheduled %s %s %s"
-                .formatted(currentTick[0], a.name(), target.name(), action.name()));
+        // The hit actions of an area effect that does not clone are in the area-effect spawn log.
+        if (a.getData().cloning()) {
+          lines.add(
+              "%d scheduled %s %s %s"
+                  .formatted(currentTick[0], a.name(), target.name(), action.name()));
+        }
       }
 
       @Override
@@ -1882,6 +1896,11 @@ class BattleActionSpawnRunTest {
           int time,
           int packedLevel,
           SpawnHost source) {
+        // The reference lists the buffs a Clone's actions spawn; every buff any spawn applies is
+        // in the buff log.
+        if (!(source instanceof AreaEffectEntity a && a.getData().cloning())) {
+          return;
+        }
         lines.add(
             "%d buff_spawn %s %s %s %d %d %s"
                 .formatted(
@@ -1956,6 +1975,92 @@ class BattleActionSpawnRunTest {
                     resumed));
       }
     };
+  }
+
+  /**
+   * Lists every area effect an action spawned and every hit action an area effect that does not
+   * clone scheduled, in the reference's layout.
+   */
+  static WorldObserver areaEffectSpawnLog(int[] currentTick, List<String> lines) {
+    return new WorldObserver() {
+      @Override
+      public void areaEffectSpawned(
+          int tick,
+          SpawnHost owner,
+          String action,
+          int phase,
+          SpawnHost source,
+          AreaEffectEntity a) {
+        lines.add(
+            "%d spawn_area_effect %s %s phase %d source %s %s %d at %d %d side %d level %d parent %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    action,
+                    phase,
+                    source.name(),
+                    a.name(),
+                    a.getId(),
+                    a.getX(),
+                    a.getY(),
+                    a.side(),
+                    a.getPackedLevel(),
+                    a.getParent().name()));
+      }
+
+      @Override
+      public void onHitActionScheduled(
+          int tick, AreaEffectEntity a, WorldEntity target, BattleAction action) {
+        if (!a.getData().cloning()) {
+          lines.add(
+              "%d scheduled %s %s %s"
+                  .formatted(currentTick[0], a.name(), target.name(), action.name()));
+        }
+      }
+    };
+  }
+
+  /**
+   * The reference's area-effect spawn log in the same layout. No area effect it lists follows
+   * anything or carries a clone byte, which the battle refuses.
+   */
+  static List<String> expectedAreaEffectSpawnLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("area_effect_spawn")) {
+      int tick = e.get("tick").asInt();
+      switch (e.get("event").asText()) {
+        case "spawn_area_effect" -> {
+          assertThat(e.get("follow").isNull() && e.get("b119").asInt() == 0)
+              .as("tick %d: the area effect follows nothing and is no clone's", tick)
+              .isTrue();
+          expected.add(
+              "%d spawn_area_effect %s %s phase %d source %s %s %d at %d %d side %d level %d parent %s"
+                  .formatted(
+                      tick,
+                      e.get("owner").asText(),
+                      e.get("action").asText(),
+                      e.get("phase").asInt(),
+                      e.get("source").asText(),
+                      e.get("area_effect").asText(),
+                      e.get("id").asInt(),
+                      e.get("x").asInt(),
+                      e.get("y").asInt(),
+                      e.get("side").asInt(),
+                      e.get("level").asInt(),
+                      e.get("parent").asText()));
+        }
+        case "scheduled" ->
+            expected.add(
+                "%d scheduled %s %s %s"
+                    .formatted(
+                        tick,
+                        e.get("area_effect").asText(),
+                        e.get("target").asText(),
+                        e.get("action").asText()));
+        default -> throw new IllegalStateException("unknown area-effect spawn event " + e);
+      }
+    }
+    return expected;
   }
 
   /** The reference's Clone log in the same layout. */
