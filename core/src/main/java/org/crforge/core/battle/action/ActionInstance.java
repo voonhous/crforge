@@ -15,7 +15,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the finished flag a step sets, the removal it leads to at the next run pass,"
             + " the row's tags the holder sets on the run as it starts, and the re-trigger a"
             + " singleton row's second start sends it, and the notices of an object leaving and"
-            + " of an attack that landed, and the stop as the entity leaves, which do nothing unless"
+            + " of an attack that landed, the owner-leave before any notice and the stop as the"
+            + " entity leaves after them, which do nothing unless"
             + " the class overrides them. Not modelled: the start and on-finish hooks some classes"
             + " override.")
 public abstract class ActionInstance {
@@ -49,6 +50,14 @@ public abstract class ActionInstance {
    * @param leftId the id of the object that left
    */
   protected void objectLeft(int leftId) {}
+
+  /**
+   * What the run does as its entity leaves the battle, before any entity hears of it. By default
+   * nothing, as the base slot does.
+   *
+   * @param holder the entity's holder
+   */
+  protected void ownerLeaving(ActionHolder holder) {}
 
   /**
    * What the run does as one of its entity's attacks ends with a landed hit. By default nothing, as

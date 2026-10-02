@@ -153,6 +153,19 @@ public interface ActionOwner {
   }
 
   /**
+   * Makes the run of Goblinstein's ability action on the owner. Only an area effect that follows
+   * its parent runs one.
+   *
+   * @param action the row
+   * @param phase the pending pass it starts in
+   * @return the run
+   */
+  default ActionInstance goblinsteinAbility(GoblinsteinAbility action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than an area effect that follows, not modelled");
+  }
+
+  /**
    * What a Goblin Hut's life state asks of the battle around the owner.
    *
    * @return the owner's answers

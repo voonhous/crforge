@@ -153,7 +153,8 @@ public final class CardPlacement {
             card.projectileWaveIntervalMs(),
             card.projectileIntervalMs(),
             card.listed(),
-            card.listOffsetsXMirrored());
+            card.listOffsetsXMirrored(),
+            card.group());
     int[] interval =
         columnInterval(
             PlacementSearch.mask(tileMap, offBuildings, side, entities),

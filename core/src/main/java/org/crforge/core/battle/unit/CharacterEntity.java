@@ -279,6 +279,18 @@ public class CharacterEntity extends WorldEntity {
   private CharacterEntity groupSource;
 
   /**
+   * Whether the character is in the group chain of the card that made it: a card that is a group
+   * links every unit it makes after the one made before it.
+   */
+  private boolean chained;
+
+  /** The unit before this one in its card's group chain, or null for the first. */
+  private CharacterEntity chainPrevious;
+
+  /** The unit after this one in its card's group chain, or null for the last. */
+  private CharacterEntity chainNext;
+
+  /**
    * The spawner's timer: what is left before its next firing, in milliseconds, from its row's start
    * time at placement.
    */
@@ -1253,6 +1265,64 @@ public class CharacterEntity extends WorldEntity {
     group.add(0, linked);
     linked.groupSource = this;
     world.groupLinked(this, linked);
+  }
+
+  /**
+   * Links the character into its card's group chain after the unit the card made before it, as the
+   * card's construction does right after making it.
+   *
+   * @param previous the unit made before it, or null for the first
+   */
+  void linkAfter(CharacterEntity previous) {
+    chained = true;
+    chainPrevious = previous;
+    chainNext = null;
+    if (previous != null) {
+      previous.chainNext = this;
+    }
+    world.chainLinked(this, previous);
+  }
+
+  /**
+   * The first unit of the character's card group chain, walking back from it; null for a character
+   * in no chain.
+   */
+  CharacterEntity chainHead() {
+    if (!chained) {
+      return null;
+    }
+    CharacterEntity head = this;
+    while (head.chainPrevious != null) {
+      head = head.chainPrevious;
+    }
+    return head;
+  }
+
+  /** The unit after the character in its card group chain, or null for none. */
+  CharacterEntity chainNext() {
+    return chainNext;
+  }
+
+  /**
+   * Takes the character out of its card group chain as it is released, joining the units on either
+   * side of it.
+   *
+   * @return true when it was in a chain
+   */
+  boolean leaveChain() {
+    if (!chained) {
+      return false;
+    }
+    if (chainPrevious != null) {
+      chainPrevious.chainNext = chainNext;
+    }
+    if (chainNext != null) {
+      chainNext.chainPrevious = chainPrevious;
+    }
+    chainPrevious = null;
+    chainNext = null;
+    chained = false;
+    return true;
   }
 
   /**

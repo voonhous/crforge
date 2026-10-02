@@ -260,7 +260,8 @@ class CardPlacementTest {
         c.projectileWaveIntervalMs(),
         c.projectileIntervalMs(),
         c.listed(),
-        c.listOffsetsXMirrored());
+        c.listOffsetsXMirrored(),
+        c.group());
   }
 
   private static int[] ints(JsonNode array) {

@@ -1521,7 +1521,8 @@ public final class BattleRecords {
         row.intValue("ProjectileWaveInterval"),
         row.intValue("ProjectileInterval"),
         listed,
-        row.bool("CharactersOffsetsXMirrored"));
+        row.bool("CharactersOffsetsXMirrored"),
+        row.bool("IsAGroup"));
   }
 
   /**
@@ -1601,6 +1602,7 @@ public final class BattleRecords {
         row.intValue("ProjectileWaveInterval"),
         row.intValue("ProjectileInterval"),
         List.of(),
+        false,
         false);
   }
 
@@ -1624,8 +1626,9 @@ public final class BattleRecords {
 
   /**
    * The action row a unit's OnStartingAction names; null for none. One written inline as a bare
-   * ActionBerserk, as the Berserker's is, is the actions table's row named after the unit and the
-   * column. Any other inline row is refused.
+   * ActionBerserk, as the Berserker's is, or as a spawn of an area effect and nothing more, as
+   * Goblinstein's doctor's is, is the actions table's row named after the unit and the column. Any
+   * other inline row is refused.
    */
   private String startingActionName(GameRow row) {
     JsonNode value = row.value("OnStartingAction");
@@ -1634,7 +1637,14 @@ public final class BattleRecords {
             && value.isObject()
             && value.size() == 1
             && value.path("ClassType").asText().equals("ActionBerserk");
-    return berserk
+    boolean areaEffect =
+        value != null
+            && value.isObject()
+            && value.size() == 3
+            && value.path("ClassType").asText().equals("ActionSpawn")
+            && value.path("SpawnType").asText().equals("AreaEffectType")
+            && value.path("SpawnData").isTextual();
+    return berserk || areaEffect
         ? inlineActionName(row, "OnStartingAction")
         : actionName(row, "OnStartingAction");
   }
