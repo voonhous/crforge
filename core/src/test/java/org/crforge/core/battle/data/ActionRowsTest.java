@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import org.crforge.core.battle.GameData;
@@ -17,6 +19,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.spawn.SpawnCharacters;
@@ -162,6 +165,57 @@ class ActionRowsTest {
   }
 
   @Test
+  @DisplayName("the Goblin Cage's shake keeps a run that is stepped doing nothing")
+  void theShakeRunLasts() {
+    BattleAction shake = GameData.actions().build("goblin_cage_shake_when_target", INERT_BINDING);
+    assertThat(shake).isInstanceOf(PlayAnimationIfHasTarget.class);
+    ActionHolder holder = new ActionHolder();
+    holder.start(shake);
+    for (int tick = 1; tick <= 100; tick++) {
+      holder.runPass(tick);
+    }
+    assertThat(holder.running()).as("still listed after a hundred steps").hasSize(1);
+    assertThat(holder.running().get(0).isFinished()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a Goblin Cage shake that sets tags, stops on a gate, is a singleton or chains an action is"
+          + " refused for that column")
+  void aShakeWithSomethingToDoIsRefused(@TempDir Path folder) throws IOException {
+    Map<String, Consumer<ObjectNode>> columns =
+        Map.of(
+            "GameTagsToSet", f -> f.put("GameTagsToSet", "UNIT_CUSTOM_TAG_1"),
+            "ForceStopIfTrue", f -> f.put("ForceStopIfTrue", "UNIT_CUSTOM_TAG_1"),
+            "Singleton", f -> f.put("Singleton", true),
+            "NextAction", f -> f.put("NextAction", "skeleton_balloon_pop_balloons"));
+    for (Map.Entry<String, Consumer<ObjectNode>> column : columns.entrySet()) {
+      ActionRows rows = shakeRows(folder.resolve(column.getKey()), column.getValue());
+      assertThatThrownBy(() -> rows.build("goblin_cage_shake_when_target", INERT_BINDING))
+          .as(column.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(column.getKey());
+    }
+    // A singleton written as false is no singleton, and the row is built.
+    assertThat(
+            shakeRows(folder.resolve("false"), f -> f.put("Singleton", false))
+                .build("goblin_cage_shake_when_target", INERT_BINDING))
+        .isInstanceOf(PlayAnimationIfHasTarget.class);
+  }
+
+  /** The rows of tables whose Goblin Cage shake has one column set by the given edit. */
+  private static ActionRows shakeRows(Path folder, Consumer<ObjectNode> edit) throws IOException {
+    Files.createDirectories(folder);
+    GameTables altered =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                edit.accept((ObjectNode) rows.get("goblin_cage_shake_when_target").get("fields")));
+    return new ActionRows(altered, new BattleRecords(altered));
+  }
+
+  @Test
   @DisplayName("an effect row that loops keeps a run that never finishes by itself")
   void aLoopingEffectLasts() {
     BattleAction effect = GameData.actions().build("goblin_machine_signal_core", INERT_BINDING);
@@ -229,11 +283,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 561 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 562 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters and buffs, or a spawned buff the battle does not model.
-    assertThat(built).as("rows built").isEqualTo(561);
+    assertThat(built).as("rows built").isEqualTo(562);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 176, "column", 110, "spawn type", 99));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 175, "column", 110, "spawn type", 99));
   }
 }
