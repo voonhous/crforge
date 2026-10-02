@@ -1,0 +1,68 @@
+package org.crforge.core.battle.action;
+
+import java.util.List;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+
+/**
+ * An action that checks what caused it and runs one of two actions by the outcome. It reads only
+ * its row, its cause and its owner, and does not last.
+ *
+ * <p>Without a cause it does nothing at all, not even its action to run when nothing matches. With
+ * one, the cause's row is compared by its global id with the character and building rows the row
+ * names: without names anything matches, and a cause of no such row, such as a projectile, matches
+ * none. A name the data has no row for was dropped as the row was read. Whether the cause is still
+ * alive is not asked: a dead cause matches as a living one does.
+ *
+ * <p>On a match it schedules its action to run, and otherwise its action to run when nothing
+ * matches, each on the owner with the owner as its cause, the row's own delay and not asked to
+ * start at once: inside a pending pass, with no delay, it runs at once.
+ */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled by the native cases of its perform and held by boss_bandit_bandit_knight and"
+            + " boss_bandit_tower_bandit: a killer's check of what it killed and a killed unit's"
+            + " check of its killer, each matching a Bandit and missing a Knight, the branch"
+            + " scheduled on the owner as its own cause. A row with an object filter is refused"
+            + " as it is read, as no shipped row sets one.")
+public final class RunIfInstigatorMatches extends RowAction {
+
+  private final List<Integer> matchIds;
+  private final BattleAction onMatch;
+  private final BattleAction onNoMatch;
+
+  /**
+   * @param row the row's shared columns
+   * @param matchIds the global ids of the rows a cause must have to match; empty for any
+   * @param onMatch scheduled on a match, or null
+   * @param onNoMatch scheduled otherwise, or null
+   */
+  public RunIfInstigatorMatches(
+      ActionRow row, List<Integer> matchIds, BattleAction onMatch, BattleAction onNoMatch) {
+    super(row);
+    this.matchIds = List.copyOf(matchIds);
+    this.onMatch = onMatch;
+    this.onNoMatch = onNoMatch;
+  }
+
+  @Override
+  public ActionInstance start(ActionHolder holder) {
+    return start(holder, null);
+  }
+
+  @Override
+  public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
+    if (instigator == null) {
+      return null;
+    }
+    ActionOwner cause = instigator.getOwner();
+    boolean matches = matchIds.isEmpty() || matchIds.contains(cause.actionUnitGlobalId());
+    BattleAction chosen = matches ? onMatch : onNoMatch;
+    if (chosen != null) {
+      holder.schedule(chosen, ActionHolder.OWN_DELAY, false, holder);
+    }
+    holder.getOwner().instigatorChecked(name(), cause, chosen == null ? null : chosen.name());
+    return null;
+  }
+}

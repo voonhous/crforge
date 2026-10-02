@@ -331,6 +331,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * little_prince_retarget} has it kill three Spear Goblins one after another, each new target in
  * range keeping the ramp, then take a princess tower out of range, which clears it. Each is held to
  * every read of attack_count and every ask of a buff's life condition.
+ *
+ * <p>{@code boss_bandit_bandit_knight} plays a Boss Bandit against a Bandit and then a Knight: the
+ * two dash at each other on the same tick and both landing hits are refused, and each kill the Boss
+ * Bandit makes schedules its row's killed-done check on it, with what it killed as the cause, in
+ * its next pending pass; the check matches the Bandit and runs its voice line, and finds no match
+ * in the Knight. {@code boss_bandit_tower_bandit} has a Bandit kill a Boss Bandit at a princess
+ * tower, whose killed action checks its killer the same way and matches. Each is held to every
+ * killed-done check scheduled and every check of an action's cause.
  */
 class BattleActionSpawnRunTest {
 
@@ -468,7 +476,9 @@ class BattleActionSpawnRunTest {
         "goblin_machine_knight",
         "goblin_machine_tower",
         "little_prince_giant",
-        "little_prince_retarget"
+        "little_prince_retarget",
+        "boss_bandit_bandit_knight",
+        "boss_bandit_tower_bandit"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -734,6 +744,9 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(cloneGateLog(currentTick, cloneGateLog));
     List<String> princeLog = new ArrayList<>();
     match.getWorld().addObserver(princeLog(currentTick, princeLog));
+    // Every killer's killed-done check scheduled, and every check of what caused an action.
+    List<String> killLog = new ArrayList<>();
+    match.getWorld().addObserver(killLog(currentTick, killLog));
     List<String> areaEffectSpawnLog = new ArrayList<>();
     match.getWorld().addObserver(areaEffectSpawnLog(currentTick, areaEffectSpawnLog));
     // Every laser ball's start and fire, and every area effect's life-end action scheduled.
@@ -1403,6 +1416,9 @@ class BattleActionSpawnRunTest {
     assertThat(princeLog)
         .as("every read of attack_count and every ask of a buff's life condition")
         .containsExactlyElementsOf(expectedPrinceLog(reference));
+    assertThat(killLog)
+        .as("every killed-done check scheduled and every check of an action's cause")
+        .containsExactlyElementsOf(expectedKillLog(reference));
     assertThat(vinesLog)
         .as("every shape selector's start, step and removal, and every air-to-ground run")
         .containsExactlyElementsOf(expectedVinesLog(reference));
@@ -2620,6 +2636,37 @@ class BattleActionSpawnRunTest {
   }
 
   /**
+   * Logs every killer's killed-done check as it is scheduled, with what it killed and whether a
+   * pending pass ran, and every check of what caused an action, with the cause's row and what the
+   * check scheduled.
+   */
+  private static WorldObserver killLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void killedDoneScheduled(
+          int tick, WorldEntity killer, WorldEntity killed, String action, boolean inPendingPass) {
+        log.add(
+            "%d killed_done %s %s %s %s"
+                .formatted(currentTick[0], killer.name(), killed.name(), action, inPendingPass));
+      }
+
+      @Override
+      public void instigatorChecked(
+          int tick, WorldEntity owner, String action, ActionOwner instigator, String scheduled) {
+        log.add(
+            "%d instigator_match %s %s %s %s %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    action,
+                    instigator instanceof BattleEntity cause ? attackerName(cause) : null,
+                    instigator == null ? null : instigator.actionRowName(),
+                    scheduled));
+      }
+    };
+  }
+
+  /**
    * Logs every laser ball's start, with its pass and timer, every fire, with the count, the index
    * it picked, the targets, the action and the timer before and after, and every area effect's
    * life-end action as it is scheduled.
@@ -3125,6 +3172,38 @@ class BattleActionSpawnRunTest {
                     e.get("unit").asText(),
                     e.get("expression").asText(),
                     e.get("value").asInt()));
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * The reference's killed-done checks scheduled and checks of an action's cause, in its log's
+   * order.
+   */
+  private static List<String> expectedKillLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("kill_hooks")) {
+      int tick = e.get("tick").asInt();
+      if (e.get("event").asText().equals("killed_done")) {
+        expected.add(
+            "%d killed_done %s %s %s %s"
+                .formatted(
+                    tick,
+                    e.get("owner").asText(),
+                    e.get("killed").asText(),
+                    e.get("action").asText(),
+                    e.get("in_pending").asBoolean()));
+      } else {
+        expected.add(
+            "%d instigator_match %s %s %s %s %s"
+                .formatted(
+                    tick,
+                    e.get("owner").asText(),
+                    e.get("action").asText(),
+                    e.get("instigator").isNull() ? null : e.get("instigator").asText(),
+                    e.get("row").isNull() ? null : e.get("row").asText(),
+                    e.get("scheduled").isNull() ? null : e.get("scheduled").asText()));
       }
     }
     return expected;

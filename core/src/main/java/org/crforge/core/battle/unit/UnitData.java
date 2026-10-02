@@ -79,6 +79,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onStartingAction the action row the unit runs when it joins the battle, or null
  * @param onDeathAction the action row the unit runs when it dies, or null
  * @param onKilledAction the action row the unit runs when it is killed, or null
+ * @param onKilledDoneAction the action row the unit runs when its hit kills, with what it killed as
+ *     the cause, or null
  * @param deathDamage damage the unit deals around itself as it dies, at the first level; 0 for none
  * @param deathDamageRadius the radius of that damage
  * @param deathPushBack how far that damage pushes what it hits; 0 for no push
@@ -271,6 +273,7 @@ public record UnitData(
     String onStartingAction,
     String onDeathAction,
     String onKilledAction,
+    String onKilledDoneAction,
     int deathDamage,
     int deathDamageRadius,
     int deathPushBack,

@@ -80,6 +80,26 @@ public interface ActionOwner {
    */
   default void berserked(Berserk.Event event, int before, int index) {}
 
+  /** What {@link #actionUnitGlobalId} answers for an owner of no character or building row. */
+  int NO_UNIT_ROW = -1;
+
+  /**
+   * The global id of the owner's character or building row, which a check of what caused an action
+   * compares; {@link #NO_UNIT_ROW} for an owner of another kind, such as a projectile.
+   */
+  default int actionUnitGlobalId() {
+    return NO_UNIT_ROW;
+  }
+
+  /**
+   * Tells the battle's observers what a check of an action's cause found.
+   *
+   * @param action the checking action's row
+   * @param instigator what caused it, or null for nothing
+   * @param scheduled the action it scheduled on the owner, or null for none
+   */
+  default void instigatorChecked(String action, ActionOwner instigator, String scheduled) {}
+
   /**
    * What a friend-collecting run asks of the battle around the owner.
    *
