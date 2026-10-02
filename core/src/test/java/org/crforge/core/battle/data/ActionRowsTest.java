@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
@@ -205,6 +206,73 @@ class ActionRowsTest {
     assertThat(defaults.getTransitionDurationMs()).isEqualTo(200);
     assertThat(defaults.getTotalDurationMs()).isEqualTo(1000);
     assertThat(defaults.isAllowIsGroundTagOnIdle()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Royal Ghost's row reads its distance, areas and delay, the loader's distance"
+          + " 250 when it is left out")
+  void theGhostEvoRowIsBuilt(@TempDir Path folder) throws IOException {
+    String row = "Ghost_EV1_Spawn_Summons_Action";
+    GhostEvo ghost = (GhostEvo) GameData.actions().build(row, INERT_BINDING);
+    assertThat(ghost.getColumns().summonDistance()).isEqualTo(2000);
+    assertThat(ghost.getColumns().damageArea()).isEqualTo("Ghost_EV1_Summon_Damage_Area");
+    assertThat(ghost.getColumns().damageAreaDelayMs()).isEqualTo(200);
+    assertThat(ghost.getColumns().leftArea()).isEqualTo("Ghost_EV1_Summon_Spawn_Area");
+    assertThat(ghost.getColumns().rightArea()).isEqualTo("Ghost_EV1_Summon_Spawn_Area");
+    assertThat(ghost.getColumns().summon().name()).isEqualTo("Ghost_EV1_Area_Spawn_Summons_Action");
+
+    Files.createDirectories(folder);
+    GameTables bare =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> ((ObjectNode) rows.get(row).get("fields")).remove("SummonDistance"));
+    GhostEvo defaults =
+        (GhostEvo) new ActionRows(bare, new BattleRecords(bare)).build(row, INERT_BINDING);
+    assertThat(defaults.getColumns().summonDistance()).isEqualTo(250);
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Royal Ghost's summon row that hits at once, runs an action on its summons or"
+          + " spawns them without their deploy is refused, as is a shared column no row sets")
+  void aGhostEvoRowIsRefused(@TempDir Path folder) throws IOException {
+    String row = "Ghost_EV1_Spawn_Summons_Action";
+    String summon = "Ghost_EV1_Area_Spawn_Summons_Action";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "instant",
+            f -> f.put("InstantHitForSummons", true),
+            "action",
+            f -> f.put("ActionOnSummons", "Ghost_EV1_Hide_Glow_Filter"),
+            "deploy",
+            f -> f.put("UseDeployForSummons", false));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey());
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(summon).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("hits at once, runs an action on its summons");
+    }
+    Path dir = folder.resolve("singleton");
+    Files.createDirectories(dir);
+    GameTables singleton =
+        GameData.altered(
+            dir,
+            "actions",
+            rows -> ((ObjectNode) rows.get(row).get("fields")).put("Singleton", true));
+    ActionRows rows = new ActionRows(singleton, new BattleRecords(singleton));
+    assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Singleton");
   }
 
   @Test
@@ -862,12 +930,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 730 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 735 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(730);
+    assertThat(built).as("rows built").isEqualTo(735);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 105, "column", 99, "spawn type", 12));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 102, "column", 97, "spawn type", 12));
   }
 }

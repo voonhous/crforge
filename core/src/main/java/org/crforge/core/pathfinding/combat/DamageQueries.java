@@ -99,6 +99,13 @@ public interface DamageQueries {
     return false;
   }
 
+  /**
+   * Told once the bookkeeping lets a hit through - past the battle's hold, the untouchable test and
+   * the dedupe list - before the subtraction: the character that dealt the hit counts it. Supplied
+   * as doing nothing, for a hit no character dealt.
+   */
+  default void hitCounted() {}
+
   /** The battle tick a dedupe id is listed with. */
   default int battleTick() {
     return 0;

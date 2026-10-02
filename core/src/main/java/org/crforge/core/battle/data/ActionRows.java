@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.FlipFlop;
+import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GoblinsteinAbility;
@@ -353,6 +354,26 @@ public final class ActionRows {
                   "DamageMultiplierPerUnitNames",
                   "DamageMultiplierPerUnitValues",
                   "VisualActionForEnemyTarget")),
+          // The evolved Royal Ghost's summons: the run on the Ghost and the row its summon areas
+          // follow.
+          Map.entry(
+              "ActionGhostEvoAction",
+              Set.of(
+                  "SummonDistance",
+                  "DamageAEO",
+                  "DamageAEOSpawnDelay",
+                  "SummonSpawnDelay",
+                  "LeftSummonAreaType",
+                  "RightSummonAreaType",
+                  "SummonActionData")),
+          Map.entry(
+              "ActionGhostEvoSpawnSummon",
+              Set.of(
+                  "LeftSummonType",
+                  "RightSummonType",
+                  "InstantHitForSummons",
+                  "ActionOnSummons",
+                  "UseDeployForSummons")),
           // The effect-playing and forced-animation rows only show something: their own columns
           // reach the view alone, but for the two effect flags that keep a run.
           Map.entry(
@@ -486,6 +507,16 @@ public final class ActionRows {
    */
   public BattleAction build(String name, ActionBinding binding) {
     return new Build(binding).action(name);
+  }
+
+  /**
+   * Whether an action row only plays an effect, looping or not: presentation, which nothing the
+   * battle reads changes.
+   *
+   * @param name the row's name
+   */
+  public boolean playsEffect(String name) {
+    return tables.action(name).classType().equals("ActionPlayEffect");
   }
 
   /** The bits of a list of game tags, each its row's index in the game tags table. */
@@ -670,6 +701,8 @@ public final class ActionRows {
             case "ActionLaserBall" -> laserBall(name, shared, f);
             case "ActionSpawnGuard" -> spawnGuard(name, shared, f);
             case "ActionBossBanditAbility" -> bossBanditAbility(name, shared, f);
+            case "ActionGhostEvoAction" -> ghostEvo(name, shared, f);
+            case "ActionGhostEvoSpawnSummon" -> ghostSummon(name, shared, f);
             case "ActionWarpCharacter" -> warpCharacter(name, shared, f);
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
@@ -1139,6 +1172,69 @@ public final class ActionRows {
               .guardTags(tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"))
               .shadowTag(tagMask("NO_SHADOW"))
               .build());
+    }
+
+    /**
+     * The evolved Royal Ghost's run: the summon distance, the two summon areas, the damage area and
+     * its delay, and the row its summon areas follow, whose summon delay is this row's. Refused:
+     * tags, a singleton, a next action, the gates, a phase, a delay and a speed byte, which no
+     * shipped row sets, and a summon row of another class.
+     */
+    private GhostEvo ghostEvo(String name, ActionRow shared, JsonNode f) {
+      refuseGhostShared(name, f);
+      BattleAction summon = action(f.get("SummonActionData"));
+      if (!(summon instanceof GhostEvo.Summon summonRow)) {
+        throw new UnsupportedOperationException(
+            name + " names a summon row of another class, which is not modelled");
+      }
+      // The summon delay is read from this row and handed to the summon runs it makes.
+      GhostEvo.Summon withDelay = summonRow.withDelay(integer(f, "SummonSpawnDelay"));
+      return new GhostEvo(
+          shared,
+          GhostEvo.Columns.builder()
+              // The loader's default distance is 250.
+              .summonDistance(f.path("SummonDistance").asInt(250))
+              .damageArea(rowName(f.get("DamageAEO")))
+              .damageAreaDelayMs(integer(f, "DamageAEOSpawnDelay"))
+              .leftArea(rowName(f.get("LeftSummonAreaType")))
+              .rightArea(rowName(f.get("RightSummonAreaType")))
+              .summon(withDelay)
+              .build());
+    }
+
+    /**
+     * The row an evolved Royal Ghost's summon areas follow: the summon each side spawns. Refused:
+     * the shared columns no shipped row sets, an instant hit, an action on the summons and a spawn
+     * without the deploy, which the loader defaults to on.
+     */
+    private GhostEvo.Summon ghostSummon(String name, ActionRow shared, JsonNode f) {
+      refuseGhostShared(name, f);
+      if (bool(f, "InstantHitForSummons")
+          || f.hasNonNull("ActionOnSummons")
+          || !f.path("UseDeployForSummons").asBoolean(true)) {
+        throw new UnsupportedOperationException(
+            name
+                + " hits at once, runs an action on its summons or spawns them without their"
+                + " deploy, which is not modelled");
+      }
+      return new GhostEvo.Summon(
+          shared, rowName(f.get("LeftSummonType")), rowName(f.get("RightSummonType")), 0);
+    }
+
+    /** Refuses the shared columns no evolved Royal Ghost row sets. */
+    private void refuseGhostShared(String name, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "GameTagsToSet",
+          "Singleton",
+          "NextAction",
+          "ExecuteIfTrue",
+          "ActionPausedIfTrue",
+          "ForceStopIfTrue",
+          "AffectedByHitSpeed",
+          "UpdatePhase",
+          "ActionDelay");
     }
 
     /**

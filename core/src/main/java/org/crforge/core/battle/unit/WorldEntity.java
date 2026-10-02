@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.FilterSubject;
@@ -113,7 +114,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " such an entity is refused. The row's action run as it attacks, scheduled on the"
             + " entity with the hit's target as its cause and run in its pending pass of the same"
             + " tick, held by valkyrie_ev1_barbarians and royal_giant_ev1_knights; nothing"
-            + " scheduled for a hit with no target, carried and held by no run.")
+            + " scheduled for a hit with no target, carried and held by no run. Every hit its"
+            + " target's bookkeeping lets through counted by the entity, its BuffAfterHits entry"
+            + " reached applied to itself and the counter back to 0 at the last, held by"
+            + " buff_after_hits_barbarians_bats; a list of counts, a projectile's shooter and a"
+            + " reflecting unit by BattleBuffAfterHitsTest; a typed hit's and damage over time's"
+            + " count of a BuffAfterHits row refused.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -326,13 +332,36 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   public DamageResult takeDamage(
       int damage, int dedupeId, int directionX, int directionY, boolean passesHidden) {
+    return takeDamage(damage, dedupeId, directionX, directionY, passesHidden, null);
+  }
+
+  /**
+   * Deals one damage event to the entity, as {@link #takeDamage(int, int, int, int)} does.
+   *
+   * @param passesHidden true for a hit the damage entry lets through while the entity is hidden: an
+   *     area effect's that reaches hidden units
+   * @param dealer the character or tower that dealt the hit and counts it once the bookkeeping lets
+   *     it through, a projectile's shooter for its impact; null for a hit none dealt
+   */
+  DamageResult takeDamage(
+      int damage,
+      int dedupeId,
+      int directionX,
+      int directionY,
+      boolean passesHidden,
+      WorldEntity dealer) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.damage(
-            hitPoints, damage, dedupeId, directionX, directionY, damageQueries(passesHidden));
+            hitPoints,
+            damage,
+            dedupeId,
+            directionX,
+            directionY,
+            damageQueries(passesHidden, dealer, true));
     shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;
@@ -342,7 +371,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * Takes a reflected attack's damage: the damage entry as any hit's, with the battle's holds, the
    * hidden test and the untouchable test lifted, the one struck never riding on a parent.
    */
-  DamageResult takeReflectedDamage(int damage, int directionX, int directionY) {
+  DamageResult takeReflectedDamage(
+      WorldEntity reflecting, int damage, int directionX, int directionY) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -364,6 +394,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               @Override
               public int modifyDamage(int amount) {
                 return buffs.damageReduction(amount);
+              }
+
+              // The reflecting unit dealt the hit, and counts it.
+              @Override
+              public void hitCounted() {
+                reflecting.countHit(WorldEntity.this, true);
               }
             });
     shieldHit(damage, shieldBefore);
@@ -598,7 +634,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
       @Override
       public boolean hitListeners() {
-        return !hitListenerRuns().isEmpty() || berserking();
+        return !hitListenerRuns().isEmpty() || berserking() || ghostEvoRunning();
       }
 
       @Override
@@ -652,6 +688,19 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
     }
     return runs;
+  }
+
+  /** Whether an evolved Royal Ghost's run is listed, whose hit notice may summon. */
+  private boolean ghostEvoRunning() {
+    if (actionHolder == null || data.king()) {
+      return false;
+    }
+    for (ActionInstance instance : actionHolder.running()) {
+      if (instance instanceof GhostEvo.Run) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -766,7 +815,28 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    *     area effect's that reaches hidden units
    */
   protected DamageQueries damageQueries(boolean passesHidden) {
+    return damageQueries(passesHidden, null, true);
+  }
+
+  /**
+   * What the damage chain asks about the entity, and who counts the hit.
+   *
+   * @param passesHidden true for a hit the damage entry lets through while the entity is hidden
+   * @param dealer the character or tower that counts the hit once the bookkeeping lets it through,
+   *     or null for none
+   * @param buffAfterHitsHeld false on a path a BuffAfterHits buff from the count is not held on,
+   *     where a row with one is refused
+   */
+  private DamageQueries damageQueries(
+      boolean passesHidden, WorldEntity dealer, boolean buffAfterHitsHeld) {
     return new DamageQueries() {
+      @Override
+      public void hitCounted() {
+        if (dealer != null) {
+          dealer.countHit(WorldEntity.this, buffAfterHitsHeld);
+        }
+      }
+
       @Override
       public boolean crownTowerTarget() {
         return targetView.isCrownTowerTarget();
@@ -958,12 +1028,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * Takes one hit of a buff's damage over time: refused only where damage is forbidden, with no
    * dedupe id and no heading.
    */
-  DamageResult takeDamageOverTime(int damage) {
+  DamageResult takeDamageOverTime(int damage, SpawnHost source) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     int shieldBefore = hitPoints.getShield();
-    DamageResult result = DamageApplication.overTime(hitPoints, damage, damageQueries());
+    // A character or tower that applied the buff counts its hits.
+    DamageResult result =
+        DamageApplication.overTime(
+            hitPoints,
+            damage,
+            damageQueries(false, source instanceof WorldEntity dealer ? dealer : null, false));
     shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;
@@ -1484,6 +1559,69 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         .schedule(row, ActionHolder.OWN_DELAY, false, cause == null ? null : cause.actionHolder());
   }
 
+  /**
+   * The hits the entity has dealt that a target's hit points let through, since its BuffAfterHits
+   * list last came round.
+   */
+  @Getter private int hitCounter;
+
+  /**
+   * One hit the entity dealt that the target's hit points let through, past the battle's hold, the
+   * untouchable test and the dedupe list and before the subtraction: one count per target per
+   * damage, a projectile's impact for its shooter. The counter goes up by one; then the
+   * BuffAfterHits entries are walked in order, an entry whose count is not above the old counter
+   * skipped and the walk ended at the first above the new one, so the entry picked is the one whose
+   * count the counter just reached; the last entry, picked, sets the counter back to 0. The buff
+   * picked is applied to the entity itself, with no parent, for its BuffAfterHitsTime, at the
+   * entity's level, the entity its source and its side the side.
+   *
+   * @param target what the hit reached
+   * @param buffHeld false on a path no reference holds a BuffAfterHits buff on, a typed hit's or a
+   *     buff's damage over time, where a row that would apply one is refused
+   */
+  void countHit(WorldEntity target, boolean buffHeld) {
+    int old = hitCounter;
+    hitCounter = old + 1;
+    List<Integer> counts = data.buffAfterHitsCounts();
+    if (counts.isEmpty()) {
+      return;
+    }
+    if (!buffHeld) {
+      throw new UnsupportedOperationException(
+          name()
+              + " hits "
+              + target.name()
+              + " with BuffAfterHits "
+              + data.buffAfterHits()
+              + " by a typed hit or damage over time, which is not modelled");
+    }
+    if (data.buffAfterHits().size() != counts.size()
+        || data.buffAfterHitsTimesMs().size() != counts.size()) {
+      throw new UnsupportedOperationException(
+          name() + " lists BuffAfterHits, counts and times of different lengths, not modelled");
+    }
+    String buff = null;
+    int time = 0;
+    for (int i = 0; i < counts.size(); i++) {
+      int count = counts.get(i);
+      if (count <= old) {
+        continue;
+      }
+      if (count > hitCounter) {
+        break;
+      }
+      buff = data.buffAfterHits().get(i);
+      time = data.buffAfterHitsTimesMs().get(i);
+      if (i == counts.size() - 1) {
+        hitCounter = 0;
+      }
+    }
+    world.hitCounted(this, target, old, hitCounter, buff, time);
+    if (buff != null) {
+      buffs.apply(world.buffData(buff), time, getPackedLevel(), this, side());
+    }
+  }
+
   /** The row the entity's row runs as it attacks, built on first use. */
   private BattleAction attackActionRow;
 
@@ -1644,12 +1782,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    *
    * @return what the hit did; a death it causes is the battle's to run
    */
-  DamageResult takeTypedHit(int amount, int damageId, int directionX, int directionY) {
+  DamageResult takeTypedHit(
+      WorldEntity source, int amount, int damageId, int directionX, int directionY) {
     refuseReflect("a typed hit");
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.typedHit(
-            hitPoints, amount, damageId, directionX, directionY, damageQueries());
+            hitPoints,
+            amount,
+            damageId,
+            directionX,
+            directionY,
+            damageQueries(false, source, false));
     shieldHit(amount, shieldBefore);
     refreshHitPoints();
 
@@ -1662,13 +1806,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @return what the kill did; the death it causes is the battle's to run
    */
   DamageResult takeKill() {
+    return takeKill(null);
+  }
+
+  /**
+   * Takes a kill, counted by the one that dealt it.
+   *
+   * @param dealer what counts the kill as its hit: a Kamikaze unit killing itself; null for none
+   * @return what the kill did; the death it causes is the battle's to run
+   */
+  DamageResult takeKill(WorldEntity dealer) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     refuseReflect("a kill");
     int shieldBefore = hitPoints.getShield();
     int whole = hitPoints.getHitPoints();
-    DamageResult result = DamageApplication.kill(hitPoints, damageQueries());
+    DamageResult result = DamageApplication.kill(hitPoints, damageQueries(false, dealer, true));
     shieldHit(whole, shieldBefore);
     refreshHitPoints();
 
@@ -1688,7 +1842,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     refuseReflect("a Kamikaze drain");
     int shieldBefore = hitPoints.getShield();
-    DamageResult result = DamageApplication.kamikazeDrain(hitPoints, damage, damageQueries());
+    // The unit is its own attacker, and counts the step.
+    DamageResult result =
+        DamageApplication.kamikazeDrain(hitPoints, damage, damageQueries(false, this, true));
     shieldHit(damage, shieldBefore);
     refreshHitPoints();
     return result;

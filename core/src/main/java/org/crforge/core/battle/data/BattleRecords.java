@@ -278,6 +278,12 @@ public final class BattleRecords {
   private static final Set<String> MODELLED_BUFF_TAGS = Set.of("NO_PUSHED_BY_ENEMY");
 
   /**
+   * The actions a buff schedules on its carrier as an instance is listed and removed: read when
+   * they name an action row, listed as not modelled when written inline.
+   */
+  private static final Set<String> BUFF_HOOK_COLUMNS = Set.of("OnStartAction", "OnRemoveAction");
+
+  /**
    * The columns of a unit's row that only show something: its art, texts, effects, shadows,
    * animation, skin and health bar. They name client assets rather than rows of the battle's
    * tables, and no traced battle path reads one; they are classified by what they name, not each by
@@ -1269,6 +1275,25 @@ public final class BattleRecords {
   }
 
   /**
+   * Whether a column's value names an action row, by reference or by its name, rather than writing
+   * one inline.
+   */
+  private static boolean namedAction(JsonNode value) {
+    if (value == null || value.isNull() || value.isMissingNode()) {
+      return false;
+    }
+    return value.isTextual() || value.isObject() && value.has("action");
+  }
+
+  /**
+   * A buff's start or remove action: the row the column names, or null for none and for one written
+   * inline, which is listed as not modelled instead.
+   */
+  private static String hookAction(GameRow row, String column) {
+    return namedAction(row.value(column)) ? actionName(row, column) : null;
+  }
+
+  /**
    * Whether a buff column is its tags and every tag it sets is one the battle reads where it reads
    * the tag word of the buff's carrier: only the one that keeps enemies from pushing it.
    */
@@ -1287,7 +1312,8 @@ public final class BattleRecords {
   /**
    * A character buff as the battle reads it, from the character buffs table, or the buff row a buff
    * spawn row writes inline under that name. Every column it sets that is neither read nor only
-   * shows something is listed as not modelled.
+   * shows something is listed as not modelled, and so is a start or remove action written inline
+   * rather than naming a row.
    *
    * @param name the row's name
    */
@@ -1301,7 +1327,15 @@ public final class BattleRecords {
           && !PRESENTATION_BUFF_COLUMNS.contains(column)
           && sets(row, column)
           && !inertDamageReductionAction(row, column)
-          && !modelledBuffTags(row, column)) {
+          && !modelledBuffTags(row, column)
+          && !(BUFF_HOOK_COLUMNS.contains(column) && namedAction(row.value(column)))) {
+        unmodelled.add(column);
+      }
+    }
+    // A start or remove action written inline is a row of its own, which the battle does not read.
+    for (String column : BUFF_HOOK_COLUMNS) {
+      JsonNode value = row.value(column);
+      if (value != null && value.isObject() && !namedAction(value)) {
         unmodelled.add(column);
       }
     }
@@ -1348,6 +1382,8 @@ public final class BattleRecords {
         .cloneBuff(row.bool("Clone"))
         .attachedInheritAs(sets(row, "AttachedInheritAs") ? row.string("AttachedInheritAs") : null)
         .gameTagsToSet(tagBits(row.string("GameTagsToSet")))
+        .onStartAction(hookAction(row, "OnStartAction"))
+        .onRemoveAction(hookAction(row, "OnRemoveAction"))
         .unmodelledColumns(unmodelled)
         .build();
   }

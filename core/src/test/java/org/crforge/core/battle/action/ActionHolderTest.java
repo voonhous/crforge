@@ -75,6 +75,50 @@ class ActionHolderTest {
   }
 
   @Test
+  @DisplayName(
+      "a buff's hook with no delay starts at once only inside its holder's own pending pass, and"
+          + " waits inside another entity's")
+  void aBuffHookStartsAtOnceOnlyInItsOwnPass() {
+    // A battle's holder: the battle answers that a pending pass is running for every entity.
+    ActionHolder holder = new ActionHolder(null, () -> true);
+    holder.setListener(
+        new ActionHolder.Listener() {
+          @Override
+          public void started(BattleAction action, int phase) {
+            started.add(action.name() + "@" + phase);
+          }
+        });
+    BattleAction hook = new InertAction(ActionRow.named("hook"));
+
+    holder.scheduleInOwnPass(hook, null);
+    assertThat(started).as("another entity's pass: queued").isEmpty();
+    holder.schedule(new InertAction(ActionRow.named("plain")), 0);
+    assertThat(started).as("a plain schedule starts in any pass").containsExactly("plain@0");
+
+    started.clear();
+    BattleAction scheduler =
+        new BattleAction() {
+          @Override
+          public String name() {
+            return "scheduler";
+          }
+
+          @Override
+          public ActionInstance start(ActionHolder h) {
+            h.scheduleInOwnPass(hook, null);
+            return null;
+          }
+        };
+    holder.schedule(scheduler, 100);
+    holder.endOfTick();
+    holder.endOfTick();
+    holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
+    assertThat(started)
+        .as("the queued hook and, inside its own pass, the second at once")
+        .containsExactly("hook@1", "hook@1", "scheduler@1");
+  }
+
+  @Test
   @DisplayName("a delayed entry waits out its ticks in the end passes")
   void aDelayedEntryWaitsOutItsTicks() {
     ActionHolder holder = holder();

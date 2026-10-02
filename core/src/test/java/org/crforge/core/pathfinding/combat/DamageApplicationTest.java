@@ -2,6 +2,8 @@ package org.crforge.core.pathfinding.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -244,5 +246,52 @@ class DamageApplicationTest {
 
     assertThat(result).isEqualTo(new DamageResult(true, 0, false));
     assertThat(hitPoints.getHitPoints()).isZero();
+  }
+
+  /** Answers that record each count of the hit, with the hit points it saw. */
+  private static DamageQueries counting(
+      List<Integer> counted, HitPoints seen, boolean held, boolean untouchable) {
+    return new DamageQueries() {
+      @Override
+      public void hitCounted() {
+        counted.add(seen.getHitPoints());
+      }
+
+      @Override
+      public boolean damageHeld() {
+        return held;
+      }
+
+      @Override
+      public boolean untouchable() {
+        return untouchable;
+      }
+    };
+  }
+
+  @Test
+  @DisplayName(
+      "the hit is counted once the bookkeeping lets it through, before the subtraction, and not"
+          + " for a hit its gates or the dedupe list refuse")
+  void theHitIsCountedBeforeTheSubtraction() {
+    List<Integer> counted = new ArrayList<>();
+
+    DamageApplication.damage(hitPoints, 100, 7, 0, 0, counting(counted, hitPoints, false, false));
+    assertThat(counted).as("counted before the 100 came off").containsExactly(1000);
+
+    DamageApplication.damage(hitPoints, 100, 7, 0, 0, counting(counted, hitPoints, false, false));
+    DamageApplication.damage(hitPoints, 100, 0, 0, 0, counting(counted, hitPoints, true, false));
+    DamageApplication.damage(hitPoints, 100, 0, 0, 0, counting(counted, hitPoints, false, true));
+    assertThat(counted)
+        .as("a repeat, a held battle and an untouchable target count nothing")
+        .containsExactly(1000);
+
+    DamageApplication.overTime(hitPoints, 50, counting(counted, hitPoints, false, false));
+    DamageApplication.typedHit(hitPoints, 50, 9, 0, 0, counting(counted, hitPoints, false, false));
+    DamageApplication.kamikazeDrain(hitPoints, 50, counting(counted, hitPoints, false, false));
+    DamageApplication.kill(hitPoints, counting(counted, hitPoints, false, false));
+    assertThat(counted)
+        .as("damage over time, a typed hit, a drain and a kill are counted before they land")
+        .containsExactly(1000, 900, 850, 800, 750);
   }
 }

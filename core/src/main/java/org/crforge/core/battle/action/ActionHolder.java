@@ -63,7 +63,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " after every notice of it, held by goblin_machine_tower. The owner-leave of every"
             + " running instance, last to first, before any notice, held by goblinstein_tower. The"
             + " notice to every running instance, last to first, of an ability its player paid"
-            + " for, held by archer_queen_ability. Not"
+            + " for, held by archer_queen_ability. A buff's hook, which starts at once only inside"
+            + " its holder's own pending pass, held by ActionHolderTest. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
             + " the target an entry carries, and the notice to an action's instigator. The cause"
             + " an entry carries is the holder of the entity that caused it.")
@@ -140,6 +141,9 @@ public class ActionHolder implements EntityActions {
    * null for a holder outside a battle, which answers for its own passes alone.
    */
   private final BooleanSupplier battleInPendingPass;
+
+  /** True while a buff's hook schedules: only this holder's own pending pass starts at once. */
+  private boolean ownPassOnly;
 
   /** The tick of the last run pass. */
   @Getter private int lastTick;
@@ -288,9 +292,33 @@ public class ActionHolder implements EntityActions {
     return passPhase;
   }
 
-  /** Whether a pending pass is in progress: the battle's, or this holder's own outside a battle. */
+  /**
+   * Schedules an action as a buff's start or remove hook does, the cause going with it: with no
+   * delay it starts at once only inside this holder's own pending pass, and is queued anywhere
+   * else, another entity's pending pass included. What it schedules on this holder in turn - a
+   * group's parts, a next action alongside - follows the same rule.
+   *
+   * @param action the action
+   * @param instigator the holder of the entity that caused it, or null for none
+   */
+  public void scheduleInOwnPass(BattleAction action, ActionHolder instigator) {
+    boolean before = ownPassOnly;
+    ownPassOnly = true;
+    try {
+      schedule(action, OWN_DELAY, false, instigator);
+    } finally {
+      ownPassOnly = before;
+    }
+  }
+
+  /**
+   * Whether a pending pass is in progress: the battle's, or this holder's own outside a battle or
+   * while a buff's hook schedules.
+   */
   private boolean inPendingPass() {
-    return battleInPendingPass != null ? battleInPendingPass.getAsBoolean() : passPhase != 0;
+    return battleInPendingPass != null && !ownPassOnly
+        ? battleInPendingPass.getAsBoolean()
+        : passPhase != 0;
   }
 
   /** The tags of every listed instance, finished ones included. */

@@ -1021,6 +1021,58 @@ public interface WorldObserver {
       int step,
       List<String> effects) {}
 
+  /** An evolved Royal Ghost's run started on it, in the given pending pass or 0 outside. */
+  default void ghostEvoStarted(int tick, CharacterEntity ghost, String action, int phase) {}
+
+  /**
+   * An evolved Royal Ghost's run made an area effect: a summon area, or the damage area.
+   *
+   * @param target the reference the run kept, which the damage area carries; null for a summon area
+   */
+  default void ghostAreaMade(
+      int tick, CharacterEntity ghost, AreaEffectEntity area, WorldEntity target) {}
+
+  /**
+   * An evolved Royal Ghost's hit summoned: its reference, the summon point and the damage area's
+   * countdown.
+   */
+  default void ghostSummoned(
+      int tick, CharacterEntity ghost, WorldEntity reference, int x, int y, int countdownMs) {}
+
+  /** A summon area made its summon, before the summon takes its reference. */
+  default void ghostSummonMade(int tick, AreaEffectEntity area, CharacterEntity summon) {}
+
+  /** A summon area's summon took its reference, faced its point and ran its combat gate. */
+  default void ghostSummonSpawned(int tick, AreaEffectEntity area, CharacterEntity summon) {}
+
+  /**
+   * A buff's start action, as an instance was listed, or its remove action, as one was removed, is
+   * about to be scheduled on its carrier.
+   *
+   * @param start true for the start action
+   */
+  default void buffHookScheduled(
+      int tick, WorldEntity carrier, BuffInstance buff, String action, boolean start) {}
+
+  /**
+   * A character or tower counted a hit it dealt that the target's hit points let through.
+   *
+   * @param attacker what counted it
+   * @param target what the hit reached
+   * @param before the counter before the hit
+   * @param after the counter after it, 0 where the last BuffAfterHits entry came round
+   * @param buff the BuffAfterHits buff the count reached, applied to the attacker next, or null
+   * @param timeMs that buff's time
+   */
+  default void hitCounted(
+      int tick,
+      WorldEntity attacker,
+      WorldEntity target,
+      int before,
+      int after,
+      String buff,
+      int timeMs) {}
+
   /** A new buff instance was listed on an entity. */
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
 

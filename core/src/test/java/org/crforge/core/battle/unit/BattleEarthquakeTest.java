@@ -155,7 +155,7 @@ class BattleEarthquakeTest {
 
     assertThat(tesla.hidden()).isTrue();
     assertThat(tesla.takeDamage(100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
-    assertThat(tesla.takeDamageOverTime(100).landed()).isTrue();
+    assertThat(tesla.takeDamageOverTime(100, null).landed()).isTrue();
     assertThat(tesla.getHitPoints().getHitPoints()).isEqualTo(before - 100);
   }
 
@@ -170,7 +170,7 @@ class BattleEarthquakeTest {
     int before = tesla.getHitPoints().getHitPoints();
 
     assertThat(tesla.hidden()).isTrue();
-    assertThat(tesla.takeTypedHit(100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
+    assertThat(tesla.takeTypedHit(null, 100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
     assertThat(tesla.getHitPoints().getHitPoints()).isEqualTo(before);
   }
 

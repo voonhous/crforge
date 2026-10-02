@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GuardHost;
@@ -514,6 +515,7 @@ public class CharacterEntity extends WorldEntity {
           data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
     }
     refuseAttack(data);
+    world.characterMade();
     // The level setter copies the spawner's start time into its timer, and its limit into the
     // count of firings it has left.
     this.spawnTimer = data.spawnStartTimeMs();
@@ -2383,21 +2385,15 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Refuses a hit of a unit that buffs itself after so many hits, and the hits of several targets
-   * and the buffs on damage no reference holds: a third target, whose lookup skips the second's
-   * pick; a list of unique targets, which no row sets; and a buff on damage over an area, which no
-   * row with one has. A unit that fires hands its hit to its projectile, so its own buff on damage
-   * is never applied: the Witch Mother's curse comes from her projectile's target buff.
+   * Refuses the hits of several targets and the buffs on damage no reference holds: a third target,
+   * whose lookup skips the second's pick; a list of unique targets, which no row sets; and a buff
+   * on damage over an area, which no row with one has. A unit that fires hands its hit to its
+   * projectile, so its own buff on damage is never applied: the Witch Mother's curse comes from her
+   * projectile's target buff.
    */
   @Override
   protected void refuseHit() {
     UnitData data = getData();
-    // A unit that buffs itself after so many hits is refused at its first hit, which is where the
-    // count would start.
-    if (!data.buffAfterHits().isEmpty()) {
-      throw new UnsupportedOperationException(
-          name() + " hits with BuffAfterHits " + data.buffAfterHits() + ", which is not modelled");
-    }
     if (data.multipleTargets() >= 3
         || data.multipleTargets() >= 2 && data.uniqueMultipleTargets()
         || data.buffOnDamage() != null
@@ -3217,6 +3213,99 @@ public class CharacterEntity extends WorldEntity {
     FixedMath.normalize(vector, FACING_LENGTH);
     getView().setDirX(vector[0]);
     getView().setDirY(vector[1]);
+  }
+
+  /**
+   * What the evolved Royal Ghost's run asks of the battle about the unit: its invisibility, its
+   * reference, where things stand, and the areas it makes. Refused: a clone, whose clone byte the
+   * areas would copy, and a tower.
+   */
+  @Override
+  public GhostEvo.Host ghostEvoHost(GhostEvo action) {
+    if (isClone()) {
+      throw new UnsupportedOperationException(
+          name() + " is a clone running " + action.name() + ", which is not modelled");
+    }
+    CharacterEntity ghost = this;
+    return new GhostEvo.Host() {
+      @Override
+      public void started(int phase) {
+        world.ghostEvoStarted(ghost, action.name(), phase);
+      }
+
+      @Override
+      public boolean invisible() {
+        return getBuffs().invisibleCount() > 0;
+      }
+
+      @Override
+      public BattleEntity reference() {
+        TargetView reference = getTargeting().getReference();
+        return reference == null ? null : world.entityOf(reference.getEntity());
+      }
+
+      @Override
+      public int x(BattleEntity entity) {
+        return ((WorldEntity) entity).getView().getX();
+      }
+
+      @Override
+      public int y(BattleEntity entity) {
+        return ((WorldEntity) entity).getView().getY();
+      }
+
+      @Override
+      public int x() {
+        return getView().getX();
+      }
+
+      @Override
+      public int y() {
+        return getView().getY();
+      }
+
+      @Override
+      public ActionHolder makeArea(String row, int x, int y, BattleEntity target) {
+        return world.ghostArea(ghost, row, x, y, (WorldEntity) target).actionHolder();
+      }
+
+      @Override
+      public void summoned(BattleEntity reference, int x, int y, int countdownMs) {
+        world.ghostSummoned(ghost, (WorldEntity) reference, x, y, countdownMs);
+      }
+    };
+  }
+
+  /**
+   * Takes the reference a summon area hands the unit as it is made: through the validator's take
+   * mode and, accepted, the setter, for an object still alive; nothing for one that is not.
+   *
+   * @param reference the reference handed over, or null for none
+   */
+  void takeSummonReference(WorldEntity reference) {
+    if (reference == null || !HitPoints.alive(reference.getHitPoints())) {
+      return;
+    }
+    SelectionChain selection = unit.selection();
+    if (!selection.validate(reference.getTargetView(), ReferenceValidator.MODE_TAKE)) {
+      return;
+    }
+    ReferenceSetter.setReference(
+        unit.targeting(),
+        reference.getTargetView(),
+        false,
+        false,
+        false,
+        selection,
+        selection.getOutcome());
+  }
+
+  /**
+   * The reveal a summon's maker runs as it is made: the combat gate, as the state visit's tail runs
+   * it, for a row that does not hide before its first hit.
+   */
+  void summonReveal() {
+    combatGate(isActive(TARGETING_SLOT) && !deploying() && !waiting(), setter::prepareRoute);
   }
 
   /**

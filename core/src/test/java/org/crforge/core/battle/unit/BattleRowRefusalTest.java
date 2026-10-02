@@ -24,7 +24,9 @@ class BattleRowRefusalTest {
   }
 
   @Test
-  @DisplayName("a unit that buffs itself after so many hits is made, and refused at its first hit")
+  @DisplayName(
+      "a unit whose BuffAfterHits buff is not modelled is made, and refused at the first hit it"
+          + " counts")
   void aBuffAfterHitsIsRefusedAtTheFirstHit() {
     Standard1v1Battle match = passiveTowers();
     UnitData skeleton = GameData.unit("Skeleton_EV1");
@@ -35,7 +37,7 @@ class BattleRowRefusalTest {
 
     assertThatThrownBy(() -> run(match, 200))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Skeleton hits with BuffAfterHits");
+        .hasMessageContaining("the buff SkeletonDuplication_EV1 sets columns not modelled");
   }
 
   @Test
