@@ -43,7 +43,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param cloning true for a Clone: its on-hit action passes a clone, a unit a Clone passes by and
  *     one tagged against clones by
  * @param onHitAction the action each of its hits schedules on every unit in its circle it reaches,
- *     or null for none; only a Clone's and a group of buff spawns are modelled
+ *     or null for none; only a Clone's, a group of buff spawns and a taunt are modelled
+ * @param oneHitPerTarget true when its hit action reaches each object once in its life
+ * @param followsParent true when it moves with the object it follows, its parent, standing on that
+ *     object's point at each update
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)
@@ -78,6 +81,8 @@ public record AreaEffectData(
     boolean controlsBuff,
     boolean cloning,
     String onHitAction,
+    boolean oneHitPerTarget,
+    boolean followsParent,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

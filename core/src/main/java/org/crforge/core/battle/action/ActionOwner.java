@@ -182,6 +182,28 @@ public interface ActionOwner {
   }
 
   /**
+   * For an area effect, the object an action's spawn made it from, while that object is in the
+   * battle; null for any other owner.
+   */
+  default ActionOwner areaEffectParent() {
+    return null;
+  }
+
+  /**
+   * Taunts the owner onto an object, as a taunt's perform does: the run, made and armed at once.
+   *
+   * @param action the taunt
+   * @param instigator the area effect that caused it
+   * @param forced the object the owner is forced onto, the area effect's parent
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run, or null for an owner that is not a character, which nothing taunts
+   */
+  default ActionInstance taunt(
+      Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
+    return null;
+  }
+
+  /**
    * Kills the owner, as a hit of its whole hit points that ignores the battle's holds.
    *
    * @param killer the entity that caused it, or null for none

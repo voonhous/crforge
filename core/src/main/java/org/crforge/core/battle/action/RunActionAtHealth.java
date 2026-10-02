@@ -9,16 +9,17 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * An action that lasts and runs one action per health threshold as its owner's hit points fall.
  * Each threshold is a whole percentage of the owner's own maximum, reached when that share is at
  * least the hit points, so 50 fires at exactly half. One step that falls past several fires them
- * all in list order; the index only moves forward, so healing does not re-arm an entry, and the run
- * ends once every entry has fired. The run ends at once unless both lists are non-empty and as long
- * as each other and the owner has hit points.
+ * all in list order, each with the owner as its cause; the index only moves forward, so healing
+ * does not re-arm an entry, and the run ends once every entry has fired. The run ends at once
+ * unless both lists are non-empty and as long as each other and the owner has hit points.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled and held by the recorded cases: the start conditions, the threshold at or below"
             + " its share, several fired in one step, the index that never goes back and the end"
-            + " when the last has fired.")
+            + " when the last has fired. Held by goblin_demolisher_knight: the owner as the cause"
+            + " of what it runs.")
 public final class RunActionAtHealth extends RowAction {
 
   private final List<Integer> healthPercentages;
@@ -48,7 +49,8 @@ public final class RunActionAtHealth extends RowAction {
           protected void update(ActionHolder h) {
             while (index < healthPercentages.size()
                 && healthPercentages.get(index) * hp.getMaximum() >= hp.getHitPoints() * 100) {
-              h.schedule(actions.get(index), ActionHolder.OWN_DELAY);
+              // The owner is the cause of what it runs, as the Goblin Demolisher's spawn reads.
+              h.schedule(actions.get(index), ActionHolder.OWN_DELAY, false, h);
               index++;
             }
             if (index >= healthPercentages.size()) {

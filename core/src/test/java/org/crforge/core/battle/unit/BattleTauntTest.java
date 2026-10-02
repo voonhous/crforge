@@ -1,0 +1,308 @@
+package org.crforge.core.battle.unit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.target.TargetView;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * The Goblin Demolisher's cancelling area effect where the reference run does not reach: an own
+ * unit beside the Demolisher, one that attacks only buildings, the Demolisher leaving while it is
+ * taunted, an area effect that moves with the object it follows or outlives it, and the refusals.
+ */
+class BattleTauntTest {
+
+  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  private static final String BUFF = "GoblinDemolisher_ResetTargetBuff";
+
+  /** A point on the bottom side's left, away from every tower. */
+  private static final int X = 3500;
+
+  private static final int Y = 11500;
+
+  /** A battle, a Goblin Demolisher in it, and every taunt line the observers hear. */
+  private static final class Scene {
+    final Standard1v1Battle match;
+    final CharacterEntity demolisher;
+    final List<String> taunts = new ArrayList<>();
+
+    Scene(GameTables tables) {
+      match = new Standard1v1Battle(tables, LEVEL, false);
+      demolisher = match.deploy(0, GameData.unit("GoblinDemolisher"), LEVEL, 0, X, Y, "demolisher");
+      match
+          .getWorld()
+          .addObserver(
+              new WorldObserver() {
+                @Override
+                public void tauntPerformed(
+                    int tick,
+                    CharacterEntity unit,
+                    String action,
+                    int phase,
+                    ActionOwner instigator,
+                    WorldEntity forced) {
+                  taunts.add(unit.name() + " performed onto " + forced.name());
+                }
+
+                @Override
+                public void tauntStepped(
+                    int tick,
+                    CharacterEntity unit,
+                    WorldEntity forced,
+                    int durationMs,
+                    int falloffMs,
+                    List<String> calls) {
+                  taunts.add(unit.name() + " " + calls);
+                }
+              });
+    }
+
+    /**
+     * Runs the Demolisher's cancelling spawn, the Demolisher its own cause, as its trigger does.
+     */
+    void cancel() {
+      BattleAction spawn =
+          GameData.actions().build("SpawnCancelTauntAEO", match.getWorld().binding(demolisher));
+      demolisher.actionHolder().start(spawn, demolisher.actionHolder());
+    }
+  }
+
+  private static String reference(WorldEntity unit) {
+    TargetView reference = unit.getTargeting().getReference();
+    return reference == null ? null : reference.name();
+  }
+
+  @Test
+  @DisplayName(
+      "an own unit whose circle holds the Demolisher's point is taunted onto it too, with the buff that"
+          + " locks its reference, which its next step ends")
+  void anOwnUnitBesideIt() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity pekka = scene.match.deploy(0, GameData.unit("Pekka"), LEVEL, 0, X, Y, "pekka");
+    scene.match.getBattle().step();
+    scene.cancel();
+    scene.match.getBattle().step();
+
+    assertThat(reference(pekka)).isEqualTo("demolisher");
+    assertThat(reference(scene.demolisher)).isEqualTo("demolisher");
+    assertThat(pekka.getBuffs().carries(BUFF)).isTrue();
+    assertThat(pekka.getTargeting().getTargetLockingBuffs()).isOne();
+    assertThat(pekka.getTargeting().getRetargetCooldownMs()).isEqualTo(50);
+    String armed =
+        "[set_target demolisher 0 0 1, raise LOCK_TARGET, remaining 50, apply_buff %s 50 level %d"
+                .formatted(BUFF, scene.demolisher.getPackedLevel())
+            + " source demolisher side 0]";
+    assertThat(scene.taunts)
+        .containsExactlyInAnyOrder(
+            "demolisher performed onto demolisher",
+            "demolisher " + armed,
+            "pekka performed onto demolisher",
+            "pekka " + armed);
+
+    scene.taunts.clear();
+    scene.match.getBattle().step();
+    assertThat(scene.taunts)
+        .contains(
+            "pekka [remaining 0, remaining 0, set_target null 0 1 0, finish, remove_buff "
+                + BUFF
+                + "]");
+    assertThat(pekka.getBuffs().carries(BUFF)).isFalse();
+    assertThat(pekka.getTargeting().getTargetLockingBuffs()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit attacking as its taunt steps keeps the reference it was forced onto; the step only"
+          + " clears its re-selection wait")
+  void anAttackingUnitKeepsItsReference() {
+    Scene scene = new Scene(GameData.tables());
+    scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y + 1300, "enemy");
+    for (int i = 0; i < 60; i++) {
+      scene.match.getBattle().step();
+    }
+    assertThat(scene.demolisher.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
+    scene.cancel();
+    scene.match.getBattle().step();
+    assertThat(reference(scene.demolisher)).isEqualTo("demolisher");
+
+    scene.taunts.clear();
+    scene.match.getBattle().step();
+    assertThat(scene.taunts)
+        .containsExactly("demolisher [remaining 0, finish, remove_buff " + BUFF + "]");
+  }
+
+  @Test
+  @DisplayName(
+      "an own unit that attacks only buildings cannot attack the Demolisher: no reference, no buff,"
+          + " and its run finishes at once")
+  void aBuildingAttackerBesideIt() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity giant = scene.match.deploy(0, GameData.unit("Giant"), LEVEL, 0, X, Y, "giant");
+    scene.match.getBattle().step();
+    scene.cancel();
+    scene.match.getBattle().step();
+
+    assertThat(reference(giant)).isNotEqualTo("demolisher");
+    assertThat(giant.getBuffs().carries(BUFF)).isFalse();
+    assertThat(scene.taunts)
+        .contains("giant performed onto demolisher", "giant [finish, remove_buff " + BUFF + "]");
+  }
+
+  @Test
+  @DisplayName(
+      "the Demolisher leaving while a unit is taunted onto it ends that unit's run: no reference"
+          + " and no buff")
+  void theForcedObjectLeaves() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity pekka = scene.match.deploy(0, GameData.unit("Pekka"), LEVEL, 0, X, Y, "pekka");
+    scene.match.getBattle().step();
+    scene.cancel();
+    scene.match.getBattle().step();
+    assertThat(reference(pekka)).isEqualTo("demolisher");
+
+    scene.taunts.clear();
+    scene.demolisher.killBy(null);
+    scene.match.getBattle().step();
+    assertThat(scene.taunts)
+        .containsExactly(
+            "pekka [remaining 0, set_target null 0 0 0, finish, remove_buff " + BUFF + "]");
+    assertThat(pekka.getBuffs().carries(BUFF)).isFalse();
+  }
+
+  @Test
+  @DisplayName("the cancelling area effect stands on the Demolisher's point as it walks")
+  void itFollows() {
+    Scene scene = new Scene(GameData.tables());
+    // Past its deploy, walking toward the bridge.
+    for (int i = 0; i < 30; i++) {
+      scene.match.getBattle().step();
+    }
+    List<String> points = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void areaEffectCreated(
+                  int tick, AreaEffectEntity areaEffect, String how, String source) {
+                points.add("created " + areaEffect.getX() + " " + areaEffect.getY());
+              }
+
+              @Override
+              public void areaEffectUpdated(
+                  int tick,
+                  AreaEffectEntity areaEffect,
+                  int before,
+                  int after,
+                  int hits,
+                  int radius,
+                  List<Integer> damages) {
+                points.add("updated " + areaEffect.getX() + " " + areaEffect.getY());
+                points.add(
+                    "demolisher "
+                        + scene.demolisher.getView().getX()
+                        + " "
+                        + scene.demolisher.getView().getY());
+              }
+            });
+    String before =
+        "created " + scene.demolisher.getView().getX() + " " + scene.demolisher.getView().getY();
+    scene.cancel();
+    scene.match.getBattle().step();
+
+    assertThat(points).hasSize(3);
+    assertThat(points.get(0)).isEqualTo(before);
+    assertThat(points.get(1)).isEqualTo(points.get(2).replace("demolisher", "updated"));
+    assertThat(points.get(1))
+        .as("the Demolisher walked")
+        .isNotEqualTo(before.replace("created", "updated"));
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect reaches each target once, and ends at the cleanup where its followed object"
+          + " leaves")
+  void theFollowedObjectLeaves(@TempDir Path folder) throws IOException {
+    Files.createDirectories(folder);
+    GameTables longer =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> GameData.columns(rows, "CancelTauntAEO").put("LifeDuration", 1000));
+    Scene scene = new Scene(longer);
+    List<String> removed = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void areaEffectRemoved(int tick, AreaEffectEntity areaEffect) {
+                removed.add(areaEffect.getData().name() + " " + areaEffect.getCountdown());
+              }
+
+              @Override
+              public void entityRemoved(int tick, WorldEntity entity) {
+                removed.add(entity.name());
+              }
+            });
+    scene.match.getBattle().step();
+    scene.cancel();
+    scene.match.getBattle().step();
+    scene.match.getBattle().step();
+    assertThat(removed).isEmpty();
+    assertThat(scene.taunts)
+        .as("a hit on each update, but one hit per target")
+        .containsOnlyOnce("demolisher performed onto demolisher");
+
+    scene.demolisher.killBy(null);
+    scene.match.getBattle().step();
+    assertThat(removed).containsExactly("demolisher", "CancelTauntAEO 0");
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect that follows its parent, placed by no action, and a taunted building are"
+          + " refused")
+  void refusals(@TempDir Path folder) throws IOException {
+    Files.createDirectories(folder);
+    GameTables noHit =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "CancelTauntAEO");
+              columns.remove("OnHitAction");
+              columns.remove("OneHitPerTarget");
+            });
+    Standard1v1Battle placed = new Standard1v1Battle(noHit, LEVEL, false);
+    placed.placeAreaEffect(0, "CancelTauntAEO", LEVEL, 0, X, Y, "cancel");
+    assertThatThrownBy(() -> placed.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("follows its parent and was not made by an action");
+
+    Scene scene = new Scene(GameData.tables());
+    scene.match.deploy(0, GameData.unit("Cannon"), LEVEL, 0, X, Y, "cannon");
+    scene.match.getBattle().step();
+    scene.cancel();
+    assertThatThrownBy(() -> scene.match.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("taunts cannon onto a building");
+  }
+}

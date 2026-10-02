@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
@@ -241,6 +242,42 @@ public interface WorldObserver {
    * @param child the champion
    */
   default void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {}
+
+  /**
+   * A taunt's perform reached a unit, just before its run is armed.
+   *
+   * @param tick the battle tick
+   * @param unit the taunted unit
+   * @param action the taunt's name
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param instigator the area effect that caused it
+   * @param forced the object the unit is forced onto, the area effect's parent
+   */
+  default void tauntPerformed(
+      int tick,
+      CharacterEntity unit,
+      String action,
+      int phase,
+      ActionOwner instigator,
+      WorldEntity forced) {}
+
+  /**
+   * A taunt's run was armed or stepped, or ended as its forced object left.
+   *
+   * @param tick the battle tick
+   * @param unit the taunted unit
+   * @param forced the object it is forced onto, or null once that object has left
+   * @param durationMs what is left of the taunt
+   * @param falloffMs what is left of its falloff
+   * @param calls what the arming or step did, in order
+   */
+  default void tauntStepped(
+      int tick,
+      CharacterEntity unit,
+      WorldEntity forced,
+      int durationMs,
+      int falloffMs,
+      List<String> calls) {}
 
   /**
    * An action's spawn row made an area effect, just after it was created.

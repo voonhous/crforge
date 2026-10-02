@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.battle.projectile.ProjectileAmounts;
@@ -1226,6 +1227,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public void changeData(String rowName, boolean resetTarget) {
     throw new UnsupportedOperationException(name() + " cannot take another data row");
+  }
+
+  /**
+   * A taunt reaching an entity other than a unit: a tower, a building whose reach test is not
+   * modelled.
+   */
+  @Override
+  public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " taunts the building " + name() + ", which is not modelled");
   }
 
   /**

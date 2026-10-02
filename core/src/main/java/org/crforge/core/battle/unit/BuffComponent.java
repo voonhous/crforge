@@ -14,6 +14,7 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.math.FixedMath;
+import org.crforge.core.pathfinding.target.TargetingState;
 
 /**
  * The buffs listed on a character or a tower, in slot 3, and what they make of its speeds.
@@ -41,6 +42,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p><b>Invisibility.</b> Each listed instance of a buff that makes its carrier invisible counts
  * once, from its listing to its removal; the carrier is invisible while the count is 1 or more.
+ * Each instance of a buff that locks the carrier's reference counts the same way, into the count
+ * its selector reads: while it is 1 or more and the carrier holds a reference, the selector keeps
+ * it.
  *
  * <p><b>Parents.</b> An instance keeps the parent it was applied with only for a buff that stacks:
  * an area effect applies a buff its parent controls, the Tornado's, with itself as the parent. An
@@ -76,7 +80,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " keeps, a refresh keeping the damage counter, and the removal of a parent's"
             + " instances as it leaves. Translated but held by no run: an instance with the same"
             + " parent stopping a new one, the removal by a parent that is removable at the visit,"
-            + " and the not-attacking section sparing an instance with a parent.")
+            + " and the not-attacking section sparing an instance with a parent. A buff that"
+            + " locks its carrier's reference is counted for the selector while it is listed;"
+            + " goblin_demolisher_knight lists one, but no run reaches a selection it changes.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -245,9 +251,7 @@ public final class BuffComponent implements BattleComponent {
       BuffInstance instance =
           new BuffInstance(world.nextBuffKey(), buff, time, level, source, side, parent);
       items.add(instance);
-      if (buff.invisible()) {
-        invisibleCount++;
-      }
+      onListed(instance);
       world.buffApplied(entity, instance);
     }
   }
@@ -266,9 +270,7 @@ public final class BuffComponent implements BattleComponent {
     for (BuffInstance instance : original.items) {
       BuffInstance copy = instance.copy(world.nextBuffKey());
       items.add(copy);
-      if (copy.getBuff().invisible()) {
-        invisibleCount++;
-      }
+      onListed(copy);
       world.buffCopied(original.entity, entity, copy);
     }
   }
@@ -291,12 +293,30 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
-   * What the removal of an instance undoes at once: its share of the invisible count, and its
-   * parent.
+   * What listing an instance does at once: its share of the invisible count, and of the count of
+   * instances that lock the carrier's reference, which its selector reads.
+   */
+  private void onListed(BuffInstance instance) {
+    if (instance.getBuff().invisible()) {
+      invisibleCount++;
+    }
+    if (instance.getBuff().lockTarget()) {
+      TargetingState targeting = entity.getTargeting();
+      targeting.setTargetLockingBuffs(targeting.getTargetLockingBuffs() + 1);
+    }
+  }
+
+  /**
+   * What the removal of an instance undoes at once: its share of the invisible count and of the
+   * locking count, and its parent.
    */
   private void onRemoved(BuffInstance instance) {
     if (instance.getBuff().invisible()) {
       invisibleCount--;
+    }
+    if (instance.getBuff().lockTarget()) {
+      TargetingState targeting = entity.getTargeting();
+      targeting.setTargetLockingBuffs(targeting.getTargetLockingBuffs() - 1);
     }
     instance.forgetParent();
   }

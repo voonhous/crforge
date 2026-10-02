@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -128,9 +129,9 @@ class ActionRowsTest {
   @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
   void anUnmodelledClassIsRefused() {
-    assertThatThrownBy(() -> GameData.actions().build("ResetTauntEffect", INERT_BINDING))
+    assertThatThrownBy(() -> GameData.actions().build("BarbLog_hero_reset_target", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionTaunt");
+        .hasMessageContaining("ActionResetTarget");
   }
 
   @Test
@@ -318,6 +319,54 @@ class ActionRowsTest {
   void anAreaEffectSpawnIsBuilt() {
     assertThat(GameData.actions().build("GoblinCurseCore", INERT_BINDING))
         .isInstanceOf(SpawnAreaEffect.class);
+    assertThat(GameData.actions().build("SpawnCancelTauntAEO", INERT_BINDING))
+        .as("an area effect that follows its parent and taunts")
+        .isInstanceOf(SpawnAreaEffect.class);
+  }
+
+  @Test
+  @DisplayName("a taunt is built from its valid duration and buff")
+  void aTauntIsBuilt() {
+    BattleAction built = GameData.actions().build("ResetTauntEffect", INERT_BINDING);
+    assertThat(built).isInstanceOf(Taunt.class);
+    Taunt taunt = (Taunt) built;
+    assertThat(taunt.getValidDurationMs()).isEqualTo(50);
+    assertThat(taunt.getValidTargetBuff()).isEqualTo("GoblinDemolisher_ResetTargetBuff");
+  }
+
+  @Test
+  @DisplayName(
+      "a taunt with another column, lasting past one step or with a buff not modelled is refused")
+  void aTauntIsRefused(@TempDir Path folder) throws IOException {
+    assertThatThrownBy(() -> GameData.actions().build("Knight_hero_ApplyTaunt", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(" sets ");
+
+    Files.createDirectories(folder.resolve("long"));
+    GameTables longer =
+        GameData.altered(
+            folder.resolve("long"),
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("ResetTauntEffect").get("fields"))
+                    .put("ValidDuration", 100));
+    ActionRows longerRows = new ActionRows(longer, new BattleRecords(longer));
+    assertThatThrownBy(() -> longerRows.build("ResetTauntEffect", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("past one step");
+
+    Files.createDirectories(folder.resolve("buff"));
+    GameTables buff =
+        GameData.altered(
+            folder.resolve("buff"),
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("ResetTauntEffect").get("fields"))
+                    .put("ValidTargetBuff", "ShieldBoost"));
+    ActionRows buffRows = new ActionRows(buff, new BattleRecords(buff));
+    assertThatThrownBy(() -> buffRows.build("ResetTauntEffect", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("ShieldBoost, which sets columns not modelled");
   }
 
   @Test
@@ -331,9 +380,9 @@ class ActionRowsTest {
     assertThatThrownBy(() -> GameData.actions().build("RoyalGiant_EV1_PushBack", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("sets ParentGOAsSource");
-    assertThatThrownBy(() -> GameData.actions().build("SpawnCancelTauntAEO", INERT_BINDING))
+    assertThatThrownBy(() -> GameData.actions().build("Knight_hero_CreateTauntAEO", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("CancelTauntAEO, which sets columns not modelled");
+        .hasMessageContaining("Knight_hero_TauntAEO, which sets columns not modelled");
 
     Files.createDirectories(folder.resolve("offset"));
     GameTables offset =
@@ -441,12 +490,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 590 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 605 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(590);
+    assertThat(built).as("rows built").isEqualTo(605);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 171, "column", 170, "spawn type", 15));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 166, "column", 160, "spawn type", 15));
   }
 }

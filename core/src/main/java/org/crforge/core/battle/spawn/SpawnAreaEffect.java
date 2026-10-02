@@ -12,7 +12,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * area effect is created at the point of the holder's owner, for the side and at the level of the
  * entity that caused the action, that entity its source and its parent, and handed to the holder,
  * which gives it its id at once and admits it at the next cleanup, so it first updates on the next
- * tick. The level is re-based on the area effect's own rarity. It does not last.
+ * tick. The level is re-based on the area effect's own rarity. A row that follows its parent
+ * follows the holder's owner. It does not last.
  *
  * <p>Refused rather than guessed, as the row is built: a row of the location class, one that sets
  * any spawn column besides its data and type (the source taken from the owner, a level index, the
@@ -25,9 +26,10 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the point of the holder's owner, the side, level and parent from"
             + " the cause, the level re-based on the area effect's rarity, and the queue in the"
             + " pass that ran the action; held by goblin_curse_knights, where the Goblin Curse's"
-            + " area effect spawns its base on its first pass. Refused: the location class, the"
-            + " owner as the source, the level index, the offsets, a cause that is missing or a"
-            + " clone, and an area effect that follows its parent or its target.")
+            + " area effect spawns its base on its first pass, and by goblin_demolisher_knight,"
+            + " where the Goblin Demolisher spawns the area effect that follows it. Refused: the"
+            + " location class, the owner as the source, the level index, the offsets, a cause"
+            + " that is missing or a clone, and an area effect that follows its target.")
 public final class SpawnAreaEffect extends RowAction {
 
   private final String areaEffect;

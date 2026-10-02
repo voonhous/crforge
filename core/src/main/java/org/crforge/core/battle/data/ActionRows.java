@@ -38,6 +38,7 @@ import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
@@ -97,6 +98,9 @@ public final class ActionRows {
    */
   private static final Set<String> RESOLVED = Set.of("Base");
 
+  /** Milliseconds one step of a taunt's run takes off its duration. */
+  private static final int TAUNT_STEP_MS = 50;
+
   /** The four classes that override none of the runtime's three places. */
   private static final Set<String> INERT =
       Set.of(
@@ -138,6 +142,11 @@ public final class ActionRows {
           Map.entry(
               "ActionSetAttackSequenceIndex", Set.of("AttackIndex", "SetEvenIfCombatDisabled")),
           Map.entry("ActionChangeGameObjectData", Set.of("NewCharacterData", "ResetTarget")),
+          // Every other column a taunt has keeps the loader's default here: the reach by
+          // distance, the end as the duration runs out with no falloff, no end by a stun, no
+          // building retargeting, the buff removed as it finishes, and no invalid or crown tower
+          // duration or buff.
+          Map.entry("ActionTaunt", Set.of("ValidDuration", "ValidTargetBuff")),
           Map.entry(
               "ActionRunIfGameObjectExists",
               Set.of(
@@ -420,6 +429,7 @@ public final class ActionRows {
             case "ActionSetAttackSequenceIndex" ->
                 new SetAttackSequenceIndex(
                     shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
+            case "ActionTaunt" -> taunt(name, shared, f);
             case "ActionChangeGameObjectData" -> {
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
@@ -698,6 +708,28 @@ public final class ActionRows {
             name + " spawns " + areaEffect + ", which sets columns not modelled: " + unmodelled);
       }
       return new SpawnAreaEffect(shared, areaEffect);
+    }
+
+    /**
+     * A taunt row. One that lasts past a step reaches the parts of its update that re-check and
+     * mark its reference, which are not modelled, and its buff must read as a modelled buff.
+     */
+    private Taunt taunt(String name, ActionRow shared, JsonNode f) {
+      int duration = integer(f, "ValidDuration");
+      if (duration > TAUNT_STEP_MS) {
+        throw new UnsupportedOperationException(
+            name + " taunts for " + duration + " ms, past one step, which is not modelled");
+      }
+      String buff = f.hasNonNull("ValidTargetBuff") ? f.get("ValidTargetBuff").asText() : null;
+      if (buff != null && !records.buff(buff).unmodelledColumns().isEmpty()) {
+        throw new UnsupportedOperationException(
+            name
+                + " taunts with "
+                + buff
+                + ", which sets columns not modelled: "
+                + records.buff(buff).unmodelledColumns());
+      }
+      return new Taunt(shared, duration, buff);
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */

@@ -117,6 +117,7 @@ public final class BattleRecords {
           "DeathSpawnIsEnemy",
           "DeathSpawnDeployDelay",
           "OtherBuffDeathSpawnAllowed",
+          "LockTarget",
           // Read only by the apply, to keep the buff off a unit's riders; a buff on a rider or on
           // a unit that carries riders is refused as it is applied.
           "Clone");
@@ -156,10 +157,10 @@ public final class BattleRecords {
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
-   * on itself, the shape, the filter, the spawns, the life condition, the following, the tags, the
-   * deflection, the per-level lifetime and the push's floor and gate lift. Its projectile is
-   * modelled, but not a launch from its source or a spread one; its hit action only for a Clone and
-   * as a group of buff spawns.
+   * on itself, the shape, the spawns, the life condition, the tags, the deflection, the per-level
+   * lifetime and the push's floor and gate lift. Its projectile is modelled, but not a launch from
+   * its source or a spread one; its hit action only for a Clone, as a group of buff spawns and as a
+   * taunt; one hit per target only with a hit action; and following only its parent.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -168,17 +169,14 @@ public final class BattleRecords {
           "BuffTimeIncreaseAfterTournamentCap",
           "OnHitSelfAction",
           "Shape",
-          "Filter",
           "SpawnCharacter",
           "AliveIfTrue",
-          "FollowBehaviour",
           "Tags",
           "DeflectProjectilesEnabled",
           "LifeDurationIncreasePerLevel",
           "LifeDurationIncreaseAfterTournamentCap",
           "MinPushback",
-          "PushbackAll",
-          "OneHitPerTarget");
+          "PushbackAll");
 
   private static final String GAME_TAGS = "game_tags";
 
@@ -1045,19 +1043,38 @@ public final class BattleRecords {
             .projectileStartHeight(row.intValue("ProjectileStartHeight"))
             .cloning(row.bool("Clone"))
             .onHitAction(actionName(row, "OnHitAction"))
+            .oneHitPerTarget(row.bool("OneHitPerTarget"))
+            .followsParent(row.string("FollowBehaviour").equals("FollowParent"))
             .unmodelledColumns(unmodelled)
             .build();
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
     // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
-    // a Clone's whose hit action is a group of buff spawns, as the Goblin Curse's base is.
+    // a Clone's whose hit action is a group of buff spawns, as the Goblin Curse's base is, or a
+    // taunt, as the Goblin Demolisher's is.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
     boolean buffSpawns = data.onHitAction() != null && buffSpawnGroup(data.onHitAction());
+    boolean taunt =
+        data.onHitAction() != null
+            && tables.action(data.onHitAction()).classType().equals("ActionTaunt");
     if (data.onHitAction() != null
         && !(data.cloning() && cloning)
-        && !(!data.cloning() && buffSpawns)) {
+        && !(!data.cloning() && (buffSpawns || taunt))) {
       unmodelled.add("OnHitAction");
+    }
+    // One hit per target is read by the hit action's loop; whether anything else reads it is not
+    // established.
+    if (data.oneHitPerTarget() && data.onHitAction() == null) {
+      unmodelled.add("OneHitPerTarget");
+    }
+    // Only FollowParent is modelled; FollowTarget follows the target of its maker.
+    if (sets(row, "FollowBehaviour") && !data.followsParent()) {
+      unmodelled.add("FollowBehaviour");
+    }
+    // The Filter is read only by the Shape path, which a row without a Shape never enters.
+    if (!sets(row, "Shape")) {
+      row.has("Filter");
     }
     if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
       unmodelled.add("Clone");
@@ -1161,6 +1178,7 @@ public final class BattleRecords {
         .invisible(row.bool("Invisible"))
         .healPerSecond(row.intValue("HealPerSecond"))
         .allowedOverHealPercent(row.intValue("AllowedOverHealPerc"))
+        .lockTarget(row.bool("LockTarget"))
         .unmodelledColumns(unmodelled)
         .build();
   }

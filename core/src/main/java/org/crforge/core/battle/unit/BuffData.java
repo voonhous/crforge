@@ -49,6 +49,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     frequency
  * @param allowedOverHealPercent the share of its carrier's maximum, in percent, its heal may raise
  *     the hit points to; 0 for the maximum
+ * @param lockTarget true when, while it is listed, its carrier's selector keeps the reference the
+ *     carrier holds
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -85,6 +87,7 @@ public record BuffData(
     boolean invisible,
     int healPerSecond,
     int allowedOverHealPercent,
+    boolean lockTarget,
     List<String> unmodelledColumns) {
 
   public BuffData {
