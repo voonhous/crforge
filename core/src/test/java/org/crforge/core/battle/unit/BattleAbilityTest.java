@@ -3,12 +3,17 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** What a request for a unit's ability does, and what it refuses. */
 class BattleAbilityTest {
@@ -103,17 +108,26 @@ class BattleAbilityTest {
 
   @Test
   @DisplayName("a request for an ability with an effect the battle does not model is refused")
-  void aRichAbilityIsRefused() {
-    Standard1v1Battle match = passiveTowers();
-    // The Skeleton King's ability makes an area object that counts the souls it resurrects.
-    CharacterEntity king =
+  void aRichAbilityIsRefused(@TempDir Path folder) throws IOException {
+    // The Monk's ability given a morph, which no shipped ability has.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "character_abilities",
+            rows -> GameData.columns(rows, "Deflect").put("MorphTarget", "Knight"));
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    CharacterEntity monk =
         match.deploy(
-            0, GameData.unit("SkeletonKing"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
+            0,
+            new BattleRecords(tables).unit("Monk"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            3500,
+            9500);
 
-    assertThatThrownBy(king::requestAbility)
+    assertThatThrownBy(monk::requestAbility)
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "SkeletonKing casts SkeletonKing, which sets columns the battle does not model:"
-                + " [ResurrectBaseCount]");
+            "Monk casts Deflect, which sets columns the battle does not model: [MorphTarget]");
   }
 }

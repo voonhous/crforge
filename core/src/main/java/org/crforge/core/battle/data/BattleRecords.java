@@ -179,10 +179,10 @@ public final class BattleRecords {
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
-   * on itself, the shape, the spawns, the life condition, the tags, the per-level lifetime and the
-   * push's floor and gate lift. Its projectile is modelled, but not a launch from its source or a
-   * spread one; its hit action only for a Clone, as a group of buff spawns and as a taunt; one hit
-   * per target only with a hit action; and following only its parent.
+   * on itself, the shape, the life condition, the tags, the per-level lifetime and the push's floor
+   * and gate lift. Its projectile is modelled, but not a launch from its source or a spread one;
+   * its hit action only for a Clone, as a group of buff spawns and as a taunt; one hit per target
+   * only with a hit action; following only its parent; and its spawns only in a shuffled order.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -191,7 +191,6 @@ public final class BattleRecords {
           "BuffTimeIncreaseAfterTournamentCap",
           "OnHitSelfAction",
           "Shape",
-          "SpawnCharacter",
           "AliveIfTrue",
           "Tags",
           "LifeDurationIncreasePerLevel",
@@ -422,9 +421,6 @@ public final class BattleRecords {
           // the period's boundary for the Bats; the turn is modelled for no unit, and no hit, timer
           // or readiness reads it.
           "AttackDashTime",
-          // Read only by the soul count of a unit whose ability resurrects, which only that
-          // ability spends, and a card play never requests it.
-          "IgnoreResurrect",
           // Read once, outside the battle's logic, beside the deploy time's conversion for the
           // deploy animation; the state visit's deploy step does not read it, and a guard that
           // sets it deploys natively as the battle deploys it.
@@ -496,10 +492,12 @@ public final class BattleRecords {
           "SpawnEffect");
 
   /**
-   * The columns of an area effect's row the record shows no battle logic reads. BuffNumber is
-   * declared by the table and never looked up.
+   * The columns of an area effect's row the record shows no battle logic reads. BuffNumber and
+   * SpawnMaxRadius are declared by the table and never looked up: the spawner places its characters
+   * within the radius of its hits.
    */
-  private static final Set<String> INERT_AREA_EFFECT_COLUMNS = Set.of("Name", "Base", "BuffNumber");
+  private static final Set<String> INERT_AREA_EFFECT_COLUMNS =
+      Set.of("Name", "Base", "BuffNumber", "SpawnMaxRadius");
 
   /** The columns of an area effect's row whose role is not yet established: none now. */
   private static final Set<String> PENDING_AREA_EFFECT_COLUMNS = Set.of();
@@ -693,6 +691,7 @@ public final class BattleRecords {
             .hideTimeMs(row.intValue("HideTimeMs"))
             .upTimeMs(row.intValue("UpTimeMs"))
             .ignoreClone(row.bool("IgnoreClone"))
+            .ignoreResurrect(row.bool("IgnoreResurrect"))
             .reflectedAttackBuff(
                 set(row, "ReflectedAttackBuff") ? row.string("ReflectedAttackBuff") : null)
             .reflectedAttackBuffDurationMs(row.intValue("ReflectedAttackBuffDuration"))
@@ -1109,6 +1108,15 @@ public final class BattleRecords {
             .oneHitPerTarget(row.bool("OneHitPerTarget"))
             .followsParent(row.string("FollowBehaviour").equals("FollowParent"))
             .deflectsProjectiles(row.bool("DeflectProjectilesEnabled"))
+            .spawnCharacter(set(row, "SpawnCharacter") ? row.string("SpawnCharacter") : null)
+            .spawnIntervalMs(row.intValue("SpawnInterval"))
+            .spawnInitialDelayMs(row.intValue("SpawnInitialDelay"))
+            .spawnTimeMs(row.intValue("SpawnTime"))
+            .spawnMaxCount(row.intValue("SpawnMaxCount"))
+            .spawnMinRadius(row.intValue("SpawnMinRadius"))
+            .spawnRandomizeSequence(row.bool("SpawnRandomizeSequence"))
+            .spawnClones(row.bool("SpawnClones"))
+            .stayAfterParentDies(row.bool("StayAfterParentDies"))
             .unmodelledColumns(unmodelled)
             .build();
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
@@ -1156,12 +1164,10 @@ public final class BattleRecords {
         unmodelled.add("Projectile");
       }
     }
-    // SpawnInitialDelay and SpawnTime are read only by the character spawner, which a row without a
-    // SpawnCharacter never enters, and by the encoding of the spawner's order list: on such a row,
-    // the Royal Delivery's, they change nothing.
-    if (!sets(row, "SpawnCharacter")) {
-      row.has("SpawnInitialDelay");
-      row.has("SpawnTime");
+    // Without SpawnRandomizeSequence the spawner turns each direction by a fixed step from the side
+    // the area effect is on, which no reference holds.
+    if (data.spawnCharacter() != null && !data.spawnRandomizeSequence()) {
+      unmodelled.add("SpawnCharacter");
     }
     return data.toBuilder()
         .unmodelledColumns(
@@ -1290,14 +1296,14 @@ public final class BattleRecords {
 
   /**
    * The ability columns that make an ability do more than run its activation action, buff the unit
-   * itself, dash, switch lanes, leave a character on its spot, create an area effect at the unit
-   * and hold it in its follow-up state - a buff over a radius, morph, a deploy time of the
-   * character it leaves, and the resurrections its area effect counts; the rest are the champion
+   * itself, dash, switch lanes, leave a character on its spot, create an area effect at the unit,
+   * count the souls that area effect spends and hold the unit in its follow-up state - a buff over
+   * a radius, morph and a deploy time of the character it leaves; the rest are the champion
    * controller's or the dash's, read into the ability, or presentation, which a request never
    * reads.
    */
   private static final List<String> UNMODELLED_ABILITY_COLUMNS =
-      List.of("BuffRadius", "MorphTarget", "ActivationSpawnDeployTime", "ResurrectBaseCount");
+      List.of("BuffRadius", "MorphTarget", "ActivationSpawnDeployTime");
 
   /**
    * A unit's ability row, or null for a unit without one. Its activation action, written inline, is
@@ -1337,6 +1343,10 @@ public final class BattleRecords {
             set(ability, "AreaEffectObject") ? ability.string("AreaEffectObject") : null)
         .abilityStateDurationMs(ability.intValue("AbilityStateDuration"))
         .gameTagsWhileAbilityActive(tagBits(ability.string("GameTagsWhileAbilityActive")))
+        .resurrectBaseCount(ability.intValue("ResurrectBaseCount"))
+        .resurrectEnemies(ability.bool("ResurrectEnemies"))
+        .resurrectOwnTroops(ability.bool("ResurrectOwnTroops"))
+        .spawnLimit(ability.intValue("SpawnLimit"))
         .unmodelledColumns(unmodelledAbilityColumns(ability))
         .build();
   }
@@ -1462,11 +1472,13 @@ public final class BattleRecords {
     List<String> unmodelled =
         new ArrayList<>(
             UNMODELLED_PROJECTILE_COLUMNS.stream().filter(column -> set(row, column)).toList());
-    // The spawned area effect is refused with its row: one that follows is among them, and one that
-    // follows the projectile is made on its first flight visit, not at its impact.
-    if (data.spawnAreaEffectObject() != null
-        && !areaEffect(data.spawnAreaEffectObject()).unmodelledColumns().isEmpty()) {
-      unmodelled.add("SpawnAreaEffectObject");
+    // The spawned area effect is refused with its row, and so is one that follows the projectile,
+    // which is made on its first flight visit, not at its impact.
+    if (data.spawnAreaEffectObject() != null) {
+      AreaEffectData spawned = areaEffect(data.spawnAreaEffectObject());
+      if (!spawned.unmodelledColumns().isEmpty() || spawned.followsParent()) {
+        unmodelled.add("SpawnAreaEffectObject");
+      }
     }
     // A hook's impacts carry its hooked flag, whose effect on a damage is not established: no
     // hooking row deals any.

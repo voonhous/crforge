@@ -414,9 +414,29 @@ class BattleRecordsTest {
     assertThat(delivery.projectileStartHeight()).isZero();
     assertThat(delivery.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").projectile()).isNull();
-    // A row that spawns characters reads them, which is not modelled.
-    assertThat(records.areaEffect("Graveyard").unmodelledColumns())
-        .contains("SpawnCharacter", "SpawnInitialDelay", "SpawnTime");
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect carries its spawner: the character, its interval, initial delay, deploy time,"
+          + " limit and least distance, the shuffled order and the clones, and whether it stays"
+          + " after its parent; a spawner that does not shuffle is listed as not modelled")
+  void anAreaEffectThatSpawns() {
+    AreaEffectData graveyard = records.areaEffect("SkeletonKingGraveyard");
+    assertThat(graveyard.spawnCharacter()).isEqualTo("SkeletonKingSkeleton");
+    assertThat(graveyard.spawnIntervalMs()).isEqualTo(250);
+    assertThat(graveyard.spawnInitialDelayMs()).isEqualTo(250);
+    assertThat(graveyard.spawnTimeMs()).isEqualTo(400);
+    assertThat(graveyard.spawnMaxCount()).isZero();
+    assertThat(graveyard.spawnMinRadius()).isEqualTo(2500);
+    assertThat(graveyard.spawnRandomizeSequence()).isTrue();
+    assertThat(graveyard.spawnClones()).isTrue();
+    assertThat(graveyard.stayAfterParentDies()).isTrue();
+    assertThat(graveyard.followsParent()).isTrue();
+    assertThat(graveyard.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Zap").spawnCharacter()).isNull();
+    // Its directions turned by a fixed step from its side's, which no reference holds.
+    assertThat(records.areaEffect("TriWizardSpawn").unmodelledColumns()).contains("SpawnCharacter");
   }
 
   @Test
@@ -645,8 +665,9 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "an ability carries its cast, its trigger, the target it keeps, its inline activation"
-          + " action, its own buff, its lane switch, the character it leaves behind and its"
-          + " controller's columns, and lists the effects the battle does not model")
+          + " action, its own buff, its lane switch, the character it leaves behind, the souls"
+          + " its area effect spends and its controller's columns, and a unit whose death counts"
+          + " no soul")
   void ability() {
     AbilityData buffer = records.unit("GiantBuffer").ability();
     assertThat(buffer.name()).isEqualTo("giantbuffer_ability");
@@ -687,8 +708,15 @@ class BattleRecordsTest {
     assertThat(queen.abilityStateDurationMs()).isZero();
     assertThat(queen.gameTagsWhileAbilityActive()).isZero();
     // The souls an area object counts to resurrect are refused.
-    assertThat(records.unit("SkeletonKing").ability().unmodelledColumns())
-        .containsExactly("ResurrectBaseCount");
+    AbilityData souls = records.unit("SkeletonKing").ability();
+    assertThat(souls.areaEffectObject()).isEqualTo("SkeletonKingGraveyard");
+    assertThat(souls.resurrectBaseCount()).isEqualTo(6);
+    assertThat(souls.resurrectEnemies()).isTrue();
+    assertThat(souls.resurrectOwnTroops()).isTrue();
+    assertThat(souls.spawnLimit()).isEqualTo(16);
+    assertThat(souls.unmodelledColumns()).isEmpty();
+    assertThat(records.unit("Golem").ignoreResurrect()).isTrue();
+    assertThat(records.unit("Knight").ignoreResurrect()).isFalse();
     assertThat(records.unit("Knight").ability()).isNull();
   }
 

@@ -7,8 +7,8 @@ import lombok.Builder;
  * A unit's ability row as the battle reads it: how long a cast lasts and when its effect fires,
  * whether the unit keeps its target while it casts, the action it runs, the buff it gives itself,
  * the lane switch, the character it leaves behind and the area effect it creates as it fires, the
- * state it holds the unit in afterwards, and what a champion's controller reads: its cost, its
- * cooldown and its charges.
+ * state it holds the unit in afterwards, the souls the unit collects for that area effect, and what
+ * a champion's controller reads: its cost, its cooldown and its charges.
  *
  * <p>A request for the ability takes the unit into the casting state. The cast time and the trigger
  * delay are counted in whole ticks from there, each the column's milliseconds divided by 50; the
@@ -40,6 +40,12 @@ import lombok.Builder;
  * @param abilityStateDurationMs how long the unit stays in the ability's follow-up state after it
  *     fires; 0 for none
  * @param gameTagsWhileAbilityActive the tag bits the unit carries while it is in that state
+ * @param resurrectBaseCount how many characters the ability's area effect makes with no soul
+ *     collected; 0 for an ability that collects none, whose area effect keeps its row's lifetime
+ * @param resurrectEnemies true when a death of the other side counts a soul
+ * @param resurrectOwnTroops true when a death of the unit's own side counts a soul
+ * @param spawnLimit the most characters the area effect makes, the base count and the souls
+ *     together
  * @param unmodelledColumns the columns that make the ability do more than run its activation action
  *     and buff the unit itself, or keep a buff on a unit waiting to cast, which the battle does not
  *     model; a request for such an ability is refused
@@ -65,6 +71,10 @@ public record AbilityData(
     String areaEffectObject,
     int abilityStateDurationMs,
     long gameTagsWhileAbilityActive,
+    int resurrectBaseCount,
+    boolean resurrectEnemies,
+    boolean resurrectOwnTroops,
+    int spawnLimit,
     List<String> unmodelledColumns) {
 
   public AbilityData {

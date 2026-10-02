@@ -554,7 +554,9 @@ class BattleActionSpawnRunTest {
         "mighty_miner_ability_tower",
         "mighty_miner_ability_walk",
         "monk_ability_tower",
-        "monk_ability_musketeer"
+        "monk_ability_musketeer",
+        "skeleton_king_ability_no_souls",
+        "skeleton_king_ability_souls"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -683,6 +685,8 @@ class BattleActionSpawnRunTest {
           });
     }
     match.getWorld().addObserver(goldenKnightLog(currentTick, goldenKnightLog));
+    List<String> skeletonKingLog = new ArrayList<>();
+    match.getWorld().addObserver(skeletonKingLog(currentTick, skeletonKingLog));
     // The area effects a run places directly, each in the command pass of its tick.
     for (JsonNode a : reference.path("area_effects")) {
       if (a.get("event").asText().equals("created") && a.get("how").asText().equals("placed")) {
@@ -1424,10 +1428,18 @@ class BattleActionSpawnRunTest {
       assertThat(eggSpawns).as("every egg the Phoenix log lists").containsExactlyElementsOf(eggs);
       Set<String> eggNames = new HashSet<>();
       eggs.forEach(egg -> eggNames.add(egg.split(" ")[1]));
+      // An area effect's spawns are held by the Skeleton King's log.
+      Set<String> areaChildren = new HashSet<>();
+      for (JsonNode k : reference.path("skeleton_king_ability")) {
+        if (k.get("event").asText().equals("skeleton")) {
+          areaChildren.add(k.get("unit").asText());
+        }
+      }
       List<String> riderSpawns =
           spawns.stream()
               .filter(line -> !buffChildren.contains(line.split(" ")[3]))
               .filter(line -> !eggNames.contains(line.split(" ")[3]))
+              .filter(line -> !areaChildren.contains(line.split(" ")[3]))
               .toList();
       assertThat(riderSpawns)
           .as("every spawn but a buff's death spawn, a rider each")
@@ -1667,6 +1679,9 @@ class BattleActionSpawnRunTest {
     assertThat(goldenKnightLog)
         .as("every supplied request, ability dash, stun cleanse, chained dash and chain's end")
         .containsExactlyElementsOf(expectedGoldenKnightLog(reference));
+    assertThat(skeletonKingLog)
+        .as("every soul counted, the souls spent, the spawner's order and every skeleton")
+        .containsExactlyElementsOf(expectedSkeletonKingLog(reference));
     assertThat(championLog)
         .as("what the champion slots did, and every ability's buff")
         .containsExactlyElementsOf(expectedChampionLog(reference));
@@ -3907,6 +3922,136 @@ class BattleActionSpawnRunTest {
   }
 
   /** The reference's chained dash log, in the battle's layout. */
+  /**
+   * Lists what the Skeleton King's ability did: each soul counted, the souls spent on its area
+   * effect and the lifetime they bought, the order its spawner shuffled with the battle's random
+   * state before and after, and each skeleton as its registration visit and its clone setter left
+   * it, with the area effect's point and the random state after its draws.
+   */
+  private static WorldObserver skeletonKingLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void soulCounted(int tick, CharacterEntity unit, WorldEntity dying, int souls) {
+        log.add(
+            "%d soul %s %s side %d souls %d"
+                .formatted(currentTick[0], unit.name(), dying.name(), dying.side(), souls));
+      }
+
+      @Override
+      public void soulsSpent(
+          int tick,
+          CharacterEntity unit,
+          AreaEffectEntity areaEffect,
+          int souls,
+          int count,
+          int lifetimeMs) {
+        log.add(
+            "%d lifetime %s %d souls %d count %d"
+                .formatted(currentTick[0], areaEffect.name(), lifetimeMs, souls, count));
+      }
+
+      @Override
+      public void spawnOrdered(
+          int tick, AreaEffectEntity areaEffect, int[] order, int stateBefore, int stateAfter) {
+        log.add(
+            "%d order %s %s state %d %d"
+                .formatted(
+                    currentTick[0],
+                    areaEffect.name(),
+                    Arrays.toString(order),
+                    Integer.toUnsignedLong(stateBefore),
+                    Integer.toUnsignedLong(stateAfter)));
+      }
+
+      @Override
+      public void areaSpawned(
+          int tick,
+          AreaEffectEntity areaEffect,
+          CharacterEntity child,
+          int retries,
+          int stateAfter) {
+        log.add(
+            "%d skeleton %s %s %d at %d %d state %d deploy %d hp %d level %d clone %d tries %d"
+                    .formatted(
+                        currentTick[0],
+                        areaEffect.name(),
+                        child.name(),
+                        child.getId(),
+                        child.getView().getX(),
+                        child.getView().getY(),
+                        child.getView().getState(),
+                        child.getView().getDeployCountdown(),
+                        child.getHitPoints().getHitPoints(),
+                        child.getPackedLevel(),
+                        child.isClone() ? 1 : 0,
+                        retries + 1)
+                + " area %d %d state %d"
+                    .formatted(areaEffect.x(), areaEffect.y(), Integer.toUnsignedLong(stateAfter)));
+      }
+    };
+  }
+
+  private static List<String> expectedSkeletonKingLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode k : reference.path("skeleton_king_ability")) {
+      int tick = k.get("tick").asInt();
+      switch (k.get("event").asText()) {
+        case "soul" ->
+            expected.add(
+                "%d soul %s %s side %d souls %d"
+                    .formatted(
+                        tick,
+                        k.get("unit").asText(),
+                        k.get("dying").asText(),
+                        k.get("side").asInt(),
+                        k.get("souls").asInt()));
+        case "lifetime" ->
+            expected.add(
+                "%d lifetime %s %d souls %d count %d"
+                    .formatted(
+                        tick,
+                        k.get("area_effect").asText(),
+                        k.get("lifetime").asInt(),
+                        k.get("souls").asInt(),
+                        k.get("count").asInt()));
+        case "order" ->
+            expected.add(
+                "%d order %s %s state %d %d"
+                    .formatted(
+                        tick,
+                        k.get("area_effect").asText(),
+                        ints(k.get("order")),
+                        k.get("state").get(0).asLong(),
+                        k.get("state").get(1).asLong()));
+        case "skeleton" ->
+            expected.add(
+                "%d skeleton %s %s %d at %d %d state %d deploy %d hp %d level %d clone %d tries %d"
+                        .formatted(
+                            tick,
+                            k.get("area_effect").asText(),
+                            k.get("unit").asText(),
+                            k.get("id").asInt(),
+                            k.get("x").asInt(),
+                            k.get("y").asInt(),
+                            k.get("state").asInt(),
+                            k.get("deploy").asInt(),
+                            k.get("hp").asInt(),
+                            k.get("level").asInt(),
+                            k.get("clone").asInt(),
+                            k.get("tries").asInt())
+                    + " area %d %d state %d"
+                        .formatted(
+                            k.get("at").get(0).asInt(),
+                            k.get("at").get(1).asInt(),
+                            k.get("state_after").asLong()));
+        default -> {
+          // The area effect's creation is held by the area effects' own log.
+        }
+      }
+    }
+    return expected;
+  }
+
   private static List<String> expectedGoldenKnightLog(JsonNode reference) {
     List<String> expected = new ArrayList<>();
     for (JsonNode g : reference.path("golden_knight")) {

@@ -161,6 +161,12 @@ public class GridEntity {
   private boolean attached;
 
   /**
+   * True for a clone: one still deploying takes no part in collision, so no push pass or avoidance
+   * meets it.
+   */
+  private boolean clone;
+
+  /**
    * Countdown in milliseconds that blocks movement while it is positive, for example the delay
    * after a dash lands. The speed budget and all three movement gates return zero while it runs.
    *

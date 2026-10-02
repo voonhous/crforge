@@ -564,6 +564,58 @@ public interface WorldObserver {
   default void abilityStateEntered(int tick, CharacterEntity unit, int countdown) {}
 
   /**
+   * A unit whose ability collects souls counted one for a death.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param dying the object whose death it counted
+   * @param souls its souls now
+   */
+  default void soulCounted(int tick, CharacterEntity unit, WorldEntity dying, int souls) {}
+
+  /**
+   * A unit's ability spent its souls on the area effect it created, giving it its lifetime.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param areaEffect the area effect
+   * @param souls the souls spent
+   * @param count how many characters the area effect makes
+   * @param lifetimeMs the lifetime it was given
+   */
+  default void soulsSpent(
+      int tick,
+      CharacterEntity unit,
+      AreaEffectEntity areaEffect,
+      int souls,
+      int count,
+      int lifetimeMs) {}
+
+  /**
+   * An area effect's spawner shuffled the order of its directions on its first update.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param order the order
+   * @param stateBefore the battle's random state before the shuffle
+   * @param stateAfter the state after it
+   */
+  default void spawnOrdered(
+      int tick, AreaEffectEntity areaEffect, int[] order, int stateBefore, int stateAfter) {}
+
+  /**
+   * An area effect's spawner made a character, after its registration visit and its clone setter.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param child the character
+   * @param retries how many times its point was drawn again
+   * @param stateAfter the battle's random state after its draws
+   */
+  default void areaSpawned(
+      int tick, AreaEffectEntity areaEffect, CharacterEntity child, int retries, int stateAfter) {}
+
+  /**
    * Projectiles aimed at a unit lost it as their target as it went into a pathfinding state.
    *
    * @param tick the battle tick

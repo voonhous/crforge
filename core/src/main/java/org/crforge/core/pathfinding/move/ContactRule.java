@@ -17,8 +17,9 @@ import org.crforge.core.pathfinding.GridEntityState;
  *   <li>under the no-check-collisions flag;
  *   <li>while attached to a parent;
  *   <li>in the dashing state, the jumping state or the first following-removed state;
- *   <li>(not reachable here) while deploying as a clone that is not yet set up, and, for a building
- *       of the placeable-building kind, while another entity stands within 500 of it edge to edge.
+ *   <li>while deploying as a clone;
+ *   <li>(not reachable here) for a building of the placeable-building kind, while another entity
+ *       stands within 500 of it edge to edge.
  * </ul>
  *
  * <p>The avoidance answer is 0 in either following-removed state and under the no-check-avoidance
@@ -38,9 +39,12 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " rider. A dashing unit taking no part, neither pushed nor pushing, is held by"
             + " golden_knight_chain, golden_knight_ladder_chain and bandit_dash_past; the standard"
             + " game exempts a row with DashingDamage, which no row sets and the battle refuses."
-            + " Supplied: no deploying unit is an unset clone, and no building is of the"
-            + " placeable-building kind whose answer depends on the entities near it; none of"
-            + " those is reachable from the units the grid drives.")
+            + " A clone deploying taking no part, neither pushed nor pushing, is held by"
+            + " skeleton_king_ability_no_souls and skeleton_king_ability_souls; an entity byte"
+            + " that would keep such a clone in collision, unnamed, is supplied clear, as for"
+            + " every unit the standard game makes. Supplied: no building is of the"
+            + " placeable-building kind whose answer depends on the entities near it, which is"
+            + " not reachable from the units the grid drives.")
 public final class ContactRule {
 
   /** The states in which an entity takes no part in collision: dashing, jumping, hooked away. */
@@ -66,6 +70,9 @@ public final class ContactRule {
     // one.
     if (state <= GridEntityState.FOLLOWING_REMOVED
         && ((1 << state) & STATES_WITHOUT_COLLISION) != 0) {
+      return 0;
+    }
+    if (state == GridEntityState.DEPLOYING && entity.isClone()) {
       return 0;
     }
     return 1;
