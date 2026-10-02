@@ -75,7 +75,7 @@ that is also after the entity state visit, so the entry holds the state the unit
 For a unit that is still being placed the entry is written **before** the state visit, so the last
 deploying tick is written as deploying although the visit that ends the deployment runs immediately
 afterwards. A test that observes the unit only at the end of a whole tick has to allow for that one
-tick.
+tick. This holds for these files and `golden/knight_left_kill.json`. Every other run here, from `golden/musketeer_left_kill.json` on, reads each entry at the end of its tick: the tick whose state visit ends the deployment is written in the state it entered (1, with `speed` 0 and `hp` null), and only a tick still deploying at its end is written as deploying.
 
 ## `golden/knight_left_kill.json` - the run that goes on to the end
 
@@ -807,6 +807,15 @@ The towers fight at level 11. Side 0 plays a Mini P.E.K.K.A. X at (3500, 12000),
 
 - `reference_loss_knight`: A is a Knight played at (3000, 9500), placed at (3499, 9500). It has no projectile, so it stops; its attack time stands at 1050.
 - `reference_loss_musketeer_rage`: A is a Musketeer played at (1500, 4500), placed at (1499, 4500). A Rage area effect of side 0, Rage_3000000, is placed alone at (1500, 9000) on 100; its chained RageDamage hits nobody and leaves on 101, and from 105 the Rage buffs A and PrincessTower_0_1 every 6 ticks. MusketeerProjectile homes, so A stops as the Knight does, no shot leaving; its attack time stands at 755.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs.
+
+## `golden/card_run_knight_pair.json` and `golden/card_run_baby_dragon_pair.json` - the run's unit beside one placed directly
+
+The towers fight at level 11. The run's unit is placed on the left at (3500, 10000), and the same row is placed directly on the right at (14500, 10000) under its own name, both on side 0 on tick 0. Both are deploying at the end of ticks 0 to 18 and leave the deploying state at the end of tick 19, on the twentieth state visit, and from then on they hold the same state, reference, hit points and event ticks on every tick, each on its own lane.
+
+- `card_run_knight_pair`: two Knights, to tick 259. Each walks from 20, is locked by its lane's princess tower on 130 and hit from 157, locks its tower on 235 and hits it from 244. Their walks are not mirror images, as the arena's routes are not, but their timings are.
+- `card_run_baby_dragon_pair`: two Baby Dragons, to tick 199. Each is locked by its tower on 94 and hit from 120, locks its tower on 138, and its BabyDragonProjectile lands from 152. Their flights are mirror images.
 
 `BattleActionSpawnRunTest` plays both with the spawn runs.
 

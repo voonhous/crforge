@@ -47,7 +47,7 @@ class TrajectoryRecorderTest {
   void theExportIsTheReferenceByteForByte(@TempDir Path directory) throws IOException {
     String expected = reference(REFERENCE);
     JsonNode reference = MAPPER.readTree(expected);
-    TrajectoryRecorder recorder = record(reference, 0);
+    TrajectoryRecorder recorder = record(reference, 0, true);
 
     Path file = directory.resolve("knight_left_kill.json");
     recorder.writeTo(file);
@@ -67,7 +67,7 @@ class TrajectoryRecorderTest {
     assertThat(reference.get("projectiles"))
         .as("the reference lists projectile positions")
         .hasSize(105);
-    TrajectoryRecorder recorder = record(reference, 0);
+    TrajectoryRecorder recorder = record(reference, 0, false);
 
     Path file = directory.resolve("musketeer_left_kill.json");
     recorder.writeTo(file);
@@ -117,15 +117,19 @@ class TrajectoryRecorderTest {
   @DisplayName("a placement on a later tick records the same run, counted from its first tick")
   void aLaterPlacementRecordsTheSameRun() throws IOException {
     String expected = reference(REFERENCE);
-    TrajectoryRecorder recorder = record(MAPPER.readTree(expected), MAX_PLACEMENT_TICK);
+    TrajectoryRecorder recorder = record(MAPPER.readTree(expected), MAX_PLACEMENT_TICK, true);
     assertSameText(recorder.text(), expected);
   }
 
   /**
    * Plays the reference's character placed on the given tick through the whole run, recording it.
    * The reference names the unit; its card is the unit's name in lower case.
+   *
+   * @param singleUnit true for a single-unit reference, which records a deploying tick before its
+   *     state visit
    */
-  private static TrajectoryRecorder record(JsonNode reference, int placementTick) {
+  private static TrajectoryRecorder record(
+      JsonNode reference, int placementTick, boolean singleUnit) {
     int ticks = reference.get("records").size();
     Standard1v1Battle match =
         new Standard1v1Battle(GameData.tables(), reference.get("level").asInt(), false);
@@ -139,6 +143,9 @@ class TrajectoryRecorderTest {
             reference.get("deploy").get(0).asInt(),
             reference.get("deploy").get(1).asInt());
     TrajectoryRecorder recorder = new TrajectoryRecorder(unit);
+    if (singleUnit) {
+      recorder.recordDeployingBeforeTheStateVisit();
+    }
     match.getWorld().addObserver(recorder);
 
     // Run until the recorder has the whole run: the unit is first visited in the step of its

@@ -361,6 +361,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * cleanup. {@code goblinstein_doctor_first} has a Knight kill the doctor first: the area effect
  * leaves with it, and the monster's later death makes nothing. Each is held to every link and
  * unlink of the chain and to what the ability's run did.
+ *
+ * <p>{@code card_run_knight_pair} plays the run's Knight on the left beside a second Knight placed
+ * directly on the right, both on tick 0: each leaves the deploying state at the end of tick 19, the
+ * twentieth state visit, and both walk, are shot and lock their tower on the same ticks. {@code
+ * card_run_baby_dragon_pair} does the same with two Baby Dragons. Each record is read at the end of
+ * its tick, so the run's own unit is held to the same timing as the one placed beside it.
  */
 class BattleActionSpawnRunTest {
 
@@ -510,7 +516,9 @@ class BattleActionSpawnRunTest {
         "archer_queen_ability",
         "archer_queen_ability_refused",
         "reference_loss_knight",
-        "reference_loss_musketeer_rage"
+        "reference_loss_musketeer_rage",
+        "card_run_knight_pair",
+        "card_run_baby_dragon_pair"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -977,14 +985,13 @@ class BattleActionSpawnRunTest {
             });
 
     Map<Integer, List<JsonNode>> records = BattleTowerRunTest.otherRecordsByTick(reference);
-    // The run's own unit's records, when it has one, are held to its outside like the others. Its
-    // record of the last deploying tick is taken before the state visit that ends the deployment.
+    // The run's own unit's records, when it has one, are held to its outside like the others, each
+    // read at the end of its tick, the deploy-end tick's too.
     if (!reference.get("card").isNull()) {
       List<JsonNode> own = BattleMusketeerRunTest.records(reference);
       for (int i = 0; i < own.size(); i++) {
         ObjectNode named = own.get(i).deepCopy();
         named.put("name", placed.get(0).name());
-        named.put("state", BattleGoldenTrajectoryTest.expectedState(own, i));
         records.computeIfAbsent(named.get("tick").asInt(), t -> new ArrayList<>()).add(named);
       }
     }

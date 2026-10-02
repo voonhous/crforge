@@ -35,12 +35,13 @@ import org.crforge.core.pathfinding.target.TargetView;
  * the recorder first saw the battle, with their starting hit points.
  *
  * <p>Ticks are counted from the character's first tick in the holder, as the reference counts them,
- * so a placement on a later tick records the same run. Two more conventions of the reference are
- * kept. A deploying tick is recorded as the character stood before its state visit: deploying,
- * without a reference, a budget or hit points, so the last deploying tick is written as deploying
- * although the visit that ends the deployment runs in the same tick; every other tick is recorded
- * after the state visit. And the budget is what the movement visit asked for while the character
- * walks, and zero otherwise.
+ * so a placement on a later tick records the same run. Every tick is recorded at its end, after the
+ * post-hooks, as the battle references read it: a character still deploying there is written
+ * deploying, without a reference, a budget or hit points, and the tick whose state visit ends the
+ * deployment is written in the state it entered. The single-unit references read a deploying tick
+ * before its state visit instead, so their last deploying tick is written as deploying; {@link
+ * #recordDeployingBeforeTheStateVisit} keeps that convention for them. And the budget is what the
+ * movement visit asked for while the character walks, and zero otherwise.
  *
  * <p>A run in which the towers fight carries three things more. The header gives the towers' level
  * and says that they fight, every record ends with the character's own hit points, and a list of
@@ -58,7 +59,7 @@ import org.crforge.core.pathfinding.target.TargetView;
     note =
         "Nothing here is a rule of the game: the recorder reads the battle and writes what the"
             + " reference format asks for. Supplied: ticks counted from the character's first tick"
-            + " in the holder, a deploying tick recorded before the state visit, every hit,"
+            + " in the holder, every hit,"
             + " launch and impact in the battle recorded whoever made it, a projectile's position"
             + " recorded after its step unless that step arrived, a reference's hit points"
             + " read from what it advertises to attackers, and a tower's reference and lock read"
@@ -131,6 +132,9 @@ public final class TrajectoryRecorder implements WorldObserver {
   /** True when the character was deploying at the head of the tick in progress. */
   private boolean deployingAtHead;
 
+  /** True when a deploying tick is recorded before its state visit, as a single-unit reference. */
+  private boolean deployingBeforeTheStateVisit;
+
   /**
    * Prepares to record a character's run. Create the recorder before the battle's first step, while
    * the character stands at its deploy position, and attach it with {@link
@@ -154,6 +158,18 @@ public final class TrajectoryRecorder implements WorldObserver {
     this.others = List.copyOf(others);
     this.deployX = unit.getView().getX();
     this.deployY = unit.getView().getY();
+  }
+
+  /**
+   * Records a tick that began deploying as the character stood before its state visit, the
+   * convention of the single-unit references: the tick whose visit ends the deployment is then
+   * written as deploying. A battle reference reads every tick at its end, which is the default.
+   *
+   * @return this recorder
+   */
+  public TrajectoryRecorder recordDeployingBeforeTheStateVisit() {
+    deployingBeforeTheStateVisit = true;
+    return this;
   }
 
   @Override
@@ -297,7 +313,10 @@ public final class TrajectoryRecorder implements WorldObserver {
     int x = unit.getView().getX();
     int y = unit.getView().getY();
     Integer ownHitPoints = towersAttack ? unit.getHitPoints().getHitPoints() : null;
-    if (deployingAtHead) {
+    int state = unit.getView().getState();
+    boolean deploying =
+        deployingBeforeTheStateVisit ? deployingAtHead : state == GridEntityState.DEPLOYING;
+    if (deploying) {
       records.add(
           record(
               tick - firstTick,
@@ -311,7 +330,6 @@ public final class TrajectoryRecorder implements WorldObserver {
               ownHitPoints));
       return;
     }
-    int state = unit.getView().getState();
     TargetView reference = unit.getUnit().targeting().getReference();
     records.add(
         record(
