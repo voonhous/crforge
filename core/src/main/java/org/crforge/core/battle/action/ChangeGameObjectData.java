@@ -13,8 +13,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled and held by golemite_convert: the swap on the owner, the target read before it"
-            + " and kept through the validator and the setter unless the row resets it. Not"
-            + " modelled: a projectile row's swap, which a row asks for with a column that is"
+            + " and kept through the validator and the setter unless the row resets it. Held by"
+            + " goblin_demolisher_knight: a reset target and a walking row whose lifetime drains."
+            + " Not modelled: a projectile row's swap, which a row asks for with a column that is"
             + " refused.")
 public final class ChangeGameObjectData extends RowAction {
 

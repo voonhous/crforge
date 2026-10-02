@@ -18,6 +18,7 @@ import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
@@ -421,7 +422,8 @@ class BattleActionSpawnRunTest {
         "goblin_cage_lifetime",
         "berserker_knight",
         "berserker_tower",
-        "goblin_curse_knights"
+        "goblin_curse_knights",
+        "goblin_demolisher_knight"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1992,7 +1994,8 @@ class BattleActionSpawnRunTest {
           SpawnHost source,
           AreaEffectEntity a) {
         lines.add(
-            "%d spawn_area_effect %s %s phase %d source %s %s %d at %d %d side %d level %d parent %s"
+            ("%d spawn_area_effect %s %s phase %d source %s %s %d at %d %d side %d level %d parent %s"
+                    + " follow %s")
                 .formatted(
                     currentTick[0],
                     owner.name(),
@@ -2005,7 +2008,48 @@ class BattleActionSpawnRunTest {
                     a.getY(),
                     a.side(),
                     a.getPackedLevel(),
-                    a.getParent().name()));
+                    a.getParent().name(),
+                    a.getFollow() == null ? null : a.getFollow().name()));
+      }
+
+      @Override
+      public void tauntPerformed(
+          int tick,
+          CharacterEntity unit,
+          String action,
+          int phase,
+          ActionOwner instigator,
+          WorldEntity forced) {
+        lines.add(
+            "%d taunt_perform %s %s phase %d instigator %s parent %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    action,
+                    phase,
+                    ((AreaEffectEntity) instigator).name(),
+                    forced.name()));
+      }
+
+      @Override
+      public void tauntStepped(
+          int tick,
+          CharacterEntity unit,
+          WorldEntity forced,
+          int durationMs,
+          int falloffMs,
+          List<String> calls) {
+        lines.add(
+            "%d taunt %s forced %s duration %d falloff %d calls %s ref %s cooldown %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    forced == null ? null : forced.name(),
+                    durationMs,
+                    falloffMs,
+                    calls,
+                    referenceName(unit),
+                    unit.getTargeting().getRetargetCooldownMs()));
       }
 
       @Override
@@ -2021,8 +2065,9 @@ class BattleActionSpawnRunTest {
   }
 
   /**
-   * The reference's area-effect spawn log in the same layout. No area effect it lists follows
-   * anything or carries a clone byte, which the battle refuses.
+   * The reference's area-effect spawn log in the same layout. No area effect it lists carries a
+   * clone byte, which the battle refuses, and every taunt it lists reaches one unit, which carries
+   * no riders.
    */
   static List<String> expectedAreaEffectSpawnLog(JsonNode reference) {
     List<String> expected = new ArrayList<>();
@@ -2030,11 +2075,12 @@ class BattleActionSpawnRunTest {
       int tick = e.get("tick").asInt();
       switch (e.get("event").asText()) {
         case "spawn_area_effect" -> {
-          assertThat(e.get("follow").isNull() && e.get("b119").asInt() == 0)
-              .as("tick %d: the area effect follows nothing and is no clone's", tick)
-              .isTrue();
+          assertThat(e.get("b119").asInt())
+              .as("tick %d: the area effect is no clone's", tick)
+              .isZero();
           expected.add(
-              "%d spawn_area_effect %s %s phase %d source %s %s %d at %d %d side %d level %d parent %s"
+              ("%d spawn_area_effect %s %s phase %d source %s %s %d at %d %d side %d level %d"
+                      + " parent %s follow %s")
                   .formatted(
                       tick,
                       e.get("owner").asText(),
@@ -2047,7 +2093,59 @@ class BattleActionSpawnRunTest {
                       e.get("y").asInt(),
                       e.get("side").asInt(),
                       e.get("level").asInt(),
+                      e.get("parent").asText(),
+                      e.get("follow").isNull() ? null : e.get("follow").asText()));
+        }
+        case "taunt_perform" -> {
+          assertThat(e.get("instances").asInt()).as("tick %d: one unit taunted", tick).isOne();
+          expected.add(
+              "%d taunt_perform %s %s phase %d instigator %s parent %s"
+                  .formatted(
+                      tick,
+                      e.get("unit").asText(),
+                      e.get("action").asText(),
+                      e.get("phase").asInt(),
+                      e.get("instigator").asText(),
                       e.get("parent").asText()));
+        }
+        case "taunt" -> {
+          List<String> calls = new ArrayList<>();
+          for (JsonNode c : e.get("calls")) {
+            calls.add(
+                switch (c.get(0).asText()) {
+                  case "set_target" ->
+                      "set_target %s %d %d %d"
+                          .formatted(
+                              c.get(2).isNull() ? null : c.get(2).asText(),
+                              c.get(3).asInt(),
+                              c.get(4).asInt(),
+                              c.get(5).asInt());
+                  case "raise" -> "raise " + c.get(2).asText();
+                  case "remaining" -> "remaining " + c.get(2).asInt();
+                  case "apply_buff" ->
+                      "apply_buff %s %d level %d source %s side %d"
+                          .formatted(
+                              c.get(3).asText(),
+                              c.get(4).asInt(),
+                              c.get(5).asInt(),
+                              c.get(6).asText(),
+                              c.get(7).asInt());
+                  case "remove_buff" -> "remove_buff " + c.get(3).asText();
+                  case "finish" -> "finish";
+                  default -> throw new IllegalStateException("unknown taunt call " + c);
+                });
+          }
+          expected.add(
+              "%d taunt %s forced %s duration %d falloff %d calls %s ref %s cooldown %d"
+                  .formatted(
+                      tick,
+                      e.get("unit").asText(),
+                      e.get("forced").isNull() ? null : e.get("forced").asText(),
+                      e.get("duration").asInt(),
+                      e.get("falloff").asInt(),
+                      calls,
+                      e.get("ref").isNull() ? null : e.get("ref").asText(),
+                      e.get("f1c").asInt()));
         }
         case "scheduled" ->
             expected.add(

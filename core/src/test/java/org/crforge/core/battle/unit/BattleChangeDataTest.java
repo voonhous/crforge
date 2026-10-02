@@ -7,6 +7,7 @@ import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -87,6 +88,29 @@ class BattleChangeDataTest {
     assertThat(reset.knight.getTargeting().getReference()).isNull();
     assertThat(reset.knight.getTargeting().getAttackTimerMs()).isEqualTo(300);
     assertThat(reset.knight.getTargeting().getLoadTimerMs()).isEqualTo(200);
+  }
+
+  @Test
+  @DisplayName(
+      "a walking unit without a lifetime takes a walking row with one: it keeps its hit points and"
+          + " level and its hit points drain over the new row's lifetime; a swap away from a"
+          + " lifetime is refused")
+  void aWalkingRowWithALifetime() {
+    Scene scene = new Scene("GoblinDemolisher");
+    CharacterEntity demolisher = scene.knight;
+    int level = demolisher.getPackedLevel();
+    int hitPoints = demolisher.getHitPoints().getHitPoints();
+    assertThat(demolisher.getHitPoints().getDecayStep()).isZero();
+
+    demolisher.changeData("GoblinDemolisher_kamikaze_form", true);
+
+    assertThat(demolisher.getHitPoints().getHitPoints()).isEqualTo(hitPoints);
+    assertThat(demolisher.getPackedLevel()).isEqualTo(level);
+    assertThat(demolisher.getHitPoints().getDecayStep())
+        .isEqualTo(HitPoints.decayStep(demolisher.getHitPoints().getMaximum(), 20000));
+    assertThatThrownBy(() -> demolisher.changeData("GoblinDemolisher", false))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a lifetime");
   }
 
   @Test

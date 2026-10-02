@@ -19,6 +19,7 @@ import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.Clone;
@@ -3032,15 +3033,19 @@ public class BattleWorld implements HolderPasses {
    */
   public AreaEffectEntity createAreaEffect(
       String row, int x, int y, int side, int packedLevel, String name, String how, String source) {
-    return createAreaEffect(row, x, y, side, packedLevel, name, how, source, null);
+    return createAreaEffect(row, x, y, side, packedLevel, name, how, source, null, null);
   }
 
   /**
    * Creates an area effect as {@link #createAreaEffect(String, int, int, int, int, String, String,
-   * String)} does, with a parent. A hit action that does not clone is refused on an area effect no
-   * action made: no other path that makes one is held.
+   * String)} does, with a parent and an object it follows. A hit action that does not clone, and a
+   * row that follows its parent, are refused on an area effect no action made: no other path that
+   * makes one is held. Refused too: a following row that chains another area effect, which would
+   * follow what it follows, or whose buff attracts, whose pull a moving area effect gates by an
+   * angle.
    *
    * @param parent the object it keeps as its parent, or null for none
+   * @param follow the object it follows, or null for none
    */
   private AreaEffectEntity createAreaEffect(
       String row,
@@ -3051,7 +3056,8 @@ public class BattleWorld implements HolderPasses {
       String name,
       String how,
       String source,
-      SpawnHost parent) {
+      SpawnHost parent,
+      SpawnHost follow) {
     AreaEffectData data = records.areaEffect(row);
     if (!data.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
@@ -3062,6 +3068,20 @@ public class BattleWorld implements HolderPasses {
           "the area effect "
               + row
               + " has a hit action and was not made by an action, which is not modelled");
+    }
+    if (data.followsParent() && !how.equals("action")) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " follows its parent and was not made by an action, which is not modelled");
+    }
+    if (data.followsParent()
+        && (data.spawnAreaEffectObject() != null
+            || data.buff() != null && buffData(data.buff()).attracts())) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " follows its parent and chains an area effect or pulls, which is not modelled");
     }
     if (data.buff() != null) {
       buffData(data.buff());
@@ -3080,7 +3100,7 @@ public class BattleWorld implements HolderPasses {
     }
     AreaEffectEntity areaEffect =
         new AreaEffectEntity(
-            this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()), parent);
+            this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()), parent, follow);
     holder.add(areaEffect);
     areaEffect.setName(name != null ? name : row + "_" + areaEffect.getId());
     for (WorldObserver observer : observers) {
@@ -3092,9 +3112,9 @@ public class BattleWorld implements HolderPasses {
   /**
    * Creates the area effect an action's spawn row names: at the point of the holder's owner, for
    * the source's side and at its level, re-based on the area effect's own rarity, the source kept
-   * as its parent. It is handed to the holder in the pass that ran the action, so it is admitted at
-   * that tick's closing cleanup and first updates on the next tick. The observers are told after it
-   * is created.
+   * as its parent; a row that follows its parent follows the owner. It is handed to the holder in
+   * the pass that ran the action, so it is admitted at that tick's closing cleanup and first
+   * updates on the next tick. The observers are told after it is created.
    *
    * <p>Refused rather than guessed: a source that is a clone, whose clone byte the area effect
    * would copy, which nothing the battle models reads.
@@ -3120,9 +3140,26 @@ public class BattleWorld implements HolderPasses {
             null,
             "action",
             source.name(),
-            source);
+            source,
+            records.areaEffect(row).followsParent() ? owner : null);
     for (WorldObserver observer : observers) {
       observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
+    }
+  }
+
+  /** Tells the observers a taunt's perform reached a unit. */
+  void tauntPerformed(
+      CharacterEntity unit, String action, int phase, ActionOwner instigator, WorldEntity forced) {
+    for (WorldObserver observer : observers) {
+      observer.tauntPerformed(tick, unit, action, phase, instigator, forced);
+    }
+  }
+
+  /** Tells the observers what a taunt's arming or step did. */
+  void tauntStepped(
+      CharacterEntity unit, WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
+    for (WorldObserver observer : observers) {
+      observer.tauntStepped(tick, unit, forced, durationMs, falloffMs, calls);
     }
   }
 

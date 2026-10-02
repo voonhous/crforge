@@ -838,6 +838,41 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "an area effect carries a taunt as its hit action, one hit per target with it, following its"
+          + " parent and a Filter off the Shape path; following a target, and one hit per target"
+          + " without a hit action, are listed as not modelled")
+  void aTauntingAreaEffect(@TempDir Path folder) throws IOException {
+    BattleRecords records = GameData.records();
+    AreaEffectData cancel = records.areaEffect("CancelTauntAEO");
+    assertThat(cancel.onHitAction()).isEqualTo("ResetTauntEffect");
+    assertThat(cancel.oneHitPerTarget()).isTrue();
+    assertThat(cancel.followsParent()).isTrue();
+    assertThat(cancel.unmodelledColumns()).as("its Filter among them").isEmpty();
+    assertThat(records.areaEffect("GoblinCurseBase").followsParent()).isFalse();
+    assertThat(records.areaEffect("IceSpiritsAOE_EV1").unmodelledColumns())
+        .contains("FollowBehaviour");
+
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> GameData.columns(rows, "Zap").put("OneHitPerTarget", true));
+    assertThat(new BattleRecords(tables).areaEffect("Zap").unmodelledColumns())
+        .containsExactly("OneHitPerTarget");
+  }
+
+  @Test
+  @DisplayName("a buff carries whether it locks its carrier's reference")
+  void aBuffCarriesItsTargetLock() {
+    BattleRecords records = GameData.records();
+    BuffData lock = records.buff("GoblinDemolisher_ResetTargetBuff");
+    assertThat(lock.lockTarget()).isTrue();
+    assertThat(lock.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("Rage").lockTarget()).isFalse();
+  }
+
+  @Test
   @DisplayName("a buff carries whether it makes its carrier invisible, and its heal over time")
   void aBuffCarriesItsInvisibilityAndHeal() {
     BattleRecords records = GameData.records();

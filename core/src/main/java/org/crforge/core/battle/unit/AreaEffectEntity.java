@@ -67,9 +67,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * its own side in its circle that the index finds - alive, not hidden, not untouchable, not a
  * building, no unit a Clone passes by and no clone - with itself as the cause, which clones it in
  * the tick's last pending pass. An area effect an action's spawn made keeps the action's cause as
- * its parent; its hit action may be a group of buff spawns, the Goblin Curse's, scheduled the same
- * way on every unit in its circle it reaches. When the countdown reaches 0 its life-end action is
- * scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
+ * its parent, forgotten as the parent leaves; its hit action may be a group of buff spawns, the
+ * Goblin Curse's, or a taunt, the Goblin Demolisher's, scheduled the same way on every unit in its
+ * circle it reaches, each unit once for a row that reaches each target once. One whose row follows
+ * its parent stands on the point of the object it follows first thing in each update, and its life
+ * ends as that object leaves. When the countdown reaches 0 its life-end action is scheduled on
+ * itself; it leaves at the cleanup that finds the countdown below 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -83,12 +86,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " its circle it reaches, its time capped by its own life, and the area effect its row"
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
-            + " boosting one target or lasting longer by level, a hit action but a Clone's or a"
-            + " group of buff spawns, the shape,"
-            + " the filter, the spawns, a launch from its source or spread about its point, the"
-            + " life condition, following, tags,"
+            + " boosting one target or lasting longer by level, a hit action but a Clone's, a"
+            + " group of buff spawns or a taunt, the shape, the spawns, a launch from its source"
+            + " or spread about its point, the life condition, following a target, tags,"
             + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
-            + " hit per target. An area that reaches hidden units takes, damages and buffs a hidden"
+            + " hit per target without a hit action. An area that reaches hidden units takes, damages and buffs a hidden"
             + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. The"
             + " pull of an attracting buff before the buff, and the area effect as the parent of"
             + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
@@ -105,7 +107,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " graveyard_right_side1. Created by an action's spawn at the point of the holder's"
             + " owner, for the side and at the level of its cause, the cause kept as its parent,"
             + " and a hit action that is a group of buff spawns, held by goblin_curse_knights;"
-            + " such a hit action on an area effect no action made is refused.")
+            + " such a hit action on an area effect no action made is refused. A taunt as its hit"
+            + " action and the following of its parent, held by goblin_demolisher_knight; the"
+            + " following of a moving object, one hit per target over several hits and the end"
+            + " as the followed object leaves are translated but held by no run.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -120,8 +125,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   private final int side;
 
-  @Getter private final int x;
-  @Getter private final int y;
+  /** Its point along the width; one that follows its parent moves with it at each update. */
+  @Getter private int x;
+
+  /** Its point along the length. */
+  @Getter private int y;
 
   /** Its level, packed against its own rarity. */
   @Getter private final int packedLevel;
@@ -131,9 +139,18 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /**
    * The object an action's spawn made it from, which it keeps as its parent; null for every other
-   * area effect.
+   * area effect, and once that object has left.
    */
-  @Getter private final SpawnHost parent;
+  @Getter private SpawnHost parent;
+
+  /**
+   * The object it stands on at each update, for a row that follows its parent: the owner of the
+   * holder whose action made it; null for none, and once that object has left.
+   */
+  @Getter private SpawnHost follow;
+
+  /** The ids of the objects its hit action has reached, for a row that reaches each once. */
+  private final List<Integer> reached = new ArrayList<>();
 
   /** True once the area effect its row chains has been created, on its first update. */
   private boolean chained;
@@ -163,6 +180,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * @param y its point along the length
    * @param packedLevel its level, packed against its own rarity
    * @param parent the object an action's spawn made it from, or null
+   * @param follow the object it follows, or null
    */
   AreaEffectEntity(
       BattleWorld world,
@@ -171,7 +189,8 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       int x,
       int y,
       int packedLevel,
-      SpawnHost parent) {
+      SpawnHost parent,
+      SpawnHost follow) {
     super(KIND_AREA_EFFECT);
     this.world = world;
     this.data = data;
@@ -180,6 +199,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     this.y = y;
     this.packedLevel = packedLevel;
     this.parent = parent;
+    this.follow = follow;
     this.countdown = data.lifeDurationMs();
     this.actionHolder = new ActionHolder(this, world.getHolder()::isInPendingPass);
     GridEntity view = new GridEntity();
@@ -261,6 +281,13 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    */
   @Override
   protected void postHook() {
+    // An area effect that follows stands on the followed object's point before anything else.
+    if (follow != null) {
+      x = follow.x();
+      y = follow.y();
+      owner.getOwner().setX(x);
+      owner.getOwner().setY(y);
+    }
     int life = data.lifeDurationMs();
     int before = countdown;
     int start = life - countdown;
@@ -332,6 +359,21 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     }
   }
 
+  /**
+   * An object that left the battle: a parent that leaves is forgotten, and an object it follows
+   * that leaves ends its life, so the same cleanup removes it.
+   */
+  @Override
+  protected void entityRemoved(BattleEntity removed) {
+    if (parent == removed) {
+      parent = null;
+    }
+    if (follow == removed) {
+      countdown = 0;
+      follow = null;
+    }
+  }
+
   /** The type bit of a character in the index's type mask: the query keeps characters alone. */
   private static final int CHARACTER_TYPE_MASK = 1 << ReferenceValidator.TYPE_CHARACTER;
 
@@ -374,12 +416,21 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         if (!data.hitsAir() && air || !data.hitsGround() && !air) {
           continue;
         }
-        if (target.untouchable(true) || !onHitFilter(target)) {
+        if (target.untouchable(true)) {
+          continue;
+        }
+        if (data.oneHitPerTarget() && reached.contains(target.getId())) {
+          continue;
+        }
+        if (!onHitFilter(target)) {
           continue;
         }
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         world.onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
+        if (data.oneHitPerTarget()) {
+          reached.add(target.getId());
+        }
       }
     }
     world.getIndex().release(views);
@@ -780,6 +831,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /** An area effect has no hit points, so it counts as alive. */
+  @Override
+  public ActionOwner areaEffectParent() {
+    return parent instanceof ActionOwner owner ? owner : null;
+  }
+
   @Override
   public HitPoints actionHitPoints() {
     return null;

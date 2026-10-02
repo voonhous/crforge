@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -969,7 +970,8 @@ public class CharacterEntity extends WorldEntity {
    * <p>A walking unit may take a building row without a speed that drains over a lifetime, as the
    * Moving Cannon breaks down: its movement component is freed, it counts as a building, and its
    * hit points drain over the new row's lifetime from its next hit-points visit, what the drain
-   * carried kept.
+   * carried kept. A walking unit without a lifetime may take a walking row with one, as the Goblin
+   * Demolisher becomes its kamikaze form: it keeps walking, and its hit points drain the same way.
    *
    * <p>Refused rather than guessed: any other building row, a flying row either side, any other
    * swap that builds or frees the movement component or reaches a lifetime, a different rarity or
@@ -985,7 +987,14 @@ public class CharacterEntity extends WorldEntity {
     TargetingState targeting = getTargeting();
     TargetView target = isActive(TARGETING_SLOT) ? targeting.getReference() : null;
     boolean becomesBuilding = !getData().building() && next.building();
+    boolean startsLifetime = getData().lifeTimeMs() == 0 && next.lifeTimeMs() > 0;
     swapRow(next);
+    if (startsLifetime && !becomesBuilding) {
+      // The drain from the new row's lifetime at the unchanged level, run by the hit-points visit
+      // from the next pass.
+      getHitPoints()
+          .setDecayStep(HitPoints.decayStep(getHitPoints().getMaximum(), next.lifeTimeMs()));
+    }
     if (becomesBuilding) {
       // A walking unit that takes a building row without a speed: its movement component is
       // freed, and its hit points drain over the new row's lifetime from the next hit-points
@@ -1028,6 +1037,82 @@ public class CharacterEntity extends WorldEntity {
     }
   }
 
+  /**
+   * Taunts the unit onto an object, as a taunt's perform does: the run, armed at once, which the
+   * holder lists. The perform is told to the observers first.
+   *
+   * <p>Refused rather than guessed: a building, a unit that rides on another or carries riders,
+   * whose riders the perform would taunt too, a unit in a pathfinding state, and an object to force
+   * onto that is not in the battle or flies, which a tag may count as on the ground.
+   */
+  @Override
+  public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
+    String refused = null;
+    if (getData().building()) {
+      refused = "a building, whose reach test";
+    } else if (parent != null || !riders().isEmpty()) {
+      refused = "a rider or a carrier, whose riders it would taunt too, which";
+    } else if (getView().getState() == GridEntityState.SPAWN_PATHFIND
+        || getView().getState() == GridEntityState.INGAME_PATHFIND) {
+      refused = "a pathfinding unit, which";
+    } else if (!(forced instanceof WorldEntity onto) || onto.getTargetView().air()) {
+      refused = "a flying object or one not in the battle, which";
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(
+          action.name() + " taunts " + name() + " onto " + refused + " is not modelled");
+    }
+    WorldEntity onto = (WorldEntity) forced;
+    world.tauntPerformed(this, action.name(), phase, instigator, onto);
+    TauntRun run = new TauntRun(action, this, onto);
+    run.arm();
+    return run;
+  }
+
+  /**
+   * Forces the unit's reference onto an object, as a taunt's arming does, skipping the re-check.
+   */
+  void tauntReference(WorldEntity forced) {
+    SelectionChain selection = unit.selection();
+    ReferenceSetter.setReference(
+        getTargeting(),
+        forced.getTargetView(),
+        false,
+        false,
+        true,
+        selection,
+        selection.getOutcome());
+  }
+
+  /**
+   * Gives the unit's reference up, as a taunt's end does.
+   *
+   * @param keepWindUp true to keep the wind-up as it is, as the end of its duration does
+   */
+  void tauntDrop(boolean keepWindUp) {
+    SelectionChain selection = unit.selection();
+    ReferenceSetter.setReference(
+        getTargeting(), null, false, keepWindUp, false, selection, selection.getOutcome());
+  }
+
+  /** Locks the unit's selector from its next pre-hook, for one step. */
+  void raiseLockTarget() {
+    getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.LOCK_TARGET);
+  }
+
+  /**
+   * Puts a taunt's buff on the unit, the forced object its source, at that object's level and for
+   * its side.
+   */
+  void tauntBuff(String buff, int timeMs, WorldEntity source) {
+    getBuffs().apply(world.buffData(buff), timeMs, source.packedLevel(), source, source.side());
+  }
+
+  /** Tells the observers what a taunt's arming or step did. */
+  void tauntStepped(WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
+    world.tauntStepped(this, forced, durationMs, falloffMs, calls);
+  }
+
   /** Refuses a swap whose effect is not established. */
   private void refuseSwap(UnitData next) {
     UnitData current = getData();
@@ -1040,12 +1125,23 @@ public class CharacterEntity extends WorldEntity {
             && next.building()
             && next.speed() == 0
             && next.lifeTimeMs() > 0;
+    // A walking unit may take a walking row that drains over a lifetime, as the Goblin Demolisher
+    // takes its kamikaze form.
+    boolean startsLifetime =
+        !current.building()
+            && !next.building()
+            && current.speed() != 0
+            && next.speed() != 0
+            && current.lifeTimeMs() == 0
+            && next.lifeTimeMs() > 0;
     String refused = null;
     if (next.air() || current.air() || current.building() || next.building() && !breaksDown) {
       refused = "a building or a flying row";
     } else if (!breaksDown && (current.speed() == 0) != (next.speed() == 0)) {
       refused = "a movement component built or freed";
-    } else if (!breaksDown && (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0)) {
+    } else if (!breaksDown
+        && !startsLifetime
+        && (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0)) {
       refused = "a lifetime";
     } else if (current.spawnCharacter() != null || next.spawnCharacter() != null) {
       refused = "a spawner";
