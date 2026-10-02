@@ -137,8 +137,9 @@ public final class BattleRecords {
           // hit and the damage over time; and by the pushback request.
           "DamageReduction",
           "IgnorePushBack",
-          // Read only by the apply, to keep the buff off a unit's riders, or to hand them another;
-          // a buff on a rider or on a unit that carries riders is refused as it is applied.
+          // Read only by the apply's hand-over to a parent's riders: a Clone buff is kept from
+          // them,
+          // and a buff naming another hands them that one.
           "Clone",
           "AttachedInheritAs",
           // Resolved when the tables are derived: a row that names a base already carries every
@@ -1270,6 +1271,8 @@ public final class BattleRecords {
         .aliveIfTrue(sets(row, "AliveIfTrue") ? row.string("AliveIfTrue") : null)
         .damageReduction(row.intValue("DamageReduction"))
         .ignorePushBack(row.bool("IgnorePushBack"))
+        .cloneBuff(row.bool("Clone"))
+        .attachedInheritAs(sets(row, "AttachedInheritAs") ? row.string("AttachedInheritAs") : null)
         .unmodelledColumns(unmodelled)
         .build();
   }

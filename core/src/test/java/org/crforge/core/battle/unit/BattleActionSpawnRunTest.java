@@ -387,6 +387,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * within the area effect's radius hits the Monk at 35 percent and flies back at the tower, which
  * takes a quarter of it. {@code monk_ability_musketeer} uses it against a Knight's hits, lowered
  * the same way, and a Musketeer's shots, which come back for their whole damage and kill it.
+ *
+ * <p>{@code parent_buff_goblin_giant} has a Freeze, then a Zap, land on a Goblin Giant while its
+ * Spear Goblins throw at a princess tower: the area reaches only the Giant, which hands each buff
+ * to both riders, so all three stop at their own combat gates and their instances run out on the
+ * same tick. {@code parent_buff_ram_rider_rage} has a Rage refresh its buff on a Ram every six
+ * ticks, each handed to its rider, whose throws come 17 or 18 ticks apart instead of 22. Each is
+ * held to every hand-over and the rider's instances after it.
  */
 class BattleActionSpawnRunTest {
 
@@ -558,7 +565,9 @@ class BattleActionSpawnRunTest {
         "skeleton_king_ability_no_souls",
         "skeleton_king_ability_souls",
         "goblinstein_ability_tower",
-        "goblinstein_later_plays"
+        "goblinstein_later_plays",
+        "parent_buff_goblin_giant",
+        "parent_buff_ram_rider_rage"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -857,6 +866,9 @@ class BattleActionSpawnRunTest {
     // What Goblinstein's tether did, and every card play a listener heard.
     List<String> tetherLog = new ArrayList<>();
     match.getWorld().addObserver(tetherLog(currentTick, tetherLog));
+    // Every buff a parent handed to its riders.
+    List<String> handOverLog = new ArrayList<>();
+    match.getWorld().addObserver(handOverLog(currentTick, handOverLog));
     List<String> guardLog = new ArrayList<>();
     match.getWorld().addObserver(guardLog(currentTick, guardLog));
     // Every start and step of a Boss Bandit ability's run, and every warp.
@@ -1668,6 +1680,30 @@ class BattleActionSpawnRunTest {
         .as(
             "every activation row, damage pass, hit and hit action of a tether, and every play heard")
         .containsExactlyElementsOf(expectedTetherLog(reference));
+    List<String> expectedHandOvers = new ArrayList<>();
+    for (JsonNode h : reference.path("parent_buff")) {
+      List<String> instances = new ArrayList<>();
+      for (JsonNode i : h.get("instances")) {
+        instances.add(
+            "%s %d %d %b"
+                .formatted(
+                    i.get(0).asText(), i.get(1).asInt(), i.get(2).asInt(), i.get(3).asBoolean()));
+      }
+      expectedHandOvers.add(
+          "%d handed_over %s %s %s %d %d %s %s"
+              .formatted(
+                  h.get("tick").asInt(),
+                  h.get("parent").asText(),
+                  h.get("rider").asText(),
+                  h.get("buff").asText(),
+                  h.get("time").asInt(),
+                  h.get("level").asInt(),
+                  h.get("source").isNull() ? null : h.get("source").asText(),
+                  instances));
+    }
+    assertThat(handOverLog)
+        .as("every buff a parent handed to its riders, and the rider's instances of it")
+        .containsExactlyElementsOf(expectedHandOvers);
     assertThat(guardLog)
         .as("every guard made, and every step of a guard spawn's runs")
         .containsExactlyElementsOf(expectedGuardLog(reference));
@@ -3836,6 +3872,44 @@ class BattleActionSpawnRunTest {
       @Override
       public void goblinsteinStepped(int tick, AreaEffectEntity owner, String step) {
         log.add("%d %s %s".formatted(currentTick[0], step, owner.name()));
+      }
+    };
+  }
+
+  /** Lists every buff a parent handed to its riders, in the reference's layout. */
+  private static WorldObserver handOverLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void buffHandedOver(
+          int tick,
+          WorldEntity parent,
+          WorldEntity rider,
+          BuffData buff,
+          int time,
+          int packedLevel,
+          SpawnHost source,
+          List<BuffInstance> instances,
+          Set<String> heldBefore) {
+        log.add(
+            "%d handed_over %s %s %s %d %d %s %s"
+                .formatted(
+                    currentTick[0],
+                    parent.name(),
+                    rider.name(),
+                    buff.name(),
+                    time,
+                    packedLevel,
+                    source == null ? null : source.name(),
+                    instances.stream()
+                        .map(
+                            i ->
+                                "%s %d %d %b"
+                                    .formatted(
+                                        i.getKey(),
+                                        i.getRemaining(),
+                                        i.getPackedLevel(),
+                                        heldBefore.contains(i.getKey())))
+                        .toList()));
       }
     };
   }

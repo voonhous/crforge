@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import java.util.List;
+import java.util.Set;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
@@ -1022,6 +1023,30 @@ public interface WorldObserver {
 
   /** A new buff instance was listed on an entity. */
   default void buffApplied(int tick, WorldEntity target, BuffInstance buff) {}
+
+  /**
+   * A parent that carries riders handed a buff it was given to one of them, through the rider's own
+   * apply.
+   *
+   * @param parent the parent the buff was applied to
+   * @param rider the rider it was handed to
+   * @param buff the row handed over: the buff's own, or the one it names for riders
+   * @param time the time of the parent's apply
+   * @param packedLevel the level of the parent's apply
+   * @param source what applied it to the parent, or null for nothing
+   * @param instances the rider's instances of the row after its apply
+   * @param heldBefore the keys of the instances the rider listed before its apply
+   */
+  default void buffHandedOver(
+      int tick,
+      WorldEntity parent,
+      WorldEntity rider,
+      BuffData buff,
+      int time,
+      int packedLevel,
+      SpawnHost source,
+      List<BuffInstance> instances,
+      Set<String> heldBefore) {}
 
   /**
    * A buff instance was refreshed by a re-application. The refresh keeps the instance's own source,
