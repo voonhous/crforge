@@ -428,7 +428,12 @@ public final class BattleRecords {
           "IgnoreResurrect",
           // Read only in the in-game pathfinding state, which only an ability's lane switch
           // enters, and that switch is refused.
-          "IngamePathfindSpeed");
+          "IngamePathfindSpeed",
+          "IngamePathfindVisible",
+          // Read once, outside the battle's logic, beside the deploy time's conversion for the
+          // deploy animation; the state visit's deploy step does not read it, and a guard that
+          // sets it deploys natively as the battle deploys it.
+          "DeployTimeChangesDeployAnim");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread

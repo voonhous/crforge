@@ -28,6 +28,7 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
@@ -3170,6 +3171,72 @@ public class BattleWorld implements HolderPasses {
     boolean present = !source.isLeft();
     RarityTable rarity = present ? source.getData().rarity() : RarityTable.COMMON;
     return hit.type().pipeline(hit.amount(), noDamage, present, rarity, source.getPackedLevel());
+  }
+
+  /**
+   * A guard-spawning run's start on an area effect: the guard and its run.
+   *
+   * <p>In order: the point behind the area effect's, toward its own side, by the row's distance,
+   * moved off water; the guard of the row's character created there, kept 250 inside the arena, for
+   * the area effect's side, at its level re-based on the guard's rarity; the guard's run listed on
+   * it with its tags, starting from the area effect's point; the guard's id and its registration
+   * visit at once, the guard still walking as the level setter leaves it; the facing toward the
+   * area effect's point; and its deploy, through its setter and the combat gate after it. It joins
+   * the live list at the tick's closing cleanup and is first visited on the next tick.
+   *
+   * @param areaEffect the area effect the first run started on
+   * @param action the row
+   * @param phase the pending pass the first run started in
+   */
+  void spawnGuard(AreaEffectEntity areaEffect, SpawnGuard action, int phase) {
+    SpawnGuard.Columns columns = action.getColumns();
+    UnitData row = spawnedRow(columns.spawnData());
+    if (row.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          action.name() + " makes " + row.name() + ", which starts an action, not modelled");
+    }
+    int x = areaEffect.getX();
+    int y = areaEffect.getY();
+    int sign = (areaEffect.side() & 1) == 0 ? 1 : -1;
+    int behind = y - columns.appearBehindAtDistance() * sign;
+    int packed = Relocation.relocate(grid.getWidth(), grid.getHeight(), x, behind, -1, grid::water);
+    int gx = Relocation.unpackX(packed);
+    int gy = Relocation.unpackY(packed);
+    int made = spawnCounts.merge(areaEffect.name(), 1, Integer::sum) - 1;
+    CharacterEntity guard =
+        CharacterEntity.spawned(
+            this,
+            row,
+            areaEffect.name() + "_" + made,
+            areaEffect.side(),
+            inset(gx, tileMap.width()),
+            inset(gy, tileMap.height()),
+            PackedLevel.level(PackedLevel.pack(areaEffect.getPackedLevel(), row.rarity())));
+    guard.actionHolder().list(action.guardRun(guard.guardHost(), x, y));
+    holder.addRegistered(guard);
+    for (WorldObserver observer : observers) {
+      observer.guardRegistered(tick, guard);
+    }
+    guard.faceToward(x, y);
+    guard.deployAfterRegistration();
+    for (WorldObserver observer : observers) {
+      observer.guardStarted(tick, areaEffect, action.name(), phase, guard, x, behind, gx, gy);
+    }
+  }
+
+  /** A guard-spawning run's first step on an area effect, which finishes it. */
+  void guardFirstStepped(AreaEffectEntity areaEffect, SpawnGuard action) {
+    for (WorldObserver observer : observers) {
+      observer.guardFirstStepped(tick, areaEffect, action.name());
+    }
+  }
+
+  /** A step of a guard's run. */
+  void guardStepped(
+      CharacterEntity guard, boolean charging, long tags, boolean done, List<String> calls) {
+    for (WorldObserver observer : observers) {
+      observer.guardStepped(tick, guard, charging, tags, done, calls);
+    }
   }
 
   /**

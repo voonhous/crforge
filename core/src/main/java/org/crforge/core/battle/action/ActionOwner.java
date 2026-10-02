@@ -142,6 +142,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What a guard-spawning run asks of the battle around the owner. Only an area effect runs one.
+   *
+   * @param action the row
+   * @return the owner's answers
+   */
+  default SpawnGuard.Maker guardMaker(SpawnGuard action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than an area effect, not modelled");
+  }
+
+  /**
    * What a target indicator attack's run asks of the battle around the owner. Only a character runs
    * one.
    *

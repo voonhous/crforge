@@ -28,6 +28,7 @@ import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
@@ -255,6 +256,69 @@ class ActionRowsTest {
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessageContaining(change.getKey());
     }
+  }
+
+  @Test
+  @DisplayName(
+      "the Little Prince's guard spawn reads its guard, where it appears and charges to, its push"
+          + " and damage, its filter, and the tags of its run on the guard")
+  void aGuardSpawnIsBuilt() {
+    BattleAction built = GameData.actions().build("Spawn_ChampionGuardCharge", INERT_BINDING);
+    assertThat(built).isInstanceOf(SpawnGuard.class);
+    assertThat(built.delayMs()).isEqualTo(850);
+    SpawnGuard.Columns columns = ((SpawnGuard) built).getColumns();
+    assertThat(columns.spawnData()).isEqualTo("ChampionGuard");
+    assertThat(columns.appearBehindAtDistance()).isEqualTo(2000);
+    assertThat(columns.targetRadius()).isEqualTo(4000);
+    assertThat(columns.pushBackStrength()).isEqualTo(2500);
+    assertThat(columns.pushBackRadius()).isEqualTo(2500);
+    assertThat(columns.continuousPushBack()).isTrue();
+    assertThat(columns.distanceProportionalPush()).isTrue();
+    assertThat(columns.pushBackDamage()).isEqualTo(100);
+    assertThat(columns.hitFilter()).isNotNull();
+    assertThat(columns.guardTags())
+        .isEqualTo(GameData.actions().tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"));
+    assertThat(columns.shadowTag()).isEqualTo(GameData.actions().tagMask("NO_SHADOW"));
+  }
+
+  @Test
+  @DisplayName(
+      "a guard spawn that sets tags, is a singleton, chains a next action, has a gate or a phase of"
+          + " its own, has no filter or whose target radius is left out takes the default 1000")
+  void aGuardSpawnIsRefused(@TempDir Path folder) throws IOException {
+    String row = "Spawn_ChampionGuardCharge";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "GameTagsToSet", f -> f.put("GameTagsToSet", "NO_MOVE"),
+            "Singleton", f -> f.put("Singleton", true),
+            "NextAction", f -> f.putObject("NextAction").put("action", "LittlePrinceWaitGuard"),
+            "ExecuteIfTrue", f -> f.put("ExecuteIfTrue", "1"),
+            "UpdatePhase", f -> f.put("UpdatePhase", 2),
+            "a filter", f -> f.remove("HitFilter"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+    Path dir = folder.resolve("default_radius");
+    Files.createDirectories(dir);
+    GameTables altered =
+        GameData.altered(
+            dir,
+            "actions",
+            rows -> ((ObjectNode) rows.get(row).get("fields")).remove("TargetRadius"));
+    SpawnGuard guard =
+        (SpawnGuard) new ActionRows(altered, new BattleRecords(altered)).build(row, INERT_BINDING);
+    assertThat(guard.getColumns().targetRadius()).isEqualTo(1000);
   }
 
   @Test
@@ -724,12 +788,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 707 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 708 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(707);
+    assertThat(built).as("rows built").isEqualTo(708);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 112, "column", 115, "spawn type", 12));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 111, "column", 115, "spawn type", 12));
   }
 }
