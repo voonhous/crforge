@@ -27,7 +27,9 @@ import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntity;
@@ -151,6 +153,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * towers. {@code match_building_cards} plays building cards from the hand: a Cannon snapped to its
  * tile corner, a Tombstone moved off the Cannon's tiles, a Cannon pulled back from across the river
  * and an Elixir Collector that pays its king, each living as the same building placed directly.
+ * {@code mirror_knight} plays a Knight and then the Mirror, which repeats it one level up for one
+ * elixir more and goes to the back of the queue itself. {@code mirror_fireball} does the same with
+ * a Fireball, its first Mirror refused with 0xd, the elixir short of the item's cost. Each is held
+ * to every Mirror item - the card it repeats, its level and its cost - and to the last card kept.
  *
  * <p>{@code electro_wizard_knights} and {@code ice_wizard_knights} play a wizard onto two Knights:
  * the card names no unit, so it is cast as a spell, its area effect zapping or chilling the Knights
@@ -402,6 +408,8 @@ class BattleActionSpawnRunTest {
         "match_overtime_draw",
         "match_elixir_sources",
         "match_building_cards",
+        "mirror_knight",
+        "mirror_fireball",
         "electro_wizard_knights",
         "ice_wizard_knights",
         "royal_giant_tower",
@@ -1066,6 +1074,7 @@ class BattleActionSpawnRunTest {
     if (ladder != null) {
       assertPlays(match, reference);
       assertEnd(match, ladder, reference.get("match"));
+      assertMirror(match, ladder, reference);
       List<String> expectedKills = new ArrayList<>();
       List<String> expectedDrains = new ArrayList<>();
       List<String> expectedElixir = new ArrayList<>();
@@ -4028,6 +4037,69 @@ class BattleActionSpawnRunTest {
     assertThat(match.getBattle().getMode().isOver()).as("stopped").isTrue();
     match.getBattle().step();
     assertThat(match.getBattle().getTick()).as("a stopped battle runs no step").isEqualTo(stopped);
+  }
+
+  /**
+   * Every Mirror item a play carried: the card it repeats, the Mirror's deck index, its level and
+   * the item's, and the item's cost; the level each repeated play ran at, and the last card a side
+   * keeps after its final play.
+   */
+  private static void assertMirror(
+      Standard1v1Battle match, LadderMatch ladder, JsonNode reference) {
+    Map<String, Standard1v1Battle.Play> plays = new HashMap<>();
+    for (Standard1v1Battle.Play play : match.getPlays()) {
+      plays.put(play.name(), play);
+    }
+    Map<Integer, String> lastKept = new HashMap<>();
+    for (JsonNode e : reference.path("mirror")) {
+      Standard1v1Battle.Play play = plays.get(e.get("command").asText());
+      assertThat(play).as("the Mirror play %s", e.get("command").asText()).isNotNull();
+      MirrorItem item = play.mirror();
+      switch (e.get("event").asText()) {
+        case "item" -> {
+          assertThat(item).as("%s carries a Mirror item", play.name()).isNotNull();
+          assertThat(item.repeats() == null ? null : item.repeats().name())
+              .as("%s: the card repeated", play.name())
+              .isEqualTo(e.get("repeats").asText(null))
+              .isEqualTo(e.get("source").asText(null));
+          assertThat(item.index())
+              .as("%s: the Mirror's index", play.name())
+              .isEqualTo(e.get("index").asInt());
+          assertThat(item.mirrorLevelField())
+              .as("%s: the Mirror's level", play.name())
+              .isEqualTo(e.get("mirror_level").asInt());
+          assertThat(item.levelField())
+              .as("%s: the item's level", play.name())
+              .isEqualTo(e.get("item_level").asInt());
+          assertThat(item.cost())
+              .as("%s: the item's cost", play.name())
+              .isEqualTo(e.get("cost").asInt());
+        }
+        case "refused" -> {
+          assertThat(play.matchCode())
+              .as("%s: the code", play.name())
+              .isEqualTo(e.get("code").asInt());
+          assertThat(item.cost()).as("%s: the cost", play.name()).isEqualTo(e.get("cost").asInt());
+        }
+        case "play" -> {
+          assertThat(item.level())
+              .as("%s: the level played", play.name())
+              .isEqualTo(e.get("level").asInt());
+          assertThat(item.cost()).as("%s: the cost", play.name()).isEqualTo(e.get("cost").asInt());
+          lastKept.put(e.get("side").asInt(), e.get("last_item").asText(null));
+        }
+        default -> throw new IllegalArgumentException("a Mirror log entry " + e);
+      }
+    }
+    // No run plays again after its last Mirror, so the card a side keeps at the end is the one its
+    // last Mirror play left.
+    lastKept.forEach(
+        (side, card) -> {
+          MatchCard last = ladder.side(side).lastPlayed();
+          assertThat(last == null ? null : last.name())
+              .as("side %d's last card", side)
+              .isEqualTo(card);
+        });
   }
 
   /** Every play refused by a match's gate with the reference's code, and every other let on. */

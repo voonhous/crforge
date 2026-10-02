@@ -52,9 +52,9 @@ public final class BattleRecords {
   private static final List<String> SECTION_TYPES = List.of("Normal", "Overtime", "BonusTime");
 
   /**
-   * The columns of a spell card the cast does not model yet: a Mirror, a first projectile of its
-   * own, a spell deployed as a thrown projectile, and the play variants no reference holds. A spell
-   * that sets one is refused.
+   * The columns of a spell card the cast does not model yet: a Mirror, which a match plays as the
+   * card it repeats instead, a first projectile of its own, a spell deployed as a thrown
+   * projectile, and the play variants no reference holds. A spell that sets one is refused.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
       List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");

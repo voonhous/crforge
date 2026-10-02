@@ -35,6 +35,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * or casts takes its cost and moves the card to the back of the queue before its units are created
  * or its spell cast.
  *
+ * <p>A Mirror plays its side's last card again. Its play carries an item the player's client builds
+ * from the copy of the last card the king keeps: that card, one level above the Mirror's, for the
+ * Mirror's cost plus the card's, never more than the most elixir there can be. The gates read the
+ * Mirror's own hand slot and the item's cost. The card is then placed or cast as itself, at the
+ * item's level; the play takes the item's cost, starts the card's production stop, and moves the
+ * Mirror to the back of the queue. The last card stays the one the Mirror repeated. A Mirror with
+ * nothing to repeat finds no position and is refused with 0x17, nothing taken.
+ *
  * <p>The match is decided when a king has fallen, when overtime sees a crown, or when the time is
  * up. It is asked at the head of each step and after the entity tick, and the first time it holds
  * the match ends: the timeline freezes, the winner is the side with more crowns, and the end timer
@@ -66,11 +74,19 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " timers held and the hits refused from the end; by match_overtime_tiebreak and"
             + " match_overtime_draw: the tiebreaker's steps, its idle window, the drain and its"
             + " steps, its end by a fallen tower and by equal towers, the winner and the draw; by"
-            + " match_elixir_sources: the kings' elixir a collector and a death pay into."
+            + " match_elixir_sources: the kings' elixir a collector and a death pay into; by"
+            + " mirror_knight and mirror_fireball: the Mirror's item, its gates, its spend and its"
+            + " cycle, the card repeated one level up, and the last card kept."
             + " Held by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's"
-            + " kills and the update it runs. Not modelled, and refused: a projectile, an area"
-            + " effect or an entity without hit points the clearing reaches, which the holder"
-            + " removes at once; the Mirror. Not carried: the flag set when a fallen king's two"
+            + " kills and the update it runs; by BattleMirrorTest alone: a Mirror after a Mirror"
+            + " and a Mirror with nothing to repeat. Not held apart: the last card and the copy a"
+            + " Mirror reads, which differ only in a tick a play of its side ran, a play the Mirror"
+            + " refuses. Not modelled, and refused: a projectile, an area effect or an entity"
+            + " without hit points the clearing reaches, which the holder removes at once; a"
+            + " Mirror of a champion. Unreachable: an item's cost held to the most elixir, which no"
+            + " shipped card reaches, and a source played as a variant, whose play is refused, or"
+            + " evolved, which a match does not model. Not carried: the flag"
+            + " set when a fallen king's two"
             + " towers stand whole, whose readers are not established.")
 public final class LadderMatch implements BattleMode {
 
@@ -92,6 +108,12 @@ public final class LadderMatch implements BattleMode {
   /** A refused play: the whole elixir does not cover the card's cost. */
   public static final int NOT_ENOUGH_ELIXIR = 0xd;
 
+  /** The global that sets how many levels above its own a Mirror plays its card. */
+  private static final String MIRROR_LEVEL_OFFSET = "MIRROR_LEVEL_OFFSET";
+
+  /** The width of a card item's level field, which a Mirror's level must fit in. */
+  private static final int LEVEL_FIELD_BITS = 7;
+
   /** The tiebreaker clears the field on a step whose time before it is at most this. */
   private static final int CLEARING_UNTIL_MS = 1450;
 
@@ -103,6 +125,9 @@ public final class LadderMatch implements BattleMode {
   @Getter private final Timeline timeline;
 
   private final int maxMana;
+
+  /** How many levels above its own a Mirror plays its card. */
+  private final int mirrorLevelOffset;
 
   private final List<MatchSide> sides = new ArrayList<>();
 
@@ -150,6 +175,7 @@ public final class LadderMatch implements BattleMode {
     this.world = world;
     this.timeline = new Timeline(records.gameModeTimeline(GAME_MODE));
     this.maxMana = records.globalNumber("MAX_MANA");
+    this.mirrorLevelOffset = records.globalNumber(MIRROR_LEVEL_OFFSET);
     this.endDelayMs = records.endScreenDelayMs();
     this.arenaLength = world.getTileMap().height() * TileMap.CELL_UNITS;
     for (int side = 0; side < 2; side++) {
@@ -562,13 +588,29 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * The match's gates for a play, in order: the king alive, the card in the hand, the elixir.
+   * The match's gates for a play of a card, its cost the card's own. A Mirror's play is gated on
+   * its item's cost instead.
    *
    * @param side the playing side
    * @param index the card's deck index
    * @return 0 when the play may go on, else the code it is refused with
+   * @see #gate(int, int, int)
    */
   public int gate(int side, int index) {
+    MatchCard card = sides.get(side).deck().get(index);
+    checkArgument(!card.mirror(), () -> "a Mirror's play is gated on its item's cost");
+    return gate(side, index, card.cost());
+  }
+
+  /**
+   * The match's gates for a play, in order: the king alive, the card in the hand, the elixir.
+   *
+   * @param side the playing side
+   * @param index the card's deck index
+   * @param cost the cost the elixir must cover: the card's, or a Mirror item's
+   * @return 0 when the play may go on, else the code it is refused with
+   */
+  public int gate(int side, int index, int cost) {
     MatchSide matchSide = sides.get(side);
     if (decided()) {
       return OVER;
@@ -580,14 +622,42 @@ public final class LadderMatch implements BattleMode {
     if (slot < 0 || slot >= Hand.SLOTS) {
       return NOT_IN_HAND;
     }
-    MatchCard card = matchSide.deck().get(index);
-    if (card.mirror()) {
-      throw new UnsupportedOperationException("the Mirror, which plays the last card again");
-    }
-    if (matchSide.wholeElixir() < card.cost()) {
+    if (matchSide.wholeElixir() < cost) {
       return NOT_ENOUGH_ELIXIR;
     }
     return 0;
+  }
+
+  /**
+   * The item a Mirror's play carries, as the player's client builds it from the king's copy of the
+   * side's last card: that card, at the Mirror's level field plus the level offset, floored at 0,
+   * for the Mirror's cost plus the card's, at most the most elixir there can be. With nothing to
+   * repeat the item is the Mirror's own, at its level and its cost.
+   *
+   * @param side the playing side
+   * @param index the Mirror's deck index
+   * @param level the level the Mirror is played at, counted from 1
+   */
+  public MirrorItem mirrorItem(int side, int index, int level) {
+    MatchSide matchSide = sides.get(side);
+    MatchCard mirror = matchSide.deck().get(index);
+    checkArgument(mirror.mirror(), () -> mirror.name() + " is not a Mirror");
+    int mirrorLevelField = level - 1;
+    MatchCard source = matchSide.lastPlayedCopy();
+    if (source == null) {
+      return new MirrorItem(index, null, mirrorLevelField, mirrorLevelField, mirror.cost());
+    }
+    // The level is not capped at the card's last: a level past it reads past its level tables.
+    int levelField = Math.max(mirrorLevelField + mirrorLevelOffset, 0);
+    checkArgument(
+        levelField < 1 << LEVEL_FIELD_BITS,
+        () -> "a Mirror's level past its item's level field: " + levelField);
+    return new MirrorItem(
+        index,
+        source,
+        mirrorLevelField,
+        levelField,
+        Math.min(mirror.cost() + source.cost(), maxMana));
   }
 
   /**
@@ -598,5 +668,17 @@ public final class LadderMatch implements BattleMode {
    */
   public void play(int side, int index) {
     sides.get(side).play(index);
+  }
+
+  /**
+   * A Mirror's play that passed the gates and was placed or cast: the item's cost taken and the
+   * Mirror cycled. The side's last card stays the one it repeated.
+   *
+   * @param side the playing side
+   * @param item the Mirror's item, which repeats a card
+   */
+  public void playMirror(int side, MirrorItem item) {
+    checkArgument(item.repeats() != null, () -> "a Mirror with nothing to repeat is not played");
+    sides.get(side).playMirror(item);
   }
 }
