@@ -79,8 +79,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * Goblin Curse's, or a taunt, the Goblin Demolisher's, scheduled the same way on every unit in its
  * circle it reaches, each unit once for a row that reaches each target once. One whose row follows
  * its parent stands on the point of the object it follows first thing in each update, and its life
- * ends as that object leaves. When the countdown reaches 0 its life-end action is scheduled on
- * itself; it leaves at the cleanup that finds the countdown below 1.
+ * ends as that object leaves, unless its row stays after its parent dies: it then stands on its
+ * last point. When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at
+ * the cleanup that finds the countdown below 1.
+ *
+ * <p>A row with a spawner, created by an ability, makes its characters about its point from its
+ * update, after the counters and the radius: one each spawn interval after the initial delay,
+ * counted on its row's lifetime, in directions shuffled once by the battle's random source, each
+ * placed through the battle; an ability that counts souls gives it a lifetime of its own.
  *
  * <p>Its holder may run a laser ball, Dark Magic's, whose run asks the area effect for the objects
  * around its point, testing buildings by their squares, and schedules what it picks on each of
@@ -103,12 +109,23 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
             + " boosting one target or lasting longer by level, a hit action but a Clone's, a"
-            + " group of buff spawns or a taunt, the shape, the spawns, a launch from its source"
+            + " group of buff spawns or a taunt, the shape, a launch from its source"
             + " or spread about its point, the life condition, following a target, tags, a"
             + " lifetime that grows by level, the push's floor and gate lift and one hit per"
             + " target without a hit action. Created by a unit's ability at the unit, the unit its"
             + " parent and the object it follows, and the deflection radius it measures"
-            + " projectiles against, held by monk_ability_tower and monk_ability_musketeer. An area that reaches hidden units takes, damages and buffs a hidden"
+            + " projectiles against, held by monk_ability_tower and monk_ability_musketeer. A"
+            + " lifetime an ability gives it, on which its radius and its spawner's count run"
+            + " while its hit schedule and its spawner's clock keep its row's, and its spawner:"
+            + " the counts, the order shuffled by the battle's random source, the distance drawn,"
+            + " the relocation, the standing test and the retries, each character on its side at"
+            + " its level, deploying and a clone, held by skeleton_king_ability_no_souls and"
+            + " skeleton_king_ability_souls; a building over the point by BattleSkeletonKingTest;"
+            + " staying on its last point as the object it follows leaves, by"
+            + " BattleSkeletonKingTest; its age on that lifetime, which no row with a source clock"
+            + " reaches, and a limit on its spawns, which no row sets, by no run. A spawner made"
+            + " by anything but an ability, or turning its directions by a fixed step, is"
+            + " refused. An area that reaches hidden units takes, damages and buffs a hidden"
             + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. The"
             + " pull of an attracting buff before the buff, and the area effect as the parent of"
             + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
@@ -167,6 +184,18 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /** What is left of its life, in milliseconds; it leaves once this is below 1. */
   @Getter private int countdown;
+
+  /**
+   * The lifetime an ability gave it in place of its row's, in milliseconds, or -1 for none. Its hit
+   * schedule and its spawner's clock still run on the row's lifetime.
+   */
+  @Getter private int lifetimeOverride = -1;
+
+  /**
+   * The order its spawner takes the directions in, shuffled by the battle's random source on its
+   * first update with a spawn due in its life; null before.
+   */
+  private int[] spawnOrder;
 
   /**
    * The object an action's spawn made it from, which it keeps as its parent; null for every other
@@ -316,6 +345,22 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
+   * Gives it a lifetime of its own in place of its row's, as an ability that counts souls does: its
+   * countdown starts again from it.
+   *
+   * @param lifetimeMs the lifetime, in milliseconds
+   */
+  void overrideLifetime(int lifetimeMs) {
+    lifetimeOverride = lifetimeMs;
+    countdown = lifetimeMs;
+  }
+
+  /** Its lifetime: the one an ability gave it, or its row's. */
+  private int lifetime() {
+    return lifetimeOverride >= 0 ? lifetimeOverride : data.lifeDurationMs();
+  }
+
+  /**
    * As it is admitted, its row's starting action is scheduled on itself, itself the cause. A signal
    * whose maker left the battle before it was admitted would be destroyed unread, which is refused.
    */
@@ -375,7 +420,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       bound = 0;
     }
     int hits = hit - bound;
-    int radius = radiusNow(life);
+    int radius = radiusNow(lifetime());
     int damage =
         LevelScaling.scale(
             ScalingGlobals.standard(),
@@ -388,6 +433,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       dealt.add(damage);
     }
     world.areaEffectUpdated(this, before, countdown, hits, radius, dealt);
+    if (data.spawnCharacter() != null) {
+      spawn(start, end, radius);
+    }
     if (!chained && data.spawnAreaEffectObject() != null) {
       chained = true;
       world.createAreaEffect(
@@ -429,7 +477,8 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /**
    * An object that left the battle: a parent that leaves is forgotten, and an object it follows
-   * that leaves ends its life, so the same cleanup removes it.
+   * that leaves ends its life, so the same cleanup removes it, unless its row stays after its
+   * parent dies: it then stands on its last point for the rest of its life.
    */
   @Override
   protected void entityRemoved(BattleEntity removed) {
@@ -437,8 +486,48 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       parent = null;
     }
     if (follow == removed) {
-      countdown = 0;
+      if (!data.stayAfterParentDies()) {
+        countdown = 0;
+      }
       follow = null;
+    }
+  }
+
+  /**
+   * The spawner, after the update's counters and radius: the characters due between the two elapsed
+   * times of the step, each SpawnInterval after the SpawnInitialDelay, both elapsed times on the
+   * row's lifetime, at most SpawnMaxCount. The directions are shared out over the spawns its
+   * lifetime - an ability's, when it gave one - holds after the delay; their order is shuffled on
+   * the first update with at least one in its life, and spawn k takes the direction at k modulo
+   * that count. Every spawn of one update takes the direction of the first.
+   *
+   * @param before the elapsed time at the start of the step
+   * @param after the elapsed time at its end
+   * @param radius the radius of its hits now, within which the characters are placed
+   */
+  private void spawn(int before, int after, int radius) {
+    int delay = data.spawnInitialDelayMs();
+    int interval = data.spawnIntervalMs();
+    int top = data.spawnMaxCount();
+    int done = Math.max(0, (before - delay) / interval);
+    int due = Math.max(0, (after - delay) / interval);
+    if (top > 0) {
+      done = Math.min(top, done);
+      due = Math.min(top, due);
+    }
+    int total = (lifetime() - delay) / interval;
+    if (top != 0) {
+      total = Math.min(top, total);
+    }
+    if (total < 1) {
+      return;
+    }
+    if (spawnOrder == null) {
+      spawnOrder = world.spawnOrder(this, total);
+    }
+    for (int i = 0; i < due - done; i++) {
+      int angle = spawnOrder[done % total] * 360 / total;
+      world.areaSpawn(this, angle, radius);
     }
   }
 
@@ -722,11 +811,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Its age in milliseconds: its lifetime less the countdown as its last update left it, so 0
-   * before its first update and 50 more after each.
+   * Its age in milliseconds: its lifetime - the one an ability gave it, or its row's - less the
+   * countdown as its last update left it, so 0 before its first update and 50 more after each.
    */
   int age() {
-    return data.lifeDurationMs() - countdown;
+    return lifetime() - countdown;
   }
 
   /**
@@ -769,7 +858,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * projectiles, the radius of its hits as it stands now; 0 for any other.
    */
   public int deflectRadius() {
-    return data.deflectsProjectiles() ? radiusNow(data.lifeDurationMs()) : 0;
+    return data.deflectsProjectiles() ? radiusNow(lifetime()) : 0;
   }
 
   private int radiusNow(int life) {

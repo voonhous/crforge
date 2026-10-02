@@ -224,8 +224,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " area effect that follows it and deflects enemy projectiles, and its follow-up"
             + " state, the targeting component off with the reference kept and the ability's"
             + " tags on from the next tick, held by monk_ability_tower and monk_ability_musketeer;"
-            + " the tags and the refused push by BattleMonkTest; an area object that counts the"
-            + " souls it resurrects is refused."
+            + " the tags and the refused push by BattleMonkTest. The Skeleton King's souls: one"
+            + " for each death the death slot's notice tells it of, of either side, not a clone,"
+            + " a building or a row that ignores resurrection, wherever it falls, spent with its"
+            + " area effect's lifetime as the ability fires, held by"
+            + " skeleton_king_ability_no_souls and skeleton_king_ability_souls; a King no"
+            + " controller follows collecting none, held by tombstone_death_hook and"
+            + " tombstone_crazy_life; the cap and the deaths that count none by"
+            + " BattleSkeletonKingTest; a clone of a King, which collects none, by no run."
             + " Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding before its first hit,"
             + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
@@ -863,6 +869,12 @@ public class CharacterEntity extends WorldEntity {
   @Getter private boolean clone;
 
   /**
+   * The souls the unit has collected for its ability's area effect: one for each death it may
+   * count, spent and cleared as the ability fires.
+   */
+  @Getter private int souls;
+
+  /**
    * The play that made the unit, by its king's count of card plays before it; -1 for a unit no card
    * play of a match made. A champion's controller follows the copies of its champion one play made,
    * and an ability command finds a copy by it.
@@ -890,6 +902,7 @@ public class CharacterEntity extends WorldEntity {
               + " which is not modelled");
     }
     clone = true;
+    getView().setClone(true);
     HitPoints hp = getHitPoints();
     if (hp == null) {
       return;
@@ -2543,8 +2556,8 @@ public class CharacterEntity extends WorldEntity {
    * ability, is not a champion's clone, can act - its targeting component on - is in none of the
    * states from dashing to the follow-up's, carries neither the postponing nor the disabling tag,
    * and the ability does something: with every other effect refused as it is requested, it buffs
-   * the unit, runs an activation action, switches lanes or leaves a character behind, or it only
-   * dashes and the unit's reference lies within its dash range.
+   * the unit, creates an area effect, runs an activation action, switches lanes or leaves a
+   * character behind, or it only dashes and the unit's reference lies within its dash range.
    */
   private boolean abilityGate() {
     AbilityData ability = getData().ability();
@@ -2560,6 +2573,7 @@ public class CharacterEntity extends WorldEntity {
       return false;
     }
     if (ability.buff() != null
+        || ability.areaEffectObject() != null
         || ability.onActivationAction() != null
         || ability.switchLanes()
         || ability.activationSpawnCharacter() != null) {
@@ -2641,8 +2655,9 @@ public class CharacterEntity extends WorldEntity {
    * to act; its activation action, scheduled on the unit, the unit as its cause, which from the
    * post-hooks waits for the phase-3 pending pass; its buff, applied to the unit itself for its
    * time, at the unit's level, the unit its parent and its source; its lane switch, which ends the
-   * cast; the character it leaves on the unit's spot; the area effect it creates at the unit; then
-   * its follow-up state, which ends the cast too. Its other effects are refused as it is requested.
+   * cast; the character it leaves on the unit's spot; the area effect it creates at the unit, given
+   * the lifetime its souls buy for an ability that collects them; then its follow-up state, which
+   * ends the cast too. Its other effects are refused as it is requested.
    *
    * <p>It runs inside the state visit, after the cast's two countdowns step and before the cast's
    * end is tested, so the rest of the visit sees the state it leaves: a unit it took out of the
@@ -2677,11 +2692,59 @@ public class CharacterEntity extends WorldEntity {
       world.activationSpawn(this, ability.activationSpawnCharacter());
     }
     if (ability.areaEffectObject() != null) {
-      world.abilityAreaEffect(this, ability.areaEffectObject());
+      AreaEffectEntity areaEffect = world.abilityAreaEffect(this, ability.areaEffectObject());
+      if (ability.resurrectBaseCount() >= 1) {
+        spendSouls(ability, areaEffect);
+      }
     }
     if (ability.abilityStateDurationMs() >= 1) {
       enterFollowUp();
     }
+  }
+
+  /**
+   * The souls an ability that collects them spends on the area effect it created: the area effect
+   * makes ResurrectBaseCount characters and one more for each soul, at most SpawnLimit, so its
+   * lifetime is one SpawnInterval for each after the first and its SpawnInitialDelay; the souls are
+   * cleared.
+   */
+  private void spendSouls(AbilityData ability, AreaEffectEntity areaEffect) {
+    int count = Math.min(souls + ability.resurrectBaseCount(), ability.spawnLimit());
+    AreaEffectData row = areaEffect.getData();
+    int lifetime = row.spawnIntervalMs() * (count - 1) + row.spawnInitialDelayMs();
+    areaEffect.overrideLifetime(lifetime);
+    world.soulsSpent(this, areaEffect, souls, count, lifetime);
+    souls = 0;
+  }
+
+  /**
+   * The soul count, as the death notice tells the unit of a death. It counts one for a unit whose
+   * ability collects souls - ResurrectBaseCount set - that is not a clone and is the copy a
+   * champion controller of its side follows, for the death of a unit of its own side under
+   * ResurrectOwnTroops or of the other side under ResurrectEnemies, that does not ignore
+   * resurrection and is not a building, while the base count and its souls stay below SpawnLimit.
+   * Its own death counts too, as it dies.
+   *
+   * @param dying the object dying
+   */
+  void countSoul(WorldEntity dying) {
+    AbilityData ability = getData().ability();
+    if (ability == null || ability.resurrectBaseCount() <= 0 || clone) {
+      return;
+    }
+    if (!world.followedByController(this)) {
+      return;
+    }
+    boolean sameTeam = (dying.side() & 1) == (side() & 1);
+    boolean eligible = sameTeam ? ability.resurrectOwnTroops() : ability.resurrectEnemies();
+    if (!eligible
+        || dying.getData().ignoreResurrect()
+        || dying.getTargetView().building()
+        || ability.resurrectBaseCount() + souls >= ability.spawnLimit()) {
+      return;
+    }
+    souls++;
+    world.soulCounted(this, dying, souls);
   }
 
   /**

@@ -49,6 +49,18 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     object's point at each update
  * @param deflectsProjectiles true when the enemy projectiles that fly within its radius are sent
  *     back at their source, its parent taking their damage
+ * @param spawnCharacter the row of the characters it makes about its point over its life, or null
+ *     for none
+ * @param spawnIntervalMs the time between two of them
+ * @param spawnInitialDelayMs how far into its life the first comes, less one interval
+ * @param spawnTimeMs how long each deploys
+ * @param spawnMaxCount the most it makes; 0 for no limit
+ * @param spawnMinRadius the least distance from its point at which one is placed
+ * @param spawnRandomizeSequence true when the directions they are placed in are shuffled once by
+ *     the battle's random source; false to turn them by a fixed step, which is not modelled
+ * @param spawnClones true when each it makes is a clone
+ * @param stayAfterParentDies true when it stays, standing on its last point, as the object it
+ *     follows leaves; false to end with it
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)
@@ -86,6 +98,15 @@ public record AreaEffectData(
     boolean oneHitPerTarget,
     boolean followsParent,
     boolean deflectsProjectiles,
+    String spawnCharacter,
+    int spawnIntervalMs,
+    int spawnInitialDelayMs,
+    int spawnTimeMs,
+    int spawnMaxCount,
+    int spawnMinRadius,
+    boolean spawnRandomizeSequence,
+    boolean spawnClones,
+    boolean stayAfterParentDies,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

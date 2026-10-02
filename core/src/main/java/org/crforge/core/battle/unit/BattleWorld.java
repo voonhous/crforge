@@ -71,6 +71,7 @@ import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
+import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.grid.FootprintOverlay;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
@@ -2925,6 +2926,53 @@ public class BattleWorld implements HolderPasses {
     deathDamage(dying, data);
     deathSpawn(dying, data);
     deathProjectiles(dying, data);
+    deathNotice(dying);
+  }
+
+  /**
+   * The death slot's notice, after its projectiles and with the dying object's hit points already
+   * at 0: for a dying character that is not a clone, every character of the live list, in its order
+   * and the dying one included, is told of the death and may count a soul for it. No position and
+   * no clock is read: a death anywhere on the arena counts, as its death slot runs.
+   *
+   * @param dying the object dying
+   */
+  private void deathNotice(WorldEntity dying) {
+    if (dying instanceof CharacterEntity unit && unit.isClone()) {
+      return;
+    }
+    for (BattleEntity entity : new ArrayList<>(holder.entities())) {
+      if (entity instanceof CharacterEntity receiver) {
+        receiver.countSoul(dying);
+      }
+    }
+  }
+
+  /**
+   * Whether one of the champion controllers of a unit's side follows it: in a match, the copy its
+   * player's ability command reaches; outside one, no unit.
+   *
+   * @param unit the unit
+   */
+  boolean followedByController(CharacterEntity unit) {
+    TowerEntity king = kingTower(unit.side());
+    if (king == null) {
+      return false;
+    }
+    for (int n = 1; n <= 2; n++) {
+      ChampionController slot = king.championSlot(n);
+      if (slot != null && slot.follows(unit)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Tells the observers a unit counted a soul for a death. */
+  void soulCounted(CharacterEntity unit, WorldEntity dying, int souls) {
+    for (WorldObserver observer : observers) {
+      observer.soulCounted(tick, unit, dying, souls);
+    }
   }
 
   /**
@@ -3834,10 +3882,11 @@ public class BattleWorld implements HolderPasses {
    *
    * @param unit the unit whose ability fired
    * @param row the area effect's row
+   * @return the area effect
    */
-  void abilityAreaEffect(CharacterEntity unit, String row) {
+  AreaEffectEntity abilityAreaEffect(CharacterEntity unit, String row) {
     AreaEffectData data = records.areaEffect(row);
-    createAreaEffect(
+    return createAreaEffect(
         row,
         unit.getView().getX(),
         unit.getView().getY(),
@@ -3848,6 +3897,154 @@ public class BattleWorld implements HolderPasses {
         unit.name(),
         unit,
         data.followsParent() ? unit : null);
+  }
+
+  /**
+   * Tells the observers a unit's ability spent its souls on its area effect, whose lifetime they
+   * set.
+   */
+  void soulsSpent(
+      CharacterEntity unit, AreaEffectEntity areaEffect, int souls, int count, int lifetimeMs) {
+    for (WorldObserver observer : observers) {
+      observer.soulsSpent(tick, unit, areaEffect, souls, count, lifetimeMs);
+    }
+  }
+
+  /**
+   * The order an area effect's spawner takes its directions in: the numbers below the count, then
+   * fifty pairs of draws of the battle's random source for each, at least one pair, each pair below
+   * the count swapping the two entries it names.
+   *
+   * @param areaEffect the area effect
+   * @param total how many directions its lifetime holds
+   * @return the order
+   */
+  int[] spawnOrder(AreaEffectEntity areaEffect, int total) {
+    int before = random.getState();
+    int[] order = new int[total];
+    for (int i = 0; i < total; i++) {
+      order[i] = i;
+    }
+    for (int pair = Math.max(total * 50, 1); pair > 0; pair--) {
+      int i = random.next(total);
+      int j = random.next(total);
+      if (i != j) {
+        int kept = order[i];
+        order[i] = order[j];
+        order[j] = kept;
+      }
+    }
+    for (WorldObserver observer : observers) {
+      observer.spawnOrdered(tick, areaEffect, order.clone(), before, random.getState());
+    }
+    return order;
+  }
+
+  /**
+   * One character of an area effect's spawner. It is placed at the direction and at SpawnMinRadius
+   * and a draw of the battle's random source below what the radius leaves after its own collision
+   * radius and that least distance, from the area effect's point; the point is moved off water and
+   * 250 inside the arena by the relocation. A building of the live list whose circle overlaps the
+   * character's, or a cell the standing test refuses, blocks the point, which is then drawn again
+   * anywhere in the circle - a direction below 360 and a distance below the radius - up to five
+   * times, the last point kept. The character is created there, kept 250 inside the arena, on the
+   * area effect's side and at its level re-based on the character's rarity; it deploys for
+   * SpawnTime, joins the holder with its registration visit, and becomes a clone for a row that
+   * spawns clones.
+   *
+   * <p>Refused rather than guessed: a building, a unit that paths to its point or starts an action
+   * of its own, and a row that does not spawn clones, whose children copy the area effect's clone
+   * answer.
+   *
+   * @param areaEffect the area effect
+   * @param angle the direction, in degrees
+   * @param radius the radius of the area effect's hits now
+   */
+  void areaSpawn(AreaEffectEntity areaEffect, int angle, int radius) {
+    AreaEffectData row = areaEffect.getData();
+    UnitData data = spawnedRow(row.spawnCharacter());
+    if (data.building()
+        || data.spawnPathfindSpeed() != 0
+        || data.onStartingAction() != null
+        || !row.spawnClones()) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + areaEffect.name()
+              + " spawns "
+              + data.name()
+              + ", a building, a unit that paths to its point or starts an action, or not as a"
+              + " clone, which is not modelled");
+    }
+    int collision = data.collisionRadius();
+    int distance = row.spawnMinRadius() + random.next(radius - collision - row.spawnMinRadius());
+    int[] at = spawnPoint(areaEffect, angle, distance, collision);
+    int retries = 0;
+    while (at[2] != 0 && retries < 5) {
+      angle = random.next(360);
+      distance = random.next(radius);
+      at = spawnPoint(areaEffect, angle, distance, collision);
+      retries++;
+    }
+    int x = inset(at[0], tileMap.width());
+    int y = inset(at[1], tileMap.height());
+    int count = spawnCounts.merge(areaEffect.name(), 1, Integer::sum) - 1;
+    CharacterEntity child =
+        CharacterEntity.spawned(
+            this,
+            data,
+            areaEffect.name() + "_" + count,
+            areaEffect.side(),
+            x,
+            y,
+            PackedLevel.level(PackedLevel.pack(areaEffect.packedLevel(), data.rarity())));
+    if (row.spawnTimeMs() >= 1) {
+      child.deployFor(row.spawnTimeMs());
+    }
+    holder.addRegistered(child);
+    child.markClone(null);
+    for (WorldObserver observer : observers) {
+      observer.characterSpawned(tick, areaEffect, child, x, y);
+      observer.areaSpawned(tick, areaEffect, child, retries, random.getState());
+    }
+  }
+
+  /**
+   * A spawner's point: at the direction and distance from the area effect's point, by the sine
+   * table and its quarter turn, each over 1024 toward zero, then relocated off water and 250 inside
+   * the arena; blocked by a building of the live list whose circle overlaps the given one, or by a
+   * cell the standing test refuses.
+   *
+   * @return the point and 1 when it is blocked, else 0
+   */
+  private int[] spawnPoint(AreaEffectEntity areaEffect, int angle, int distance, int collision) {
+    int x = areaEffect.x() + FixedMath.sine1024(angle) * distance / 1024;
+    int y = areaEffect.y() + FixedMath.sine1024(angle + 90) * distance / 1024;
+    int packed = Relocation.relocate(grid.getWidth(), grid.getHeight(), x, y, -1, grid::water);
+    x = Relocation.unpackX(packed);
+    y = Relocation.unpackY(packed);
+    boolean blocked = buildingOver(x, y, collision) || (CellTests.cellBlocked(grid, x, y) & 1) != 0;
+    return new int[] {x, y, blocked ? 1 : 0};
+  }
+
+  /**
+   * Whether a building of the live list has a circle that overlaps a circle: its collision radius
+   * and the given one together reach further than its centre lies from the point. The squares are
+   * taken in 32 bits and compared unsigned; a square distance of the largest integer is passed by.
+   */
+  private boolean buildingOver(int x, int y, int radius) {
+    for (BattleEntity entity : holder.entities()) {
+      if (!(entity instanceof WorldEntity building) || !building.getTargetView().building()) {
+        continue;
+      }
+      int dx = x - building.getView().getX();
+      int dy = y - building.getView().getY();
+      int squared = dx * dx + dy * dy;
+      int reach = building.getView().getCollisionRadius() + radius;
+      if (squared != Integer.MAX_VALUE && Integer.compareUnsigned(squared, reach * reach) < 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Tells the observers a unit's ability held it in its follow-up state. */
@@ -3955,6 +4152,21 @@ public class BattleWorld implements HolderPasses {
           "the area effect "
               + row
               + " has a hit action and was not made by an action, which is not modelled");
+    }
+    if (data.spawnCharacter() != null
+        && (!how.equals("ability")
+            || data.damage() != 0
+            || data.buff() != null
+            || data.onHitAction() != null
+            || data.projectile() != null
+            || data.spawnAreaEffectObject() != null
+            || data.onStartingAction() != null
+            || data.onLifeTimeEndAction() != null)) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " spawns characters and was not made by an ability, or hits, chains or runs an"
+              + " action too, which is not modelled");
     }
     if (data.followsParent() && !how.equals("action") && !how.equals("ability")) {
       throw new UnsupportedOperationException(
@@ -4423,8 +4635,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A clone's spawn is a clone: the clone setter on the child, the spawner as the unit it stands
-   * for. A clone that deploys is refused: it would be out of collisions while it does, which is not
-   * modelled.
+   * for. A clone that deploys is refused: it is out of collision while it does, as an area effect's
+   * skeletons are, but no reference holds a clone's spawn that deploys.
    */
   private static void cloneSpawn(WorldEntity spawner, CharacterEntity child) {
     if (!(spawner instanceof CharacterEntity source) || !source.isClone()) {

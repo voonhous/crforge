@@ -219,6 +219,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param hideTimeMs the hide counter's value at which it is hidden, the time it takes to go down
  * @param upTimeMs the time it takes to come back up from hidden
  * @param ignoreClone true for a unit a Clone passes by
+ * @param ignoreResurrect true for a unit whose death counts no soul for a unit whose ability
+ *     collects them
  * @param clonedVersion the row a Clone makes of this one instead of its own, or null for its own
  * @param reflectedAttackBuff the buff a reflecting unit puts on the attacker of a hit it reflects,
  *     or null for a unit that reflects nothing
@@ -383,6 +385,7 @@ public record UnitData(
     int hideTimeMs,
     int upTimeMs,
     boolean ignoreClone,
+    boolean ignoreResurrect,
     String clonedVersion,
     String reflectedAttackBuff,
     int reflectedAttackBuffDurationMs,
