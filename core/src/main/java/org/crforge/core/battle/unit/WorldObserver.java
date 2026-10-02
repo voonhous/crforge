@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -500,6 +501,18 @@ public interface WorldObserver {
    * @param event what it did
    */
   default void goblinHutLogged(int tick, CharacterEntity hut, GoblinHutLifeState.Event event) {}
+
+  /**
+   * A Berserker's run set its unit's attack sequence index: to 0 as it started, or flipped on the
+   * notice of an attack that landed.
+   *
+   * @param tick the battle tick
+   * @param unit the unit whose index it set
+   * @param event the start or a notice
+   * @param before the index before
+   * @param index the index after
+   */
+  default void berserked(int tick, WorldEntity unit, Berserk.Event event, int before, int index) {}
 
   /**
    * One step of a Kamikaze unit's drain landed on it, in its state visit.

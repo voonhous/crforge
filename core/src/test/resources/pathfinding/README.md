@@ -681,6 +681,16 @@ The towers fight at level 11. Side 0 plays a Goblin Cage at (7500, 12500) on tic
 
 The towers fight at level 11. Side 0 plays a Goblin Cage at (3500, 11500) on tick 0 and nothing else. Its shake runs from 0, doing nothing; its deploy ends on 19 and from 20 it holds PrincessTower_1_1, out of its range, decaying 195 hundredths of a hit point a visit from 780. The decay kills it in the second pass of 419, and its GoblinBrawler stands on its point, deploying to 429, then takes PrincessTower_1_1 on 430 and walks to it. `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/berserker_knight.json` - a Berserker against a Knight
+
+The towers fight at level 11. Side 0 plays a Berserker at (3500, 12000), placed at (3499, 12500), and side 1 a Knight at (3500, 20000), placed at (3499, 20499), both on tick 0 in the left lane. The Berserker's starting action runs in its phase-1 pass of 0 and sets its attack sequence index to 0. The two walk up the lane and take each other on 31. The Berserker hits from 67, every 12 ticks, 102 each, and each hit flips the index, 0 to 1 and back. The Knight's hits, 202 every 24, kill it on 165, after its ninth hit (the Knight 1766 to 848). The Knight then walks on at PrincessTower_0_1.
+
+The `berserk` list holds the start and every notice of a landed attack, with the index before and after. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/berserker_tower.json` - a Berserker at a princess tower
+
+The towers fight at level 11. Side 0 plays a Berserker at (3500, 15500), placed at (3499, 14500), on tick 0 and nothing else. Its starting action sets the index to 0. PrincessTower_1_1 locks it on 44 and its arrows land from 70. It reaches the tower and hits it from 121, every 12 ticks, 102 each (3052 to 2440), the index flipping on each hit, until the ninth arrow kills it on 191. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

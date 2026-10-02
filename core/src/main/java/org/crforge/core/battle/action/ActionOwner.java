@@ -66,6 +66,20 @@ public interface ActionOwner {
     throw new UnsupportedOperationException("this owner has no attack sequence");
   }
 
+  /** The owner's attack sequence index, which its next hit reads. */
+  default int attackSequenceIndex() {
+    throw new UnsupportedOperationException("this owner has no attack sequence");
+  }
+
+  /**
+   * Tells the battle's observers what a Berserker's run did to the owner's attack sequence index.
+   *
+   * @param event the start or a notice
+   * @param before the index before
+   * @param index the index after
+   */
+  default void berserked(Berserk.Event event, int before, int index) {}
+
   /**
    * What a friend-collecting run asks of the battle around the owner.
    *

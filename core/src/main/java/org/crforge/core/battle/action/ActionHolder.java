@@ -56,7 +56,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " at its next pass and a stopped one at once, the tags of every listed run folded in,"
             + " and the delay taken off in the end pass. Held by the recorded runtime cases. The"
             + " notice to every running instance of an object that leaves, before the drop of"
-            + " what it caused, held by goblin_hut_passing. Not"
+            + " what it caused, held by goblin_hut_passing. The notice to every running"
+            + " instance, first to last, of an attack that landed, held by giant_buffer_knights"
+            + " and berserker_knight. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
             + " the target an entry carries, and the notice to an action's instigator. The cause"
             + " an entry carries is the holder of the entity that caused it.")
@@ -354,6 +356,16 @@ public class ActionHolder implements EntityActions {
         listener.finished(instance);
       }
       i++;
+    }
+  }
+
+  /**
+   * Tells every running instance, first to last, that one of the owner's attacks ended with a
+   * landed hit.
+   */
+  public void attackEnded() {
+    for (ActionInstance instance : new ArrayList<>(running)) {
+      instance.attackEnded(this);
     }
   }
 

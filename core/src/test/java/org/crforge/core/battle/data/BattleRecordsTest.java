@@ -698,11 +698,20 @@ class BattleRecordsTest {
   @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
   void anInlineHookIsRefused() {
-    assertThatThrownBy(() -> records.unit("Berserker"))
+    assertThatThrownBy(() -> records.unit("goblinstein_doctor"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Berserker")
+        .hasMessageContaining("goblinstein_doctor")
         .hasMessageContaining("OnStartingAction")
-        .hasMessageContaining("ActionBerserk");
+        .hasMessageContaining("ActionSpawn");
+  }
+
+  @Test
+  @DisplayName(
+      "the Berserker's starting action, written inline as a bare ActionBerserk, is the actions"
+          + " table's row named after the unit and the column")
+  void theBerserkersInlineStartingAction() {
+    assertThat(records.unit("Berserker").onStartingAction())
+        .isEqualTo("Berserker_OnStartingAction");
   }
 
   @Test
