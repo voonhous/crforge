@@ -3,6 +3,7 @@ package org.crforge.core.battle.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -441,6 +442,22 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a buff whose action on a reduced hit keeps an effect running is refused for that action")
+  void aLastingDamageReductionActionIsRefused(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("Knight_EV1_ProtectionVFX").get("fields"))
+                    .put("EffectFlags", "FollowParent,Looping"));
+
+    assertThat(new BattleRecords(tables).buff("Knight_Fortify_EV1").unmodelledColumns())
+        .containsExactly("OnDamageReductionAction");
+  }
+
+  @Test
+  @DisplayName(
       "an area effect launching from its source, or spreading its projectiles over several hits,"
           + " is listed as not modelled")
   void anAreaEffectLaunchNotModelled(@TempDir Path folder) throws IOException {
@@ -733,9 +750,8 @@ class BattleRecordsTest {
     assertThat(records.buff("DarkElixirBuff").damageReduction()).isEqualTo(-100);
     assertThat(records.buff("Rage").damageReduction()).isZero();
     assertThat(records.buff("Rage").ignorePushBack()).isFalse();
-    // A buff that runs an action as it reduces damage is refused for that action.
-    assertThat(records.buff("Knight_Fortify_EV1").unmodelledColumns())
-        .containsExactly("OnDamageReductionAction");
+    // The action the evolved Knight's buff runs as it reduces damage only plays an effect.
+    assertThat(records.buff("Knight_Fortify_EV1").unmodelledColumns()).isEmpty();
 
     AreaEffectData deflect = records.areaEffect("Deflect");
     assertThat(deflect.deflectsProjectiles()).isTrue();

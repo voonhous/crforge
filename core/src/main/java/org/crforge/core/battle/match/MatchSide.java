@@ -1,5 +1,7 @@
 package org.crforge.core.battle.match;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 import java.util.List;
 import lombok.Getter;
 import org.crforge.core.fidelity.Fidelity;
@@ -19,6 +21,16 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>The king keeps the last card played, which a play of any card but the Mirror replaces, and a
  * copy of it its visit makes after the regeneration. The copy is the card a Mirror repeats, so a
  * Mirror after a Mirror repeats the same card again. A variant card's play keeps the variant card.
+ *
+ * <p>Each deck card comes with its slot flags: bit 0 for the deck's evolution slot, bit 1 for its
+ * hero slot. The king keeps one count per deck index, 0 at the battle's start. A play of an
+ * evolution slot's card resets its count after an evolved or hero play, and otherwise adds one
+ * while the count is below its evolved row's DarkElixirCost. A play's item is evolved once the
+ * count has reached that cost, so a Knight whose evolved row costs 2 is played plain twice, evolved
+ * on its third play and plain again on its fourth. A hero slot's card is played in its hero form
+ * whenever it is not evolved. The play spends the cost of the row it is cast as and starts that
+ * row's production stop; the last card kept is the deck card, and the field it was played with
+ * decides what a Mirror repeats.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -27,12 +39,20 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " and the waste, the production stop, the whole elixir and the spend. Held by"
             + " match_elixir_150s, both elixirs on every tick, and the adds a collector and a"
             + " death make by match_elixir_sources. The last card and its copy are held by"
-            + " mirror_knight and mirror_fireball. Not modelled: a boost's scaled rate"
+            + " mirror_knight and mirror_fireball. The slot flags, the counts and each play's item"
+            + " are held by evolution_knight and evolution_hero_mirror. Not modelled: a boost's"
+            + " scaled rate"
             + " and a paused regeneration, which no Ladder battle has, and the views' counters.")
 public final class MatchSide {
 
   /** The elixir's scale: ten thousand to a whole elixir. */
   public static final int SCALE = 10000;
+
+  /** The slot flag of a card in the deck's evolution slot. */
+  public static final int EVOLUTION_SLOT = 1;
+
+  /** The slot flag of a card in the deck's hero slot. */
+  public static final int HERO_SLOT = 2;
 
   private final List<MatchCard> deck;
 
@@ -59,12 +79,90 @@ public final class MatchSide {
   /** The last card played that was not the Mirror, or null before any. */
   private MatchCard lastPlayed;
 
+  /** The evolution field the last card was played with. */
+  private int lastPlayedField;
+
   /** The copy of the last card the visit makes, which a Mirror repeats; null before any. */
   private MatchCard lastPlayedCopy;
 
+  /** The evolution field of the copy of the last card. */
+  private int lastPlayedCopyField;
+
+  /** Each deck card's slot flags, by deck index. */
+  private final int[] slotFlags;
+
+  /** The king's count per deck index, which an evolution slot's plays move. */
+  private final int[] evolutionCounts;
+
   MatchSide(List<MatchCard> deck, int startingElixir) {
+    this(deck, startingElixir, new int[deck.size()]);
+  }
+
+  /**
+   * @param deck the deck, by index
+   * @param startingElixir the elixir the king starts with
+   * @param slotFlags each deck card's slot flags, by deck index
+   */
+  MatchSide(List<MatchCard> deck, int startingElixir, int[] slotFlags) {
+    checkArgument(
+        slotFlags.length == deck.size(), () -> "a deck's slot flags are one for each card");
     this.deck = List.copyOf(deck);
     this.elixir = startingElixir * SCALE;
+    this.slotFlags = slotFlags.clone();
+    this.evolutionCounts = new int[deck.size()];
+  }
+
+  /**
+   * A deck card's slot flags: {@link #EVOLUTION_SLOT}, {@link #HERO_SLOT}, both or neither.
+   *
+   * @param index the card's deck index
+   */
+  public int slotFlags(int index) {
+    return slotFlags[index];
+  }
+
+  /**
+   * The king's count for a deck index: the plays of an evolution slot's card since its last evolved
+   * play, up to its evolved row's DarkElixirCost.
+   *
+   * @param index the card's deck index
+   */
+  public int evolutionCount(int index) {
+    return evolutionCounts[index];
+  }
+
+  /**
+   * The item a play of a deck card carries: evolved when the card's evolved row has a
+   * DarkElixirCost of at least 1 and the count has reached it, else the hero form for a hero slot's
+   * card, else neither; the row it is cast as, the card's first in that form, and that row's cost.
+   *
+   * @param index the card's deck index
+   */
+  public EvolutionItem item(int index) {
+    MatchCard card = deck.get(index);
+    int field;
+    if (evolved(index)) {
+      field = EvolutionItem.EVOLVED;
+    } else {
+      field = (slotFlags[index] & HERO_SLOT) != 0 ? EvolutionItem.HERO : 0;
+    }
+    MatchCard spell = card.formRow(field);
+    return new EvolutionItem(index, field, spell, spell.cost(), evolutionCounts[index]);
+  }
+
+  /**
+   * Whether a play of the card at a deck index is evolved: the card has an evolved row whose
+   * DarkElixirCost is at least 1, and the count has reached it. The slot flags are not asked: only
+   * an evolution slot's card counts.
+   */
+  private boolean evolved(int index) {
+    MatchCard card = deck.get(index);
+    MatchCard evolved = card.formRow(MatchCard.EVO_FORM);
+    if (evolved == card) {
+      return false;
+    }
+    int need = evolved.darkElixirCost();
+    return need > 0 && evolutionCounts[index] >= need;
   }
 
   /** The deck, by index. */
@@ -87,6 +185,11 @@ public final class MatchSide {
     return elixir / SCALE;
   }
 
+  /** The field the copy of the last card was played with, which decides what a Mirror repeats. */
+  public int lastPlayedCopyField() {
+    return lastPlayedCopyField;
+  }
+
   /**
    * The king's visit: the hand refill, then the regeneration, then the copy of the last card.
    *
@@ -98,6 +201,7 @@ public final class MatchSide {
     int refilled = hand.refill(timeline.getNextCardCooldownMs());
     regenerate(timeline.getFullBarMs(), maxMana);
     lastPlayedCopy = lastPlayed;
+    lastPlayedCopyField = lastPlayedField;
     return refilled;
   }
 
@@ -134,15 +238,35 @@ public final class MatchSide {
   }
 
   /**
-   * A play of a card from the hand: its cost taken, its production stop started, the card moved
-   * from its slot to the back of the queue, and the card kept as the last played.
+   * A play of a card from the hand, with the item it carries now.
    *
    * @param index the card's deck index
+   * @see #play(EvolutionItem)
    */
   void play(int index) {
-    MatchCard card = deck.get(index);
-    play(index, card.cost(), card.elixirProductionStopTimeMs());
-    lastPlayed = card;
+    play(item(index));
+  }
+
+  /**
+   * A play of a card from the hand: the cost of the row it is cast as taken, that row's production
+   * stop started, the card moved from its slot to the back of the queue, the count of an evolution
+   * slot's card moved, and the card kept as the last played, with the item's field.
+   *
+   * @param item the item the play carries
+   */
+  void play(EvolutionItem item) {
+    int index = item.index();
+    play(index, item.cost(), item.spell().elixirProductionStopTimeMs());
+    if ((slotFlags[index] & EVOLUTION_SLOT) != 0) {
+      if (item.field() != 0) {
+        evolutionCounts[index] = 0;
+      } else if (evolutionCounts[index]
+          < deck.get(index).formRow(MatchCard.EVO_FORM).darkElixirCost()) {
+        evolutionCounts[index]++;
+      }
+    }
+    lastPlayed = deck.get(index);
+    lastPlayedField = item.field();
   }
 
   /**
@@ -154,6 +278,7 @@ public final class MatchSide {
   void playVariant(VariantItem item) {
     play(item.index(), item.cost(), item.elixirProductionStopTimeMs());
     lastPlayed = deck.get(item.index());
+    lastPlayedField = 0;
   }
 
   /**

@@ -12,11 +12,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>The listener is made in its owner's pending pass, after the play that made the owner was sent,
  * so it never hears that play. A later card play of the owner's side that it hears tests the card -
- * the card the play put down, a Mirror's repeated card, with EvaluateDeployedCard, else the card
- * played - against its card group's playable cards; a listener with no group takes every card. When
- * the elixir the run has counted reaches the row's cost before the play, the activation action is
- * scheduled on the owner, the owner its cause, and the cost taken off the count; below it, the
- * played card's cost is added to the count. The effects it shows are presentation.
+ * the card the play put down, a Mirror's repeated card or an evolved or hero play's row, with
+ * EvaluateDeployedCard, else the card played - against its card group's playable cards; a listener
+ * with no group takes every card. When the elixir the run has counted reaches the row's cost before
+ * the play, the activation action is scheduled on the owner, the owner its cause, and the cost
+ * taken off the count; below it, the played card's cost is added to the count. The effects it shows
+ * are presentation.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -26,7 +27,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " playable cards, the elixir count and the activation action; held by"
             + " goblinstein_tower and goblinstein_later_plays. A count below the cost, which no"
             + " listener of a modelled card reaches, is held by a unit test only; a Mirror's"
-            + " repeated card tested in place of the Mirror is translated but held by no run."
+            + " repeated card tested in place of the Mirror, and an evolved or hero play's row in"
+            + " place of its deck card, are translated but held by no run."
             + " Refused: a"
             + " variant card's play heard by a listener of its side.")
 public final class CardDeployListener extends RowAction {
