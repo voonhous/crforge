@@ -286,6 +286,16 @@ public final class BuffComponent implements BattleComponent {
       throw new UnsupportedOperationException(
           entity.name() + " takes a copy of buffs while it carries some, which is not modelled");
     }
+    // The clone creator leaves a buff that is not cloned off the clone, which no reference holds.
+    for (BuffInstance instance : original.items) {
+      if (instance.getBuff().notCloned()) {
+        throw new UnsupportedOperationException(
+            original.entity.name()
+                + " is cloned carrying "
+                + instance.getBuff().name()
+                + ", which is not cloned, not modelled");
+      }
+    }
     for (BuffInstance instance : original.items) {
       BuffInstance copy = instance.copy(world.nextBuffKey());
       items.add(copy);

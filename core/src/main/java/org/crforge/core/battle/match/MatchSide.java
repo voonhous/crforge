@@ -50,6 +50,12 @@ public final class MatchSide {
   /** The elixir the cap has turned away so far, in ten-thousandths. */
   @Getter private int wasted;
 
+  /**
+   * How many cards the king has played: each play's units carry the count before it, which a
+   * champion's slot follows.
+   */
+  @Getter private int deployCounter;
+
   /** The last card played that was not the Mirror, or null before any. */
   private MatchCard lastPlayed;
 
@@ -168,5 +174,18 @@ public final class MatchSide {
       productionStopMs = productionStopTimeMs;
     }
     hand.removeFromHand(hand.slotOf(index));
+    deployCounter++;
+  }
+
+  /**
+   * Takes a cost from the elixir, never more than there is, and counts it as spent: a champion's
+   * ability paid for.
+   *
+   * @param amount the cost, in ten-thousandths
+   */
+  void spend(int amount) {
+    int spend = Math.min(amount, elixir);
+    spent += spend;
+    elixir -= spend;
   }
 }

@@ -102,15 +102,20 @@ class BattleAbilityTest {
   }
 
   @Test
-  @DisplayName("a request for an ability that does more than its activation action is refused")
+  @DisplayName(
+      "a request for an ability that does more than its activation action and its own buff is"
+          + " refused")
   void aRichAbilityIsRefused() {
     Standard1v1Battle match = passiveTowers();
-    CharacterEntity queen =
+    // The Mighty Miner's ability switches its lane and drops a bomb.
+    CharacterEntity miner =
         match.deploy(
-            0, GameData.unit("ArcherQueen"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
+            0, GameData.unit("MightyMiner"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
 
-    assertThatThrownBy(queen::requestAbility)
+    assertThatThrownBy(miner::requestAbility)
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("which sets columns the battle does not model");
+        .hasMessage(
+            "MightyMiner casts MightyMinerLaneSwitch, which sets columns the battle does not"
+                + " model: [SwitchLanes, ActivationSpawnCharacter]");
   }
 }

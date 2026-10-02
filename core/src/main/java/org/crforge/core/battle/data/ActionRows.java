@@ -15,6 +15,7 @@ import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.CardDeployListener;
+import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
@@ -141,6 +142,8 @@ public final class ActionRows {
           Map.entry(
               "ActionActivateOnCardDeploy",
               Set.of("CardGroup", "EvaluateDeployedCard", "OnActivateAction", "ElixirCost")),
+          // The champion slot's row: whether a slot may follow another champion.
+          Map.entry("ActionChampionAbilityData", Set.of("AllowDynamicReassignments")),
           // Every tether column is read by the tether alone, which is refused; the effects only
           // show something.
           Map.entry(
@@ -535,6 +538,21 @@ public final class ActionRows {
                   "ActionPausedIfTrue",
                   "ForceStopIfTrue");
               yield new CardDeployListener(shared, f.path("CardGroup").asText(""));
+            }
+            case "ActionChampionAbilityData" -> {
+              refuseShared(
+                  name,
+                  f,
+                  "GameTagsToSet",
+                  "Singleton",
+                  "NextAction",
+                  "ExecuteIfTrue",
+                  "ActionPausedIfTrue",
+                  "ForceStopIfTrue");
+              yield new ChampionAbility(
+                  shared,
+                  !f.hasNonNull("AllowDynamicReassignments")
+                      || f.get("AllowDynamicReassignments").asBoolean());
             }
             case "ActionGoblinsteinAbility" -> {
               refuseShared(

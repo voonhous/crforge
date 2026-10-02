@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.TargetLocks;
@@ -793,6 +794,13 @@ public class CharacterEntity extends WorldEntity {
 
   /** True for a clone: one a Clone made, or a child a clone spawned. */
   @Getter private boolean clone;
+
+  /**
+   * The play that made the unit, by its king's count of card plays before it; -1 for a unit no card
+   * play of a match made. A champion's controller follows the copies of its champion one play made,
+   * and an ability command finds a copy by it.
+   */
+  @Getter @Setter private int deployIndex = -1;
 
   /**
    * The clone setter: the character becomes a clone of 1 hit point of 1. Its shield follows the
@@ -2241,8 +2249,8 @@ public class CharacterEntity extends WorldEntity {
    * The ability gate: whether a requested ability may start now. It may when the unit has an
    * ability, is not a champion's clone, can act - its targeting component on - is in none of the
    * states from dashing to the follow-up's, carries neither the postponing nor the disabling tag,
-   * and the ability does something: with every other effect refused as it is requested, it runs an
-   * activation action.
+   * and the ability does something: with every other effect refused as it is requested, it buffs
+   * the unit or runs an activation action.
    */
   private boolean abilityGate() {
     AbilityData ability = getData().ability();
@@ -2257,7 +2265,20 @@ public class CharacterEntity extends WorldEntity {
         != 0) {
       return false;
     }
-    return ability.onActivationAction() != null;
+    return ability.buff() != null || ability.onActivationAction() != null;
+  }
+
+  /** Whether a requested ability waits on the unit for its gate to open. */
+  public boolean abilityPending() {
+    return unit.timers().isAbilityReady();
+  }
+
+  /**
+   * The visits left before the ability's effect fires, counted on through the cast and kept after
+   * it: below zero once it has fired.
+   */
+  public int abilityWarningCountdown() {
+    return unit.timers().getAbilityWarningCountdown();
   }
 
   /**
@@ -2292,8 +2313,9 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The ability's effect, on the visit its trigger delay reaches zero: its activation action is
-   * scheduled on the unit, the unit as its cause. From the post-hooks it waits for the phase-3
-   * pending pass. Its other effects are refused as it is requested.
+   * scheduled on the unit, the unit as its cause, and from the post-hooks it waits for the phase-3
+   * pending pass; then its buff is applied to the unit itself for its time, at the unit's level,
+   * the unit its parent and its source. Its other effects are refused as it is requested.
    */
   private void abilityFired() {
     AbilityData ability = getData().ability();
@@ -2302,6 +2324,17 @@ public class CharacterEntity extends WorldEntity {
       BattleAction action =
           world.getActions().build(ability.onActivationAction(), world.binding(this));
       actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder());
+    }
+    if (ability.buff() != null) {
+      world.abilityBuffed(this, ability.buff(), ability.buffTimeMs(), getPackedLevel());
+      getBuffs()
+          .apply(
+              world.buffData(ability.buff()),
+              ability.buffTimeMs(),
+              getPackedLevel(),
+              this,
+              side(),
+              this);
     }
   }
 

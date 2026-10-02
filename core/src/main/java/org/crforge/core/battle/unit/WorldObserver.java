@@ -189,6 +189,78 @@ public interface WorldObserver {
       int tick, AreaEffectEntity owner, AreaEffectEntity deathArea) {}
 
   /**
+   * The deck pass at a match's setup gave a champion slot its champion, from a card of its deck.
+   *
+   * @param tick the tick it happened on
+   * @param slot the slot, its champion and deck index set
+   */
+  default void championDeckPass(int tick, ChampionController slot) {}
+
+  /**
+   * A champion slot followed a card play of its champion: its charges, cooldown and state set.
+   *
+   * @param tick the tick it happened on
+   * @param slot the slot
+   * @param play the play's name
+   */
+  default void championFollowed(int tick, ChampionController slot, String play) {}
+
+  /**
+   * A champion slot heard a paid ability of its champion and requested its live copies': its
+   * cooldown, charges and refund window set.
+   *
+   * @param tick the tick it happened on
+   * @param slot the slot
+   * @param requested the live copies it requested, in order
+   */
+  default void championActivated(
+      int tick, ChampionController slot, List<CharacterEntity> requested) {}
+
+  /**
+   * A champion slot's cooldown ran out in its step.
+   *
+   * @param tick the tick it happened on
+   * @param slot the slot
+   */
+  default void championCooldownOut(int tick, ChampionController slot) {}
+
+  /**
+   * A champion slot gave its king back its last use's cost, its last live copy gone inside the
+   * refund window.
+   *
+   * @param tick the tick it happened on
+   * @param slot the slot
+   * @param mana the cost given back, in whole elixir
+   * @param elixirBefore the king's elixir before, in ten-thousandths
+   * @param elixirAfter the king's elixir after
+   */
+  default void championRefunded(
+      int tick, ChampionController slot, int mana, int elixirBefore, int elixirAfter) {}
+
+  /**
+   * A champion slot that follows a champion stepped in its king's run pass.
+   *
+   * @param tick the tick it happened on
+   * @param slot the slot after its step
+   * @param elixir its king's elixir before any refund, in ten-thousandths
+   * @param views its side's characters of a champion row as the step found them
+   */
+  default void championStepped(
+      int tick, ChampionController slot, int elixir, List<ChampionView> views) {}
+
+  /**
+   * An ability's effect gave its unit its buff.
+   *
+   * @param tick the tick it happened on
+   * @param unit the unit
+   * @param buff the buff's row
+   * @param timeMs how long it lasts
+   * @param packedLevel the level it is applied at, packed
+   */
+  default void abilityBuffed(
+      int tick, CharacterEntity unit, String buff, int timeMs, int packedLevel) {}
+
+  /**
    * A step of a king tower's activation happened: the condition in the run pass, the activating
    * run's start and the effect in a pending pass, its end and its removal in later run passes.
    */

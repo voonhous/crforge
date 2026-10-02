@@ -1,6 +1,7 @@
 package org.crforge.core.battle.action;
 
 import lombok.Getter;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -16,7 +17,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the row's tags the holder sets on the run as it starts, and the re-trigger a"
             + " singleton row's second start sends it, and the notices of an object leaving and"
             + " of an attack that landed, the owner-leave before any notice and the stop as the"
-            + " entity leaves after them, which do nothing unless"
+            + " entity leaves after them, and the notice of an ability its player paid for, which"
+            + " do nothing unless"
             + " the class overrides them. Not modelled: the start and on-finish hooks some classes"
             + " override.")
 public abstract class ActionInstance {
@@ -66,6 +68,15 @@ public abstract class ActionInstance {
    * @param holder the entity's holder
    */
   protected void attackEnded(ActionHolder holder) {}
+
+  /**
+   * What the run does as its entity's player pays for a unit's ability. By default nothing, as the
+   * base slot does; only a champion slot answers it.
+   *
+   * @param holder the entity's holder
+   * @param unit the unit whose ability was paid for
+   */
+  protected void abilityPaid(ActionHolder holder, BattleEntity unit) {}
 
   /**
    * What the run does as its entity leaves the battle and its holder lets it go, after every notice
