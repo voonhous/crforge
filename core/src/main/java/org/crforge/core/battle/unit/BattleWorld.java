@@ -3735,6 +3735,18 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  void attackCountRead(WorldEntity context, int attackTimeMs, int count) {
+    for (WorldObserver observer : observers) {
+      observer.attackCountRead(tick, context, attackTimeMs, count);
+    }
+  }
+
+  void lifeConditionAsked(WorldEntity carrier, BuffInstance buff, int answer) {
+    for (WorldObserver observer : observers) {
+      observer.lifeConditionAsked(tick, carrier, buff, answer);
+    }
+  }
+
   void buffRemoved(WorldEntity target, BuffInstance buff) {
     for (WorldObserver observer : observers) {
       observer.buffRemoved(tick, target, buff);

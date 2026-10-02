@@ -323,6 +323,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Knight that attacks only ground units. {@code vines_tower} casts it over a princess tower and a
  * Knight: the snared tower shoots nothing until the snare goes, and the third pick finds nobody.
  * Each is held to every selector step and every air-to-ground run's phase change.
+ *
+ * <p>{@code little_prince_giant} plays a Little Prince against a Giant: its starting-attack row
+ * reads attack_count at every hit, putting its first speed-up on at the third and its fastest at
+ * the sixth, each alive while its life condition holds, so its shots come 24, 12, then 8 ticks
+ * apart; a princess tower kills the Giant, and the far tower, out of range, clears the ramp. {@code
+ * little_prince_retarget} has it kill three Spear Goblins one after another, each new target in
+ * range keeping the ramp, then take a princess tower out of range, which clears it. Each is held to
+ * every read of attack_count and every ask of a buff's life condition.
  */
 class BattleActionSpawnRunTest {
 
@@ -458,7 +466,9 @@ class BattleActionSpawnRunTest {
         "vines_group",
         "vines_tower",
         "goblin_machine_knight",
-        "goblin_machine_tower"
+        "goblin_machine_tower",
+        "little_prince_giant",
+        "little_prince_retarget"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -722,6 +732,8 @@ class BattleActionSpawnRunTest {
     // Every ask of an area effect's buff test of a clone, with the path that asked.
     List<String> cloneGateLog = new ArrayList<>();
     match.getWorld().addObserver(cloneGateLog(currentTick, cloneGateLog));
+    List<String> princeLog = new ArrayList<>();
+    match.getWorld().addObserver(princeLog(currentTick, princeLog));
     List<String> areaEffectSpawnLog = new ArrayList<>();
     match.getWorld().addObserver(areaEffectSpawnLog(currentTick, areaEffectSpawnLog));
     // Every laser ball's start and fire, and every area effect's life-end action scheduled.
@@ -1388,6 +1400,9 @@ class BattleActionSpawnRunTest {
     assertThat(cloneGateLog)
         .as("every ask of an area effect's buff test of a clone")
         .containsExactlyElementsOf(expectedCloneGateLog(reference));
+    assertThat(princeLog)
+        .as("every read of attack_count and every ask of a buff's life condition")
+        .containsExactlyElementsOf(expectedPrinceLog(reference));
     assertThat(vinesLog)
         .as("every shape selector's start, step and removal, and every air-to-ground run")
         .containsExactlyElementsOf(expectedVinesLog(reference));
@@ -2583,6 +2598,28 @@ class BattleActionSpawnRunTest {
   }
 
   /**
+   * Logs every read of attack_count, with the attack time it divided, and every ask of a buff's
+   * life condition, with its expression and answer.
+   */
+  private static WorldObserver princeLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void attackCountRead(int tick, WorldEntity context, int attackTimeMs, int count) {
+        log.add(
+            "%d attack_count %s %d %d"
+                .formatted(currentTick[0], context.name(), attackTimeMs, count));
+      }
+
+      @Override
+      public void lifeConditionAsked(int tick, WorldEntity carrier, BuffInstance buff, int answer) {
+        log.add(
+            "%d alive_if %s %s %d"
+                .formatted(currentTick[0], carrier.name(), buff.getBuff().aliveIfTrue(), answer));
+      }
+    };
+  }
+
+  /**
    * Logs every laser ball's start, with its pass and timer, every fire, with the count, the index
    * it picked, the targets, the action and the timer before and after, and every area effect's
    * life-end action as it is scheduled.
@@ -3064,6 +3101,31 @@ class BattleActionSpawnRunTest {
                   g.get("path").asText(),
                   g.get("query").asInt(),
                   g.get("refused").asInt() == 1));
+    }
+    return expected;
+  }
+
+  /**
+   * The reference's reads of attack_count and asks of a buff's life condition, in its log's order.
+   */
+  private static List<String> expectedPrinceLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("little_prince")) {
+      int tick = e.get("tick").asInt();
+      if (e.get("event").asText().equals("attack_count")) {
+        expected.add(
+            "%d attack_count %s %d %d"
+                .formatted(
+                    tick, e.get("owner").asText(), e.get("timer").asInt(), e.get("value").asInt()));
+      } else {
+        expected.add(
+            "%d alive_if %s %s %d"
+                .formatted(
+                    tick,
+                    e.get("unit").asText(),
+                    e.get("expression").asText(),
+                    e.get("value").asInt()));
+      }
     }
     return expected;
   }

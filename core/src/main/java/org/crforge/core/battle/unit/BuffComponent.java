@@ -2,10 +2,15 @@ package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.ToIntFunction;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.expression.Expression;
+import org.crforge.core.battle.expression.ExpressionCompiler;
+import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -30,16 +35,18 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * that would make another with a death spawn give way is refused.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
- * ms and is removed once its time is 0; the damage and the heal over time due on the visit land
- * once it is over, each instance's damage before its heal. An instance counts visits toward its
- * next hit, which comes as the count reaches the hit frequency; for a buff whose hits follow their
- * source, as the Earthquake's do, each visit first sets the count from the age of the area effect
- * that applied it, so every target of one area effect is hit on the same ticks whenever it entered,
- * and two of them hit on their own clocks. The damage is the damage per second at the instance's
- * level, rounded down to a multiple of what one hit can deal, for the period of the hit; a crown
- * tower takes the per-hit column or that share raised by the crown-tower percent, and a building
- * the building percent of it. The heal is the heal per second at the instance's level for the
- * period of the hit, a crown tower's that heal raised by the crown-tower percent.
+ * ms and is removed once its time is 0; a buff with a life condition asks it of the carrier after
+ * the step, while the instance has time left, and an answer of 0 spends that time; the damage and
+ * the heal over time due on the visit land once it is over, each instance's damage before its heal.
+ * An instance counts visits toward its next hit, which comes as the count reaches the hit
+ * frequency; for a buff whose hits follow their source, as the Earthquake's do, each visit first
+ * sets the count from the age of the area effect that applied it, so every target of one area
+ * effect is hit on the same ticks whenever it entered, and two of them hit on their own clocks. The
+ * damage is the damage per second at the instance's level, rounded down to a multiple of what one
+ * hit can deal, for the period of the hit; a crown tower takes the per-hit column or that share
+ * raised by the crown-tower percent, and a building the building percent of it. The heal is the
+ * heal per second at the instance's level for the period of the hit, a crown tower's that heal
+ * raised by the crown-tower percent.
  *
  * <p><b>Invisibility.</b> Each listed instance of a buff that makes its carrier invisible counts
  * once, from its listing to its removal; the carrier is invisible while the count is 1 or more.
@@ -85,7 +92,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " parent stopping a new one, the removal by a parent that is removable at the visit,"
             + " and the not-attacking section sparing an instance with a parent. A buff that"
             + " locks its carrier's reference is counted for the selector while it is listed;"
-            + " goblin_demolisher_knight lists one, but no run reaches a selection it changes.")
+            + " goblin_demolisher_knight lists one, but no run reaches a selection it changes."
+            + " Held by little_prince_giant and little_prince_retarget: a buff's life condition,"
+            + " asked of the carrier after the step of an instance with time left, an answer of 0"
+            + " ending it on that visit; BuffComponentTest holds that it is not asked of an"
+            + " instance its step spends or of one that never runs out.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -110,6 +121,9 @@ public final class BuffComponent implements BattleComponent {
 
   /** How many listed instances make the carrier invisible. */
   private int invisibleCount;
+
+  /** The life conditions of the rows listed so far, compiled for the carrier, by their text. */
+  private final Map<String, Expression> lifeConditions = new HashMap<>();
 
   BuffComponent(WorldEntity entity, BattleWorld world) {
     this.entity = entity;
@@ -340,6 +354,7 @@ public final class BuffComponent implements BattleComponent {
     for (int k = snapshot.size() - 1; k >= 0; k--) {
       BuffInstance instance = snapshot.get(k);
       instance.step(STEP_MS);
+      askLifeCondition(instance);
       followSource(instance);
       int period = instance.countHit(STEP_MS);
       if (period != 0) {
@@ -357,6 +372,27 @@ public final class BuffComponent implements BattleComponent {
     // The hits the visit found due land once it is over, in the order it found them.
     for (int i = 0; i < hitting.size(); i++) {
       overTime(hitting.get(i), periods.get(i));
+    }
+  }
+
+  /**
+   * A buff's life condition, asked of the carrier as it stands after the step of an instance's
+   * time, when the instance runs out and has time left: an answer of 0 spends its time, and the
+   * visit removes it. Each condition is compiled once for the carrier.
+   */
+  private void askLifeCondition(BuffInstance instance) {
+    String condition = instance.getBuff().aliveIfTrue();
+    if (condition == null || !instance.asksLifeCondition()) {
+      return;
+    }
+    BattleExpressionEnvironment environment = new BattleExpressionEnvironment(entity, world);
+    Expression expression =
+        lifeConditions.computeIfAbsent(
+            condition, text -> ExpressionCompiler.compile(text, environment));
+    int answer = ExpressionEvaluator.evaluate(expression, environment);
+    world.lifeConditionAsked(entity, instance, answer);
+    if (answer == 0) {
+      instance.expire();
     }
   }
 
