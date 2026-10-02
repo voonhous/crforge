@@ -1628,6 +1628,114 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * A card play of a match after its cast, told to both kings' champion slots, side 0's first: the
+   * slot of the playing side that holds the champion the card summons follows the play.
+   *
+   * @param side the playing side
+   * @param champion the champion the card summons, or null
+   * @param index the play's deploy count
+   * @param play the play's name
+   */
+  void championCardPlayed(int side, UnitData champion, int index, String play) {
+    for (int kingSide = 0; kingSide < 2; kingSide++) {
+      TowerEntity king = kingTower(kingSide);
+      if (king != null) {
+        king.championCardPlayed(side, champion, index, play);
+      }
+    }
+  }
+
+  /** A side's king's whole elixir, truncated. */
+  int wholeElixir(int side) {
+    return kingElixir.wholeElixir(side);
+  }
+
+  /**
+   * Gives a champion slot's king back the cost of the slot's last use, as its last live copy left
+   * inside the refund window: whole elixir up to the cap, the rest counted as wasted.
+   */
+  void championRefund(ChampionController slot, int mana) {
+    int before = kingElixir.elixir(slot.side());
+    kingElixir.add(slot.side(), mana * KingElixir.SCALE);
+    for (WorldObserver observer : observers) {
+      observer.championRefunded(tick, slot, mana, before, kingElixir.elixir(slot.side()));
+    }
+  }
+
+  /**
+   * What a champion slot reads of its side's characters of a champion row, in live-list order, for
+   * the observers: before its step.
+   */
+  List<ChampionView> championViews(int side) {
+    List<ChampionView> views = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof CharacterEntity unit
+          && unit.side() == side
+          && unit.getData().champion()) {
+        views.add(
+            new ChampionView(
+                unit.name(),
+                unit.getData().name(),
+                unit.getDeployIndex(),
+                unit.getView().getState(),
+                unit.abilityPending(),
+                unit.abilityWarningCountdown(),
+                unit.getView().getFlags()
+                    & (EntityFlags.ABILITY_DISABLED | EntityFlags.ABILITY_COOLDOWN_PAUSED),
+                unit.isClone()));
+      }
+    }
+    return views;
+  }
+
+  /** Tells the observers a champion slot stepped in its king's run pass. */
+  void championStepped(ChampionController slot, int elixir, List<ChampionView> views) {
+    for (WorldObserver observer : observers) {
+      observer.championStepped(tick, slot, elixir, views);
+    }
+  }
+
+  /** The raw elixir of a side's king, in ten-thousandths. */
+  int elixir(int side) {
+    return kingElixir.elixir(side);
+  }
+
+  /** Tells the observers the deck pass gave a champion slot its champion. */
+  void championDeckPass(ChampionController slot) {
+    for (WorldObserver observer : observers) {
+      observer.championDeckPass(tick, slot);
+    }
+  }
+
+  /** Tells the observers a champion slot followed a card play. */
+  void championFollowed(ChampionController slot, String play) {
+    for (WorldObserver observer : observers) {
+      observer.championFollowed(tick, slot, play);
+    }
+  }
+
+  /** Tells the observers a champion slot heard a paid ability and requested its live copies'. */
+  void championActivated(ChampionController slot, List<CharacterEntity> requested) {
+    for (WorldObserver observer : observers) {
+      observer.championActivated(tick, slot, requested);
+    }
+  }
+
+  /** Tells the observers a champion slot's cooldown ran out. */
+  void championCooldownOut(ChampionController slot) {
+    for (WorldObserver observer : observers) {
+      observer.championCooldownOut(tick, slot);
+    }
+  }
+
+  /** Tells the observers an ability gave its unit its buff. */
+  void abilityBuffed(CharacterEntity unit, String buff, int timeMs, int packedLevel) {
+    for (WorldObserver observer : observers) {
+      observer.abilityBuffed(tick, unit, buff, timeMs, packedLevel);
+    }
+  }
+
   /** Tells the observers a child was linked into its source's group. */
   void groupLinked(CharacterEntity source, CharacterEntity child) {
     for (WorldObserver observer : observers) {

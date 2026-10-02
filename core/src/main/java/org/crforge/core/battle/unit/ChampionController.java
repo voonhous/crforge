@@ -1,0 +1,347 @@
+package org.crforge.core.battle.unit;
+
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
+import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.ChampionAbility;
+import org.crforge.core.fidelity.Fidelity;
+import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntityState;
+
+/**
+ * One champion slot of a king: the run of the champion ability controller's row that holds a
+ * champion's cooldown, charges and button state.
+ *
+ * <p>A slot follows one champion row and, of it, the copies one card play made, by that play's
+ * deploy count. The deck pass at the match's setup gives the slot its champion; a play of a card
+ * that summons that champion makes the slot follow the play: its charges refilled, its cooldown
+ * cleared, the state deploying. Its live copies are rebuilt each time its state is worked out:
+ * every character of the king's side in the live list, from the last to the first, of the
+ * champion's row and the followed play, that is not a clone.
+ *
+ * <p>Each king run pass steps it: the state worked out, then the cooldown counted down 50 a step,
+ * except while a copy waits for its ability's gate or carries the tag that pauses it; it runs on
+ * while the champion casts, is frozen with nothing pending, and is dead. The window since the last
+ * use counts down while a copy lives; with none left the ability's cost is given back once.
+ *
+ * <p>A paid ability reaches every run of the king, from the last to the first; the slot that
+ * follows the unit's row requests the ability of every live copy, opens the refund window for the
+ * ability's trigger delay, starts the full cooldown and spends a charge if it counts them. With no
+ * live copy it does nothing more.
+ *
+ * <p>The button state's other inputs - an override another action writes, a limited availability
+ * and a reservation of elixir the player's own client files - are never set in a battle here: no
+ * row that writes them is played, and the reserving pass belongs to the issuing client.
+ */
+@Fidelity(
+    status = FidelityStatus.TRACED,
+    note =
+        "Settled line for line: the live copies, the state, the step's cooldown and its pauses,"
+            + " the refund window and the refund, the activation, the deck pass, the follow of a"
+            + " play; held by archer_queen_ability and archer_queen_ability_refused. Not carried:"
+            + " the button state's override, the limited availability and the reservation, which"
+            + " nothing in a battle here sets.")
+public final class ChampionController extends ActionInstance {
+
+  /** The button state before any champion. */
+  public static final int UNKNOWN = 0;
+
+  /** No live copy of the champion. */
+  public static final int ABSENT = 1;
+
+  /** The ability may be used. */
+  public static final int READY = 2;
+
+  /** The champion's play is followed and its copies deploy. */
+  public static final int DEPLOYING = 3;
+
+  /** No charge is left. */
+  public static final int ALL_CHARGES_CONSUMED = 6;
+
+  /** A live copy holds the ability pending. */
+  public static final int PENDING = 7;
+
+  /** The cooldown runs. */
+  public static final int ON_COOLDOWN = 8;
+
+  /** The king's whole elixir is below the ability's cost. */
+  public static final int NOT_ENOUGH_ELIXIR = 9;
+
+  /** A live copy casts with its effect still to fire. */
+  public static final int CASTING = 10;
+
+  /** A live copy carries the tag that disables the ability. */
+  public static final int DISABLED = 11;
+
+  /** Milliseconds one step takes off the cooldown and the refund window. */
+  private static final int STEP_MS = 50;
+
+  /** The charges of a champion whose uses are not counted. */
+  public static final int UNLIMITED = -1;
+
+  /** The full cooldown the constructor sets before any champion. */
+  private static final int INITIAL_COOLDOWN_MS = 1000;
+
+  /** Whether a champion's plays share one cooldown: not in the standard game. */
+  private static final boolean SHARED_CHAMPION_COOLDOWNS = false;
+
+  private final BattleWorld world;
+  private final TowerEntity king;
+  private final ChampionAbility row;
+
+  /** 1 or 2: the slot of the king it fills. */
+  @Getter private final int slot;
+
+  /** The champion row it follows, or null for none. */
+  @Getter private UnitData champion;
+
+  /** The deploy count of the play it follows, or -1 for none. */
+  @Getter private int deployIndex = -1;
+
+  /** The cooldown left, in milliseconds. */
+  @Getter private int cooldownMs;
+
+  /** The champion's cooldown, which a use starts. */
+  @Getter private int cooldownFullMs = INITIAL_COOLDOWN_MS;
+
+  /** The charges left, or {@link #UNLIMITED}. */
+  @Getter private int charges = UNLIMITED;
+
+  /** The button state. */
+  @Getter private int state = ABSENT;
+
+  /** The refund window: the trigger delay left since the last use, in milliseconds. */
+  @Getter private int triggerMs;
+
+  /** The cost of the last use, which a refund gives back, in whole elixir. */
+  @Getter private int paidMana;
+
+  /** The deck index of the card the deck pass found the champion in, or -1. */
+  @Getter private int deckIndex = -1;
+
+  /** The live copies, as the last working out of the state found them. */
+  private final List<CharacterEntity> champions = new ArrayList<>();
+
+  ChampionController(BattleWorld world, TowerEntity king, ChampionAbility row, int slot) {
+    super(row);
+    this.world = world;
+    this.king = king;
+    this.row = row;
+    this.slot = slot;
+  }
+
+  /** The live copies, as the last working out of the state found them. */
+  public List<CharacterEntity> champions() {
+    return List.copyOf(champions);
+  }
+
+  /** The king's side. */
+  public int side() {
+    return king.side();
+  }
+
+  /** Whether a unit is a live copy this slot follows: its side, its row, its play, no clone. */
+  boolean follows(CharacterEntity unit) {
+    return champion != null
+        && unit.side() == king.side()
+        && unit.getData().name().equals(champion.name())
+        && unit.getDeployIndex() == deployIndex
+        && !unit.isClone();
+  }
+
+  /** Rebuilds the live copies from the live list, from the last to the first. */
+  private void refresh() {
+    champions.clear();
+    if (champion == null) {
+      return;
+    }
+    List<BattleEntity> live = world.getHolder().entities();
+    for (int i = live.size() - 1; i >= 0; i--) {
+      if (live.get(i) instanceof CharacterEntity unit && follows(unit)) {
+        champions.add(unit);
+      }
+    }
+  }
+
+  /** Works out the button state: the first reason in a fixed order. */
+  private int compute() {
+    refresh();
+    if (champion == null) {
+      state = UNKNOWN;
+      return state;
+    }
+    boolean shortOfElixir = world.wholeElixir(king.side()) < champion.ability().manaCost();
+    boolean pending = false;
+    boolean casting = false;
+    boolean disabled = false;
+    for (CharacterEntity unit : champions) {
+      disabled |= (unit.getView().getFlags() & EntityFlags.ABILITY_DISABLED) != 0;
+      pending |= unit.abilityPending();
+      casting |=
+          unit.abilityWarningCountdown() > 0
+              && unit.getView().getState() == GridEntityState.CASTING;
+    }
+    if (champions.isEmpty()) {
+      state = ABSENT;
+    } else if (charges == 0) {
+      state = ALL_CHARGES_CONSUMED;
+    } else if (pending) {
+      state = PENDING;
+    } else if (cooldownMs > 0) {
+      state = ON_COOLDOWN;
+    } else if (shortOfElixir) {
+      state = NOT_ENOUGH_ELIXIR;
+    } else if (casting) {
+      state = CASTING;
+    } else if (disabled) {
+      state = DISABLED;
+    } else {
+      state = READY;
+    }
+    return state;
+  }
+
+  /**
+   * The step in the king's run pass: the state, the cooldown unless paused, and the refund window.
+   */
+  @Override
+  protected void update(ActionHolder holder) {
+    // What the observers are told of the step: the copies as it found them, and the elixir before
+    // any refund.
+    List<ChampionView> views = world.championViews(king.side());
+    int elixir = world.elixir(king.side());
+    compute();
+    int before = cooldownMs;
+    if (cooldownMs >= 1 && state != PENDING) {
+      boolean paused = false;
+      for (CharacterEntity unit : champions) {
+        paused |= (unit.getView().getFlags() & EntityFlags.ABILITY_COOLDOWN_PAUSED) != 0;
+      }
+      if (!paused) {
+        cooldownMs = Math.max(cooldownMs, STEP_MS) - STEP_MS;
+        if (!champions.isEmpty() && cooldownMs == 0 && charges != 0) {
+          state = READY;
+        }
+      }
+    }
+    if (triggerMs >= 1) {
+      if (!champions.isEmpty()) {
+        // Not clamped: a window of 933 ends at -17.
+        triggerMs -= STEP_MS;
+      } else {
+        world.championRefund(this, paidMana);
+        triggerMs = 0;
+      }
+    }
+    if (before > 0 && cooldownMs == 0) {
+      world.championCooldownOut(this);
+    }
+    if (champion != null) {
+      world.championStepped(this, elixir, views);
+    }
+  }
+
+  /**
+   * A paid ability, which every run of the king hears: the slot that follows the unit's row
+   * requests the ability of every live copy and starts its cooldown. It does not look at the button
+   * state.
+   */
+  @Override
+  protected void abilityPaid(ActionHolder holder, BattleEntity paid) {
+    if (!(paid instanceof CharacterEntity unit)
+        || champion == null
+        || !unit.getData().name().equals(champion.name())) {
+      return;
+    }
+    compute();
+    if (champions.isEmpty()) {
+      return;
+    }
+    List<CharacterEntity> requested = List.copyOf(champions);
+    for (CharacterEntity copy : requested) {
+      copy.requestAbility();
+    }
+    AbilityData ability = champion.ability();
+    triggerMs = ability.triggerDelayMs();
+    paidMana = ability.manaCost();
+    cooldownMs = cooldownFullMs;
+    if (charges > 0) {
+      charges--;
+    }
+    world.championActivated(this, requested);
+  }
+
+  /**
+   * Follows a new champion row, or none, with no play of it yet, and works the state out.
+   *
+   * @param row the champion row, or null
+   */
+  void assign(UnitData row) {
+    champion = row;
+    if (row != null) {
+      cooldownFullMs = row.ability().cooldownMs();
+    }
+    cooldownMs = 0;
+    deployIndex = -1;
+    compute();
+  }
+
+  /** Keeps the deck index of the card the deck pass found the champion in. */
+  void setDeckIndex(int index) {
+    deckIndex = index;
+  }
+
+  /** Follows one play of the champion: cooldown cleared, charges refilled, deploying. */
+  private void follow(int index) {
+    deployIndex = index;
+    if (!SHARED_CHAMPION_COOLDOWNS) {
+      cooldownMs = 0;
+    }
+    int maxCharges = champion.ability().maxCharges();
+    charges = maxCharges > 0 ? maxCharges : UNLIMITED;
+    state = DEPLOYING;
+  }
+
+  /**
+   * A card play of a side, after its cast: the champion its card summons, if any, and the play's
+   * deploy count. A slot of that side takes a champion no slot follows when it follows none, or
+   * when either slot follows a later play than its own; the slot following the champion then
+   * follows the play if it is later than the one it follows.
+   *
+   * @param side the playing side
+   * @param played the champion the card summons, or null
+   * @param index the play's deploy count
+   * @return true when the slot now follows the play
+   */
+  boolean cardPlayed(int side, UnitData played, int index) {
+    if (side != king.side() || played == null) {
+      return false;
+    }
+    if (row.isAllowDynamicReassignments() || champion == null) {
+      if (king.championSlotOf(played) == 0) {
+        boolean take = champion == null;
+        if (!take) {
+          take =
+              king.championSlot(1).deployIndex > deployIndex
+                  || king.championSlot(2).deployIndex > deployIndex;
+        }
+        if (take) {
+          champion = played;
+          cooldownMs = 0;
+          cooldownFullMs = played.ability().cooldownMs();
+          deployIndex = -1;
+          compute();
+        }
+      }
+    }
+    if (champion == null || !played.name().equals(champion.name()) || index <= deployIndex) {
+      return false;
+    }
+    follow(index);
+    return true;
+  }
+}

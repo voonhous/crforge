@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
@@ -505,7 +506,9 @@ class BattleActionSpawnRunTest {
         "boss_bandit_bandit_knight",
         "boss_bandit_tower_bandit",
         "goblinstein_tower",
-        "goblinstein_doctor_first"
+        "goblinstein_doctor_first",
+        "archer_queen_ability",
+        "archer_queen_ability_refused"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -573,6 +576,11 @@ class BattleActionSpawnRunTest {
         tower.actionHolder().setListener(listener(tower.name(), currentTick, actions, dropping));
       }
     }
+    // What the champion slots did, every ability's buff, and every slot step; the deck pass runs
+    // as a match is set up.
+    List<String> championLog = new ArrayList<>();
+    List<String> championTrace = new ArrayList<>();
+    match.getWorld().addObserver(championLog(currentTick, championLog, championTrace));
     // A match is set up before the first step, its decks shuffled with the battle's source.
     LadderMatch ladder = null;
     Map<Integer, JsonNode> trace = new HashMap<>();
@@ -1095,6 +1103,7 @@ class BattleActionSpawnRunTest {
     }
     if (ladder != null) {
       assertPlays(match, reference);
+      assertAbilityUses(match, reference);
       assertEnd(match, ladder, reference.get("match"));
       assertMirror(match, ladder, reference);
       assertVariant(match, reference);
@@ -1445,6 +1454,14 @@ class BattleActionSpawnRunTest {
     assertThat(goblinsteinLog)
         .as("every group chain link and unlink, and what Goblinstein's ability did")
         .containsExactlyElementsOf(expectedGoblinsteinLog(reference));
+    assertThat(championLog)
+        .as("what the champion slots did, and every ability's buff")
+        .containsExactlyElementsOf(expectedChampionLog(reference));
+    List<String> expectedTrace = new ArrayList<>();
+    reference.path("champion").path("trace").forEach(row -> expectedTrace.add(row.toString()));
+    assertThat(championTrace)
+        .as("every champion slot step")
+        .containsExactlyElementsOf(expectedTrace);
     assertThat(cloneGateLog)
         .as("every ask of an area effect's buff test of a clone")
         .containsExactlyElementsOf(expectedCloneGateLog(reference));
@@ -3246,6 +3263,248 @@ class BattleActionSpawnRunTest {
   }
 
   /**
+   * Logs what the champion slots did - the deck pass, each follow of a play, each activation, each
+   * cooldown's end and each refund - every ability's buff, and every ability command with what it
+   * came to; and writes every slot step as the reference's trace row.
+   */
+  private static WorldObserver championLog(
+      int[] currentTick, List<String> log, List<String> trace) {
+    return new WorldObserver() {
+      @Override
+      public void championDeckPass(int tick, ChampionController slot) {
+        // The pass runs as the match is set up, before the first step.
+        log.add(
+            "%d deck_pass %d %d %s %d %d %d"
+                .formatted(
+                    tick,
+                    slot.side(),
+                    slot.getSlot(),
+                    slot.getChampion().name(),
+                    slot.getDeckIndex(),
+                    slot.getState(),
+                    slot.getCooldownFullMs()));
+      }
+
+      @Override
+      public void championFollowed(int tick, ChampionController slot, String play) {
+        log.add(
+            "%d follow %d %d %s %s %d %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    slot.side(),
+                    slot.getSlot(),
+                    slot.getChampion().name(),
+                    play,
+                    slot.getDeployIndex(),
+                    slot.getCharges(),
+                    slot.getCooldownMs(),
+                    slot.getState()));
+      }
+
+      @Override
+      public void championActivated(
+          int tick, ChampionController slot, List<CharacterEntity> requested) {
+        log.add(
+            "%d activation %d %d %s %d %d %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    slot.side(),
+                    slot.getSlot(),
+                    requested.stream().map(CharacterEntity::name).toList(),
+                    slot.getCooldownMs(),
+                    slot.getCharges(),
+                    slot.getTriggerMs(),
+                    slot.getPaidMana(),
+                    slot.getState()));
+      }
+
+      @Override
+      public void championCooldownOut(int tick, ChampionController slot) {
+        log.add(
+            "%d cooldown_out %d %d %d"
+                .formatted(currentTick[0], slot.side(), slot.getSlot(), slot.getState()));
+      }
+
+      @Override
+      public void championRefunded(
+          int tick, ChampionController slot, int mana, int elixirBefore, int elixirAfter) {
+        log.add(
+            "%d refund %d %d %d %d %d"
+                .formatted(
+                    currentTick[0], slot.side(), slot.getSlot(), mana, elixirBefore, elixirAfter));
+      }
+
+      @Override
+      public void abilityBuffed(
+          int tick, CharacterEntity unit, String buff, int timeMs, int packedLevel) {
+        log.add(
+            "%d ability_buff %s %s %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    buff,
+                    timeMs,
+                    packedLevel,
+                    unit.getView().getState()));
+      }
+
+      @Override
+      public void championStepped(
+          int tick, ChampionController slot, int elixir, List<ChampionView> views) {
+        List<Object> row = new ArrayList<>();
+        row.add(currentTick[0]);
+        row.add("step");
+        row.add(slot.side());
+        row.add(slot.getSlot());
+        row.add(slot.getState());
+        row.add(slot.getCooldownMs());
+        row.add(slot.getCharges());
+        row.add(slot.getTriggerMs());
+        row.add(slot.getDeployIndex());
+        row.add(slot.champions().stream().map(CharacterEntity::name).toList());
+        row.add(elixir);
+        List<List<Object>> seen = new ArrayList<>();
+        for (ChampionView v : views) {
+          seen.add(
+              List.of(
+                  v.name(),
+                  v.row(),
+                  v.deployIndex(),
+                  v.state(),
+                  v.pending() ? 1 : 0,
+                  v.warning(),
+                  v.tags(),
+                  v.cloned() ? 1 : 0));
+        }
+        row.add(seen);
+        trace.add(JSON.valueToTree(row).toString());
+      }
+    };
+  }
+
+  /**
+   * The reference's champion log in the battle's layout. A command is held by the battle's own
+   * record of it; the log's command entries are compared there.
+   */
+  private static List<String> expectedChampionLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode c : reference.path("champion").path("log")) {
+      int tick = c.get("tick").asInt();
+      switch (c.get("event").asText()) {
+        case "deck_pass" ->
+            expected.add(
+                "%d deck_pass %d %d %s %d %d %d"
+                    .formatted(
+                        tick,
+                        c.get("side").asInt(),
+                        c.get("slot").asInt(),
+                        c.get("champion").asText(),
+                        c.get("deck_index").asInt(),
+                        c.get("state").asInt(),
+                        c.get("cooldown_full").asInt()));
+        case "follow" ->
+            expected.add(
+                "%d follow %d %d %s %s %d %d %d %d"
+                    .formatted(
+                        tick,
+                        c.get("side").asInt(),
+                        c.get("slot").asInt(),
+                        c.get("champion").asText(),
+                        c.get("command").asText(),
+                        c.get("deploy_index").asInt(),
+                        c.get("charges").asInt(),
+                        c.get("cooldown").asInt(),
+                        c.get("state").asInt()));
+        case "activation" -> {
+          List<String> requests = new ArrayList<>();
+          c.get("requests").forEach(r -> requests.add(r.asText()));
+          expected.add(
+              "%d activation %d %d %s %d %d %d %d %d"
+                  .formatted(
+                      tick,
+                      c.get("side").asInt(),
+                      c.get("slot").asInt(),
+                      requests,
+                      c.get("cooldown").asInt(),
+                      c.get("charges").asInt(),
+                      c.get("trigger").asInt(),
+                      c.get("paid").asInt(),
+                      c.get("state").asInt()));
+        }
+        case "cooldown_out" ->
+            expected.add(
+                "%d cooldown_out %d %d %d"
+                    .formatted(
+                        tick,
+                        c.get("side").asInt(),
+                        c.get("slot").asInt(),
+                        c.get("state").asInt()));
+        case "refund" ->
+            expected.add(
+                "%d refund %d %d %d %d %d"
+                    .formatted(
+                        tick,
+                        c.get("side").asInt(),
+                        c.get("slot").asInt(),
+                        c.get("amount").asInt(),
+                        c.get("elixir").get(0).asInt(),
+                        c.get("elixir").get(1).asInt()));
+        case "ability_buff" ->
+            expected.add(
+                "%d ability_buff %s %s %d %d %d"
+                    .formatted(
+                        tick,
+                        c.get("unit").asText(),
+                        c.get("buff").asText(),
+                        c.get("time").asInt(),
+                        c.get("level").asInt(),
+                        c.get("state").asInt()));
+        case "command" -> {}
+        default -> throw new IllegalArgumentException("a champion log entry " + c);
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * Every ability command: the tick it ran on, its code, the elixir before and after, and the units
+   * it requested; and the code and elixir the reference's champion log gives it.
+   */
+  private static void assertAbilityUses(Standard1v1Battle match, JsonNode reference) {
+    Map<String, Standard1v1Battle.AbilityUse> uses = new HashMap<>();
+    for (Standard1v1Battle.AbilityUse use : match.getAbilityUses()) {
+      uses.put(use.name(), use);
+    }
+    for (JsonNode command : reference.path("commands")) {
+      if (!command.has("ability")) {
+        continue;
+      }
+      String name = command.get("name").asText();
+      Standard1v1Battle.AbilityUse use = uses.get(name);
+      assertThat(use).as("the ability command %s ran", name).isNotNull();
+      assertThat(use.tick()).as("%s: its tick", name).isEqualTo(command.get("tick").asInt());
+      AbilityCommand.Outcome outcome = use.outcome();
+      assertThat(outcome.code()).as("%s: its code", name).isEqualTo(command.get("code").asInt());
+      assertThat(List.of(outcome.elixirBefore(), outcome.elixirAfter()))
+          .as("%s: the elixir before and after", name)
+          .containsExactly(
+              command.get("elixir_before").asInt(), command.get("elixir_after").asInt());
+      List<String> requests = new ArrayList<>();
+      command.path("requests").forEach(r -> requests.add(r.asText()));
+      assertThat(outcome.requested().stream().map(CharacterEntity::name).toList())
+          .as("%s: the units requested", name)
+          .isEqualTo(requests);
+    }
+    assertThat(uses.keySet())
+        .as("every ability command")
+        .hasSize(
+            (int)
+                StreamSupport.stream(reference.path("commands").spliterator(), false)
+                    .filter(c -> c.has("ability"))
+                    .count());
+  }
+
+  /**
    * The reference's group chain and Goblinstein log, in the battle's layout. The HP-bar run and the
    * card-play listener the monster's starting group lists are held by the run log, which lists each
    * as it starts; the steps that only connect are listed by what they connected to.
@@ -4305,6 +4564,9 @@ class BattleActionSpawnRunTest {
       codes.put(play.name(), play.matchCode());
     }
     for (JsonNode command : reference.path("commands")) {
+      if (command.has("ability")) {
+        continue;
+      }
       String name = command.get("name").asText();
       int expected =
           command.path("stage").asText().equals("match_gates") ? command.get("code").asInt() : 0;

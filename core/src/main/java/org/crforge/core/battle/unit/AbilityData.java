@@ -5,7 +5,8 @@ import lombok.Builder;
 
 /**
  * A unit's ability row as the battle reads it: how long a cast lasts and when its effect fires,
- * whether the unit keeps its target while it casts, and the action it runs as it fires.
+ * whether the unit keeps its target while it casts, the action it runs and the buff it gives itself
+ * as it fires, and what a champion's controller reads: its cost, its cooldown and its charges.
  *
  * <p>A request for the ability takes the unit into the casting state. The cast time and the trigger
  * delay are counted in whole ticks from there, each the column's milliseconds divided by 50; the
@@ -19,9 +20,14 @@ import lombok.Builder;
  *     component switched off meanwhile
  * @param champion true for a champion's ability, which a champion's clone never casts
  * @param onActivationAction the action row the ability runs as it fires, or null
- * @param unmodelledColumns the columns that make the ability do more than run its activation
- *     action, or keep a buff on a unit waiting to cast, which the battle does not model; a request
- *     for such an ability is refused
+ * @param buff the buff the ability gives the unit itself as it fires, or null
+ * @param buffTimeMs how long that buff lasts
+ * @param manaCost the elixir a player pays to use the ability, in whole elixir
+ * @param cooldownMs how long after a use its controller refuses the next
+ * @param maxCharges how many uses one play of the champion allows; 0 for no limit
+ * @param unmodelledColumns the columns that make the ability do more than run its activation action
+ *     and buff the unit itself, or keep a buff on a unit waiting to cast, which the battle does not
+ *     model; a request for such an ability is refused
  */
 @Builder(toBuilder = true)
 public record AbilityData(
@@ -31,6 +37,11 @@ public record AbilityData(
     boolean keepCurrentTarget,
     boolean champion,
     String onActivationAction,
+    String buff,
+    int buffTimeMs,
+    int manaCost,
+    int cooldownMs,
+    int maxCharges,
     List<String> unmodelledColumns) {
 
   public AbilityData {

@@ -45,6 +45,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param otherBuffDeathSpawnAllowed true when it may be listed beside another buff with a death
  *     spawn that allows it too
  * @param invisible true when it makes its carrier invisible while it is listed
+ * @param notCloned true when a clone of its carrier would not take a copy of it; a clone of a
+ *     carrier is refused
  * @param healPerSecond the heal over time at the first level, per second, dealt at its hit
  *     frequency
  * @param allowedOverHealPercent the share of its carrier's maximum, in percent, its heal may raise
@@ -88,6 +90,7 @@ public record BuffData(
     boolean deathSpawnDeployDelay,
     boolean otherBuffDeathSpawnAllowed,
     boolean invisible,
+    boolean notCloned,
     int healPerSecond,
     int allowedOverHealPercent,
     boolean lockTarget,

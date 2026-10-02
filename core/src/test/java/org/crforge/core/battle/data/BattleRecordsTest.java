@@ -634,8 +634,9 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "an ability carries its cast, its trigger, the target it keeps and its inline activation"
-          + " action, and lists the effects the battle does not model")
+      "an ability carries its cast, its trigger, the target it keeps, its inline activation"
+          + " action, its own buff and its controller's columns, and lists the effects the battle"
+          + " does not model")
   void ability() {
     AbilityData buffer = records.unit("GiantBuffer").ability();
     assertThat(buffer.name()).isEqualTo("giantbuffer_ability");
@@ -646,7 +647,21 @@ class BattleRecordsTest {
     // Written inline, it is the actions table's row named after the ability and the column.
     assertThat(buffer.onActivationAction()).isEqualTo("giantbuffer_ability_OnActivationAction");
     assertThat(buffer.unmodelledColumns()).isEmpty();
-    assertThat(records.unit("ArcherQueen").ability().unmodelledColumns()).isNotEmpty();
+    assertThat(buffer.buff()).isNull();
+    // A champion's ability buffs the champion itself, and its controller reads its cost, cooldown
+    // and charges.
+    AbilityData queen = records.unit("ArcherQueen").ability();
+    assertThat(queen.champion()).isTrue();
+    assertThat(queen.buff()).isEqualTo("ArcherQueenRapid");
+    assertThat(queen.buffTimeMs()).isEqualTo(3500);
+    assertThat(queen.manaCost()).isEqualTo(1);
+    assertThat(queen.cooldownMs()).isEqualTo(17000);
+    assertThat(queen.maxCharges()).isZero();
+    assertThat(queen.unmodelledColumns()).isEmpty();
+    assertThat(records.unit("BossBandit").ability().maxCharges()).isEqualTo(2);
+    // A dash, or a buff over a radius, is still refused.
+    assertThat(records.unit("MightyMiner").ability().unmodelledColumns())
+        .containsExactly("SwitchLanes", "ActivationSpawnCharacter");
     assertThat(records.unit("Knight").ability()).isNull();
   }
 

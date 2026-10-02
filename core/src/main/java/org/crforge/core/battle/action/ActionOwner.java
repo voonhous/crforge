@@ -166,6 +166,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Makes a run of the champion ability controller's row on the owner. Only a king, which makes its
+   * two slots as it starts, runs one.
+   *
+   * @param action the row
+   * @return the run
+   */
+  default ActionInstance championAbility(ChampionAbility action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a king, not modelled");
+  }
+
+  /**
    * What a Goblin Hut's life state asks of the battle around the owner.
    *
    * @return the owner's answers

@@ -152,6 +152,15 @@ class BattlePlacementRunTest {
    */
   static void playAll(Standard1v1Battle match, JsonNode reference) {
     for (JsonNode command : reference.get("commands")) {
+      // An ability command names a unit a play made.
+      if (command.has("ability")) {
+        match.useAbility(
+            command.get("tick").asInt(),
+            command.get("side").asInt(),
+            command.get("ability").asText(),
+            command.get("name").asText());
+        continue;
+      }
       String name = command.get("card").asText();
       if (GameData.records().matchCard(name).variant() != null) {
         match.playVariant(

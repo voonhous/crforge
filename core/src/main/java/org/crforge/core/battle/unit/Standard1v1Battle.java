@@ -18,6 +18,7 @@ import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -203,7 +204,104 @@ public class Standard1v1Battle {
     battle.setMode(ladder);
     world.setKingVisit(ladder::kingVisit);
     this.match = ladder;
+    // Each king's two champion slots, then each deck's pass over them, side 0 first: the avatar
+    // setup ends its deck's setup with the pass, after the hand is dealt.
+    for (int side = 0; side < 2; side++) {
+      world.kingTower(side).makeChampionSlots();
+    }
+    List<List<String>> decks = List.of(deck0, deck1);
+    for (int side = 0; side < 2; side++) {
+      List<UnitData> champions = new ArrayList<>();
+      int championCards = 0;
+      for (String card : decks.get(side)) {
+        // The Mirror and a variant card summon nothing of their own.
+        MatchCard matchCard = world.getRecords().matchCard(card);
+        UnitData champion =
+            matchCard.mirror() || matchCard.variant() != null
+                ? null
+                : world.getRecords().card(card).champion();
+        champions.add(champion);
+        if (champion != null) {
+          championCards++;
+        }
+      }
+      // A Ladder deck holds one champion card; a second slot's champion is in no reference.
+      if (championCards > 1) {
+        throw new UnsupportedOperationException(
+            "side "
+                + side
+                + "'s deck holds "
+                + championCards
+                + " champion cards, which no reference holds");
+      }
+      world.kingTower(side).championDeckPass(champions);
+    }
     return ladder;
+  }
+
+  /**
+   * One ability command that has run.
+   *
+   * @param name the command's name
+   * @param side the commanding side
+   * @param unit the name of the unit it names
+   * @param tick the tick it ran on
+   * @param outcome what it came to
+   */
+  public record AbilityUse(
+      String name, int side, String unit, int tick, AbilityCommand.Outcome outcome) {}
+
+  /** Every ability command run so far, in the order they ran. */
+  @Getter private final List<AbilityUse> abilityUses = new ArrayList<>();
+
+  /**
+   * Queues a player's ability command to run on the given tick, in a match: the tap on a champion's
+   * button, naming one unit a card play of the side made. It runs in the command pass of that tick,
+   * in order with the card plays, before the tick's entity tick: it passes its gates, pays the
+   * ability's cost and has the slot following the unit request its live copies' ability. The
+   * command is taken as given: the player's client gives one only from a button it shows ready,
+   * which a command refused here might never be.
+   *
+   * @param tick the tick the command runs on
+   * @param side the commanding side
+   * @param unit the name of the unit it names, made by a card play run before it
+   * @param name the command's name
+   */
+  public void useAbility(int tick, int side, String unit, String name) {
+    if (match == null) {
+      throw new UnsupportedOperationException(
+          name + ": an ability command outside a match, which has no champion slots");
+    }
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            CharacterEntity named = playedUnit(unit);
+            checkArgument(
+                named != null && named.side() == side,
+                () -> name + " names " + unit + ", which no play of side " + side + " made");
+            abilityUses.add(
+                new AbilityUse(
+                    name, side, unit, target.getTick(), AbilityCommand.run(world, side, named)));
+          }
+        });
+  }
+
+  /** The unit a card play run so far made under a name, or null. */
+  private CharacterEntity playedUnit(String name) {
+    for (Play play : plays) {
+      for (CharacterEntity unit : play.units()) {
+        if (unit.name().equals(name)) {
+          return unit;
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -505,6 +603,8 @@ public class Standard1v1Battle {
             entities,
             SYMMETRICAL_DEPLOY_SNAP,
             LANE_BASED_DEPLOY_SEQUENCE);
+    // In a match, the units carry the king's count of card plays before this one.
+    int deployIndex = match != null ? match.side(side).getDeployCounter() : -1;
     // A play placed or cast pays for itself and cycles its card before anything is made.
     if (pay != null && result.placed()) {
       pay.run();
@@ -523,7 +623,7 @@ public class Standard1v1Battle {
           throw new UnsupportedOperationException(
               card.name() + " is a group whose unit tunnels, which no card is, not modelled");
         }
-        units.add(tunnel(target, unit, level, side, result.x(), result.y(), name));
+        units.add(tunnel(target, unit, level, side, result.x(), result.y(), name, deployIndex));
         continue;
       }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
@@ -543,6 +643,7 @@ public class Standard1v1Battle {
               level,
               unit.lane(),
               waits ? unit.start().waitMs() : -1);
+      character.setDeployIndex(deployIndex);
       // Linked as it is made, before the setter that sets it deploying.
       if (card.group()) {
         character.linkAfter(previous);
@@ -573,6 +674,10 @@ public class Standard1v1Battle {
     if (result.placed()) {
       world.cardPlayed(side, card.name());
     }
+    // In a match the champion slots hear the play after its cast.
+    if (match != null && result.placed()) {
+      world.championCardPlayed(side, card.champion(), deployIndex, name);
+    }
     plays.add(
         new Play(
             name, side, x, y, target.getTick(), result, List.copyOf(units), 0, mirror, variant));
@@ -591,7 +696,8 @@ public class Standard1v1Battle {
       int side,
       int pointX,
       int pointY,
-      String name) {
+      String name,
+      int deployIndex) {
     CharacterEntity character =
         new CharacterEntity(
             world,
@@ -603,6 +709,7 @@ public class Standard1v1Battle {
             level,
             unit.lane(),
             -1);
+    character.setDeployIndex(deployIndex);
     // The king that fills the side's tower slot, which the setup placed; it is never removed.
     TowerEntity king = null;
     for (BattleEntity entity : target.getHolder().entities()) {

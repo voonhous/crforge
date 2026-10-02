@@ -6,6 +6,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import lombok.Getter;
 import lombok.Setter;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -60,7 +61,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " instance, first to last, of an attack that landed, held by giant_buffer_knights"
             + " and berserker_knight. The stop of every running instance as the entity leaves,"
             + " after every notice of it, held by goblin_machine_tower. The owner-leave of every"
-            + " running instance, last to first, before any notice, held by goblinstein_tower. Not"
+            + " running instance, last to first, before any notice, held by goblinstein_tower. The"
+            + " notice to every running instance, last to first, of an ability its player paid"
+            + " for, held by archer_queen_ability. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
             + " the target an entry carries, and the notice to an action's instigator. The cause"
             + " an entry carries is the holder of the entity that caused it.")
@@ -381,6 +384,19 @@ public class ActionHolder implements EntityActions {
   public void objectLeft(int leftId) {
     for (ActionInstance instance : new ArrayList<>(running)) {
       instance.objectLeft(leftId);
+    }
+  }
+
+  /**
+   * Tells every running instance, from the last to the first, that the entity's player paid for a
+   * unit's ability.
+   *
+   * @param unit the unit whose ability was paid for
+   */
+  public void abilityPaid(BattleEntity unit) {
+    List<ActionInstance> instances = new ArrayList<>(running);
+    for (int i = instances.size() - 1; i >= 0; i--) {
+      instances.get(i).abilityPaid(this, unit);
     }
   }
 

@@ -210,6 +210,16 @@ public final class LadderMatch implements BattleMode {
           }
 
           @Override
+          public int elixir(int side) {
+            return sides.get(side).getElixir();
+          }
+
+          @Override
+          public void spend(int side, int amount) {
+            sides.get(side).spend(amount);
+          }
+
+          @Override
           public void add(int side, int amount) {
             sides.get(side).add(amount, maxMana);
           }

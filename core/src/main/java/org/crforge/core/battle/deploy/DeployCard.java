@@ -142,15 +142,26 @@ public record DeployCard(
    * list's, as Goblinstein's doctor is its second group's.
    */
   public boolean summonsChampion() {
-    if (unit != null && unit.champion() || secondary != null && secondary.champion()) {
-      return true;
+    return champion() != null;
+  }
+
+  /**
+   * The champion the card summons, as a champion's slot finds it: its summoned character, else its
+   * second group's, else the first of its list's that is a champion; null for none.
+   */
+  public UnitData champion() {
+    if (unit != null && unit.champion()) {
+      return unit;
+    }
+    if (secondary != null && secondary.champion()) {
+      return secondary;
     }
     for (Listed entry : listed) {
       if (entry.unit().champion()) {
-        return true;
+        return entry.unit();
       }
     }
-    return false;
+    return null;
   }
 
   /**

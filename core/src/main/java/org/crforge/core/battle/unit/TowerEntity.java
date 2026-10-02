@@ -1,10 +1,12 @@
 package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.WaitToActivate;
@@ -79,6 +81,12 @@ public class TowerEntity extends WorldEntity {
 
   /** True for a tower placed to stand passive: its targeting component never runs. */
   private boolean holdingFire;
+
+  /** A king's two champion slots, once a match has made them; null before. */
+  private final ChampionController[] championSlots = new ChampionController[2];
+
+  /** The global that names the champion slot's row. */
+  private static final String SUMMONER_CHAMPION_ABILITY_ACTION = "SUMMONER_CHAMPION_ABILITY_ACTION";
 
   /**
    * @param world the battle's shared arena state, whose arena assigns the tower its lane from the
@@ -238,6 +246,104 @@ public class TowerEntity extends WorldEntity {
   private StateQueries stateQueries() {
     // A tower has no movement component, so it can never be given a route: a resume stands it.
     return StateQueries.forUnitWithRoute(side() & 1).withMayHoldRoute(false);
+  }
+
+  /**
+   * Makes the king's two champion slots, the first and then the second, each a run of the row the
+   * globals name, listed in the king's holder. The king makes them as it starts; they are made here
+   * as a match is set up, before any step, listed before the king's starting action, which starts
+   * in the first step's pending pass: neither reads the other.
+   */
+  public void makeChampionSlots() {
+    if (!getData().king()) {
+      throw new IllegalStateException(name() + " is no king, which alone has champion slots");
+    }
+    BattleAction row =
+        world
+            .getActions()
+            .build(
+                world.getRecords().globalText(SUMMONER_CHAMPION_ABILITY_ACTION),
+                world.binding(this));
+    actionHolder().start(row);
+    actionHolder().start(row);
+  }
+
+  @Override
+  public ActionInstance championAbility(ChampionAbility action) {
+    if (!getData().king()) {
+      return super.championAbility(action);
+    }
+    int free = championSlots[0] == null ? 0 : 1;
+    if (championSlots[free] != null) {
+      throw new IllegalStateException(name() + " makes a third champion slot");
+    }
+    championSlots[free] = new ChampionController(world, this, action, free + 1);
+    return championSlots[free];
+  }
+
+  /**
+   * One of the king's champion slots.
+   *
+   * @param slot 1 or 2
+   * @return the slot, or null before a match made them
+   */
+  public ChampionController championSlot(int slot) {
+    return championSlots[slot - 1];
+  }
+
+  /** The slot that follows a champion row: 1, else 2, else 0 for neither. */
+  int championSlotOf(UnitData champion) {
+    for (int slot = 1; slot <= 2; slot++) {
+      UnitData followed = championSlot(slot).getChampion();
+      if (followed != null && followed.name().equals(champion.name())) {
+        return slot;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * The deck pass at the match's setup: both slots cleared, then the deck walked from its last card
+   * to its first, at most eight: the first champion found goes to the first slot, with its card's
+   * deck index, a second to the second slot, and the walk ends.
+   *
+   * @param deckChampions the champion each card of the deck summons, by deck index; null for none
+   */
+  public void championDeckPass(List<UnitData> deckChampions) {
+    championSlot(1).assign(null);
+    championSlot(2).assign(null);
+    boolean first = true;
+    for (int index = Math.min(deckChampions.size(), 8) - 1; index >= 0; index--) {
+      UnitData champion = deckChampions.get(index);
+      if (champion == null) {
+        continue;
+      }
+      ChampionController slot = championSlot(first ? 1 : 2);
+      slot.assign(champion);
+      slot.setDeckIndex(index);
+      world.championDeckPass(slot);
+      if (!first) {
+        break;
+      }
+      first = false;
+    }
+  }
+
+  /**
+   * A card play of a match after its cast, told to the king's slots, the first and then the second.
+   *
+   * @param side the playing side
+   * @param champion the champion the card summons, or null
+   * @param index the play's deploy count
+   * @param play the play's name
+   */
+  void championCardPlayed(int side, UnitData champion, int index, String play) {
+    for (int slot = 1; slot <= 2; slot++) {
+      ChampionController controller = championSlot(slot);
+      if (controller != null && controller.cardPlayed(side, champion, index)) {
+        world.championFollowed(controller, play);
+      }
+    }
   }
 
   /**

@@ -97,6 +97,9 @@ public final class BattleRecords {
           "Name",
           "Rarity",
           "Invisible",
+          // Read only by the clone creator, which leaves such a buff off a clone; a clone of a
+          // carrier is refused.
+          "NotCloned",
           "HealPerSecond",
           "AllowedOverHealPerc",
           "SpeedMultiplier",
@@ -1214,6 +1217,7 @@ public final class BattleRecords {
         .deathSpawnDeployDelay(row.bool("DeathSpawnDeployDelay"))
         .otherBuffDeathSpawnAllowed(row.bool("OtherBuffDeathSpawnAllowed"))
         .invisible(row.bool("Invisible"))
+        .notCloned(row.bool("NotCloned"))
         .healPerSecond(row.intValue("HealPerSecond"))
         .allowedOverHealPercent(row.intValue("AllowedOverHealPerc"))
         .lockTarget(row.bool("LockTarget"))
@@ -1259,15 +1263,15 @@ public final class BattleRecords {
   }
 
   /**
-   * The ability columns that make an ability do more than run its activation action - its dash,
-   * buff, area object, lane switch, morph, spawn and follow-up state - or keep a buff on a unit
-   * waiting to cast; the rest are the champion controller's or presentation, which a request never
-   * reads.
+   * The ability columns that make an ability do more than run its activation action and buff the
+   * unit itself - its dash, a buff over a radius, area object, lane switch, morph, spawn and
+   * follow-up state - or keep a buff on a unit waiting to cast; the rest are the champion
+   * controller's, read into the ability, or presentation, which a request never reads.
    */
   private static final List<String> UNMODELLED_ABILITY_COLUMNS =
       List.of(
           "DashRange",
-          "Buff",
+          "BuffRadius",
           "AreaEffectObject",
           "SwitchLanes",
           "MorphTarget",
@@ -1296,6 +1300,11 @@ public final class BattleRecords {
         .keepCurrentTarget(ability.bool("KeepCurrentTarget"))
         .champion(!ability.has("IsChampion") || ability.bool("IsChampion"))
         .onActivationAction(inlineActionName(ability, "OnActivationAction"))
+        .buff(set(ability, "Buff") ? ability.string("Buff") : null)
+        .buffTimeMs(ability.intValue("BuffTime"))
+        .manaCost(ability.intValue("ManaCost"))
+        .cooldownMs(ability.intValue("Cooldown"))
+        .maxCharges(ability.intValue("MaxCharges"))
         .unmodelledColumns(
             UNMODELLED_ABILITY_COLUMNS.stream().filter(column -> set(ability, column)).toList())
         .build();
@@ -1864,6 +1873,17 @@ public final class BattleRecords {
     GameTable globals = tables.table(GLOBALS);
     checkArgument(globals.has(name), () -> "the game tables have no global " + name);
     return globals.row(name).intValue("NumberValue");
+  }
+
+  /**
+   * A published global's text.
+   *
+   * @param name the global's name
+   */
+  public String globalText(String name) {
+    GameTable globals = tables.table(GLOBALS);
+    checkArgument(globals.has(name), () -> "the game tables have no global " + name);
+    return globals.row(name).string("TextValue");
   }
 
   /** An array column of whole numbers; an empty list for a column left out. */
