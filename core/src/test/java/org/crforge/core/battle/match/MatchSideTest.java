@@ -16,7 +16,7 @@ class MatchSideTest {
   private static MatchSide side() {
     List<MatchCard> deck = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      deck.add(new MatchCard("Card" + i, 3, false, false, 0, false));
+      deck.add(new MatchCard("Card" + i, 3, false, false, 0, false, null));
     }
     MatchSide side = new MatchSide(deck, 6);
     side.getHand().deal(List.of(0, 1, 2, 3, 4, 5, 6, 7));

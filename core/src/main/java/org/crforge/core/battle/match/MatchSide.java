@@ -18,7 +18,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>The king keeps the last card played, which a play of any card but the Mirror replaces, and a
  * copy of it its visit makes after the regeneration. The copy is the card a Mirror repeats, so a
- * Mirror after a Mirror repeats the same card again.
+ * Mirror after a Mirror repeats the same card again. A variant card's play keeps the variant card.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -137,6 +137,17 @@ public final class MatchSide {
     MatchCard card = deck.get(index);
     play(index, card.cost(), card.elixirProductionStopTimeMs());
     lastPlayed = card;
+  }
+
+  /**
+   * A play of a variant card: the picked option's cost taken and its production stop started, the
+   * variant card moved from its slot to the back of the queue and kept as the last played.
+   *
+   * @param item the variant card's item
+   */
+  void playVariant(VariantItem item) {
+    play(item.index(), item.cost(), item.elixirProductionStopTimeMs());
+    lastPlayed = deck.get(item.index());
   }
 
   /**

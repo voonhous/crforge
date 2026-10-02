@@ -9,6 +9,7 @@ package org.crforge.core.battle.match;
  * @param omitFromStartingHand true for a card kept out of the opening hand while four others remain
  * @param elixirProductionStopTimeMs how long a play of it stops the player's elixir; 0 for none
  * @param mirror true for the Mirror, which plays the last card again
+ * @param variant the options a variant card is played as, or null for any other card
  */
 public record MatchCard(
     String name,
@@ -16,5 +17,6 @@ public record MatchCard(
     boolean forceToStartingHand,
     boolean omitFromStartingHand,
     int elixirProductionStopTimeMs,
-    boolean mirror)
+    boolean mirror,
+    SpellVariant variant)
     implements DeckShuffle.Card {}

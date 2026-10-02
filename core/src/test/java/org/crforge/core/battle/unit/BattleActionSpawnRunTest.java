@@ -30,6 +30,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
+import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntity;
@@ -157,6 +158,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * elixir more and goes to the back of the queue itself. {@code mirror_fireball} does the same with
  * a Fireball, its first Mirror refused with 0xd, the elixir short of the item's cost. Each is held
  * to every Mirror item - the card it repeats, its level and its cost - and to the last card kept.
+ * {@code merge_maiden_mounted} plays the Merge Maiden with 6 elixir or more, so it comes as the
+ * mounted maiden, a flyer, for 6; {@code merge_maiden_normal} plays it after a Zap with less than
+ * 6, so it comes as the maiden on foot, for 3. Each is held to the item its play carried - the
+ * option, its cost and the Merge Maiden's deck index - and to both kings' elixir and hands.
  *
  * <p>{@code electro_wizard_knights} and {@code ice_wizard_knights} play a wizard onto two Knights:
  * the card names no unit, so it is cast as a spell, its area effect zapping or chilling the Knights
@@ -410,6 +415,8 @@ class BattleActionSpawnRunTest {
         "match_building_cards",
         "mirror_knight",
         "mirror_fireball",
+        "merge_maiden_mounted",
+        "merge_maiden_normal",
         "electro_wizard_knights",
         "ice_wizard_knights",
         "royal_giant_tower",
@@ -1075,6 +1082,7 @@ class BattleActionSpawnRunTest {
       assertPlays(match, reference);
       assertEnd(match, ladder, reference.get("match"));
       assertMirror(match, ladder, reference);
+      assertVariant(match, reference);
       List<String> expectedKills = new ArrayList<>();
       List<String> expectedDrains = new ArrayList<>();
       List<String> expectedElixir = new ArrayList<>();
@@ -1438,9 +1446,17 @@ class BattleActionSpawnRunTest {
         .as("every target indicator attack's start, find, signal, shot, step and stop")
         .containsExactlyElementsOf(expectedIndicatorLog(reference));
 
-    assertThat(buffLog)
-        .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
-        .containsExactlyElementsOf(expectedBuffLog(reference));
+    if (reference.has("buffs")) {
+      assertThat(buffLog)
+          .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
+          .containsExactlyElementsOf(expectedBuffLog(reference));
+    } else {
+      // The reference writes its buff log only for a run in which a buff was applied, so a run
+      // without one holds that none was: it lists no area buff that found nobody.
+      assertThat(buffLog)
+          .as("no buff applied: only area buffs that found nobody")
+          .allMatch(line -> line.contains(" area_buff ") && line.endsWith(" []"));
+    }
     List<String> expectedShields = new ArrayList<>();
     for (JsonNode s : reference.path("shields")) {
       expectedShields.add(
@@ -4100,6 +4116,35 @@ class BattleActionSpawnRunTest {
               .as("side %d's last card", side)
               .isEqualTo(card);
         });
+  }
+
+  /**
+   * Every item a variant card's play carried: the option it was picked as, that option's index and
+   * cost, and the card's deck index the play cycled.
+   */
+  private static void assertVariant(Standard1v1Battle match, JsonNode reference) {
+    Map<String, Standard1v1Battle.Play> plays = new HashMap<>();
+    for (Standard1v1Battle.Play play : match.getPlays()) {
+      plays.put(play.name(), play);
+    }
+    Map<String, JsonNode> commands = new HashMap<>();
+    for (JsonNode command : reference.path("commands")) {
+      commands.put(command.get("name").asText(), command);
+    }
+    for (JsonNode e : reference.path("variant_picks")) {
+      String name = e.get("command").asText();
+      Standard1v1Battle.Play play = plays.get(name);
+      assertThat(play).as("the variant play %s", name).isNotNull();
+      assertThat(play.tick()).as("%s: the tick it ran on", name).isEqualTo(e.get("run").asInt());
+      VariantItem item = play.variant();
+      assertThat(item).as("%s carries a variant item", name).isNotNull();
+      assertThat(item.spell()).as("%s: the option", name).isEqualTo(e.get("picked").asText());
+      assertThat(item.option()).as("%s: its index", name).isEqualTo(e.get("option").asInt());
+      assertThat(item.cost()).as("%s: its cost", name).isEqualTo(e.get("cost").asInt());
+      assertThat(item.index())
+          .as("%s: the deck index", name)
+          .isEqualTo(commands.get(name).get("play").get("deck_index").asInt());
+    }
   }
 
   /** Every play refused by a match's gate with the reference's code, and every other let on. */

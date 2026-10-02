@@ -43,6 +43,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * Mirror to the back of the queue. The last card stays the one the Mirror repeated. A Mirror with
  * nothing to repeat finds no position and is refused with 0x17, nothing taken.
  *
+ * <p>A variant card, the Merge Maiden, is played as one of its options. The player's client picks
+ * the option from the king's elixir as it gives the play, 20 ticks before it runs: the first whose
+ * trigger the elixir reaches, else the last - the mounted maiden from 6 elixir, else the maiden on
+ * foot. The play carries that option and its cost. The gates read the variant card's own hand slot
+ * and that cost; the option's card is then placed and cast as any troop card, and the play takes
+ * the cost, starts the option's production stop and moves the variant card to the back of the
+ * queue.
+ *
  * <p>The match is decided when a king has fallen, when overtime sees a crown, or when the time is
  * up. It is asked at the head of each step and after the entity tick, and the first time it holds
  * the match ends: the timeline freezes, the winner is the side with more crowns, and the end timer
@@ -76,16 +84,20 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " steps, its end by a fallen tower and by equal towers, the winner and the draw; by"
             + " match_elixir_sources: the kings' elixir a collector and a death pay into; by"
             + " mirror_knight and mirror_fireball: the Mirror's item, its gates, its spend and its"
-            + " cycle, the card repeated one level up, and the last card kept."
+            + " cycle, the card repeated one level up, and the last card kept; by"
+            + " merge_maiden_mounted and merge_maiden_normal: a variant card's option picked from"
+            + " the elixir, its cost gated and spent, and the variant card cycled."
             + " Held by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's"
             + " kills and the update it runs; by BattleMirrorTest alone: a Mirror after a Mirror"
-            + " and a Mirror with nothing to repeat. Not held apart: the last card and the copy a"
+            + " and a Mirror with nothing to repeat; by SpellVariantTest and BattleMergeMaidenTest"
+            + " alone: the pick at its boundary, the projection that moves no shipped pick, and a"
+            + " variant play the elixir does not cover. Not held apart: the last card and the copy a"
             + " Mirror reads, which differ only in a tick a play of its side ran, a play the Mirror"
             + " refuses. Not modelled, and refused: a projectile, an area effect or an entity"
             + " without hit points the clearing reaches, which the holder removes at once; a"
-            + " Mirror of a champion. Unreachable: an item's cost held to the most elixir, which no"
-            + " shipped card reaches, and a source played as a variant, whose play is refused, or"
-            + " evolved, which a match does not model. Not carried: the flag"
+            + " Mirror of a champion, and of a variant card, which repeats the option it was played"
+            + " as. Unreachable: an item's cost held to the most elixir, which no shipped card"
+            + " reaches, and a source evolved, which a match does not model. Not carried: the flag"
             + " set when a fallen king's two"
             + " towers stand whole, whose readers are not established.")
 public final class LadderMatch implements BattleMode {
@@ -588,8 +600,8 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * The match's gates for a play of a card, its cost the card's own. A Mirror's play is gated on
-   * its item's cost instead.
+   * The match's gates for a play of a card, its cost the card's own. A Mirror's play and a variant
+   * card's are gated on their item's cost instead.
    *
    * @param side the playing side
    * @param index the card's deck index
@@ -598,7 +610,9 @@ public final class LadderMatch implements BattleMode {
    */
   public int gate(int side, int index) {
     MatchCard card = sides.get(side).deck().get(index);
-    checkArgument(!card.mirror(), () -> "a Mirror's play is gated on its item's cost");
+    checkArgument(
+        !card.mirror() && card.variant() == null,
+        () -> card.name() + "'s play is gated on its item's cost");
     return gate(side, index, card.cost());
   }
 
@@ -607,7 +621,7 @@ public final class LadderMatch implements BattleMode {
    *
    * @param side the playing side
    * @param index the card's deck index
-   * @param cost the cost the elixir must cover: the card's, or a Mirror item's
+   * @param cost the cost the elixir must cover: the card's, or a Mirror's or a variant's item's
    * @return 0 when the play may go on, else the code it is refused with
    */
   public int gate(int side, int index, int cost) {
@@ -647,6 +661,13 @@ public final class LadderMatch implements BattleMode {
     if (source == null) {
       return new MirrorItem(index, null, mirrorLevelField, mirrorLevelField, mirror.cost());
     }
+    // The item would repeat the option the variant was played as, for 1 more than its cost.
+    if (source.variant() != null) {
+      throw new UnsupportedOperationException(
+          "a Mirror of "
+              + source.name()
+              + ", which repeats the option it was played as, which no reference holds");
+    }
     // The level is not capped at the card's last: a level past it reads past its level tables.
     int levelField = Math.max(mirrorLevelField + mirrorLevelOffset, 0);
     checkArgument(
@@ -658,6 +679,36 @@ public final class LadderMatch implements BattleMode {
         mirrorLevelField,
         levelField,
         Math.min(mirror.cost() + source.cost(), maxMana));
+  }
+
+  /**
+   * The option a variant card's play is picked as, as the player's client picks it when it gives
+   * the play: from the king's elixir as it stands and the timeline's full bar now.
+   *
+   * @param side the playing side
+   * @param card the variant card's row name
+   * @return the option's index
+   */
+  public int pickOption(int side, String card) {
+    SpellVariant variant = sides.get(side).deck().get(deckIndex(side, card)).variant();
+    checkArgument(variant != null, () -> card + " is not a variant card");
+    return variant.pick(sides.get(side).getElixir(), timeline.getFullBarMs(), maxMana);
+  }
+
+  /**
+   * The item a variant card's play carries: the option it was picked as, that option's cost, and
+   * the card's deck index.
+   *
+   * @param side the playing side
+   * @param index the variant card's deck index
+   * @param option the option's index
+   */
+  public VariantItem variantItem(int side, int index, int option) {
+    MatchCard card = sides.get(side).deck().get(index);
+    checkArgument(card.variant() != null, () -> card.name() + " is not a variant card");
+    SpellVariant.Option picked = card.variant().options().get(option);
+    return new VariantItem(
+        index, option, picked.spell(), picked.cost(), picked.elixirProductionStopTimeMs());
   }
 
   /**
@@ -680,5 +731,16 @@ public final class LadderMatch implements BattleMode {
   public void playMirror(int side, MirrorItem item) {
     checkArgument(item.repeats() != null, () -> "a Mirror with nothing to repeat is not played");
     sides.get(side).playMirror(item);
+  }
+
+  /**
+   * A variant card's play that passed the gates and was placed: the option's cost taken and its
+   * production stop started, and the variant card cycled and kept as the last card.
+   *
+   * @param side the playing side
+   * @param item the variant card's item
+   */
+  public void playVariant(int side, VariantItem item) {
+    sides.get(side).playVariant(item);
   }
 }

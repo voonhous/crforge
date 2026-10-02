@@ -10,6 +10,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
+import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
@@ -772,7 +773,8 @@ class BattleRecordsTest {
   }
 
   @Test
-  @DisplayName("a game mode's battle timeline, a card's cost and hand columns, and a global")
+  @DisplayName(
+      "a game mode's battle timeline, a card's cost, hand columns and options, and a global")
   void matchRows() {
     BattleTimeline ladder = records.gameModeTimeline("Ladder");
     assertThat(ladder.name()).isEqualTo("Default");
@@ -786,6 +788,15 @@ class BattleRecordsTest {
     assertThat(records.matchCard("Mirror").mirror()).isTrue();
     assertThat(records.matchCard("Mirror").omitFromStartingHand()).isTrue();
     assertThat(records.matchCard("Elixir Collector").omitFromStartingHand()).isTrue();
+    assertThat(records.matchCard("Knight").variant()).isNull();
+    // The Merge Maiden is played as one of its options: the triggers in ten-thousandths, each
+    // option's cost and production stop its own row's.
+    SpellVariant maiden = records.matchCard("MergeMaiden").variant();
+    assertThat(maiden.useProjectedTimeSummon()).isTrue();
+    assertThat(maiden.options())
+        .containsExactly(
+            new SpellVariant.Option("MergeMaiden_Mounted", 60000, 1200, 6, 0),
+            new SpellVariant.Option("MergeMaiden_Normal", 30000, 1200, 3, 0));
     assertThat(records.globalNumber("MAX_MANA")).isEqualTo(10);
   }
 
