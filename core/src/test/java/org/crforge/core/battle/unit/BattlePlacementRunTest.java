@@ -146,10 +146,24 @@ class BattlePlacementRunTest {
         .containsExactlyElementsOf(expectedPositions);
   }
 
-  /** Queues every card play of the reference on its tick; a Mirror is played as the Mirror. */
+  /**
+   * Queues every card play of the reference on its tick; a Mirror is played as the Mirror, and a
+   * variant card as the variant.
+   */
   static void playAll(Standard1v1Battle match, JsonNode reference) {
     for (JsonNode command : reference.get("commands")) {
       String name = command.get("card").asText();
+      if (GameData.records().matchCard(name).variant() != null) {
+        match.playVariant(
+            command.get("tick").asInt(),
+            name,
+            reference.get("level").asInt(),
+            command.get("side").asInt(),
+            command.get("point").get(0).asInt(),
+            command.get("point").get(1).asInt(),
+            command.get("name").asText());
+        continue;
+      }
       if (GameData.records().matchCard(name).mirror()) {
         match.playMirror(
             command.get("tick").asInt(),

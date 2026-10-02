@@ -12,7 +12,7 @@ class DeckShuffleTest {
 
   /** A card with neither opening-hand column set. */
   private static MatchCard plain(String name) {
-    return new MatchCard(name, 3, false, false, 0, false);
+    return new MatchCard(name, 3, false, false, 0, false, null);
   }
 
   private static List<MatchCard> eightPlain() {
@@ -35,8 +35,8 @@ class DeckShuffleTest {
   @DisplayName("a card kept out of the opening hand never is in it, for any seed")
   void anOmittedCardIsNeverOpened() {
     List<MatchCard> deck = eightPlain();
-    deck.set(2, new MatchCard("Mirror", 1, false, true, 0, true));
-    deck.set(6, new MatchCard("ElixirCollector", 6, false, true, 0, false));
+    deck.set(2, new MatchCard("Mirror", 1, false, true, 0, true, null));
+    deck.set(6, new MatchCard("ElixirCollector", 6, false, true, 0, false, null));
     for (int seed = 0; seed < 500; seed++) {
       List<Integer> order = DeckShuffle.order(deck, seed * 7919);
       assertThat(order.subList(0, 4)).doesNotContain(2, 6);
@@ -48,7 +48,7 @@ class DeckShuffleTest {
   @DisplayName("a card that must start in the hand is queued first")
   void aForcedCardIsFirst() {
     List<MatchCard> deck = eightPlain();
-    deck.set(5, new MatchCard("Forced", 3, true, false, 0, false));
+    deck.set(5, new MatchCard("Forced", 3, true, false, 0, false, null));
 
     assertThat(DeckShuffle.order(deck, 12345).get(0)).isEqualTo(5);
   }

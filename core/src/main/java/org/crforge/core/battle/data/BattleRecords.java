@@ -13,6 +13,7 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
 import org.crforge.core.battle.match.MatchCard;
+import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
@@ -48,13 +49,20 @@ public final class BattleRecords {
   private static final String GLOBALS = "globals";
   private static final String LOCATIONS = "locations";
 
+  /** The class a card row names to be played as one of its options. */
+  private static final String SPELL_VARIANT_CLASS = "LogicBattleSpellVariantData";
+
+  /** How many ten-thousandths an option's trigger is stored as, for each unit of the column. */
+  private static final int TRIGGER_SCALE = 10;
+
   /** The section types of a battle timeline by name; the order is their number. */
   private static final List<String> SECTION_TYPES = List.of("Normal", "Overtime", "BonusTime");
 
   /**
    * The columns of a spell card the cast does not model yet: a Mirror, which a match plays as the
-   * card it repeats instead, a first projectile of its own, a spell deployed as a thrown
-   * projectile, and the play variants no reference holds. A spell that sets one is refused.
+   * card it repeats instead, a first projectile of its own, and a variant card's class and its
+   * projected summon, which a match plays as the option picked instead. A spell that sets one is
+   * refused.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
       List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
@@ -1753,27 +1761,74 @@ public final class BattleRecords {
   }
 
   /**
-   * What the match reads of a card: its cost, its two opening-hand columns, its production stop and
-   * whether it is the Mirror. The card is looked up in the three card tables in turn.
+   * What the match reads of a card: its cost, its two opening-hand columns, its production stop,
+   * whether it is the Mirror, and the options a variant card is played as. The card is looked up in
+   * the three card tables in turn.
    *
    * @param name the card row's name
    */
   public MatchCard matchCard(String name) {
-    GameRow row = null;
-    for (String table : List.of(SPELLS_CHARACTERS, SPELLS_BUILDINGS, SPELLS_OTHER)) {
-      if (tables.table(table).has(name)) {
-        row = tables.table(table).row(name);
-        break;
-      }
-    }
-    checkArgument(row != null, () -> "the game tables have no card " + name);
+    GameRow row = cardRow(name);
     return new MatchCard(
         row.name(),
         row.intValue("ManaCost"),
         row.bool("ForceToStartingHand"),
         row.bool("OmitFromStartingHand"),
         row.intValue("ElixirProductionStopTime"),
-        row.bool("Mirror"));
+        row.bool("Mirror"),
+        variant(row));
+  }
+
+  /** A card's row, looked up in the three card tables in turn. */
+  private GameRow cardRow(String name) {
+    for (String table : List.of(SPELLS_CHARACTERS, SPELLS_BUILDINGS, SPELLS_OTHER)) {
+      if (tables.table(table).has(name)) {
+        return tables.table(table).row(name);
+      }
+    }
+    throw new IllegalArgumentException("the game tables have no card " + name);
+  }
+
+  /**
+   * The options a card is played as when its custom class makes it a variant, or null for any other
+   * card. The options keep their order; each one's trigger is stored ten times over, in
+   * ten-thousandths of an elixir, and its cost and production stop are its own row's. An option row
+   * that is the Mirror or takes its cost from the king's elixir would cost otherwise, and is
+   * refused, as is any other custom class.
+   */
+  private SpellVariant variant(GameRow row) {
+    String type = row.string("CustomClassType");
+    if (type.isEmpty()) {
+      return null;
+    }
+    if (!type.equals(SPELL_VARIANT_CLASS)) {
+      throw new UnsupportedOperationException(
+          row.name() + " is of the class " + type + ", which a match does not model");
+    }
+    List<SpellVariant.Option> options = new ArrayList<>();
+    JsonNode listed = row.value("Options");
+    if (listed != null) {
+      for (JsonNode option : listed) {
+        checkArgument(
+            option.hasNonNull("SpellData"), () -> row.name() + " has an option with no card");
+        GameRow spell = cardRow(option.get("SpellData").asText());
+        if (spell.bool("Mirror") || spell.bool("ManaCostFromSummonerMana")) {
+          throw new UnsupportedOperationException(
+              row.name()
+                  + "'s option "
+                  + spell.name()
+                  + " costs other than its own cost, which no option does");
+        }
+        options.add(
+            new SpellVariant.Option(
+                spell.name(),
+                option.path("AvailableManaTrigger").asInt() * TRIGGER_SCALE,
+                option.path("PrecastPendingTime").asInt(),
+                spell.intValue("ManaCost"),
+                spell.intValue("ElixirProductionStopTime")));
+      }
+    }
+    return new SpellVariant(row.bool("UseProjectedTimeSummon"), options);
   }
 
   /**

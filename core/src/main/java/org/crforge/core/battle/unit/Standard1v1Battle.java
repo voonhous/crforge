@@ -1,5 +1,7 @@
 package org.crforge.core.battle.unit;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -17,6 +19,7 @@ import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MirrorItem;
+import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -44,9 +47,15 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " Ladder match, the players' hands, elixir, the match clock, its end and its"
             + " tiebreaker, held by match_elixir_150s, match_knights_king, match_overtime_tiebreak"
             + " and match_overtime_draw; a Mirror's play, its item built as it runs, held by"
-            + " mirror_knight and mirror_fireball. Not modelled, and refused: a Mirror outside a"
-            + " match, and one given while another play of its side is pending, which the"
-            + " player's client may repeat in its place.")
+            + " mirror_knight and mirror_fireball; a variant card's play, its option picked from"
+            + " the elixir after the step 21 before its run, held by merge_maiden_mounted and"
+            + " merge_maiden_normal. Not modelled, and refused: a Mirror outside a match, and one"
+            + " given while another play of its side is pending, which the player's client may"
+            + " repeat in its place; a variant card outside a match, run before tick 21, or given"
+            + " while another play of its side is pending, whose cost the pick would set aside."
+            + " Supplied: the step a variant's option is picked after, the last the client can"
+            + " have seen before it gives the play; the level of the option's units, the level"
+            + " the play is given, as for every card.")
 public class Standard1v1Battle {
 
   /** The level the reference runs are played at, and the towers' level when none is given. */
@@ -136,6 +145,7 @@ public class Standard1v1Battle {
    * @param units the units it created, in creation order
    * @param matchCode the code a match's gate refused the play with, or 0
    * @param mirror the item a Mirror's play carried, or null for any other card
+   * @param variant the item a variant card's play carried, or null for any other card
    */
   public record Play(
       String name,
@@ -146,12 +156,15 @@ public class Standard1v1Battle {
       CardPlacement.Result result,
       List<CharacterEntity> units,
       int matchCode,
-      MirrorItem mirror) {}
+      MirrorItem mirror,
+      VariantItem variant) {}
 
   /** A card play queued: the tick it runs on and its side. */
   private record QueuedPlay(int tick, int side) {}
 
-  /** Every card play queued so far, which a Mirror's item is built against. */
+  /**
+   * Every card play queued so far, which a Mirror's and a variant card's item are built against.
+   */
   private final List<QueuedPlay> queuedPlays = new ArrayList<>();
 
   /**
@@ -159,6 +172,13 @@ public class Standard1v1Battle {
    * player gives the Mirror: the play delay and the step it is given in.
    */
   private static final int MIRROR_PENDING_TICKS = PLAY_DELAY_TICKS + 1;
+
+  /**
+   * How many ticks before its own run a variant card's option is picked: after the step this many
+   * ticks before, the last the player's client can have seen before it gives the play. A play of
+   * its side that runs from the next tick on is pending at the pick.
+   */
+  private static final int VARIANT_PICK_TICKS = PLAY_DELAY_TICKS + 1;
 
   /** The match the battle is played as, or null for a battle without players. */
   @Getter private LadderMatch match;
@@ -291,7 +311,7 @@ public class Standard1v1Battle {
     // nothing.
     int code = match.gate(side, deckIndex, item.cost());
     if (code != 0) {
-      plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, item));
+      plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, item, null));
       return;
     }
     // With nothing to repeat the search is handed the king's last card, finds none and answers no
@@ -299,7 +319,7 @@ public class Standard1v1Battle {
     if (item.repeats() == null) {
       CardPlacement.Result refused =
           new CardPlacement.Result(CardPlacement.NO_POSITION, 0, 0, null, 0, List.of());
-      plays.add(new Play(name, side, x, y, target.getTick(), refused, List.of(), 0, item));
+      plays.add(new Play(name, side, x, y, target.getTick(), refused, List.of(), 0, item, null));
       return;
     }
     DeployCard repeated = world.getRecords().card(item.repeats().name());
@@ -308,7 +328,121 @@ public class Standard1v1Battle {
           name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");
     }
     place(
-        target, repeated, item.level(), side, x, y, name, () -> match.playMirror(side, item), item);
+        target,
+        repeated,
+        item.level(),
+        side,
+        x,
+        y,
+        name,
+        () -> match.playMirror(side, item),
+        item,
+        null);
+  }
+
+  /**
+   * Queues a variant card's play to run on the given tick, in a match: it is played as the option
+   * its player's client picks from the king's elixir as it gives the play, for that option's cost,
+   * and the variant card goes to the back of the queue. The option's card is placed and cast as any
+   * troop card, its units named after the play.
+   *
+   * <p>The option is picked after the step {@value #VARIANT_PICK_TICKS} ticks before the run, the
+   * last the client can have seen before it gives the play. The client sets aside the cost of any
+   * play of its side it has given and not yet seen run; a variant play with one due then is
+   * refused, and so is one outside a match, which has no king's elixir, and one run before tick 21,
+   * given before the first step.
+   *
+   * @param tick the tick the play runs on
+   * @param card the variant card's row name
+   * @param level the level it is played at, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void playVariant(int tick, String card, int level, int side, int x, int y, String name) {
+    if (match == null) {
+      throw new UnsupportedOperationException(
+          card + " outside a match, which picks its option from a king's elixir");
+    }
+    checkArgument(
+        tick >= VARIANT_PICK_TICKS,
+        () ->
+            name
+                + ": a variant play runs on tick 21 or later, its option picked after the step 21"
+                + " ticks before");
+    QueuedPlay queued = new QueuedPlay(tick, side);
+    queuedPlays.add(queued);
+    int[] option = {-1};
+    // The head of the next step sees the battle as the step left it: the pick runs there, before
+    // the commands that can change its side's elixir, which are refused.
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick - VARIANT_PICK_TICKS + 1;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            option[0] = match.pickOption(side, card);
+          }
+        });
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            runVariant(target, queued, card, level, x, y, name, option[0]);
+          }
+        });
+  }
+
+  private void runVariant(
+      Battle target,
+      QueuedPlay queued,
+      String card,
+      int level,
+      int x,
+      int y,
+      String name,
+      int option) {
+    int side = queued.side();
+    for (QueuedPlay other : queuedPlays) {
+      if (other != queued
+          && other.side() == side
+          && other.tick() > queued.tick() - VARIANT_PICK_TICKS
+          && other.tick() <= queued.tick()) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a variant play given while another play of its side is pending, whose cost"
+                + " the pick would set aside, is not modelled");
+      }
+    }
+    int deckIndex = match.deckIndex(side, card);
+    VariantItem item = match.variantItem(side, deckIndex, option);
+    // The gates read the variant card's own hand slot and the option's cost; a refused play
+    // changes nothing.
+    int code = match.gate(side, deckIndex, item.cost());
+    if (code != 0) {
+      plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, item));
+      return;
+    }
+    place(
+        target,
+        world.getRecords().card(item.spell()),
+        level,
+        side,
+        x,
+        y,
+        name,
+        () -> match.playVariant(side, item),
+        null,
+        item);
   }
 
   private void runPlay(
@@ -319,12 +453,12 @@ public class Standard1v1Battle {
       int deckIndex = match.deckIndex(side, card.name());
       int code = match.gate(side, deckIndex);
       if (code != 0) {
-        plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, null));
+        plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, null));
         return;
       }
       pay = () -> match.play(side, deckIndex);
     }
-    place(target, card, level, side, x, y, name, pay, null);
+    place(target, card, level, side, x, y, name, pay, null, null);
   }
 
   /**
@@ -333,6 +467,7 @@ public class Standard1v1Battle {
    *
    * @param pay what pays for a placed play and cycles its card, or null outside a match
    * @param mirror the Mirror's item the play carried, or null
+   * @param variant the variant card's item the play carried, or null
    */
   private void place(
       Battle target,
@@ -343,7 +478,8 @@ public class Standard1v1Battle {
       int y,
       String name,
       Runnable pay,
-      MirrorItem mirror) {
+      MirrorItem mirror,
+      VariantItem variant) {
     // The mask reads every character of the battle: the live list, then the ones still queued.
     List<MaskEntity> entities = new ArrayList<>();
     List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
@@ -421,7 +557,9 @@ public class Standard1v1Battle {
       character.start();
       units.add(character);
     }
-    plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units), 0, mirror));
+    plays.add(
+        new Play(
+            name, side, x, y, target.getTick(), result, List.copyOf(units), 0, mirror, variant));
   }
 
   /**
