@@ -350,6 +350,16 @@ import org.junit.jupiter.params.provider.ValueSource;
  * in the Knight. {@code boss_bandit_tower_bandit} has a Bandit kill a Boss Bandit at a princess
  * tower, whose killed action checks its killer the same way and matches. Each is held to every
  * killed-done check scheduled and every check of an action's cause.
+ *
+ * <p>{@code goblinstein_tower} plays Goblinstein toward a princess tower: the card links its
+ * monster and then its doctor, placed behind it toward the middle, into a group chain; the doctor's
+ * starting action makes an area effect that follows it and never hits, whose ability run connects
+ * to the monster on its first step and then waits for a cast that never comes. The tower kills the
+ * monster, and the run makes its death area where the monster fell, which never hits either; the
+ * tower then kills the doctor, its area effect leaves with it and ends the death area in the same
+ * cleanup. {@code goblinstein_doctor_first} has a Knight kill the doctor first: the area effect
+ * leaves with it, and the monster's later death makes nothing. Each is held to every link and
+ * unlink of the chain and to what the ability's run did.
  */
 class BattleActionSpawnRunTest {
 
@@ -493,7 +503,9 @@ class BattleActionSpawnRunTest {
         "little_prince_giant",
         "little_prince_retarget",
         "boss_bandit_bandit_knight",
-        "boss_bandit_tower_bandit"
+        "boss_bandit_tower_bandit",
+        "goblinstein_tower",
+        "goblinstein_doctor_first"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -754,6 +766,9 @@ class BattleActionSpawnRunTest {
     // Every start and notice of a Berserker's index toggle, with the index before and after.
     List<String> berserkLog = new ArrayList<>();
     match.getWorld().addObserver(berserkLog(currentTick, berserkLog));
+    // Every link and unlink of a card's group chain, and what Goblinstein's ability did.
+    List<String> goblinsteinLog = new ArrayList<>();
+    match.getWorld().addObserver(goblinsteinLog(currentTick, goblinsteinLog));
     // Every ask of an area effect's buff test of a clone, with the path that asked.
     List<String> cloneGateLog = new ArrayList<>();
     match.getWorld().addObserver(cloneGateLog(currentTick, cloneGateLog));
@@ -1427,6 +1442,9 @@ class BattleActionSpawnRunTest {
     assertThat(berserkLog)
         .as("every start and notice of a Berserker's index toggle")
         .containsExactlyElementsOf(expectedBerserkLog(reference));
+    assertThat(goblinsteinLog)
+        .as("every group chain link and unlink, and what Goblinstein's ability did")
+        .containsExactlyElementsOf(expectedGoblinsteinLog(reference));
     assertThat(cloneGateLog)
         .as("every ask of an area effect's buff test of a clone")
         .containsExactlyElementsOf(expectedCloneGateLog(reference));
@@ -1683,9 +1701,11 @@ class BattleActionSpawnRunTest {
                             a.get("y").asInt(),
                             a.get("level").asInt(),
                             a.get("countdown").asInt())
-                    // The battle keeps the parent of an area effect an action made, or a target
-                    // indicator attack made as its signal, and only that.
-                    + (Set.of("action", "target_indicator").contains(a.get("how").asText())
+                    // The battle keeps the parent of an area effect an action made, a target
+                    // indicator attack made as its signal, or Goblinstein's ability made as its
+                    // death area, and only that.
+                    + (Set.of("action", "target_indicator", "goblinstein_death")
+                                .contains(a.get("how").asText())
                             && !a.get("parent").isNull()
                         ? " parent " + a.get("parent").asText()
                         : ""));
@@ -3155,6 +3175,137 @@ class BattleActionSpawnRunTest {
                   b.get("owner").asText(),
                   b.get("before").asInt(),
                   b.get("index").asInt()));
+    }
+    return expected;
+  }
+
+  /**
+   * Logs every link of a card's group chain and every unlink, and every start, connection, death
+   * area made and death area ended of Goblinstein's ability.
+   */
+  private static WorldObserver goblinsteinLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void chainLinked(int tick, CharacterEntity unit, CharacterEntity after) {
+        log.add(
+            "%d group_link %s %s"
+                .formatted(currentTick[0], unit.name(), after == null ? null : after.name()));
+      }
+
+      @Override
+      public void chainUnlinked(int tick, CharacterEntity unit) {
+        log.add("%d group_unlink %s".formatted(currentTick[0], unit.name()));
+      }
+
+      @Override
+      public void goblinsteinStarted(int tick, AreaEffectEntity owner, String action, int phase) {
+        log.add("%d start %s %s %d".formatted(currentTick[0], owner.name(), action, phase));
+      }
+
+      @Override
+      public void goblinsteinConnected(int tick, AreaEffectEntity owner, BattleEntity connected) {
+        String name =
+            connected == null
+                ? null
+                : connected instanceof WorldEntity w
+                    ? w.name()
+                    : ((AreaEffectEntity) connected).name();
+        log.add("%d connect %s %s".formatted(currentTick[0], owner.name(), name));
+      }
+
+      @Override
+      public void goblinsteinDeathAreaMade(
+          int tick,
+          AreaEffectEntity owner,
+          WorldEntity left,
+          AreaEffectEntity deathArea,
+          int x,
+          int y) {
+        log.add(
+            "%d death_area %s %s %s %d %d %d %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    left.name(),
+                    deathArea.name(),
+                    deathArea.getId(),
+                    x,
+                    y,
+                    deathArea.side(),
+                    deathArea.getPackedLevel(),
+                    deathArea.getCountdown()));
+      }
+
+      @Override
+      public void goblinsteinDeathAreaEnded(
+          int tick, AreaEffectEntity owner, AreaEffectEntity deathArea) {
+        log.add(
+            "%d death_area_ended %s %s".formatted(currentTick[0], owner.name(), deathArea.name()));
+      }
+    };
+  }
+
+  /**
+   * The reference's group chain and Goblinstein log, in the battle's layout. The HP-bar run and the
+   * card-play listener the monster's starting group lists are held by the run log, which lists each
+   * as it starts; the steps that only connect are listed by what they connected to.
+   */
+  private static List<String> expectedGoblinsteinLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode g : reference.path("goblinstein")) {
+      int tick = g.get("tick").asInt();
+      switch (g.get("event").asText()) {
+        case "group_link" ->
+            expected.add(
+                "%d group_link %s %s"
+                    .formatted(
+                        tick,
+                        g.get("unit").asText(),
+                        g.get("after").isNull() ? null : g.get("after").asText()));
+        case "group_unlink" ->
+            expected.add("%d group_unlink %s".formatted(tick, g.get("unit").asText()));
+        case "hp_bar", "listener" -> {}
+        case "start" ->
+            expected.add(
+                "%d start %s %s %d"
+                    .formatted(
+                        tick,
+                        g.get("owner").asText(),
+                        g.get("action").asText(),
+                        g.get("phase").asInt()));
+        case "step" -> {
+          JsonNode calls = g.get("calls");
+          if (calls.size() != 1 || !calls.get(0).get(0).asText().equals("connect")) {
+            throw new IllegalArgumentException("a Goblinstein step that does more: " + g);
+          }
+          JsonNode connected = calls.get(0).get(1);
+          expected.add(
+              "%d connect %s %s"
+                  .formatted(
+                      tick,
+                      g.get("owner").asText(),
+                      connected.isNull() ? null : connected.asText()));
+        }
+        case "death_area" ->
+            expected.add(
+                "%d death_area %s %s %s %d %d %d %d %d %d"
+                    .formatted(
+                        tick,
+                        g.get("owner").asText(),
+                        g.get("removed").asText(),
+                        g.get("area_effect").asText(),
+                        g.get("id").asInt(),
+                        g.get("x").asInt(),
+                        g.get("y").asInt(),
+                        g.get("side").asInt(),
+                        g.get("level").asInt(),
+                        g.get("countdown").asInt()));
+        case "death_area_ended" ->
+            expected.add(
+                "%d death_area_ended %s %s"
+                    .formatted(tick, g.get("owner").asText(), g.get("area_effect").asText()));
+        default -> throw new IllegalArgumentException("unknown Goblinstein event " + g);
+      }
     }
     return expected;
   }

@@ -708,11 +708,32 @@ class BattleRecordsTest {
   @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
   void anInlineHookIsRefused() {
-    assertThatThrownBy(() -> records.unit("goblinstein_doctor"))
+    assertThatThrownBy(() -> records.unit("DaggerDuchess"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("goblinstein_doctor")
+        .hasMessageContaining("DaggerDuchess")
         .hasMessageContaining("OnStartingAction")
-        .hasMessageContaining("ActionSpawn");
+        .hasMessageContaining("ActionBurstAttack");
+  }
+
+  @Test
+  @DisplayName(
+      "a card that is a group says so, and summons its champion in its second group, as"
+          + " Goblinstein does")
+  void aGroupCard() {
+    assertThat(records.card("Goblinstein").group()).isTrue();
+    assertThat(records.card("Goblinstein").summonsChampion()).isTrue();
+    assertThat(records.card("Goblinstein").unit().champion()).isFalse();
+    assertThat(records.card("GoblinGang").group()).isFalse();
+    assertThat(records.card("Knight").summonsChampion()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "Goblinstein's doctor's starting action, written inline as a spawn of an area effect, is the"
+          + " actions table's row named after the unit and the column")
+  void theDoctorsInlineStartingAction() {
+    assertThat(records.unit("goblinstein_doctor").onStartingAction())
+        .isEqualTo("goblinstein_doctor_OnStartingAction");
   }
 
   @Test

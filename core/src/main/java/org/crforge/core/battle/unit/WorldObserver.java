@@ -125,6 +125,70 @@ public interface WorldObserver {
   default void groupUnlinked(int tick, CharacterEntity source, CharacterEntity child) {}
 
   /**
+   * A unit was linked into its card's group chain, after the unit the card made before it.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param after the unit before it, or null for the first
+   */
+  default void chainLinked(int tick, CharacterEntity unit, CharacterEntity after) {}
+
+  /**
+   * A unit left its card's group chain as it was released.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   */
+  default void chainUnlinked(int tick, CharacterEntity unit) {}
+
+  /**
+   * A run of Goblinstein's ability started on an area effect.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect
+   * @param action the row
+   * @param phase the pending pass it started in
+   */
+  default void goblinsteinStarted(int tick, AreaEffectEntity owner, String action, int phase) {}
+
+  /**
+   * A run of Goblinstein's ability connected, on its first step.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect it runs on
+   * @param connected what it connected to, or null for nothing
+   */
+  default void goblinsteinConnected(int tick, AreaEffectEntity owner, BattleEntity connected) {}
+
+  /**
+   * A run of Goblinstein's ability made its death area where its connected unit left.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect it runs on
+   * @param left the unit that left
+   * @param deathArea the death area
+   * @param x its point along the width
+   * @param y its point along the length
+   */
+  default void goblinsteinDeathAreaMade(
+      int tick,
+      AreaEffectEntity owner,
+      WorldEntity left,
+      AreaEffectEntity deathArea,
+      int x,
+      int y) {}
+
+  /**
+   * A run of Goblinstein's ability ended the death area it held, as its area effect left.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect it ran on
+   * @param deathArea the death area
+   */
+  default void goblinsteinDeathAreaEnded(
+      int tick, AreaEffectEntity owner, AreaEffectEntity deathArea) {}
+
+  /**
    * A step of a king tower's activation happened: the condition in the run pass, the activating
    * run's start and the effect in a pending pass, its end and its removal in later run passes.
    */

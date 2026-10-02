@@ -19,9 +19,11 @@ import org.crforge.core.battle.EntityHolder;
 import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
@@ -1490,12 +1492,18 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.entityRemoved(tick, gone);
     }
-    // A child leaves its source's group as it is released, after every notice of the removal.
+    // A child leaves its source's group as it is released, after every notice of the removal,
+    // and a unit its card's group chain.
     if (gone instanceof CharacterEntity child) {
       CharacterEntity source = child.leaveGroup();
       if (source != null) {
         for (WorldObserver observer : observers) {
           observer.groupUnlinked(tick, source, child);
+        }
+      }
+      if (child.leaveChain()) {
+        for (WorldObserver observer : observers) {
+          observer.chainUnlinked(tick, child);
         }
       }
     }
@@ -1523,6 +1531,101 @@ public class BattleWorld implements HolderPasses {
       }
     }
     return subjects;
+  }
+
+  /**
+   * Sends a card play to every listener of its side's card plays, on the live and the queued
+   * objects. A listener answers the cards of its card group, which the battle's tables do not hold,
+   * so a play one hears is refused.
+   *
+   * @param side the side that played
+   * @param card the card played
+   */
+  void cardPlayed(int side, String card) {
+    List<BattleEntity> all = new ArrayList<>(holder.entities());
+    all.addAll(holder.queued());
+    for (BattleEntity entity : all) {
+      if (!(entity instanceof WorldEntity listener)
+          || (listener.side() & 1) != (side & 1)
+          || !(entity.actions() instanceof ActionHolder actions)) {
+        continue;
+      }
+      for (ActionInstance instance : actions.running()) {
+        if (instance.getAction() instanceof CardDeployListener heard) {
+          throw new UnsupportedOperationException(
+              card
+                  + " played while "
+                  + listener.name()
+                  + "'s "
+                  + heard.name()
+                  + " listens for its side's card plays of "
+                  + heard.getCardGroup()
+                  + ", whose cards are not read, not modelled");
+        }
+      }
+    }
+  }
+
+  /** Tells the observers a unit was linked into its card's group chain. */
+  void chainLinked(CharacterEntity unit, CharacterEntity after) {
+    for (WorldObserver observer : observers) {
+      observer.chainLinked(tick, unit, after);
+    }
+  }
+
+  /** Tells the observers a run of Goblinstein's ability started on an area effect. */
+  void goblinsteinStarted(AreaEffectEntity owner, String action, int phase) {
+    for (WorldObserver observer : observers) {
+      observer.goblinsteinStarted(tick, owner, action, phase);
+    }
+  }
+
+  /** Tells the observers a run of Goblinstein's ability connected, to nothing for null. */
+  void goblinsteinConnected(AreaEffectEntity owner, BattleEntity connected) {
+    for (WorldObserver observer : observers) {
+      observer.goblinsteinConnected(tick, owner, connected);
+    }
+  }
+
+  /**
+   * Makes the death area of a run of Goblinstein's ability at a point: for the area effect's side
+   * and at its level, re-based on the death area's own rarity, the area effect its parent and
+   * following nothing. It is handed to the holder inside the cleanup that removed the connected
+   * unit, which admits it as it ends.
+   *
+   * @param owner the area effect the run is on
+   * @param row the death area's row
+   * @param x the point along the width
+   * @param y the point along the length
+   * @return the death area
+   */
+  AreaEffectEntity goblinsteinDeathArea(AreaEffectEntity owner, String row, int x, int y) {
+    return createAreaEffect(
+        row,
+        x,
+        y,
+        owner.side(),
+        owner.packedLevel(),
+        null,
+        "goblinstein_death",
+        owner.name(),
+        owner,
+        null);
+  }
+
+  /** Tells the observers a run of Goblinstein's ability made its death area. */
+  void goblinsteinDeathAreaMade(
+      AreaEffectEntity owner, WorldEntity left, AreaEffectEntity deathArea, int x, int y) {
+    for (WorldObserver observer : observers) {
+      observer.goblinsteinDeathAreaMade(tick, owner, left, deathArea, x, y);
+    }
+  }
+
+  /** Tells the observers a run of Goblinstein's ability ended its death area. */
+  void goblinsteinDeathAreaEnded(AreaEffectEntity owner, AreaEffectEntity deathArea) {
+    for (WorldObserver observer : observers) {
+      observer.goblinsteinDeathAreaEnded(tick, owner, deathArea);
+    }
   }
 
   /** Tells the observers a child was linked into its source's group. */

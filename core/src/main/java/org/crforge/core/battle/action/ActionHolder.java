@@ -59,7 +59,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " what it caused, held by goblin_hut_passing. The notice to every running"
             + " instance, first to last, of an attack that landed, held by giant_buffer_knights"
             + " and berserker_knight. The stop of every running instance as the entity leaves,"
-            + " after every notice of it, held by goblin_machine_tower. Not"
+            + " after every notice of it, held by goblin_machine_tower. The owner-leave of every"
+            + " running instance, last to first, before any notice, held by goblinstein_tower. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
             + " the target an entry carries, and the notice to an action's instigator. The cause"
             + " an entry carries is the holder of the entity that caused it.")
@@ -380,6 +381,18 @@ public class ActionHolder implements EntityActions {
   public void objectLeft(int leftId) {
     for (ActionInstance instance : new ArrayList<>(running)) {
       instance.objectLeft(leftId);
+    }
+  }
+
+  /**
+   * Tells every running instance, from the last to the first, that the entity is leaving the
+   * battle, before any entity hears of it.
+   */
+  @Override
+  public void leaving() {
+    List<ActionInstance> instances = new ArrayList<>(running);
+    for (int i = instances.size() - 1; i >= 0; i--) {
+      instances.get(i).ownerLeaving(this);
     }
   }
 

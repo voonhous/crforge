@@ -134,7 +134,8 @@ class BattleDealDamageTest {
         card.projectileWaveIntervalMs(),
         card.projectileIntervalMs(),
         card.listed(),
-        card.listOffsetsXMirrored());
+        card.listOffsetsXMirrored(),
+        card.group());
   }
 
   @Test

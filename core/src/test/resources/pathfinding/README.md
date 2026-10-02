@@ -784,6 +784,13 @@ The towers fight at level 11, and every unit is placed directly on tick 0. The B
 
 The `kill_hooks` list holds every killed-done check scheduled (the killer, what it killed, the row and whether a pending pass was running) and every check of an action's cause (the owner, the row, the cause, its data row and what the check scheduled). `BattleActionSpawnRunTest` plays both with the spawn runs.
 
+
+## `golden/goblinstein_tower.json` and `golden/goblinstein_doctor_first.json` - Goblinstein's pair and its death area
+
+The towers fight at level 11. Side 0 plays Goblinstein on tick 0 at (3500, 12000), placed at (3499, 12500): the monster G_0 there, deploying, and the doctor G_1 3500 behind it and 1000 toward the middle, at (4499, 9000), waiting 100 ms to deploy. The card is a group, so G_0 is linked into a chain and G_1 after it. The monster's starting group lists its health-bar run and its card-play listener in its phase-1 pass of tick 0. The doctor's starting action makes AOE_goblinstein_ability on it in the same pass, at level 10, following it and never hitting; its ability run starts in the area effect's phase-1 pass of tick 1 and connects to G_0 in that tick's run pass, then waits for a cast that never comes. A unit leaves the chain as it is released.
+
+- `goblinstein_tower`: both walk to PrincessTower_1_1, the doctor's shots buffing the tower for 500 ms each. The tower kills the monster on 530, and the run makes dead_goblinstein at (3269, 22594), which never hits, the area effect its parent. The tower kills the doctor on 699: the area effect leaves with it, and as it leaves it ends the death area, which leaves in the same cleanup.
+- `goblinstein_doctor_first`: side 1 plays a Knight on 150 at (4500, 17500), in the doctor's way. The Knight kills the doctor on 282 and the area effect leaves with it; the tower kills the monster on 392, which makes nothing.
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

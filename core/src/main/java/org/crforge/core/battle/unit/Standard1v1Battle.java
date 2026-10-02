@@ -323,7 +323,7 @@ public class Standard1v1Battle {
       return;
     }
     DeployCard repeated = world.getRecords().card(item.repeats().name());
-    if (repeated.unit() != null && repeated.unit().champion()) {
+    if (repeated.summonsChampion()) {
       throw new UnsupportedOperationException(
           name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");
     }
@@ -515,8 +515,14 @@ public class Standard1v1Battle {
       world.castSpell(card, level - 1, side, result.x(), result.y(), name);
     }
     List<CharacterEntity> units = new ArrayList<>();
+    // A card that is a group links each unit it makes after the one made before it.
+    CharacterEntity previous = null;
     for (CardPlacement.Unit unit : result.units()) {
       if (unit.tunnels()) {
+        if (card.group()) {
+          throw new UnsupportedOperationException(
+              card.name() + " is a group whose unit tunnels, which no card is, not modelled");
+        }
         units.add(tunnel(target, unit, level, side, result.x(), result.y(), name));
         continue;
       }
@@ -537,6 +543,11 @@ public class Standard1v1Battle {
               level,
               unit.lane(),
               waits ? unit.start().waitMs() : -1);
+      // Linked as it is made, before the setter that sets it deploying.
+      if (card.group()) {
+        character.linkAfter(previous);
+        previous = character;
+      }
       // The construction sets the unit deploying before it queues it, and entering that state
       // makes the riders of a row that attaches its children: they are queued first. It makes a
       // row's area object after them, updated at once, while the unit is not yet in the battle,
@@ -556,6 +567,11 @@ public class Standard1v1Battle {
       world.characterPlayed(character);
       character.start();
       units.add(character);
+    }
+    // The play is sent to every listener of a card play after its units are made: never to those
+    // its own units start, which are listed only in their pending pass.
+    if (result.placed()) {
+      world.cardPlayed(side, card.name());
     }
     plays.add(
         new Play(

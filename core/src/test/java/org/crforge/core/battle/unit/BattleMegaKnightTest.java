@@ -157,7 +157,8 @@ class BattleMegaKnightTest {
         c.projectileWaveIntervalMs(),
         c.projectileIntervalMs(),
         c.listed(),
-        c.listOffsetsXMirrored());
+        c.listOffsetsXMirrored(),
+        c.group());
   }
 
   @Test

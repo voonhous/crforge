@@ -8,9 +8,11 @@ import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LaserBallHost;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -82,6 +84,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * <p>Its holder may run a laser ball, Dark Magic's, whose run asks the area effect for the objects
  * around its point, testing buildings by their squares, and schedules what it picks on each of
  * them, built for that object, the area effect as the cause.
+ *
+ * <p>Its holder may run Goblinstein's ability, on an area effect that follows the doctor: the run
+ * connects to the unit the doctor is grouped with, makes a death area where that unit leaves, the
+ * area effect its parent, and ends it as the area effect itself leaves.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -124,9 +130,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " owner, for the side and at the level of its cause, the cause kept as its parent,"
             + " and a hit action that is a group of buff spawns, held by goblin_curse_knights;"
             + " such a hit action on an area effect no action made is refused. A taunt as its hit"
-            + " action and the following of its parent, held by goblin_demolisher_knight; the"
-            + " following of a moving object, one hit per target over several hits and the end"
-            + " as the followed object leaves are translated but held by no run. Its starting and"
+            + " action and the following of its parent, held by goblin_demolisher_knight; the end"
+            + " as the followed object leaves, held by goblinstein_tower and"
+            + " goblinstein_doctor_first; the following of a moving object and one hit per target"
+            + " over several hits are translated but held by no run. Goblinstein's ability run on"
+            + " its holder and the death area it makes, its parent the area effect, ended as the"
+            + " area effect leaves, held by goblinstein_tower. Its starting and"
             + " life-end actions written inline, a laser ball's run on its holder and the query"
             + " it answers, held by dark_magic_knight and dark_magic_group; a building found by"
             + " its square alone is held by BattleLaserBallTest.")
@@ -943,6 +952,20 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         world.selectorStepped(AreaEffectEntity.this, action.name(), step);
       }
     };
+  }
+
+  /**
+   * Makes the run of Goblinstein's ability on the area effect, which must follow its parent: the
+   * run connects through the object it follows.
+   */
+  @Override
+  public ActionInstance goblinsteinAbility(GoblinsteinAbility action, int phase) {
+    if (!data.followsParent()) {
+      throw new UnsupportedOperationException(
+          action.name() + " on " + name + ", which follows nothing, is not modelled");
+    }
+    world.goblinsteinStarted(this, action.name(), phase);
+    return new GoblinsteinRun(world, action, this);
   }
 
   /**

@@ -50,6 +50,8 @@ import org.crforge.core.battle.unit.UnitData;
  *     none
  * @param listOffsetsXMirrored whether a list's offsets across the width turn over for the top
  *     side's play on the right half of the arena
+ * @param group whether the card is a group: its construction links each unit it makes into a chain
+ *     after the one made before it
  */
 public record DeployCard(
     String name,
@@ -79,7 +81,8 @@ public record DeployCard(
     int projectileWaveIntervalMs,
     int projectileIntervalMs,
     List<Listed> listed,
-    boolean listOffsetsXMirrored) {
+    boolean listOffsetsXMirrored,
+    boolean group) {
 
   public DeployCard {
     listed = List.copyOf(listed);
@@ -132,6 +135,22 @@ public record DeployCard(
   /** How many units the card places in all; none for a spell. */
   public int total() {
     return spell() ? 0 : primaryCount() + secondaryTotal() + listed.size();
+  }
+
+  /**
+   * Whether the card summons a champion: its summoned character, its second group's or one of its
+   * list's, as Goblinstein's doctor is its second group's.
+   */
+  public boolean summonsChampion() {
+    if (unit != null && unit.champion() || secondary != null && secondary.champion()) {
+      return true;
+    }
+    for (Listed entry : listed) {
+      if (entry.unit().champion()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

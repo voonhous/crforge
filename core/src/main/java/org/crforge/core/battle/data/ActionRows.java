@@ -14,6 +14,7 @@ import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
@@ -23,6 +24,7 @@ import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.FlipFlop;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
@@ -125,6 +127,44 @@ public final class ActionRows {
           Map.entry("ActionRunOnInstigator", Set.of("ActionToExecute")),
           Map.entry("ActionWaitToActivate", Set.of("Condition", "OnActivateAction")),
           Map.entry("ActionWithDuration", Set.of("ActionDuration")),
+          // Its own columns, the condition and the bar it shows, only show something.
+          Map.entry(
+              "ActionEnabbleHPBarConditionForDuration",
+              Set.of(
+                  "ActionDuration",
+                  "Condition",
+                  "ContainerName",
+                  "RequestShowBadge",
+                  "RequestShowHealthIndicator")),
+          // The card play's elixir test and the action it runs come only with a play it hears,
+          // which is refused.
+          Map.entry(
+              "ActionActivateOnCardDeploy",
+              Set.of("CardGroup", "EvaluateDeployedCard", "OnActivateAction", "ElixirCost")),
+          // Every tether column is read by the tether alone, which is refused; the effects only
+          // show something.
+          Map.entry(
+              "ActionGoblinsteinAbility",
+              Set.of(
+                  "ConnectedCharacterGameTagsToSetDutingTether",
+                  "GameTagsToSetDutingTether",
+                  "OnTetherActivationAction",
+                  "OnTetherActivationActionOnConnectedUnit",
+                  "TetherDuration",
+                  "TetherWidth",
+                  "TetherDamage",
+                  "TetherCrownTowerDamage",
+                  "TetherHitInterval",
+                  "TetherDamageTargets",
+                  "TetherHitAction",
+                  "TetherHitActionInterval",
+                  "DeathAreaEffectData",
+                  "TetherEffect",
+                  "TetherTargetEffect",
+                  "TetherTargetEffectMaxPerFrame",
+                  "TetherTargetEffectOffset",
+                  "TetherVolumeEffect",
+                  "TetherVolumeEffectDistance")),
           Map.entry(
               "ActionInterval",
               Set.of(
@@ -471,6 +511,50 @@ public final class ActionRows {
                     shared, expression(f.get("Condition")), action(f.get("OnActivateAction")));
             case "ActionWithDuration" ->
                 new WithDuration(shared, integer(f, "ActionDuration"), false, () -> 100, false);
+            case "ActionEnabbleHPBarConditionForDuration" -> {
+              // In a battle its run is a run with a duration; its own columns are read only by
+              // what the bar shows.
+              refuseShared(
+                  name,
+                  f,
+                  "GameTagsToSet",
+                  "Singleton",
+                  "NextAction",
+                  "ExecuteIfTrue",
+                  "ActionPausedIfTrue");
+              yield new WithDuration(shared, integer(f, "ActionDuration"), false, () -> 100, false);
+            }
+            case "ActionActivateOnCardDeploy" -> {
+              refuseShared(
+                  name,
+                  f,
+                  "GameTagsToSet",
+                  "Singleton",
+                  "NextAction",
+                  "ExecuteIfTrue",
+                  "ActionPausedIfTrue",
+                  "ForceStopIfTrue");
+              yield new CardDeployListener(shared, f.path("CardGroup").asText(""));
+            }
+            case "ActionGoblinsteinAbility" -> {
+              refuseShared(
+                  name,
+                  f,
+                  "GameTagsToSet",
+                  "Singleton",
+                  "NextAction",
+                  "ExecuteIfTrue",
+                  "ActionPausedIfTrue",
+                  "ForceStopIfTrue");
+              yield new GoblinsteinAbility(
+                  shared,
+                  new GoblinsteinAbility.Columns(
+                      integer(f, "TetherDuration"),
+                      f.hasNonNull("DeathAreaEffectData")
+                              && !f.get("DeathAreaEffectData").asText().isEmpty()
+                          ? f.get("DeathAreaEffectData").asText()
+                          : null));
+            }
             case "ActionInterval" ->
                 new Interval(
                     shared,
@@ -630,6 +714,31 @@ public final class ActionRows {
       building.remove(name);
       built.put(name, action);
       return action;
+    }
+
+    /**
+     * Refuses a row that sets one of the given shared columns, which its class's run does not
+     * model.
+     */
+    private void refuseShared(String name, JsonNode f, String... columns) {
+      for (String column : columns) {
+        JsonNode value = f.get(column);
+        boolean set =
+            value != null
+                && !value.isNull()
+                && (value.isContainerNode()
+                    ? !value.isEmpty()
+                    : value.isBoolean() ? value.asBoolean() : !value.asText().isEmpty());
+        if (set) {
+          throw new UnsupportedOperationException(
+              name
+                  + " sets "
+                  + column
+                  + " on a "
+                  + f.path("ClassType").asText()
+                  + ", not modelled");
+        }
+      }
     }
 
     /** Refuses a row that sets a column its class does not read, show or share. */
