@@ -45,6 +45,7 @@ import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
+import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
@@ -245,6 +246,18 @@ public final class ActionRows {
                   "OnAttackActionList",
                   "TargetEffectList",
                   "MainEffectList")),
+          Map.entry(
+              "ActionSpawnGuard",
+              Set.of(
+                  "SpawnData",
+                  "AppearBehindAtDistance",
+                  "TargetRadius",
+                  "PushBackStrength",
+                  "PushBackRadius",
+                  "ContinuosPushBack",
+                  "DistanceProportinalPush",
+                  "PushBackDamage",
+                  "HitFilter")),
           // Its stats tags only fill the card's stats panel.
           Map.entry(
               "ActionTargetIndicatorAttack",
@@ -611,6 +624,7 @@ public final class ActionRows {
                     shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
             case "ActionTaunt" -> taunt(name, shared, f);
             case "ActionLaserBall" -> laserBall(name, shared, f);
+            case "ActionSpawnGuard" -> spawnGuard(name, shared, f);
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
@@ -1028,6 +1042,48 @@ public final class ActionRows {
               .hitFilter(records.filter(f.get("HitFilter").asText()))
               .maxUnitPerActionList(ints(f.get("MaxUnitPerActionList")))
               .onDetectedUnitActionList(actions(f.get("OnDetectedUnitActionList")))
+              .build());
+    }
+
+    /**
+     * A guard spawn's columns: its guard's row, where the guard appears and charges to, the push
+     * and its damage, and the filter of its query; the tags its run on the guard sets. Refused: a
+     * row that sets tags, a singleton, a next action, a gate or a phase of its own, one without a
+     * filter, and one whose guard the battle cannot take.
+     */
+    private SpawnGuard spawnGuard(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "GameTagsToSet",
+          "Singleton",
+          "NextAction",
+          "ExecuteIfTrue",
+          "ActionPausedIfTrue",
+          "ForceStopIfTrue",
+          "UpdatePhase");
+      if (f.path("HitFilter").asText("").isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " is a guard spawn without a filter, which is not modelled");
+      }
+      // The guard must read as a unit here, so a row the battle cannot take is refused as the
+      // action is built rather than when it runs.
+      String guard = f.path("SpawnData").asText();
+      records.unit(guard);
+      return new SpawnGuard(
+          shared,
+          SpawnGuard.Columns.builder()
+              .spawnData(guard)
+              .appearBehindAtDistance(integer(f, "AppearBehindAtDistance"))
+              .targetRadius(f.hasNonNull("TargetRadius") ? f.get("TargetRadius").asInt() : 1000)
+              .pushBackStrength(integer(f, "PushBackStrength"))
+              .pushBackRadius(integer(f, "PushBackRadius"))
+              .continuousPushBack(bool(f, "ContinuosPushBack"))
+              .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
+              .pushBackDamage(integer(f, "PushBackDamage"))
+              .hitFilter(records.filter(f.get("HitFilter").asText()))
+              .guardTags(tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"))
+              .shadowTag(tagMask("NO_SHADOW"))
               .build());
     }
 

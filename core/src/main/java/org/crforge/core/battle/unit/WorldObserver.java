@@ -1286,4 +1286,66 @@ public interface WorldObserver {
    * @param projectile the projectile that left
    */
   default void followLeft(int tick, WorldEntity unit, ProjectileEntity projectile) {}
+
+  /**
+   * A guard was made and registered, before its maker faced it and put it into its deploy: where
+   * its registration visit left it, its state and its reference.
+   *
+   * @param tick the battle tick
+   * @param guard the guard
+   */
+  default void guardRegistered(int tick, CharacterEntity guard) {}
+
+  /**
+   * A guard-spawning run started on an area effect and made its guard.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param action the row's name
+   * @param phase the pending pass it started in
+   * @param guard the guard, deploying
+   * @param x the point behind the area effect's, along the width
+   * @param y the point behind the area effect's, along the length
+   * @param toX that point moved off water, along the width
+   * @param toY that point moved off water, along the length
+   */
+  default void guardStarted(
+      int tick,
+      AreaEffectEntity areaEffect,
+      String action,
+      int phase,
+      CharacterEntity guard,
+      int x,
+      int y,
+      int toX,
+      int toY) {}
+
+  /**
+   * A guard-spawning run's first step on its area effect, which finished it.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param action the row's name
+   */
+  default void guardFirstStepped(int tick, AreaEffectEntity areaEffect, String action) {}
+
+  /**
+   * A step of a guard's run.
+   *
+   * @param tick the battle tick
+   * @param guard the guard
+   * @param charging whether the run is charging after the step
+   * @param tags the tags the run sets after the step
+   * @param done whether the step finished the run
+   * @param calls what the step did, in order: the query with the names it found and the damage,
+   *     each push with whether the setter ran, each object skipped as untouchable, each hit with
+   *     its damage, the deploy cut, the charge point and the finish with its cause
+   */
+  default void guardStepped(
+      int tick,
+      CharacterEntity guard,
+      boolean charging,
+      long tags,
+      boolean done,
+      List<String> calls) {}
 }

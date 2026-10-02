@@ -17,6 +17,7 @@ import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LaserBallHost;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
+import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
@@ -1018,6 +1019,25 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
             scheduled == null ? null : scheduled.name(),
             timerBefore,
             timerAfter);
+      }
+    };
+  }
+
+  /**
+   * What a guard-spawning run on the area effect asks of the battle: the guard made behind its
+   * point, and the first run's step told.
+   */
+  @Override
+  public SpawnGuard.Maker guardMaker(SpawnGuard action) {
+    return new SpawnGuard.Maker() {
+      @Override
+      public void makeGuard(SpawnGuard guardAction, int phase) {
+        world.spawnGuard(AreaEffectEntity.this, guardAction, phase);
+      }
+
+      @Override
+      public void firstStepped(SpawnGuard guardAction) {
+        world.guardFirstStepped(AreaEffectEntity.this, guardAction);
       }
     };
   }

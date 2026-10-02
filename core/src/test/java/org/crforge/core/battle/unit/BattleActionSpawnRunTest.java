@@ -27,6 +27,7 @@ import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -38,6 +39,8 @@ import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.math.FixedMath;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -518,7 +521,9 @@ class BattleActionSpawnRunTest {
         "reference_loss_knight",
         "reference_loss_musketeer_rage",
         "card_run_knight_pair",
-        "card_run_baby_dragon_pair"
+        "card_run_baby_dragon_pair",
+        "little_prince_ability_giant",
+        "little_prince_ability_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -787,6 +792,8 @@ class BattleActionSpawnRunTest {
     // Every link and unlink of a card's group chain, and what Goblinstein's ability did.
     List<String> goblinsteinLog = new ArrayList<>();
     match.getWorld().addObserver(goblinsteinLog(currentTick, goblinsteinLog));
+    List<String> guardLog = new ArrayList<>();
+    match.getWorld().addObserver(guardLog(currentTick, guardLog));
     // Every ask of an area effect's buff test of a clone, with the path that asked.
     List<String> cloneGateLog = new ArrayList<>();
     match.getWorld().addObserver(cloneGateLog(currentTick, cloneGateLog));
@@ -882,6 +889,15 @@ class BattleActionSpawnRunTest {
                             child.getView().getX(),
                             child.getView().getY(),
                             child.getView().getState()));
+              }
+
+              @Override
+              public void guardRegistered(int tick, CharacterEntity guard) {
+                // A guard is listed from its making, as a spawned child is.
+                guard
+                    .actionHolder()
+                    .setListener(listener(guard.name(), currentTick, actions, dropping));
+                spawnTicks.put(guard.name(), currentTick[0]);
               }
 
               @Override
@@ -1463,6 +1479,9 @@ class BattleActionSpawnRunTest {
     assertThat(goblinsteinLog)
         .as("every group chain link and unlink, and what Goblinstein's ability did")
         .containsExactlyElementsOf(expectedGoblinsteinLog(reference));
+    assertThat(guardLog)
+        .as("every guard made, and every step of a guard spawn's runs")
+        .containsExactlyElementsOf(expectedGuardLog(reference));
     assertThat(championLog)
         .as("what the champion slots did, and every ability's buff")
         .containsExactlyElementsOf(expectedChampionLog(reference));
@@ -3209,6 +3228,175 @@ class BattleActionSpawnRunTest {
    * Logs every link of a card's group chain and every unlink, and every start, connection, death
    * area made and death area ended of Goblinstein's ability.
    */
+  /**
+   * Logs every guard a guard spawn made, as its registration visit left it, the run's start, and
+   * every step of its two runs: the first's, which finishes it, and the guard's, with whether it is
+   * charging, its tags, whether it is done and what it did.
+   */
+  private static WorldObserver guardLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void guardRegistered(int tick, CharacterEntity guard) {
+        TargetView reference = guard.getUnit().targeting().getReference();
+        log.add(
+            "%d guard %s %d at %d %d state %d hp %d ref %s"
+                .formatted(
+                    currentTick[0],
+                    guard.name(),
+                    guard.getId(),
+                    guard.getView().getX(),
+                    guard.getView().getY(),
+                    guard.getView().getState(),
+                    guard.getHitPoints().getHitPoints(),
+                    reference == null ? null : reference.name()));
+      }
+
+      @Override
+      public void guardStarted(
+          int tick,
+          AreaEffectEntity areaEffect,
+          String action,
+          int phase,
+          CharacterEntity guard,
+          int x,
+          int y,
+          int toX,
+          int toY) {
+        // The maker faces the guard toward the area effect's point, after its registration visit;
+        // no record shows the facing, and the charge faces it anew.
+        int[] facing = {
+          areaEffect.getX() - guard.getView().getX(), areaEffect.getY() - guard.getView().getY()
+        };
+        FixedMath.normalize(facing, MovementState.DIRECTION_SCALE);
+        assertThat(new int[] {guard.getView().getDirX(), guard.getView().getDirY()})
+            .as("%d: %s faces the area effect's point", currentTick[0], guard.name())
+            .containsExactly(facing);
+        log.add(
+            "%d start %s %s %d guard %s relocate %d %d to %d %d"
+                .formatted(
+                    currentTick[0],
+                    areaEffect.name(),
+                    action,
+                    phase,
+                    guard.name(),
+                    x,
+                    y,
+                    toX,
+                    toY));
+      }
+
+      @Override
+      public void guardFirstStepped(int tick, AreaEffectEntity areaEffect, String action) {
+        log.add("%d update %s first finish".formatted(currentTick[0], areaEffect.name()));
+      }
+
+      @Override
+      public void guardStepped(
+          int tick,
+          CharacterEntity guard,
+          boolean charging,
+          long tags,
+          boolean done,
+          List<String> calls) {
+        log.add(
+            "%d update %s charging %b tags %s done %b calls %s"
+                .formatted(currentTick[0], guard.name(), charging, tagNames(tags), done, calls));
+      }
+    };
+  }
+
+  /** The names of the game tags set in a word, in the order of their names. */
+  private static List<String> tagNames(long tags) {
+    List<String> names = new ArrayList<>();
+    for (GameRow row : GameData.tables().table("game_tags").rows()) {
+      if (row.index() < Long.SIZE && (tags & (1L << row.index())) != 0) {
+        names.add(row.name());
+      }
+    }
+    return names.stream().sorted().toList();
+  }
+
+  /**
+   * The reference's guards and guard spawn steps, in the guard log's layout. The duration run's
+   * start is held by the run log and its finish by the unit's walk; a run's removal by the holder's
+   * own pass. The presentation the hit hands its view is not modelled.
+   */
+  private static List<String> expectedGuardLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode g : reference.path("little_prince_ability")) {
+      int tick = g.get("tick").asInt();
+      switch (g.get("event").asText()) {
+        case "duration_start", "duration_finished", "removed" -> {}
+        case "guard" ->
+            expected.add(
+                "%d guard %s %d at %d %d state %d hp %d ref %s"
+                    .formatted(
+                        tick,
+                        g.get("unit").asText(),
+                        g.get("id").asInt(),
+                        g.get("x").asInt(),
+                        g.get("y").asInt(),
+                        g.get("state").asInt(),
+                        g.get("hp").asInt(),
+                        g.get("ref").isNull() ? null : g.get("ref").asText()));
+        case "start" -> {
+          JsonNode relocate = g.get("calls").get(0);
+          expected.add(
+              "%d start %s %s %d guard %s relocate %d %d to %d %d"
+                  .formatted(
+                      tick,
+                      g.get("owner").asText(),
+                      g.get("action").asText(),
+                      g.get("phase").asInt(),
+                      g.get("guard").asText(),
+                      relocate.get(1).asInt(),
+                      relocate.get(2).asInt(),
+                      relocate.get(3).asInt(),
+                      relocate.get(4).asInt()));
+        }
+        case "update" -> {
+          if (g.get("child").asInt() == 0) {
+            expected.add("%d update %s first finish".formatted(tick, g.get("owner").asText()));
+            continue;
+          }
+          List<String> calls = new ArrayList<>();
+          for (JsonNode c : g.get("calls")) {
+            String kind = c.get(0).asText();
+            switch (kind) {
+              case "query" -> {
+                List<String> found = new ArrayList<>();
+                c.get(1).forEach(n -> found.add(n.asText()));
+                calls.add("query " + String.join(",", found) + " " + c.get(2).asInt());
+              }
+              case "push" ->
+                  calls.add("push " + c.get(1).asText() + " " + (c.get(2).asBoolean() ? 1 : 0));
+              case "presentation_f0" -> {}
+              case "hit" -> calls.add("hit " + c.get(1).asText() + " " + c.get(2).asInt());
+              case "untouchable" -> calls.add("untouchable " + c.get(1).asText());
+              case "deploy_cut" -> calls.add("deploy_cut");
+              case "charge" -> calls.add("charge " + c.get(1).asInt() + " " + c.get(2).asInt());
+              case "finish" -> calls.add("finish " + c.get(1).asText());
+              default -> throw new IllegalArgumentException("unknown guard step call " + c);
+            }
+          }
+          List<String> tags = new ArrayList<>();
+          g.get("tags").forEach(t -> tags.add(t.asText()));
+          expected.add(
+              "%d update %s charging %b tags %s done %b calls %s"
+                  .formatted(
+                      tick,
+                      g.get("owner").asText(),
+                      g.get("charging").asInt() == 1,
+                      tags.stream().sorted().toList(),
+                      g.get("done").asInt() == 1,
+                      calls));
+        }
+        default -> throw new IllegalArgumentException("unknown guard event " + g);
+      }
+    }
+    return expected;
+  }
+
   private static WorldObserver goblinsteinLog(int[] currentTick, List<String> log) {
     return new WorldObserver() {
       @Override
@@ -4019,7 +4207,8 @@ class BattleActionSpawnRunTest {
                 .formatted(
                     currentTick[0],
                     unit.name(),
-                    reference.getEntity().getName(),
+                    // A guard's charge has no reference.
+                    reference == null ? null : reference.getEntity().getName(),
                     fromX,
                     fromY,
                     aimX,
@@ -4324,7 +4513,7 @@ class BattleActionSpawnRunTest {
                   .formatted(
                       tick,
                       unit,
-                      e.get("ref").asText(),
+                      e.get("ref").isNull() ? null : e.get("ref").asText(),
                       e.get("x").asInt(),
                       e.get("y").asInt(),
                       e.get("aim").get(0).asInt(),

@@ -20,6 +20,7 @@ import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
@@ -1684,6 +1685,196 @@ public class CharacterEntity extends WorldEntity {
             false,
             false);
     world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+  }
+
+  /**
+   * A guard's push: asked only of a character whose movement component is on and that is not
+   * waiting to deploy; refused while a pushback is in flight unless the longer one is to be kept;
+   * otherwise the pushback setter itself, every gate the request has skipped, so neither the row's
+   * ignoring of pushback nor a flag or state stops it.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param distance how far
+   * @param subtract true to take the current separation off the distance first
+   * @param keepLonger true to accept the push with a pushback in flight, keeping the longer one
+   * @return -1 when the character is not asked, else 1 when the setter ran and 0 when it was
+   *     refused
+   */
+  int pushedByGuard(int x, int y, int distance, boolean subtract, boolean keepLonger) {
+    if (!getView().isMovementComponent() || !isActive(MOVEMENT_SLOT) || waiting()) {
+      return -1;
+    }
+    MovementState movement = unit.movement();
+    if (movement.getPushbackInFlight() != 0 && !keepLonger) {
+      return 0;
+    }
+    PushbackRequest.set(
+        movement, getView(), pushbackQueries, x, y, distance, false, subtract, keepLonger);
+    world.pushbackRequested(this, movement.getPushbackInFlight() == 1, x, y, movement);
+    return 1;
+  }
+
+  /**
+   * Puts a guard just made and registered into its deploy, as its maker does after the registration
+   * visit: through the setter, then the combat gate the setter's entry ends with, which drops
+   * whatever the registration visit selected and switches the targeting component off.
+   */
+  void deployAfterRegistration() {
+    startDeploying();
+    combatGate(isActive(TARGETING_SLOT) && !waiting(), setter::prepareRoute);
+  }
+
+  /**
+   * Faces the character toward a point: the line to it scaled to the facing's length, whatever row
+   * or column the point is on.
+   */
+  void faceToward(int x, int y) {
+    GridEntity view = getView();
+    int[] facing = {x - view.getX(), y - view.getY()};
+    FixedMath.normalize(facing, MovementState.DIRECTION_SCALE);
+    view.setDirX(facing[0]);
+    view.setDirY(facing[1]);
+  }
+
+  /**
+   * What a guard's run on the character asks of the battle: its state and deploy, the object query
+   * around it, the push and hit of what it finds, and its charge.
+   */
+  GuardHost guardHost() {
+    return new GuardHost() {
+      @Override
+      public int state() {
+        return getView().getState();
+      }
+
+      @Override
+      public int deployCountdownMs() {
+        return getView().getDeployCountdown();
+      }
+
+      @Override
+      public void cutDeploy() {
+        getView().setDeployCountdown(0);
+        setter.setState(getView(), GridEntityState.STANDING);
+      }
+
+      @Override
+      public int teamSign() {
+        return (side() & 1) == 0 ? 1 : -1;
+      }
+
+      @Override
+      public int x() {
+        return getView().getX();
+      }
+
+      @Override
+      public int y() {
+        return getView().getY();
+      }
+
+      @Override
+      public List<Integer> query(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.objectQuery(CharacterEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public int push(int id, int distance, boolean subtract, boolean keepLonger) {
+        if (!(object(id) instanceof CharacterEntity pushed)) {
+          return -1;
+        }
+        return pushed.pushedByGuard(
+            getView().getX(), getView().getY(), distance, subtract, keepLonger);
+      }
+
+      @Override
+      public boolean character(int id) {
+        return object(id) instanceof CharacterEntity;
+      }
+
+      @Override
+      public boolean untouchable(int id) {
+        return object(id).untouchable(true);
+      }
+
+      @Override
+      public boolean hasHitPoints(int id) {
+        return object(id).getHitPoints() != null;
+      }
+
+      @Override
+      public int damageAtLevel(int base) {
+        return LevelScaling.scale(
+            ScalingGlobals.standard(),
+            base,
+            getPackedLevel(),
+            ScalingMode.CARD_DAMAGE,
+            getData().rarity());
+      }
+
+      @Override
+      public void hit(int id, int amount) {
+        WorldEntity target = object(id);
+        world.dealDamage(
+            CharacterEntity.this,
+            target.getTargetView(),
+            amount,
+            target.getView().getX() - getView().getX(),
+            target.getView().getY() - getView().getY());
+      }
+
+      @Override
+      public boolean hasTargeting() {
+        // Every character has a targeting component, whether it is switched on or not.
+        return true;
+      }
+
+      @Override
+      public int[] clamp(int x, int y) {
+        int top = world.getGrid().getWidth() * TileMap.CELL_UNITS - 1;
+        int bottom = world.getGrid().getHeight() * TileMap.CELL_UNITS - 1;
+        return new int[] {x > 0 ? Math.min(x, top) : 0, y > 0 ? Math.min(y, bottom) : 0};
+      }
+
+      @Override
+      public void charge(int x, int y) {
+        GridEntity view = getView();
+        int fromX = view.getX();
+        int fromY = view.getY();
+        TargetView reference = unit.targeting().getReference();
+        DashStart.start(
+            view,
+            isActive(MOVEMENT_SLOT) ? unit.movement() : null,
+            unit.movementConfig(),
+            x,
+            y,
+            0,
+            0,
+            world.getGrid().getWidth(),
+            world.getGrid().getHeight(),
+            setter);
+        world.dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
+      }
+
+      @Override
+      public String name(int id) {
+        return object(id).name();
+      }
+
+      @Override
+      public void stepped(boolean charging, long tags, boolean done, List<String> calls) {
+        world.guardStepped(CharacterEntity.this, charging, tags, done, calls);
+      }
+
+      private WorldEntity object(int id) {
+        return (WorldEntity) world.liveObject(id);
+      }
+    };
   }
 
   /**
