@@ -16,8 +16,11 @@ import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.Clone;
+import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
@@ -25,6 +28,7 @@ import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -215,6 +219,111 @@ class ActionRowsTest {
     return new ActionRows(altered, new BattleRecords(altered));
   }
 
+  /**
+   * An owner that keeps only an attack sequence index, stored below the length of its order, and
+   * whether the last store was asked to ignore the targeting component.
+   */
+  private static final class IndexOwner implements ActionOwner {
+    private final int orderLength;
+    private int index;
+    private boolean ignoredComponent;
+
+    private IndexOwner(int orderLength, int index) {
+      this.orderLength = orderLength;
+      this.index = index;
+    }
+
+    @Override
+    public void setAttackSequenceIndex(int index, boolean evenIfCombatDisabled) {
+      ignoredComponent = evenIfCombatDisabled;
+      if (orderLength > index) {
+        this.index = index;
+      }
+    }
+
+    @Override
+    public int attackSequenceIndex() {
+      return index;
+    }
+
+    @Override
+    public HitPoints actionHitPoints() {
+      return null;
+    }
+
+    @Override
+    public int variable(int key) {
+      return 0;
+    }
+
+    @Override
+    public void setVariable(int key, int value) {}
+
+    @Override
+    public void killBy(ActionOwner killer) {}
+
+    @Override
+    public void queueTypedHit(ActionOwner source, int amount, DamageType type) {}
+  }
+
+  @Test
+  @DisplayName(
+      "the Berserker's starting action sets the index to 0 as it starts, and every landed attack"
+          + " flips it: one up from 0, back to 0 from above")
+  void theBerserkRunTogglesTheIndex() {
+    BattleAction berserk = GameData.actions().build("Berserker_OnStartingAction", INERT_BINDING);
+    assertThat(berserk).isInstanceOf(Berserk.class);
+    IndexOwner owner = new IndexOwner(3, 2);
+    ActionHolder holder = new ActionHolder(owner);
+    holder.start(berserk);
+    assertThat(owner.index).as("the start's index").isZero();
+    assertThat(owner.ignoredComponent).as("stored with the component's bit ignored").isTrue();
+    List<Integer> indices = new ArrayList<>();
+    for (int hit = 0; hit < 4; hit++) {
+      holder.attackEnded();
+      indices.add(owner.index);
+    }
+    assertThat(indices).containsExactly(1, 0, 1, 0);
+    // From 2, which another action may have set, the next notice goes back to 0.
+    owner.index = 2;
+    holder.attackEnded();
+    assertThat(owner.index).isZero();
+    for (int tick = 1; tick <= 100; tick++) {
+      holder.runPass(tick);
+    }
+    assertThat(holder.running()).as("still listed after a hundred steps").hasSize(1);
+    assertThat(holder.running().get(0).isFinished()).isFalse();
+  }
+
+  @Test
+  @DisplayName("a Berserker row that sets any column besides its class is refused for that column")
+  void aBerserkWithAColumnIsRefused(@TempDir Path folder) throws IOException {
+    Files.createDirectories(folder);
+    GameTables altered =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("Berserker_OnStartingAction").get("fields"))
+                    .put("ActionDelay", 100));
+    ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+    assertThatThrownBy(() -> rows.build("Berserker_OnStartingAction", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("ActionDelay");
+  }
+
+  @Test
+  @DisplayName("a Berserker run started beside an enchanting buff is refused")
+  void aBerserkBesideAnEnchantingBuffIsRefused() {
+    ActionHolder holder = new ActionHolder(new IndexOwner(3, 0));
+    holder.start(GameData.actions().build("giantbuffer_enchanting_buff", INERT_BINDING));
+    assertThat(holder.running()).hasSize(1);
+    BattleAction berserk = GameData.actions().build("Berserker_OnStartingAction", INERT_BINDING);
+    assertThatThrownBy(() -> holder.start(berserk))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("enchanting");
+  }
+
   @Test
   @DisplayName("an effect row that loops keeps a run that never finishes by itself")
   void aLoopingEffectLasts() {
@@ -283,11 +392,11 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 562 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 566 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters and buffs, or a spawned buff the battle does not model.
-    assertThat(built).as("rows built").isEqualTo(562);
+    assertThat(built).as("rows built").isEqualTo(566);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 175, "column", 110, "spawn type", 99));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 171, "column", 110, "spawn type", 99));
   }
 }

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.crforge.core.battle.Battle;
@@ -18,6 +19,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.match.LadderMatch;
@@ -288,6 +290,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * yet due when the Knight's third hit and the decay kill it, and its Goblin Brawler, made on its
  * point, kills the Knight. {@code goblin_cage_lifetime} leaves one alone until its decay kills it
  * and its Brawler stands on its point.
+ *
+ * <p>{@code berserker_knight} places a Berserker against a Knight on one lane: its starting action
+ * sets its attack sequence index to 0 as it starts, and every hit it lands flips it, 0, 1, 0, 1,
+ * over three equal entries, so it deals 102 every twelve ticks until the Knight kills it. {@code
+ * berserker_tower} has one walk into a princess tower and hit it the same way until the arrows kill
+ * it. Each is held to the index before and after every start and notice.
  */
 class BattleActionSpawnRunTest {
 
@@ -410,7 +418,9 @@ class BattleActionSpawnRunTest {
         "goblin_hut_passing",
         "goblin_hut_lifetime",
         "goblin_cage_knight",
-        "goblin_cage_lifetime"
+        "goblin_cage_lifetime",
+        "berserker_knight",
+        "berserker_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -660,6 +670,9 @@ class BattleActionSpawnRunTest {
     List<String> hutLog = new ArrayList<>();
     Set<String> hutChildren = new HashSet<>();
     match.getWorld().addObserver(goblinHutLog(match, currentTick, hutLog, hutChildren));
+    // Every start and notice of a Berserker's index toggle, with the index before and after.
+    List<String> berserkLog = new ArrayList<>();
+    match.getWorld().addObserver(berserkLog(currentTick, berserkLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1281,6 +1294,9 @@ class BattleActionSpawnRunTest {
     assertThat(hutLog)
         .as("every start and step of a Goblin Hut's life state, its finds, points and children")
         .containsExactlyElementsOf(expectedGoblinHutLog(reference));
+    assertThat(berserkLog)
+        .as("every start and notice of a Berserker's index toggle")
+        .containsExactlyElementsOf(expectedBerserkLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -2226,6 +2242,40 @@ class BattleActionSpawnRunTest {
                 .formatted(currentTick[0], source.name(), x, y, lane));
       }
     };
+  }
+
+  /** Logs every start and notice of a Berserker's index toggle, with the index before and after. */
+  private static WorldObserver berserkLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void berserked(
+          int tick, WorldEntity unit, Berserk.Event event, int before, int index) {
+        log.add(
+            "%d berserk %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    event.name().toLowerCase(Locale.ROOT),
+                    unit.name(),
+                    before,
+                    index));
+      }
+    };
+  }
+
+  /** The reference's Berserker index toggles, in the Berserker log's layout. */
+  private static List<String> expectedBerserkLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode b : reference.path("berserk")) {
+      expected.add(
+          "%d berserk %s %s %d %d"
+              .formatted(
+                  b.get("tick").asInt(),
+                  b.get("event").asText(),
+                  b.get("owner").asText(),
+                  b.get("before").asInt(),
+                  b.get("index").asInt()));
+    }
+    return expected;
   }
 
   /**

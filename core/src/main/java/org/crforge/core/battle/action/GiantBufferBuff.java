@@ -237,7 +237,8 @@ public final class GiantBufferBuff extends RowAction {
      *
      * @param holder the unit's holder
      */
-    public void attackEnded(ActionHolder holder) {
+    @Override
+    protected void attackEnded(ActionHolder holder) {
       int before = counter;
       counter = before + 1;
       if (before == columns.attackAmount() - 2) {

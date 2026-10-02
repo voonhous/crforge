@@ -393,6 +393,9 @@ public final class BattleRecords {
           "LoopingFilter",
           "CustomSpawnFilter",
           "CustomCloneFilter",
+          // Read only by the character view and its range: whether an animation keeps its last
+          // frame.
+          "AnimationsKeepLastFrame",
           // No battle logic reads it: an object of the view only, of which no entity is made, and
           // a building fires its own shots.
           "AttachedCharacter",
@@ -560,7 +563,7 @@ public final class BattleRecords {
             .noDeploySizeH(row.intValue("NoDeploySizeH"))
             .attackPushBack(row.intValue("AttackPushBack"))
             .ignorePushback(row.bool("IgnorePushback"))
-            .onStartingAction(actionName(row, "OnStartingAction"))
+            .onStartingAction(startingActionName(row))
             .onDeathAction(actionName(row, "OnDeathAction"))
             .onKilledAction(actionName(row, "OnKilledAction"))
             .deathDamage(row.intValue("DeathDamage"))
@@ -1538,6 +1541,23 @@ public final class BattleRecords {
       return value.asInt() != 0;
     }
     return !value.isEmpty();
+  }
+
+  /**
+   * The action row a unit's OnStartingAction names; null for none. One written inline as a bare
+   * ActionBerserk, as the Berserker's is, is the actions table's row named after the unit and the
+   * column. Any other inline row is refused.
+   */
+  private String startingActionName(GameRow row) {
+    JsonNode value = row.value("OnStartingAction");
+    boolean berserk =
+        value != null
+            && value.isObject()
+            && value.size() == 1
+            && value.path("ClassType").asText().equals("ActionBerserk");
+    return berserk
+        ? inlineActionName(row, "OnStartingAction")
+        : actionName(row, "OnStartingAction");
   }
 
   /**

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
@@ -238,6 +240,9 @@ public final class ActionRows {
                   "IdleStartFrame",
                   "IdleEndFrame",
                   "Priority")),
+          // The Berserker's starting action has no column of its own: its run sets and flips the
+          // attack sequence index.
+          Map.entry("ActionBerserk", Set.of()),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -472,6 +477,18 @@ public final class ActionRows {
                 }
               }
               yield new PlayAnimationIfHasTarget(shared);
+            }
+            case "ActionBerserk" -> {
+              // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained
+              // action on such a run is held by no reference.
+              for (Iterator<String> columns = f.fieldNames(); columns.hasNext(); ) {
+                String column = columns.next();
+                if (!column.equals("ClassType")) {
+                  throw new UnsupportedOperationException(
+                      name + " sets " + column + " on a Berserker's run, which is not modelled");
+                }
+              }
+              yield new Berserk(shared);
             }
             case "ActionGoblinHutLifeState" ->
                 new GoblinHutLifeState(

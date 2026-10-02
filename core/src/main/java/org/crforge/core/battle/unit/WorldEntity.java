@@ -13,6 +13,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.filter.FilterSubject;
@@ -541,7 +542,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
       @Override
       public boolean hitListeners() {
-        return !hitListenerRuns().isEmpty();
+        return !hitListenerRuns().isEmpty() || berserking();
       }
 
       @Override
@@ -556,9 +557,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
       @Override
       public void attackEnded() {
-        for (GiantBufferBuff.Run run : hitListenerRuns()) {
-          run.attackEnded(actionHolder());
-        }
+        actionHolder().attackEnded();
       }
     };
   }
@@ -581,10 +580,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * The entity's running actions that listen to its hits, in list order: its enchanting buffs.
-   * Every other class keeps the base hit slots, which hand a damage on unchanged and do nothing at
-   * an attack's end, so the chains are those of the enchanting buffs alone. The king tower's own
-   * actions are never listed as listeners.
+   * The entity's running actions that change its hits' damage, in list order: its enchanting buffs.
+   * Every other class keeps the base damage slots, which hand a damage on unchanged, so the chains
+   * are those of the enchanting buffs alone. The king tower's own actions are never listed as
+   * listeners.
    */
   private List<GiantBufferBuff.Run> hitListenerRuns() {
     if (actionHolder == null || data.king()) {
@@ -597,6 +596,22 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
     }
     return runs;
+  }
+
+  /**
+   * Whether a Berserker's run is listed on the entity: it hears of every attack that lands, though
+   * it leaves the damage alone. The king tower's own actions are never told.
+   */
+  private boolean berserking() {
+    if (actionHolder == null || data.king()) {
+      return false;
+    }
+    for (ActionInstance instance : actionHolder.running()) {
+      if (instance.getAction() instanceof Berserk) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -1343,6 +1358,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (data.attackSequence().order().size() > index) {
       targeting.setAttackSequenceIndex(index);
     }
+  }
+
+  @Override
+  public int attackSequenceIndex() {
+    return targeting.getAttackSequenceIndex();
+  }
+
+  @Override
+  public void berserked(Berserk.Event event, int before, int index) {
+    world.berserked(this, event, before, index);
   }
 
   /** The level a packed value stands for: the relative level plus the signed steps. */

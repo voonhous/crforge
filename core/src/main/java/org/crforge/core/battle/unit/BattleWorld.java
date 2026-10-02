@@ -20,6 +20,7 @@ import org.crforge.core.battle.HolderPasses;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
@@ -2981,6 +2982,13 @@ public class BattleWorld implements HolderPasses {
     }
     for (WorldObserver observer : observers) {
       observer.characterSpawned(tick, source, child, cx, cy);
+    }
+  }
+
+  /** Tells the observers what a Berserker's run did to its unit's attack sequence index. */
+  void berserked(WorldEntity unit, Berserk.Event event, int before, int index) {
+    for (WorldObserver observer : observers) {
+      observer.berserked(tick, unit, event, before, index);
     }
   }
 
