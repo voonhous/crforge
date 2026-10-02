@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -4930,6 +4931,21 @@ public class BattleWorld implements HolderPasses {
   void buffApplied(WorldEntity target, BuffInstance buff) {
     for (WorldObserver observer : observers) {
       observer.buffApplied(tick, target, buff);
+    }
+  }
+
+  void buffHandedOver(
+      WorldEntity parent,
+      WorldEntity rider,
+      BuffData buff,
+      int time,
+      int packedLevel,
+      SpawnHost source,
+      List<BuffInstance> instances,
+      Set<String> heldBefore) {
+    for (WorldObserver observer : observers) {
+      observer.buffHandedOver(
+          tick, parent, rider, buff, time, packedLevel, source, instances, heldBefore);
     }
   }
 

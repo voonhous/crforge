@@ -240,16 +240,24 @@ class BattleElectroGiantTest {
 
   @Test
   @DisplayName(
-      "a Spear Goblin's shot is struck back at the Goblin Giant it rides on, not at the rider, whose"
-          + " share of the buff is refused")
+      "a Spear Goblin's shot is struck back at the Goblin Giant it rides on, not at the rider, and"
+          + " the Giant hands the buff to both its riders")
   void aRidersShot() {
     Scene scene = new Scene();
     // Played for the top side, it walks down onto the Giant; its riders shoot from farther out.
     scene.match.play(0, GameData.card("GoblinGiant"), LEVEL, 1, X, Y + 2500, "goblin");
 
-    assertThatThrownBy(() -> scene.step(160))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("goblin_0 rides or carries riders");
+    // Until a shot is struck back with the buff: the first ones may be out of the reflect's reach.
+    while (scene.reflections.stream()
+            .noneMatch(r -> r.attacker() instanceof ProjectileEntity && r.buff() != null)
+        && scene.tick < 160) {
+      scene.step(1);
+    }
+    CharacterEntity giant = scene.match.getPlays().get(0).units().get(0);
+    assertThat(giant.getBuffs().carries("ZapFreeze")).isTrue();
+    assertThat(giant.riders())
+        .hasSize(2)
+        .allSatisfy(rider -> assertThat(rider.getBuffs().carries("ZapFreeze")).isTrue());
     List<Reflection> shots =
         scene.reflections.stream().filter(r -> r.attacker() instanceof ProjectileEntity).toList();
     assertThat(shots)

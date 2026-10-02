@@ -59,6 +59,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param damageReduction the percent every amount that reaches its carrier's hit points loses while
  *     it is listed; below 0 the amount grows instead; 0 for none
  * @param ignorePushBack true when its carrier is not pushed back while it is listed
+ * @param cloneBuff true for a Clone buff, which a parent keeps from its riders
+ * @param attachedInheritAs the buff row a parent hands its riders in place of this one, or null to
+ *     hand them this one
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -101,6 +104,8 @@ public record BuffData(
     String aliveIfTrue,
     int damageReduction,
     boolean ignorePushBack,
+    boolean cloneBuff,
+    String attachedInheritAs,
     List<String> unmodelledColumns) {
 
   public BuffData {

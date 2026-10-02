@@ -121,18 +121,102 @@ class RiderTest {
         .hasMessageContaining("riders");
   }
 
+  /** The instances an entity lists, as row, remaining time, total time, level and source. */
+  private static List<String> instances(CharacterEntity unit) {
+    return unit.getBuffs().items().stream()
+        .map(
+            i ->
+                "%s %d %d %d %s"
+                    .formatted(
+                        i.getBuff().name(),
+                        i.getRemaining(),
+                        i.getTotal(),
+                        i.getPackedLevel(),
+                        i.getSource() == null ? null : i.getSource().name()))
+        .toList();
+  }
+
   @Test
-  @DisplayName("a buff on a parent or a rider is refused, as the parent hands it to its riders")
-  void aBuffIsRefused() {
+  @DisplayName(
+      "a buff on a parent is handed to each rider as an instance of its own, which the parent's"
+          + " removal leaves")
+  void aBuffIsHandedToEachRider() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     CharacterEntity giant = playedGoblinGiant(match);
-    assertThatThrownBy(
-            () ->
-                giant
-                    .getBuffs()
-                    .apply(GameData.records().buff("ZapFreeze"), 500, LEVEL_11, null, 1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("riders");
+    giant.getBuffs().apply(GameData.records().buff("ZapFreeze"), 500, LEVEL_11, giant, 1);
+
+    List<String> expected = List.of("ZapFreeze 500 500 10 " + giant.name());
+    assertThat(instances(giant)).isEqualTo(expected);
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(instances(rider)).isEqualTo(expected);
+      assertThat(rider.getBuffs().items().get(0)).isNotSameAs(giant.getBuffs().items().get(0));
+    }
+    giant.getBuffs().removeRow("ZapFreeze");
+    assertThat(giant.getBuffs().items()).isEmpty();
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(instances(rider)).isEqualTo(expected);
+    }
+  }
+
+  @Test
+  @DisplayName("a refresh on the parent refreshes each rider's instance by the same rule")
+  void aRefreshIsHandedOver() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity giant = playedGoblinGiant(match);
+    BuffData zap = GameData.records().buff("ZapFreeze");
+    giant.getBuffs().apply(zap, 500, LEVEL_11, null, 1);
+    for (int i = 0; i < 5; i++) {
+      giant.getBuffs().visit();
+      giant.riders().forEach(rider -> rider.getBuffs().visit());
+    }
+    giant.getBuffs().apply(zap, 1500, LEVEL_11, null, 1);
+
+    // 250 left of 500, refreshed to 1500: the whole grows by the difference.
+    List<String> expected = List.of("ZapFreeze 1500 1750 10 null");
+    assertThat(instances(giant)).isEqualTo(expected);
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(instances(rider)).isEqualTo(expected);
+    }
+  }
+
+  @Test
+  @DisplayName("a buff that names another for riders hands them that one")
+  void aBuffNamingAnotherForRiders() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity giant = playedGoblinGiant(match);
+    giant
+        .getBuffs()
+        .apply(GameData.records().buff("Vines_Trap_Snare_Base"), 2000, LEVEL_11, null, 1);
+
+    assertThat(instances(giant)).containsExactly("Vines_Trap_Snare_Base 2000 2000 10 null");
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(instances(rider)).containsExactly("Vines_Trap_Snare_No_Effect 2000 2000 10 null");
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a Clone buff stays with the parent, and a rider refuses what its row ignores, as the Goblin"
+          + " Curse")
+  void whatTheRidersDoNotTake() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity giant = playedGoblinGiant(match);
+    giant.getBuffs().apply(GameData.records().buff("Clone"), 1000, LEVEL_11, null, 0);
+    giant.getBuffs().apply(GameData.records().buff("GoblinCurse"), 1000, LEVEL_11, null, 1);
+
+    assertThat(giant.getBuffs().items())
+        .extracting(i -> i.getBuff().name())
+        .containsExactly("Clone", "GoblinCurse");
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(rider.getBuffs().items()).isEmpty();
+    }
+  }
+
+  @Test
+  @DisplayName("a buff applied to a rider other than through its parent is refused")
+  void aDirectBuffOnARiderIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity giant = playedGoblinGiant(match);
     assertThatThrownBy(
             () ->
                 giant
@@ -141,7 +225,7 @@ class RiderTest {
                     .getBuffs()
                     .apply(GameData.records().buff("ZapFreeze"), 500, LEVEL_11, null, 1))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("riders");
+        .hasMessageContaining("a rider, other than through its parent");
   }
 
   @Test

@@ -3,8 +3,10 @@ package org.crforge.core.battle.unit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.ToIntFunction;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
@@ -33,6 +35,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * added as an individual one, as Dark Magic's are, refreshes nothing. With nothing to refresh a new
  * instance is listed last, its level packed against the buff's rarity. A buff with a death spawn
  * that would make another with a death spawn give way is refused.
+ *
+ * <p><b>Riders.</b> An apply on a parent that carries riders, the Goblin Giant or the Ram, that was
+ * not refused ends by handing the buff to each rider in the order they were made: every row but a
+ * Clone one, the row it names for riders in its place, with the parent's time, level, source, side
+ * and parent. Each rider's apply is its own, under its own refusals, refreshing or listing its own
+ * instance, which its own visit steps, so with the same time the instances run out on the same
+ * tick; removing the parent's touches none of them. A rider takes a buff in no other way.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
  * ms and is removed once its time is 0; a buff with a life condition asks it of the carrier after
@@ -83,7 +92,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " BattleLaserBallTest alone: a buff added as an individual one, which refreshes"
             + " nothing. Translated but held by no run: a player-specific refresh, a crown"
             + " tower's heal and a negative hit frequency. A death spawn is left by the dying carrier (see the battle's death slot),"
-            + " held by witch_mother_skeletons; one giving way to another is refused. Refused by"
+            + " held by witch_mother_skeletons; one giving way to another is refused. Held by"
+            + " parent_buff_goblin_giant and parent_buff_ram_rider_rage: a buff on a parent"
+            + " handed to each rider, made and refreshed, as an instance of the rider's own that"
+            + " its own visit steps; by RiderTest: a row named for riders handed in its place, a"
+            + " Clone row kept from them, a rider's own refusal and the parent's removal leaving"
+            + " the riders' instances. A buff applied to a rider other than through its parent is"
+            + " refused. Refused by"
             + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
             + " shields, hit point and damage multipliers, and an action on a reduction. The"
             + " damage reduction, the largest at or above 0 and the smallest at or below 0 under"
@@ -195,16 +210,36 @@ public final class BuffComponent implements BattleComponent {
    */
   void apply(
       BuffData buff, int time, int packedLevel, SpawnHost source, int side, BattleEntity parent) {
+    apply(buff, time, packedLevel, source, side, parent, false);
+  }
+
+  /**
+   * The apply, from a source or from a parent handing the buff to this rider.
+   *
+   * @param handedOver true when a parent hands the buff to this rider
+   */
+  private void apply(
+      BuffData buff,
+      int time,
+      int packedLevel,
+      SpawnHost source,
+      int side,
+      BattleEntity parent,
+      boolean handedOver) {
     if (entity.getTargetView().building() && buff.ignoreBuildings()) {
       return;
     }
     if ((entity.getView().getFlags() & NO_BUFFS) != 0) {
       return;
     }
-    // A buff on a parent is handed to its riders; neither is modelled.
-    if (entity instanceof CharacterEntity c && (c.getParent() != null || !c.riders().isEmpty())) {
+    // A rider takes a buff only from its parent: an area effect's buff test refuses it, and a hit's
+    // buff goes to the parent.
+    if (!handedOver && entity instanceof CharacterEntity c && c.getParent() != null) {
       throw new UnsupportedOperationException(
-          entity.name() + " rides or carries riders, whose share of a buff is not modelled");
+          buff.name()
+              + " is applied to "
+              + entity.name()
+              + ", a rider, other than through its parent, which is not modelled");
     }
     // A carrier of a buff some character passes over, rather than ranks lower, is not modelled:
     // the validator would read it.
@@ -279,6 +314,40 @@ public final class BuffComponent implements BattleComponent {
       items.add(instance);
       onListed(instance);
       world.buffApplied(entity, instance);
+    }
+    handOver(buff, time, packedLevel, source, side, parent);
+  }
+
+  /**
+   * The end of an apply on a parent that carries riders: every buff but a Clone one is handed to
+   * each rider in the order they were made, the row it names for riders in its place, with the
+   * apply's own time, level, source, side and parent. Each rider's apply is its own: its refusals,
+   * its refresh or its own instance, which its own visit steps; removing the parent's instance
+   * touches none of them.
+   */
+  private void handOver(
+      BuffData buff, int time, int packedLevel, SpawnHost source, int side, BattleEntity parent) {
+    if (!(entity instanceof CharacterEntity carrier)
+        || !carrier.getData().spawnAttach()
+        || buff.cloneBuff()) {
+      return;
+    }
+    BuffData handed =
+        buff.attachedInheritAs() == null ? buff : world.buffData(buff.attachedInheritAs());
+    for (CharacterEntity rider : List.copyOf(carrier.riders())) {
+      BuffComponent buffs = rider.getBuffs();
+      Set<String> held = new HashSet<>();
+      for (BuffInstance instance : buffs.items) {
+        held.add(instance.getKey());
+      }
+      buffs.apply(handed, time, packedLevel, source, side, parent, true);
+      List<BuffInstance> instances = new ArrayList<>();
+      for (BuffInstance instance : buffs.items) {
+        if (instance.getBuff().name().equals(handed.name())) {
+          instances.add(instance);
+        }
+      }
+      world.buffHandedOver(carrier, rider, handed, time, packedLevel, source, instances, held);
     }
   }
 
