@@ -27,7 +27,8 @@ import org.crforge.core.pathfinding.move.MovementState;
  *   <li>the pending-damage duration counts down and a unit with no hit points asks to be removed;
  *   <li>the dash immunity is either topped up or counted down;
  *   <li>a requested ability starts;
- *   <li>the casting and follow-up countdowns advance;
+ *   <li>the casting and follow-up countdowns advance, and the ability's effect, which its caller
+ *       supplies, runs in place on the visit its trigger delay reaches zero;
  *   <li>a unit removed from play follows whatever it was attached to, and nothing else happens;
  *   <li>the deployment countdown advances and, at zero, the unit resumes;
  *   <li>a unit that has reached its own goal row stops;
@@ -76,7 +77,8 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " ghost_river_wizard_tower; the pending-damage countdown, by the battle references'"
             + " re-locks and drops; a hiding row's deploy-end targeting visit and hide handler,"
             + " by tesla_giant_passing; a Kamikaze row's drain right after the not-attacking"
-            + " section, by skeleton_barrel_tower. Not modelled: growth. A removal is requested by"
+            + " section, by skeleton_barrel_tower; the ability's follow-up countdown and the"
+            + " ability's tags while it lasts, by both Monk ability runs. Not modelled: growth. A removal is requested by"
             + " name and read by nothing.")
 public final class EntityStateVisit {
 
@@ -217,6 +219,7 @@ public final class EntityStateVisit {
         timers.setAbilityCountdown(timers.getAbilityCountdown() - 1);
         if (timers.getAbilityWarningCountdown() == 0) {
           chain.add("ability_warning");
+          queries.abilityEffect().run();
         }
         if (timers.getAbilityCountdown() <= 0 && entity.getState() == GridEntityState.CASTING) {
           setter.setState(entity, GridEntityState.STANDING);
@@ -225,15 +228,9 @@ public final class EntityStateVisit {
     }
     boolean holdingFollowUp = false;
     if (entity.getState() == GridEntityState.ABILITY_FOLLOW_UP) {
-      timers.setAbilityCountdown(timers.getAbilityCountdown() - 1);
-      if (timers.getAbilityCountdown() > 0) {
-        if (config.abilityPresent()) {
-          entity.setPendingFlags(entity.getPendingFlags() | config.abilityStateFlags());
-        }
+      holdingFollowUp = followUpStep(entity, timers, config, setter);
+      if (holdingFollowUp) {
         word = GridEntityState.ABILITY_FOLLOW_UP;
-        holdingFollowUp = true;
-      } else {
-        setter.setState(entity, GridEntityState.STANDING);
       }
     }
 
@@ -317,6 +314,27 @@ public final class EntityStateVisit {
       }
     }
     chain.add("visit_tail");
+  }
+
+  /**
+   * One step of the ability's follow-up state, as the visit's block 9 runs it: the countdown down
+   * by one; above 0 the ability's tags go into the pending tag word, which the next pre-hook folds
+   * into the word; at 0 the unit stands. The block follows the casting one, so the visit whose
+   * ability effect enters the state takes its first step.
+   *
+   * @return true while the unit holds the state
+   */
+  private static boolean followUpStep(
+      GridEntity entity, StateTimers timers, StateVisitConfig config, StateSetter setter) {
+    timers.setAbilityCountdown(timers.getAbilityCountdown() - 1);
+    if (timers.getAbilityCountdown() > 0) {
+      if (config.abilityPresent()) {
+        entity.setPendingFlags(entity.getPendingFlags() | config.abilityStateFlags());
+      }
+      return true;
+    }
+    setter.setState(entity, GridEntityState.STANDING);
+    return false;
   }
 
   /**

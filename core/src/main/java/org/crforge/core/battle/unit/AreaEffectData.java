@@ -47,6 +47,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param oneHitPerTarget true when its hit action reaches each object once in its life
  * @param followsParent true when it moves with the object it follows, its parent, standing on that
  *     object's point at each update
+ * @param deflectsProjectiles true when the enemy projectiles that fly within its radius are sent
+ *     back at their source, its parent taking their damage
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)
@@ -83,6 +85,7 @@ public record AreaEffectData(
     String onHitAction,
     boolean oneHitPerTarget,
     boolean followsParent,
+    boolean deflectsProjectiles,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

@@ -37,6 +37,9 @@ import java.util.function.BooleanSupplier;
  *     gate, then, with its targeting component on, its targeting visit
  * @param hide the hide handler of a hiding row, run where the visit reaches it, since it reads the
  *     state the visit has reached
+ * @param abilityEffect the ability's effect, run where the visit reaches it: on the visit the
+ *     trigger delay reaches zero, after both countdowns step and before the cast's end is tested,
+ *     so the rest of the visit sees the state the effect leaves
  */
 public record StateQueries(
     int team,
@@ -53,10 +56,47 @@ public record StateQueries(
     Runnable notAttacking,
     Runnable kamikazeDrain,
     Runnable deployEndVisit,
-    Runnable hide) {
+    Runnable hide,
+    Runnable abilityEffect) {
 
   /** Milliseconds one tick advances every countdown by. */
   public static final int TICK_MS = 50;
+
+  /** The answers without an ability effect: a visit that reaches it runs nothing. */
+  public StateQueries(
+      int team,
+      boolean mayHoldRoute,
+      boolean gridAllowsRoute,
+      boolean gridRouteFlag,
+      boolean hasHitPoints,
+      boolean abilityCastActive,
+      BooleanSupplier abilityTriggerReady,
+      boolean protectedFromDamage,
+      boolean protectionApplies,
+      int goalRow,
+      int scaledDeployStepMs,
+      Runnable notAttacking,
+      Runnable kamikazeDrain,
+      Runnable deployEndVisit,
+      Runnable hide) {
+    this(
+        team,
+        mayHoldRoute,
+        gridAllowsRoute,
+        gridRouteFlag,
+        hasHitPoints,
+        abilityCastActive,
+        abilityTriggerReady,
+        protectedFromDamage,
+        protectionApplies,
+        goalRow,
+        scaledDeployStepMs,
+        notAttacking,
+        kamikazeDrain,
+        deployEndVisit,
+        hide,
+        () -> {});
+  }
 
   /**
    * Whether the arena will give the entity a route, asked the way the resume helper asks it: with
@@ -111,6 +151,7 @@ public record StateQueries(
         notAttacking,
         kamikazeDrain,
         deployEndVisit,
-        hide);
+        hide,
+        abilityEffect);
   }
 }

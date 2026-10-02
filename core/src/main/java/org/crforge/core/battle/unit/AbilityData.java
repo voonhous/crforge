@@ -6,8 +6,9 @@ import lombok.Builder;
 /**
  * A unit's ability row as the battle reads it: how long a cast lasts and when its effect fires,
  * whether the unit keeps its target while it casts, the action it runs, the buff it gives itself,
- * the lane switch and the character it leaves behind as it fires, and what a champion's controller
- * reads: its cost, its cooldown and its charges.
+ * the lane switch, the character it leaves behind and the area effect it creates as it fires, the
+ * state it holds the unit in afterwards, and what a champion's controller reads: its cost, its
+ * cooldown and its charges.
  *
  * <p>A request for the ability takes the unit into the casting state. The cast time and the trigger
  * delay are counted in whole ticks from there, each the column's milliseconds divided by 50; the
@@ -34,6 +35,11 @@ import lombok.Builder;
  *     position, routing there in the in-game pathfinding state
  * @param activationSpawnCharacter the row of the character the ability leaves on the unit's spot as
  *     it fires, or null for none
+ * @param areaEffectObject the row of the area effect the ability creates at the unit as it fires,
+ *     its parent the unit, or null for none
+ * @param abilityStateDurationMs how long the unit stays in the ability's follow-up state after it
+ *     fires; 0 for none
+ * @param gameTagsWhileAbilityActive the tag bits the unit carries while it is in that state
  * @param unmodelledColumns the columns that make the ability do more than run its activation action
  *     and buff the unit itself, or keep a buff on a unit waiting to cast, which the battle does not
  *     model; a request for such an ability is refused
@@ -56,6 +62,9 @@ public record AbilityData(
     String pendingBuff,
     boolean switchLanes,
     String activationSpawnCharacter,
+    String areaEffectObject,
+    int abilityStateDurationMs,
+    long gameTagsWhileAbilityActive,
     List<String> unmodelledColumns) {
 
   public AbilityData {

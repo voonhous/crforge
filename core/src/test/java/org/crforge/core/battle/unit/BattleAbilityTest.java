@@ -105,7 +105,7 @@ class BattleAbilityTest {
   @DisplayName("a request for an ability with an effect the battle does not model is refused")
   void aRichAbilityIsRefused() {
     Standard1v1Battle match = passiveTowers();
-    // The Skeleton King's ability makes an area object.
+    // The Skeleton King's ability makes an area object that counts the souls it resurrects.
     CharacterEntity king =
         match.deploy(
             0, GameData.unit("SkeletonKing"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
@@ -114,6 +114,6 @@ class BattleAbilityTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "SkeletonKing casts SkeletonKing, which sets columns the battle does not model:"
-                + " [AreaEffectObject]");
+                + " [ResurrectBaseCount]");
   }
 }

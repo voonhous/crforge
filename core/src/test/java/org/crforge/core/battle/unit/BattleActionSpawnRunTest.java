@@ -380,6 +380,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * dropped, and ramps from the start on the other tower. {@code mighty_miner_ability_walk} uses it
  * as the Miner walks at a Knight, which turns to the Miner's tower and walks into the bomb's
  * circle, hit and pushed back up the lane.
+ *
+ * <p>{@code monk_ability_tower} has its player use the Monk's ability as it attacks a princess
+ * tower: eighteen ticks into the cast it shields itself, creates the area effect that follows it
+ * and stands in its follow-up state for 79 ticks, keeping its reference; each arrow that comes
+ * within the area effect's radius hits the Monk at 35 percent and flies back at the tower, which
+ * takes a quarter of it. {@code monk_ability_musketeer} uses it against a Knight's hits, lowered
+ * the same way, and a Musketeer's shots, which come back for their whole damage and kill it.
  */
 class BattleActionSpawnRunTest {
 
@@ -545,7 +552,9 @@ class BattleActionSpawnRunTest {
         "tower_retarget_knight",
         "tower_retarget_cannon",
         "mighty_miner_ability_tower",
-        "mighty_miner_ability_walk"
+        "mighty_miner_ability_walk",
+        "monk_ability_tower",
+        "monk_ability_musketeer"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1927,9 +1936,9 @@ class BattleActionSpawnRunTest {
                             a.get("level").asInt(),
                             a.get("countdown").asInt())
                     // The battle keeps the parent of an area effect an action made, a target
-                    // indicator attack made as its signal, or Goblinstein's ability made as its
-                    // death area, and only that.
-                    + (Set.of("action", "target_indicator", "goblinstein_death")
+                    // indicator attack made as its signal, Goblinstein's ability made as its
+                    // death area, or a unit's ability made at the unit, and only that.
+                    + (Set.of("action", "target_indicator", "goblinstein_death", "ability")
                                 .contains(a.get("how").asText())
                             && !a.get("parent").isNull()
                         ? " parent " + a.get("parent").asText()

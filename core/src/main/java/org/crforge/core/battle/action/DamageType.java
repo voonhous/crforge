@@ -1,5 +1,6 @@
 package org.crforge.core.battle.action;
 
+import java.util.function.IntUnaryOperator;
 import lombok.Builder;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -64,7 +65,7 @@ public record DamageType(
   }
 
   /**
-   * The amount a hit of this type deals after its pipeline.
+   * The amount a hit of this type deals after its pipeline, on a target without a damage reduction.
    *
    * @param amount the amount it was dealt with
    * @param targetTakesNoDamage true when the target carries the no-damage tag
@@ -78,6 +79,33 @@ public record DamageType(
       boolean hasSourceObject,
       RarityTable rarity,
       int packedLevel) {
+    return pipeline(
+        amount,
+        targetTakesNoDamage,
+        hasSourceObject,
+        rarity,
+        packedLevel,
+        IntUnaryOperator.identity());
+  }
+
+  /**
+   * The amount a hit of this type deals after its pipeline: the level scaling, then the target's
+   * protection - its damage reduction, floored at 0 - and the multiplier's floor.
+   *
+   * @param amount the amount it was dealt with
+   * @param targetTakesNoDamage true when the target carries the no-damage tag
+   * @param hasSourceObject true when the hit's source is still in the battle
+   * @param rarity the rarity row the level scaling reads, or null for none
+   * @param packedLevel the level the level scaling reads, see {@link PackedLevel}
+   * @param protection the target's damage reduction
+   */
+  public int pipeline(
+      int amount,
+      boolean targetTakesNoDamage,
+      boolean hasSourceObject,
+      RarityTable rarity,
+      int packedLevel,
+      IntUnaryOperator protection) {
     if (targetTakesNoDamage) {
       return 0;
     }
@@ -87,7 +115,7 @@ public record DamageType(
               ScalingGlobals.standard(), amount, packedLevel, ScalingMode.CARD_DAMAGE, rarity);
     }
     if (enableProtection) {
-      amount = Math.max(amount, 0);
+      amount = Math.max(protection.applyAsInt(amount), 0);
     }
     if (enableDamageMultiplier && hasSourceObject) {
       amount = Math.max(amount, 0);

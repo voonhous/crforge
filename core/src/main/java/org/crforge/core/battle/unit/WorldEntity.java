@@ -356,6 +356,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               public boolean crownTowerTarget() {
                 return crownTower;
               }
+
+              @Override
+              public int modifyDamage(int amount) {
+                return buffs.damageReduction(amount);
+              }
             });
     shieldHit(damage, shieldBefore);
     refreshHitPoints();
@@ -780,6 +785,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public boolean battleEnded() {
         return world.isMatchEnded();
+      }
+
+      // The entry lowers the amount by the entity's damage reduction, then floors it at 1.
+      @Override
+      public int modifyDamage(int damage) {
+        return buffs.damageReduction(damage);
       }
     };
   }

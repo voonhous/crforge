@@ -119,6 +119,23 @@ public final class FixedMath {
   }
 
   /**
+   * Sum of the squares of a three-axis separation, saturating at {@link #INT_MAX}: when any axis
+   * leaves the range {@code -46340..46340}, when the first two squares would not fit together in a
+   * signed 32-bit value, or when the third would not fit beside them.
+   */
+  public static int guardedSumOfSquares(int dx, int dy, int dz) {
+    if (dz < -GUARD_LIMIT || dz > GUARD_LIMIT) {
+      return INT_MAX;
+    }
+    int planar = guardedSumOfSquares(dx, dy);
+    if (planar == INT_MAX) {
+      return INT_MAX;
+    }
+    int c = dz * dz;
+    return c < INT_MAX - planar ? planar + c : INT_MAX;
+  }
+
+  /**
    * Squared distance between two points, saturating at {@link #INT_MAX}. This is {@link
    * #guardedSumOfSquares(int, int)} over the separation, with the separation itself computed as a
    * wrapping 32-bit subtraction.

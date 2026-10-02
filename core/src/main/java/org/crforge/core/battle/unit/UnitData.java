@@ -67,6 +67,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     ability sent it to; 0 for none
  * @param ingamePathfindVisible true for a unit that stays visible, and pushable, while it routes to
  *     such a point
+ * @param groupProjectiles true for a unit whose volley's projectiles are linked into one group,
+ *     which a deflection treats as one
  * @param ingamePathfindStopDeploys true for a unit that deploys again as it arrives at such a
  *     point, rather than walking on at once
  * @param spawnAreaObject the area effect the unit makes each time it enters the deploying state
@@ -276,6 +278,7 @@ public record UnitData(
     int ingamePathfindSpeed,
     boolean ingamePathfindVisible,
     boolean ingamePathfindStopDeploys,
+    boolean groupProjectiles,
     String spawnAreaObject,
     int spawnPushback,
     int spawnPushbackRadius,

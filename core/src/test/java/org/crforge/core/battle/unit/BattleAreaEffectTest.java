@@ -90,10 +90,10 @@ class BattleAreaEffectTest {
   @DisplayName("an area effect whose buff sets a column not modelled is refused as it is created")
   void aBuffNotModelledIsRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    match.placeAreaEffect(1, "DarkElixirAOE", 11, 0, 3500, 20000, "DarkElixirAOE");
+    match.placeAreaEffect(1, "ShieldArea", 11, 0, 3500, 20000, "ShieldArea");
     match.getBattle().step();
     assertThatThrownBy(() -> match.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DamageReduction");
+        .hasMessageContaining("[Shield]");
   }
 }

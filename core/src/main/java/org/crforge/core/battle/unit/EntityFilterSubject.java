@@ -127,6 +127,6 @@ final class EntityFilterSubject implements FilterSubject {
 
   @Override
   public boolean ignoresPushback() {
-    return entity.getData().ignorePushback();
+    return entity.getData().ignorePushback() || entity.getBuffs().ignoresPushBack();
   }
 }

@@ -9,7 +9,7 @@ public interface PushbackQueries {
   /** True when the entity's row ignores pushback. */
   boolean ignoresPushback();
 
-  /** True when one of the entity's buffs refuses pushback. No buff is modelled yet: false. */
+  /** True when one of the entity's buffs refuses pushback; false for an entity without buffs. */
   default boolean buffRefusesPushback() {
     return false;
   }

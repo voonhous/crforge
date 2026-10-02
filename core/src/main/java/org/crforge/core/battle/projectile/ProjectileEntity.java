@@ -69,8 +69,14 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " owner that left. Held by the Musketeer and Wizard runs' launches, positions and"
             + " impacts, the constant height by the Royal Giant's and the Elite Archer's; an action holder, made when the projectile first causes an action, as the"
             + " cause of the death hooks of what it kills, held by the Tombstone's death."
-            + " Supplied, not settled: the deflection pass finds nothing, the projectile's"
-            + " own collision radius is zero, and no buff changes its damage. A spell's cast from"
+            + " Supplied, not settled: the projectile's own collision radius is zero, and no buff"
+            + " changes its damage. A deflection's redirect at the root owner - the damage"
+            + " registered on its target handed back, the deflector's side, the relaunch from"
+            + " where it stands with the deflector as launcher and owner, the damage registered"
+            + " on the root owner - and the deflected share of its damage at the impact, held by"
+            + " monk_ability_tower, where the princess tower's arrows come back for 27, and"
+            + " monk_ability_musketeer, where the Musketeer's shots kill it; the hand-back, the"
+            + " side and the registration by BattleMonkTest. A spell's cast from"
             + " the king tower, its delay, its chain and ring point, a thrown projectile's aim at"
             + " its spawned one's body height, and a spawned projectile's launch from its parent"
             + " are held by the spell runs; the limited-time homing by the Elite Archer's."
@@ -89,7 +95,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Not modelled: a pingpong projectile, or one with a random delay, that a spell casts or an impact spawns, the angular delay, the drag-back"
             + " hook, the custom movement, the far-distance clamp with its cell pull, the row's"
             + " starting action the start would schedule, which no projectile row carried here"
-            + " has, and a deflection's hand-back of the pending damage.")
+            + " has, a redirect to a point, and a deflection past the most a projectile takes.")
 public class ProjectileEntity extends BattleEntity
     implements ActionOwner, SpawnHost, FollowedObject {
 
@@ -99,13 +105,39 @@ public class ProjectileEntity extends BattleEntity
   /** How long a hopping projectile waits after a hop before it flies on, in milliseconds. */
   static final int HOP_DELAY_MS = 150;
 
+  private static final int PERCENT = 100;
+
+  /** The share of its damage a deflected projectile deals a unit, in percent. */
+  private static final String DEFLECTED_UNITS = "DEFLECTED_PRJ_UNITS_DMG_MUL";
+
+  /** The share of its crown-tower damage a deflected projectile deals a crown tower. */
+  private static final String DEFLECTED_TOWERS = "DEFLECTED_PRJ_TOWERS_DMG_MUL";
+
+  /** The same share for a row that takes a spell's. */
+  private static final String DEFLECTED_SPELL_TOWERS = "DEFLECTED_SPELL_TOWERS_DMG_MUL";
+
   private final BattleWorld world;
 
   /** The projectile's published columns. */
   @Getter private final ProjectileData data;
 
-  /** The side of the launcher, which the projectile fights for. */
-  @Getter private final int side;
+  /**
+   * The side of the launcher, which the projectile fights for; a deflection turns it to the
+   * deflector's.
+   */
+  @Getter private int side;
+
+  /**
+   * How many times a deflecting area effect has turned the projectile around; from the first, its
+   * impact deals the deflected share of its damage.
+   */
+  @Getter private int deflections;
+
+  /**
+   * True for a projectile of a volley its launcher's row links into one group, which a deflection
+   * treats as one.
+   */
+  @Getter private boolean grouped;
 
   /**
    * The entity that launched the projectile, or null once it has left the battle, or for one
@@ -252,6 +284,7 @@ public class ProjectileEntity extends BattleEntity
    */
   void launch(WorldEntity launcher, WorldEntity target, int sx, int sy, int sz, int hx, int hy) {
     GridEntity view = launcher.getView();
+    grouped = launcher.getData().groupProjectiles();
     place(
         launcher,
         launcher,
@@ -565,6 +598,41 @@ public class ProjectileEntity extends BattleEntity
     delayMs = HOP_DELAY_MS;
   }
 
+  /**
+   * The redirect of a deflection back at the projectile's source: a homing projectile with a target
+   * hands the damage registered on it back; the target and the root are forgotten, the deflections
+   * counted, and the projectile takes the deflector's side. It is launched again from where it
+   * stands, at its height, at the source and its position, the deflector its launcher and owner, at
+   * its own level, and registers its damage, now the deflected share, on the source.
+   *
+   * @param deflector the deflecting area effect's parent, which sends it back
+   * @param source the projectile's root owner, which it is sent back at
+   */
+  public void deflect(WorldEntity deflector, WorldEntity source) {
+    if (data.homing() && target != null) {
+      handBackPending();
+    }
+    target = null;
+    root = null;
+    deflections++;
+    side = deflector.side();
+    GridEntity at = source.getView();
+    GridEntity from = deflector.getView();
+    place(
+        deflector,
+        deflector,
+        source,
+        packedLevel,
+        x,
+        y,
+        z,
+        at.getX(),
+        at.getY(),
+        from.getX(),
+        from.getY());
+    registerPending();
+  }
+
   /** Moves the projectile. */
   void moveTo(int newX, int newY, int newZ) {
     x = newX;
@@ -692,14 +760,36 @@ public class ProjectileEntity extends BattleEntity
     return ScalingGlobals.standard();
   }
 
-  /** The projectile's damage at its level, as the impact computes it. */
+  /**
+   * The projectile's damage at its level, as the impact computes it; once deflected, the share
+   * DEFLECTED_PRJ_UNITS_DMG_MUL gives of it.
+   */
   public int damage() {
-    return ProjectileAmounts.damage(scalingGlobals(), data, packedLevel);
+    int damage = ProjectileAmounts.damage(scalingGlobals(), data, packedLevel);
+    if (deflections >= 1) {
+      damage = world.globalNumber(DEFLECTED_UNITS) * damage / PERCENT;
+    }
+    return damage;
   }
 
-  /** What a crown tower takes from the projectile, as the impact computes it. */
+  /**
+   * What a crown tower takes from the projectile, as the impact computes it; once deflected, the
+   * share DEFLECTED_PRJ_TOWERS_DMG_MUL gives of it, or DEFLECTED_SPELL_TOWERS_DMG_MUL for a row
+   * that takes a spell's.
+   */
   public int towerDamage() {
-    return ProjectileAmounts.towerDamage(scalingGlobals(), data, packedLevel);
+    int damage = ProjectileAmounts.towerDamage(scalingGlobals(), data, packedLevel);
+    if (deflections >= 1) {
+      boolean spell = (data.deflectBehaviour() & ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL) != 0;
+      damage =
+          world.globalNumber(spell ? DEFLECTED_SPELL_TOWERS : DEFLECTED_TOWERS) * damage / PERCENT;
+    }
+    return damage;
+  }
+
+  /** The projectile's damage at its level, before any deflection's share. */
+  public int undeflectedDamage() {
+    return ProjectileAmounts.damage(scalingGlobals(), data, packedLevel);
   }
 
   /**
@@ -714,7 +804,7 @@ public class ProjectileEntity extends BattleEntity
     return areaOwner().getOwner();
   }
 
-  TargetingState areaOwner() {
+  public TargetingState areaOwner() {
     GridEntity view = new GridEntity();
     view.setName(name());
     view.setType(KIND_PROJECTILE);
@@ -850,6 +940,19 @@ public class ProjectileEntity extends BattleEntity
       }
     }
     return out;
+  }
+
+  /** Whether the projectile carries an enchanting copy that changes its damage. */
+  public boolean carriesListeners() {
+    if (actionHolder == null) {
+      return false;
+    }
+    for (ActionInstance run : actionHolder.running()) {
+      if (run instanceof GiantBufferBuff.Run) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

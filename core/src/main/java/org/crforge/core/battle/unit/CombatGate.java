@@ -34,7 +34,9 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
             + " the drop and switch of a dead, deploying or stunned entity, held by zap_knight for"
             + " the stun, and the casting state's KeepCurrentTarget, held by giant_buffer_knights."
             + " A clone's setup state switches it off and keeps the reference, as the standard"
-            + " game does not reset a clone's target, held by clone_golem_group."
+            + " game does not reset a clone's target, held by clone_golem_group. An ability's"
+            + " follow-up state switches it off and keeps the reference, held by the Monk's runs,"
+            + " which take the attack up again from its load time as the state ends."
             + " Not modelled: a Projectile buff (refused with its row)"
             + " and the touchdown query (Ladder answers 0). A dashing row's null path asks for a"
             + " resume, which the gate runs, held by bandit_knight's death.")

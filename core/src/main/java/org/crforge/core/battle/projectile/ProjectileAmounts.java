@@ -19,9 +19,9 @@ import org.crforge.core.pathfinding.target.DirectHit;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the damage at the projectile's level under the row's own rarity and scaling"
-            + " mode, and the crown-tower damage from it. Not modelled: the heal and tower heal"
-            + " amounts, the reduction of a deflected projectile's amounts, and the launcher's"
-            + " buffs changing either damage.")
+            + " mode, and the crown-tower damage from it. A deflected projectile's share of"
+            + " either is the projectile's own. Not modelled: the heal and tower heal amounts, and"
+            + " the launcher's buffs changing either damage.")
 public final class ProjectileAmounts {
 
   private ProjectileAmounts() {
