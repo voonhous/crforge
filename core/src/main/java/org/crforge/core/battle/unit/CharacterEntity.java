@@ -76,6 +76,7 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingConfig;
+import org.crforge.core.pathfinding.target.TargetingOutcome;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.core.pathfinding.target.TargetingVisit;
 import org.crforge.core.pathfinding.target.ValidatorQueries;
@@ -1967,6 +1968,25 @@ public class CharacterEntity extends WorldEntity {
   @Override
   protected void resumeAfterDrop() {
     resume();
+  }
+
+  /**
+   * Drops the reference through the setter's null path, as the killer's hook does for a row that
+   * passes over buffed targets on every hit it lands: the reference kept as the previous one, its
+   * bytes cleared and a route prepared; a dasher asked to resume does. The attack time runs on.
+   *
+   * @return the reference it held, or null for none
+   */
+  TargetView dropReferenceOnHit() {
+    TargetingState t = unit.targeting();
+    TargetView before = t.getReference();
+    TargetingOutcome outcome = new TargetingOutcome();
+    outcome.setRoutePreparer(setter::prepareRoute);
+    TargetingVisit.clearReference(t, getView(), outcome);
+    if (outcome.isResumeRequested()) {
+      resumeAfterDrop();
+    }
+    return before;
   }
 
   /**

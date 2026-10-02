@@ -1401,4 +1401,24 @@ public interface WorldObserver {
       int fromX,
       int fromY,
       String referenceBefore) {}
+
+  /**
+   * The killer's hook reached a unit whose row passes over buffed targets, on a hit it landed.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param hit the entity the hit reached
+   * @param via the projectile that carried the hit, or null for a direct hit or an area
+   * @param kills whether the hit killed
+   * @param active whether the unit's targeting component was on, so the reference dropped
+   * @param dropped the reference it dropped, or null for none
+   */
+  default void referenceDroppedOnHit(
+      int tick,
+      CharacterEntity unit,
+      WorldEntity hit,
+      ProjectileEntity via,
+      boolean kills,
+      boolean active,
+      TargetView dropped) {}
 }

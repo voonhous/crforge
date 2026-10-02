@@ -525,7 +525,9 @@ class BattleActionSpawnRunTest {
         "little_prince_ability_giant",
         "little_prince_ability_knights",
         "boss_bandit_ability_tower",
-        "boss_bandit_ability_charges"
+        "boss_bandit_ability_charges",
+        "ram_rider_drop_knights",
+        "ram_rider_drop_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -799,6 +801,34 @@ class BattleActionSpawnRunTest {
     // Every start and step of a Boss Bandit ability's run, and every warp.
     List<String> warpLog = new ArrayList<>();
     match.getWorld().addObserver(warpLog(currentTick, warpLog));
+    // Every hit a unit whose row passes over buffed targets landed, and the reference it dropped.
+    List<String> dropLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void referenceDroppedOnHit(
+                  int tick,
+                  CharacterEntity unit,
+                  WorldEntity hit,
+                  ProjectileEntity via,
+                  boolean kills,
+                  boolean active,
+                  TargetView dropped) {
+                dropLog.add(
+                    "%d drop %s hit %s via %s kills %b active %b dropped %s state %d"
+                        .formatted(
+                            currentTick[0],
+                            unit.name(),
+                            hit.name(),
+                            via == null ? null : via.name(),
+                            kills,
+                            active,
+                            dropped == null ? null : dropped.name(),
+                            unit.getView().getState()));
+              }
+            });
     // Every tick a unit holds its own lock as the post-hooks end, which a Boss Bandit ability's run
     // asks for as it starts and releases as it finishes.
     List<String> selfLocks = new ArrayList<>();
@@ -1507,6 +1537,23 @@ class BattleActionSpawnRunTest {
     assertThat(warpLog)
         .as("every start and step of a Boss Bandit ability's run, and every warp")
         .containsExactlyElementsOf(expectedWarpLog(reference));
+    List<String> expectedReferenceDrops = new ArrayList<>();
+    for (JsonNode d : reference.path("reference_drops")) {
+      expectedReferenceDrops.add(
+          "%d drop %s hit %s via %s kills %b active %b dropped %s state %d"
+              .formatted(
+                  d.get("tick").asInt(),
+                  d.get("unit").asText(),
+                  d.get("hit").asText(),
+                  d.get("via").isNull() ? null : d.get("via").asText(),
+                  d.get("flag").asInt() == 1,
+                  d.get("active").asInt() == 1,
+                  d.get("dropped").isNull() ? null : d.get("dropped").asText(),
+                  d.get("state").asInt()));
+    }
+    assertThat(dropLog)
+        .as("every hit a unit that passes over buffed targets landed, and what it dropped")
+        .containsExactlyElementsOf(expectedReferenceDrops);
     assertThat(selfLocks)
         .as("every tick a unit holds its own lock as the post-hooks end")
         .containsExactlyElementsOf(expectedSelfLocks(reference));

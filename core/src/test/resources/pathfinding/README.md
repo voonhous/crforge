@@ -449,9 +449,18 @@ The towers fight at level 11. A Hunter is played for side 0 at (3500, 12000) and
 
 ## `golden/ram_rider_bola.json` - the rider's bola
 
-The towers fight at level 11. A Ram Rider is played for side 0 at (3500, 10000) and two Knights for side 1 at (3500, 20000) and (4500, 20000), all on tick 0. The rider, which targets troops only, takes k0_0 and throws RamRiderBola (homing, ConstantHeight 3000, TargetBuff BolaSnare for 2000 ms, PingpongMovingShooter 200) on 57, then every 22 ticks to 167, at z 3000. Each bola deals 104 and then snares k0_0: the snare is applied on 65 and refreshed by each later bola while it holds, on 83, 102, 125, 151 and 174, each refresh naming the bola that made it (`buffs`: `refreshed`, the remaining time before and after). The Ram dies on 175 and the rider goes with it; the snare runs out and is removed on 214. PingpongMovingShooter is never read. The rider ranks a snared troop lower, but it never has to choose between a snared and an unsnared Knight.
+The towers fight at level 11. A Ram Rider is played for side 0 at (3500, 10000) and two Knights for side 1 at (3500, 20000) and (4500, 20000), all on tick 0. The rider, which targets troops only, throws RamRiderBola (homing, ConstantHeight 3000, TargetBuff BolaSnare for 2000 ms, PingpongMovingShooter 200) every 22 ticks from 57 to 167, at z 3000. Each bola deals 104, and its landing drops the rider's reference before the snare goes on (`reference_drops`), so the rider selects again on the next tick and ranks a snared Knight lower: it throws at k0_0 on 57, k1_0 on 79 and 101, k0_0 on 123 and 145 and k1_0 on 167, turning to whichever Knight is not snared, or taking one of them again when both are. The snare is applied on 65, 82, 125 and 173 and refreshed on 102 and 151, each naming the bola that made it (`buffs`: `refreshed`, the remaining time before and after). The Ram dies on 175 and the rider goes with it. PingpongMovingShooter is never read.
 
-`BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log.
+`BattleActionSpawnRunTest` plays it with the spawn runs and holds its buff log and every drop.
+
+## `golden/ram_rider_drop_knights.json` and `golden/ram_rider_drop_tower.json` - the rider's reference dropped on every bola
+
+The towers fight at level 11 and every unit is played on tick 0, a Ram Rider for side 0 at (3500, 10000). Each bola that lands drops the rider's reference, after the damage and before the snare; the attack time runs on, so the throws stay 22 ticks apart.
+
+- `ram_rider_drop_knights`: Knights for side 1 at (3000, 19000) and (5500, 19500). The rider throws at k0_0 on 48, at k1_0 on 70, 92 and 114 and at k0_0 on 136. From 74 both Knights are snared, so the rider keeps taking k1_0 again until k0_0's snare ends on 96, then turns to k0_0. The run ends on 149.
+- `ram_rider_drop_tower`: a Knight for side 1 at (6500, 24000). The Ram charges from 61 and its charged hit lands on PrincessTower_1_1 on 147; the rider throws at the Knight every 22 ticks from 90, dropping it and taking it again on every impact. The Ram dies on 222 and the rider with it; the last bola lands on 225 and still refreshes the snare, but its shooter has left, so nothing drops.
+
+The `reference_drops` list holds every hit such a rider landed: the rider, what it hit, the bola that carried it, whether it killed, whether the rider's targeting component was on, the reference it dropped and its state. `BattleActionSpawnRunTest` plays both with the spawn runs.
 
 ## `golden/kamikaze_battle_ram.json`, `kamikaze_fire_spirits.json`, `kamikaze_wall_breakers.json`, `kamikaze_ice_spirits.json` - a hit that kills its unit
 
