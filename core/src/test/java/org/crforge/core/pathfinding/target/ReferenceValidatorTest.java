@@ -80,15 +80,28 @@ class ReferenceValidatorTest {
   }
 
   @Test
-  @DisplayName("a target with no hit points left is refused unless the alive check is bypassed")
+  @DisplayName(
+      "a target with no hit points left is refused unless the alive check is bypassed, and a dead"
+          + " king always")
   void aliveCheckAndItsBypass() {
     enemyTower.getEntity().setAlive(false);
+    enemyTower.getEntity().setKingCandidate(0);
 
     assertThat(
             ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))
         .isFalse();
 
     knight.setAliveCheckBypass(true);
+    assertThat(
+            ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))
+        .isTrue();
+
+    // The same tower filling its side's king slot is refused dead, bypass or not.
+    enemyTower.getEntity().setKingCandidate(1);
+    assertThat(
+            ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))
+        .isFalse();
+    enemyTower.getEntity().setAlive(true);
     assertThat(
             ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))
         .isTrue();

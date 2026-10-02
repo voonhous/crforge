@@ -508,7 +508,9 @@ class BattleActionSpawnRunTest {
         "goblinstein_tower",
         "goblinstein_doctor_first",
         "archer_queen_ability",
-        "archer_queen_ability_refused"
+        "archer_queen_ability_refused",
+        "reference_loss_knight",
+        "reference_loss_musketeer_rage"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

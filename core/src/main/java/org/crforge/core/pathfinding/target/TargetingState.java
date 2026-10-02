@@ -201,7 +201,12 @@ public class TargetingState {
   /** Ids of the entities this component has already hit and must not take again. */
   private final List<Integer> hitTargetIds = new ArrayList<>();
 
-  /** True to skip the alive test the validator would otherwise apply to a target. */
+  /**
+   * True to skip the alive test the validator would otherwise apply to a target. The standard
+   * game's constructor and reset store 1 on every character's and tower's component, and nothing
+   * stores another value; a battle's components hold it. A single unit's walk keeps 0, as its
+   * references were made.
+   */
   private boolean aliveCheckBypass;
 
   /** True to skip the candidate selection in the next visit. */
