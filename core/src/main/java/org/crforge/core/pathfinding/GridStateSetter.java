@@ -51,9 +51,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * entry hook does; the pending duration is kept.
  *
  * <p>Entering the casting state, for a unit given its casting, raises the casting flag and seeds
- * the ability's two countdowns in whole ticks, and empties the route. Leaving it before the effect
- * fired leaves the ability pending again, and a unit with a movement component has its charge
- * reset. A change into or out of the casting state ends with the unit's combat gate.
+ * the ability's two countdowns in whole ticks, and empties the route. Entering the ability's
+ * follow-up state seeds the cast's countdown with the follow-up's duration in whole ticks. Leaving
+ * it before the effect fired leaves the ability pending again, and a unit with a movement component
+ * has its charge reset. A change into or out of the casting state ends with the unit's combat gate.
  *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
  * change, seeds the morph countdown on entering the morphing state, chains a further dash on
@@ -76,7 +77,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " damage dropped, and every projectile aimed at the unit losing it, on entering"
             + " either pathfinding state, held by mighty_miner_ability_tower, whose tower arrow is"
             + " in flight as the Mighty Miner switches lanes; the combat gate on leaving the"
-            + " in-game pathfinding state, held by both Mighty Miner ability runs; the clone setup's entry"
+            + " in-game pathfinding state, held by both Mighty Miner ability runs; the follow-up"
+            + " state's countdown seeded on its entry, held by both Monk ability runs; the clone"
+            + " setup's entry"
             + " and exit, held by clone_golem_group. Held by the 53"
             + " reference walks, whose route empties at the lock, and the staggered placements."
             + " Not modelled: switching components, the countdown seeded on entering the morphing"
@@ -101,21 +104,35 @@ public final class GridStateSetter implements StateSetter {
 
   /**
    * What entering and leaving the casting state needs: the unit's countdowns, its ability's cast
-   * time and trigger delay, whether it is a champion's clone, and the combat gate the change ends
-   * with.
+   * time and trigger delay, whether it is a champion's clone, the combat gate the change ends with,
+   * and how long the ability's follow-up state lasts.
    *
    * @param timers the unit's state-visit countdowns, which the entry seeds
    * @param castTimeMs the ability's cast time
    * @param triggerDelayMs the ability's trigger delay
    * @param championClone true for a clone of a champion, whose cast is never left pending
    * @param combatGate the combat gate, run at the end of a change into or out of the casting state
+   * @param abilityStateDurationMs how long the follow-up state lasts, which its entry seeds the
+   *     cast's countdown with in whole ticks; 0 for an ability without one
    */
   public record Casting(
       StateTimers timers,
       int castTimeMs,
       int triggerDelayMs,
       boolean championClone,
-      Runnable combatGate) {}
+      Runnable combatGate,
+      int abilityStateDurationMs) {
+
+    /** A casting whose ability has no follow-up state. */
+    public Casting(
+        StateTimers timers,
+        int castTimeMs,
+        int triggerDelayMs,
+        boolean championClone,
+        Runnable combatGate) {
+      this(timers, castTimeMs, triggerDelayMs, championClone, combatGate, 0);
+    }
+  }
 
   /**
    * What the hook's states do beyond the setter's own fields: the unit's component switches, the
@@ -471,6 +488,9 @@ public final class GridStateSetter implements StateSetter {
       }
       case GridEntityState.MOVING -> prepareRoute();
       case GridEntityState.DASHING -> enterDash();
+      // The ability's follow-up state counts its duration down on the cast's countdown, in whole
+      // ticks; the state visit takes it from there.
+      case GridEntityState.ABILITY_FOLLOW_UP -> enterFollowUp();
       // The entity's own entry hook: a unit that goes underground or pathfinds in the battle drops
       // the damage pending on it, whose duration it keeps, and the projectiles aimed at it lose it.
       case GridEntityState.SPAWN_PATHFIND, GridEntityState.INGAME_PATHFIND -> {
@@ -498,6 +518,18 @@ public final class GridStateSetter implements StateSetter {
         // No ported action.
       }
     }
+  }
+
+  /**
+   * The follow-up state's entry: the cast's countdown seeded with the ability's follow-up duration
+   * in whole ticks.
+   */
+  private void enterFollowUp() {
+    if (casting == null) {
+      throw new UnsupportedOperationException(
+          owner.getName() + " enters the ability's follow-up state without an ability");
+    }
+    casting.timers().setAbilityCountdown(casting.abilityStateDurationMs() / TICK_MS);
   }
 
   /**

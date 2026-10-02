@@ -676,10 +676,53 @@ class BattleRecordsTest {
     assertThat(miner.unmodelledColumns()).isEmpty();
     assertThat(queen.switchLanes()).isFalse();
     assertThat(queen.activationSpawnCharacter()).isNull();
-    // An area object is still refused.
+    // An area object, the follow-up state and the tags the unit carries in it are read.
+    AbilityData monk = records.unit("Monk").ability();
+    assertThat(monk.areaEffectObject()).isEqualTo("Deflect");
+    assertThat(monk.abilityStateDurationMs()).isEqualTo(4000);
+    assertThat(monk.gameTagsWhileAbilityActive())
+        .isEqualTo(EntityFlags.AVOIDANCE_AS_OBSTACLE | EntityFlags.NO_MOVE_ALLOW_ATTRACT);
+    assertThat(monk.unmodelledColumns()).isEmpty();
+    assertThat(queen.areaEffectObject()).isNull();
+    assertThat(queen.abilityStateDurationMs()).isZero();
+    assertThat(queen.gameTagsWhileAbilityActive()).isZero();
+    // The souls an area object counts to resurrect are refused.
     assertThat(records.unit("SkeletonKing").ability().unmodelledColumns())
-        .containsExactly("AreaEffectObject");
+        .containsExactly("ResurrectBaseCount");
     assertThat(records.unit("Knight").ability()).isNull();
+  }
+
+  @Test
+  @DisplayName(
+      "a buff carries its damage reduction and whether it ignores pushback, an area effect whether"
+          + " it deflects projectiles, a projectile how a deflection treats it, and a unit whether"
+          + " it groups its volley")
+  void deflectionColumns() {
+    BuffData shield = records.buff("ShieldBoostMonk");
+    assertThat(shield.damageReduction()).isEqualTo(65);
+    assertThat(shield.ignorePushBack()).isTrue();
+    assertThat(shield.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("DarkElixirBuff").damageReduction()).isEqualTo(-100);
+    assertThat(records.buff("Rage").damageReduction()).isZero();
+    assertThat(records.buff("Rage").ignorePushBack()).isFalse();
+    // A buff that runs an action as it reduces damage is refused for that action.
+    assertThat(records.buff("Knight_Fortify_EV1").unmodelledColumns())
+        .containsExactly("OnDamageReductionAction");
+
+    AreaEffectData deflect = records.areaEffect("Deflect");
+    assertThat(deflect.deflectsProjectiles()).isTrue();
+    assertThat(deflect.followsParent()).isTrue();
+    assertThat(deflect.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Zap").deflectsProjectiles()).isFalse();
+
+    assertThat(records.projectile("TowerPrincessProjectile").deflectBehaviour()).isZero();
+    assertThat(records.projectile("FireSpiritsProjectile").deflectBehaviour())
+        .isEqualTo(ProjectileData.NO_DEFLECT);
+    assertThat(records.projectile("FireballSpell").deflectRadius()).isPositive();
+    assertThat(records.projectile("FirecrackerProjectile").actionOnDeflector()).isNotNull();
+
+    assertThat(records.unit("Princess").groupProjectiles()).isTrue();
+    assertThat(records.unit("Musketeer").groupProjectiles()).isFalse();
   }
 
   @Test

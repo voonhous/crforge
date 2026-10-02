@@ -145,6 +145,32 @@ public record StateVisitConfig(
   }
 
   /**
+   * This configuration with an ability, whose follow-up state puts its tags on the entity while it
+   * counts down. The ability does not hold the casting state.
+   *
+   * @param stateFlags the tag bits the entity carries in the follow-up state
+   */
+  public StateVisitConfig withAbility(long stateFlags) {
+    return new StateVisitConfig(
+        deployTimeMs,
+        dashLandingTimeMs,
+        dashImmuneToDamageTimeMs,
+        flyingHeight,
+        ingamePathfindEndsInDeploy,
+        spawnPathfindMorph,
+        onIngamePathfindStopAction,
+        kamikaze,
+        kingTowerMiddle,
+        neutralObject,
+        hideBeforeFirstHit,
+        hidesWhenNotAttacking,
+        deployTimeAffectedByCharacterSpeed,
+        true,
+        false,
+        stateFlags);
+  }
+
+  /**
    * This configuration with a dash: the time the entity is held after its dash lands, and how long
    * nothing can hurt it after the dash.
    *

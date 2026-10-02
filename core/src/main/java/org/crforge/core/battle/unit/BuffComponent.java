@@ -85,7 +85,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " tower's heal and a negative hit frequency. A death spawn is left by the dying carrier (see the battle's death slot),"
             + " held by witch_mother_skeletons; one giving way to another is refused. Refused by"
             + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
-            + " shields, hit point and damage multipliers and damage reduction. Held by"
+            + " shields, hit point and damage multipliers, and an action on a reduction. The"
+            + " damage reduction, the largest at or above 0 and the smallest at or below 0 under"
+            + " the protection cap, at the hit-points entry, held by monk_ability_tower and"
+            + " monk_ability_musketeer; on the damage over time, the pending damage's lethal test"
+            + " and the refusal of a push, by BattleMonkTest; on a typed hit by no run. Held by"
             + " tornado_group_off_lane and tornado_heavy_light_tower: the parent an instance"
             + " keeps, a refresh keeping the damage counter, and the removal of a parent's"
             + " instances as it leaves. Translated but held by no run: an instance with the same"
@@ -469,8 +473,12 @@ public final class BuffComponent implements BattleComponent {
         damage = buff.buildingDamagePercent() * damage / PERCENT;
       }
     }
-    if (damage >= 1 && entity.getHitPoints() != null) {
-      world.dealBuffDamage(entity, instance, damage);
+    // The damage goes through the carrier's own damage reduction first.
+    if (damage >= 1) {
+      damage = damageReduction(damage);
+      if (entity.getHitPoints() != null) {
+        world.dealBuffDamage(entity, instance, damage);
+      }
     }
     if (heal >= 1 && entity.getHitPoints() != null) {
       world.dealBuffHeal(entity, instance, heal);
@@ -532,6 +540,44 @@ public final class BuffComponent implements BattleComponent {
         instance.forgetSource();
       }
     }
+  }
+
+  /**
+   * The damage reduction: an amount that reaches the carrier, less the percent its listed buffs
+   * take off - the largest DamageReduction at or above 0 plus the smallest at or below 0, held
+   * within the protection cap either way - truncated. A negative percent raises the amount. Asked
+   * at the hit-points entry, by the pending damage's lethal test, by a typed hit that the target's
+   * protection lowers and by a buff's damage over time; a row that exempts a buff's own damage is
+   * refused with its row.
+   *
+   * @param amount the amount that reaches the carrier
+   * @return the amount after the reduction
+   */
+  public int damageReduction(int amount) {
+    int high = 0;
+    int low = 0;
+    for (BuffInstance instance : items) {
+      int value = instance.getBuff().damageReduction();
+      high = Math.max(high, value);
+      low = Math.min(low, value);
+    }
+    int total = high + low;
+    if (total == 0) {
+      return amount;
+    }
+    int cap = world.protectionCapPercent();
+    int percent = Math.max(Math.min(total, cap), -cap);
+    return (PERCENT - percent) * amount / PERCENT;
+  }
+
+  /** Whether a listed buff keeps its carrier from being pushed back. */
+  public boolean ignoresPushBack() {
+    for (BuffInstance instance : items) {
+      if (instance.getBuff().ignorePushBack()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** The movement speed a base speed scales to. */

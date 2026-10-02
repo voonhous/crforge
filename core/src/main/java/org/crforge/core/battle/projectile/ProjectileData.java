@@ -96,6 +96,12 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     speed for a pulled troop, the self-drag speed for a building
  * @param allowResetTarget true for a projectile that loses its target when the target goes into a
  *     pathfinding state: true for an empty column, as the loader stores it
+ * @param deflectBehaviour how a deflecting area effect treats it, as bits: {@link #NO_DEFLECT},
+ *     {@link #INVERT_DIRECTION}, {@link #CHECK_ONLY_TARGET_POSITION}, {@link
+ *     #USE_SPELLS_TOWER_DAMAGE_MUL} and {@link #IGNORE_HEIGHT}
+ * @param deflectRadius the radius a deflecting area effect measures it by in place of its own; 0
+ *     for its own
+ * @param actionOnDeflector the action a deflection runs on the deflector, or null
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -163,7 +169,25 @@ public record ProjectileData(
     int dragMargin,
     boolean dragBackAsAttractor,
     boolean allowResetTarget,
+    int deflectBehaviour,
+    int deflectRadius,
+    String actionOnDeflector,
     List<String> unmodelledColumns) {
+
+  /** The deflection bit of a projectile no deflecting area effect turns around. */
+  public static final int NO_DEFLECT = 1;
+
+  /** The deflection bit of a projectile sent on along its path rather than back at its source. */
+  public static final int INVERT_DIRECTION = 2;
+
+  /** The deflection bit of a projectile measured only at its target's point. */
+  public static final int CHECK_ONLY_TARGET_POSITION = 4;
+
+  /** The deflection bit of a projectile that takes a spell's share of a crown tower deflected. */
+  public static final int USE_SPELLS_TOWER_DAMAGE_MUL = 8;
+
+  /** The deflection bit of a projectile measured on the ground plane, its height left out. */
+  public static final int IGNORE_HEIGHT = 0x10;
 
   public ProjectileData {
     if (damageMode == null) {

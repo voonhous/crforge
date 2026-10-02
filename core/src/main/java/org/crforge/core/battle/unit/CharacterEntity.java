@@ -219,7 +219,13 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " leaves on its spot, held by mighty_miner_ability_tower and"
             + " mighty_miner_ability_walk; a spell passing it by and the edge's clamp by unit"
             + " tests alone; a row that stays visible across, and a deploy time for the character"
-            + " left behind, are refused."
+            + " left behind, are refused. The Monk's ability: its effect run inside the state"
+            + " visit, before the cast's end is tested, its buff against damage and pushes, the"
+            + " area effect that follows it and deflects enemy projectiles, and its follow-up"
+            + " state, the targeting component off with the reference kept and the ability's"
+            + " tags on from the next tick, held by monk_ability_tower and monk_ability_musketeer;"
+            + " the tags and the refused push by BattleMonkTest; an area object that counts the"
+            + " souls it resurrects is refused."
             + " Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding before its first hit,"
             + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
@@ -275,8 +281,22 @@ public class CharacterEntity extends WorldEntity {
   /** The working state of the character's two components and its state visit. */
   @Getter private GridUnitState unit;
 
-  /** What a pushback request asks of the character: whether its row ignores pushback. */
-  private final PushbackQueries pushbackQueries = () -> getData().ignorePushback();
+  /**
+   * What a pushback request asks of the character: whether its row ignores pushback, and whether a
+   * buff it carries does.
+   */
+  private final PushbackQueries pushbackQueries =
+      new PushbackQueries() {
+        @Override
+        public boolean ignoresPushback() {
+          return getData().ignorePushback();
+        }
+
+        @Override
+        public boolean buffRefusesPushback() {
+          return getBuffs().ignoresPushBack();
+        }
+      };
 
   /** Applies every state change the character asks for, with the actions the change carries. */
   private final GridStateSetter setter;
@@ -524,7 +544,9 @@ public class CharacterEntity extends WorldEntity {
                 .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs())
                 .withSpawnPathfindMorph(data.spawnPathfindMorph() != null)
                 .withIngamePathfindArrival(data.ingamePathfindStopDeploys())
-                .withHidesWhenNotAttacking(data.hidesWhenNotAttacking()),
+                .withHidesWhenNotAttacking(data.hidesWhenNotAttacking())
+                .withAbility(
+                    data.ability() != null ? data.ability().gameTagsWhileAbilityActive() : 0L),
             getSelection(),
             getTargetView());
     this.setter =
@@ -560,7 +582,8 @@ public class CharacterEntity extends WorldEntity {
               data.ability().castTimeMs(),
               data.ability().triggerDelayMs(),
               false,
-              this::stateTailGate));
+              this::stateTailGate,
+              data.ability().abilityStateDurationMs()));
     }
     // Going underground or across the arena, the unit is dropped by every projectile aimed at it.
     setter.setPathfindEntry(() -> world.pathfindEntered(this));
@@ -1659,9 +1682,9 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * An area's push on the character, after the area's damage: a character that stands without a
-   * movement component, whose row ignores pushback or that the damage killed is left where it is.
-   * Otherwise its movement component is switched on and a pushback is asked for, away from the
-   * point, with every gate in place and nothing lifted.
+   * movement component, whose row or one of whose buffs ignores pushback or that the damage killed
+   * is left where it is. Otherwise its movement component is switched on and a pushback is asked
+   * for, away from the point, with every gate in place and nothing lifted.
    *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
@@ -1671,6 +1694,7 @@ public class CharacterEntity extends WorldEntity {
   boolean pushedByArea(int x, int y, int distance) {
     if (!getView().isMovementComponent()
         || getData().ignorePushback()
+        || getBuffs().ignoresPushBack()
         || !HitPoints.alive(getHitPoints())) {
       return false;
     }
@@ -2278,7 +2302,8 @@ public class CharacterEntity extends WorldEntity {
         this::notAttackingSection,
         this::kamikazeDrain,
         this::deployEndVisit,
-        this::hideVisit);
+        this::hideVisit,
+        this::abilityFired);
   }
 
   /**
@@ -2502,10 +2527,6 @@ public class CharacterEntity extends WorldEntity {
       unit.targeting().clearAttack();
       unit.targeting().setLoadTimerMs(getData().loadTimeMs());
     }
-    // The ability's effect fires on the visit its trigger delay reaches zero.
-    if (calls.contains("ability_warning")) {
-      abilityFired();
-    }
     // The visit's tail call: the combat gate.
     if (!calls.isEmpty() && calls.get(calls.size() - 1).equals("visit_tail")) {
       stateTailGate();
@@ -2620,12 +2641,12 @@ public class CharacterEntity extends WorldEntity {
    * to act; its activation action, scheduled on the unit, the unit as its cause, which from the
    * post-hooks waits for the phase-3 pending pass; its buff, applied to the unit itself for its
    * time, at the unit's level, the unit its parent and its source; its lane switch, which ends the
-   * cast; then the character it leaves on the unit's spot. Its other effects are refused as it is
-   * requested.
+   * cast; the character it leaves on the unit's spot; the area effect it creates at the unit; then
+   * its follow-up state, which ends the cast too. Its other effects are refused as it is requested.
    *
-   * <p>The standard game runs the effect inside the state visit, where the rest of the visit sees a
-   * dash's state; here it runs after the visit and before its tail gate, as the rest of the visit
-   * treats the dashing and casting states alike.
+   * <p>It runs inside the state visit, after the cast's two countdowns step and before the cast's
+   * end is tested, so the rest of the visit sees the state it leaves: a unit it took out of the
+   * casting state is not stood up by the cast's end.
    */
   private void abilityFired() {
     AbilityData ability = getData().ability();
@@ -2655,6 +2676,22 @@ public class CharacterEntity extends WorldEntity {
     if (ability.activationSpawnCharacter() != null) {
       world.activationSpawn(this, ability.activationSpawnCharacter());
     }
+    if (ability.areaEffectObject() != null) {
+      world.abilityAreaEffect(this, ability.areaEffectObject());
+    }
+    if (ability.abilityStateDurationMs() >= 1) {
+      enterFollowUp();
+    }
+  }
+
+  /**
+   * The ability's follow-up state: the unit enters it, its countdown seeded, and the state visit
+   * that ran the effect takes its first step. While it lasts the combat gate keeps the targeting
+   * component off, the reference kept, and the ability's tags are on the unit from the next tick.
+   */
+  private void enterFollowUp() {
+    setter.setState(getView(), GridEntityState.ABILITY_FOLLOW_UP);
+    world.abilityStateEntered(this, unit.timers().getAbilityCountdown());
   }
 
   /**

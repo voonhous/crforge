@@ -132,6 +132,10 @@ public final class BattleRecords {
           "LockTarget",
           "AddAsIndividualBuff",
           "AliveIfTrue",
+          // Read by the damage reduction, at the hit-points entry, the pending lethal test, a typed
+          // hit and the damage over time; and by the pushback request.
+          "DamageReduction",
+          "IgnorePushBack",
           // Read only by the apply, to keep the buff off a unit's riders, or to hand them another;
           // a buff on a rider or on a unit that carries riders is refused as it is applied.
           "Clone",
@@ -175,10 +179,10 @@ public final class BattleRecords {
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
-   * on itself, the shape, the spawns, the life condition, the tags, the deflection, the per-level
-   * lifetime and the push's floor and gate lift. Its projectile is modelled, but not a launch from
-   * its source or a spread one; its hit action only for a Clone, as a group of buff spawns and as a
-   * taunt; one hit per target only with a hit action; and following only its parent.
+   * on itself, the shape, the spawns, the life condition, the tags, the per-level lifetime and the
+   * push's floor and gate lift. Its projectile is modelled, but not a launch from its source or a
+   * spread one; its hit action only for a Clone, as a group of buff spawns and as a taunt; one hit
+   * per target only with a hit action; and following only its parent.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -190,7 +194,6 @@ public final class BattleRecords {
           "SpawnCharacter",
           "AliveIfTrue",
           "Tags",
-          "DeflectProjectilesEnabled",
           "LifeDurationIncreasePerLevel",
           "LifeDurationIncreaseAfterTournamentCap",
           "MinPushback",
@@ -385,8 +388,6 @@ public final class BattleRecords {
           "ManaOnDeath",
           // Gates only the statistics calls of the buff add.
           "AvoidCountingForBuffAmountStats",
-          // Read only by the deflection, which finds nothing: no object the battle builds deflects.
-          "GroupProjectiles",
           // A later entry's columns load into no entry without an order or VariableDamageTime1; a
           // row that builds its entries reads them.
           "VariableDamage2",
@@ -472,10 +473,6 @@ public final class BattleRecords {
           "Base",
           // Nothing in the battle logic reads it; carried as presentation.
           "PingpongMovingShooter",
-          // Read only by the deflection, which finds nothing: no object the battle builds deflects.
-          "DeflectBehaviour",
-          "DeflectRadius",
-          "ActionOnDeflector",
           // Read only by the projectile view: its frame set and whether it shows while delayed.
           "use360Frames",
           "HideWhenDelayed");
@@ -571,6 +568,7 @@ public final class BattleRecords {
             .ingamePathfindVisible(row.bool("IngamePathfindVisible"))
             // Only whether the animation is named counts: an arrival with one deploys again.
             .ingamePathfindStopDeploys(set(row, "IngamePathfindStopDeployBaseAnim"))
+            .groupProjectiles(row.bool("GroupProjectiles"))
             .spawnPathfindMorph(
                 row.string("SpawnPathfindMorph").isEmpty()
                     ? null
@@ -890,6 +888,25 @@ public final class BattleRecords {
   }
 
   /** The bits of game tags written as names separated by commas; none for an empty text. */
+  /** The deflection flags a projectile row names, separated by commas, as their bits. */
+  private static int deflectBehaviour(String names) {
+    int bits = 0;
+    for (String name : names.split(",")) {
+      bits |=
+          switch (name.trim()) {
+            case "" -> 0;
+            case "NoDeflect" -> ProjectileData.NO_DEFLECT;
+            case "InvertDirection" -> ProjectileData.INVERT_DIRECTION;
+            case "CheckOnlyTargetPosition" -> ProjectileData.CHECK_ONLY_TARGET_POSITION;
+            case "UseSpellsTowerDamageMul" -> ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL;
+            case "IgnoreHeight" -> ProjectileData.IGNORE_HEIGHT;
+            default ->
+                throw new IllegalArgumentException("an unknown deflection flag: " + name.trim());
+          };
+    }
+    return bits;
+  }
+
   private long tagBits(String names) {
     long bits = 0;
     for (String name : names.split(",")) {
@@ -1091,6 +1108,7 @@ public final class BattleRecords {
             .onHitAction(actionName(row, "OnHitAction"))
             .oneHitPerTarget(row.bool("OneHitPerTarget"))
             .followsParent(row.string("FollowBehaviour").equals("FollowParent"))
+            .deflectsProjectiles(row.bool("DeflectProjectilesEnabled"))
             .unmodelledColumns(unmodelled)
             .build();
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
@@ -1229,6 +1247,8 @@ public final class BattleRecords {
         .lockTarget(row.bool("LockTarget"))
         .addAsIndividualBuff(row.bool("AddAsIndividualBuff"))
         .aliveIfTrue(sets(row, "AliveIfTrue") ? row.string("AliveIfTrue") : null)
+        .damageReduction(row.intValue("DamageReduction"))
+        .ignorePushBack(row.bool("IgnorePushBack"))
         .unmodelledColumns(unmodelled)
         .build();
   }
@@ -1270,18 +1290,14 @@ public final class BattleRecords {
 
   /**
    * The ability columns that make an ability do more than run its activation action, buff the unit
-   * itself, dash, switch lanes and leave a character on its spot - a buff over a radius, area
-   * object, morph, a deploy time of the character it leaves, and follow-up state; the rest are the
-   * champion controller's or the dash's, read into the ability, or presentation, which a request
-   * never reads.
+   * itself, dash, switch lanes, leave a character on its spot, create an area effect at the unit
+   * and hold it in its follow-up state - a buff over a radius, morph, a deploy time of the
+   * character it leaves, and the resurrections its area effect counts; the rest are the champion
+   * controller's or the dash's, read into the ability, or presentation, which a request never
+   * reads.
    */
   private static final List<String> UNMODELLED_ABILITY_COLUMNS =
-      List.of(
-          "BuffRadius",
-          "AreaEffectObject",
-          "MorphTarget",
-          "ActivationSpawnDeployTime",
-          "AbilityStateDuration");
+      List.of("BuffRadius", "MorphTarget", "ActivationSpawnDeployTime", "ResurrectBaseCount");
 
   /**
    * A unit's ability row, or null for a unit without one. Its activation action, written inline, is
@@ -1317,9 +1333,32 @@ public final class BattleRecords {
             set(ability, "ActivationSpawnCharacter")
                 ? ability.string("ActivationSpawnCharacter")
                 : null)
-        .unmodelledColumns(
-            UNMODELLED_ABILITY_COLUMNS.stream().filter(column -> set(ability, column)).toList())
+        .areaEffectObject(
+            set(ability, "AreaEffectObject") ? ability.string("AreaEffectObject") : null)
+        .abilityStateDurationMs(ability.intValue("AbilityStateDuration"))
+        .gameTagsWhileAbilityActive(tagBits(ability.string("GameTagsWhileAbilityActive")))
+        .unmodelledColumns(unmodelledAbilityColumns(ability))
         .build();
+  }
+
+  /**
+   * The columns of an ability row the battle does not model; besides the list, its tags while it
+   * holds the unit in its follow-up state, when it names one whose reader is not modelled.
+   */
+  private static List<String> unmodelledAbilityColumns(GameRow ability) {
+    List<String> columns = new ArrayList<>();
+    for (String column : UNMODELLED_ABILITY_COLUMNS) {
+      if (set(ability, column)) {
+        columns.add(column);
+      }
+    }
+    for (String tag : ability.string("GameTagsWhileAbilityActive").split(",")) {
+      if (!tag.isBlank() && !MODELLED_ROW_TAGS.contains(tag.trim())) {
+        columns.add("GameTagsWhileAbilityActive");
+        break;
+      }
+    }
+    return columns;
   }
 
   /**
@@ -1415,6 +1454,10 @@ public final class BattleRecords {
             .dragBackAsAttractor(row.bool("DragBackAsAttractor"))
             // The loader stores true for an empty column.
             .allowResetTarget(!row.has("AllowResetTarget") || row.bool("AllowResetTarget"))
+            .deflectBehaviour(deflectBehaviour(row.string("DeflectBehaviour")))
+            .deflectRadius(row.intValue("DeflectRadius"))
+            .actionOnDeflector(
+                set(row, "ActionOnDeflector") ? row.string("ActionOnDeflector") : null)
             .build();
     List<String> unmodelled =
         new ArrayList<>(

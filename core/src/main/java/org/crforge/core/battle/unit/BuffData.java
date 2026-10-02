@@ -56,6 +56,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param addAsIndividualBuff true when every application lists a new instance, refreshing none
  * @param aliveIfTrue the expression that keeps an instance listed while it answers other than 0,
  *     asked of the carrier on each visit; null for none
+ * @param damageReduction the percent every amount that reaches its carrier's hit points loses while
+ *     it is listed; below 0 the amount grows instead; 0 for none
+ * @param ignorePushBack true when its carrier is not pushed back while it is listed
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -96,6 +99,8 @@ public record BuffData(
     boolean lockTarget,
     boolean addAsIndividualBuff,
     String aliveIfTrue,
+    int damageReduction,
+    boolean ignorePushBack,
     List<String> unmodelledColumns) {
 
   public BuffData {

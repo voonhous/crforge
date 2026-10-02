@@ -24,8 +24,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
         "Settled: the lethal test with its shield and untouchable gates, the dash test, the"
             + " healing test and the full hit points at the target's level. Held by the"
             + " references' selections and drops, and the shield gate by pending_shield_guards;"
-            + " the dash and healing tests by no run. Supplied, not settled: the damage reduction"
-            + " a buff would put on the amount, which no buff the battle carries has.")
+            + " the dash and healing tests by no run; the damage reduction of the target's buffs"
+            + " on the amount by BattleMonkTest alone, since no damage on its way to a Monk"
+            + " under its ability is lethal in the references.")
 final class BattleValidatorQueries implements ValidatorQueries {
 
   private final BattleWorld world;
@@ -36,9 +37,8 @@ final class BattleValidatorQueries implements ValidatorQueries {
 
   /**
    * The lethal test: nothing is lethal while the target's shield is up or while it is untouchable;
-   * otherwise the damage, at least 1, is lethal when it reaches the hit points it has left. The
-   * damage would first go through the reduction of the target's buffs, which no buff the battle
-   * carries has.
+   * otherwise the damage, through the target's damage reduction and at least 1, is lethal when it
+   * reaches the hit points it has left.
    */
   @Override
   public boolean pendingDamageAccepted(TargetView target, int amount) {
@@ -50,7 +50,7 @@ final class BattleValidatorQueries implements ValidatorQueries {
     if (entity.untouchable()) {
       return false;
     }
-    return Math.max(amount, 1) >= hitPoints.getHitPoints();
+    return Math.max(entity.getBuffs().damageReduction(amount), 1) >= hitPoints.getHitPoints();
   }
 
   /**

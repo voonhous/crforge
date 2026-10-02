@@ -317,6 +317,26 @@ public class BattleWorld implements HolderPasses {
   /** The battle's unit, projectile and card records, from the tables it was loaded with. */
   @Getter private BattleRecords records;
 
+  /** The published globals' numbers the battle has read, each on its first use. */
+  private final Map<String, Integer> globalNumbers = new HashMap<>();
+
+  /**
+   * A published global's number, read from the records on its first use.
+   *
+   * @param name the global's name
+   */
+  public int globalNumber(String name) {
+    return globalNumbers.computeIfAbsent(name, records::globalNumber);
+  }
+
+  /**
+   * The largest damage reduction, in percent, a carrier's buffs may add up to either way: the
+   * global PROTECTION_CAP_PERCENTAGE.
+   */
+  int protectionCapPercent() {
+    return globalNumber("PROTECTION_CAP_PERCENTAGE");
+  }
+
   /** The battle's action rows, from the tables it was loaded with. */
   @Getter private ActionRows actions;
 
@@ -2548,6 +2568,11 @@ public class BattleWorld implements HolderPasses {
    */
   public void cellPass(ProjectileEntity projectile, int x, int y, int extra) {
     ProjectileData data = projectile.getData();
+    if (!deflectors().isEmpty()) {
+      throw new UnsupportedOperationException(
+          projectile.name()
+              + " passes cells beside a deflecting area effect, which is not modelled");
+    }
     if (data.projectileRadius() < 1) {
       // Without a body the deflection pass runs, which finds nothing without deflecting areas.
       return;
@@ -2571,6 +2596,148 @@ public class BattleWorld implements HolderPasses {
       }
     }
     index.release(found);
+  }
+
+  /**
+   * The deflection pass of a flying projectile, at a point and height: after each move, at its new
+   * position, and at its arrival, at its aim. Every area effect of the live list, in its order,
+   * that deflects projectiles and whose life has not run out measures the projectile, as a point,
+   * against its deflection radius in three dimensions, standing on the ground; the first that
+   * touches it and deflects it ends the pass. A projectile that no deflection turns around passes
+   * untouched.
+   *
+   * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile with a
+   * deflection behaviour or radius of its own, an action on its deflector or a body; one that hops,
+   * flies to a point, homes for a time, waits a random delay, sweeps, hooks or stops at collisions;
+   * one that spawns a projectile, belongs to a chain or a volley's group.
+   *
+   * @param projectile the projectile
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param z the height
+   * @return true when a deflecting area effect turned the projectile around
+   */
+  public boolean deflectPass(ProjectileEntity projectile, int x, int y, int z) {
+    List<AreaEffectEntity> deflectors = deflectors();
+    if (deflectors.isEmpty()) {
+      return false;
+    }
+    ProjectileData data = projectile.getData();
+    if ((data.deflectBehaviour() & ProjectileData.NO_DEFLECT) != 0) {
+      return false;
+    }
+    refuseDeflection(projectile);
+    for (AreaEffectEntity deflector : deflectors) {
+      if (deflector.getCountdown() < 1) {
+        continue;
+      }
+      int radius = deflector.deflectRadius();
+      int squared =
+          FixedMath.guardedSumOfSquares(
+              FixedMath.s32((long) x - deflector.getX()),
+              FixedMath.s32((long) y - deflector.getY()),
+              z);
+      if (squared < radius * radius && deflect(deflector, projectile)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** The area effects of the live list that deflect projectiles, in its order. */
+  private List<AreaEffectEntity> deflectors() {
+    List<AreaEffectEntity> out = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof AreaEffectEntity areaEffect
+          && areaEffect.getData().deflectsProjectiles()) {
+        out.add(areaEffect);
+      }
+    }
+    return out;
+  }
+
+  /** Refuses a projectile whose deflection is not modelled; see {@link #deflectPass}. */
+  private static void refuseDeflection(ProjectileEntity projectile) {
+    ProjectileData data = projectile.getData();
+    if (data.deflectBehaviour() != 0
+        || data.deflectRadius() != 0
+        || data.actionOnDeflector() != null
+        || data.projectileRadius() != 0
+        || data.projectileRadiusY() != 0
+        || data.chainedHitRadius() >= 1
+        || data.homingLike()
+        || data.homingTimeMs() >= 1
+        || data.randomDelayMs() >= 1
+        || data.pingpongVisualTimeMs() >= 1
+        || data.dragBackSpeed() >= 1
+        || data.checkCollisions()
+        || data.spawnProjectile() != null
+        || projectile.getChain() != null
+        || projectile.isGrouped()) {
+      throw new UnsupportedOperationException(
+          projectile.name()
+              + " ("
+              + data.name()
+              + ") flies by a deflecting area effect, whose deflection of it is not modelled");
+    }
+  }
+
+  /**
+   * The deflection of a projectile by an area effect that touches it: none for a projectile that
+   * has arrived or is on the area effect's own team. Otherwise the object the area effect follows,
+   * its parent, takes the projectile's damage at its level - not the deflected share - with a fresh
+   * hit id, through the hit-points entry, when it has hit points and the shared validator lets the
+   * projectile reach it; then the projectile is sent back at its root owner, for the parent's side.
+   *
+   * <p>Refused rather than guessed: an area effect that follows nothing, a projectile without a
+   * root owner - whose deflection finishes it - or one a king tower fired, which searches for the
+   * nearest enemy instead when it has no target, one carrying copies that change its damage, and a
+   * deflection past the most a projectile takes, which finishes it.
+   *
+   * @return true when the projectile was deflected
+   */
+  private boolean deflect(AreaEffectEntity deflector, ProjectileEntity projectile) {
+    if (projectile.isReleased() || (deflector.side() & 1) == (projectile.side() & 1)) {
+      return false;
+    }
+    if (!(deflector.getFollow() instanceof WorldEntity parent)) {
+      throw new UnsupportedOperationException(
+          deflector.name() + " deflects without an object it follows, which is not modelled");
+    }
+    WorldEntity source = projectile.getRoot();
+    if (source == null || source.getData().king()) {
+      throw new UnsupportedOperationException(
+          deflector.name()
+              + " deflects "
+              + projectile.name()
+              + " without a root owner or from a king tower, which is not modelled");
+    }
+    if (projectile.carriesListeners()) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " is deflected carrying copies that change its damage, not modelled");
+    }
+    if (projectile.getDeflections() + 1 > globalNumber("MAX_DEFLECTION_TIMES")) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " is deflected more often than a projectile may be, not modelled");
+    }
+    // The parent takes the projectile's own damage, through its damage reduction.
+    if (parent.getHitPoints() != null
+        && ReferenceValidator.sharedValidate(
+            projectile.areaOwner(),
+            parent.getTargetView(),
+            false,
+            false,
+            false,
+            true,
+            validatorQueries)) {
+      int hitId = nextHitId();
+      dealProjectileDamage(projectile, parent, projectile.undeflectedDamage(), hitId, 0, 0);
+    }
+    projectile.deflect(parent, source);
+    for (WorldObserver observer : observers) {
+      observer.projectileDeflected(tick, deflector, projectile, parent, source);
+    }
+    return true;
   }
 
   /**
@@ -3240,11 +3407,20 @@ public class BattleWorld implements HolderPasses {
                 + hit.type().name()
                 + " asks for it");
       }
-      return hit.type().pipeline(hit.amount(), noDamage, false, null, 0);
+      return hit.type()
+          .pipeline(
+              hit.amount(), noDamage, false, null, 0, hit.target().getBuffs()::damageReduction);
     }
     boolean present = !source.isLeft();
     RarityTable rarity = present ? source.getData().rarity() : RarityTable.COMMON;
-    return hit.type().pipeline(hit.amount(), noDamage, present, rarity, source.getPackedLevel());
+    return hit.type()
+        .pipeline(
+            hit.amount(),
+            noDamage,
+            present,
+            rarity,
+            source.getPackedLevel(),
+            hit.target().getBuffs()::damageReduction);
   }
 
   /**
@@ -3650,6 +3826,37 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * The area effect an ability creates as it fires: at the unit's point, for its side, at its level
+   * re-based on the area effect's rarity, the unit its parent and, for a row that follows its
+   * parent, the object it follows; queued, so it joins the live list at the tick's closing cleanup
+   * and first updates on the next tick. A row its creation refuses is refused here too.
+   *
+   * @param unit the unit whose ability fired
+   * @param row the area effect's row
+   */
+  void abilityAreaEffect(CharacterEntity unit, String row) {
+    AreaEffectData data = records.areaEffect(row);
+    createAreaEffect(
+        row,
+        unit.getView().getX(),
+        unit.getView().getY(),
+        unit.side(),
+        unit.getPackedLevel(),
+        null,
+        "ability",
+        unit.name(),
+        unit,
+        data.followsParent() ? unit : null);
+  }
+
+  /** Tells the observers a unit's ability held it in its follow-up state. */
+  void abilityStateEntered(CharacterEntity unit, int countdown) {
+    for (WorldObserver observer : observers) {
+      observer.abilityStateEntered(tick, unit, countdown);
+    }
+  }
+
   /** Tells the observers a unit's ability sent it across the arena. */
   void lanesSwitched(
       CharacterEntity unit, int mirroredX, int mirroredY, int toX, int toY, TargetView reference) {
@@ -3718,11 +3925,11 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Creates an area effect as {@link #createAreaEffect(String, int, int, int, int, String, String,
-   * String)} does, with a parent and an object it follows. A hit action that does not clone, and a
-   * row that follows its parent, are refused on an area effect no action made: no other path that
-   * makes one is held. Refused too: a following row that chains another area effect, which would
-   * follow what it follows, or whose buff attracts, whose pull a moving area effect gates by an
-   * angle.
+   * String)} does, with a parent and an object it follows. A hit action that does not clone is
+   * refused on an area effect no action made, and a row that follows its parent on one neither an
+   * action nor an ability made: no other path that makes one is held. Refused too: a following row
+   * that chains another area effect, which would follow what it follows, or whose buff attracts,
+   * whose pull a moving area effect gates by an angle.
    *
    * @param parent the object it keeps as its parent, or null for none
    * @param follow the object it follows, or null for none
@@ -3749,7 +3956,7 @@ public class BattleWorld implements HolderPasses {
               + row
               + " has a hit action and was not made by an action, which is not modelled");
     }
-    if (data.followsParent() && !how.equals("action")) {
+    if (data.followsParent() && !how.equals("action") && !how.equals("ability")) {
       throw new UnsupportedOperationException(
           "the area effect "
               + row

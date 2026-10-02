@@ -104,9 +104,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " modelled, and refused by its row: a buff"
             + " boosting one target or lasting longer by level, a hit action but a Clone's, a"
             + " group of buff spawns or a taunt, the shape, the spawns, a launch from its source"
-            + " or spread about its point, the life condition, following a target, tags,"
-            + " deflection, a lifetime that grows by level, the push's floor and gate lift and one"
-            + " hit per target without a hit action. An area that reaches hidden units takes, damages and buffs a hidden"
+            + " or spread about its point, the life condition, following a target, tags, a"
+            + " lifetime that grows by level, the push's floor and gate lift and one hit per"
+            + " target without a hit action. Created by a unit's ability at the unit, the unit its"
+            + " parent and the object it follows, and the deflection radius it measures"
+            + " projectiles against, held by monk_ability_tower and monk_ability_musketeer. An area that reaches hidden units takes, damages and buffs a hidden"
             + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. The"
             + " pull of an attracting buff before the buff, and the area effect as the parent of"
             + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
@@ -762,6 +764,14 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /** The radius now: the row's, or shrinking from its maximum toward it as the countdown falls. */
+  /**
+   * The radius a projectile is measured against for a deflection: for a row that deflects
+   * projectiles, the radius of its hits as it stands now; 0 for any other.
+   */
+  public int deflectRadius() {
+    return data.deflectsProjectiles() ? radiusNow(data.lifeDurationMs()) : 0;
+  }
+
   private int radiusNow(int life) {
     int big = data.maxRadius();
     int small = data.radius();

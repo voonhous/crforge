@@ -538,6 +538,32 @@ public interface WorldObserver {
       TargetView reference) {}
 
   /**
+   * A deflecting area effect turned a projectile around, sending it back at its source.
+   *
+   * @param tick the battle tick
+   * @param deflector the area effect
+   * @param projectile the projectile
+   * @param parent the object the area effect follows, which took the projectile's damage and is the
+   *     projectile's launcher now
+   * @param source the projectile's root owner, which it is sent back at
+   */
+  default void projectileDeflected(
+      int tick,
+      AreaEffectEntity deflector,
+      ProjectileEntity projectile,
+      WorldEntity parent,
+      WorldEntity source) {}
+
+  /**
+   * A unit's ability held it in its follow-up state, its first step run.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param countdown the steps of the state left
+   */
+  default void abilityStateEntered(int tick, CharacterEntity unit, int countdown) {}
+
+  /**
    * Projectiles aimed at a unit lost it as their target as it went into a pathfinding state.
    *
    * @param tick the battle tick

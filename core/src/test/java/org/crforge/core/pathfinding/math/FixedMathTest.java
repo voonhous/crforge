@@ -129,6 +129,22 @@ class FixedMathTest {
       assertThat(FixedMath.guardedSumOfSquares(dx, dy)).isEqualTo(expected);
     }
 
+    @ParameterizedTest(name = "guardedSumOfSquares({0}, {1}, {2}) = {3}")
+    @CsvSource({
+      "0, 0, 0, 0",
+      "3, 4, 12, 169",
+      "-3, -4, -12, 169",
+      "46340, 0, 0, 2147395600",
+      "46340, 0, 296, 2147483216",
+      "46340, 0, 297, 2147483647",
+      "0, 0, 46341, 2147483647",
+      "46341, 0, 0, 2147483647",
+      "46340, 46340, 0, 2147483647"
+    })
+    void guardedSumOfSquaresInThreeAxesSaturates(int dx, int dy, int dz, int expected) {
+      assertThat(FixedMath.guardedSumOfSquares(dx, dy, dz)).isEqualTo(expected);
+    }
+
     @Test
     void squaredDistanceSaturatesAtTheSameBoundary() {
       assertThat(FixedMath.squaredDistance(0, 0, 46341, 0)).isEqualTo(Integer.MAX_VALUE);

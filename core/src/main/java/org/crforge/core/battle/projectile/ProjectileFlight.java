@@ -74,9 +74,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the arrival without an impact of a projectile that stops at collisions by"
             + " hunter_point_blank and hunter_range; the hand-back of the damage registered on"
             + " the target at the arrival, before the impact, by every tower's re-lock after its"
-            + " arrow's kill. Supplied, not"
+            + " arrow's kill. The deflection pass after each move, at the new position and height,"
+            + " which turns an arrow around after the move that brings it within the Monk's"
+            + " deflection, held by monk_ability_tower and monk_ability_musketeer; the pass at"
+            + " the arrival, before the hand-back, by no run. Supplied, not"
             + " settled:"
-            + " the deflection pass answers nothing, the projectile's own radius is zero, and the"
+            + " the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. The on-impact area effect at"
             + " the impact point, after the spawned characters and before the spawned projectiles,"
             + " by heal_spirit_group. Not modelled: the area impact"
@@ -174,10 +177,13 @@ final class ProjectileFlight {
     } else {
       advance(p, remaining, speed);
       // A projectile that flies to a point hits what its body passes after every step; anything
-      // else asks the deflection pass, which finds nothing in a battle without deflecting area
-      // effects.
+      // else asks the deflection pass at its new position and height, unless it is measured only
+      // at its target's point and has not been deflected yet.
       if (data.homingLike()) {
         world.cellPass(p, p.getX(), p.getY(), 0);
+      } else if ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) == 0
+          || p.getDeflections() != 0) {
+        world.deflectPass(p, p.getX(), p.getY(), p.getZ());
       }
     }
   }
@@ -337,12 +343,16 @@ final class ProjectileFlight {
   }
 
   /**
-   * The arrival: the deflection pass finds nothing, the projectile is released and impacts. One
-   * that stops at collisions is only released, where it stands. A pingpong projectile lands back at
-   * its start, on the ground, and lets its launcher's targeting go on; one whose launcher left has
-   * only its death effect, which is presentation.
+   * The arrival: first the deflection pass at the aim and its height, and a projectile it turns
+   * around flies on from where it is; otherwise the projectile is released and impacts. One that
+   * stops at collisions is only released, where it stands. A pingpong projectile lands back at its
+   * start, on the ground, and lets its launcher's targeting go on; one whose launcher left has only
+   * its death effect, which is presentation.
    */
   private static void arrive(ProjectileEntity p, BattleWorld world) {
+    if (world.deflectPass(p, p.getAimX(), p.getAimY(), p.getAimZ())) {
+      return;
+    }
     if (p.getData().checkCollisions()) {
       // A projectile that stops at collisions and reached its aim without one is released where it
       // stands, without an impact; only its hit effect, which is presentation, is shown.
