@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -443,7 +444,9 @@ class BattleActionSpawnRunTest {
         "dark_magic_knight",
         "dark_magic_group",
         "vines_group",
-        "vines_tower"
+        "vines_tower",
+        "goblin_machine_knight",
+        "goblin_machine_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -723,6 +726,9 @@ class BattleActionSpawnRunTest {
     // change, finish and re-trigger.
     List<String> vinesLog = new ArrayList<>();
     match.getWorld().addObserver(vinesLog(match, currentTick, vinesLog));
+    // Every target indicator attack's start, find, signal, shot, signal ended, step and stop.
+    List<String> indicatorLog = new ArrayList<>();
+    match.getWorld().addObserver(indicatorLog(match, currentTick, indicatorLog));
     // An area effect's own runs are listed like any owner's, from its creation; the removal of a
     // shape selector's run joins the selectors' log.
     match
@@ -1369,6 +1375,9 @@ class BattleActionSpawnRunTest {
     assertThat(laserLog)
         .as("every laser ball's start and fire, and every life-end action scheduled")
         .containsExactlyElementsOf(expectedLaserLog(reference));
+    assertThat(indicatorLog)
+        .as("every target indicator attack's start, find, signal, shot, step and stop")
+        .containsExactlyElementsOf(expectedIndicatorLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -1599,8 +1608,10 @@ class BattleActionSpawnRunTest {
                             a.get("y").asInt(),
                             a.get("level").asInt(),
                             a.get("countdown").asInt())
-                    // The battle keeps the parent of an area effect an action made, and only that.
-                    + (a.get("how").asText().equals("action") && !a.get("parent").isNull()
+                    // The battle keeps the parent of an area effect an action made, or a target
+                    // indicator attack made as its signal, and only that.
+                    + (Set.of("action", "target_indicator").contains(a.get("how").asText())
+                            && !a.get("parent").isNull()
                         ? " parent " + a.get("parent").asText()
                         : ""));
         case "folded" -> expected.add("%d folded %s".formatted(tick, name));
@@ -2777,6 +2788,196 @@ class BattleActionSpawnRunTest {
       }
     }
     return expected;
+  }
+
+  /**
+   * Logs every target indicator attack's start, every object its finder found with what its query
+   * listed, every signal and shot, every signal ended, every step that did more than ask the finder
+   * for nobody or end no attack, with its fields before and after and its calls, and every stop.
+   * Objects are named as they stand, or as they wait to be admitted.
+   */
+  private static WorldObserver indicatorLog(
+      Standard1v1Battle match, int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      private String named(int id) {
+        BattleEntity found = match.getWorld().liveObject(id);
+        if (found == null) {
+          found =
+              match.getBattle().getHolder().queued().stream()
+                  .filter(e -> e.getId() == id)
+                  .findFirst()
+                  .orElseThrow();
+        }
+        if (found instanceof ProjectileEntity p) {
+          return p.name();
+        }
+        return found instanceof AreaEffectEntity a ? a.name() : ((WorldEntity) found).name();
+      }
+
+      @Override
+      public void targetIndicatorLogged(
+          int tick, CharacterEntity unit, TargetIndicatorAttack.Event event) {
+        String owner = unit.name();
+        int now = currentTick[0];
+        if (event instanceof TargetIndicatorAttack.Started e) {
+          log.add("%d start %s %s %d".formatted(now, owner, e.action(), e.phase()));
+        } else if (event instanceof TargetIndicatorAttack.Found e) {
+          log.add(
+              "%d find %s %s %s"
+                  .formatted(
+                      now, owner, e.listed().stream().map(this::named).toList(), named(e.found())));
+        } else if (event instanceof TargetIndicatorAttack.Signalled e) {
+          log.add(
+              "%d signal %s %s %s %d at %d %d level %d"
+                  .formatted(
+                      now,
+                      owner,
+                      named(e.target()),
+                      named(e.signal()),
+                      e.signal(),
+                      e.x(),
+                      e.y(),
+                      e.packedLevel()));
+        } else if (event instanceof TargetIndicatorAttack.Shot e) {
+          log.add(
+              "%d shoot %s %s %s at %d %d %d aim %d %d level %d facing %d %d"
+                  .formatted(
+                      now,
+                      owner,
+                      named(e.projectile()),
+                      named(e.signal()),
+                      e.x(),
+                      e.y(),
+                      e.z(),
+                      e.aimX(),
+                      e.aimY(),
+                      e.packedLevel(),
+                      e.facingX(),
+                      e.facingY()));
+        } else if (event instanceof TargetIndicatorAttack.SignalEnded e) {
+          log.add("%d signal_ended %s %s".formatted(now, owner, named(e.signal())));
+        } else if (event instanceof TargetIndicatorAttack.Stepped e) {
+          log.add(
+              "%d step %s %s calls %s %s"
+                  .formatted(now, owner, fields(e.before()), e.calls(), fields(e.after())));
+        } else if (event instanceof TargetIndicatorAttack.Stopped e) {
+          log.add("%d stop %s calls %s %s".formatted(now, owner, e.calls(), fields(e.after())));
+        }
+      }
+
+      private String fields(TargetIndicatorAttack.Fields f) {
+        return indicatorFields(
+            f.loadMs(),
+            f.cooldownMs(),
+            f.timesMs(),
+            f.signals(),
+            f.projectiles(),
+            f.stopTags() ? 1 : 0);
+      }
+    };
+  }
+
+  /** A target indicator attack's fields, in its log's layout. */
+  private static String indicatorFields(
+      int load,
+      int cooldown,
+      List<Integer> times,
+      List<Integer> signals,
+      List<Integer> projectiles,
+      int tags) {
+    return "load %d cooldown %d times %s signals %s projectiles %s tags %d"
+        .formatted(load, cooldown, times, signals, projectiles, tags);
+  }
+
+  /** The reference's target indicator attacks, in their log's layout. */
+  private static List<String> expectedIndicatorLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode v : reference.path("target_indicator_attack")) {
+      int tick = v.get("tick").asInt();
+      String owner = v.get("owner").asText();
+      switch (v.get("event").asText()) {
+        case "start" ->
+            expected.add(
+                "%d start %s %s %d"
+                    .formatted(tick, owner, v.get("action").asText(), v.get("phase").asInt()));
+        case "find" ->
+            expected.add(
+                "%d find %s %s %s"
+                    .formatted(tick, owner, texts(v.get("listed")), v.get("found").asText()));
+        case "signal" ->
+            expected.add(
+                "%d signal %s %s %s %d at %d %d level %d"
+                    .formatted(
+                        tick,
+                        owner,
+                        v.get("target").asText(),
+                        v.get("area_effect").asText(),
+                        v.get("id").asInt(),
+                        v.get("x").asInt(),
+                        v.get("y").asInt(),
+                        v.get("level").asInt()));
+        case "shoot" ->
+            expected.add(
+                "%d shoot %s %s %s at %d %d %d aim %d %d level %d facing %d %d"
+                    .formatted(
+                        tick,
+                        owner,
+                        v.get("projectile").asText(),
+                        v.get("signal").asText(),
+                        v.get("start").get(0).asInt(),
+                        v.get("start").get(1).asInt(),
+                        v.get("start").get(2).asInt(),
+                        v.get("aim").get(0).asInt(),
+                        v.get("aim").get(1).asInt(),
+                        v.get("level").asInt(),
+                        v.get("facing").get(0).asInt(),
+                        v.get("facing").get(1).asInt()));
+        case "signal_ended" ->
+            expected.add(
+                "%d signal_ended %s %s".formatted(tick, owner, v.get("area_effect").asText()));
+        case "step" ->
+            expected.add(
+                "%d step %s %s calls %s %s"
+                    .formatted(
+                        tick,
+                        owner,
+                        indicatorFields(v.get("before")),
+                        indicatorCalls(v.get("calls")),
+                        indicatorFields(v.get("after"))));
+        case "stop" ->
+            expected.add(
+                "%d stop %s calls %s %s"
+                    .formatted(
+                        tick,
+                        owner,
+                        indicatorCalls(v.get("calls")),
+                        indicatorFields(v.get("after"))));
+        default -> throw new IllegalArgumentException("unknown target indicator event " + v);
+      }
+    }
+    return expected;
+  }
+
+  /** The reference's fields of a target indicator attack, in its log's layout. */
+  private static String indicatorFields(JsonNode f) {
+    return indicatorFields(
+        f.get("load").asInt(),
+        f.get("cooldown").asInt(),
+        ints(f.get("times")),
+        ints(f.get("signals")),
+        ints(f.get("projectiles")),
+        f.get("tags").asInt());
+  }
+
+  /** The reference's calls of a target indicator attack, each its parts joined by spaces. */
+  private static List<String> indicatorCalls(JsonNode calls) {
+    List<String> out = new ArrayList<>();
+    for (JsonNode call : calls) {
+      List<String> parts = new ArrayList<>();
+      call.forEach(part -> parts.add(part.isNull() ? "null" : part.asText()));
+      out.add(String.join(" ", parts));
+    }
+    return out;
   }
 
   private static List<Integer> ints(JsonNode values) {

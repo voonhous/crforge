@@ -122,6 +122,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What a target indicator attack's run asks of the battle around the owner. Only a character runs
+   * one.
+   *
+   * @return the owner's answers
+   */
+  default TargetIndicatorHost targetIndicatorHost() {
+    throw new UnsupportedOperationException(
+        "a target indicator attack on an owner other than a character is not modelled");
+  }
+
+  /**
    * What a Goblin Hut's life state asks of the battle around the owner.
    *
    * @return the owner's answers

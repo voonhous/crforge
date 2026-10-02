@@ -26,6 +26,7 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
@@ -814,6 +815,23 @@ public class BattleWorld implements HolderPasses {
    */
   public BattleEntity liveObject(int id) {
     for (BattleEntity entity : holder.entities()) {
+      if (entity.getId() == id) {
+        return entity;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * The object with an id in the holder's live list, or else among the objects handed to it and
+   * waiting for the next cleanup; null for none.
+   */
+  BattleEntity liveOrQueued(int id) {
+    BattleEntity live = liveObject(id);
+    if (live != null) {
+      return live;
+    }
+    for (BattleEntity entity : holder.queued()) {
       if (entity.getId() == id) {
         return entity;
       }
@@ -3177,6 +3195,62 @@ public class BattleWorld implements HolderPasses {
             records.areaEffect(row).followsParent() ? owner : null);
     for (WorldObserver observer : observers) {
       observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
+    }
+  }
+
+  /**
+   * Makes a target indicator attack's signal: the area effect of the row at the target's point, for
+   * the unit's side and at its level, re-based on the area effect's own rarity, the unit kept as
+   * its parent and following nothing, handed to the holder with the unit's id as its maker. It is
+   * admitted at the tick's closing cleanup and first updates on the next tick.
+   *
+   * @param unit the unit running the attack
+   * @param row the area effect's row
+   * @param target what it marks
+   * @return the signal
+   */
+  AreaEffectEntity indicate(CharacterEntity unit, String row, WorldEntity target) {
+    GridEntity at = target.getView();
+    AreaEffectEntity signal =
+        createAreaEffect(
+            row,
+            at.getX(),
+            at.getY(),
+            unit.side(),
+            unit.packedLevel(),
+            null,
+            "target_indicator",
+            unit.name(),
+            unit,
+            null);
+    signal.setCreator(unit.getId());
+    return signal;
+  }
+
+  /**
+   * Launches a target indicator attack's projectile at its signal, from the start, with the unit as
+   * launcher and owner, handed to the holder.
+   *
+   * @param unit the unit running the attack
+   * @param row the projectile's row
+   * @param signal the signal it is fired at
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   * @return the projectile
+   */
+  ProjectileEntity launchAtSignal(
+      CharacterEntity unit, String row, AreaEffectEntity signal, int sx, int sy, int sz) {
+    ProjectileEntity projectile = new ProjectileEntity(this, records.projectile(row), unit.side());
+    projectile.launchAtSignal(unit, signal, sx, sy, sz);
+    launch(projectile);
+    return projectile;
+  }
+
+  /** Tells the observers what a target indicator attack's run did. */
+  void targetIndicatorLogged(CharacterEntity unit, TargetIndicatorAttack.Event event) {
+    for (WorldObserver observer : observers) {
+      observer.targetIndicatorLogged(tick, unit, event);
     }
   }
 

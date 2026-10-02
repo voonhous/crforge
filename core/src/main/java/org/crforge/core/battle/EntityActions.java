@@ -56,4 +56,10 @@ public interface EntityActions {
    * @param left the actions of the entity that left
    */
   default void instigatorLeft(EntityActions left) {}
+
+  /**
+   * The entity itself has left the battle, and every entity has heard of it: each running action is
+   * stopped, and does what its class does as it stops, most of them nothing.
+   */
+  default void released() {}
 }

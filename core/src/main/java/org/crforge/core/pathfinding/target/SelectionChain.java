@@ -5,6 +5,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 import lombok.Getter;
@@ -250,6 +251,25 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
   public void onStartingAttack() {
     if (startingAttack != null) {
       startingAttack.run();
+    }
+  }
+
+  /** What the owner does as the visit turns it toward its reference, or null for nothing. */
+  private Consumer<TargetView> turn;
+
+  /**
+   * Sets what the owner does as the visit turns it toward its reference.
+   *
+   * @param turn what runs, given the reference or null, or null for nothing
+   */
+  public void setTurn(Consumer<TargetView> turn) {
+    this.turn = turn;
+  }
+
+  @Override
+  public void turnToward(TargetView reference) {
+    if (turn != null) {
+      turn.accept(reference);
     }
   }
 

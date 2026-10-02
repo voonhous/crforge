@@ -76,7 +76,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " are held by the spell runs; the limited-time homing by the Elite Archer's."
             + " The chained hop is held by the Electro Dragon's, and the pingpong launch that holds"
             + " the launcher's targeting until the projectile comes back by the Axe Man's."
-            + " The random delay a unit's launch draws is held by the Hunter's. The pending damage"
+            + " The random delay a unit's launch draws is held by the Hunter's. The launch at a"
+            + " target indicator attack's signal, to its point, the signal kept as what it was"
+            + " fired at and forgotten as it leaves, by goblin_machine_knight and"
+            + " goblin_machine_tower. The pending damage"
             + " a homing shot registers as it starts, with its flight time from where it stands,"
             + " is held by every tower's re-lock after its arrow's kill in the battle references,"
             + " and the registration at a chained hop by electro_dragon_knights; the crown-tower"
@@ -122,6 +125,13 @@ public class ProjectileEntity extends BattleEntity
 
   /** What the projectile was fired at, or null once it has left or was never aimed at one. */
   @Getter private WorldEntity target;
+
+  /**
+   * The area effect the projectile was fired at, as a target indicator attack fires at its signal,
+   * or null once it has left or for one fired at none. Its flight never takes it as a live target:
+   * the projectile flies to the point it was aimed at.
+   */
+  @Getter private AreaEffectEntity areaTarget;
 
   /** The target a limited-time homing projectile still follows, or null. */
   @Getter private WorldEntity homingTarget;
@@ -314,6 +324,49 @@ public class ProjectileEntity extends BattleEntity
     refuseUnitOnly("launched by an area effect");
     place(null, null, target, area.getPackedLevel(), sx, sy, sz, hx, hy, area.getX(), area.getY());
     areaLauncher = area;
+  }
+
+  /**
+   * Places a projectile a target indicator attack fires at its signal: with the unit as launcher
+   * and owner, at its level re-based on the row's rarity, from the start to the signal's point. The
+   * signal is kept as what it was fired at, which its flight never takes as a live target. Refused:
+   * a homing, pingpong or hooking row, or one with a random delay.
+   *
+   * @param launcher the unit running the attack
+   * @param signal the signal it fires at
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   */
+  public void launchAtSignal(
+      WorldEntity launcher, AreaEffectEntity signal, int sx, int sy, int sz) {
+    refuseUnitOnly("fired at a signal");
+    if (data.homing() || data.homingTimeMs() >= 1 || data.dragBackSpeed() >= 1) {
+      throw new UnsupportedOperationException(
+          data.name() + " homes or hooks and is fired at a signal, not modelled");
+    }
+    GridEntity view = launcher.getView();
+    place(
+        launcher,
+        launcher,
+        null,
+        launcher.getPackedLevel(),
+        sx,
+        sy,
+        sz,
+        signal.getX(),
+        signal.getY(),
+        view.getX(),
+        view.getY());
+    areaTarget = signal;
+  }
+
+  /** The name of what the projectile was fired at while it is in the battle, or null for none. */
+  public String targetName() {
+    if (target != null) {
+      return target.name();
+    }
+    return areaTarget == null ? null : areaTarget.name();
   }
 
   /**
@@ -727,6 +780,9 @@ public class ProjectileEntity extends BattleEntity
   protected void entityRemoved(BattleEntity removed) {
     if (removed == areaLauncher) {
       areaLauncher = null;
+    }
+    if (removed == areaTarget) {
+      areaTarget = null;
     }
     if (!(removed instanceof WorldEntity gone)) {
       return;

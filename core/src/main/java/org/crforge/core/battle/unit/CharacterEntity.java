@@ -19,6 +19,8 @@ import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.TargetIndicatorAttack;
+import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
@@ -194,7 +196,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " Giant's: the buff on every reflected hit and the damage once per attack, onto the"
             + " character, building or tower behind a hit, or a projectile's root, inside its reach,"
             + " held by electro_giant_struck and electro_giant_tower; a typed hit, a kill or a"
-            + " character's buff damage on it, and a reflect inside a reflect, are refused."
+            + " character's buff damage on it, and a reflect inside a reflect, are refused. A"
+            + " target indicator attack's run, the Goblin Machine's rocket: its targeting component"
+            + " off while it deploys, its ring query, signals and shots, and its turn toward its"
+            + " reference at each attack start, which only such a unit takes, held by"
+            + " goblin_machine_knight and goblin_machine_tower; a clone running one, and a turn"
+            + " toward no reference, are refused."
             + " Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding before its first hit,"
             + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
@@ -231,6 +238,9 @@ public class CharacterEntity extends WorldEntity {
 
   /** Slot of the hit-points component, whose visit runs the lifetime decay. */
   public static final int HIT_POINTS_SLOT = 2;
+
+  /** The length the targeting visit's turn scales the facing to. */
+  private static final int FACING_LENGTH = 256;
 
   /** How far beyond its attack range a dash's single landing hit still reaches its reference. */
   private static final int DASH_HIT_EXTENSION = 500;
@@ -548,6 +558,8 @@ public class CharacterEntity extends WorldEntity {
       // character as its cause, and runs in its phase-2 pending pass of the tick.
       unit.selection().setOnStartingAttack(this::startingAttack);
     }
+    // The visit's turn writes the facing a target indicator attack's shot reads.
+    unit.selection().setTurn(this::turnToward);
     unit.selection().getOutcome().setRoutePreparer(setter::prepareRoute);
     if (data.dashCooldown() > 0) {
       unit.selection().setDasher(dasher);
@@ -2403,6 +2415,171 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void log(GoblinHutLifeState.Event event) {
         world.goblinHutLogged(CharacterEntity.this, event);
+      }
+
+      private WorldEntity object(int id) {
+        return (WorldEntity) world.liveObject(id);
+      }
+    };
+  }
+
+  /**
+   * The targeting visit's turn toward the reference: the facing becomes the vector to it, scaled to
+   * 256. Only a character running a target indicator attack turns, the one reader of its facing
+   * while it fights; a turn toward no reference is refused for it.
+   */
+  private void turnToward(TargetView reference) {
+    boolean indicating = false;
+    for (ActionInstance instance : actionHolder().running()) {
+      indicating |= instance.getAction() instanceof TargetIndicatorAttack;
+    }
+    if (!indicating) {
+      return;
+    }
+    if (reference == null) {
+      throw new UnsupportedOperationException(
+          name() + " turns toward no reference with a target indicator attack, not modelled");
+    }
+    int[] vector = {reference.x() - getView().getX(), reference.y() - getView().getY()};
+    FixedMath.normalize(vector, FACING_LENGTH);
+    getView().setDirX(vector[0]);
+    getView().setDirY(vector[1]);
+  }
+
+  /**
+   * What a target indicator attack's run on the character asks of the battle: its targeting
+   * component, its hit speed, its flags, its point, row radius and facing, the object query around
+   * it testing buildings by their squares, the live list by id, where objects stand, their radii
+   * and const-priority offsets, the signals and projectiles it makes, and the actions it schedules
+   * on itself. Refused: a clone, whose clone byte the signal and the projectile would copy.
+   */
+  @Override
+  public TargetIndicatorHost targetIndicatorHost() {
+    if (isClone()) {
+      throw new UnsupportedOperationException(
+          name() + " is a clone running a target indicator attack, which is not modelled");
+    }
+    return new TargetIndicatorHost() {
+      @Override
+      public int timeStep(int stepMs) {
+        return getBuffs().hitSpeed(stepMs);
+      }
+
+      // The component is off while the character deploys or waits to, as the combat gate has it.
+      @Override
+      public boolean active() {
+        return isActive(TARGETING_SLOT) && !deploying() && !waiting();
+      }
+
+      @Override
+      public boolean noAttack() {
+        return (getView().getFlags() & EntityFlags.NO_ATTACK) != 0;
+      }
+
+      @Override
+      public int ownerX() {
+        return getView().getX();
+      }
+
+      @Override
+      public int ownerY() {
+        return getView().getY();
+      }
+
+      @Override
+      public int ownerRadius() {
+        return getData().collisionRadius();
+      }
+
+      @Override
+      public int[] facing() {
+        return new int[] {getView().getDirX(), getView().getDirY()};
+      }
+
+      @Override
+      public List<Integer> query(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.shapeQuery(CharacterEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public boolean live(int id) {
+        return world.liveObject(id) != null;
+      }
+
+      @Override
+      public int x(int id) {
+        return object(id).getView().getX();
+      }
+
+      @Override
+      public int y(int id) {
+        return object(id).getView().getY();
+      }
+
+      @Override
+      public int radius(int id) {
+        return object(id).getView().getCollisionRadius();
+      }
+
+      @Override
+      public int priority(int id) {
+        return object(id).getView().getSquaredDistanceReduction();
+      }
+
+      @Override
+      public int signal(String row, int targetId) {
+        WorldEntity target = object(targetId);
+        AreaEffectEntity signal = world.indicate(CharacterEntity.this, row, target);
+        log(
+            new TargetIndicatorAttack.Signalled(
+                targetId, signal.getId(), signal.getX(), signal.getY(), signal.getPackedLevel()));
+        return signal.getId();
+      }
+
+      @Override
+      public int launch(String projectile, int signalId, int x, int y, int z) {
+        AreaEffectEntity signal = (AreaEffectEntity) world.liveObject(signalId);
+        ProjectileEntity launched =
+            world.launchAtSignal(CharacterEntity.this, projectile, signal, x, y, z);
+        log(
+            new TargetIndicatorAttack.Shot(
+                launched.getId(),
+                signalId,
+                launched.getX(),
+                launched.getY(),
+                launched.getZ(),
+                launched.getAimX(),
+                launched.getAimY(),
+                launched.getPackedLevel(),
+                getView().getDirX(),
+                getView().getDirY()));
+        return launched.getId();
+      }
+
+      @Override
+      public void endSignal(int signalId) {
+        ((AreaEffectEntity) world.liveObject(signalId)).end();
+        log(new TargetIndicatorAttack.SignalEnded(signalId));
+      }
+
+      @Override
+      public void schedule(BattleAction action, int instigatorId) {
+        // The signal and the projectile are still waiting to be admitted as they cause it.
+        BattleEntity cause = world.liveOrQueued(instigatorId);
+        ActionHolder instigator =
+            cause instanceof ProjectileEntity projectile
+                ? projectile.actionHolder()
+                : ((AreaEffectEntity) cause).actionHolder();
+        actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, instigator);
+      }
+
+      @Override
+      public void log(TargetIndicatorAttack.Event event) {
+        world.targetIndicatorLogged(CharacterEntity.this, event);
       }
 
       private WorldEntity object(int id) {

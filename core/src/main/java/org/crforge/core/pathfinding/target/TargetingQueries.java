@@ -115,6 +115,17 @@ public interface TargetingQueries {
     // No action by default.
   }
 
+  /**
+   * Turns the unit toward its reference, as the visit does while a special loads, while a dash
+   * winds up and as each attack starts; with no reference, toward none. Nothing by default: the
+   * facing it writes is read only by a target indicator attack's shot.
+   *
+   * @param reference the reference, or null for none
+   */
+  default void turnToward(TargetView reference) {
+    // No turn by default.
+  }
+
   /** Starts a dash toward the given point; the dash itself belongs to the movement pass. */
   default void startDash(TargetView target, int x, int y, int radius) {
     // No dash by default.
