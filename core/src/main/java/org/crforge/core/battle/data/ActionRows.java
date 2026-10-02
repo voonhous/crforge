@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
+import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.ChangeGameObjectData;
@@ -38,6 +39,7 @@ import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
+import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
@@ -148,6 +150,38 @@ public final class ActionRows {
           // building retargeting, the buff removed as it finishes, and no invalid or crown tower
           // duration or buff.
           Map.entry("ActionTaunt", Set.of("ValidDuration", "ValidTargetBuff")),
+          Map.entry(
+              "ActionRunActionListOnObjectsInShapeWithPrio",
+              Set.of(
+                  "OncePerTarget",
+                  "TargetSelectionMode",
+                  "TargetFilter",
+                  "Delays",
+                  "Shape",
+                  "WaitForTarget",
+                  "MaxWaitTimeForTarget",
+                  "PauseTags",
+                  "ParentAsInstigatorForSelfActions",
+                  "Actions",
+                  "OnFinishedAction",
+                  "ActionOnSelfWhenTriggered",
+                  "ActionOnSelfWhenTriggeredLeft",
+                  "ActionOnSelfWhenTriggeredRight")),
+          // Whether it acts on flyers alone is read by nothing; whether a clone runs the landing
+          // actions is read only with a landing action.
+          Map.entry(
+              "ActionAirToGround",
+              Set.of(
+                  "OnlyAffectFlyers",
+                  "TransitionDuration",
+                  "TotalDuration",
+                  "ResetPathAtEnd",
+                  "ResetPathAtLanding",
+                  "AllowIsGroundTagOnIdle",
+                  "CloneTriggersLandingActions",
+                  "ActionOnLanding",
+                  "ActionOnLandingEnd",
+                  "ActionOnGround")),
           // The effects it lists, and which one its count picks, reach its client view alone.
           Map.entry(
               "ActionLaserBall",
@@ -448,6 +482,8 @@ public final class ActionRows {
                     shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
             case "ActionTaunt" -> taunt(name, shared, f);
             case "ActionLaserBall" -> laserBall(name, shared, f);
+            case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
+            case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionChangeGameObjectData" -> {
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
@@ -695,6 +731,109 @@ public final class ActionRows {
     }
 
     /**
+     * A shape selector's columns: its circle, its filter, how it scores, its delays and their
+     * actions, and whether it picks each object once, which by default it does. A row that waits
+     * for a target, pauses, runs an action as it finishes or on its owner, scores by maximum hit
+     * points or distance, has fewer actions than delays, is a singleton, chains a next action or
+     * sets tags is refused; so is one without a filter, or whose shape is not a circle.
+     */
+    private ShapeSelector shapeSelector(String name, ActionRow shared, JsonNode f) {
+      for (String column :
+          List.of(
+              "WaitForTarget",
+              "MaxWaitTimeForTarget",
+              "PauseTags",
+              "OnFinishedAction",
+              "ActionOnSelfWhenTriggered",
+              "ActionOnSelfWhenTriggeredLeft",
+              "ActionOnSelfWhenTriggeredRight",
+              "ParentAsInstigatorForSelfActions",
+              "Singleton",
+              "NextAction",
+              "GameTagsToSet")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + " is a shape selector that sets " + column + ", which is not modelled");
+        }
+      }
+      if (f.path("TargetFilter").asText("").isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " is a shape selector without a filter, which is not modelled");
+      }
+      String mode = f.path("TargetSelectionMode").asText("HighestCurrentHpIncludeShields");
+      int selection =
+          switch (mode) {
+            case "HighestCurrentHp" -> ShapeSelector.HIGHEST_CURRENT_HP;
+            case "HighestCurrentHpIncludeShields" ->
+                ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS;
+            default ->
+                throw new UnsupportedOperationException(
+                    name
+                        + " is a shape selector that scores by "
+                        + mode
+                        + ", which is not modelled");
+          };
+      List<Integer> delays = ints(f.get("Delays"));
+      // Each action is built for the object it is scheduled on, whose expressions it may ask.
+      List<String> actions = new ArrayList<>();
+      for (JsonNode reference : f.path("Actions")) {
+        actions.add(reference.isObject() ? reference.path("action").asText() : reference.asText());
+      }
+      if (actions.size() < delays.size()) {
+        throw new UnsupportedOperationException(
+            name + " is a shape selector with fewer actions than delays, which is not modelled");
+      }
+      return new ShapeSelector(
+          shared,
+          ShapeSelector.Columns.builder()
+              .oncePerTarget(f.path("OncePerTarget").asBoolean(true))
+              .targetSelectionMode(selection)
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              .shapeRadius(records.circleRadius(f.path("Shape").asText()))
+              .delaysMs(delays)
+              .actions(actions)
+              .build());
+    }
+
+    /**
+     * An air-to-ground row's columns, a column it leaves out taking the loader's default: a
+     * transition of 200, a whole of 1000, the path reset at the end and no ground tag on idle. A
+     * row with a landing action, a path reset at landing, a next action or tags is refused.
+     */
+    private AirToGround airToGround(String name, ActionRow shared, JsonNode f) {
+      for (String column :
+          List.of(
+              "ActionOnLanding",
+              "ActionOnLandingEnd",
+              "ActionOnGround",
+              "ResetPathAtLanding",
+              "NextAction",
+              "GameTagsToSet")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + ", an air-to-ground row, sets " + column + ", which is not modelled");
+        }
+      }
+      return new AirToGround(
+          shared,
+          f.path("TransitionDuration").asInt(200),
+          f.path("TotalDuration").asInt(1000),
+          f.path("AllowIsGroundTagOnIdle").asBoolean(false),
+          f.path("ResetPathAtEnd").asBoolean(true));
+    }
+
+    /** Whether a row sets a column to a value other than empty, 0, false or an empty list. */
+    private static boolean sets(JsonNode f, String column) {
+      JsonNode value = f.get(column);
+      return value != null
+          && !value.isNull()
+          && !(value.isBoolean() && !value.asBoolean())
+          && !(value.isNumber() && value.asInt() == 0)
+          && !(value.isContainerNode() && value.isEmpty())
+          && !(value.isTextual() && value.asText().isEmpty());
+    }
+
+    /**
      * A laser ball's columns: its query, its rate and the action lists its count picks from. A row
      * that keeps its detection from one step to the next, resets it after a hit, cools down after
      * one, runs an action list on its owner, is a singleton, chains a next action or sets tags is
@@ -710,15 +849,7 @@ public final class ActionRows {
               "Singleton",
               "NextAction",
               "GameTagsToSet")) {
-        JsonNode value = f.get(column);
-        boolean set =
-            value != null
-                && !value.isNull()
-                && !(value.isBoolean() && !value.asBoolean())
-                && !(value.isNumber() && value.asInt() == 0)
-                && !(value.isContainerNode() && value.isEmpty())
-                && !(value.isTextual() && value.asText().isEmpty());
-        if (set) {
+        if (sets(f, column)) {
           throw new UnsupportedOperationException(
               name + " is a laser ball that sets " + column + ", which is not modelled");
         }

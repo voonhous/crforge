@@ -17,6 +17,7 @@ import java.util.function.LongSupplier;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.Clone;
@@ -25,6 +26,7 @@ import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
@@ -117,6 +119,108 @@ class ActionRowsTest {
             "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList0_NextAction");
     assertThat(List.of(0, 1, 2, 3, 4, 5, 9).stream().map(laser::pick).toList())
         .containsExactly(0, 0, 1, 1, 1, 2, 2);
+  }
+
+  @Test
+  @DisplayName(
+      "Vines' selector reads its circle, its filter, its scoring by hit points and shield, its"
+          + " delays and the rows of their actions, and picks each object once")
+  void aShapeSelectorIsBuilt() {
+    BattleAction built = GameData.actions().build("Vines_Target_Selector", INERT_BINDING);
+    assertThat(built).isInstanceOf(ShapeSelector.class);
+    ShapeSelector.Columns columns = ((ShapeSelector) built).getColumns();
+    assertThat(columns.oncePerTarget()).isTrue();
+    assertThat(columns.targetSelectionMode())
+        .isEqualTo(ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS);
+    assertThat(columns.targetFilter()).isNotNull();
+    assertThat(columns.shapeRadius()).isEqualTo(2500);
+    assertThat(columns.delaysMs()).containsExactly(0, 50, 150);
+    assertThat(columns.actions())
+        .containsExactly("Vines_Action_Group", "Vines_Action_Group", "Vines_Action_Group");
+  }
+
+  @Test
+  @DisplayName(
+      "a shape selector that waits for its target, scores by distance, has fewer actions than"
+          + " delays, has no filter or a shape other than a circle is refused")
+  void aShapeSelectorIsRefused(@TempDir Path folder) throws IOException {
+    assertThatThrownBy(() -> GameData.actions().build("GiantHero_Target_Selector", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("sets WaitForTarget");
+    String row = "Vines_Target_Selector";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "scores by Closest", f -> f.put("TargetSelectionMode", "Closest"),
+            "fewer actions than delays", f -> f.putArray("Delays").add(0).add(50).add(100).add(150),
+            "without a filter", f -> f.remove("TargetFilter"),
+            "is a Rectangle", f -> f.put("Shape", "BabyDragon_EV1_wind_aeo_shape"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Vines' air-to-ground row reads its two durations and its ground tag; a column it leaves out"
+          + " takes the loader's default")
+  void anAirToGroundIsBuilt(@TempDir Path folder) throws IOException {
+    AirToGround vines =
+        (AirToGround) GameData.actions().build("Vines_Air_To_Ground", INERT_BINDING);
+    assertThat(vines.getTransitionDurationMs()).isEqualTo(50);
+    assertThat(vines.getTotalDurationMs()).isEqualTo(2000);
+    assertThat(vines.isAllowIsGroundTagOnIdle()).isTrue();
+    assertThat(vines.isResetPathAtEnd()).isTrue();
+    assertThat(vines.singleton()).isTrue();
+
+    Files.createDirectories(folder);
+    GameTables bare =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> {
+              ObjectNode f = (ObjectNode) rows.get("Vines_Air_To_Ground").get("fields");
+              f.remove("TransitionDuration");
+              f.remove("TotalDuration");
+              f.remove("AllowIsGroundTagOnIdle");
+            });
+    AirToGround defaults =
+        (AirToGround)
+            new ActionRows(bare, new BattleRecords(bare))
+                .build("Vines_Air_To_Ground", INERT_BINDING);
+    assertThat(defaults.getTransitionDurationMs()).isEqualTo(200);
+    assertThat(defaults.getTotalDurationMs()).isEqualTo(1000);
+    assertThat(defaults.isAllowIsGroundTagOnIdle()).isFalse();
+  }
+
+  @Test
+  @DisplayName("an air-to-ground row with a landing action or a path reset at landing is refused")
+  void anAirToGroundIsRefused(@TempDir Path folder) throws IOException {
+    assertThatThrownBy(() -> GameData.actions().build("RoyalHog_EV1_To_Ground", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("sets ActionOnGround");
+    Files.createDirectories(folder);
+    GameTables landing =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("Vines_Air_To_Ground").get("fields"))
+                    .put("ResetPathAtLanding", true));
+    ActionRows rows = new ActionRows(landing, new BattleRecords(landing));
+    assertThatThrownBy(() -> rows.build("Vines_Air_To_Ground", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("sets ResetPathAtLanding");
   }
 
   @Test
@@ -543,12 +647,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 610 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 680 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(610);
+    assertThat(built).as("rows built").isEqualTo(680);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 164, "column", 160, "spawn type", 12));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 135, "column", 119, "spawn type", 12));
   }
 }

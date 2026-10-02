@@ -6,6 +6,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -789,6 +790,83 @@ public interface WorldObserver {
    */
   default void projectileAreaEffect(
       int tick, ProjectileEntity projectile, AreaEffectEntity areaEffect) {}
+
+  /**
+   * A shape selector's run started on an area effect.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param action the selector's row
+   * @param phase the pending pass it started in
+   * @param due the battle tick each entry is due on, in order
+   */
+  default void selectorStarted(
+      int tick, AreaEffectEntity areaEffect, String action, int phase, List<Integer> due) {}
+
+  /**
+   * A shape selector's step queried its circle or finished its run.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect it runs on
+   * @param action the selector's row
+   * @param step what the step did
+   */
+  default void selectorStepped(
+      int tick, AreaEffectEntity areaEffect, String action, ShapeSelector.Step step) {}
+
+  /**
+   * An air-to-ground run started on a unit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param action the row
+   * @param phase the pending pass it started in
+   * @param runPhase the run's phase: 0 held on the ground, 1 descending, 2 held, 3 climbing
+   * @param counter what is left of the phase
+   * @param height the height the unit flies at, or -1 for a ground unit
+   */
+  default void airToGroundStarted(
+      int tick,
+      WorldEntity unit,
+      String action,
+      int phase,
+      int runPhase,
+      int counter,
+      int height) {}
+
+  /**
+   * An air-to-ground run changed its phase or finished.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param phaseBefore the phase as the step began
+   * @param phaseAfter the phase as it ended
+   * @param counterBefore what was left of the phase as the step began
+   * @param counterAfter what was left as it ended
+   * @param done true when the step finished the run
+   * @param pushes the height changes the step pushed
+   */
+  default void airToGroundStepped(
+      int tick,
+      WorldEntity unit,
+      int phaseBefore,
+      int phaseAfter,
+      int counterBefore,
+      int counterAfter,
+      boolean done,
+      List<Integer> pushes) {}
+
+  /**
+   * An air-to-ground run was started again by a second start of its row.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param action the row
+   * @param phase the run's phase after it
+   * @param counter what is left of the phase after it
+   */
+  default void airToGroundRetriggered(
+      int tick, WorldEntity unit, String action, int phase, int counter) {}
 
   /**
    * A laser ball's run started on an area effect.

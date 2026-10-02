@@ -131,9 +131,9 @@ public class TargetView {
     return entity.getY();
   }
 
-  /** Height above the ground, in game units. */
+  /** Live height above the ground, in game units: the height and its offset together. */
   public int z() {
-    return entity.getZ();
+    return entity.getZ() + entity.getHeightOffset();
   }
 
   /** Collision radius, in game units. */

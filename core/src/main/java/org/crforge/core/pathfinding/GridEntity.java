@@ -53,6 +53,12 @@ public class GridEntity {
   private int z;
 
   /**
+   * What the height changes pushed to the entity add to {@link #z}, folded in at its pre-hook: the
+   * live height is the two together. Only an action that holds the entity on the ground pushes any.
+   */
+  private int heightOffset;
+
+  /**
    * Height used by the push and avoidance passes when they decide whether two entities occupy the
    * same layer. It is the entity's own height plus whatever it is attached to contributes.
    */
