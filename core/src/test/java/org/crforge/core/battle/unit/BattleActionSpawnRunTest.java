@@ -29,6 +29,7 @@ import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -567,7 +568,9 @@ class BattleActionSpawnRunTest {
         "goblinstein_ability_tower",
         "goblinstein_later_plays",
         "parent_buff_goblin_giant",
-        "parent_buff_ram_rider_rage"
+        "parent_buff_ram_rider_rage",
+        "evolution_knight",
+        "evolution_hero_mirror"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -655,12 +658,21 @@ class BattleActionSpawnRunTest {
         deck.forEach(card -> cards.add(card.asText()));
         decks.add(cards);
       }
+      // A deck's evolution and hero slots: each card's slot flags, by its deck index.
+      int[][] slots = {new int[decks.get(0).size()], new int[decks.get(1).size()]};
+      for (JsonNode e : reference.path("evolution")) {
+        if (e.get("event").asText().equals("slot")) {
+          slots[e.get("side").asInt()][e.get("index").asInt()] = e.get("flags").asInt();
+        }
+      }
       ladder =
           match.startLadderMatch(
               decks.get(0),
               decks.get(1),
               m.get("avatar_words").get(0).asInt(),
-              m.get("avatar_words").get(1).asInt());
+              m.get("avatar_words").get(1).asInt(),
+              slots[0],
+              slots[1]);
       for (JsonNode row : m.get("trace")) {
         trace.put(row.get(0).asInt(), row);
       }
@@ -1312,6 +1324,7 @@ class BattleActionSpawnRunTest {
       assertEnd(match, ladder, reference.get("match"));
       assertMirror(match, ladder, reference);
       assertVariant(match, reference);
+      assertEvolution(match, ladder, reference);
       List<String> expectedKills = new ArrayList<>();
       List<String> expectedDrains = new ArrayList<>();
       List<String> expectedElixir = new ArrayList<>();
@@ -5701,6 +5714,63 @@ class BattleActionSpawnRunTest {
           .as("%s: the deck index", name)
           .isEqualTo(commands.get(name).get("play").get("deck_index").asInt());
     }
+  }
+
+  /**
+   * Every evolution and hero slot of a deck, with the card's evolved and hero rows, and every
+   * play's item in a run with one: the deck index, the evolution field, the row cast, its cost and
+   * the count the item was built from; and each count a side holds at the end, the one its last
+   * play of the card left.
+   */
+  private static void assertEvolution(
+      Standard1v1Battle match, LadderMatch ladder, JsonNode reference) {
+    Map<String, Standard1v1Battle.Play> plays = new HashMap<>();
+    for (Standard1v1Battle.Play play : match.getPlays()) {
+      plays.put(play.name(), play);
+    }
+    Map<List<Integer>, Integer> lastCount = new HashMap<>();
+    for (JsonNode e : reference.path("evolution")) {
+      int side = e.get("side").asInt();
+      int index = e.get("index").asInt();
+      if (e.get("event").asText().equals("slot")) {
+        MatchCard card = ladder.side(side).deck().get(index);
+        assertThat(card.name())
+            .as("side %d's card %d", side, index)
+            .isEqualTo(e.get("card").asText());
+        assertThat(ladder.side(side).slotFlags(index))
+            .as("side %d's card %d: its slot flags", side, index)
+            .isEqualTo(e.get("flags").asInt());
+        assertThat(card.formRow(MatchCard.EVO_FORM).name())
+            .as("%s's evolved row", card.name())
+            .isEqualTo(e.get("evolution").asText());
+        assertThat(card.formRow(MatchCard.HERO_FORM).name())
+            .as("%s's hero row", card.name())
+            .isEqualTo(e.get("hero").asText());
+        continue;
+      }
+      String name = e.get("command").asText();
+      Standard1v1Battle.Play play = plays.get(name);
+      assertThat(play).as("the play %s", name).isNotNull();
+      EvolutionItem item = play.evolution();
+      assertThat(item).as("%s carries a deck card's item", name).isNotNull();
+      assertThat(item.index()).as("%s: the deck index", name).isEqualTo(index);
+      assertThat(item.field())
+          .as("%s: the evolution field", name)
+          .isEqualTo(e.get("field").asInt());
+      assertThat(item.spell().name())
+          .as("%s: the row cast", name)
+          .isEqualTo(e.get("cast").asText());
+      assertThat(item.cost()).as("%s: the cost", name).isEqualTo(e.get("cost").asInt());
+      assertThat(item.count())
+          .as("%s: the count the item was built from", name)
+          .isEqualTo(e.get("count_before").asInt());
+      lastCount.put(List.of(side, index), e.get("count_after").asInt());
+    }
+    lastCount.forEach(
+        (key, count) ->
+            assertThat(ladder.side(key.get(0)).evolutionCount(key.get(1)))
+                .as("side %d's count of card %d at the end", key.get(0), key.get(1))
+                .isEqualTo(count));
   }
 
   /** Every play refused by a match's gate with the reference's code, and every other let on. */

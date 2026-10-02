@@ -44,6 +44,17 @@ public final class BattleRecords {
   private static final String SPELLS_CHARACTERS = "spells_characters";
   private static final String SPELLS_OTHER = "spells_other";
   private static final String SPELLS_BUILDINGS = "spells_buildings";
+  private static final String SPELLS_EVOLVED = "spells_evolved";
+  private static final String SPELLS_HERO_FORM = "spells_hero_form";
+
+  /** The card tables a card row is looked up in, in turn. */
+  private static final List<String> CARD_TABLES =
+      List.of(SPELLS_CHARACTERS, SPELLS_BUILDINGS, SPELLS_OTHER, SPELLS_EVOLVED, SPELLS_HERO_FORM);
+
+  /** The card forms by name; a form's number is the one the evolution field matches. */
+  private static final Map<String, Integer> CARD_FORMS =
+      Map.of("BasicForm", 0, "EvoForm", 1, "HeroForm", 2, "AutoChessForm", 3, "FlexSlot", 5);
+
   private static final String GAME_MODES = "game_modes";
   private static final String BATTLE_TIMELINES = "battle_timelines";
   private static final String CARD_GROUPS = "card_groups";
@@ -1213,6 +1224,16 @@ public final class BattleRecords {
   }
 
   /**
+   * Whether a buff column is the action a reduced hit schedules on the buffed unit and that action
+   * only plays an effect for as long as it plays: such a row makes no run, so scheduling it changes
+   * nothing in the battle, and it is not scheduled. The evolved Knight's protection effect is one.
+   */
+  private boolean inertDamageReductionAction(GameRow row, String column) {
+    return column.equals("OnDamageReductionAction")
+        && ActionRows.inertEffect(tables.action(row.string(column)));
+  }
+
+  /**
    * A character buff as the battle reads it, from the character buffs table, or the buff row a buff
    * spawn row writes inline under that name. Every column it sets that is neither read nor only
    * shows something is listed as not modelled.
@@ -1227,7 +1248,8 @@ public final class BattleRecords {
     for (String column : row.columns().keySet()) {
       if (!MODELLED_BUFF_COLUMNS.contains(column)
           && !PRESENTATION_BUFF_COLUMNS.contains(column)
-          && sets(row, column)) {
+          && sets(row, column)
+          && !inertDamageReductionAction(row, column)) {
         unmodelled.add(column);
       }
     }
@@ -1546,14 +1568,7 @@ public final class BattleRecords {
    * @param name the card row's name
    */
   public DeployCard card(String name) {
-    GameTable table = tables.table(SPELLS_CHARACTERS);
-    if (!table.has(name) && tables.table(SPELLS_BUILDINGS).has(name)) {
-      table = tables.table(SPELLS_BUILDINGS);
-    } else if (!table.has(name) && tables.table(SPELLS_OTHER).has(name)) {
-      table = tables.table(SPELLS_OTHER);
-    }
-    checkArgument(table.has(name), () -> "the game tables have no card " + name);
-    GameRow row = table.row(name);
+    GameRow row = cardRow(name);
     // The card's unit is its summoned character, else its second group, else its list; a card with
     // none of them that casts is a spell, whichever table it is in. A card with a unit keeps the
     // troop path, and its refusals, and casts its projectile besides.
@@ -1868,13 +1883,38 @@ public final class BattleRecords {
 
   /**
    * What the match reads of a card: its cost, its two opening-hand columns, its production stop,
-   * whether it is the Mirror, and the options a variant card is played as. The card is looked up in
-   * the three card tables in turn.
+   * whether it is the Mirror, the options a variant card is played as, and the rows it is played as
+   * in other forms: each its own match card, with its form and DarkElixirCost. A row's form is its
+   * card form column, else the evolved form for a row of the evolved cards, the hero form for a row
+   * of the hero forms, else the basic form. The card is looked up in the card tables in turn.
    *
    * @param name the card row's name
    */
   public MatchCard matchCard(String name) {
-    GameRow row = cardRow(name);
+    String table = cardTable(name);
+    GameRow row = tables.table(table).row(name);
+    int form;
+    if (set(row, "CardForm")) {
+      Integer named = CARD_FORMS.get(row.string("CardForm"));
+      checkArgument(named != null, () -> name + " has the card form " + row.string("CardForm"));
+      form = named;
+    } else if (table.equals(SPELLS_EVOLVED)) {
+      form = MatchCard.EVO_FORM;
+    } else if (table.equals(SPELLS_HERO_FORM)) {
+      form = MatchCard.HERO_FORM;
+    } else {
+      form = MatchCard.BASIC_FORM;
+    }
+    // The list is a single name on a row with one other form.
+    List<MatchCard> evolved = new ArrayList<>();
+    JsonNode listed = row.value("EvolvedSpells");
+    if (listed != null && listed.isArray()) {
+      for (JsonNode element : listed) {
+        evolved.add(matchCard(element.asText()));
+      }
+    } else if (listed != null && !listed.asText().isEmpty()) {
+      evolved.add(matchCard(listed.asText()));
+    }
     return new MatchCard(
         row.name(),
         row.intValue("ManaCost"),
@@ -1882,14 +1922,31 @@ public final class BattleRecords {
         row.bool("OmitFromStartingHand"),
         row.intValue("ElixirProductionStopTime"),
         row.bool("Mirror"),
-        variant(row));
+        variant(row),
+        row.intValue("DarkElixirCost"),
+        form,
+        evolved);
   }
 
-  /** A card's row, looked up in the three card tables in turn. */
+  /**
+   * Whether a card is a troop card: a row of the characters' cards.
+   *
+   * @param name the card row's name
+   */
+  public boolean troopCard(String name) {
+    return tables.table(SPELLS_CHARACTERS).has(name);
+  }
+
+  /** A card's row, looked up in the card tables in turn. */
   private GameRow cardRow(String name) {
-    for (String table : List.of(SPELLS_CHARACTERS, SPELLS_BUILDINGS, SPELLS_OTHER)) {
+    return tables.table(cardTable(name)).row(name);
+  }
+
+  /** The first card table that has a card. */
+  private String cardTable(String name) {
+    for (String table : CARD_TABLES) {
       if (tables.table(table).has(name)) {
-        return tables.table(table).row(name);
+        return table;
       }
     }
     throw new IllegalArgumentException("the game tables have no card " + name);

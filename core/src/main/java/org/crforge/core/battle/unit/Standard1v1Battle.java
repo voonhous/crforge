@@ -17,8 +17,10 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
+import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
+import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -50,10 +52,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " and match_overtime_draw; a Mirror's play, its item built as it runs, held by"
             + " mirror_knight and mirror_fireball; a variant card's play, its option picked from"
             + " the elixir after the step 21 before its run, held by merge_maiden_mounted and"
-            + " merge_maiden_normal. Not modelled, and refused: a Mirror outside a match, and one"
+            + " merge_maiden_normal; a play of a deck card with slots, its item built as it runs"
+            + " and its evolved or hero row placed, held by evolution_knight and"
+            + " evolution_hero_mirror. Not modelled, and refused: a Mirror outside a match, and one"
             + " given while another play of its side is pending, which the player's client may"
             + " repeat in its place; a variant card outside a match, run before tick 21, or given"
-            + " while another play of its side is pending, whose cost the pick would set aside."
+            + " while another play of its side is pending, whose cost the pick would set aside;"
+            + " a play of an evolution slot's card given while another play of it is due, whose"
+            + " item the client builds from the count before that play."
             + " Supplied: the step a variant's option is picked after, the last the client can"
             + " have seen before it gives the play; the level of the option's units, the level"
             + " the play is given, as for every card.")
@@ -147,6 +153,7 @@ public class Standard1v1Battle {
    * @param matchCode the code a match's gate refused the play with, or 0
    * @param mirror the item a Mirror's play carried, or null for any other card
    * @param variant the item a variant card's play carried, or null for any other card
+   * @param evolution the item a play of any other card carried in a match, or null
    */
   public record Play(
       String name,
@@ -158,10 +165,11 @@ public class Standard1v1Battle {
       List<CharacterEntity> units,
       int matchCode,
       MirrorItem mirror,
-      VariantItem variant) {}
+      VariantItem variant,
+      EvolutionItem evolution) {}
 
-  /** A card play queued: the tick it runs on and its side. */
-  private record QueuedPlay(int tick, int side) {}
+  /** A card play queued: the tick it runs on, its side and its card. */
+  private record QueuedPlay(int tick, int side, String card) {}
 
   /**
    * Every card play queued so far, which a Mirror's and a variant card's item are built against.
@@ -198,9 +206,38 @@ public class Standard1v1Battle {
    */
   public LadderMatch startLadderMatch(
       List<String> deck0, List<String> deck1, int playerWord0, int playerWord1) {
+    return startLadderMatch(
+        deck0, deck1, playerWord0, playerWord1, new int[deck0.size()], new int[deck1.size()]);
+  }
+
+  /**
+   * Plays the battle as a Ladder match whose decks mark their evolution and hero slots: a play of a
+   * card is evolved, or in its hero form, as its side's count and its slot flags make its item, and
+   * a hero slot's champion is the one its king's slot follows.
+   *
+   * @param deck0 side 0's deck, by card row name
+   * @param deck1 side 1's deck, by card row name
+   * @param playerWord0 side 0's word, added to its shuffle's draw
+   * @param playerWord1 side 1's word, added to its shuffle's draw
+   * @param slots0 side 0's slot flags, by deck index
+   * @param slots1 side 1's slot flags, by deck index
+   * @return the match
+   * @see #startLadderMatch(List, List, int, int)
+   */
+  public LadderMatch startLadderMatch(
+      List<String> deck0,
+      List<String> deck1,
+      int playerWord0,
+      int playerWord1,
+      int[] slots0,
+      int[] slots1) {
     LadderMatch ladder =
         new LadderMatch(
-            world, world.getRecords(), List.of(deck0, deck1), new int[] {playerWord0, playerWord1});
+            world,
+            world.getRecords(),
+            List.of(deck0, deck1),
+            new int[] {playerWord0, playerWord1},
+            List.of(slots0, slots1));
     battle.setMode(ladder);
     world.setKingVisit(ladder::kingVisit);
     this.match = ladder;
@@ -209,17 +246,20 @@ public class Standard1v1Battle {
     for (int side = 0; side < 2; side++) {
       world.kingTower(side).makeChampionSlots();
     }
-    List<List<String>> decks = List.of(deck0, deck1);
     for (int side = 0; side < 2; side++) {
       List<UnitData> champions = new ArrayList<>();
       int championCards = 0;
-      for (String card : decks.get(side)) {
-        // The Mirror and a variant card summon nothing of their own.
-        MatchCard matchCard = world.getRecords().matchCard(card);
+      MatchSide matchSide = ladder.side(side);
+      for (int index = 0; index < matchSide.deck().size(); index++) {
+        // The Mirror and a variant card summon nothing of their own. A hero slot's card is asked
+        // in its hero form.
+        MatchCard matchCard = matchSide.deck().get(index);
+        boolean hero = (matchSide.slotFlags(index) & MatchSide.HERO_SLOT) != 0;
+        String form = matchCard.formRow(hero ? MatchCard.HERO_FORM : MatchCard.BASIC_FORM).name();
         UnitData champion =
             matchCard.mirror() || matchCard.variant() != null
                 ? null
-                : world.getRecords().card(card).champion();
+                : world.getRecords().card(form).champion();
         champions.add(champion);
         if (champion != null) {
           championCards++;
@@ -333,7 +373,7 @@ public class Standard1v1Battle {
    * @param name the play's name: unit {@code k} is named {@code name_k}
    */
   public void play(int tick, DeployCard card, int level, int side, int x, int y, String name) {
-    queuedPlays.add(new QueuedPlay(tick, side));
+    queuedPlays.add(new QueuedPlay(tick, side, card.name()));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -373,7 +413,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           "the Mirror outside a match, which keeps no last card to play again");
     }
-    QueuedPlay queued = new QueuedPlay(tick, side);
+    QueuedPlay queued = new QueuedPlay(tick, side, card);
     queuedPlays.add(queued);
     battle.queue(
         new BattleCommand() {
@@ -409,7 +449,8 @@ public class Standard1v1Battle {
     // nothing.
     int code = match.gate(side, deckIndex, item.cost());
     if (code != 0) {
-      plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, item, null));
+      plays.add(
+          new Play(name, side, x, y, target.getTick(), null, List.of(), code, item, null, null));
       return;
     }
     // With nothing to repeat the search is handed the king's last card, finds none and answers no
@@ -417,7 +458,8 @@ public class Standard1v1Battle {
     if (item.repeats() == null) {
       CardPlacement.Result refused =
           new CardPlacement.Result(CardPlacement.NO_POSITION, 0, 0, null, 0, List.of());
-      plays.add(new Play(name, side, x, y, target.getTick(), refused, List.of(), 0, item, null));
+      plays.add(
+          new Play(name, side, x, y, target.getTick(), refused, List.of(), 0, item, null, null));
       return;
     }
     DeployCard repeated = world.getRecords().card(item.repeats().name());
@@ -435,6 +477,7 @@ public class Standard1v1Battle {
         name,
         () -> match.playMirror(side, item),
         item,
+        null,
         null);
   }
 
@@ -469,7 +512,7 @@ public class Standard1v1Battle {
             name
                 + ": a variant play runs on tick 21 or later, its option picked after the step 21"
                 + " ticks before");
-    QueuedPlay queued = new QueuedPlay(tick, side);
+    QueuedPlay queued = new QueuedPlay(tick, side, card);
     queuedPlays.add(queued);
     int[] option = {-1};
     // The head of the next step sees the battle as the step left it: the pick runs there, before
@@ -527,7 +570,8 @@ public class Standard1v1Battle {
     // changes nothing.
     int code = match.gate(side, deckIndex, item.cost());
     if (code != 0) {
-      plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, item));
+      plays.add(
+          new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, item, null));
       return;
     }
     place(
@@ -540,23 +584,58 @@ public class Standard1v1Battle {
         name,
         () -> match.playVariant(side, item),
         null,
-        item);
+        item,
+        null);
   }
 
   private void runPlay(
       Battle target, DeployCard card, int level, int side, int x, int y, String name) {
-    // In a match the play first passes the match's gates; a refused play changes nothing.
+    // In a match the play carries its deck card's item, and first passes the match's gates on the
+    // item's cost; a refused play changes nothing.
     Runnable pay = null;
+    EvolutionItem item = null;
+    DeployCard cast = card;
     if (match != null) {
       int deckIndex = match.deckIndex(side, card.name());
-      int code = match.gate(side, deckIndex);
+      if ((match.side(side).slotFlags(deckIndex) & MatchSide.EVOLUTION_SLOT) != 0) {
+        checkNoneDue(target.getTick(), side, card.name(), name);
+      }
+      item = match.item(side, deckIndex);
+      int code = match.gate(side, deckIndex, item.cost());
       if (code != 0) {
-        plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, null));
+        plays.add(
+            new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, null, item));
         return;
       }
-      pay = () -> match.play(side, deckIndex);
+      EvolutionItem carried = item;
+      pay = () -> match.play(side, carried);
+      // An evolved or hero play is placed and cast as its row in that form.
+      if (item.field() != 0) {
+        cast = world.getRecords().card(item.spell().name());
+      }
     }
-    place(target, card, level, side, x, y, name, pay, null, null);
+    place(target, cast, level, side, x, y, name, pay, null, null, item);
+  }
+
+  /**
+   * Refuses a play of an evolution slot's card while another play of the same card of its side is
+   * due in the ticks between the play's giving and its run: the player's client builds the item
+   * from the count before that play runs, the item here from the count after.
+   */
+  private void checkNoneDue(int tick, int side, String card, String name) {
+    for (QueuedPlay other : queuedPlays) {
+      if (other.side() == side
+          && other.card().equals(card)
+          && other.tick() >= tick - PLAY_DELAY_TICKS
+          && other.tick() < tick) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a play of "
+                + card
+                + ", an evolution slot's card, given while another play of it is due, which the"
+                + " client builds from the count before that play, is not modelled");
+      }
+    }
   }
 
   /**
@@ -566,6 +645,7 @@ public class Standard1v1Battle {
    * @param pay what pays for a placed play and cycles its card, or null outside a match
    * @param mirror the Mirror's item the play carried, or null
    * @param variant the variant card's item the play carried, or null
+   * @param evolution the item a play of any other card carried in a match, or null
    */
   private void place(
       Battle target,
@@ -577,7 +657,8 @@ public class Standard1v1Battle {
       String name,
       Runnable pay,
       MirrorItem mirror,
-      VariantItem variant) {
+      VariantItem variant,
+      EvolutionItem evolution) {
     // The mask reads every character of the battle: the live list, then the ones still queued.
     List<MaskEntity> entities = new ArrayList<>();
     List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
@@ -677,6 +758,8 @@ public class Standard1v1Battle {
         played = match.side(side).deck().get(mirror.index()).name();
       } else if (variant != null) {
         played = match.side(side).deck().get(variant.index()).name();
+      } else if (evolution != null) {
+        played = match.side(side).deck().get(evolution.index()).name();
       }
       world.cardPlayed(side, card.name(), played, variant != null);
     }
@@ -686,7 +769,17 @@ public class Standard1v1Battle {
     }
     plays.add(
         new Play(
-            name, side, x, y, target.getTick(), result, List.copyOf(units), 0, mirror, variant));
+            name,
+            side,
+            x,
+            y,
+            target.getTick(),
+            result,
+            List.copyOf(units),
+            0,
+            mirror,
+            variant,
+            evolution));
   }
 
   /**

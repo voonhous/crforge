@@ -1493,6 +1493,17 @@ public final class ActionRows {
   private static final String LINK_LIFE = "linklifetoactionlife";
 
   /**
+   * Whether an action row only plays an effect that ends as it plays: an effect row whose flags
+   * keep no run, which makes no run of its own.
+   *
+   * @param row the action row
+   */
+  static boolean inertEffect(GameAction row) {
+    return row.classType().equals("ActionPlayEffect")
+        && !lasting(row.name(), row.fields().get("EffectFlags"));
+  }
+
+  /**
    * True when an effect row's flags keep a run: Looping or LinkLifeToActionLife among them. The
    * flags are a comma list, trimmed and in any case; a list written as an array is read as its one
    * string; none is the default, which keeps no run.

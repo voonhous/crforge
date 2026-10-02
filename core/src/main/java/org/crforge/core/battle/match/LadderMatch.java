@@ -35,10 +35,18 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * or casts takes its cost and moves the card to the back of the queue before its units are created
  * or its spell cast.
  *
+ * <p>A deck marks its evolution and hero slots, one flag each per deck card. A play of a deck card
+ * carries an item built from its side's count for the card: evolved once the count has reached the
+ * card's evolved row's DarkElixirCost, else the hero form for a hero slot's card, else neither. The
+ * play is gated on, and spends, the cost of the row it is cast as - the card's first in that form -
+ * and that row is placed and cast as any troop card. The hand cycles the deck card. A deck's slots
+ * are where the deck puts them; the battle only reads the flags.
+ *
  * <p>A Mirror plays its side's last card again. Its play carries an item the player's client builds
  * from the copy of the last card the king keeps: that card, one level above the Mirror's, for the
- * Mirror's cost plus the card's, never more than the most elixir there can be. The gates read the
- * Mirror's own hand slot and the item's cost. The card is then placed or cast as itself, at the
+ * Mirror's cost plus the card's, never more than the most elixir there can be. After an evolved
+ * play the card repeated is the deck card itself, after a hero play its hero row. The gates read
+ * the Mirror's own hand slot and the item's cost. The card is then placed or cast as itself, at the
  * item's level; the play takes the item's cost, starts the card's production stop, and moves the
  * Mirror to the back of the queue. The last card stays the one the Mirror repeated. A Mirror with
  * nothing to repeat finds no position and is refused with 0x17, nothing taken.
@@ -85,6 +93,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " match_elixir_sources: the kings' elixir a collector and a death pay into; by"
             + " mirror_knight and mirror_fireball: the Mirror's item, its gates, its spend and its"
             + " cycle, the card repeated one level up, and the last card kept; by"
+            + " evolution_knight and evolution_hero_mirror: the slot flags, the count each play of an"
+            + " evolution slot's card moves, the evolved and the hero item, their row cast at its"
+            + " cost, the hero form in the deck pass, and the Mirror of an evolved play; by"
             + " merge_maiden_mounted and merge_maiden_normal: a variant card's option picked from"
             + " the elixir, its cost gated and spent, and the variant card cycled."
             + " Held by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's"
@@ -96,10 +107,13 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " refuses. Not modelled, and refused: a projectile, an area effect or an entity"
             + " without hit points the clearing reaches, which the holder removes at once; a"
             + " Mirror of a champion, and of a variant card, which repeats the option it was played"
-            + " as. Unreachable: an item's cost held to the most elixir, which no shipped card"
-            + " reaches, and a source evolved, which a match does not model. Not carried: the flag"
-            + " set when a fallen king's two"
-            + " towers stand whole, whose readers are not established.")
+            + " as; slot flags on a spell, a building, the Mirror or a variant card, and two copies"
+            + " of an evolution slot's card in a deck, which no reference holds; and a play of an"
+            + " evolution slot's card while another play of it is due, whose item the client builds"
+            + " from the count before that play runs. Unreachable: an item's cost held to the most"
+            + " elixir, which no shipped card reaches. Not carried: the flag set when a fallen king's"
+            + " two towers stand whole, whose readers are not established; the marks an evolved or"
+            + " hero play leaves on its objects and its king, which no battle code reads.")
 public final class LadderMatch implements BattleMode {
 
   /** The game mode row the match is played under. */
@@ -183,7 +197,32 @@ public final class LadderMatch implements BattleMode {
    */
   public LadderMatch(
       BattleWorld world, BattleRecords records, List<List<String>> decks, int[] playerWords) {
+    this(
+        world,
+        records,
+        decks,
+        playerWords,
+        List.of(new int[decks.get(0).size()], new int[decks.get(1).size()]));
+  }
+
+  /**
+   * Sets a match up on a battle whose towers stand, with each deck's evolution and hero slots.
+   *
+   * @param world the battle's world, whose random source the shuffles draw from
+   * @param records the battle's records
+   * @param decks each side's deck, by card row name
+   * @param playerWords each side's word, added to its shuffle's draw
+   * @param slotFlags each side's slot flags, by deck index: {@link MatchSide#EVOLUTION_SLOT},
+   *     {@link MatchSide#HERO_SLOT}, both or neither
+   */
+  public LadderMatch(
+      BattleWorld world,
+      BattleRecords records,
+      List<List<String>> decks,
+      int[] playerWords,
+      List<int[]> slotFlags) {
     checkArgument(decks.size() == 2 && playerWords.length == 2, () -> "a match has two players");
+    checkArgument(slotFlags.size() == 2, () -> "a match has two decks of slot flags");
     this.world = world;
     this.timeline = new Timeline(records.gameModeTimeline(GAME_MODE));
     this.maxMana = records.globalNumber("MAX_MANA");
@@ -195,7 +234,9 @@ public final class LadderMatch implements BattleMode {
       for (String name : decks.get(side)) {
         deck.add(records.matchCard(name));
       }
-      MatchSide matchSide = new MatchSide(deck, timeline.row().startingElixir());
+      checkSlots(side, deck, slotFlags.get(side), records);
+      MatchSide matchSide =
+          new MatchSide(deck, timeline.row().startingElixir(), slotFlags.get(side));
       int draw = world.getRandom().next(SHUFFLE_BOUND);
       shuffleDraws[side] = draw;
       matchSide.getHand().deal(DeckShuffle.order(deck, draw + playerWords[side]));
@@ -229,6 +270,43 @@ public final class LadderMatch implements BattleMode {
             return maxMana;
           }
         });
+  }
+
+  /**
+   * Refuses the slot flags no reference holds: flags on a card other than a troop card - a spell, a
+   * building, the Mirror or a variant card - and two copies of an evolution slot's card in a deck,
+   * whose counts the play's deck index would mix.
+   */
+  private static void checkSlots(
+      int side, List<MatchCard> deck, int[] flags, BattleRecords records) {
+    checkArgument(
+        flags.length == deck.size(),
+        () -> "side " + side + "'s slot flags are not one for each card");
+    for (int index = 0; index < deck.size(); index++) {
+      int flag = flags[index];
+      MatchCard card = deck.get(index);
+      checkArgument(
+          flag >= 0 && flag <= (MatchSide.EVOLUTION_SLOT | MatchSide.HERO_SLOT),
+          () -> card.name() + " has slot flags " + flag);
+      if (flag == 0) {
+        continue;
+      }
+      if (card.mirror() || card.variant() != null || !records.troopCard(card.name())) {
+        throw new UnsupportedOperationException(
+            card.name()
+                + " in an evolution or hero slot, which is not a troop card, is held by no"
+                + " reference");
+      }
+      if ((flag & MatchSide.EVOLUTION_SLOT) != 0
+          && deck.stream().filter(c -> c.name().equals(card.name())).count() > 1) {
+        throw new UnsupportedOperationException(
+            "two copies of "
+                + card.name()
+                + ", an evolution slot's card, in side "
+                + side
+                + "'s deck, which no reference holds");
+      }
+    }
   }
 
   /**
@@ -668,6 +746,10 @@ public final class LadderMatch implements BattleMode {
     checkArgument(mirror.mirror(), () -> mirror.name() + " is not a Mirror");
     int mirrorLevelField = level - 1;
     MatchCard source = matchSide.lastPlayedCopy();
+    // After a hero play the Mirror repeats the hero row; after an evolved play, the card itself.
+    if (source != null && matchSide.lastPlayedCopyField() == EvolutionItem.HERO) {
+      source = source.formRow(MatchCard.HERO_FORM);
+    }
     if (source == null) {
       return new MirrorItem(index, null, mirrorLevelField, mirrorLevelField, mirror.cost());
     }
@@ -722,6 +804,17 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
+   * The item a play of a deck card carries, built from its side's count for the card as the play
+   * runs.
+   *
+   * @param side the playing side
+   * @param index the card's deck index
+   */
+  public EvolutionItem item(int side, int index) {
+    return sides.get(side).item(index);
+  }
+
+  /**
    * A play that passed the gates and was placed or cast: its cost taken and its card cycled.
    *
    * @param side the playing side
@@ -729,6 +822,17 @@ public final class LadderMatch implements BattleMode {
    */
   public void play(int side, int index) {
     sides.get(side).play(index);
+  }
+
+  /**
+   * A play that passed the gates and was placed or cast, with the item it carried: the cost of the
+   * row it was cast as taken, the card cycled and its count moved.
+   *
+   * @param side the playing side
+   * @param item the item the play carried
+   */
+  public void play(int side, EvolutionItem item) {
+    sides.get(side).play(item);
   }
 
   /**
