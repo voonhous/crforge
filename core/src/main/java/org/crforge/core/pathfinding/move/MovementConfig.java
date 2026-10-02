@@ -243,6 +243,34 @@ public record MovementConfig(
   }
 
   /**
+   * This configuration with an in-game pathfinding speed, at which a unit routes to a point its
+   * ability sent it to.
+   *
+   * @param speed the speed in the in-game pathfinding state
+   */
+  public MovementConfig withIngamePathfindSpeed(int speed) {
+    return new MovementConfig(
+        spawnAngleShift,
+        spawnMaxAngle,
+        spawnAttachMaxRotation,
+        spawnRadius,
+        flyingHeight,
+        flyDirectPaths,
+        chargeRange,
+        onStartChargingAction,
+        attackPushbackEndAction,
+        jumpEnabled,
+        jumpHeight,
+        dashConstantTime,
+        stopMovementAfterMs,
+        waitMs,
+        spawnPathfindSpeed,
+        speed,
+        entersWaterWhileSpawnPathfinding,
+        hovering);
+  }
+
+  /**
    * This configuration with the water let through while spawn pathfinding, as a unit that morphs as
    * it surfaces is.
    *

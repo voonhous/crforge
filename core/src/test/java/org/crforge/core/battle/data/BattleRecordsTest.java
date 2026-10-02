@@ -645,8 +645,8 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "an ability carries its cast, its trigger, the target it keeps, its inline activation"
-          + " action, its own buff and its controller's columns, and lists the effects the battle"
-          + " does not model")
+          + " action, its own buff, its lane switch, the character it leaves behind and its"
+          + " controller's columns, and lists the effects the battle does not model")
   void ability() {
     AbilityData buffer = records.unit("GiantBuffer").ability();
     assertThat(buffer.name()).isEqualTo("giantbuffer_ability");
@@ -669,9 +669,16 @@ class BattleRecordsTest {
     assertThat(queen.maxCharges()).isZero();
     assertThat(queen.unmodelledColumns()).isEmpty();
     assertThat(records.unit("BossBandit").ability().maxCharges()).isEqualTo(2);
-    // A dash, or a buff over a radius, is still refused.
-    assertThat(records.unit("MightyMiner").ability().unmodelledColumns())
-        .containsExactly("SwitchLanes", "ActivationSpawnCharacter");
+    // A lane switch, and the character the ability leaves behind, are read.
+    AbilityData miner = records.unit("MightyMiner").ability();
+    assertThat(miner.switchLanes()).isTrue();
+    assertThat(miner.activationSpawnCharacter()).isEqualTo("MightyMinerBomb");
+    assertThat(miner.unmodelledColumns()).isEmpty();
+    assertThat(queen.switchLanes()).isFalse();
+    assertThat(queen.activationSpawnCharacter()).isNull();
+    // An area object is still refused.
+    assertThat(records.unit("SkeletonKing").ability().unmodelledColumns())
+        .containsExactly("AreaEffectObject");
     assertThat(records.unit("Knight").ability()).isNull();
   }
 
@@ -681,6 +688,32 @@ class BattleRecordsTest {
     assertThat(records.projectile("GiantBuffProjectile").onHitTargetAction())
         .isEqualTo("GiantBuffProjectile_OnHitTargetAction");
     assertThat(records.projectile("MusketeerProjectile").onHitTargetAction()).isNull();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit carries its speed and its visibility as its ability sends it across the arena, and"
+          + " whether it deploys again as it arrives")
+  void ingamePathfindColumns() {
+    UnitData miner = records.unit("MightyMiner");
+    assertThat(miner.ingamePathfindSpeed()).isEqualTo(650);
+    assertThat(miner.ingamePathfindVisible()).isFalse();
+    assertThat(miner.ingamePathfindStopDeploys()).isTrue();
+    assertThat(miner.unmodelledColumns()).isEmpty();
+    UnitData knight = records.unit("Knight");
+    assertThat(knight.ingamePathfindSpeed()).isZero();
+    assertThat(knight.ingamePathfindStopDeploys()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a projectile loses its target as the target goes underground or across the arena, unless"
+          + " its row says not")
+  void allowResetTarget() {
+    assertThat(records.projectile("TowerPrincessProjectile").allowResetTarget())
+        .as("the row leaves it empty")
+        .isTrue();
+    assertThat(records.projectile("GiantBuffProjectile").allowResetTarget()).isFalse();
   }
 
   @Test

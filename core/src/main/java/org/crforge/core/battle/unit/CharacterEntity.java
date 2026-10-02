@@ -213,7 +213,13 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " off while it deploys, its ring query, signals and shots, and its turn toward its"
             + " reference at each attack start, which only such a unit takes, held by"
             + " goblin_machine_knight and goblin_machine_tower; a clone running one, and a turn"
-            + " toward no reference, are refused."
+            + " toward no reference, are refused. A lane switch, the Mighty Miner's: across to the"
+            + " mirror of its position, hidden and routing at its own speed, the projectiles aimed"
+            + " at it dropped, its re-deploy on arrival dropping its reference, and the bomb it"
+            + " leaves on its spot, held by mighty_miner_ability_tower and"
+            + " mighty_miner_ability_walk; a spell passing it by and the edge's clamp by unit"
+            + " tests alone; a row that stays visible across, and a deploy time for the character"
+            + " left behind, are refused."
             + " Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding before its first hit,"
             + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
@@ -227,7 +233,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " with a death action, an attack sequence whose mode moves the index itself other"
             + " than a continuous-damage attacker's or whose entries set more than a projectile, a"
             + " damage and such an attacker's windows, a morph of a unit such an attacker"
-            + " references, the lane switch of a champion's ability, an action run as it attacks, and"
+            + " references, an action run as it attacks, and"
             + " a row that attaches riders placed directly, spawned or waiting its turn, a buff on a"
             + " parent or a rider, a rider whose parent may not attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
@@ -506,15 +512,18 @@ public class CharacterEntity extends WorldEntity {
                 .withJump(data.jumpEnabled(), data.jumpHeight())
                 .withDashConstantTime(data.dashConstantTimeMs())
                 .withSpawnPathfindSpeed(data.spawnPathfindSpeed())
+                .withIngamePathfindSpeed(data.ingamePathfindSpeed())
                 .withEntersWaterWhileSpawnPathfinding(data.spawnPathfindMorph() != null)
                 .withHovering(data.hovering()),
             SpeedConfig.forGroundUnit(data.speed())
                 .withChargeMultiplier(data.chargeSpeedMultiplier())
                 .withJumpSpeed(data.jumpSpeed())
-                .withSpawnPathfindSpeed(data.spawnPathfindSpeed()),
+                .withSpawnPathfindSpeed(data.spawnPathfindSpeed())
+                .withIngamePathfind(data.ingamePathfindSpeed(), data.ingamePathfindVisible()),
             StateVisitConfig.forGroundUnit(data.deployTimeMs())
                 .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs())
                 .withSpawnPathfindMorph(data.spawnPathfindMorph() != null)
+                .withIngamePathfindArrival(data.ingamePathfindStopDeploys())
                 .withHidesWhenNotAttacking(data.hidesWhenNotAttacking()),
             getSelection(),
             getTargetView());
@@ -552,6 +561,14 @@ public class CharacterEntity extends WorldEntity {
               data.ability().triggerDelayMs(),
               false,
               this::stateTailGate));
+    }
+    // Going underground or across the arena, the unit is dropped by every projectile aimed at it.
+    setter.setPathfindEntry(() -> world.pathfindEntered(this));
+    // An ability that switches lanes sends the unit into the in-game pathfinding state, whose
+    // arrival ends with the combat gate on the targeting component's own switch.
+    if (data.ability() != null && data.ability().switchLanes()) {
+      setter.setIngamePathfindExitGate(
+          () -> combatGate(isActive(TARGETING_SLOT), setter::prepareRoute));
     }
     // A row with an area object or a push makes them each time it enters the deploying state
     // through its setter, a troop's as a building's.
@@ -1960,14 +1977,21 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Hidden while it tunnels to its placement, in the spawn-pathfinding state, and, for a row that
-   * hides while it does not attack, while its hide counter stands exactly at its hide time.
+   * Hidden while it tunnels to its placement, in the spawn-pathfinding state, while it routes to a
+   * point its ability sent it to, unless its row keeps it visible there, and, for a row that hides
+   * while it does not attack, while its hide counter stands exactly at its hide time.
    */
   @Override
   public boolean hidden() {
     return tunnelling()
+        || ingamePathfinding() && !getData().ingamePathfindVisible()
         || getData().hidesWhenNotAttacking()
             && HideHandler.hidden(unit.timers().getHideCounterMs(), getData().hideTimeMs());
+  }
+
+  /** Whether it routes to a point its ability sent it to, in the in-game pathfinding state. */
+  private boolean ingamePathfinding() {
+    return getView().getState() == GridEntityState.INGAME_PATHFIND;
   }
 
   /** Whether it tunnels to its placement, in the spawn-pathfinding state. */
@@ -1978,11 +2002,11 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * An area effect that reaches hidden units reaches it hidden by its hide counter. One reaching it
-   * in its tunnel is not modelled.
+   * in its tunnel, or routing to a point its ability sent it to, is not modelled.
    */
   @Override
   protected boolean reachableWhileHidden() {
-    return !tunnelling();
+    return !tunnelling() && !ingamePathfinding();
   }
 
   /**
@@ -2498,8 +2522,8 @@ public class CharacterEntity extends WorldEntity {
    * ability, is not a champion's clone, can act - its targeting component on - is in none of the
    * states from dashing to the follow-up's, carries neither the postponing nor the disabling tag,
    * and the ability does something: with every other effect refused as it is requested, it buffs
-   * the unit or runs an activation action, or it only dashes and the unit's reference lies within
-   * its dash range.
+   * the unit, runs an activation action, switches lanes or leaves a character behind, or it only
+   * dashes and the unit's reference lies within its dash range.
    */
   private boolean abilityGate() {
     AbilityData ability = getData().ability();
@@ -2514,7 +2538,10 @@ public class CharacterEntity extends WorldEntity {
         != 0) {
       return false;
     }
-    if (ability.buff() != null || ability.onActivationAction() != null) {
+    if (ability.buff() != null
+        || ability.onActivationAction() != null
+        || ability.switchLanes()
+        || ability.activationSpawnCharacter() != null) {
       return true;
     }
     // An ability that only dashes waits for a reference within its dash range.
@@ -2544,8 +2571,9 @@ public class CharacterEntity extends WorldEntity {
    * Requests the unit's ability, as a friend collector does: with the gate open the unit enters the
    * casting state now, through its setter; shut, the ability is left pending, which the state
    * visit's pending branch turns into the cast on the first visit the gate opens. A unit without an
-   * ability does nothing. An ability that does more than run its activation action, or keeps a buff
-   * on a unit waiting to cast, is refused.
+   * ability does nothing. An ability whose columns the battle does not model, or that keeps a buff
+   * on a unit waiting to cast, is refused, and so is a lane switch for a row that stays visible
+   * while it routes across, which no reference holds.
    */
   public void requestAbility() {
     AbilityData ability = getData().ability();
@@ -2559,6 +2587,13 @@ public class CharacterEntity extends WorldEntity {
               + ability.name()
               + ", which sets columns the battle does not model: "
               + ability.unmodelledColumns());
+    }
+    if (ability.switchLanes() && getData().ingamePathfindVisible()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " casts "
+              + ability.name()
+              + " and stays visible as it routes across, which is not modelled");
     }
     boolean now = abilityGate();
     world.abilityRequested(this, now);
@@ -2583,9 +2618,10 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The ability's effect, on the visit its trigger delay reaches zero: its dash, with the unit able
    * to act; its activation action, scheduled on the unit, the unit as its cause, which from the
-   * post-hooks waits for the phase-3 pending pass; then its buff, applied to the unit itself for
-   * its time, at the unit's level, the unit its parent and its source. Its other effects are
-   * refused as it is requested.
+   * post-hooks waits for the phase-3 pending pass; its buff, applied to the unit itself for its
+   * time, at the unit's level, the unit its parent and its source; its lane switch, which ends the
+   * cast; then the character it leaves on the unit's spot. Its other effects are refused as it is
+   * requested.
    *
    * <p>The standard game runs the effect inside the state visit, where the rest of the visit sees a
    * dash's state; here it runs after the visit and before its tail gate, as the rest of the visit
@@ -2613,6 +2649,40 @@ public class CharacterEntity extends WorldEntity {
               side(),
               this);
     }
+    if (ability.switchLanes()) {
+      switchLanes();
+    }
+    if (ability.activationSpawnCharacter() != null) {
+      world.activationSpawn(this, ability.activationSpawnCharacter());
+    }
+  }
+
+  /**
+   * The lane switch: the unit is aimed at the mirror of its position across the arena's width, its
+   * own length kept, moved 250 inside the arena and off water by the relocation, and sent there in
+   * the in-game pathfinding state, its movement component switched on. Entering that state ends the
+   * cast, whose cast time never runs out. The unit does not move on this tick.
+   */
+  private void switchLanes() {
+    GridEntity view = getView();
+    int x = world.getGrid().getWidth() * TileMap.CELL_UNITS - view.getX();
+    int y = view.getY();
+    int packed =
+        Relocation.relocate(
+            world.getGrid().getWidth(),
+            world.getGrid().getHeight(),
+            x,
+            y,
+            -1,
+            world.getGrid()::water);
+    int toX = Relocation.unpackX(packed);
+    int toY = Relocation.unpackY(packed);
+    switchComponent(MOVEMENT_SLOT, true);
+    unit.movement().setExplicitX(toX);
+    unit.movement().setExplicitY(toY);
+    TargetView reference = unit.targeting().getReference();
+    setter.setState(view, GridEntityState.INGAME_PATHFIND);
+    world.lanesSwitched(this, x, y, toX, toY, reference);
   }
 
   /** Whether the standard game removes a unit's stuns before its ability dashes: so it does. */

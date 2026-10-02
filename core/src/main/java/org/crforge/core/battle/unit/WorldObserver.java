@@ -517,6 +517,36 @@ public interface WorldObserver {
   default void abilityRequested(int tick, CharacterEntity unit, boolean now) {}
 
   /**
+   * A unit's ability sent it across the arena: aimed at the mirror of its position, moved inside
+   * the arena and off water, and into the in-game pathfinding state.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param mirroredX the mirror of its position along the width
+   * @param mirroredY its position along the length
+   * @param toX the point it routes to, along the width
+   * @param toY the point it routes to, along the length
+   * @param reference the reference it held as it left, which it keeps, or null for none
+   */
+  default void lanesSwitched(
+      int tick,
+      CharacterEntity unit,
+      int mirroredX,
+      int mirroredY,
+      int toX,
+      int toY,
+      TargetView reference) {}
+
+  /**
+   * Projectiles aimed at a unit lost it as their target as it went into a pathfinding state.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param projectiles the names of the projectiles, in the live list's order
+   */
+  default void projectilesDropped(int tick, CharacterEntity unit, List<String> projectiles) {}
+
+  /**
    * A unit's ability fired: its trigger delay reached zero in its state visit.
    *
    * @param tick the battle tick

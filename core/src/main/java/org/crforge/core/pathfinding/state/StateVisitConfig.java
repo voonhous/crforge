@@ -94,6 +94,31 @@ public record StateVisitConfig(
   }
 
   /**
+   * This configuration with what a unit does as it arrives at a point its ability sent it to.
+   *
+   * @param endsInDeploy true for a unit that deploys again on arrival rather than walking on
+   */
+  public StateVisitConfig withIngamePathfindArrival(boolean endsInDeploy) {
+    return new StateVisitConfig(
+        deployTimeMs,
+        dashLandingTimeMs,
+        dashImmuneToDamageTimeMs,
+        flyingHeight,
+        endsInDeploy,
+        spawnPathfindMorph,
+        onIngamePathfindStopAction,
+        kamikaze,
+        kingTowerMiddle,
+        neutralObject,
+        hideBeforeFirstHit,
+        hidesWhenNotAttacking,
+        deployTimeAffectedByCharacterSpeed,
+        abilityPresent,
+        abilityHoldsState,
+        abilityStateFlags);
+  }
+
+  /**
    * This configuration with the row's hiding while it does not attack, whose deploy end runs its
    * targeting visit and whose every visit from then on runs its hide handler.
    *

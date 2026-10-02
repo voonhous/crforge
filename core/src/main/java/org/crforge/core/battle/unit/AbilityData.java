@@ -5,8 +5,9 @@ import lombok.Builder;
 
 /**
  * A unit's ability row as the battle reads it: how long a cast lasts and when its effect fires,
- * whether the unit keeps its target while it casts, the action it runs and the buff it gives itself
- * as it fires, and what a champion's controller reads: its cost, its cooldown and its charges.
+ * whether the unit keeps its target while it casts, the action it runs, the buff it gives itself,
+ * the lane switch and the character it leaves behind as it fires, and what a champion's controller
+ * reads: its cost, its cooldown and its charges.
  *
  * <p>A request for the ability takes the unit into the casting state. The cast time and the trigger
  * delay are counted in whole ticks from there, each the column's milliseconds divided by 50; the
@@ -29,6 +30,10 @@ import lombok.Builder;
  * @param dashTargetFurthest true when the dash takes the furthest target in its reach rather than
  *     the nearest
  * @param pendingBuff the buff a unit waiting to cast its dash carries, or null
+ * @param switchLanes true for an ability that sends the unit across the arena to the mirror of its
+ *     position, routing there in the in-game pathfinding state
+ * @param activationSpawnCharacter the row of the character the ability leaves on the unit's spot as
+ *     it fires, or null for none
  * @param unmodelledColumns the columns that make the ability do more than run its activation action
  *     and buff the unit itself, or keep a buff on a unit waiting to cast, which the battle does not
  *     model; a request for such an ability is refused
@@ -49,6 +54,8 @@ public record AbilityData(
     int dashRange,
     boolean dashTargetFurthest,
     String pendingBuff,
+    boolean switchLanes,
+    String activationSpawnCharacter,
     List<String> unmodelledColumns) {
 
   public AbilityData {

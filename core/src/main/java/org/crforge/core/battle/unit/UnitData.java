@@ -63,6 +63,12 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     once
  * @param spawnPathfindMorph the row a unit that walks to its placement morphs into as it arrives,
  *     or null for none
+ * @param ingamePathfindSpeed the speed, in game units per tick, of a unit routing to a point its
+ *     ability sent it to; 0 for none
+ * @param ingamePathfindVisible true for a unit that stays visible, and pushable, while it routes to
+ *     such a point
+ * @param ingamePathfindStopDeploys true for a unit that deploys again as it arrives at such a
+ *     point, rather than walking on at once
  * @param spawnAreaObject the area effect the unit makes each time it enters the deploying state
  *     through its setter, or null for none
  * @param spawnPushback the radius of the push the unit makes each time it enters the deploying
@@ -267,6 +273,9 @@ public record UnitData(
     boolean flyDirectPaths,
     int spawnPathfindSpeed,
     String spawnPathfindMorph,
+    int ingamePathfindSpeed,
+    boolean ingamePathfindVisible,
+    boolean ingamePathfindStopDeploys,
     String spawnAreaObject,
     int spawnPushback,
     int spawnPushbackRadius,
