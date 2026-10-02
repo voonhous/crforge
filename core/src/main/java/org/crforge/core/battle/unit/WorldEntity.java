@@ -12,6 +12,7 @@ import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.DamageType;
@@ -98,7 +99,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " slot summing the damage of the shots on their way and raising the duration to a"
             + " shot's flight rounded up to 50 ms, at most 1000, and the level the pending-damage"
             + " rule reads the row's full hit points at, held by the battle references' re-locks"
-            + " and drops, the rounding, the raise, the cap and the level by unit tests alone.")
+            + " and drops, the rounding, the raise, the cap and the level by unit tests alone."
+            + " Once an air-to-ground run has held it, the pre-hook folds the height changes"
+            + " pushed since the last one into its height offset and reads its layer from its"
+            + " tag word and live height, held by vines_group and vines_tower; FORCE_IS_AIR on"
+            + " such an entity is refused.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -1007,6 +1012,105 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     GridEntity view = getView();
     view.setFlags(view.getPendingFlags() | actionTags() | rowTags());
     view.setPendingFlags(0);
+    if (layered) {
+      foldLayer();
+    }
+  }
+
+  /**
+   * True once an air-to-ground run has started on the entity: from then on its pre-hook folds the
+   * height changes pushed since the last one and reads its layer from its tag word.
+   */
+  private boolean layered;
+
+  /** The height changes pushed since the last pre-hook, in order. */
+  private final List<Integer> heightPushes = new ArrayList<>();
+
+  /**
+   * The pre-hook's fold for an entity an air-to-ground run has held: for one with a movement
+   * component the pushed changes become its height offset - their sum, clamped so the live height
+   * stays between 0 and its base height, and 0 with none pushed - and its layer is read again from
+   * its tag word and its live height. Its push height is its live height.
+   */
+  private void foldLayer() {
+    GridEntity view = getView();
+    if ((view.getFlags() & world.forceIsAir()) != 0) {
+      throw new UnsupportedOperationException(
+          name() + " carries FORCE_IS_AIR, whose layer is not modelled");
+    }
+    if (hasMovementComponent()) {
+      int base = view.getZ();
+      int total = 0;
+      for (int delta : heightPushes) {
+        total += delta;
+      }
+      // Every push's floor is 0: the live height stays between 0 and the base height.
+      int up = Math.max(0, base) - base;
+      int down = Math.min(0, base) - base;
+      view.setHeightOffset(Math.max(Math.min(total, up), down));
+    }
+    heightPushes.clear();
+    view.setZTotal(view.getZ() + view.getHeightOffset());
+    view.setAir(layerAir());
+  }
+
+  /**
+   * The entity's layer as its tag word and its live height give it: with both force tags, in the
+   * air above height 0; with FORCE_IS_AIR alone in the air, with FORCE_IS_GROUND alone on the
+   * ground; with neither, in the air when its row flies.
+   */
+  private boolean layerAir() {
+    long flags = getView().getFlags();
+    boolean air = (flags & world.forceIsAir()) != 0;
+    boolean ground = (flags & world.forceIsGround()) != 0;
+    if (air && ground) {
+      return getView().getZ() + getView().getHeightOffset() > 0;
+    }
+    if (air || ground) {
+      return air;
+    }
+    return data.flyingHeight() > 0;
+  }
+
+  /** Whether the entity has a movement component, switched on or not. */
+  boolean hasMovementComponent() {
+    return component(CharacterEntity.MOVEMENT_SLOT) != null;
+  }
+
+  /** Pushes a change of height, which the next pre-hook folds into the height offset. */
+  void pushHeight(int delta) {
+    heightPushes.add(delta);
+  }
+
+  /** Raises FORCE_IS_GROUND for one step: in the tag word from the next pre-hook. */
+  void raiseForceIsGround() {
+    getView().setPendingFlags(getView().getPendingFlags() | world.forceIsGround());
+  }
+
+  /** The battle the entity belongs to. */
+  BattleWorld world() {
+    return world;
+  }
+
+  /**
+   * Starts an air-to-ground run on the entity, listed by the holder. A clone, a hovering unit, and
+   * a unit that rides another or carries riders are refused.
+   */
+  @Override
+  public ActionInstance airToGround(AirToGround action, int phase) {
+    if (data.hovering()
+        || this instanceof CharacterEntity unit
+            && (unit.isClone() || unit.getParent() != null || !unit.riders().isEmpty())) {
+      throw new UnsupportedOperationException(
+          action.name()
+              + " holds "
+              + name()
+              + ", a clone, a hovering unit, a rider or a carrier, which is not modelled");
+    }
+    layered = true;
+    AirToGroundRun run = new AirToGroundRun(action, this);
+    world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
+    return run;
   }
 
   /** The tags of every action the entity lists, finished ones included. */

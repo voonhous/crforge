@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
@@ -3544,6 +3545,60 @@ public class BattleWorld implements HolderPasses {
   void cloneMoveEnded(CharacterEntity unit, boolean resumed) {
     for (WorldObserver observer : observers) {
       observer.cloneMoveEnded(tick, unit, resumed);
+    }
+  }
+
+  /** The battle tick of the entity tick in progress. */
+  public int tick() {
+    return tick;
+  }
+
+  /** The bit of FORCE_IS_GROUND in an entity's tag word, as the data numbers the game tags. */
+  long forceIsGround() {
+    return actions.tagMask("FORCE_IS_GROUND");
+  }
+
+  /** The bit of FORCE_IS_AIR in an entity's tag word, as the data numbers the game tags. */
+  long forceIsAir() {
+    return actions.tagMask("FORCE_IS_AIR");
+  }
+
+  void selectorStarted(AreaEffectEntity areaEffect, String action, int phase, List<Integer> due) {
+    for (WorldObserver observer : observers) {
+      observer.selectorStarted(tick, areaEffect, action, phase, due);
+    }
+  }
+
+  void selectorStepped(AreaEffectEntity areaEffect, String action, ShapeSelector.Step step) {
+    for (WorldObserver observer : observers) {
+      observer.selectorStepped(tick, areaEffect, action, step);
+    }
+  }
+
+  void airToGroundStarted(
+      WorldEntity unit, String action, int phase, int phaseNow, int counter, int height) {
+    for (WorldObserver observer : observers) {
+      observer.airToGroundStarted(tick, unit, action, phase, phaseNow, counter, height);
+    }
+  }
+
+  void airToGroundStepped(
+      WorldEntity unit,
+      int phaseBefore,
+      int phaseAfter,
+      int counterBefore,
+      int counterAfter,
+      boolean done,
+      List<Integer> pushes) {
+    for (WorldObserver observer : observers) {
+      observer.airToGroundStepped(
+          tick, unit, phaseBefore, phaseAfter, counterBefore, counterAfter, done, pushes);
+    }
+  }
+
+  void airToGroundRetriggered(WorldEntity unit, String action, int phase, int counter) {
+    for (WorldObserver observer : observers) {
+      observer.airToGroundRetriggered(tick, unit, action, phase, counter);
     }
   }
 

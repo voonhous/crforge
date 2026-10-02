@@ -90,6 +90,28 @@ public interface ActionOwner {
   }
 
   /**
+   * What a shape selector's run asks of the battle around the owner. Only an area effect runs one.
+   *
+   * @return the owner's answers
+   */
+  default ShapeSelectorHost shapeSelectorHost() {
+    throw new UnsupportedOperationException(
+        "a shape selector on an owner other than an area effect is not modelled");
+  }
+
+  /**
+   * Starts an air-to-ground run on the owner, which only a character or a tower takes.
+   *
+   * @param action the row
+   * @param phase the pending pass it starts in
+   * @return the run
+   */
+  default ActionInstance airToGround(AirToGround action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " holds an owner that is neither a character nor a tower, not modelled");
+  }
+
+  /**
    * What a laser ball's run asks of the battle around the owner. Only an area effect runs one.
    *
    * @return the owner's answers

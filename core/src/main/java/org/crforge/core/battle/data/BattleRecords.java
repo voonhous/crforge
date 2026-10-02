@@ -81,6 +81,7 @@ public final class BattleRecords {
   private static final String GAME_OBJECT_FILTERS = "game_object_filters";
   private static final String AREA_EFFECT_OBJECTS = "area_effect_objects";
   private static final String CHARACTER_BUFFS = "character_buffs";
+  private static final String SHAPES = "shapes";
 
   /** The columns of a buff the battle reads. */
   private static final Set<String> MODELLED_BUFF_COLUMNS =
@@ -119,9 +120,13 @@ public final class BattleRecords {
           "OtherBuffDeathSpawnAllowed",
           "LockTarget",
           "AddAsIndividualBuff",
-          // Read only by the apply, to keep the buff off a unit's riders; a buff on a rider or on
-          // a unit that carries riders is refused as it is applied.
-          "Clone");
+          // Read only by the apply, to keep the buff off a unit's riders, or to hand them another;
+          // a buff on a rider or on a unit that carries riders is refused as it is applied.
+          "Clone",
+          "AttachedInheritAs",
+          // Resolved when the tables are derived: a row that names a base already carries every
+          // column it inherits.
+          "Base");
 
   /** The columns of a buff that only show something: its effects, icons, filters and sounds. */
   private static final Set<String> PRESENTATION_BUFF_COLUMNS =
@@ -844,6 +849,24 @@ public final class BattleRecords {
         .includeCharactersWithData(Set.copyOf(row.strings("IncludeCharactersWithData")))
         .excludeCharactersWithData(Set.copyOf(row.strings("ExcludeCharactersWithData")))
         .build();
+  }
+
+  /**
+   * The radius of a shape row that is a circle. A shape of any other class, or none, is refused.
+   *
+   * @param name the shape row's name
+   */
+  public int circleRadius(String name) {
+    GameTable table = tables.table(SHAPES);
+    if (!table.has(name)) {
+      throw new UnsupportedOperationException("the shape " + name + " is not modelled");
+    }
+    GameRow row = table.row(name);
+    if (!row.string("ClassType").equals("Circle")) {
+      throw new UnsupportedOperationException(
+          "the shape " + name + " is a " + row.string("ClassType") + ", which is not modelled");
+    }
+    return row.intValue("Radius");
   }
 
   /** The bits of game tags written as names separated by commas; none for an empty text. */

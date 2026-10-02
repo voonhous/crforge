@@ -13,6 +13,8 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LaserBallHost;
+import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
@@ -842,6 +844,59 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /** An area effect has no hit points, so it counts as alive. */
+  /**
+   * What a shape selector's run on the area effect asks of the battle: the battle tick, the circle
+   * around its point that tests buildings by their squares, an object's hit points and shield, and
+   * the actions it schedules on what it picked, each built for that object, the area effect its
+   * cause.
+   */
+  @Override
+  public ShapeSelectorHost shapeSelectorHost() {
+    return new ShapeSelectorHost() {
+      @Override
+      public int tick() {
+        return world.tick();
+      }
+
+      @Override
+      public List<Integer> collect(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.shapeQuery(AreaEffectEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public int score(int id, int mode) {
+        HitPoints hitPoints = ((WorldEntity) world.liveObject(id)).getHitPoints();
+        if (hitPoints == null) {
+          return 0;
+        }
+        return mode == ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS
+            ? hitPoints.getHitPoints() + hitPoints.getShield()
+            : hitPoints.getHitPoints();
+      }
+
+      @Override
+      public void schedule(int targetId, String action) {
+        WorldEntity target = (WorldEntity) world.liveObject(targetId);
+        BattleAction built = world.getActions().build(action, world.binding(target));
+        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder);
+      }
+
+      @Override
+      public void selectorStarted(ShapeSelector action, int phase, List<Integer> due) {
+        world.selectorStarted(AreaEffectEntity.this, action.name(), phase, due);
+      }
+
+      @Override
+      public void selectorStepped(ShapeSelector action, ShapeSelector.Step step) {
+        world.selectorStepped(AreaEffectEntity.this, action.name(), step);
+      }
+    };
+  }
+
   /**
    * What a laser ball's run on the area effect asks of the battle: the object query around its
    * point that tests buildings by their squares, and the actions it schedules on what it found,

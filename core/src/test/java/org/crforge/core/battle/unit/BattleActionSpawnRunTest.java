@@ -18,11 +18,13 @@ import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.InertAction;
+import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -305,6 +307,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the middle one for four and for three, and the tower takes its per-hit column. Each is held to
  * the laser ball's start and every fire, with what it found and the timer, and to the princess
  * tower's runs as to a unit's.
+ *
+ * <p>{@code vines_group} casts Vines over a Giant, a Knight and a Minion: its selector picks them
+ * by hit points on three ticks, and the Minion, pulled down to the ground, is taken and killed by a
+ * Knight that attacks only ground units. {@code vines_tower} casts it over a princess tower and a
+ * Knight: the snared tower shoots nothing until the snare goes, and the third pick finds nobody.
+ * Each is held to every selector step and every air-to-ground run's phase change.
  */
 class BattleActionSpawnRunTest {
 
@@ -433,7 +441,9 @@ class BattleActionSpawnRunTest {
         "goblin_curse_knights",
         "goblin_demolisher_knight",
         "dark_magic_knight",
-        "dark_magic_group"
+        "dark_magic_group",
+        "vines_group",
+        "vines_tower"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -709,7 +719,12 @@ class BattleActionSpawnRunTest {
                     .setListener(listener(unit.name(), currentTick, actions, dropping));
               }
             });
-    // An area effect's own runs are listed like any owner's, from its creation.
+    // Every shape selector's start, step and removal, and every air-to-ground run's start, phase
+    // change, finish and re-trigger.
+    List<String> vinesLog = new ArrayList<>();
+    match.getWorld().addObserver(vinesLog(match, currentTick, vinesLog));
+    // An area effect's own runs are listed like any owner's, from its creation; the removal of a
+    // shape selector's run joins the selectors' log.
     match
         .getWorld()
         .addObserver(
@@ -717,7 +732,30 @@ class BattleActionSpawnRunTest {
               @Override
               public void areaEffectCreated(
                   int tick, AreaEffectEntity a, String how, String source) {
-                a.actionHolder().setListener(listener(a.name(), currentTick, actions, dropping));
+                ActionHolder.Listener runs = listener(a.name(), currentTick, actions, dropping);
+                a.actionHolder()
+                    .setListener(
+                        new ActionHolder.Listener() {
+                          @Override
+                          public void starting(BattleAction action, int phase, boolean queued) {
+                            runs.starting(action, phase, queued);
+                          }
+
+                          @Override
+                          public void dropped(BattleAction action, int ticksLeft) {
+                            runs.dropped(action, ticksLeft);
+                          }
+
+                          @Override
+                          public void removed(ActionInstance instance) {
+                            if (instance.getAction() instanceof ShapeSelector) {
+                              vinesLog.add(
+                                  "%d selector_removed %s %s"
+                                      .formatted(
+                                          currentTick[0], a.name(), instance.getAction().name()));
+                            }
+                          }
+                        });
               }
             });
     match
@@ -1325,6 +1363,9 @@ class BattleActionSpawnRunTest {
     assertThat(berserkLog)
         .as("every start and notice of a Berserker's index toggle")
         .containsExactlyElementsOf(expectedBerserkLog(reference));
+    assertThat(vinesLog)
+        .as("every shape selector's start, step and removal, and every air-to-ground run")
+        .containsExactlyElementsOf(expectedVinesLog(reference));
     assertThat(laserLog)
         .as("every laser ball's start and fire, and every life-end action scheduled")
         .containsExactlyElementsOf(expectedLaserLog(reference));
@@ -2573,6 +2614,181 @@ class BattleActionSpawnRunTest {
       }
     }
     return expected;
+  }
+
+  /**
+   * Logs every shape selector's start with its due ticks, every step that queried or finished, with
+   * what it found, the scores, the picks, the entries that picked nobody and the picks and due
+   * ticks before and after, and every air-to-ground run's start, phase change, finish and
+   * re-trigger, with its pushes. Objects are named as they stand.
+   */
+  private static WorldObserver vinesLog(
+      Standard1v1Battle match, int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      private String named(int id) {
+        return ((WorldEntity) match.getWorld().liveObject(id)).name();
+      }
+
+      @Override
+      public void selectorStarted(
+          int tick, AreaEffectEntity areaEffect, String action, int phase, List<Integer> due) {
+        log.add(
+            "%d selector_start %s %s phase %d due %s"
+                .formatted(currentTick[0], areaEffect.name(), action, phase, due));
+      }
+
+      @Override
+      public void selectorStepped(
+          int tick, AreaEffectEntity areaEffect, String action, ShapeSelector.Step step) {
+        log.add(
+            "%d selector_update %s found %s scores %s chosen %s empty %s none %s finished %s hit %s"
+                    .formatted(
+                        currentTick[0],
+                        areaEffect.name(),
+                        step.found().stream().map(this::named).toList(),
+                        step.scores().stream().map(p -> named(p[0]) + "=" + p[1]).toList(),
+                        step.chosen().stream().map(p -> p[0] + "=" + named(p[1])).toList(),
+                        step.empty(),
+                        step.none(),
+                        step.finished(),
+                        step.hit().stream().map(this::named).toList())
+                + " before due %s hit %s".formatted(step.dueBefore(), step.hitBefore()));
+      }
+
+      @Override
+      public void airToGroundStarted(
+          int tick,
+          WorldEntity unit,
+          String action,
+          int phase,
+          int runPhase,
+          int counter,
+          int height) {
+        log.add(
+            "%d air_start %s %s phase %d counter %d height %d"
+                .formatted(currentTick[0], unit.name(), action, runPhase, counter, height));
+      }
+
+      @Override
+      public void airToGroundStepped(
+          int tick,
+          WorldEntity unit,
+          int phaseBefore,
+          int phaseAfter,
+          int counterBefore,
+          int counterAfter,
+          boolean done,
+          List<Integer> pushes) {
+        log.add(
+            "%d air_phase %s phase %d %d counter %d %d done %s pushes %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    phaseBefore,
+                    phaseAfter,
+                    counterBefore,
+                    counterAfter,
+                    done,
+                    pushes));
+      }
+
+      @Override
+      public void airToGroundRetriggered(
+          int tick, WorldEntity unit, String action, int phase, int counter) {
+        log.add(
+            "%d air_retrigger %s %s phase %d counter %d"
+                .formatted(currentTick[0], unit.name(), action, phase, counter));
+      }
+    };
+  }
+
+  /** The reference's shape selectors and air-to-ground runs, in the selectors' log layout. */
+  private static List<String> expectedVinesLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode v : reference.path("vines")) {
+      int tick = v.get("tick").asInt();
+      switch (v.get("event").asText()) {
+        case "selector_start" ->
+            expected.add(
+                "%d selector_start %s %s phase %d due %s"
+                    .formatted(
+                        tick,
+                        v.get("owner").asText(),
+                        v.get("action").asText(),
+                        v.get("phase").asInt(),
+                        ints(v.get("due"))));
+        case "selector_update" -> {
+          List<String> scores = new ArrayList<>();
+          v.get("scores").forEach(p -> scores.add(p.get(0).asText() + "=" + p.get(1).asInt()));
+          List<String> chosen = new ArrayList<>();
+          v.get("chosen").forEach(p -> chosen.add(p.get(0).asInt() + "=" + p.get(1).asText()));
+          expected.add(
+              "%d selector_update %s found %s scores %s chosen %s empty %s none %s finished %s hit %s"
+                      .formatted(
+                          tick,
+                          v.get("owner").asText(),
+                          texts(v.get("found")),
+                          scores,
+                          chosen,
+                          v.get("empty").asBoolean(),
+                          ints(v.get("none")),
+                          v.get("finished").asBoolean(),
+                          texts(v.get("hit")))
+                  + " before due %s hit %s"
+                      .formatted(
+                          ints(v.get("before").get("due")), ints(v.get("before").get("hit"))));
+        }
+        case "selector_removed" ->
+            expected.add(
+                "%d selector_removed %s %s"
+                    .formatted(tick, v.get("owner").asText(), v.get("action").asText()));
+        case "air_start" ->
+            expected.add(
+                "%d air_start %s %s phase %d counter %d height %d"
+                    .formatted(
+                        tick,
+                        v.get("unit").asText(),
+                        v.get("action").asText(),
+                        v.get("phase").asInt(),
+                        v.get("counter").asInt(),
+                        v.get("height").asInt()));
+        case "air_phase" ->
+            expected.add(
+                "%d air_phase %s phase %d %d counter %d %d done %s pushes %s"
+                    .formatted(
+                        tick,
+                        v.get("unit").asText(),
+                        v.get("phase").get(0).asInt(),
+                        v.get("phase").get(1).asInt(),
+                        v.get("counter").get(0).asInt(),
+                        v.get("counter").get(1).asInt(),
+                        v.get("done").asBoolean(),
+                        ints(v.get("pushes"))));
+        case "air_retrigger" ->
+            expected.add(
+                "%d air_retrigger %s %s phase %d counter %d"
+                    .formatted(
+                        tick,
+                        v.get("unit").asText(),
+                        v.get("action").asText(),
+                        v.get("phase").asInt(),
+                        v.get("counter").asInt()));
+        default -> throw new IllegalArgumentException("unknown vines event " + v);
+      }
+    }
+    return expected;
+  }
+
+  private static List<Integer> ints(JsonNode values) {
+    List<Integer> out = new ArrayList<>();
+    values.forEach(value -> out.add(value.asInt()));
+    return out;
+  }
+
+  private static List<String> texts(JsonNode values) {
+    List<String> out = new ArrayList<>();
+    values.forEach(value -> out.add(value.asText()));
+    return out;
   }
 
   /** The reference's Berserker index toggles, in the Berserker log's layout. */

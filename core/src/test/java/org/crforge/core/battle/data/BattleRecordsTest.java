@@ -753,6 +753,25 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "a circle shape reads its radius, and any other shape is refused; Vines' snares, which name"
+          + " a base and a buff for riders, are modelled")
+  void vinesShapeAndSnares() {
+    assertThat(records.circleRadius("Vines_AOE_Shape")).isEqualTo(2500);
+    assertThatThrownBy(() -> records.circleRadius("MegaMinion_hero_shape"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("is a Global");
+    BuffData snare = records.buff("Vines_Trap_Snare_Large");
+    assertThat(snare.unmodelledColumns()).isEmpty();
+    assertThat(snare.speedMultiplier()).isEqualTo(-100);
+    assertThat(snare.hitSpeedMultiplier()).isEqualTo(-100);
+    assertThat(snare.spawnSpeedMultiplier()).isEqualTo(-100);
+    assertThat(snare.damagePerSecond()).isEqualTo(60);
+    assertThat(snare.crownTowerDamagePerHit()).isEqualTo(15);
+    assertThat(snare.enableStacking()).isTrue();
+  }
+
+  @Test
   @DisplayName("a game mode's battle timeline, a card's cost and hand columns, and a global")
   void matchRows() {
     BattleTimeline ladder = records.gameModeTimeline("Ladder");
