@@ -6,14 +6,16 @@ import org.crforge.core.fidelity.FidelityStatus;
 /**
  * A spawn row of the buff type: it puts its buff on its owner for its spawn time, at the level and
  * for the side of the entity that caused it, that entity as the buff's source; with no cause, the
- * owner's own. It does not last.
+ * owner's own. A buff written inline is the buff row of its Name. It does not last.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Held by clone_golem_group: the Clone's buff on the unit it clones, from the Clone; and by"
             + " goblin_curse_knights: the curse and its damage over time on every enemy the base's"
-            + " hit reaches, from the base, refreshed every tick. Refused"
+            + " hit reaches, from the base, refreshed every tick; and by dark_magic_knight and"
+            + " dark_magic_group: a buff written inline, from the area effect whose laser ball"
+            + " scheduled it on each target, at its level. Refused"
             + " as the row is built: a buff its parent controls, a source taken from the owner's"
             + " parent, and a spawn time below 1.")
 public final class SpawnBuff extends RowAction {

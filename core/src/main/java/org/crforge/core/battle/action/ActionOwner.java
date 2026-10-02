@@ -90,6 +90,16 @@ public interface ActionOwner {
   }
 
   /**
+   * What a laser ball's run asks of the battle around the owner. Only an area effect runs one.
+   *
+   * @return the owner's answers
+   */
+  default LaserBallHost laserBallHost() {
+    throw new UnsupportedOperationException(
+        "a laser ball on an owner other than an area effect is not modelled");
+  }
+
+  /**
    * What a Goblin Hut's life state asks of the battle around the owner.
    *
    * @return the owner's answers

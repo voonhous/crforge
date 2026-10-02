@@ -22,6 +22,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.SpawnBuff;
@@ -80,23 +81,75 @@ class ActionRowsTest {
   }
 
   @Test
-  @DisplayName(
-      "a Clone's action clones for its default duration and spawns its buff first; a buff spawn"
-          + " written inline is refused")
+  @DisplayName("a Clone's action clones for its default duration and spawns its buff first")
   void theCloneRows() {
     BattleAction clone = GameData.actions().build("CloneAction", INERT_BINDING);
     assertThat(clone).isInstanceOf(Clone.class);
     assertThat(((Clone) clone).getCloneDurationMs()).isEqualTo(500);
     assertThat(GameData.actions().build("SpawnCloneBufAction", INERT_BINDING))
         .isInstanceOf(SpawnBuff.class);
-    assertThatThrownBy(
-            () ->
-                GameData.actions()
-                    .build(
-                        "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList0",
-                        INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("written inline");
+  }
+
+  @Test
+  @DisplayName(
+      "Dark Magic's laser ball reads its query, its rate and its three buff spawns, each written"
+          + " inline, and its count picks the first list at or above it, else the last")
+  void aLaserBallIsBuilt() {
+    BattleAction built =
+        GameData.actions().build("DarkMagicAOE_OnStartingAction_SubActions1", INERT_BINDING);
+    assertThat(built).isInstanceOf(LaserBall.class);
+    LaserBall laser = (LaserBall) built;
+    LaserBall.Columns columns = laser.getColumns();
+    assertThat(columns.detectionRadius()).isEqualTo(2500);
+    assertThat(columns.firstHitDelayMs()).isEqualTo(1000);
+    assertThat(columns.hitFrequencyMs()).isEqualTo(1000);
+    assertThat(columns.hitFilter()).isNotNull();
+    assertThat(columns.maxUnitPerActionList()).containsExactly(1, 4);
+    assertThat(columns.onDetectedUnitActionList())
+        .allSatisfy(action -> assertThat(action).isInstanceOf(SpawnBuff.class))
+        .extracting(BattleAction::name)
+        .containsExactly(
+            "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList0",
+            "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList1",
+            "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList2");
+    assertThat(columns.onDetectedUnitActionList().get(0).nextAction().name())
+        .isEqualTo(
+            "DarkMagicAOE_OnStartingAction_SubActions1_OnDetectedUnitActionList0_NextAction");
+    assertThat(List.of(0, 1, 2, 3, 4, 5, 9).stream().map(laser::pick).toList())
+        .containsExactly(0, 0, 1, 1, 1, 2, 2);
+  }
+
+  @Test
+  @DisplayName(
+      "a laser ball that keeps its detection, resets it after a hit, cools down after one, runs a"
+          + " list on its owner or has no filter is refused")
+  void aLaserBallIsRefused(@TempDir Path folder) throws IOException {
+    String row = "DarkMagicAOE_OnStartingAction_SubActions1";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "PermanentDetection", f -> f.put("PermanentDetection", true),
+            "ResetDetetcedUnitsAfterHit", f -> f.put("ResetDetetcedUnitsAfterHit", true),
+            "DetectionCooldownAfterHit", f -> f.put("DetectionCooldownAfterHit", 500),
+            "OnAttackActionList",
+                f ->
+                    f.putArray("OnAttackActionList")
+                        .addObject()
+                        .put("action", "DarkMagicAOE_OnLifeTimeEndAction"),
+            "a filter", f -> f.remove("HitFilter"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
   }
 
   @Test
@@ -490,12 +543,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 605 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 610 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(605);
+    assertThat(built).as("rows built").isEqualTo(610);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 166, "column", 160, "spawn type", 15));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 164, "column", 160, "spawn type", 12));
   }
 }

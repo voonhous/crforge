@@ -51,6 +51,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     the hit points to; 0 for the maximum
  * @param lockTarget true when, while it is listed, its carrier's selector keeps the reference the
  *     carrier holds
+ * @param addAsIndividualBuff true when every application lists a new instance, refreshing none
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -88,6 +89,7 @@ public record BuffData(
     int healPerSecond,
     int allowedOverHealPercent,
     boolean lockTarget,
+    boolean addAsIndividualBuff,
     List<String> unmodelledColumns) {
 
   public BuffData {

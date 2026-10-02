@@ -724,6 +724,35 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "Dark Magic's starting and life-end actions, written inline, are the actions table's rows"
+          + " named after the area effect and the column")
+  void darkMagicsInlineActions() {
+    AreaEffectData darkMagic = records.areaEffect("DarkMagicAOE");
+    assertThat(darkMagic.onStartingAction()).isEqualTo("DarkMagicAOE_OnStartingAction");
+    assertThat(darkMagic.onLifeTimeEndAction()).isEqualTo("DarkMagicAOE_OnLifeTimeEndAction");
+    assertThat(darkMagic.unmodelledColumns()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a buff a spawn row writes inline is read as a buff row of its Name, adding itself as an"
+          + " individual buff")
+  void anInlineBuff() {
+    BuffData strongest = records.buff("DarkMagicAOE_Damage_lv3");
+    assertThat(strongest.damagePerSecond()).isEqualTo(1330);
+    assertThat(strongest.crownTowerDamagePerHit()).isEqualTo(19);
+    assertThat(strongest.hitFrequency()).isEqualTo(100);
+    assertThat(strongest.addAsIndividualBuff()).isTrue();
+    assertThat(strongest.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("DarkMagicAOE_Damage_lv1").damagePerSecond()).isEqualTo(297);
+    assertThat(records.buff("Rage").addAsIndividualBuff()).isFalse();
+    assertThatThrownBy(() -> records.buff("DarkMagicAOE_Damage_lv4"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("no buff DarkMagicAOE_Damage_lv4");
+  }
+
+  @Test
   @DisplayName("a game mode's battle timeline, a card's cost and hand columns, and a global")
   void matchRows() {
     BattleTimeline ladder = records.gameModeTimeline("Ladder");

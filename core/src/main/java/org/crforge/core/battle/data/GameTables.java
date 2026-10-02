@@ -27,6 +27,10 @@ import java.util.stream.Stream;
  * <p>A table file holds a header - the table's name, id, data version and content hash - and its
  * rows by name in creation order, each with its index, its class and its columns. The action graph
  * holds every action row by name with its class, its ClassType and its fields.
+ *
+ * <p>A buff spawn row may write its buff inline, as a table of the buff's columns in place of a
+ * name. The game reads such a table as a buff row of the table's Name, the same as a row of the
+ * buffs table; these rows are kept by that name beside the buffs table.
  */
 public final class GameTables {
 
@@ -46,6 +50,9 @@ public final class GameTables {
   private final Map<String, GameTable> tables;
   private final Map<String, GameAction> actions;
 
+  /** The buff rows written inline in a buff spawn row, by their Name, in the graph's order. */
+  private final Map<String, GameRow> inlineBuffs;
+
   private GameTables(
       String version,
       String contentSha,
@@ -55,6 +62,7 @@ public final class GameTables {
     this.contentSha = contentSha;
     this.tables = tables;
     this.actions = actions;
+    this.inlineBuffs = inlineBuffs(actions);
   }
 
   /** The configured folder, or empty when neither the property nor the variable names one. */
@@ -177,6 +185,30 @@ public final class GameTables {
                         entry.getValue().path("fields"))));
   }
 
+  /**
+   * The buff rows the action graph writes inline: the SpawnData of every spawn row of the buff type
+   * that is a table rather than a name, as a row of the buffs' class named by its Name. Such a row
+   * has no place in the buffs table, so its index is -1.
+   */
+  private static Map<String, GameRow> inlineBuffs(Map<String, GameAction> actions) {
+    Map<String, GameRow> rows = new LinkedHashMap<>();
+    for (GameAction action : actions.values()) {
+      JsonNode data = action.fields().path("SpawnData");
+      if (!action.fields().path("SpawnType").asText().equals("BuffType") || !data.isObject()) {
+        continue;
+      }
+      String name = data.path("Name").asText("");
+      checkState(!name.isEmpty(), () -> action.name() + " writes its buff inline with no Name");
+      Map<String, JsonNode> columns = new LinkedHashMap<>();
+      data.fields().forEachRemaining(c -> columns.put(c.getKey(), c.getValue()));
+      rows.put(name, new GameRow(name, -1, INLINE_BUFF_CLASS, columns));
+    }
+    return rows;
+  }
+
+  /** The class of a buff row, which a buff written inline is too. */
+  private static final String INLINE_BUFF_CLASS = "LogicCharacterBuffData";
+
   /** The data version every table belongs to. */
   public String version() {
     return version;
@@ -202,6 +234,14 @@ public final class GameTables {
   /** The names of the action rows, in the order the data holds them. */
   public List<String> actionNames() {
     return new ArrayList<>(actions.keySet());
+  }
+
+  /**
+   * The buff row a buff spawn row writes inline under the given name, or null when no spawn row
+   * writes one of that name.
+   */
+  public GameRow inlineBuff(String name) {
+    return inlineBuffs.get(name);
   }
 
   /** The action row of the given name; fails when the data has none. */

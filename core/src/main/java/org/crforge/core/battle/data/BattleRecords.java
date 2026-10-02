@@ -118,6 +118,7 @@ public final class BattleRecords {
           "DeathSpawnDeployDelay",
           "OtherBuffDeathSpawnAllowed",
           "LockTarget",
+          "AddAsIndividualBuff",
           // Read only by the apply, to keep the buff off a unit's riders; a buff on a rider or on
           // a unit that carries riders is refused as it is applied.
           "Clone");
@@ -994,7 +995,9 @@ public final class BattleRecords {
   }
 
   /**
-   * An area effect as the battle reads it, from the area effect objects table.
+   * An area effect as the battle reads it, from the area effect objects table. A starting or
+   * life-end action written inline, as Dark Magic's are, is the actions table's row named after the
+   * area effect and the column.
    *
    * @param name the row's name
    */
@@ -1028,8 +1031,8 @@ public final class BattleRecords {
             .pushback(row.intValue("Pushback"))
             .maximumTargets(row.intValue("MaximumTargets"))
             .sharedDamage(row.bool("SharedDamage"))
-            .onStartingAction(actionName(row, "OnStartingAction"))
-            .onLifeTimeEndAction(actionName(row, "OnLifeTimeEndAction"))
+            .onStartingAction(inlineActionName(row, "OnStartingAction"))
+            .onLifeTimeEndAction(inlineActionName(row, "OnLifeTimeEndAction"))
             .buff(row.string("Buff").isEmpty() ? null : row.string("Buff"))
             .buffTimeMs(row.intValue("BuffTime"))
             .capBuffTimeToAreaEffectTime(row.bool("CapBuffTimeToAreaEffectTime"))
@@ -1127,15 +1130,16 @@ public final class BattleRecords {
   }
 
   /**
-   * A character buff as the battle reads it, from the character buffs table. Every column it sets
-   * that is neither read nor only shows something is listed as not modelled.
+   * A character buff as the battle reads it, from the character buffs table, or the buff row a buff
+   * spawn row writes inline under that name. Every column it sets that is neither read nor only
+   * shows something is listed as not modelled.
    *
    * @param name the row's name
    */
   public BuffData buff(String name) {
     GameTable table = tables.table(CHARACTER_BUFFS);
-    checkArgument(table.has(name), () -> "the game tables have no buff " + name);
-    GameRow row = table.row(name);
+    GameRow row = table.has(name) ? table.row(name) : tables.inlineBuff(name);
+    checkArgument(row != null, () -> "the game tables have no buff " + name);
     List<String> unmodelled = new ArrayList<>();
     for (String column : row.columns().keySet()) {
       if (!MODELLED_BUFF_COLUMNS.contains(column)
@@ -1179,6 +1183,7 @@ public final class BattleRecords {
         .healPerSecond(row.intValue("HealPerSecond"))
         .allowedOverHealPercent(row.intValue("AllowedOverHealPerc"))
         .lockTarget(row.bool("LockTarget"))
+        .addAsIndividualBuff(row.bool("AddAsIndividualBuff"))
         .unmodelledColumns(unmodelled)
         .build();
   }

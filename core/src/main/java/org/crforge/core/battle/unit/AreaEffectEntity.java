@@ -11,7 +11,10 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.LaserBall;
+import org.crforge.core.battle.action.LaserBallHost;
 import org.crforge.core.battle.data.ActionBinding;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnArguments;
@@ -73,6 +76,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * its parent stands on the point of the object it follows first thing in each update, and its life
  * ends as that object leaves. When the countdown reaches 0 its life-end action is scheduled on
  * itself; it leaves at the cleanup that finds the countdown below 1.
+ *
+ * <p>Its holder may run a laser ball, Dark Magic's, whose run asks the area effect for the objects
+ * around its point, testing buildings by their squares, and schedules what it picks on each of
+ * them, built for that object, the area effect as the cause.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -110,7 +117,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " such a hit action on an area effect no action made is refused. A taunt as its hit"
             + " action and the following of its parent, held by goblin_demolisher_knight; the"
             + " following of a moving object, one hit per target over several hits and the end"
-            + " as the followed object leaves are translated but held by no run.")
+            + " as the followed object leaves are translated but held by no run. Its starting and"
+            + " life-end actions written inline, a laser ball's run on its holder and the query"
+            + " it answers, held by dark_magic_knight and dark_magic_group; a building found by"
+            + " its square alone is held by BattleLaserBallTest.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -355,6 +365,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     }
     if (countdown <= 0 && data.onLifeTimeEndAction() != null) {
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
+      world.lifeTimeEndScheduled(this, ending.name());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
     }
   }
@@ -831,6 +842,60 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /** An area effect has no hit points, so it counts as alive. */
+  /**
+   * What a laser ball's run on the area effect asks of the battle: the object query around its
+   * point that tests buildings by their squares, and the actions it schedules on what it found,
+   * each built for that object, the area effect its cause.
+   */
+  @Override
+  public LaserBallHost laserBallHost() {
+    return new LaserBallHost() {
+      @Override
+      public List<Integer> detect(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.shapeQuery(AreaEffectEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public void schedule(int targetId, BattleAction action) {
+        WorldEntity target = (WorldEntity) world.liveObject(targetId);
+        BattleAction built = world.getActions().build(action.name(), world.binding(target));
+        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder);
+      }
+
+      @Override
+      public void laserStarted(LaserBall action, int phase, int timerMs) {
+        world.laserStarted(AreaEffectEntity.this, action.name(), phase, timerMs);
+      }
+
+      @Override
+      public void laserFired(
+          LaserBall action,
+          int count,
+          int index,
+          List<Integer> targets,
+          BattleAction scheduled,
+          int timerBefore,
+          int timerAfter) {
+        List<WorldEntity> objects = new ArrayList<>();
+        for (int id : targets) {
+          objects.add((WorldEntity) world.liveObject(id));
+        }
+        world.laserFired(
+            AreaEffectEntity.this,
+            count,
+            index,
+            objects,
+            scheduled == null ? null : scheduled.name(),
+            timerBefore,
+            timerAfter);
+      }
+    };
+  }
+
   @Override
   public ActionOwner areaEffectParent() {
     return parent instanceof ActionOwner owner ? owner : null;

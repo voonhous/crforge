@@ -24,9 +24,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * nothing, and a crown tower nothing of one that spares them. Otherwise an instance of the same row
  * is refreshed instead of a second one listed: any instance of the row, or with stacking only the
  * one the same source applied, or for a buff specific to a player only one from the same side. A
- * refresh keeps the longer time, growing the whole by the difference, and the higher level. With
- * nothing to refresh a new instance is listed last, its level packed against the buff's rarity. A
- * buff with a death spawn that would make another with a death spawn give way is refused.
+ * refresh keeps the longer time, growing the whole by the difference, and the higher level. A buff
+ * added as an individual one, as Dark Magic's are, refreshes nothing. With nothing to refresh a new
+ * instance is listed last, its level packed against the buff's rarity. A buff with a death spawn
+ * that would make another with a death spawn give way is refused.
  *
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
  * ms and is removed once its time is 0; the damage and the heal over time due on the visit land
@@ -70,9 +71,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " earthquake_barbarians_tower and earthquake_tesla_overlap: hits that follow their"
             + " source area effect's age, one instance per source, a building's damage percent"
             + " and the damage over time on a hidden Tesla, and the source forgotten as its area"
-            + " effect leaves. Translated but held by"
-            + " no run: a player-specific refresh, the per-hit crown"
-            + " tower column, a crown tower's heal and a negative hit frequency. A death spawn is left by the dying carrier (see the battle's death slot),"
+            + " effect leaves. Held by dark_magic_knight and dark_magic_group: a 100 ms buff's one"
+            + " hit on its second visit and the per-hit crown tower column. Held by"
+            + " BattleLaserBallTest alone: a buff added as an individual one, which refreshes"
+            + " nothing. Translated but held by no run: a player-specific refresh, a crown"
+            + " tower's heal and a negative hit frequency. A death spawn is left by the dying carrier (see the battle's death slot),"
             + " held by witch_mother_skeletons; one giving way to another is refused. Refused by"
             + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
             + " shields, hit point and damage multipliers and damage reduction. Held by"
@@ -144,7 +147,8 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
-   * Applies a buff to the entity: refreshes the instances it matches, or lists a new one.
+   * Applies a buff to the entity: refreshes the instances it matches, or lists a new one; a buff
+   * added as an individual one matches none.
    *
    * @param buff the buff's row
    * @param time how long it lasts, in milliseconds
@@ -195,7 +199,8 @@ public final class BuffComponent implements BattleComponent {
     }
     int level = PackedLevel.pack(packedLevel, buff.rarity());
     boolean create = true;
-    for (int i = items.size() - 1; i >= 0; i--) {
+    // A buff added as an individual one matches nothing: every application lists a new instance.
+    for (int i = items.size() - 1; i >= 0 && !buff.addAsIndividualBuff(); i--) {
       BuffInstance instance = items.get(i);
       boolean same = instance.getBuff().name().equals(buff.name());
       boolean refresh;
