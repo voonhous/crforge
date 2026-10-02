@@ -14,6 +14,7 @@ import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
@@ -49,6 +50,7 @@ import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
+import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
@@ -258,6 +260,34 @@ public final class ActionRows {
                   "DistanceProportinalPush",
                   "PushBackDamage",
                   "HitFilter")),
+          // The lock, its timing and the warp row it schedules; the two speed bytes are read only
+          // to refuse a row with either clear.
+          Map.entry(
+              "ActionBossBanditAbility",
+              Set.of(
+                  "WarpDelay",
+                  "LockDelay",
+                  "ReleaseLockDelay",
+                  "WarpAction",
+                  "WaitForDashToFinish",
+                  "AllowWarpWhenMovementSpeedZero",
+                  "AllowWarpWhenAttackSpeedZero")),
+          // The instant warp's columns; the mode is read only to refuse every mode but the relative
+          // one, and the two effects only show something. The flying warp's columns, a target
+          // resolver and the warp's end action are refused as columns nothing reads.
+          Map.entry(
+              "ActionWarpCharacter",
+              Set.of(
+                  "WarpMode",
+                  "WarpX",
+                  "WarpY",
+                  "ResetPath",
+                  "ResetTarget",
+                  "AvoidWaterVertically",
+                  "AvoidBlockedTilesVertically",
+                  "ResetPendingDamageAtWarp",
+                  "WarpPositionEffect",
+                  "WarpTargetEffect")),
           // Its stats tags only fill the card's stats panel.
           Map.entry(
               "ActionTargetIndicatorAttack",
@@ -625,6 +655,8 @@ public final class ActionRows {
             case "ActionTaunt" -> taunt(name, shared, f);
             case "ActionLaserBall" -> laserBall(name, shared, f);
             case "ActionSpawnGuard" -> spawnGuard(name, shared, f);
+            case "ActionBossBanditAbility" -> bossBanditAbility(name, shared, f);
+            case "ActionWarpCharacter" -> warpCharacter(name, shared, f);
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
@@ -1084,6 +1116,80 @@ public final class ActionRows {
               .hitFilter(records.filter(f.get("HitFilter").asText()))
               .guardTags(tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"))
               .shadowTag(tagMask("NO_SHADOW"))
+              .build());
+    }
+
+    /**
+     * A Boss Bandit ability's columns: its warp and lock delays, the release delay, the warp row
+     * and whether it waits while its unit dashes. Refused: a row that sets tags, a singleton, a
+     * next action or a gate; one with either speed byte clear, whose speed scalers are not
+     * modelled; one without a warp row; and one whose release delay is below one step, which would
+     * finish in the warp's own step.
+     */
+    private BossBanditAbility bossBanditAbility(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "GameTagsToSet",
+          "Singleton",
+          "NextAction",
+          "ExecuteIfTrue",
+          "ActionPausedIfTrue",
+          "ForceStopIfTrue");
+      if (!bool(f, "AllowWarpWhenMovementSpeedZero") || !bool(f, "AllowWarpWhenAttackSpeedZero")) {
+        throw new UnsupportedOperationException(
+            name + " asks its unit's speeds before it warps, which is not modelled");
+      }
+      BattleAction warp = action(f.get("WarpAction"));
+      if (warp == null) {
+        throw new UnsupportedOperationException(name + " has no warp row, which is not modelled");
+      }
+      if (integer(f, "ReleaseLockDelay") < 1) {
+        throw new UnsupportedOperationException(
+            name + " releases its lock in the warp's own step, which is not modelled");
+      }
+      return new BossBanditAbility(
+          shared,
+          BossBanditAbility.Columns.builder()
+              .warpDelayMs(integer(f, "WarpDelay"))
+              .lockDelayMs(integer(f, "LockDelay"))
+              .releaseLockDelayMs(integer(f, "ReleaseLockDelay"))
+              .warpAction(warp)
+              // The loader defaults the dash wait to on.
+              .waitForDashToFinish(f.path("WaitForDashToFinish").asBoolean(true))
+              .build());
+    }
+
+    /**
+     * An instant warp's columns: its offset, the landing's avoidance and the resets after it, the
+     * four the loader defaults to on. Refused: a mode other than the relative one, and a row that
+     * sets tags, a singleton, a next action that waits for it, or a gate.
+     */
+    private WarpCharacter warpCharacter(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "GameTagsToSet",
+          "Singleton",
+          "NextActionWait",
+          "ExecuteIfTrue",
+          "ActionPausedIfTrue",
+          "ForceStopIfTrue");
+      String mode = f.path("WarpMode").asText("");
+      if (!mode.isEmpty() && !mode.equals("RelativeWarp")) {
+        throw new UnsupportedOperationException(
+            name + " warps in mode " + mode + ", which is not modelled");
+      }
+      return new WarpCharacter(
+          shared,
+          WarpCharacter.Columns.builder()
+              .warpX(integer(f, "WarpX"))
+              .warpY(integer(f, "WarpY"))
+              .resetPath(f.path("ResetPath").asBoolean(true))
+              .resetTarget(bool(f, "ResetTarget"))
+              .avoidWater(f.path("AvoidWaterVertically").asBoolean(true))
+              .avoidBlocked(f.path("AvoidBlockedTilesVertically").asBoolean(true))
+              .resetPendingDamage(f.path("ResetPendingDamageAtWarp").asBoolean(true))
               .build());
     }
 

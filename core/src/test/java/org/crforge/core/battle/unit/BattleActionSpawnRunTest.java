@@ -523,7 +523,9 @@ class BattleActionSpawnRunTest {
         "card_run_knight_pair",
         "card_run_baby_dragon_pair",
         "little_prince_ability_giant",
-        "little_prince_ability_knights"
+        "little_prince_ability_knights",
+        "boss_bandit_ability_tower",
+        "boss_bandit_ability_charges"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -794,6 +796,26 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(goblinsteinLog(currentTick, goblinsteinLog));
     List<String> guardLog = new ArrayList<>();
     match.getWorld().addObserver(guardLog(currentTick, guardLog));
+    // Every start and step of a Boss Bandit ability's run, and every warp.
+    List<String> warpLog = new ArrayList<>();
+    match.getWorld().addObserver(warpLog(currentTick, warpLog));
+    // Every tick a unit holds its own lock as the post-hooks end, which a Boss Bandit ability's run
+    // asks for as it starts and releases as it finishes.
+    List<String> selfLocks = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void afterPostHooks(
+                  int tick, List<WorldEntity> present, List<ProjectileEntity> projectiles) {
+                for (WorldEntity entity : present) {
+                  if (match.getWorld().locks().claim(entity.getId(), entity.getId(), 0)) {
+                    selfLocks.add(currentTick[0] + " " + entity.name());
+                  }
+                }
+              }
+            });
     // Every ask of an area effect's buff test of a clone, with the path that asked.
     List<String> cloneGateLog = new ArrayList<>();
     match.getWorld().addObserver(cloneGateLog(currentTick, cloneGateLog));
@@ -1482,6 +1504,12 @@ class BattleActionSpawnRunTest {
     assertThat(guardLog)
         .as("every guard made, and every step of a guard spawn's runs")
         .containsExactlyElementsOf(expectedGuardLog(reference));
+    assertThat(warpLog)
+        .as("every start and step of a Boss Bandit ability's run, and every warp")
+        .containsExactlyElementsOf(expectedWarpLog(reference));
+    assertThat(selfLocks)
+        .as("every tick a unit holds its own lock as the post-hooks end")
+        .containsExactlyElementsOf(expectedSelfLocks(reference));
     assertThat(championLog)
         .as("what the champion slots did, and every ability's buff")
         .containsExactlyElementsOf(expectedChampionLog(reference));
@@ -3303,6 +3331,160 @@ class BattleActionSpawnRunTest {
                 .formatted(currentTick[0], guard.name(), charging, tagNames(tags), done, calls));
       }
     };
+  }
+
+  /**
+   * Logs every start of a Boss Bandit ability's run, with its warp and lock ticks and the answers
+   * to its asks for the lock; every step that changed the run or asked again, with the unit's
+   * state; and every warp, with where the unit stood and landed, the reference it dropped and its
+   * state.
+   */
+  private static WorldObserver warpLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void bossBanditAbilityStarted(
+          int tick,
+          CharacterEntity unit,
+          String action,
+          int phase,
+          int warpTick,
+          int lockTick,
+          List<Boolean> requests) {
+        log.add(
+            "%d start %s %s %d warp %d lock %d requests %s"
+                .formatted(
+                    currentTick[0], unit.name(), action, phase, warpTick, lockTick, requests));
+      }
+
+      @Override
+      public void bossBanditAbilityStepped(
+          int tick, CharacterEntity unit, boolean locked, int releaseMs, List<String> calls) {
+        log.add(
+            "%d step %s locked %b release %d state %d calls %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    locked,
+                    releaseMs,
+                    unit.getView().getState(),
+                    calls));
+      }
+
+      @Override
+      public void warped(
+          int tick,
+          CharacterEntity unit,
+          String action,
+          int phase,
+          int fromX,
+          int fromY,
+          String referenceBefore) {
+        log.add(
+            "%d warp %s %s %d from %d %d to %d %d ref %s state %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    action,
+                    phase,
+                    fromX,
+                    fromY,
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    referenceBefore,
+                    unit.getView().getState()));
+      }
+    };
+  }
+
+  /**
+   * The reference's Boss Bandit ability log, in the warp log's layout. A warp that dropped a
+   * projectile's target is refused by the battle, so the reference must list none.
+   */
+  private static List<String> expectedWarpLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode b : reference.path("boss_bandit_ability")) {
+      int tick = b.get("tick").asInt();
+      switch (b.get("event").asText()) {
+        case "ability_start" -> {
+          List<Boolean> requests = new ArrayList<>();
+          b.get("lock_requests").forEach(r -> requests.add(r.asInt() == 1));
+          expected.add(
+              "%d start %s %s %d warp %d lock %d requests %s"
+                  .formatted(
+                      tick,
+                      b.get("owner").asText(),
+                      b.get("action").asText(),
+                      b.get("phase").asInt(),
+                      b.get("warp_tick").asInt(),
+                      b.get("lock_tick").asInt(),
+                      requests));
+        }
+        case "ability_step" -> {
+          List<String> calls = new ArrayList<>();
+          if (b.has("claim")) {
+            calls.add("claim " + (b.get("claim").asInt() == 1));
+          }
+          if (b.has("request")) {
+            calls.add("request " + (b.get("request").asInt() == 1));
+          }
+          if (b.has("warp_action")) {
+            calls.add("warp " + b.get("warp_action").asText());
+          }
+          if (b.path("finished").asBoolean(false)) {
+            calls.add("finish");
+          }
+          expected.add(
+              "%d step %s locked %b release %d state %d calls %s"
+                  .formatted(
+                      tick,
+                      b.get("owner").asText(),
+                      b.get("locked").asInt() == 1,
+                      b.get("release").asInt(),
+                      b.get("state").asInt(),
+                      calls));
+        }
+        case "warp" -> {
+          assertThat(b.get("dropped")).as("%d: the projectiles the warp dropped", tick).isEmpty();
+          expected.add(
+              "%d warp %s %s %d from %d %d to %d %d ref %s state %d"
+                  .formatted(
+                      tick,
+                      b.get("owner").asText(),
+                      b.get("action").asText(),
+                      b.get("phase").asInt(),
+                      b.get("start").get(0).asInt(),
+                      b.get("start").get(1).asInt(),
+                      b.get("to").get(0).asInt(),
+                      b.get("to").get(1).asInt(),
+                      b.get("ref_before").isNull() ? null : b.get("ref_before").asText(),
+                      b.get("state").asInt()));
+        }
+        default -> throw new IllegalArgumentException("unknown Boss Bandit ability event " + b);
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * The ticks each Boss Bandit ability's run holds its lock as the post-hooks end: granted by the
+   * post-pass of the tick it starts in, so from the next tick, and dropped by the pre-pass after
+   * the tick it finishes in, so up to that tick.
+   */
+  private static List<String> expectedSelfLocks(JsonNode reference) {
+    Map<String, Integer> started = new HashMap<>();
+    List<String> expected = new ArrayList<>();
+    for (JsonNode b : reference.path("boss_bandit_ability")) {
+      String owner = b.get("owner").asText();
+      if (b.get("event").asText().equals("ability_start")) {
+        started.put(owner, b.get("tick").asInt());
+      } else if (b.path("finished").asBoolean(false)) {
+        for (int t = started.remove(owner) + 1; t <= b.get("tick").asInt(); t++) {
+          expected.add(t + " " + owner);
+        }
+      }
+    }
+    assertThat(started).as("a run that never finished").isEmpty();
+    return expected;
   }
 
   /** The names of the game tags set in a word, in the order of their names. */

@@ -1348,4 +1348,57 @@ public interface WorldObserver {
       long tags,
       boolean done,
       List<String> calls) {}
+
+  /**
+   * A Boss Bandit ability's run started on a unit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param action the row
+   * @param phase the pending pass it started in
+   * @param warpTick the tick it warps on
+   * @param lockTick the tick it claims its lock from
+   * @param requests the answer of each ask for the lock, in order
+   */
+  default void bossBanditAbilityStarted(
+      int tick,
+      CharacterEntity unit,
+      String action,
+      int phase,
+      int warpTick,
+      int lockTick,
+      List<Boolean> requests) {}
+
+  /**
+   * A step of a Boss Bandit ability's run that changed it or asked for its lock again.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param locked whether the run holds its lock after the step
+   * @param releaseMs the release countdown after the step
+   * @param calls what the step did, in order: the claim and the second ask with their answers, the
+   *     warp row scheduled and the finish
+   */
+  default void bossBanditAbilityStepped(
+      int tick, CharacterEntity unit, boolean locked, int releaseMs, List<String> calls) {}
+
+  /**
+   * A warp moved a unit; its new position is on the unit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param action the warp row
+   * @param phase the pending pass it ran in
+   * @param fromX where it stood along the width
+   * @param fromY where it stood along the length
+   * @param referenceBefore the name of the reference it held before the warp, or null for none
+   */
+  default void warped(
+      int tick,
+      CharacterEntity unit,
+      String action,
+      int phase,
+      int fromX,
+      int fromY,
+      String referenceBefore) {}
 }

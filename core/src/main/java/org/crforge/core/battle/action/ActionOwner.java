@@ -153,6 +153,28 @@ public interface ActionOwner {
   }
 
   /**
+   * What a Boss Bandit ability's run asks of the battle about the owner. Only a character runs one.
+   *
+   * @param action the row
+   * @return the owner's answers
+   */
+  default BossBanditAbility.Host bossBanditHost(BossBanditAbility action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Warps the owner, as a warp's perform does. Only a character is warped.
+   *
+   * @param action the row
+   * @param phase the pending pass it starts in
+   */
+  default void warp(WarpCharacter action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * What a target indicator attack's run asks of the battle around the owner. Only a character runs
    * one.
    *

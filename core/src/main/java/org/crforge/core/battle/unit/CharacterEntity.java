@@ -15,6 +15,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
@@ -24,6 +25,7 @@ import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
+import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -2739,6 +2741,77 @@ public class CharacterEntity extends WorldEntity {
     FixedMath.normalize(vector, FACING_LENGTH);
     getView().setDirX(vector[0]);
     getView().setDirY(vector[1]);
+  }
+
+  /**
+   * What a Boss Bandit ability's run on the character asks of the battle: the battle tick, its id,
+   * the target locks and its state; its start and steps are told to the battle's observers.
+   */
+  @Override
+  public BossBanditAbility.Host bossBanditHost(BossBanditAbility action) {
+    return new BossBanditAbility.Host() {
+      @Override
+      public int tick() {
+        return world.tick();
+      }
+
+      @Override
+      public int id() {
+        return getId();
+      }
+
+      @Override
+      public TargetLocks locks() {
+        return world.locks();
+      }
+
+      @Override
+      public int state() {
+        return getView().getState();
+      }
+
+      @Override
+      public void started(
+          BossBanditAbility row, int phase, int warpTick, int lockTick, List<Boolean> requests) {
+        world.bossBanditAbilityStarted(
+            CharacterEntity.this, row, phase, warpTick, lockTick, requests);
+      }
+
+      @Override
+      public void stepped(boolean locked, int releaseMs, List<String> calls) {
+        world.bossBanditAbilityStepped(CharacterEntity.this, locked, releaseMs, calls);
+      }
+    };
+  }
+
+  @Override
+  public void warp(WarpCharacter action, int phase) {
+    world.warp(this, action, phase);
+  }
+
+  /**
+   * Moves the character to a warp's landing in one write, as a warp's perform does: no route, no
+   * displacement pass.
+   */
+  void warpTo(int x, int y) {
+    getView().setX(x);
+    getView().setY(y);
+  }
+
+  /** Empties the route and clears its route-leads-away bit, as a warp's route reset does. */
+  void resetRouteAfterWarp() {
+    MovementState movement = unit.movement();
+    if (movement == null) {
+      return;
+    }
+    movement.getRoute().clear();
+    movement.setRouteLeadsAway(0);
+  }
+
+  /** Drops the reference and its pending-damage keep byte, as a warp's target reset does. */
+  void resetTargetAfterWarp() {
+    unit.targeting().setReference(null);
+    unit.targeting().setKeptByPendingDamageCheck(false);
   }
 
   /**
