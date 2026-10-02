@@ -993,6 +993,27 @@ public interface WorldObserver {
   default void buffCopied(int tick, WorldEntity original, WorldEntity clone, BuffInstance copy) {}
 
   /**
+   * An area effect with a buff asked its filter's buff test of a clone: the buff row's
+   * HealPerSecond, a clone refused when it is 1 or more.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param buff its buff row's name
+   * @param clone the clone
+   * @param path what asked: "area_damage", "area_buff", "pull", "on_hit_action" or "chooser"
+   * @param query the buff row's HealPerSecond
+   * @param refused whether the clone was refused
+   */
+  default void cloneBuffGateAsked(
+      int tick,
+      AreaEffectEntity areaEffect,
+      String buff,
+      CharacterEntity clone,
+      String path,
+      int query,
+      boolean refused) {}
+
+  /**
    * A clone or its original started its move apart, toward a point straight ahead or behind it.
    *
    * @param tick the battle tick

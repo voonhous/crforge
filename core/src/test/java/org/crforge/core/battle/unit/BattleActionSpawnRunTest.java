@@ -261,6 +261,15 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Arrows a tick later, its two Golemites clones too, and the Musketeer's shoots a Knight dead. Each
  * is held to every clone scheduled, made and moved apart, and to the buffs copied.
  *
+ * <p>{@code clone_rage_group} casts a Clone over two Knights and a Musketeer and places a Rage over
+ * the clones and their units: its buff heals nothing, so its filter passes the clones as any unit
+ * and each hit buffs them with the units, asking the filter of a clone by the walk and again by the
+ * apply. {@code clone_zap_poison_group} casts a Zap over the same clones, whose damage kills them
+ * before its buff block, so none is stunned, and a Poison that buffs the Musketeer's clone and
+ * kills it with the buff's first damage. {@code clone_heal_spirit_knight} has a Heal Spirit's area
+ * heal a Knight and refuse its clone, its buff healing 157 a second. Each is held to every ask of
+ * an area effect's buff test of a clone, with the path that asked.
+ *
  * <p>{@code electro_giant_struck} plays an Electro Giant into two Knights and a Musketeer: every
  * Knight hit and every shot from inside its reach is struck back with 192 and a stun, which drops
  * the attacker's reference that tick, and the hit that kills it is still struck back. {@code
@@ -421,6 +430,9 @@ class BattleActionSpawnRunTest {
         "royal_delivery_group",
         "heal_spirit_group",
         "clone_golem_group",
+        "clone_rage_group",
+        "clone_zap_poison_group",
+        "clone_heal_spirit_knight",
         "electro_giant_struck",
         "electro_giant_tower",
         "fisherman_knight",
@@ -481,7 +493,8 @@ class BattleActionSpawnRunTest {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
     } else if (!reference.has("action_owners")) {
       // A unit a card play created is listed with its command, and so is what it morphs into; the
-      // command places the one, the battle makes the other, and neither is placed here.
+      // command places the one, the battle makes the other, and neither is placed here. A unit an
+      // action made, a Clone's clone, is listed with its action and made by the battle too.
       Set<String> commanded = new HashSet<>();
       for (JsonNode u : reference.path("units")) {
         if (u.has("command")) {
@@ -489,7 +502,7 @@ class BattleActionSpawnRunTest {
         }
       }
       for (JsonNode u : reference.path("units")) {
-        if (commanded.contains(u.get("name").asText())) {
+        if (commanded.contains(u.get("name").asText()) || u.has("action")) {
           continue;
         }
         placed.add(
@@ -706,6 +719,9 @@ class BattleActionSpawnRunTest {
     // Every start and notice of a Berserker's index toggle, with the index before and after.
     List<String> berserkLog = new ArrayList<>();
     match.getWorld().addObserver(berserkLog(currentTick, berserkLog));
+    // Every ask of an area effect's buff test of a clone, with the path that asked.
+    List<String> cloneGateLog = new ArrayList<>();
+    match.getWorld().addObserver(cloneGateLog(currentTick, cloneGateLog));
     List<String> areaEffectSpawnLog = new ArrayList<>();
     match.getWorld().addObserver(areaEffectSpawnLog(currentTick, areaEffectSpawnLog));
     // Every laser ball's start and fire, and every area effect's life-end action scheduled.
@@ -1369,6 +1385,9 @@ class BattleActionSpawnRunTest {
     assertThat(berserkLog)
         .as("every start and notice of a Berserker's index toggle")
         .containsExactlyElementsOf(expectedBerserkLog(reference));
+    assertThat(cloneGateLog)
+        .as("every ask of an area effect's buff test of a clone")
+        .containsExactlyElementsOf(expectedCloneGateLog(reference));
     assertThat(vinesLog)
         .as("every shape selector's start, step and removal, and every air-to-ground run")
         .containsExactlyElementsOf(expectedVinesLog(reference));
@@ -2541,6 +2560,29 @@ class BattleActionSpawnRunTest {
   }
 
   /**
+   * Logs every ask of an area effect's buff test of a clone: the area effect, its buff, the clone,
+   * the path that asked, the query and whether it refused.
+   */
+  private static WorldObserver cloneGateLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void cloneBuffGateAsked(
+          int tick,
+          AreaEffectEntity areaEffect,
+          String buff,
+          CharacterEntity clone,
+          String path,
+          int query,
+          boolean refused) {
+        log.add(
+            "%d gate %s %s %s %s query %d refused %b"
+                .formatted(
+                    currentTick[0], areaEffect.name(), buff, clone.name(), path, query, refused));
+      }
+    };
+  }
+
+  /**
    * Logs every laser ball's start, with its pass and timer, every fire, with the count, the index
    * it picked, the targets, the action and the timer before and after, and every area effect's
    * life-end action as it is scheduled.
@@ -3004,6 +3046,24 @@ class BattleActionSpawnRunTest {
                   b.get("owner").asText(),
                   b.get("before").asInt(),
                   b.get("index").asInt()));
+    }
+    return expected;
+  }
+
+  /** The reference's asks of an area effect's buff test of a clone, in the gate log's layout. */
+  private static List<String> expectedCloneGateLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode g : reference.path("clone_buff_gate")) {
+      expected.add(
+          "%d gate %s %s %s %s query %d refused %b"
+              .formatted(
+                  g.get("tick").asInt(),
+                  g.get("area_effect").asText(),
+                  g.get("buff").asText(),
+                  g.get("clone").asText(),
+                  g.get("path").asText(),
+                  g.get("query").asInt(),
+                  g.get("refused").asInt() == 1));
     }
     return expected;
   }
