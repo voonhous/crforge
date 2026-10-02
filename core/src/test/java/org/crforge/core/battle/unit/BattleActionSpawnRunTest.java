@@ -297,6 +297,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * over three equal entries, so it deals 102 every twelve ticks until the Knight kills it. {@code
  * berserker_tower} has one walk into a princess tower and hit it the same way until the arrows kill
  * it. Each is held to the index before and after every start and notice.
+ *
+ * <p>{@code dark_magic_knight} casts Dark Magic in a Knight's path: its laser ball fires on three
+ * ticks twenty apart, each fire finding the Knight alone and putting the strongest of its buffs on
+ * it, which hits for 340 two ticks later. {@code dark_magic_group} casts one on five Barbarians and
+ * their princess tower: the count of what each fire finds picks the buff, the weakest for six and
+ * the middle one for four and for three, and the tower takes its per-hit column. Each is held to
+ * the laser ball's start and every fire, with what it found and the timer, and to the princess
+ * tower's runs as to a unit's.
  */
 class BattleActionSpawnRunTest {
 
@@ -423,7 +431,9 @@ class BattleActionSpawnRunTest {
         "berserker_knight",
         "berserker_tower",
         "goblin_curse_knights",
-        "goblin_demolisher_knight"
+        "goblin_demolisher_knight",
+        "dark_magic_knight",
+        "dark_magic_group"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -482,6 +492,13 @@ class BattleActionSpawnRunTest {
     }
     for (CharacterEntity unit : placed) {
       unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
+    }
+    // A princess tower's runs are listed like a unit's: a row another entity schedules on it runs
+    // in its own passes. The king's holder tells its activation steps instead.
+    for (BattleEntity entity : battle.getHolder().entities()) {
+      if (entity instanceof TowerEntity tower && !tower.getData().king()) {
+        tower.actionHolder().setListener(listener(tower.name(), currentTick, actions, dropping));
+      }
     }
     // A match is set up before the first step, its decks shuffled with the battle's source.
     LadderMatch ladder = null;
@@ -678,6 +695,9 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(berserkLog(currentTick, berserkLog));
     List<String> areaEffectSpawnLog = new ArrayList<>();
     match.getWorld().addObserver(areaEffectSpawnLog(currentTick, areaEffectSpawnLog));
+    // Every laser ball's start and fire, and every area effect's life-end action scheduled.
+    List<String> laserLog = new ArrayList<>();
+    match.getWorld().addObserver(laserLog(currentTick, laserLog));
     // A played unit's runs are listed from its play, before its start.
     match
         .getWorld()
@@ -1305,6 +1325,9 @@ class BattleActionSpawnRunTest {
     assertThat(berserkLog)
         .as("every start and notice of a Berserker's index toggle")
         .containsExactlyElementsOf(expectedBerserkLog(reference));
+    assertThat(laserLog)
+        .as("every laser ball's start and fire, and every life-end action scheduled")
+        .containsExactlyElementsOf(expectedLaserLog(reference));
 
     assertThat(buffLog)
         .as("every area buff, and every buff applied, refreshed, removed and dealing damage")
@@ -2463,6 +2486,93 @@ class BattleActionSpawnRunTest {
                     index));
       }
     };
+  }
+
+  /**
+   * Logs every laser ball's start, with its pass and timer, every fire, with the count, the index
+   * it picked, the targets, the action and the timer before and after, and every area effect's
+   * life-end action as it is scheduled.
+   */
+  private static WorldObserver laserLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void laserStarted(
+          int tick, AreaEffectEntity areaEffect, String action, int phase, int timerMs) {
+        log.add(
+            "%d start %s %s phase %d timer %d"
+                .formatted(currentTick[0], areaEffect.name(), action, phase, timerMs));
+      }
+
+      @Override
+      public void laserFired(
+          int tick,
+          AreaEffectEntity areaEffect,
+          int count,
+          int index,
+          List<WorldEntity> targets,
+          String action,
+          int timerBefore,
+          int timerAfter) {
+        log.add(
+            "%d fire %s count %d index %d targets %s action %s timer %d %d"
+                .formatted(
+                    currentTick[0],
+                    areaEffect.name(),
+                    count,
+                    index,
+                    targets.stream().map(WorldEntity::name).toList(),
+                    action,
+                    timerBefore,
+                    timerAfter));
+      }
+
+      @Override
+      public void lifeTimeEndScheduled(int tick, AreaEffectEntity areaEffect, String action) {
+        log.add("%d lifetime_end %s %s".formatted(currentTick[0], areaEffect.name(), action));
+      }
+    };
+  }
+
+  /**
+   * The reference's laser ball starts and fires and life-end actions, in the laser log's layout.
+   */
+  private static List<String> expectedLaserLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode l : reference.path("laser")) {
+      int tick = l.get("tick").asInt();
+      switch (l.get("event").asText()) {
+        case "start" ->
+            expected.add(
+                "%d start %s %s phase %d timer %d"
+                    .formatted(
+                        tick,
+                        l.get("owner").asText(),
+                        l.get("action").asText(),
+                        l.get("phase").asInt(),
+                        l.get("timer").asInt()));
+        case "fire" -> {
+          List<String> targets = new ArrayList<>();
+          l.get("targets").forEach(t -> targets.add(t.asText()));
+          expected.add(
+              "%d fire %s count %d index %d targets %s action %s timer %d %d"
+                  .formatted(
+                      tick,
+                      l.get("owner").asText(),
+                      l.get("count").asInt(),
+                      l.get("index").asInt(),
+                      targets,
+                      l.get("action").isNull() ? null : l.get("action").asText(),
+                      l.get("timer").get(0).asInt(),
+                      l.get("timer").get(1).asInt()));
+        }
+        case "lifetime_end" ->
+            expected.add(
+                "%d lifetime_end %s %s"
+                    .formatted(tick, l.get("area_effect").asText(), l.get("action").asText()));
+        default -> throw new IllegalArgumentException("unknown laser event " + l);
+      }
+    }
+    return expected;
   }
 
   /** The reference's Berserker index toggles, in the Berserker log's layout. */

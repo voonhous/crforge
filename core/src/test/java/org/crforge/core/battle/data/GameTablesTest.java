@@ -76,7 +76,23 @@ class GameTablesTest {
     assertThat(wait.className()).isEqualTo("LogicActionWaitToActivateData");
     assertThat(wait.classType()).isEqualTo("ActionWaitToActivate");
     assertThat(wait.fields().get("Condition").asText()).isEqualTo("1");
-    assertThat(tables.actionNames()).isEqualTo(List.of("Alpha_Wait"));
+    assertThat(tables.actionNames()).isEqualTo(List.of("Alpha_Wait", "Alpha_Curse", "Alpha_Haste"));
+  }
+
+  @Test
+  @DisplayName(
+      "a buff a spawn row writes inline is a buff row of its Name, outside every table; a buff it"
+          + " names is none")
+  void inlineBuffs() throws Exception {
+    GameTables tables = GameTables.load(folder("synthetic"));
+    GameRow curse = tables.inlineBuff("Alpha_Curse_Buff");
+    assertThat(curse.name()).isEqualTo("Alpha_Curse_Buff");
+    assertThat(curse.className()).isEqualTo("LogicCharacterBuffData");
+    assertThat(curse.index()).isEqualTo(-1);
+    assertThat(curse.intValue("DamagePerSecond")).isEqualTo(100);
+    assertThat(curse.string("Rarity")).isEqualTo("Common");
+    assertThat(tables.inlineBuff("Haste")).isNull();
+    assertThat(tables.inlineBuff("Alpha_Curse")).isNull();
   }
 
   @Test

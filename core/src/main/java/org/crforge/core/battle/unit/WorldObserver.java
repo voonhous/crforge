@@ -791,6 +791,49 @@ public interface WorldObserver {
       int tick, ProjectileEntity projectile, AreaEffectEntity areaEffect) {}
 
   /**
+   * A laser ball's run started on an area effect.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param action the laser ball's row
+   * @param phase the pending pass it started in
+   * @param timerMs its timer as it starts
+   */
+  default void laserStarted(
+      int tick, AreaEffectEntity areaEffect, String action, int phase, int timerMs) {}
+
+  /**
+   * A laser ball's run fired.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect it runs on
+   * @param count how many objects its step listed
+   * @param index the action list's index the count picked
+   * @param targets the objects it scheduled the action on, in order
+   * @param action the action scheduled on them, or null for none
+   * @param timerBefore its timer as the step began
+   * @param timerAfter its timer as the step ended
+   */
+  default void laserFired(
+      int tick,
+      AreaEffectEntity areaEffect,
+      int count,
+      int index,
+      List<WorldEntity> targets,
+      String action,
+      int timerBefore,
+      int timerAfter) {}
+
+  /**
+   * An area effect's last update scheduled its life-end action on itself.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param action the action
+   */
+  default void lifeTimeEndScheduled(int tick, AreaEffectEntity areaEffect, String action) {}
+
+  /**
    * An area effect's hit scheduled its on-hit action on a unit in its circle, the area effect as
    * the cause.
    *

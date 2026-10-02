@@ -27,6 +27,7 @@ import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
+import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RunActionAtHealth;
@@ -147,6 +148,22 @@ public final class ActionRows {
           // building retargeting, the buff removed as it finishes, and no invalid or crown tower
           // duration or buff.
           Map.entry("ActionTaunt", Set.of("ValidDuration", "ValidTargetBuff")),
+          // The effects it lists, and which one its count picks, reach its client view alone.
+          Map.entry(
+              "ActionLaserBall",
+              Set.of(
+                  "DetectionRadius",
+                  "FirstHitDelay",
+                  "HitFrequency",
+                  "PermanentDetection",
+                  "ResetDetetcedUnitsAfterHit",
+                  "DetectionCooldownAfterHit",
+                  "HitFilter",
+                  "MaxUnitPerActionList",
+                  "OnDetectedUnitActionList",
+                  "OnAttackActionList",
+                  "TargetEffectList",
+                  "MainEffectList")),
           Map.entry(
               "ActionRunIfGameObjectExists",
               Set.of(
@@ -430,6 +447,7 @@ public final class ActionRows {
                 new SetAttackSequenceIndex(
                     shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
             case "ActionTaunt" -> taunt(name, shared, f);
+            case "ActionLaserBall" -> laserBall(name, shared, f);
             case "ActionChangeGameObjectData" -> {
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
@@ -645,9 +663,9 @@ public final class ActionRows {
     }
 
     /**
-     * A buff spawn row's columns: the buff and its time, nothing more. A row that sets any other
-     * spawn column, writes its buff inline, names a buff the battle does not model or one its
-     * parent controls, or gives it a time below 1 is refused.
+     * A buff spawn row's columns: the buff and its time, nothing more. A buff written inline is the
+     * buff row of its Name. A row that sets any other spawn column, names a buff the battle does
+     * not model or one its parent controls, or gives it a time below 1 is refused.
      */
     private SpawnBuff spawnBuff(String name, ActionRow shared, JsonNode f) {
       f.fieldNames()
@@ -659,11 +677,8 @@ public final class ActionRows {
                       name + " spawns a buff and sets " + column + ", which is not modelled");
                 }
               });
-      if (!f.path("SpawnData").isTextual()) {
-        throw new UnsupportedOperationException(
-            name + " spawns a buff written inline, which is not modelled");
-      }
-      String buff = f.path("SpawnData").asText();
+      JsonNode data = f.path("SpawnData");
+      String buff = data.isObject() ? data.path("Name").asText() : data.asText();
       if (!records.buff(buff).unmodelledColumns().isEmpty()) {
         throw new UnsupportedOperationException(
             name
@@ -677,6 +692,51 @@ public final class ActionRows {
             name + " spawns a buff its parent controls or for no time, which is not modelled");
       }
       return new SpawnBuff(shared, buff, integer(f, "SpawnTime"));
+    }
+
+    /**
+     * A laser ball's columns: its query, its rate and the action lists its count picks from. A row
+     * that keeps its detection from one step to the next, resets it after a hit, cools down after
+     * one, runs an action list on its owner, is a singleton, chains a next action or sets tags is
+     * refused; so is one without a filter.
+     */
+    private LaserBall laserBall(String name, ActionRow shared, JsonNode f) {
+      for (String column :
+          List.of(
+              "PermanentDetection",
+              "ResetDetetcedUnitsAfterHit",
+              "DetectionCooldownAfterHit",
+              "OnAttackActionList",
+              "Singleton",
+              "NextAction",
+              "GameTagsToSet")) {
+        JsonNode value = f.get(column);
+        boolean set =
+            value != null
+                && !value.isNull()
+                && !(value.isBoolean() && !value.asBoolean())
+                && !(value.isNumber() && value.asInt() == 0)
+                && !(value.isContainerNode() && value.isEmpty())
+                && !(value.isTextual() && value.asText().isEmpty());
+        if (set) {
+          throw new UnsupportedOperationException(
+              name + " is a laser ball that sets " + column + ", which is not modelled");
+        }
+      }
+      if (f.path("HitFilter").asText("").isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " is a laser ball without a filter, which is not modelled");
+      }
+      return new LaserBall(
+          shared,
+          LaserBall.Columns.builder()
+              .detectionRadius(integer(f, "DetectionRadius"))
+              .firstHitDelayMs(integer(f, "FirstHitDelay"))
+              .hitFrequencyMs(integer(f, "HitFrequency"))
+              .hitFilter(records.filter(f.get("HitFilter").asText()))
+              .maxUnitPerActionList(ints(f.get("MaxUnitPerActionList")))
+              .onDetectedUnitActionList(actions(f.get("OnDetectedUnitActionList")))
+              .build());
     }
 
     /**

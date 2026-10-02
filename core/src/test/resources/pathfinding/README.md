@@ -703,6 +703,15 @@ The towers fight at level 11. Side 0 plays a Goblin Demolisher at (3500, 12000),
 
 The `area_effect_spawn` list holds the spawn of the area effect, the hit action it scheduled, the taunt's perform and its arming and step, each with the calls it made. `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/dark_magic_knight.json` and `golden/dark_magic_group.json` - Dark Magic's laser ball
+
+The towers fight at level 11, and both runs stop on tick 99. Side 0 casts Dark Magic on tick 0, its area effect DarkMagicAOE made at level 10, its starting group written inline. The group's laser ball starts in the area effect's phase-1 pass of 10 with its timer at 0, and fires on 30, 50 and 70, each time scheduling on every enemy within 2500 of its point the buff spawn their count picks. Each buff spawn runs in its target's phase-2 pass of the same tick and puts a 100 ms buff on it, at level 10 with the area effect as its source, which deals one hit two ticks later and goes. The area effect's last update, on 79, schedules its life-end action, an effect, which runs in its phase-3 pass; it leaves at that cleanup.
+
+- `dark_magic_knight`: side 1 plays a Knight at (3500, 20000), placed at (3499, 20499), and the Dark Magic lands at (3500, 19500) in its path. Each fire finds the Knight alone and puts the strongest buff on it: it takes 340 on 32, 52 and 72, from 1766 to 746.
+- `dark_magic_group`: side 1 plays Barbarians at (3500, 23000), placed at (3499, 23499), and the Dark Magic lands at (3500, 24500), over them and their princess tower. The fire on 30 finds all five and the tower and puts the weakest buff on each: 76 on a Barbarian, 17 on the tower, its per-hit column. The fires on 50 and 70 find four and three, the tower each time, and put the middle buff on each: 160 on a Barbarian and 25 on the tower.
+
+The `laser` list holds the laser ball's start, with its pass and timer, each fire, with the count, the index it picked, the targets in the query's order, the action and the timer before and after, and the life-end action as it is scheduled. `BattleActionSpawnRunTest` plays both with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.

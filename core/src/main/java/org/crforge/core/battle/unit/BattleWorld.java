@@ -857,18 +857,50 @@ public class BattleWorld implements HolderPasses {
     return objectQuery(asking, radius, filter, true);
   }
 
+  /**
+   * The object query around an area effect's point that tests a building by its square, as {@link
+   * #shapeQuery} does for an entity, the filter asked for the area effect's team and row name.
+   *
+   * @param areaEffect the area effect running the query
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> shapeQuery(
+      AreaEffectEntity areaEffect, int radius, GameObjectFilter filter) {
+    return objectQuery(
+        areaEffect.getX(),
+        areaEffect.getY(),
+        areaEffect.side(),
+        areaEffect.getData().name(),
+        radius,
+        filter,
+        true);
+  }
+
   private List<WorldEntity> objectQuery(
       WorldEntity asking, int radius, GameObjectFilter filter, boolean shapes) {
     GridEntity at = asking.getView();
-    List<GridEntity> found =
-        index.query(new SpatialQuery(at.getX(), at.getY(), radius, 0, false, shapes, 0, -1));
+    return objectQuery(
+        at.getX(), at.getY(), asking.side(), asking.getData().name(), radius, filter, shapes);
+  }
+
+  private List<WorldEntity> objectQuery(
+      int x,
+      int y,
+      int side,
+      String askingName,
+      int radius,
+      GameObjectFilter filter,
+      boolean shapes) {
+    List<GridEntity> found = index.query(new SpatialQuery(x, y, radius, 0, false, shapes, 0, -1));
     List<WorldEntity> out = new ArrayList<>();
     if (found == null) {
       return out;
     }
     for (GridEntity view : found) {
       WorldEntity entity = entityOf(view);
-      if (filter.matches(entity.filterSubject(), asking.side() & 1, asking.getData().name())) {
+      if (filter.matches(entity.filterSubject(), side & 1, askingName)) {
         out.add(entity);
       }
     }
@@ -3512,6 +3544,31 @@ public class BattleWorld implements HolderPasses {
   void cloneMoveEnded(CharacterEntity unit, boolean resumed) {
     for (WorldObserver observer : observers) {
       observer.cloneMoveEnded(tick, unit, resumed);
+    }
+  }
+
+  void laserStarted(AreaEffectEntity areaEffect, String action, int phase, int timerMs) {
+    for (WorldObserver observer : observers) {
+      observer.laserStarted(tick, areaEffect, action, phase, timerMs);
+    }
+  }
+
+  void laserFired(
+      AreaEffectEntity areaEffect,
+      int count,
+      int index,
+      List<WorldEntity> targets,
+      String action,
+      int timerBefore,
+      int timerAfter) {
+    for (WorldObserver observer : observers) {
+      observer.laserFired(tick, areaEffect, count, index, targets, action, timerBefore, timerAfter);
+    }
+  }
+
+  void lifeTimeEndScheduled(AreaEffectEntity areaEffect, String action) {
+    for (WorldObserver observer : observers) {
+      observer.lifeTimeEndScheduled(tick, areaEffect, action);
     }
   }
 
