@@ -84,7 +84,13 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " targeting component on every entity, seeded with the opposing side's towers, whose"
             + " hits go through the hit application, whose area, for a row with an area radius,"
             + " takes the entity as its owner, and whose reference to an entity that left is"
-            + " dropped by the removal notice; a level change moving the level, the damage from"
+            + " dropped by the removal notice; the component's bypass byte at 1, so a target"
+            + " killed earlier in the pass is kept and attacked until the cleanup, held by"
+            + " reference_loss_knight and the runs it moves; the lost-reference query of a loss in"
+            + " the preloaded windup, its stop held by reference_loss_knight and"
+            + " reference_loss_musketeer_rage, its run-on answers for a row centred on itself, a"
+            + " projectile that does not home and a running burst by a unit test of every shipped"
+            + " row alone; a level change moving the level, the damage from"
             + " the next hit, the maxima and, on a rise only, the hit points by their share; a"
             + " death handing what killed it - the unit, the projectile, the typed hit's source"
             + " still in the battle, the killer - to the battle's death handler; a row swap reading"
@@ -117,6 +123,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** The longest flight the pending duration is raised to, in milliseconds. */
   private static final int MAX_PENDING_DURATION_MS = 1000;
+
+  /** The global that lets an area attack run on once its target has gone. */
+  private static final String ALLOW_AOE_ATTACKS_WITHOUT_TARGET = "ALLOW_AOE_ATTACKS_WITHOUT_TARGET";
 
   /** The battle's shared arena state. */
   protected final BattleWorld world;
@@ -212,8 +221,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             world.getValidatorQueries(),
             DefaultSelectionQueries.standard1v1(),
             DefaultTargetSelection.Rules.standard());
+    // The component's bypass byte is 1, so a target killed earlier in the pass is kept to the
+    // cleanup.
+    targeting.setAliveCheckBypass(true);
     // A match's end holds every attack timer at zero.
     selection.setAttackTimersHeld(world::isMatchEnded);
+    // An attack whose reference went in the preloaded windup stops or runs on by the row.
+    boolean aoeWithoutTarget = world.getRecords().globalBoolean(ALLOW_AOE_ATTACKS_WITHOUT_TARGET);
+    selection.setStopsWithoutTarget(
+        () -> stopsWithoutTarget(this.data, targeting.getBurstProgressMs(), aoeWithoutTarget));
     selection.setHitSink(
         (target, sequenceIndex, extraTargets, last) -> {
           refuseHit();
@@ -257,6 +273,26 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     targetView.setHitPointsPresent(hitPoints != null);
     targetView.setCrownTowerTarget(data.king() || data.summonerTower());
     refreshHitPoints();
+  }
+
+  /**
+   * The lost-reference query, asked while the entity holds no reference in its preloaded windup:
+   * without the global that lets an area attack run on without a target, it stops; an attack
+   * centred on itself and a running burst run on; then a row without a projectile stops, and one
+   * with a projectile stops only when it homes.
+   *
+   * @param data the entity's row
+   * @param burstProgressMs the burst's progress; a burst runs while it is above zero
+   * @param aoeWithoutTarget the global ALLOW_AOE_ATTACKS_WITHOUT_TARGET
+   */
+  static boolean stopsWithoutTarget(UnitData data, int burstProgressMs, boolean aoeWithoutTarget) {
+    if (!aoeWithoutTarget) {
+      return true;
+    }
+    if (data.selfAsAoeCenter() || burstProgressMs > 0) {
+      return false;
+    }
+    return data.projectile() == null || data.projectile().homing();
   }
 
   /**

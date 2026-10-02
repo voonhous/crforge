@@ -15,8 +15,8 @@
   {"name": "PrincessTower_1_1", "x": 3500, "y": 25500, "side": 1, "hp": 3052},
   {"name": "PrincessTower_1_2", "x": 14500, "y": 25500, "side": 1, "hp": 3052},
   {"name": "KnightA_0", "x": 2369, "y": 23536, "side": 0, "hp": 1766},
-  {"name": "KnightB_0", "x": 4321, "y": 23804, "side": 0, "hp": 1766},
-  {"name": "GiantBuffer_0", "x": 3494, "y": 22867, "side": 0, "hp": 2662}
+  {"name": "KnightB_0", "x": 4159, "y": 23475, "side": 0, "hp": 1766},
+  {"name": "GiantBuffer_0", "x": 3269, "y": 22594, "side": 0, "hp": 2662}
  ],
  "commands": [
   {"name": "KnightA", "card": "Knight", "side": 0, "point": [3000, 12000], "tick": 0, "outcome": "placed", "code": 0, "placed": [3499, 12500], "interval": [0, 14500], "origin_lane": 1, "units": [{"name": "KnightA_0", "id": 5000006, "row": "Knight", "index": 0, "formation": [0, 0], "x": 3499, "y": 12500, "lane": 1, "state": 4, "delay": 0, "deploy": 1000}]},
@@ -43,7 +43,8 @@
   {"tick": 34, "event": "dropped", "owner": "KnightB_0", "action": "giantbuffer_target_buff_visual", "instigator": "proj_4000001", "ticks_left": 1, "pending_after": []},
   {"tick": 252, "event": "run", "owner": "KnightA_0", "action": "giantbuffer_enchanting_buff_AttackAmountAction", "phase": 2},
   {"tick": 252, "event": "run", "owner": "KnightB_0", "action": "giantbuffer_enchanting_buff_AttackAmountAction", "phase": 2},
-  {"tick": 324, "event": "run", "owner": "KnightA_0", "action": "giantbuffer_enchanting_buff_AttackAmountAction", "phase": 2}
+  {"tick": 324, "event": "run", "owner": "KnightA_0", "action": "giantbuffer_enchanting_buff_AttackAmountAction", "phase": 2},
+  {"tick": 324, "event": "run", "owner": "KnightB_0", "action": "giantbuffer_enchanting_buff_AttackAmountAction", "phase": 2}
  ],
  "events": [
   {"tick": 27, "event": "launch", "projectile": "proj_4000000", "config": "GiantBuffProjectile", "owner": "GiantBuffer_0", "target": "KnightA_0", "x": 3481, "y": 9556, "z": 2000, "aim": [3415, 12965], "aim_z": 0},
@@ -89,7 +90,8 @@
   {"tick": 312, "event": "launch", "projectile": "proj_4000015", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_1", "target": "KnightA_0", "x": 3351, "y": 25240, "z": 3000, "aim": [2369, 23536], "aim_z": 0},
   {"tick": 316, "event": "impact", "projectile": "proj_4000015", "target": "KnightA_0", "damage": 109, "hp": 240, "x": 2369, "y": 23536, "z": 0},
   {"tick": 324, "event": "hit", "target": "PrincessTower_1_1", "damage": 422, "hp": 0},
-  {"tick": 324, "event": "death", "target": "PrincessTower_1_1"}
+  {"tick": 324, "event": "death", "target": "PrincessTower_1_1"},
+  {"tick": 324, "event": "hit", "target": "PrincessTower_1_1", "damage": 422, "hp": 0}
  ],
  "tower_events": [
   {"tick": 0, "event": "reference", "tower": "KingTower_0_0", "target": "PrincessTower_1_2", "in_range": 0},
@@ -767,12 +769,12 @@
    [321, 4159, 23475, 2, "PrincessTower_1_1", 1766, 15100, 0, null, null],
    [322, 4159, 23475, 2, "PrincessTower_1_1", 1766, 15150, 0, null, null],
    [323, 4159, 23475, 2, "PrincessTower_1_1", 1766, 15200, 0, null, null],
-   [324, 4177, 23531, 1, "KingTower_1_0", 1766, 15250, 0, null, null],
-   [325, 4225, 23588, 1, "KingTower_1_0", 1766, 15300, 0, null, null],
-   [326, 4249, 23642, 1, "KingTower_1_0", 1766, 15350, 0, null, null],
-   [327, 4273, 23696, 1, "KingTower_1_0", 1766, 15400, 0, null, null],
-   [328, 4297, 23750, 1, "KingTower_1_0", 1766, 15450, 0, null, null],
-   [329, 4321, 23804, 1, "KingTower_1_0", 1766, 15500, 0, null, null]
+   [324, 4159, 23475, 2, "PrincessTower_1_1", 1766, 15250, 0, null, null],
+   [325, 4159, 23475, 2, null, 1766, 15300, 0, null, null],
+   [326, 4159, 23475, 2, null, 1766, 15350, 0, null, null],
+   [327, 4159, 23475, 2, null, 1766, 15400, 0, null, null],
+   [328, 4159, 23475, 2, null, 1766, 15450, 0, null, null],
+   [329, 4159, 23475, 2, null, 1766, 15500, 0, null, null]
   ],
   "GiantBuffer_0": [
    [0, 3499, 9500, 4, null, 2662, 0, 950, null, null],
@@ -1099,12 +1101,12 @@
    [321, 3269, 22594, 2, "PrincessTower_1_1", 2662, 15100, 0, null, null],
    [322, 3269, 22594, 2, "PrincessTower_1_1", 2662, 15150, 0, null, null],
    [323, 3269, 22594, 2, "PrincessTower_1_1", 2662, 15200, 0, null, null],
-   [324, 3304, 22642, 1, "KingTower_1_0", 2662, 15250, 0, null, null],
-   [325, 3342, 22687, 1, "KingTower_1_0", 2662, 15300, 0, null, null],
-   [326, 3380, 22732, 1, "KingTower_1_0", 2662, 15350, 0, null, null],
-   [327, 3418, 22777, 1, "KingTower_1_0", 2662, 15400, 0, null, null],
-   [328, 3456, 22822, 1, "KingTower_1_0", 2662, 15450, 0, null, null],
-   [329, 3494, 22867, 1, "KingTower_1_0", 2662, 15500, 0, null, null]
+   [324, 3269, 22594, 2, "PrincessTower_1_1", 2662, 15250, 0, null, null],
+   [325, 3269, 22594, 2, null, 2662, 15300, 0, null, null],
+   [326, 3269, 22594, 2, null, 2662, 15350, 0, null, null],
+   [327, 3269, 22594, 2, null, 2662, 15400, 0, null, null],
+   [328, 3269, 22594, 2, null, 2662, 15450, 0, null, null],
+   [329, 3269, 22594, 2, null, 2662, 15500, 0, null, null]
   ]
  },
  "records": [

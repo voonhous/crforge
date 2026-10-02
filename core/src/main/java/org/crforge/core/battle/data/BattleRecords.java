@@ -1876,6 +1876,17 @@ public final class BattleRecords {
   }
 
   /**
+   * A published global's flag.
+   *
+   * @param name the global's name
+   */
+  public boolean globalBoolean(String name) {
+    GameTable globals = tables.table(GLOBALS);
+    checkArgument(globals.has(name), () -> "the game tables have no global " + name);
+    return globals.row(name).bool("BooleanValue");
+  }
+
+  /**
    * A published global's text.
    *
    * @param name the global's name

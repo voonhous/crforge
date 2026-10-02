@@ -99,6 +99,12 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
    */
   @Setter private boolean buildingKeepsAttacking;
 
+  /**
+   * The lost-reference query: whether an attack whose reference went during the preloaded windup
+   * stops; it runs on until the owner says how to answer.
+   */
+  @Setter private BooleanSupplier stopsWithoutTarget = () -> false;
+
   /** Collects the route and resume requests the selection and the visit make. */
   @Getter private final TargetingOutcome outcome = new TargetingOutcome();
 
@@ -203,6 +209,11 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
   @Override
   public boolean buildingKeepsAttacking() {
     return buildingKeepsAttacking;
+  }
+
+  @Override
+  public boolean stopsWithoutTarget() {
+    return stopsWithoutTarget.getAsBoolean();
   }
 
   @Override

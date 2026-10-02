@@ -391,7 +391,7 @@ public final class TargetingVisit {
           t.isHitInProgressWithoutReference()
               || t.getAttackBlockTimerMs() < 0
               || t.getBurstProgressMs() >= 1;
-      if (idleAttack && !queries.continueWithoutReference()) {
+      if (idleAttack && !queries.stopsWithoutTarget()) {
         if (hitSpeed == 0) {
           return;
         }
@@ -580,7 +580,7 @@ public final class TargetingVisit {
     if (hitPending) {
       if (reference != null) {
         hitReady = t.getSpecialLoadTimerMs() == 0;
-      } else if (t.isHitInProgressWithoutReference() && !queries.continueWithoutReference()) {
+      } else if (t.isHitInProgressWithoutReference() && !queries.stopsWithoutTarget()) {
         hitReady = t.getSpecialLoadTimerMs() == 0;
       }
     }
@@ -598,7 +598,7 @@ public final class TargetingVisit {
     if ((dashTime + t.getAttackTimerMs()) / hitSpeed > (dashTime + attackTimerOnEntry) / hitSpeed) {
       if (t.getReference() != null) {
         queries.turnToward(t.getReference());
-      } else if (t.isHitInProgressWithoutReference() && !queries.continueWithoutReference()) {
+      } else if (t.isHitInProgressWithoutReference() && !queries.stopsWithoutTarget()) {
         queries.turnToward(null);
       }
     }

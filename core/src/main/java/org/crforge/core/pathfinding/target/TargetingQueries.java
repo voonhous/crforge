@@ -77,8 +77,12 @@ public interface TargetingQueries {
     return false;
   }
 
-  /** True when a unit whose reference is gone should nevertheless carry on attacking. */
-  default boolean continueWithoutReference() {
+  /**
+   * The lost-reference query, asked while the unit holds no reference during its preloaded windup:
+   * true when the attack must stop and wait out the target-lost timer, false when it runs on to a
+   * hit with no target. False until the owner says how to answer.
+   */
+  default boolean stopsWithoutTarget() {
     return false;
   }
 
