@@ -1296,10 +1296,10 @@ public class CharacterEntity extends WorldEntity {
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
    * mode moves the index by itself other than a continuous-damage attacker's, an entry that sets
    * more than its damage, its projectile and its action (and, for a continuous-damage attacker, its
-   * window), an entry without a projectile or an action on a unit that fires, and an action run as
-   * the character attacks. An entry's action is established in place of a projectile, read from an
-   * order of two or more by an index only actions move; one with a projectile, in a sequence of
-   * one, in a continuous-damage attacker's or on a charging row is refused.
+   * window), and an entry without a projectile or an action on a unit that fires. An entry's action
+   * is established in place of a projectile, read from an order of two or more by an index only
+   * actions move; one with a projectile, in a sequence of one, in a continuous-damage attacker's or
+   * on a charging row is refused.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
@@ -1327,9 +1327,6 @@ public class CharacterEntity extends WorldEntity {
           refused = "an attack sequence entry without a projectile on a unit that fires";
         }
       }
-    }
-    if (refused == null && data.onAttackAction() != null) {
-      refused = "an action run as it attacks";
     }
     if (refused == null && data.chargeRange() != 0 && data.hasProjectile()) {
       refused = "a charge on a unit that fires, whose charged shot is not established";
@@ -1656,12 +1653,17 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * A character's death switches its movement component off, so the rest of the tick skips its
-   * movement visit. Its targeting component stays on, so a hit it has due in the same tick still
-   * lands; the standard game switches that off too only under a global setting it leaves off.
+   * movement visit and an area effect's pull passes it over. Its targeting component stays on, so a
+   * hit it has due in the same tick still lands; the standard game switches that off too only under
+   * a global setting it leaves off.
    */
   @Override
   protected void died() {
-    getView().setMovementActive(false);
+    if (getView().isMovementComponent()) {
+      switchComponent(MOVEMENT_SLOT, false);
+    } else {
+      getView().setMovementActive(false);
+    }
   }
 
   /**

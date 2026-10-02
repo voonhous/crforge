@@ -395,6 +395,13 @@ import org.junit.jupiter.params.provider.ValueSource;
  * same tick. {@code parent_buff_ram_rider_rage} has a Rage refresh its buff on a Ram every six
  * ticks, each handed to its rider, whose throws come 17 or 18 ticks apart instead of 22. Each is
  * held to every hand-over and the rider's instances after it.
+ *
+ * <p>{@code valkyrie_ev1_barbarians} has an evolved Valkyrie spin among three Barbarians: each hit
+ * runs its attack action on itself with the hit's target as cause, which makes a mini tornado on
+ * the Valkyrie that pulls every Barbarian and hits each once, and gives the Valkyrie a buff that
+ * keeps enemies from pushing it. {@code royal_giant_ev1_knights} has an evolved Royal Giant shell a
+ * princess tower with two Knights at its feet: each launch makes an area at the Royal Giant that
+ * hits and pushes both Knights back the next tick.
  */
 class BattleActionSpawnRunTest {
 
@@ -570,7 +577,9 @@ class BattleActionSpawnRunTest {
         "parent_buff_goblin_giant",
         "parent_buff_ram_rider_rage",
         "evolution_knight",
-        "evolution_hero_mirror"
+        "evolution_hero_mirror",
+        "valkyrie_ev1_barbarians",
+        "royal_giant_ev1_knights"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

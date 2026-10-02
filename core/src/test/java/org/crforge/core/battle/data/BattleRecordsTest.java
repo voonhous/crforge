@@ -442,6 +442,61 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a unit's action run as it attacks is read when it is a spawn, and listed as not modelled"
+          + " otherwise")
+  void anAttackActionOtherThanASpawnIsNotModelled() {
+    UnitData valkyrie = records.unit("Valkyrie_EV1");
+    assertThat(valkyrie.onAttackAction()).isEqualTo("Valkyrie_EV1_Tornado");
+    assertThat(valkyrie.unmodelledColumns()).doesNotContain("OnAttackAction");
+    assertThat(records.unit("RoyalGiant_EV1").unmodelledColumns()).doesNotContain("OnAttackAction");
+    // An uppercut, a variable set, a resettable area effect and a group.
+    for (String name :
+        List.of("MegaKnight_EV1", "InfernoDragon_EV1", "BabyDragon_EV1", "RoyalHog_EV1")) {
+      assertThat(records.unit(name).unmodelledColumns()).as(name).contains("OnAttackAction");
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a buff's tags are read when the only one is the one that keeps enemies from pushing its"
+          + " carrier, and listed as not modelled otherwise")
+  void aBuffSetsOnlyTheTagThePushPassReads(@TempDir Path folder) throws IOException {
+    BuffData notPushed = records.buff("Valkyrie_NotPushed_BUF");
+    assertThat(notPushed.gameTagsToSet()).isEqualTo(EntityFlags.NO_PUSHED_BY_ENEMY);
+    assertThat(notPushed.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("Valkyrie_MiniTornado_EV1").gameTagsToSet()).isZero();
+
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "character_buffs",
+            rows ->
+                GameData.columns(rows, "Valkyrie_NotPushed_BUF")
+                    .put("GameTagsToSet", "NO_PUSHED_BY_ENEMY,NO_ATTACK"));
+    assertThat(new BattleRecords(tables).buff("Valkyrie_NotPushed_BUF").unmodelledColumns())
+        .containsExactly("GameTagsToSet");
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect's tags are read when they only hide its pushback, and listed as not"
+          + " modelled otherwise")
+  void anAreaEffectTagsOnlyHideItsPushback(@TempDir Path folder) throws IOException {
+    assertThat(records.areaEffect("EvoRoyalGiantPush_EV1").unmodelledColumns()).isEmpty();
+
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows ->
+                GameData.columns(rows, "EvoRoyalGiantPush_EV1")
+                    .put("Tags", "NO_AOE_DAMAGE_VFX,NO_AOE_PUSHBACK_VFX"));
+    assertThat(new BattleRecords(tables).areaEffect("EvoRoyalGiantPush_EV1").unmodelledColumns())
+        .containsExactly("Tags");
+  }
+
+  @Test
+  @DisplayName(
       "a buff whose action on a reduced hit keeps an effect running is refused for that action")
   void aLastingDamageReductionActionIsRefused(@TempDir Path folder) throws IOException {
     GameTables tables =

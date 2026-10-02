@@ -298,9 +298,19 @@ class BattleTowerRunTest {
         .isEqualTo(record.get("own_hp").asInt());
   }
 
-  /** Collects every launch, impact, hit and death as the reference lists them. */
+  /**
+   * Collects every launch, impact, hit and death as the reference lists them. An area effect's hit
+   * pushes each victim right after damaging it; the reference lists its pushbacks after all its
+   * hits, at its area, which is the order kept here.
+   */
   static WorldObserver eventCollector(int[] currentTick, List<String> events) {
     return new WorldObserver() {
+      /** The pushbacks of the area effect hit under way, listed with its area. */
+      private final List<String> areaEffectPushbacks = new ArrayList<>();
+
+      /** True between an area effect's first victim and its area. */
+      private boolean inAreaEffectHit;
+
       @Override
       public void reflectedHit(
           int tick, WorldEntity reflector, WorldEntity struck, int damage, DamageResult result) {
@@ -470,6 +480,7 @@ class BattleTowerRunTest {
         if (currentTick[0] < 0) {
           return;
         }
+        inAreaEffectHit = true;
         events.add(
             "%d area_effect_hit %s %s %d %d"
                 .formatted(
@@ -511,6 +522,9 @@ class BattleTowerRunTest {
       @Override
       public void areaEffectDamaged(
           int tick, AreaEffectEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+        inAreaEffectHit = false;
+        events.addAll(areaEffectPushbacks);
+        areaEffectPushbacks.clear();
         if (currentTick[0] < 0) {
           return;
         }
@@ -608,19 +622,20 @@ class BattleTowerRunTest {
           int fromX,
           int fromY,
           MovementState pushback) {
-        events.add(
-            "%d pushback %s %d from %d %d at %d %d target %d %d budget %d"
-                .formatted(
-                    currentTick[0],
-                    unit.name(),
-                    started ? 1 : 0,
-                    fromX,
-                    fromY,
-                    unit.getView().getX(),
-                    unit.getView().getY(),
-                    pushback.getTargetX(),
-                    pushback.getTargetY(),
-                    pushback.getPushbackBudget()));
+        (inAreaEffectHit ? areaEffectPushbacks : events)
+            .add(
+                "%d pushback %s %d from %d %d at %d %d target %d %d budget %d"
+                    .formatted(
+                        currentTick[0],
+                        unit.name(),
+                        started ? 1 : 0,
+                        fromX,
+                        fromY,
+                        unit.getView().getX(),
+                        unit.getView().getY(),
+                        pushback.getTargetX(),
+                        pushback.getTargetY(),
+                        pushback.getPushbackBudget()));
       }
 
       @Override

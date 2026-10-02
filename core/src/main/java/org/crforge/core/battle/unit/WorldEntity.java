@@ -79,7 +79,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
         "Settled: the level packed against the rarity at creation, the hit points and the damage"
             + " at that level, a unit that fires with no damage of its own taking its projectile's"
             + " damage at its level, the alive answer, the removal test, the tag word recomputed at the"
-            + " pre-hook from the one-step word and the actions' tags, and that a removable entity"
+            + " pre-hook from the one-step word, the actions' tags and the listed buffs' tags, and"
+            + " that a removable entity"
             + " leaves the holder at the next cleanup, which tells every other entity at once; a"
             + " targeting component on every entity, seeded with the opposing side's towers, whose"
             + " hits go through the hit application, whose area, for a row with an area radius,"
@@ -109,7 +110,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " Once an air-to-ground run has held it, the pre-hook folds the height changes"
             + " pushed since the last one into its height offset and reads its layer from its"
             + " tag word and live height, held by vines_group and vines_tower; FORCE_IS_AIR on"
-            + " such an entity is refused.")
+            + " such an entity is refused. The row's action run as it attacks, scheduled on the"
+            + " entity with the hit's target as its cause and run in its pending pass of the same"
+            + " tick, held by valkyrie_ev1_barbarians and royal_giant_ev1_knights; nothing"
+            + " scheduled for a hit with no target, carried and held by no run.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -580,6 +584,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void runEntryAction(TargetView target) {
         WorldEntity.this.runEntryAction(target);
+      }
+
+      @Override
+      public void runAttackAction(TargetView target) {
+        WorldEntity.this.runAttackAction(target);
       }
 
       @Override
@@ -1060,15 +1069,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * The tag recompute every entity runs first thing in its pre-hook: the tag word every reader sees
    * becomes the one-step word handlers wrote since the last recompute, which is then cleared,
-   * together with the tags of every action the entity runs and, for a character, the tags its own
-   * row sets. A tag a handler sets therefore lasts one step, a tag an action sets lasts as long as
-   * the action is listed, and a row's tags are there from the first pre-hook after the entity is
-   * made.
+   * together with the tags of every action the entity runs, of every buff listed on it and, for a
+   * character, the tags its own row sets. A tag a handler sets therefore lasts one step, a tag an
+   * action or a buff sets lasts as long as the action or the buff is listed, and a row's tags are
+   * there from the first pre-hook after the entity is made.
    */
   @Override
   protected void preHook() {
     GridEntity view = getView();
-    view.setFlags(view.getPendingFlags() | actionTags() | rowTags());
+    view.setFlags(view.getPendingFlags() | actionTags() | buffs.tags() | rowTags());
     view.setPendingFlags(0);
     if (layered) {
       foldLayer();
@@ -1473,6 +1482,32 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     WorldEntity cause = target == null ? null : world.entityOf(target.getEntity());
     actionHolder()
         .schedule(row, ActionHolder.OWN_DELAY, false, cause == null ? null : cause.actionHolder());
+  }
+
+  /** The row the entity's row runs as it attacks, built on first use. */
+  private BattleAction attackActionRow;
+
+  /**
+   * Schedules the row's attack action on the entity with the hit's target as its cause, queued as
+   * the row's own delay asks: from the targeting visit it runs in the entity's pending pass of the
+   * same tick. Without a target nothing is scheduled, as the scheduler takes its cause's reference
+   * first.
+   *
+   * @param target what the hit was aimed at, or null when the entity had given it up
+   */
+  private void runAttackAction(TargetView target) {
+    if (data.onAttackAction() == null || target == null) {
+      return;
+    }
+    WorldEntity cause = world.entityOf(target.getEntity());
+    if (cause == null) {
+      throw new UnsupportedOperationException(
+          name() + " hit something that is not an entity of the battle, not modelled");
+    }
+    if (attackActionRow == null) {
+      attackActionRow = world.getActions().build(data.onAttackAction(), world.binding(this));
+    }
+    actionHolder().schedule(attackActionRow, ActionHolder.OWN_DELAY, false, cause.actionHolder());
   }
 
   /**

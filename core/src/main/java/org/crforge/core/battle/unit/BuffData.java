@@ -62,6 +62,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param cloneBuff true for a Clone buff, which a parent keeps from its riders
  * @param attachedInheritAs the buff row a parent hands its riders in place of this one, or null to
  *     hand them this one
+ * @param gameTagsToSet the tags its row sets, in its carrier's tag word from the carrier's next
+ *     pre-hook for as long as it is listed
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -106,6 +108,7 @@ public record BuffData(
     boolean ignorePushBack,
     boolean cloneBuff,
     String attachedInheritAs,
+    long gameTagsToSet,
     List<String> unmodelledColumns) {
 
   public BuffData {

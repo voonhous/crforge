@@ -1055,3 +1055,12 @@ A Ladder match at level 11, both players' words 0, side 1's plays all Knights. A
 - `evolution_hero_mirror`: side 0's deck Zap, Zap, Knight (index 2, the evolution slot), Zap x3, Mirror, Zap; side 1's Knight x3, Giant (index 3, the hero slot), Knight x4. The deck pass gives side 1's first champion slot GiantHero with deck index 3. The Knight is played on 20 and 455 as itself and on 1072 as Knight_EV1. Side 1's Giant on 900 at (14500, 20000) is played as Giant_hero for 5 and makes GiantHero, 3968 hit points, which the first slot follows; it hits PrincessTower_0_2 from 1211 for 253. Side 0's Mirror on 1297 at (3500, 12000) repeats the plain Knight, not Knight_EV1, at level 12 for 4: m_0 has 1938 hit points. The run is 1399 ticks.
 
 `BattleActionSpawnRunTest` plays both with the spawn runs and holds every slot and item and the count each side holds at the end.
+
+## `golden/valkyrie_ev1_barbarians.json` and `golden/royal_giant_ev1_knights.json` - the action a unit runs as it attacks
+
+Placed directly at level 11, the towers attacking, every unit on tick 0.
+
+- `valkyrie_ev1_barbarians`: Valkyrie_EV1 at (3500, 16000) and Barbarians at (2500, 18500), (4500, 18500) and (3500, 20500). Each of the Valkyrie's hits on 26, 56 and 86 runs Valkyrie_EV1_Tornado on the Valkyrie with the hit's target as its cause, in its pending pass of the same tick. Its mini tornado follows the Valkyrie, updates ten times from the next tick, pulls every Barbarian in 5000 on each update and hits each for 84 on its eighth buff visit, on 35 and 65; the second kills b0 and b1, which the pull of 65 passes over. The next action gives the Valkyrie Valkyrie_NotPushed_BUF for 500 ms, its tag in the Valkyrie's tag word on 27 to 36, 57 to 66 and 87 to 96. b2 dies on 86.
+- `royal_giant_ev1_knights`: RoyalGiant_EV1 at (3500, 18500) and Knights at (3000, 19500) and (4200, 19300). The Royal Giant shells the princess tower on 44, 80 and 116; each launch runs RoyalGiant_EV1_PushBack, whose area at the Royal Giant hits both Knights for 81 the next tick and pushes each 1000 from its centre. The reference lists an area's pushbacks after all its hits, though each victim is pushed right after its own; the test keeps the reference's order.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs, held to every action run, area effect, pull, buff, launch, hit, pushback and death and every unit's position on every tick.
