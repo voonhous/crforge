@@ -94,7 +94,7 @@ class BattleCardPlayTest {
   void aUnitWithAnUnknownStartingActionIsRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.play(
-        0, GameData.card("GoblinCage"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
+        0, GameData.card("GoblinMachine"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "B");
     assertThatThrownBy(
             () -> {
               // The play runs twenty ticks after its stamp.
@@ -103,7 +103,7 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        // The Goblin Cage's shake while it has a target is not composed.
-        .hasMessageContaining("ActionPlayAnimationIfHasTarget");
+        // The Goblin Machine's rocket is not composed.
+        .hasMessageContaining("ActionTargetIndicatorAttack");
   }
 }

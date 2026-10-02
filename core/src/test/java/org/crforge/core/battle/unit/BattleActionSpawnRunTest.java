@@ -282,6 +282,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * skeleton_barrel_shot_down} has a Musketeer and the tower shoot one down before it hits, and the
  * container falls where it died. Each is held to every Kamikaze end and drain, and to the lane each
  * ring child asked for.
+ *
+ * <p>{@code goblin_cage_knight} plays a Goblin Cage that a Knight leaves its lane for: the cage's
+ * shake is listed as it starts and does nothing, the cage takes the Knight but its first hit is not
+ * yet due when the Knight's third hit and the decay kill it, and its Goblin Brawler, made on its
+ * point, kills the Knight. {@code goblin_cage_lifetime} leaves one alone until its decay kills it
+ * and its Brawler stands on its point.
  */
 class BattleActionSpawnRunTest {
 
@@ -402,7 +408,9 @@ class BattleActionSpawnRunTest {
         "skeleton_barrel_tower",
         "skeleton_barrel_shot_down",
         "goblin_hut_passing",
-        "goblin_hut_lifetime"
+        "goblin_hut_lifetime",
+        "goblin_cage_knight",
+        "goblin_cage_lifetime"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

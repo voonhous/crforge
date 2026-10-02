@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
+import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
@@ -226,6 +227,17 @@ public final class ActionRows {
                   "SpecialDeployStartFrameLabel",
                   "SpecialDeployEndFrameLabel",
                   "OnPopBalloonEffectList")),
+          // The Goblin Cage's shake has no perform: its run is started and stepped and does
+          // nothing. Which frames it plays, and at what priority, is read by its client view
+          // alone, from whether the owner holds a troop.
+          Map.entry(
+              "ActionPlayAnimationIfHasTarget",
+              Set.of(
+                  "TargetStartFrame",
+                  "TargetEndFrame",
+                  "IdleStartFrame",
+                  "IdleEndFrame",
+                  "Priority")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -443,6 +455,24 @@ public final class ActionRows {
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
+            case "ActionPlayAnimationIfHasTarget" -> {
+              // Its run is listed for as long as its owner lives and changes nothing; the columns
+              // that would give such a run something to do are held by no reference.
+              for (String column :
+                  List.of("GameTagsToSet", "ForceStopIfTrue", "Singleton", "NextAction")) {
+                JsonNode value = f.get(column);
+                boolean set =
+                    value != null
+                        && !value.isNull()
+                        && !(value.isBoolean() && !value.asBoolean())
+                        && !value.asText().isEmpty();
+                if (set) {
+                  throw new UnsupportedOperationException(
+                      name + " plays an animation with " + column + ", which is not modelled");
+                }
+              }
+              yield new PlayAnimationIfHasTarget(shared);
+            }
             case "ActionGoblinHutLifeState" ->
                 new GoblinHutLifeState(
                     shared,
