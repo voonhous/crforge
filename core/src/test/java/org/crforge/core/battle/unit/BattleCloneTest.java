@@ -272,6 +272,21 @@ class BattleCloneTest {
   }
 
   @Test
+  @DisplayName("an area effect spawned with a clone as its cause is refused")
+  void anAreaEffectSpawnedFromAClone() {
+    Scene scene = new Scene();
+    scene.still(0, 0, "Knight", X, Y, "knight");
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("knight_clone0");
+    BattleAction spawn =
+        GameData.actions().build("GoblinCurseCore", scene.match.getWorld().binding(clone));
+
+    assertThatThrownBy(() -> clone.actionHolder().start(spawn, clone.actionHolder()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("from a clone");
+  }
+
+  @Test
   @DisplayName("an area effect with a buff reaching a clone is refused")
   void aBuffAreaOnAClone() {
     Scene scene = new Scene();

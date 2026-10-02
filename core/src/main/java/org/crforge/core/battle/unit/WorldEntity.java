@@ -1072,6 +1072,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     world.handOverChampion(this, child);
   }
 
+  @Override
+  public void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
+    world.spawnAreaEffect(this, action, areaEffect, source, phase);
+  }
+
   /**
    * Before its registration visit, a spawned entity takes its id into its view and learns this
    * tick's arena entities as its candidates, the opposing towers among them, as the pre-pass would

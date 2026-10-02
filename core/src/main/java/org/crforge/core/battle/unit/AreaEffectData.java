@@ -43,7 +43,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param cloning true for a Clone: its on-hit action passes a clone, a unit a Clone passes by and
  *     one tagged against clones by
  * @param onHitAction the action each of its hits schedules on every unit in its circle it reaches,
- *     or null for none; only a Clone's is modelled
+ *     or null for none; only a Clone's and a group of buff spawns are modelled
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)

@@ -243,6 +243,24 @@ public interface WorldObserver {
   default void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {}
 
   /**
+   * An action's spawn row made an area effect, just after it was created.
+   *
+   * @param tick the battle tick
+   * @param owner the owner of the holder that ran the action, at whose point it stands
+   * @param action the spawn row's name
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param source the entity that caused the action, its parent
+   * @param areaEffect the area effect
+   */
+  default void areaEffectSpawned(
+      int tick,
+      SpawnHost owner,
+      String action,
+      int phase,
+      SpawnHost source,
+      AreaEffectEntity areaEffect) {}
+
+  /**
    * A card play made a unit and handed it to the holder, just before it starts the unit.
    *
    * @param tick the battle tick

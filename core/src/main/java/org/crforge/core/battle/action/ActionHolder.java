@@ -278,6 +278,11 @@ public class ActionHolder implements EntityActions {
     running.add(instance);
   }
 
+  /** The phase of this holder's pending pass in progress, or 0 outside every pending pass. */
+  public int passPhase() {
+    return passPhase;
+  }
+
   /** Whether a pending pass is in progress: the battle's, or this holder's own outside a battle. */
   private boolean inPendingPass() {
     return battleInPendingPass != null ? battleInPendingPass.getAsBoolean() : passPhase != 0;
