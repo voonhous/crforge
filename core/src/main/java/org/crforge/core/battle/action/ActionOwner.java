@@ -175,6 +175,23 @@ public interface ActionOwner {
   }
 
   /**
+   * What the evolved Royal Ghost's run asks of the battle about this owner. Only a character runs
+   * one.
+   *
+   * @param action the row
+   */
+  default GhostEvo.Host ghostEvoHost(GhostEvo action) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on " + actionRowName() + ", which is not a character, not modelled");
+  }
+
+  /** What a summon area's run asks of the battle about this owner. Only an area effect runs one. */
+  default GhostEvo.SummonHost ghostSummonHost() {
+    throw new UnsupportedOperationException(
+        "a summon run on " + actionRowName() + ", which is not an area effect, is not modelled");
+  }
+
+  /**
    * What a target indicator attack's run asks of the battle around the owner. Only a character runs
    * one.
    *

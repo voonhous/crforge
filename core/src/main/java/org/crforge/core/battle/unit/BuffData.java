@@ -64,6 +64,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     hand them this one
  * @param gameTagsToSet the tags its row sets, in its carrier's tag word from the carrier's next
  *     pre-hook for as long as it is listed
+ * @param onStartAction the action a newly listed instance schedules on its carrier, the carrier its
+ *     cause; a refresh schedules nothing; null for none
+ * @param onRemoveAction the action every removal of an instance but a death's schedules on its
+ *     carrier, the carrier its cause; null for none
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -109,6 +113,8 @@ public record BuffData(
     boolean cloneBuff,
     String attachedInheritAs,
     long gameTagsToSet,
+    String onStartAction,
+    String onRemoveAction,
     List<String> unmodelledColumns) {
 
   public BuffData {

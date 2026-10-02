@@ -16,7 +16,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *       only against a crown tower;
  *   <li>the bookkeeping decides whether this event has already landed - a damage source that
  *       carries a dedupe id lands on one target once, and a repeat only refreshes the tick the id
- *       was listed with - and runs the subtraction;
+ *       was listed with - then has the character that dealt it count the hit, and runs the
+ *       subtraction;
  *   <li>the subtraction lowers the shield first and then the hit points, reports what was actually
  *       lost with the overkill of a killing hit removed, and on a death stores the heading of the
  *       hit that killed and clamps the hit points to zero.
@@ -36,7 +37,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " the worked kills; a typed hit's entry, its refusals, its id listed without a"
             + " refresh and what it answers; the tiebreaker's drain passing the holds, held by"
             + " match_overtime_tiebreak; a Kamikaze drain, refused where damage is forbidden and"
-            + " passing the holds, held by skeleton_barrel_tower. The battle's two holds - the tiebreaker's and the end's -"
+            + " passing the holds, held by skeleton_barrel_tower. The hit counted for the"
+            + " character that dealt it after the bookkeeping's gates and before the"
+            + " subtraction, held by buff_after_hits_barbarians_bats. The battle's two holds - the tiebreaker's and the end's -"
             + " are the battle's answers. The target's buffs lower the amount through the battle's"
             + " damage reduction before the floor at one, held by monk_ability_tower and"
             + " monk_ability_musketeer. Supplied, not settled: nothing is untouchable or immune,"
@@ -118,6 +121,7 @@ public final class DamageApplication {
    * @param queries what the chain asks about the target and the battle
    */
   public static DamageResult kill(HitPoints hitPoints, DamageQueries queries) {
+    queries.hitCounted();
     return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true);
   }
 
@@ -134,6 +138,7 @@ public final class DamageApplication {
     if (queries.untouchable()) {
       return DamageResult.NOTHING;
     }
+    queries.hitCounted();
     return subtract(hitPoints, damage, 0, 0, queries, true);
   }
 
@@ -189,6 +194,7 @@ public final class DamageApplication {
     if (damageId != 0) {
       hitPoints.listDedupe(damageId, queries.battleTick());
     }
+    queries.hitCounted();
     DamageResult result = subtract(hitPoints, amount, directionX, directionY, queries, false);
     int lost =
         shieldBefore > 0
@@ -221,6 +227,7 @@ public final class DamageApplication {
       }
       hitPoints.listDedupe(dedupeId, queries.battleTick());
     }
+    queries.hitCounted();
     return subtract(hitPoints, damage, directionX, directionY, queries, false);
   }
 

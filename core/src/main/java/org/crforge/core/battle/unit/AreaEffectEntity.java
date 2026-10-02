@@ -12,6 +12,7 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LaserBallHost;
@@ -981,6 +982,13 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   @Override
   public int packedLevel() {
     return packedLevel;
+  }
+
+  /** What a summon run on the area effect asks of the battle: its summon, made on its point. */
+  @Override
+  public GhostEvo.SummonHost ghostSummonHost() {
+    return (row, reference, x, y) ->
+        world.ghostSummon(AreaEffectEntity.this, row, (WorldEntity) reference, x, y);
   }
 
   @Override

@@ -458,6 +458,22 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a buff's start and remove actions are read when they name an action row, and listed as not"
+          + " modelled when written inline")
+  void aBuffsHooksAreReadByName() {
+    BuffData invisibility = records.buff("Ghost_EV1_Invisibility");
+    assertThat(invisibility.onStartAction()).isEqualTo("Ghost_EV1_Invisible_Group");
+    assertThat(invisibility.onRemoveAction()).isEqualTo("Ghost_EV1_Visible_Group");
+    assertThat(invisibility.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("Rage").onStartAction()).isNull();
+
+    BuffData chef = records.buff("ChefTower_increase_level_buff");
+    assertThat(chef.onStartAction()).isNull();
+    assertThat(chef.unmodelledColumns()).contains("OnStartAction");
+  }
+
+  @Test
+  @DisplayName(
       "a buff's tags are read when the only one is the one that keeps enemies from pushing its"
           + " carrier, and listed as not modelled otherwise")
   void aBuffSetsOnlyTheTagThePushPassReads(@TempDir Path folder) throws IOException {

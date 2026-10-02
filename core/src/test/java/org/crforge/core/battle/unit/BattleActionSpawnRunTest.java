@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -579,7 +580,9 @@ class BattleActionSpawnRunTest {
         "evolution_knight",
         "evolution_hero_mirror",
         "valkyrie_ev1_barbarians",
-        "royal_giant_ev1_knights"
+        "royal_giant_ev1_knights",
+        "buff_after_hits_barbarians_bats",
+        "buff_after_hits_ghost_evo"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -609,6 +612,14 @@ class BattleActionSpawnRunTest {
     // A run with a unit of its own places it, its further units and its schedules on them as the
     // tower runs do; one without action owners places its units directly. Each unit starts its
     // row's own starting action as it is placed.
+    // What each buff did, from before the placements: a unit's start buff is applied as it is
+    // placed, on the tick it is placed for.
+    List<String> buffLog = new ArrayList<>();
+    match.getWorld().addObserver(buffLog(currentTick, buffLog));
+    // Every count that applied a BuffAfterHits buff, and every buff's start or remove action, from
+    // before the placements: a unit's start buff is applied as it is placed.
+    List<String> buffAfterHitsLog = new ArrayList<>();
+    match.getWorld().addObserver(buffAfterHitsLog(buffAfterHitsLog));
     List<CharacterEntity> placed = new ArrayList<>();
     if (!reference.get("card").isNull()) {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
@@ -803,9 +814,6 @@ class BattleActionSpawnRunTest {
     // Every charge completed and lost, and every state change a unit's movement pass asked for.
     List<String> jumpChargeDash = new ArrayList<>();
     match.getWorld().addObserver(jumpChargeDashLog(currentTick, jumpChargeDash));
-    // What each buff did.
-    List<String> buffLog = new ArrayList<>();
-    match.getWorld().addObserver(buffLog(currentTick, buffLog));
     // What each building's spawner and lifetime did.
     List<String> buildingLog = new ArrayList<>();
     match
@@ -996,6 +1004,12 @@ class BattleActionSpawnRunTest {
 
                           @Override
                           public void removed(ActionInstance instance) {
+                            if (instance.getAction() instanceof GhostEvo.Summon) {
+                              buffAfterHitsLog.add(
+                                  "%d summon_removed %s %s"
+                                      .formatted(
+                                          currentTick[0], a.name(), instance.getAction().name()));
+                            }
                             if (instance.getAction() instanceof ShapeSelector) {
                               vinesLog.add(
                                   "%d selector_removed %s %s"
@@ -1035,6 +1049,15 @@ class BattleActionSpawnRunTest {
                             child.getView().getX(),
                             child.getView().getY(),
                             child.getView().getState()));
+              }
+
+              @Override
+              public void ghostSummonMade(int tick, AreaEffectEntity area, CharacterEntity summon) {
+                // A summon is listed from its making, as a spawned child is.
+                summon
+                    .actionHolder()
+                    .setListener(listener(summon.name(), currentTick, actions, dropping));
+                spawnTicks.put(summon.name(), currentTick[0]);
               }
 
               @Override
@@ -1413,7 +1436,24 @@ class BattleActionSpawnRunTest {
                     after.get(2).asInt()));
       }
     }
-    assertThat(actions).as("every run of an action").containsExactlyElementsOf(expectedActions);
+    if (reference.has("actions") || !reference.has("buff_after_hits")) {
+      assertThat(actions).as("every run of an action").containsExactlyElementsOf(expectedActions);
+    } else {
+      // A run that lists no runs of its own still lists every buff hook it scheduled: each run is
+      // one of those, on its unit and tick.
+      List<String> hookRuns = new ArrayList<>();
+      for (JsonNode e : reference.get("buff_after_hits")) {
+        if (e.get("event").asText().equals("buff_hook")) {
+          hookRuns.add(
+              "%d run %s %s"
+                  .formatted(
+                      e.get("tick").asInt(), e.get("unit").asText(), e.get("action").asText()));
+        }
+      }
+      assertThat(actions.stream().map(line -> line.substring(0, line.lastIndexOf(' '))).toList())
+          .as("every run of an action, each a buff hook the reference scheduled")
+          .containsExactlyElementsOf(hookRuns);
+    }
     List<String> expectedDrops = new ArrayList<>();
     for (JsonNode a : reference.path("actions")) {
       if (a.get("event").asText().equals("dropped")) {
@@ -1775,6 +1815,9 @@ class BattleActionSpawnRunTest {
     assertThat(killLog)
         .as("every killed-done check scheduled and every check of an action's cause")
         .containsExactlyElementsOf(expectedKillLog(reference));
+    assertThat(buffAfterHitsLog)
+        .as("every count that applied a BuffAfterHits buff and every buff's start or remove action")
+        .containsExactlyElementsOf(expectedBuffAfterHitsLog(reference));
     assertThat(vinesLog)
         .as("every shape selector's start, step and removal, and every air-to-ground run")
         .containsExactlyElementsOf(expectedVinesLog(reference));
@@ -2028,8 +2071,14 @@ class BattleActionSpawnRunTest {
                             a.get("countdown").asInt())
                     // The battle keeps the parent of an area effect an action made, a target
                     // indicator attack made as its signal, Goblinstein's ability made as its
-                    // death area, or a unit's ability made at the unit, and only that.
-                    + (Set.of("action", "target_indicator", "goblinstein_death", "ability")
+                    // death area, a unit's ability made at the unit, or an evolved Royal Ghost's
+                    // run made, and only that.
+                    + (Set.of(
+                                    "action",
+                                    "target_indicator",
+                                    "goblinstein_death",
+                                    "ability",
+                                    "ghost_evo")
                                 .contains(a.get("how").asText())
                             && !a.get("parent").isNull()
                         ? " parent " + a.get("parent").asText()
@@ -2152,10 +2201,11 @@ class BattleActionSpawnRunTest {
 
       @Override
       public void buffApplied(int tick, WorldEntity target, BuffInstance buff) {
+        // A placement comes before the first step, on the tick it is placed for.
         lines.add(
             "%d applied %s %s %s %d %d %s"
                 .formatted(
-                    currentTick[0],
+                    currentTick[0] < 0 ? tick : currentTick[0],
                     target.name(),
                     buff.getBuff().name(),
                     buff.getKey(),
@@ -3003,6 +3053,170 @@ class BattleActionSpawnRunTest {
                 .formatted(currentTick[0], carrier.name(), buff.getBuff().aliveIfTrue(), answer));
       }
     };
+  }
+
+  /**
+   * Logs every count that applied a BuffAfterHits buff, with the counter before and after, and
+   * every buff's start or remove action as it is scheduled, with whether its carrier's own pending
+   * pass was running.
+   */
+  private static WorldObserver buffAfterHitsLog(List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void hitCounted(
+          int tick,
+          WorldEntity attacker,
+          WorldEntity target,
+          int before,
+          int after,
+          String buff,
+          int timeMs) {
+        if (buff != null) {
+          log.add(
+              "%d buff_after_hits %s %s %d %d %s %d"
+                  .formatted(tick, attacker.name(), target.name(), before, after, buff, timeMs));
+        }
+      }
+
+      @Override
+      public void ghostEvoStarted(int tick, CharacterEntity ghost, String action, int phase) {
+        log.add("%d ghost_evo_start %s %s %d".formatted(tick, ghost.name(), action, phase));
+      }
+
+      @Override
+      public void ghostAreaMade(
+          int tick, CharacterEntity ghost, AreaEffectEntity area, WorldEntity target) {
+        log.add(
+            "%d area %s %s %s %d %d %s %d"
+                .formatted(
+                    tick,
+                    ghost.name(),
+                    area.getData().name(),
+                    area.name(),
+                    area.getX(),
+                    area.getY(),
+                    target == null ? null : target.name(),
+                    area.packedLevel()));
+      }
+
+      @Override
+      public void ghostSummoned(
+          int tick, CharacterEntity ghost, WorldEntity reference, int x, int y, int countdownMs) {
+        log.add(
+            "%d summon %s %s %d %d %d"
+                .formatted(tick, ghost.name(), reference.name(), x, y, countdownMs));
+      }
+
+      @Override
+      public void ghostSummonSpawned(int tick, AreaEffectEntity area, CharacterEntity summon) {
+        TargetView reference = summon.getTargeting().getReference();
+        log.add(
+            "%d summoned %s %s %d %d %d %d %d %d %s %d %d"
+                .formatted(
+                    tick,
+                    area.name(),
+                    summon.name(),
+                    summon.getId(),
+                    summon.getView().getX(),
+                    summon.getView().getY(),
+                    summon.getView().getState(),
+                    summon.getView().getDeployCountdown(),
+                    summon.getPackedLevel(),
+                    reference == null ? null : reference.getEntity().getName(),
+                    summon.getView().getDirX(),
+                    summon.getView().getDirY()));
+      }
+
+      @Override
+      public void buffHookScheduled(
+          int tick, WorldEntity carrier, BuffInstance buff, String action, boolean start) {
+        log.add(
+            "%d buff_hook %s %s %b"
+                .formatted(tick, carrier.name(), action, carrier.actionHolder().passPhase() != 0));
+      }
+    };
+  }
+
+  /** The reference's BuffAfterHits applies and buff hooks, in its log's order. */
+  private static List<String> expectedBuffAfterHitsLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("buff_after_hits")) {
+      int tick = e.get("tick").asInt();
+      switch (e.get("event").asText()) {
+        case "buff_after_hits" ->
+            expected.add(
+                "%d buff_after_hits %s %s %d %d %s %d"
+                    .formatted(
+                        tick,
+                        e.get("unit").asText(),
+                        e.get("target").asText(),
+                        e.get("counter").get(0).asInt(),
+                        e.get("counter").get(1).asInt(),
+                        e.get("buff").asText(),
+                        e.get("time").asInt()));
+        case "buff_hook" ->
+            expected.add(
+                "%d buff_hook %s %s %b"
+                    .formatted(
+                        tick,
+                        e.get("unit").asText(),
+                        e.get("action").asText(),
+                        e.get("in_pending").asBoolean()));
+        case "ghost_evo_start" ->
+            expected.add(
+                "%d ghost_evo_start %s %s %d"
+                    .formatted(
+                        tick,
+                        e.get("owner").asText(),
+                        e.get("action").asText(),
+                        e.get("phase").asInt()));
+        case "area" ->
+            expected.add(
+                "%d area %s %s %s %d %d %s %d"
+                    .formatted(
+                        tick,
+                        e.get("owner").asText(),
+                        e.get("row").asText(),
+                        e.get("area_effect").asText(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt(),
+                        e.get("target").isNull() ? null : e.get("target").asText(),
+                        e.get("level").asInt()));
+        case "summon" ->
+            expected.add(
+                "%d summon %s %s %d %d %d"
+                    .formatted(
+                        tick,
+                        e.get("owner").asText(),
+                        e.get("reference").asText(),
+                        e.get("point").get(0).asInt(),
+                        e.get("point").get(1).asInt(),
+                        e.get("countdown").asInt()));
+        case "summoned" ->
+            expected.add(
+                "%d summoned %s %s %d %d %d %d %d %d %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("area").asText(),
+                        e.get("unit").asText(),
+                        e.get("id").asInt(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt(),
+                        e.get("state").asInt(),
+                        e.get("deploy").asInt(),
+                        e.get("level").asInt(),
+                        e.get("ref").isNull() ? null : e.get("ref").asText(),
+                        e.get("dir").get(0).asInt(),
+                        e.get("dir").get(1).asInt()));
+        case "summon_removed" ->
+            expected.add(
+                "%d summon_removed %s %s"
+                    .formatted(tick, e.get("owner").asText(), e.get("action").asText()));
+        // A group's gate shows in the runs it lets through, listed with every run.
+        default -> {}
+      }
+    }
+    return expected;
   }
 
   /**

@@ -228,4 +228,28 @@ class BattleExpressionEnvironmentTest {
     assertThat(evaluate("get_radius()", new BattleExpressionEnvironment(golem, match.getWorld())))
         .isEqualTo(750);
   }
+
+  @Test
+  @DisplayName("is_clone answers a character's clone byte, and is refused on a tower")
+  void isCloneIsTheCloneByte() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000);
+    CharacterEntity clone =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 5500, 10000);
+    clone.markClone(null);
+    match.getBattle().step();
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+
+    assertThat(evaluate("is_clone()", new BattleExpressionEnvironment(knight, match.getWorld())))
+        .isZero();
+    assertThat(evaluate("!is_clone()", new BattleExpressionEnvironment(clone, match.getWorld())))
+        .isZero();
+    assertThat(evaluate("is_clone()", new BattleExpressionEnvironment(clone, match.getWorld())))
+        .isEqualTo(1);
+    assertThatThrownBy(
+            () -> evaluate("is_clone()", new BattleExpressionEnvironment(king, match.getWorld())))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("which is not a character");
+  }
 }

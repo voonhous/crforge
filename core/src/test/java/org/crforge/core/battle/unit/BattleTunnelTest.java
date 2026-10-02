@@ -85,8 +85,8 @@ class BattleTunnelTest {
     CharacterEntity miner = playMiner(match);
     int before = miner.getHitPoints().getHitPoints();
 
-    assertThat(miner.takeDamageOverTime(100)).isEqualTo(DamageResult.NOTHING);
-    assertThat(miner.takeTypedHit(100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
+    assertThat(miner.takeDamageOverTime(100, null)).isEqualTo(DamageResult.NOTHING);
+    assertThat(miner.takeTypedHit(null, 100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
     assertThat(miner.getHitPoints().getHitPoints()).isEqualTo(before);
   }
 

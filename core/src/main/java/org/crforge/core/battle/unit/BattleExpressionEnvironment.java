@@ -35,14 +35,15 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " held by three_musketeers_pekka and three_musketeers_air_building; attack_count as"
             + " the context's attack time over its row's hit speed toward zero, 0 for a hit speed"
             + " below 1, whether its targeting runs or not, held by little_prince_giant and"
-            + " little_prince_retarget. Supplied, not"
+            + " little_prince_retarget; is_clone as a character's clone byte, held by"
+            + " buff_after_hits_ghost_evo. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
-            + " would read first, refused; the other 29 functions, which fail"
+            + " would read first, refused; the other 28 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -63,6 +64,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int TARGET_IN_RANGE = BattleFunctions.id("target_in_range");
   private static final int TARGET_IS_GROUND = BattleFunctions.id("target_is_ground");
   private static final int ATTACK_COUNT = BattleFunctions.id("attack_count");
+  private static final int IS_CLONE = BattleFunctions.id("is_clone");
 
   /** The game tags that force an object onto a layer, which target_is_ground would read first. */
   private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
@@ -247,6 +249,14 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (id == GET_RADIUS) {
       // A character's or a tower's row's collision radius, with no level scaling.
       return context.getData().collisionRadius();
+    }
+    if (id == IS_CLONE) {
+      // A character's clone byte; another object's answer is not established.
+      if (!(context instanceof CharacterEntity character)) {
+        throw new UnsupportedOperationException(
+            "is_clone on " + context.name() + ", which is not a character, is not modelled");
+      }
+      return character.isClone() ? 1 : 0;
     }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.

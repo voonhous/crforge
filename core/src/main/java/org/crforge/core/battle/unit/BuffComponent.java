@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.ToIntFunction;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
@@ -70,6 +71,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * a parent that leaves the battle removes its instances at once, where a source that leaves is only
  * forgotten. The not-attacking section removes only the instances of its row without a parent.
  *
+ * <p><b>Hooks.</b> A new instance schedules its row's start action as it is listed, a refresh
+ * nothing; every removal - the expiry, the not-attacking section's, the stun cleanse, a parent
+ * leaving - schedules its row's remove action before the counts drop, and a death removes nothing.
+ * Each goes on the carrier's own holder with the carrier as its cause and the row's own delay,
+ * starting at once only inside that holder's own pending pass. A clone's copy of an instance with
+ * either is refused.
+ *
  * <p><b>Tags.</b> The tags every listed instance's row sets join the carrier's tag word at its
  * pre-hook, from the one after the instance is listed to the last before it is removed.
  *
@@ -102,7 +110,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Clone row kept from them, a rider's own refusal and the parent's removal leaving"
             + " the riders' instances. A buff applied to a rider other than through its parent is"
             + " refused. Refused by"
-            + " the row: projectiles, chains, spawns, morphs, actions, tags other than the one"
+            + " the row: projectiles, chains, spawns, morphs, an action other than a start or"
+            + " remove action that names its row, tags other than the one"
             + " that keeps enemies from pushing the carrier, switching team,"
             + " shields, hit point and damage multipliers, and an action on a reduction. The"
             + " damage reduction, the largest at or above 0 and the smallest at or below 0 under"
@@ -121,7 +130,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " ending it on that visit; BuffComponentTest holds that it is not asked of an"
             + " instance its step spends or of one that never runs out. The tags of the listed"
             + " rows in the carrier's tag word from its next pre-hook while they are listed, held"
-            + " by valkyrie_ev1_barbarians and BattleAttackActionTest.")
+            + " by valkyrie_ev1_barbarians and BattleAttackActionTest. The start action on a new"
+            + " instance and the remove action on a removal, held by buff_after_hits_ghost_evo"
+            + " and buff_after_hits_barbarians_bats; none on a refresh, the cleanse's and none at"
+            + " a death by BattleBuffAfterHitsTest.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -149,6 +161,9 @@ public final class BuffComponent implements BattleComponent {
 
   /** How many listed instances make the carrier invisible. */
   private int invisibleCount;
+
+  /** The start and remove actions of the rows listed so far, built for the carrier, by name. */
+  private final Map<String, BattleAction> hookRows = new HashMap<>();
 
   /** The life conditions of the rows listed so far, compiled for the carrier, by their text. */
   private final Map<String, Expression> lifeConditions = new HashMap<>();
@@ -328,6 +343,7 @@ public final class BuffComponent implements BattleComponent {
           new BuffInstance(world.nextBuffKey(), buff, time, level, source, side, parent);
       items.add(instance);
       onListed(instance);
+      hook(instance, instance.getBuff().onStartAction(), true);
       world.buffApplied(entity, instance);
     }
     handOver(buff, time, packedLevel, source, side, parent);
@@ -377,8 +393,17 @@ public final class BuffComponent implements BattleComponent {
       throw new UnsupportedOperationException(
           entity.name() + " takes a copy of buffs while it carries some, which is not modelled");
     }
-    // The clone creator leaves a buff that is not cloned off the clone, which no reference holds.
+    // The clone creator leaves a buff that is not cloned off the clone, which no reference holds,
+    // and whether a copy runs a buff's start action is not established.
     for (BuffInstance instance : original.items) {
+      if (instance.getBuff().onStartAction() != null
+          || instance.getBuff().onRemoveAction() != null) {
+        throw new UnsupportedOperationException(
+            original.entity.name()
+                + " is cloned carrying "
+                + instance.getBuff().name()
+                + ", which runs an action as it is listed or removed, not modelled");
+      }
       if (instance.getBuff().notCloned()) {
         throw new UnsupportedOperationException(
             original.entity.name()
@@ -451,6 +476,7 @@ public final class BuffComponent implements BattleComponent {
    * locking count, and its parent.
    */
   private void onRemoved(BuffInstance instance) {
+    hook(instance, instance.getBuff().onRemoveAction(), false);
     if (instance.getBuff().invisible()) {
       invisibleCount--;
     }
@@ -459,6 +485,27 @@ public final class BuffComponent implements BattleComponent {
       targeting.setTargetLockingBuffs(targeting.getTargetLockingBuffs() - 1);
     }
     instance.forgetParent();
+  }
+
+  /**
+   * A buff's start action, as a new instance is listed, or its remove action, as one is removed:
+   * scheduled on the carrier's own holder with the carrier as its cause and the row's own delay,
+   * starting at once only inside that holder's own pending pass. A refresh lists nothing and a
+   * death removes nothing, so neither runs one.
+   *
+   * @param instance the instance listed or removed
+   * @param action the row, or null for none
+   * @param start true for the start action
+   */
+  private void hook(BuffInstance instance, String action, boolean start) {
+    if (action == null) {
+      return;
+    }
+    BattleAction row =
+        hookRows.computeIfAbsent(
+            action, name -> world.getActions().build(name, world.binding(entity)));
+    world.buffHookScheduled(entity, instance, action, start);
+    entity.actionHolder().scheduleInOwnPass(row, entity.actionHolder());
   }
 
   /**

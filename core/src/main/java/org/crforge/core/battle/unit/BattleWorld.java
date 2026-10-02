@@ -343,6 +343,9 @@ public class BattleWorld implements HolderPasses {
   /** The battle's action rows, from the tables it was loaded with. */
   @Getter private ActionRows actions;
 
+  /** How many characters the battle has made, which a summon's name carries. */
+  private int charactersMade;
+
   /** The battle's target locks, made by the first collector's step; null until then. */
   private TargetLocks locks;
 
@@ -527,7 +530,7 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     int before = hitPointsOf(entity);
-    DamageResult result = entity.takeDamage(damage, 0, directionX, directionY);
+    DamageResult result = entity.takeDamage(damage, 0, directionX, directionY, false, attacker);
     reflect(entity, attacker, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
@@ -653,7 +656,7 @@ public class BattleWorld implements HolderPasses {
         LevelScaling.scale(
             ScalingGlobals.standard(), base, level, ScalingMode.CARD_DAMAGE, row.rarity());
     int before = struck.getHitPoints().getHitPoints();
-    DamageResult hit = struck.takeReflectedDamage(damage, directionX, directionY);
+    DamageResult hit = struck.takeReflectedDamage(target, damage, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.reflectedHit(tick, target, struck, damage, hit);
     }
@@ -1162,7 +1165,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void kamikazeKill(WorldEntity unit) {
     int before = unit.getHitPoints().getHitPoints();
-    DamageResult result = unit.takeKill();
+    DamageResult result = unit.takeKill(unit);
     for (WorldObserver observer : observers) {
       observer.kamikazeKilled(tick, unit, before, result);
     }
@@ -1285,7 +1288,7 @@ public class BattleWorld implements HolderPasses {
     }
     // A character's area carries no dedupe id and no direction.
     int before = hitPointsOf(victim);
-    DamageResult result = victim.takeDamage(damage, 0, 0, 0);
+    DamageResult result = victim.takeDamage(damage, 0, 0, 0, false, attacker);
     reflect(victim, attacker, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.areaHit(tick, attacker, victim, damage, hitId, result);
@@ -1329,7 +1332,9 @@ public class BattleWorld implements HolderPasses {
     }
     // A projectile carries no dedupe id unless it belongs to a group, which none here does.
     int before = hitPointsOf(target);
-    DamageResult result = target.takeDamage(damage, 0, directionX, directionY);
+    // The impact counts for the projectile's shooter, while it is in the battle.
+    DamageResult result =
+        target.takeDamage(damage, 0, directionX, directionY, false, projectile.getOwner());
     reflect(target, projectile, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.projectileImpacted(tick, projectile, target, damage, result);
@@ -3571,7 +3576,7 @@ public class BattleWorld implements HolderPasses {
       // A source that has left the battle kills as nothing does.
       WorldEntity source = hit.source() == null || hit.source().isLeft() ? null : hit.source();
       DamageResult result =
-          target.takeTypedHit(amount, damageId, hit.directionX(), hit.directionY());
+          target.takeTypedHit(source, amount, damageId, hit.directionX(), hit.directionY());
       // The death runs inside the hit, before the type's actions are scheduled.
       if (result.died()) {
         target.die(source);
@@ -4411,6 +4416,125 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** Counts one more character made, which a summon's name carries. */
+  void characterMade() {
+    charactersMade++;
+  }
+
+  /** Tells the observers an evolved Royal Ghost's run started. */
+  void ghostEvoStarted(CharacterEntity ghost, String action, int phase) {
+    for (WorldObserver observer : observers) {
+      observer.ghostEvoStarted(tick, ghost, action, phase);
+    }
+  }
+
+  /**
+   * Makes an area effect of an evolved Royal Ghost's run at a point: for the Ghost's side and at
+   * its level, re-based on the area effect's own rarity, the Ghost kept as its parent and following
+   * nothing, handed to the holder, which admits it at the tick's closing cleanup. A row that
+   * follows its parent is refused: the object the run hands such a row is not established.
+   *
+   * @param ghost the Ghost
+   * @param row the area effect's row
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param target the reference the run kept, which only a following row would read, or null
+   * @return the area effect
+   */
+  AreaEffectEntity ghostArea(CharacterEntity ghost, String row, int x, int y, WorldEntity target) {
+    if (records.areaEffect(row).followsParent()) {
+      throw new UnsupportedOperationException(
+          ghost.name() + " makes " + row + ", which follows its parent, not modelled");
+    }
+    AreaEffectEntity area =
+        createAreaEffect(
+            row,
+            x,
+            y,
+            ghost.side(),
+            ghost.getPackedLevel(),
+            null,
+            "ghost_evo",
+            ghost.name(),
+            ghost,
+            null);
+    for (WorldObserver observer : observers) {
+      observer.ghostAreaMade(tick, ghost, area, target);
+    }
+    return area;
+  }
+
+  /** Tells the observers an evolved Royal Ghost's hit summoned. */
+  void ghostSummoned(CharacterEntity ghost, WorldEntity reference, int x, int y, int countdownMs) {
+    for (WorldObserver observer : observers) {
+      observer.ghostSummoned(tick, ghost, reference, x, y, countdownMs);
+    }
+  }
+
+  /**
+   * A summon area's summon: one child of the row on the area's point, or one unit right of it where
+   * the in-front test refuses the point, kept 250 inside the arena; created for the area's side at
+   * its level re-based on the child's rarity and deploying for its row's deploy time, named after
+   * its row and the count of characters made before it. It takes the reference handed over when
+   * that is alive and its validator accepts it, faces the point it was summoned toward, is queued
+   * with no registration visit, so it joins the live list at the tick's closing cleanup, and runs
+   * the combat gate.
+   *
+   * <p>Refused rather than guessed: a building, a unit that paths to its spawn point or limits its
+   * group, and a unit with a starting action that is not presentation alone, which a child starts
+   * as it joins the live list; a presentation row is left out.
+   *
+   * @param area the summon area
+   * @param row the child's row
+   * @param reference the reference handed over, or null for none
+   * @param x the point it faces along the width
+   * @param y the point it faces along the length
+   */
+  void ghostSummon(AreaEffectEntity area, String row, WorldEntity reference, int x, int y) {
+    UnitData data = spawnedRow(row);
+    if (data.building()
+        || data.spawnPathfindSpeed() != 0
+        || data.onStartingAction() != null && !actions.playsEffect(data.onStartingAction())) {
+      throw new UnsupportedOperationException(
+          area.name()
+              + " summons "
+              + row
+              + ", a building, a unit that paths to its point or one with a starting action,"
+              + " which is not modelled");
+    }
+    int[] at =
+        SpawnPlacement.position(
+            area.getX(),
+            area.getY(),
+            0,
+            1,
+            true,
+            0,
+            (px, py) -> SpawnPassable.passable(tileMap, px, py, data.collisionRadius()));
+    int cx = inset(at[0], tileMap.width());
+    int cy = inset(at[1], tileMap.height());
+    CharacterEntity child =
+        CharacterEntity.spawned(
+            this,
+            data,
+            row + "_" + charactersMade,
+            area.side(),
+            cx,
+            cy,
+            PackedLevel.level(PackedLevel.pack(area.packedLevel(), data.rarity())));
+    child.startDeploying();
+    holder.add(child);
+    for (WorldObserver observer : observers) {
+      observer.ghostSummonMade(tick, area, child);
+    }
+    child.takeSummonReference(reference);
+    child.faceToward(x, y);
+    child.summonReveal();
+    for (WorldObserver observer : observers) {
+      observer.ghostSummonSpawned(tick, area, child);
+    }
+  }
+
   /**
    * Makes a target indicator attack's signal: the area effect of the row at the target's point, for
    * the unit's side and at its level, re-based on the area effect's own rarity, the unit kept as
@@ -4936,6 +5060,19 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  void buffHookScheduled(WorldEntity carrier, BuffInstance buff, String action, boolean start) {
+    for (WorldObserver observer : observers) {
+      observer.buffHookScheduled(tick, carrier, buff, action, start);
+    }
+  }
+
+  void hitCounted(
+      WorldEntity attacker, WorldEntity target, int before, int after, String buff, int timeMs) {
+    for (WorldObserver observer : observers) {
+      observer.hitCounted(tick, attacker, target, before, after, buff, timeMs);
+    }
+  }
+
   void buffApplied(WorldEntity target, BuffInstance buff) {
     for (WorldObserver observer : observers) {
       observer.buffApplied(tick, target, buff);
@@ -4994,7 +5131,7 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           target.name() + " reflects and takes a buff's damage from a character, not modelled");
     }
-    DamageResult result = target.takeDamageOverTime(damage);
+    DamageResult result = target.takeDamageOverTime(damage, source);
     reflect(target, (BattleEntity) source, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.buffDamaged(tick, target, buff, damage, before, result);
