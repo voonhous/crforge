@@ -511,6 +511,8 @@ public class BattleWorld implements HolderPasses {
     }
     if (result.died()) {
       entity.die(attacker);
+    } else if (result.landed()) {
+      referenceDrop(attacker, entity, false);
     }
     return result;
   }
@@ -1267,6 +1269,8 @@ public class BattleWorld implements HolderPasses {
     }
     if (result.died()) {
       victim.die(attacker);
+    } else if (result.landed()) {
+      referenceDrop(attacker, victim, false);
     }
     return result;
   }
@@ -1309,6 +1313,8 @@ public class BattleWorld implements HolderPasses {
     }
     if (result.died()) {
       target.die(projectile);
+    } else if (result.landed()) {
+      referenceDrop(projectile, target, false);
     }
     return result;
   }
@@ -1803,13 +1809,15 @@ public class BattleWorld implements HolderPasses {
    * <p>Refused rather than guessed: a projectile's kill for a launcher with a killed-done action,
    * which the game hands on to the launcher by a path not followed, and a kill after the tick's
    * last pending pass, as for the death hooks. The hook's other blocks - a resurrection, a buff or
-   * a conversion on a kill, and the reference a row that passes over buffed targets drops on every
-   * hit - read columns the battle refuses as it creates the unit.
+   * a conversion on a kill - read columns the battle refuses as it creates the unit. Its first
+   * block, the reference a row that passes over buffed targets drops on every hit, comes first -
+   * see {@link #referenceDrop}.
    *
    * @param dying the entity killed
    * @param attacker what killed it
    */
   private void killedDone(WorldEntity dying, BattleEntity attacker) {
+    referenceDrop(attacker, dying, true);
     if (attacker instanceof ProjectileEntity projectile
         && projectile.getRoot() != null
         && projectile.getRoot().getData().onKilledDoneAction() != null) {
@@ -1843,6 +1851,37 @@ public class BattleWorld implements HolderPasses {
             ActionHolder.OWN_DELAY,
             false,
             dying.actionHolder());
+  }
+
+  /**
+   * The first block of the killer's hook, which the hit-points chain calls on the attacker of every
+   * hit that lands, a kill or not: a character whose row both passes over and ranks lower the
+   * targets carrying a buff - the Ram Rider's rider - drops its reference through the setter's null
+   * path while its targeting component is on, before the kill's blocks, the death handler and a
+   * projectile's target buff. It selects again on its next targeting visit, where the buff's
+   * carriers rank lower; its attack time runs on. A projectile's hit reaches its shooter, while the
+   * shooter is in the battle and a character. Every hit that reaches such a row is told to the
+   * observers.
+   *
+   * @param attacker what landed the hit: an arena entity, a projectile, or anything else
+   * @param hit the entity it hit
+   * @param kills whether the hit killed it
+   */
+  private void referenceDrop(BattleEntity attacker, WorldEntity hit, boolean kills) {
+    ProjectileEntity via = attacker instanceof ProjectileEntity projectile ? projectile : null;
+    BattleEntity shooter = via != null ? via.getOwner() : attacker;
+    if (!(shooter instanceof CharacterEntity unit)) {
+      return;
+    }
+    UnitData data = unit.getData();
+    if (data.ignoreTargetsWithBuff() == null || !data.deprioritizeTargetsWithBuff()) {
+      return;
+    }
+    boolean active = unit.isActive(CharacterEntity.TARGETING_SLOT);
+    TargetView dropped = active ? unit.dropReferenceOnHit() : null;
+    for (WorldObserver observer : observers) {
+      observer.referenceDroppedOnHit(tick, unit, hit, via, kills, active, dropped);
+    }
   }
 
   /**
