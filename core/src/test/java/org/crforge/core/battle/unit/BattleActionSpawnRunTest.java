@@ -372,6 +372,14 @@ import org.junit.jupiter.params.provider.ValueSource;
  * twentieth state visit, and both walk, are shot and lock their tower on the same ticks. {@code
  * card_run_baby_dragon_pair} does the same with two Baby Dragons. Each record is read at the end of
  * its tick, so the run's own unit is held to the same timing as the one placed beside it.
+ *
+ * <p>{@code mighty_miner_ability_tower} has its player use the Mighty Miner's ability as it attacks
+ * a princess tower: nine ticks into the cast it switches lanes, across to the mirror of its
+ * position, hidden and dropped by the tower, whose arrow in flight loses it, and leaves its bomb at
+ * the tower, which takes the bomb's death damage; it deploys again on arrival, its reference
+ * dropped, and ramps from the start on the other tower. {@code mighty_miner_ability_walk} uses it
+ * as the Miner walks at a Knight, which turns to the Miner's tower and walks into the bomb's
+ * circle, hit and pushed back up the lane.
  */
 class BattleActionSpawnRunTest {
 
@@ -535,7 +543,9 @@ class BattleActionSpawnRunTest {
         "bandit_dash_past",
         "golden_knight_ladder_chain",
         "tower_retarget_knight",
-        "tower_retarget_cannon"
+        "tower_retarget_cannon",
+        "mighty_miner_ability_tower",
+        "mighty_miner_ability_walk"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");

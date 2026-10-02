@@ -94,6 +94,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param dragMargin how much short of its owner a pulled target is aimed, beyond both radii
  * @param dragBackAsAttractor true for a hook whose speeds follow what it hooked: the target's own
  *     speed for a pulled troop, the self-drag speed for a building
+ * @param allowResetTarget true for a projectile that loses its target when the target goes into a
+ *     pathfinding state: true for an empty column, as the loader stores it
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -160,6 +162,7 @@ public record ProjectileData(
     int dragSelfSpeed,
     int dragMargin,
     boolean dragBackAsAttractor,
+    boolean allowResetTarget,
     List<String> unmodelledColumns) {
 
   public ProjectileData {

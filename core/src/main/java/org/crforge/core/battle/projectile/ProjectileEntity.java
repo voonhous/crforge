@@ -596,6 +596,14 @@ public class ProjectileEntity extends BattleEntity
     pingpongTimeMs = ms;
   }
 
+  /**
+   * Loses the target, handing no damage back, as a projectile whose row allows it does when its
+   * target goes into a pathfinding state: it flies on to its aim and lands on nothing.
+   */
+  public void dropTarget() {
+    target = null;
+  }
+
   void forgetHomingTarget() {
     homingTarget = null;
     homingTimeMs = 0;

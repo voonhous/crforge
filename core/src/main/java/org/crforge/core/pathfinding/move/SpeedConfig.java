@@ -81,4 +81,16 @@ public record SpeedConfig(
         chargeSpeedMultiplier,
         ingamePathfindVisible);
   }
+
+  /**
+   * These speeds with the in-game pathfinding columns: the budget of a unit routing to a point its
+   * ability sent it to, and whether it takes part in pushing meanwhile.
+   *
+   * @param speed the budget in the in-game pathfinding state
+   * @param visible true for a unit that stays visible, and pushable, while it routes there
+   */
+  public SpeedConfig withIngamePathfind(int speed, boolean visible) {
+    return new SpeedConfig(
+        this.speed, jumpSpeed, spawnPathfindSpeed, speed, chargeSpeedMultiplier, visible);
+  }
 }

@@ -300,7 +300,6 @@ public final class BattleRecords {
           "HideHealthbar",
           "IngamePathfindEffect",
           "IngamePathfindStartEffect",
-          "IngamePathfindStopDeployBaseAnim",
           "IngamePathfindStopEffect",
           "KamikazeEffect",
           "LandingEffect",
@@ -425,10 +424,6 @@ public final class BattleRecords {
           // Read only by the soul count of a unit whose ability resurrects, which only that
           // ability spends, and a card play never requests it.
           "IgnoreResurrect",
-          // Read only in the in-game pathfinding state, which only an ability's lane switch
-          // enters, and that switch is refused.
-          "IngamePathfindSpeed",
-          "IngamePathfindVisible",
           // Read once, outside the battle's logic, beside the deploy time's conversion for the
           // deploy animation; the state visit's deploy step does not read it, and a guard that
           // sets it deploys natively as the battle deploys it.
@@ -572,6 +567,10 @@ public final class BattleRecords {
             .flyingHeight(row.intValue("FlyingHeight"))
             .flyDirectPaths(row.bool("FlyDirectPaths"))
             .spawnPathfindSpeed(row.intValue("SpawnPathfindSpeed"))
+            .ingamePathfindSpeed(row.intValue("IngamePathfindSpeed"))
+            .ingamePathfindVisible(row.bool("IngamePathfindVisible"))
+            // Only whether the animation is named counts: an arrival with one deploys again.
+            .ingamePathfindStopDeploys(set(row, "IngamePathfindStopDeployBaseAnim"))
             .spawnPathfindMorph(
                 row.string("SpawnPathfindMorph").isEmpty()
                     ? null
@@ -1271,17 +1270,17 @@ public final class BattleRecords {
 
   /**
    * The ability columns that make an ability do more than run its activation action, buff the unit
-   * itself and dash - a buff over a radius, area object, lane switch, morph, spawn and follow-up
-   * state; the rest are the champion controller's or the dash's, read into the ability, or
-   * presentation, which a request never reads.
+   * itself, dash, switch lanes and leave a character on its spot - a buff over a radius, area
+   * object, morph, a deploy time of the character it leaves, and follow-up state; the rest are the
+   * champion controller's or the dash's, read into the ability, or presentation, which a request
+   * never reads.
    */
   private static final List<String> UNMODELLED_ABILITY_COLUMNS =
       List.of(
           "BuffRadius",
           "AreaEffectObject",
-          "SwitchLanes",
           "MorphTarget",
-          "ActivationSpawnCharacter",
+          "ActivationSpawnDeployTime",
           "AbilityStateDuration");
 
   /**
@@ -1313,6 +1312,11 @@ public final class BattleRecords {
         .dashRange(ability.intValue("DashRange"))
         .dashTargetFurthest(ability.bool("DashTargetFurthest"))
         .pendingBuff(set(ability, "PendingBuff") ? ability.string("PendingBuff") : null)
+        .switchLanes(ability.bool("SwitchLanes"))
+        .activationSpawnCharacter(
+            set(ability, "ActivationSpawnCharacter")
+                ? ability.string("ActivationSpawnCharacter")
+                : null)
         .unmodelledColumns(
             UNMODELLED_ABILITY_COLUMNS.stream().filter(column -> set(ability, column)).toList())
         .build();
@@ -1409,6 +1413,8 @@ public final class BattleRecords {
             .dragSelfSpeed(row.intValue("DragSelfSpeed"))
             .dragMargin(row.intValue("DragMargin"))
             .dragBackAsAttractor(row.bool("DragBackAsAttractor"))
+            // The loader stores true for an empty column.
+            .allowResetTarget(!row.has("AllowResetTarget") || row.bool("AllowResetTarget"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

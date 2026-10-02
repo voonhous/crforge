@@ -3567,6 +3567,97 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * The character an ability leaves on its unit's spot as it fires: one child of the row, on the
+   * unit's position, or one unit right of it where the in-front test refuses the point, kept 250
+   * inside the arena; created for the unit's side at its level re-based on the child's rarity,
+   * deploying for its row's deploy time, untargetable at first, and queued with no registration
+   * visit, so it joins the live list at the tick's closing cleanup and is first visited on the next
+   * tick. A bomb - a building without hit points - dies at the end of that deploy.
+   *
+   * <p>Refused rather than guessed: a building with hit points, a unit that paths to its spawn
+   * point or has a starting action of its own, and an object without hit points that has a range,
+   * which the spawner pulls back by half of it.
+   *
+   * @param unit the unit whose ability fired
+   * @param row the child's row
+   */
+  void activationSpawn(CharacterEntity unit, String row) {
+    UnitData data = spawnedRow(row);
+    if ((data.building() && data.hitpoints() > 0)
+        || data.spawnPathfindSpeed() != 0
+        || data.onStartingAction() != null
+        || data.hitpoints() <= 0 && data.range() != 0) {
+      throw new UnsupportedOperationException(
+          unit.name()
+              + "'s ability leaves "
+              + row
+              + ", a building with hit points, a unit that paths to its point or starts an action,"
+              + " or an object without hit points with a range, which is not modelled");
+    }
+    int[] at =
+        SpawnPlacement.position(
+            unit.getView().getX(),
+            unit.getView().getY(),
+            0,
+            1,
+            true,
+            0,
+            (px, py) -> SpawnPassable.passable(tileMap, px, py, data.collisionRadius()));
+    int x = inset(at[0], tileMap.width());
+    int y = inset(at[1], tileMap.height());
+    int count = spawnCounts.merge(unit.name(), 1, Integer::sum) - 1;
+    CharacterEntity child =
+        CharacterEntity.spawned(
+            this,
+            data,
+            unit.name() + "_" + count,
+            unit.side(),
+            x,
+            y,
+            PackedLevel.level(PackedLevel.pack(unit.getPackedLevel(), data.rarity())));
+    child.startDeploying();
+    holder.add(child);
+    if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
+      child.startSpawnImmunity();
+    }
+    for (WorldObserver observer : observers) {
+      observer.characterSpawned(tick, unit, child, x, y);
+    }
+  }
+
+  /**
+   * A unit going into either pathfinding state: every projectile of the live list aimed at it whose
+   * row allows it loses it as its target, handing no damage back; it flies on to its aim and lands
+   * on nothing.
+   *
+   * @param unit the unit
+   */
+  void pathfindEntered(CharacterEntity unit) {
+    List<String> dropped = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof ProjectileEntity p
+          && p.getTarget() == unit
+          && p.getData().allowResetTarget()) {
+        p.dropTarget();
+        dropped.add(p.name());
+      }
+    }
+    if (!dropped.isEmpty()) {
+      for (WorldObserver observer : observers) {
+        observer.projectilesDropped(tick, unit, dropped);
+      }
+    }
+  }
+
+  /** Tells the observers a unit's ability sent it across the arena. */
+  void lanesSwitched(
+      CharacterEntity unit, int mirroredX, int mirroredY, int toX, int toY, TargetView reference) {
+    for (WorldObserver observer : observers) {
+      observer.lanesSwitched(tick, unit, mirroredX, mirroredY, toX, toY, reference);
+    }
+  }
+
   /** Tells the observers what a check of an action's cause found. */
   void instigatorChecked(
       WorldEntity owner, String action, ActionOwner instigator, String scheduled) {

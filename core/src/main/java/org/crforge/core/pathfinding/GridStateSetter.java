@@ -73,8 +73,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " raised to the unit's deploy time on entering the deploying state; the dashing"
             + " state's entry, held by bandit_knight; the casting state's entry and exit"
             + " with the combat gate after them, held by giant_buffer_knights; the pending"
-            + " damage dropped on entering either pathfinding state, held by no run, since no"
-            + " shot is ever on its way to a unit as it goes underground; the clone setup's entry"
+            + " damage dropped, and every projectile aimed at the unit losing it, on entering"
+            + " either pathfinding state, held by mighty_miner_ability_tower, whose tower arrow is"
+            + " in flight as the Mighty Miner switches lanes; the combat gate on leaving the"
+            + " in-game pathfinding state, held by both Mighty Miner ability runs; the clone setup's entry"
             + " and exit, held by clone_golem_group. Held by the 53"
             + " reference walks, whose route empties at the lock, and the staggered placements."
             + " Not modelled: switching components, the countdown seeded on entering the morphing"
@@ -159,6 +161,18 @@ public final class GridStateSetter implements StateSetter {
    * buff while it is not attacking starts that countdown - or null for nothing.
    */
   @Setter private Runnable attackingExit;
+
+  /**
+   * What entering either pathfinding state does besides dropping the pending damage - the
+   * projectiles aimed at the unit lose it as their target - or null for nothing.
+   */
+  @Setter private Runnable pathfindEntry;
+
+  /**
+   * The combat gate a change out of the in-game pathfinding state ends with, on the targeting
+   * component's own switch, or null for a unit that never enters that state.
+   */
+  @Setter private Runnable ingamePathfindExitGate;
 
   /**
    * Creates the setter of one unit.
@@ -284,6 +298,11 @@ public final class GridStateSetter implements StateSetter {
     }
     if (hook) {
       following.tailGate();
+    }
+    // An arrival out of the in-game pathfinding state ends with the combat gate too: a unit that
+    // deploys again there drops its reference.
+    if (oldState == GridEntityState.INGAME_PATHFIND && ingamePathfindExitGate != null) {
+      ingamePathfindExitGate.run();
     }
   }
 
@@ -453,9 +472,13 @@ public final class GridStateSetter implements StateSetter {
       case GridEntityState.MOVING -> prepareRoute();
       case GridEntityState.DASHING -> enterDash();
       // The entity's own entry hook: a unit that goes underground or pathfinds in the battle drops
-      // the damage pending on it, whose duration it keeps.
-      case GridEntityState.SPAWN_PATHFIND, GridEntityState.INGAME_PATHFIND ->
-          owner.setPendingDamageAmount(0);
+      // the damage pending on it, whose duration it keeps, and the projectiles aimed at it lose it.
+      case GridEntityState.SPAWN_PATHFIND, GridEntityState.INGAME_PATHFIND -> {
+        owner.setPendingDamageAmount(0);
+        if (pathfindEntry != null) {
+          pathfindEntry.run();
+        }
+      }
       case GridEntityState.DEPLOYING -> {
         // Entering the deploying state switches the movement component on, which a unit that
         // waited its turn had off; a building has none to switch.

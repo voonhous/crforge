@@ -124,17 +124,4 @@ class BattleContinuousDamageTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("continuous-damage attacker");
   }
-
-  @Test
-  @DisplayName("the Mighty Miner's lane switch is refused when its ability is requested")
-  void theLaneSwitchIsRefused() {
-    Standard1v1Battle match = passiveTowers();
-    CharacterEntity miner =
-        new CharacterEntity(
-            match.getWorld(), GameData.unit("MightyMiner"), "Miner", 0, 3500, 10000, 11);
-
-    assertThatThrownBy(miner::requestAbility)
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("SwitchLanes");
-  }
 }
