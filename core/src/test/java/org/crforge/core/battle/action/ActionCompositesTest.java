@@ -4,14 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
  * The composite actions as their recorded cases pin them: the group and the select, which schedule
- * other actions when they are scheduled; the filter and the run on the instigator, which schedule
- * one when they start; and the four that last - the duration, the interval, the wait and the flip
- * flop.
+ * other actions when they are scheduled; the filter, the run on the instigator and the check of the
+ * instigator, which schedule one when they start; and the four that last - the duration, the
+ * interval, the wait and the flip flop.
  */
 class ActionCompositesTest {
 
@@ -34,6 +35,52 @@ class ActionCompositesTest {
     public ActionInstance start(ActionHolder holder) {
       log.add("perform " + name);
       return null;
+    }
+  }
+
+  /** An owner of a data row, by its global id, that records every check of an action's cause. */
+  private final class RowOwner implements ActionOwner {
+    private final int globalId;
+
+    private RowOwner(int globalId) {
+      this.globalId = globalId;
+    }
+
+    @Override
+    public HitPoints actionHitPoints() {
+      return null;
+    }
+
+    @Override
+    public int variable(int key) {
+      return 0;
+    }
+
+    @Override
+    public void setVariable(int key, int value) {}
+
+    @Override
+    public void killBy(ActionOwner killer) {}
+
+    @Override
+    public void queueTypedHit(ActionOwner source, int amount, DamageType type) {}
+
+    @Override
+    public int actionUnitGlobalId() {
+      return globalId;
+    }
+
+    @Override
+    public void instigatorChecked(String action, ActionOwner instigator, String scheduled) {
+      log.add(
+          "checked "
+              + action
+              + " "
+              + (instigator == null
+                  ? null
+                  : instigator == this ? "itself" : instigator.actionUnitGlobalId())
+              + " "
+              + scheduled);
     }
   }
 
@@ -229,6 +276,59 @@ class ActionCompositesTest {
     ActionHolder alone = new ActionHolder();
     alone.schedule(new RunOnInstigator(row("run"), target), 0, true);
     assertThat(queue(alone)).as("with no instigator nothing is scheduled").isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a check of the instigator schedules its match branch on the owner, the owner its"
+          + " instigator, when the cause's row is named")
+  void instigatorMatches() {
+    Leaf won = new Leaf("won");
+    Leaf lost = new Leaf("lost");
+    ActionHolder owner = new ActionHolder(new RowOwner(1));
+    ActionHolder bandit = new ActionHolder(new RowOwner(7));
+
+    owner.schedule(
+        new RunIfInstigatorMatches(row("check"), List.of(5, 7), won, lost), 0, true, bandit);
+    assertThat(queue(owner)).containsExactly("won 0");
+    assertThat(owner.queuedInstigators()).containsExactly(owner);
+    assertThat(queue(bandit)).as("nothing on the cause").isEmpty();
+    assertThat(take()).containsExactly("checked check 7 won");
+  }
+
+  @Test
+  @DisplayName(
+      "a check of the instigator runs its miss branch for a cause of another row or of none, and"
+          + " nothing without one")
+  void instigatorMisses() {
+    Leaf won = new Leaf("won");
+    Leaf lost = new Leaf("lost");
+    ActionHolder owner = new ActionHolder(new RowOwner(1));
+    ActionHolder knight = new ActionHolder(new RowOwner(3));
+    ActionHolder shot = new ActionHolder(new RowOwner(ActionOwner.NO_UNIT_ROW));
+
+    owner.schedule(
+        new RunIfInstigatorMatches(row("check"), List.of(7), won, lost), 0, true, knight);
+    owner.schedule(new RunIfInstigatorMatches(row("check"), List.of(7), won, null), 0, true, shot);
+    owner.schedule(new RunIfInstigatorMatches(row("check"), List.of(7), won, lost), 0, true);
+    assertThat(queue(owner))
+        .as("the miss branch once; nothing without one")
+        .containsExactly("lost 0");
+    assertThat(take())
+        .as("no check is told without a cause")
+        .containsExactly("checked check 3 lost", "checked check -1 null");
+  }
+
+  @Test
+  @DisplayName("a check of the instigator that names no row matches any cause, of a row or not")
+  void instigatorMatchesAnythingWithoutNames() {
+    Leaf won = new Leaf("won");
+    ActionHolder owner = new ActionHolder(new RowOwner(1));
+    ActionHolder shot = new ActionHolder(new RowOwner(ActionOwner.NO_UNIT_ROW));
+
+    owner.schedule(new RunIfInstigatorMatches(row("check"), List.of(), won, null), 0, true, shot);
+    assertThat(queue(owner)).containsExactly("won 0");
+    assertThat(take()).containsExactly("checked check -1 won");
   }
 
   // ---------------------------------------------------------------------------------------------

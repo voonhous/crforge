@@ -33,6 +33,7 @@ import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
+import org.crforge.core.battle.action.RunIfInstigatorMatches;
 import org.crforge.core.battle.action.RunOnInstigator;
 import org.crforge.core.battle.action.Select;
 import org.crforge.core.battle.action.SetAttackSequenceIndex;
@@ -228,6 +229,11 @@ public final class ActionRows {
                   "NumMatchesNeeded",
                   "ActionToRun",
                   "ActionToRunIfNoMatch")),
+          // A check of the cause reads no object filter: no shipped row sets one, so a row that
+          // does is refused as a column nothing reads.
+          Map.entry(
+              "ActionRunIfInstigatorMatches",
+              Set.of("MatchName", "ActionToRun", "ActionToRunIfNoMatch")),
           Map.entry(
               "ActionSetCharacterLevel", Set.of("RelativeLevelAdjustment", "AbsoluteLevelToSet")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
@@ -522,6 +528,12 @@ public final class ActionRows {
                     globalIds(f.get("MatchName")),
                     globalIds(f.get("ExcludeName")),
                     f.has("NumMatchesNeeded") ? f.get("NumMatchesNeeded").asInt() : 1,
+                    action(f.get("ActionToRun")),
+                    action(f.get("ActionToRunIfNoMatch")));
+            case "ActionRunIfInstigatorMatches" ->
+                new RunIfInstigatorMatches(
+                    shared,
+                    globalIds(f.get("MatchName")),
                     action(f.get("ActionToRun")),
                     action(f.get("ActionToRunIfNoMatch")));
             case "ActionSetCharacterLevel" ->

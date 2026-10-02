@@ -318,9 +318,10 @@ class BattleTowerRunTest {
 
       @Override
       public void damageDealt(int tick, WorldEntity target, int damage, DamageResult result) {
-        // The reference lists every hit handed to the damage entry, one of no damage as well,
-        // which the entry refuses at once, as a building without damage lands its attacks.
-        if (currentTick[0] < 0 || !result.landed() && damage >= 1) {
+        // The reference lists every hit handed to the damage entry, whether it lands or the entry
+        // refuses it: one of no damage, as a building without damage lands its attacks, and one on
+        // an untouchable target, such as a dash landing on a dasher.
+        if (currentTick[0] < 0) {
           return;
         }
         events.add(

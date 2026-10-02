@@ -1544,6 +1544,9 @@ public class BattleWorld implements HolderPasses {
    * placement not established. The elixir a death gives is left out, as the battle models no
    * elixir.
    *
+   * <p>Between the two, the killer's hook: an arena entity whose hit killed, and whose row has a
+   * killed-done action, schedules it on itself - see {@link #killedDone}.
+   *
    * <p>Then the death handler's hooks: the row's death action and, unless the entity killed itself,
    * its killed action, each built for the entity and scheduled on its own holder with the row's own
    * delay, what killed it as the cause: the unit for a direct hit or its area, the projectile
@@ -1556,7 +1559,8 @@ public class BattleWorld implements HolderPasses {
    * <p>Refused rather than guessed: a death hook with no cause, which the game gives a cause that
    * carries only a side, and one scheduled after the tick's last pending pass, which would leave
    * with the entity. The cause is the attacker's own holder, where the game hands the hook a copy
-   * of the attacker made at the kill; no hook built here reads it beyond its presence.
+   * of the attacker made at the kill; a hook reads no more of it than its presence and its row,
+   * which the copy shares.
    *
    * <p>After the hooks, the death handler's reward: in a match, a player's unit that gives elixir
    * on its death pays it to the king of the killing side, ten times its column in ten-thousandths;
@@ -1569,8 +1573,62 @@ public class BattleWorld implements HolderPasses {
   void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide) {
     UnitData data = dying.getData();
     deathSlot(dying, data);
+    killedDone(dying, attacker);
     deathHooks(dying, attacker, data);
     deathReward(dying, data, killingSide);
+  }
+
+  /**
+   * The killer's hook, which the hit-points chain calls on the attacker of every hit, after the
+   * dying entity's death slot and before its death handler: on a kill, an arena entity whose row
+   * has a killed-done action schedules it on its own holder with the row's own delay, the entity it
+   * killed as the cause. Outside a pending pass it runs in the killer's next pending pass of the
+   * tick: phase 2 after a melee hit or a dash landing. A unit that killed itself is no attacker
+   * here.
+   *
+   * <p>Refused rather than guessed: a projectile's kill for a launcher with a killed-done action,
+   * which the game hands on to the launcher by a path not followed, and a kill after the tick's
+   * last pending pass, as for the death hooks. The hook's other blocks - a resurrection, a buff or
+   * a conversion on a kill, and the reference a row that passes over buffed targets drops on every
+   * hit - read columns the battle refuses as it creates the unit.
+   *
+   * @param dying the entity killed
+   * @param attacker what killed it
+   */
+  private void killedDone(WorldEntity dying, BattleEntity attacker) {
+    if (attacker instanceof ProjectileEntity projectile
+        && projectile.getRoot() != null
+        && projectile.getRoot().getData().onKilledDoneAction() != null) {
+      throw new UnsupportedOperationException(
+          projectile.getRoot().name()
+              + "'s projectile killed "
+              + dying.name()
+              + ", and the hook it hands its launcher is not modelled");
+    }
+    if (!(attacker instanceof WorldEntity killer) || killer == dying) {
+      return;
+    }
+    String action = killer.getData().onKilledDoneAction();
+    if (action == null) {
+      return;
+    }
+    if (!holder.hasPendingPassAhead()) {
+      throw new UnsupportedOperationException(
+          killer.name()
+              + " killed after the tick's last pending pass, where its killed-done action would"
+              + " wait; such a kill is not established");
+    }
+    boolean inPendingPass = holder.isInPendingPass();
+    for (WorldObserver observer : observers) {
+      observer.killedDoneScheduled(tick, killer, dying, action, inPendingPass);
+    }
+    killer
+        .actionHolder()
+        .schedule(
+            actions.build(action, binding(killer)),
+            ActionHolder.OWN_DELAY,
+            false,
+            dying.actionHolder());
   }
 
   /**
@@ -3034,6 +3092,14 @@ public class BattleWorld implements HolderPasses {
     }
     for (WorldObserver observer : observers) {
       observer.characterSpawned(tick, source, child, cx, cy);
+    }
+  }
+
+  /** Tells the observers what a check of an action's cause found. */
+  void instigatorChecked(
+      WorldEntity owner, String action, ActionOwner instigator, String scheduled) {
+    for (WorldObserver observer : observers) {
+      observer.instigatorChecked(tick, owner, action, instigator, scheduled);
     }
   }
 

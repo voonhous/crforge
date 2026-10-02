@@ -1034,6 +1034,31 @@ public interface WorldObserver {
   default void lifeConditionAsked(int tick, WorldEntity carrier, BuffInstance buff, int answer) {}
 
   /**
+   * A kill scheduled its killer's killed-done action on the killer, with what it killed as the
+   * cause.
+   *
+   * @param tick the battle tick
+   * @param killer the entity whose hit killed
+   * @param killed the entity it killed
+   * @param action the killer's row's killed-done action
+   * @param inPendingPass true when a pending pass was running, so the action runs at once
+   */
+  default void killedDoneScheduled(
+      int tick, WorldEntity killer, WorldEntity killed, String action, boolean inPendingPass) {}
+
+  /**
+   * An action checked what caused it against the rows it names.
+   *
+   * @param tick the battle tick
+   * @param owner the entity the action runs on
+   * @param action the action's row
+   * @param instigator what caused it, or null for nothing
+   * @param scheduled the action it scheduled on its owner, or null for none
+   */
+  default void instigatorChecked(
+      int tick, WorldEntity owner, String action, ActionOwner instigator, String scheduled) {}
+
+  /**
    * A clone or its original started its move apart, toward a point straight ahead or behind it.
    *
    * @param tick the battle tick

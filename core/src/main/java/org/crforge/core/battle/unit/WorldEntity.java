@@ -733,10 +733,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return !passesHidden && WorldEntity.this.hidden();
       }
 
-      // The entry and the bookkeeping refuse an entity in its tunnel.
+      // The entry and the bookkeeping refuse an entity in its tunnel, and one the untouchable
+      // test refuses with the immunity left after a dash counted: one riding on a parent, one
+      // dashing under a row with a dash immunity, and one whose immunity still lasts.
       @Override
       public boolean untouchable() {
-        return tunnelling();
+        return tunnelling() || WorldEntity.this.untouchable(true);
       }
 
       @Override
@@ -1488,6 +1490,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public void berserked(Berserk.Event event, int before, int index) {
     world.berserked(this, event, before, index);
+  }
+
+  @Override
+  public int actionUnitGlobalId() {
+    return data.globalId();
+  }
+
+  @Override
+  public void instigatorChecked(String action, ActionOwner instigator, String scheduled) {
+    world.instigatorChecked(this, action, instigator, scheduled);
   }
 
   /** The level a packed value stands for: the relative level plus the signed steps. */

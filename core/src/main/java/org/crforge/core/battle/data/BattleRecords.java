@@ -573,6 +573,7 @@ public final class BattleRecords {
             .onStartingAction(startingActionName(row))
             .onDeathAction(actionName(row, "OnDeathAction"))
             .onKilledAction(actionName(row, "OnKilledAction"))
+            .onKilledDoneAction(actionName(row, "OnKilledDoneAction"))
             .deathDamage(row.intValue("DeathDamage"))
             .deathDamageRadius(row.intValue("DeathDamageRadius"))
             .deathPushBack(row.intValue("DeathPushBack"))
