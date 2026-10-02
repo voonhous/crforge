@@ -167,7 +167,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " with its stop in range or its constant time and height, its landing hit on its"
             + " reference or over its radius with a push, its landing hold, its immunity while it"
             + " dashes and after, and the resume when it loses its reference, held by"
-            + " bandit_knight; a card play's rider that targets troops only, its buff"
+            + " bandit_knight; the Golden Knight's chained dash - its ability's gate within its"
+            + " dash range, the handler's query, stun cleanse and dash, each dash start's count,"
+            + " hit list and first vector, the next dash as it leaves the dashing state, the"
+            + " dash end's reset and no push while it dashes - held by golden_knight_chain and"
+            + " golden_knight_ladder_chain, its tenth dash, a stun removed before the dash and the"
+            + " stop at a crown tower by BattleGoldenKnightTest, while the later of two equally"
+            + " near objects, the forward test and the reset as the targeting component is"
+            + " switched off are held by no run; a card play's rider that targets troops only, its buff"
             + " priority fed, held by ram_rider_tower; an elixir collector's payout to its king,"
             + " held at the cap and paid once the king can take it, and an Elixir Golem's death"
             + " paying the killing side, held by match_elixir_sources (the carry a payout leaves"
@@ -210,7 +217,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " Refused: the columns its row sets that the battle does"
             + " not model (a shield's push or action as it breaks, hiding before its first hit,"
             + " the actions as a hiding row rises and starts to hide, a buff at a share of its"
-            + " hit points, a completed charge's action, a chained dash, a dash's contact damage,"
+            + " hit points, a completed charge's action, a dash's contact damage,"
             + " fixed distance, area effect or closing action, a limit on the elixir it makes, a"
             + " spawner's launches, second and third characters, limit, push and"
             + " deploy for its children, a fixed priority for them), a charge on a unit that"
@@ -521,6 +528,22 @@ public class CharacterEntity extends WorldEntity {
             unit.movementConfig());
     // A unit with an ability casts through its setter, which seeds the cast's countdowns and ends a
     // change into or out of the cast with the combat gate.
+    // A unit whose dashes chain starts its chain's next dash, or ends the dash, as it leaves the
+    // dashing state.
+    if (data.dashCount() >= 1) {
+      setter.setDashExit(
+          new GridStateSetter.DashExit() {
+            @Override
+            public boolean chain(int newState) {
+              return chainDash(newState);
+            }
+
+            @Override
+            public void end() {
+              dashReset();
+            }
+          });
+    }
     if (data.ability() != null) {
       setter.setCasting(
           new GridStateSetter.Casting(
@@ -1442,9 +1465,20 @@ public class CharacterEntity extends WorldEntity {
         unit.targeting().getSpecialLoadTimerMs());
   }
 
+  /** A unit whose dashes chain ends its chain as its targeting component is switched off. */
+  @Override
+  protected void targetingSwitchedOff() {
+    if (getData().dashCount() >= 1) {
+      dashReset();
+    }
+  }
+
   /** Switches a component on or off, the movement component's view and targeting bits with it. */
   private void switchComponent(int slot, boolean on) {
     setActive(slot, on);
+    if (slot == TARGETING_SLOT && !on) {
+      targetingSwitchedOff();
+    }
     if (slot == MOVEMENT_SLOT && getView().isMovementComponent()) {
       getView().setMovementActive(on);
       unit.targeting().setMovementComponentActive(on);
@@ -1548,6 +1582,7 @@ public class CharacterEntity extends WorldEntity {
         .dashMaxRange(data.dashMaxRange())
         .dashLandingTime(data.dashLandingTimeMs())
         .dashStopsAtContact(data.dashToTargetRadius())
+        .dashCount(data.dashCount())
         .dashImmuneToDamageTime(data.dashImmuneToDamageTimeMs())
         .targetOnlyTroops(data.targetOnlyTroops())
         .ignoreTargetsWithBuff(data.ignoreTargetsWithBuff() != null)
@@ -2463,7 +2498,8 @@ public class CharacterEntity extends WorldEntity {
    * ability, is not a champion's clone, can act - its targeting component on - is in none of the
    * states from dashing to the follow-up's, carries neither the postponing nor the disabling tag,
    * and the ability does something: with every other effect refused as it is requested, it buffs
-   * the unit or runs an activation action.
+   * the unit or runs an activation action, or it only dashes and the unit's reference lies within
+   * its dash range.
    */
   private boolean abilityGate() {
     AbilityData ability = getData().ability();
@@ -2478,7 +2514,17 @@ public class CharacterEntity extends WorldEntity {
         != 0) {
       return false;
     }
-    return ability.buff() != null || ability.onActivationAction() != null;
+    if (ability.buff() != null || ability.onActivationAction() != null) {
+      return true;
+    }
+    // An ability that only dashes waits for a reference within its dash range.
+    TargetView reference = unit.targeting().getReference();
+    if (ability.dashRange() < 1 || reference == null) {
+      return false;
+    }
+    int squared =
+        FixedMath.squaredDistance(getView().getX(), getView().getY(), reference.x(), reference.y());
+    return squared <= ability.dashRange() * ability.dashRange();
   }
 
   /** Whether a requested ability waits on the unit for its gate to open. */
@@ -2520,19 +2566,37 @@ public class CharacterEntity extends WorldEntity {
       setter.setState(getView(), GridEntityState.CASTING);
       return;
     }
+    // Left pending, a dash ability puts its pending buff on the unit until its gate opens.
+    if (ability.pendingBuff() != null) {
+      throw new UnsupportedOperationException(
+          name()
+              + "'s "
+              + ability.name()
+              + " is left pending with "
+              + ability.pendingBuff()
+              + ", which no reference holds");
+    }
     getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
     unit.timers().setAbilityReady(true);
   }
 
   /**
-   * The ability's effect, on the visit its trigger delay reaches zero: its activation action is
-   * scheduled on the unit, the unit as its cause, and from the post-hooks it waits for the phase-3
-   * pending pass; then its buff is applied to the unit itself for its time, at the unit's level,
-   * the unit its parent and its source. Its other effects are refused as it is requested.
+   * The ability's effect, on the visit its trigger delay reaches zero: its dash, with the unit able
+   * to act; its activation action, scheduled on the unit, the unit as its cause, which from the
+   * post-hooks waits for the phase-3 pending pass; then its buff, applied to the unit itself for
+   * its time, at the unit's level, the unit its parent and its source. Its other effects are
+   * refused as it is requested.
+   *
+   * <p>The standard game runs the effect inside the state visit, where the rest of the visit sees a
+   * dash's state; here it runs after the visit and before its tail gate, as the rest of the visit
+   * treats the dashing and casting states alike.
    */
   private void abilityFired() {
     AbilityData ability = getData().ability();
     world.abilityFired(this);
+    if (ability.dashRange() >= 1 && isActive(TARGETING_SLOT)) {
+      abilityDash(ability);
+    }
     if (ability.onActivationAction() != null) {
       BattleAction action =
           world.getActions().build(ability.onActivationAction(), world.binding(this));
@@ -2549,6 +2613,225 @@ public class CharacterEntity extends WorldEntity {
               side(),
               this);
     }
+  }
+
+  /** Whether the standard game removes a unit's stuns before its ability dashes: so it does. */
+  private static final boolean ALWAYS_DASH_GOLDENKNIGHT = true;
+
+  /**
+   * Whether a chain's next target beyond the back-dash radius must lie ahead along the side's
+   * direction, rather than along the chain's first dash: so in the standard game.
+   */
+  private static final boolean GOLDEN_KNIGHT_ONLY_DASH_FORWARD = true;
+
+  /** Whether a chain stops when its current target is a crown tower: so in the standard game. */
+  private static final boolean LOGIC_CHAIN_DASH_STOP_AT_TOWER = true;
+
+  /**
+   * The neighbour query: every character of the live list, in its order, the unit itself among
+   * them, whose centre lies within the radius of the point.
+   */
+  private List<WorldEntity> neighbours(int x, int y, int radius) {
+    List<WorldEntity> found = new ArrayList<>();
+    long reach = (long) radius * radius;
+    for (BattleEntity entity : world.getHolder().entities()) {
+      if (entity instanceof WorldEntity other) {
+        long dx = Math.abs((long) other.getView().getX() - x);
+        long dy = Math.abs((long) other.getView().getY() - y);
+        if (dx <= radius && dy <= radius && dx * dx + dy * dy <= reach) {
+          found.add(other);
+        }
+      }
+    }
+    return found;
+  }
+
+  /**
+   * The ability's dash: the neighbour query around the unit over the dash range, each object asked
+   * of the validator and, valid, measured; the nearest kept, the later of equals, or the furthest
+   * for a row that says so. Then the unit's stuns are removed, its movement component switched on,
+   * its dash ended, and it takes the winner as its reference and dashes at it, stopping short by
+   * the winner's collision radius. A dash that finds nobody is refused.
+   */
+  private void abilityDash(AbilityData ability) {
+    GridEntity view = getView();
+    SelectionChain selection = unit.selection();
+    List<DashCandidate> candidates = new ArrayList<>();
+    WorldEntity chosen = null;
+    int best = 0;
+    for (WorldEntity other : neighbours(view.getX(), view.getY(), ability.dashRange())) {
+      boolean valid = selection.validate(other.getTargetView(), ReferenceValidator.MODE_TAKE);
+      int squared =
+          valid
+              ? FixedMath.squaredDistance(
+                  other.getView().getX(), other.getView().getY(), view.getX(), view.getY())
+              : 0;
+      candidates.add(new DashCandidate(other, valid, squared));
+      if (!valid) {
+        continue;
+      }
+      if (chosen == null || (ability.dashTargetFurthest() ? squared >= best : squared <= best)) {
+        best = squared;
+        chosen = other;
+      }
+    }
+    List<String> cleansed = ALWAYS_DASH_GOLDENKNIGHT ? getBuffs().cleanseStuns() : List.of();
+    world.abilityDashed(this, candidates, cleansed, chosen);
+    switchComponent(MOVEMENT_SLOT, true);
+    dashReset();
+    if (chosen == null) {
+      throw new UnsupportedOperationException(
+          name()
+              + "'s "
+              + ability.name()
+              + " finds no target to dash at, whose stop and new request no reference holds");
+    }
+    ReferenceSetter.setReference(
+        unit.targeting(),
+        chosen.getTargetView(),
+        false,
+        false,
+        false,
+        selection,
+        selection.getOutcome());
+    chainedDashStart(
+        chosen.getView().getX(), chosen.getView().getY(), chosen.getView().getCollisionRadius());
+  }
+
+  /**
+   * One object the ability's dash looked at.
+   *
+   * @param entity the object
+   * @param valid whether the validator let the unit take it
+   * @param squaredDistance its squared distance from the unit; 0 when it was not valid
+   */
+  public record DashCandidate(WorldEntity entity, boolean valid, int squaredDistance) {}
+
+  /**
+   * A dash's start for a unit whose dashes chain, as its ability or its chain makes it: unless the
+   * unit may not dash, the chain's count goes up, its reference joins the hit list, and the first
+   * dash's vector is kept; then the dash itself starts, toward the point, stopping short of it by
+   * the radius and in reach of the reference.
+   */
+  private void chainedDashStart(int x, int y, int radius) {
+    GridEntity view = getView();
+    if ((view.getFlags() & EntityFlags.NO_DASH) != 0) {
+      return;
+    }
+    TargetingState t = unit.targeting();
+    TargetView reference = t.getReference();
+    int fromX = view.getX();
+    int fromY = view.getY();
+    if (getData().dashCount() >= 1) {
+      t.setDashChainCount(t.getDashChainCount() + 1);
+      t.getHitTargetIds().add(reference.id());
+      if ((t.getDashFirstX() | t.getDashFirstY()) == 0) {
+        t.setDashFirstX(x - fromX);
+        t.setDashFirstY(y - fromY);
+      }
+    }
+    DashStart.start(
+        view,
+        isActive(MOVEMENT_SLOT) ? unit.movement() : null,
+        unit.movementConfig(),
+        x,
+        y,
+        radius,
+        1,
+        world.getGrid().getWidth(),
+        world.getGrid().getHeight(),
+        setter);
+    world.dashStarted(this, reference, fromX, fromY, x, y);
+    world.chainDashStarted(this, fromX, fromY, x, y, radius);
+  }
+
+  /**
+   * The dash's end, and the targeting component's reset as it is switched off: the chain's count
+   * and first vector cleared and, for a unit whose dashes chain, the hit list emptied and the
+   * reference given up.
+   */
+  private void dashReset() {
+    TargetingState t = unit.targeting();
+    t.setDashChainCount(0);
+    t.setDashFirstX(0);
+    t.setDashFirstY(0);
+    if (getData().dashCount() >= 1) {
+      t.getHitTargetIds().clear();
+      SelectionChain selection = unit.selection();
+      ReferenceSetter.setReference(t, null, false, false, false, selection, selection.getOutcome());
+    }
+  }
+
+  /**
+   * A chain's next dash, as the unit leaves the dashing state for the moving state with fewer
+   * dashes made than its count. The neighbour query around the landing point over the secondary
+   * range, or the greatest dash range without one: each object but the current reference asked of
+   * the validator, which refuses every target the chain has hit, and measured; the nearest is taken
+   * within the back-dash radius, and beyond it only ahead along the side's direction, or anywhere
+   * before a first dash, or, with the forward-only global clear, along the first dash. A crown
+   * tower as the current reference stops the chain. The winner becomes the reference and the next
+   * dash starts at its point, stopping at it.
+   *
+   * @return true when a next dash started
+   */
+  private boolean chainDash(int newState) {
+    TargetingState t = unit.targeting();
+    UnitData data = getData();
+    if (newState != GridEntityState.MOVING) {
+      return false;
+    }
+    int count = t.getDashChainCount();
+    TargetView reference = t.getReference();
+    if (count < 1 || count >= data.dashCount()) {
+      world.chainDashEnded(this, count, reference);
+      return false;
+    }
+    GridEntity view = getView();
+    int x = view.getX();
+    int y = view.getY();
+    int radius = data.dashSecondaryRange() > 0 ? data.dashSecondaryRange() : data.dashMaxRange();
+    int backSquared = data.backDashRadius() * data.backDashRadius();
+    SelectionChain selection = unit.selection();
+    WorldEntity best = null;
+    int bestSquared = Integer.MAX_VALUE;
+    for (WorldEntity other : neighbours(x, y, radius)) {
+      if (other.getTargetView() == reference) {
+        continue;
+      }
+      if (!selection.validate(other.getTargetView(), ReferenceValidator.MODE_TAKE)) {
+        continue;
+      }
+      int squared = FixedMath.squaredDistance(x, y, other.getView().getX(), other.getView().getY());
+      if (squared > bestSquared) {
+        continue;
+      }
+      if (squared > backSquared) {
+        int dy = other.getView().getY() - y;
+        if (!GOLDEN_KNIGHT_ONLY_DASH_FORWARD) {
+          int dx = other.getView().getX() - x;
+          if (dx * t.getDashFirstX() + t.getDashFirstY() * dy < 0) {
+            continue;
+          }
+        } else if ((t.getDashFirstX() | t.getDashFirstY()) != 0) {
+          int sign = (side() & 1) == 0 ? 1 : -1;
+          if (sign * dy < 0) {
+            continue;
+          }
+        }
+      }
+      best = other;
+      bestSquared = squared;
+    }
+    if (best == null
+        || reference != null && reference.crownTower() && LOGIC_CHAIN_DASH_STOP_AT_TOWER) {
+      world.chainDashEnded(this, count, reference);
+      return false;
+    }
+    world.chainDashed(this, best, count, x, y);
+    ReferenceSetter.setReference(
+        t, best.getTargetView(), false, false, false, selection, selection.getOutcome());
+    chainedDashStart(best.getView().getX(), best.getView().getY(), 0);
+    return true;
   }
 
   /**

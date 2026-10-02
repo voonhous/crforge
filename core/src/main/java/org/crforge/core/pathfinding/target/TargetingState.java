@@ -201,6 +201,18 @@ public class TargetingState {
   /** Ids of the entities this component has already hit and must not take again. */
   private final List<Integer> hitTargetIds = new ArrayList<>();
 
+  /** How many dashes the current chain of a chained dash has started; 0 outside a chain. */
+  private int dashChainCount;
+
+  /**
+   * The first dash of a chain's vector from the unit to its aim, along the width; 0 with the other
+   * outside a chain.
+   */
+  private int dashFirstX;
+
+  /** The first dash of a chain's vector from the unit to its aim, along the length. */
+  private int dashFirstY;
+
   /**
    * True to skip the alive test the validator would otherwise apply to a target. The standard
    * game's constructor and reset store 1 on every character's and tower's component, and nothing

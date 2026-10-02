@@ -17,6 +17,7 @@ import java.util.stream.StreamSupport;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
@@ -43,6 +44,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.target.TargetView;
+import org.crforge.core.pathfinding.target.TargetingState;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -527,7 +529,11 @@ class BattleActionSpawnRunTest {
         "boss_bandit_ability_tower",
         "boss_bandit_ability_charges",
         "ram_rider_drop_knights",
-        "ram_rider_drop_tower"
+        "ram_rider_drop_tower",
+        "golden_knight_tower",
+        "golden_knight_chain",
+        "bandit_dash_past",
+        "golden_knight_ladder_chain"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -631,6 +637,31 @@ class BattleActionSpawnRunTest {
     if (reference.has("commands")) {
       BattlePlacementRunTest.playAll(match, reference);
     }
+    // Every request for a unit's ability the run supplies, in place of its player's command: in the
+    // unit's phase-2 pass of its tick, after the run pass.
+    List<String> goldenKnightLog = new ArrayList<>();
+    for (JsonNode g : reference.path("golden_knight")) {
+      if (!g.get("event").asText().equals("supplied_request")) {
+        continue;
+      }
+      int tick = g.get("tick").asInt();
+      String requested = g.get("unit").asText();
+      battle.queue(
+          new BattleCommand() {
+            @Override
+            public int tick() {
+              return tick;
+            }
+
+            @Override
+            public void execute(Battle target) {
+              CharacterEntity unit = (CharacterEntity) named(target, requested);
+              goldenKnightLog.add(tick + " supplied_request " + requested);
+              unit.actionHolder().schedule(new SuppliedRequest(unit), ActionHolder.OWN_DELAY);
+            }
+          });
+    }
+    match.getWorld().addObserver(goldenKnightLog(currentTick, goldenKnightLog));
     // The area effects a run places directly, each in the command pass of its tick.
     for (JsonNode a : reference.path("area_effects")) {
       if (a.get("event").asText().equals("created") && a.get("how").asText().equals("placed")) {
@@ -1557,6 +1588,9 @@ class BattleActionSpawnRunTest {
     assertThat(selfLocks)
         .as("every tick a unit holds its own lock as the post-hooks end")
         .containsExactlyElementsOf(expectedSelfLocks(reference));
+    assertThat(goldenKnightLog)
+        .as("every supplied request, ability dash, stun cleanse, chained dash and chain's end")
+        .containsExactlyElementsOf(expectedGoldenKnightLog(reference));
     assertThat(championLog)
         .as("what the champion slots did, and every ability's buff")
         .containsExactlyElementsOf(expectedChampionLog(reference));
@@ -1689,6 +1723,10 @@ class BattleActionSpawnRunTest {
       public void starting(BattleAction action, int phase, boolean queued) {
         // A looping effect row only shows something, and the reference leaves it out.
         if (action instanceof InertAction inert && inert.isLasting()) {
+          return;
+        }
+        // The request a run supplies is the run's own, not the battle's.
+        if (action instanceof SuppliedRequest) {
           return;
         }
         actions.add(
@@ -3686,6 +3724,194 @@ class BattleActionSpawnRunTest {
             "%d death_area_ended %s %s".formatted(currentTick[0], owner.name(), deathArea.name()));
       }
     };
+  }
+
+  /**
+   * A request for a unit's ability that a run supplies in place of its player's command: started in
+   * the unit's phase-2 pass, after the run pass, where the reference makes it.
+   */
+  private record SuppliedRequest(CharacterEntity unit) implements BattleAction {
+
+    @Override
+    public String name() {
+      return "supplied ability request";
+    }
+
+    @Override
+    public int phase() {
+      return EntityActions.PHASE_POST_COMPONENT_TICK;
+    }
+
+    @Override
+    public ActionInstance start(ActionHolder holder) {
+      unit.requestAbility();
+      return null;
+    }
+  }
+
+  /**
+   * Logs every ability dash (the query's point and radius, what it found, valid and how far, the
+   * winner and the dash's aim), every stun cleanse, every dash a chained dasher started with its
+   * count, hit list and first vector, every next target its chain found and every chain's end.
+   */
+  private static WorldObserver goldenKnightLog(int[] currentTick, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void abilityDashed(
+          int tick,
+          CharacterEntity unit,
+          List<CharacterEntity.DashCandidate> candidates,
+          List<String> cleansed,
+          WorldEntity chosen) {
+        List<List<Object>> found = new ArrayList<>();
+        for (CharacterEntity.DashCandidate c : candidates) {
+          found.add(List.of(c.entity().name(), c.valid() ? 1 : 0, c.squaredDistance()));
+        }
+        log.add(
+            "%d ability_handler %s query %d %d %d found %s winner %s %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    unit.getView().getX(),
+                    unit.getView().getY(),
+                    unit.getData().ability().dashRange(),
+                    found,
+                    chosen.name(),
+                    chosen.getView().getX(),
+                    chosen.getView().getY(),
+                    chosen.getView().getCollisionRadius()));
+        log.add("%d stun_cleanse %s %s".formatted(currentTick[0], unit.name(), cleansed));
+      }
+
+      @Override
+      public void chainDashStarted(
+          int tick, CharacterEntity unit, int fromX, int fromY, int aimX, int aimY, int radius) {
+        TargetingState t = unit.getUnit().targeting();
+        log.add(
+            "%d dash_start %s %s count %d hit %s first %d %d aim %d %d radius %d at %d %d route %s"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    t.getReference().getEntity().getName(),
+                    t.getDashChainCount(),
+                    t.getHitTargetIds(),
+                    t.getDashFirstX(),
+                    t.getDashFirstY(),
+                    aimX,
+                    aimY,
+                    radius,
+                    fromX,
+                    fromY,
+                    Arrays.stream(unit.getUnit().movement().getRoute().toArray())
+                        .boxed()
+                        .toList()));
+      }
+
+      @Override
+      public void chainDashed(
+          int tick, CharacterEntity unit, WorldEntity next, int count, int x, int y) {
+        log.add(
+            "%d chain %s %s %d %d %d"
+                .formatted(currentTick[0], unit.name(), next.name(), count, x, y));
+      }
+
+      @Override
+      public void chainDashEnded(int tick, CharacterEntity unit, int count, TargetView reference) {
+        log.add(
+            "%d chain_end %s %d %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    unit.name(),
+                    count,
+                    reference == null ? null : reference.getEntity().getName(),
+                    unit.getView().getX(),
+                    unit.getView().getY()));
+      }
+    };
+  }
+
+  /** The reference's chained dash log, in the battle's layout. */
+  private static List<String> expectedGoldenKnightLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode g : reference.path("golden_knight")) {
+      int tick = g.get("tick").asInt();
+      String unit = g.get("unit").asText();
+      switch (g.get("event").asText()) {
+        case "supplied_request" -> expected.add(tick + " supplied_request " + unit);
+        case "ability_handler" -> {
+          List<List<Object>> found = new ArrayList<>();
+          g.get("candidates")
+              .forEach(
+                  c -> found.add(List.of(c.get(0).asText(), c.get(1).asInt(), c.get(2).asInt())));
+          Map<String, JsonNode> calls = new HashMap<>();
+          g.get("calls").forEach(c -> calls.put(c.get(0).asText(), c));
+          JsonNode query = calls.get("query");
+          JsonNode dash = calls.get("dash_to");
+          expected.add(
+              "%d ability_handler %s query %d %d %d found %s winner %s %d %d %d"
+                  .formatted(
+                      tick,
+                      unit,
+                      query.get(1).asInt(),
+                      query.get(2).asInt(),
+                      query.get(3).asInt(),
+                      found,
+                      calls.get("set_target").get(1).asText(),
+                      dash.get(1).asInt(),
+                      dash.get(2).asInt(),
+                      dash.get(3).asInt()));
+        }
+        case "stun_cleanse" -> {
+          List<String> removed = new ArrayList<>();
+          g.get("removed").forEach(r -> removed.add(r.asText()));
+          expected.add("%d stun_cleanse %s %s".formatted(tick, unit, removed));
+        }
+        case "dash_start" -> {
+          List<Integer> hit = new ArrayList<>();
+          g.get("hitlist").forEach(h -> hit.add(h.asInt()));
+          List<Integer> route = new ArrayList<>();
+          g.get("route").forEach(r -> route.add(r.asInt()));
+          expected.add(
+              "%d dash_start %s %s count %d hit %s first %d %d aim %d %d radius %d at %d %d route %s"
+                  .formatted(
+                      tick,
+                      unit,
+                      g.get("ref").asText(),
+                      g.get("count").asInt(),
+                      hit,
+                      g.get("first").get(0).asInt(),
+                      g.get("first").get(1).asInt(),
+                      g.get("aim").get(0).asInt(),
+                      g.get("aim").get(1).asInt(),
+                      g.get("w3").asInt(),
+                      g.get("x").asInt(),
+                      g.get("y").asInt(),
+                      route));
+        }
+        case "chain" ->
+            expected.add(
+                "%d chain %s %s %d %d %d"
+                    .formatted(
+                        tick,
+                        unit,
+                        g.get("target").asText(),
+                        g.get("count").asInt(),
+                        g.get("x").asInt(),
+                        g.get("y").asInt()));
+        case "chain_end" ->
+            expected.add(
+                "%d chain_end %s %d %s %d %d"
+                    .formatted(
+                        tick,
+                        unit,
+                        g.get("count").asInt(),
+                        g.get("ref").isNull() ? null : g.get("ref").asText(),
+                        g.get("x").asInt(),
+                        g.get("y").asInt()));
+        default -> throw new IllegalArgumentException("a chained dash log entry " + g);
+      }
+    }
+    return expected;
   }
 
   /**

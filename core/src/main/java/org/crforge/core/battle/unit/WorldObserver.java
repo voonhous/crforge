@@ -249,6 +249,61 @@ public interface WorldObserver {
       int tick, ChampionController slot, int elixir, List<ChampionView> views) {}
 
   /**
+   * An ability's dash looked around its unit: every object of the neighbour query, whether it was
+   * valid and how far, the stuns the unit shed, and the winner.
+   *
+   * @param tick the tick it happened on
+   * @param unit the unit
+   * @param candidates the objects looked at, in the query's order
+   * @param cleansed the stun buffs removed from the unit, in removal order
+   * @param chosen the winner, or null for none
+   */
+  default void abilityDashed(
+      int tick,
+      CharacterEntity unit,
+      List<CharacterEntity.DashCandidate> candidates,
+      List<String> cleansed,
+      WorldEntity chosen) {}
+
+  /**
+   * A unit whose dashes chain started a dash: its count, hit list and first vector already kept.
+   *
+   * @param tick the tick it happened on
+   * @param unit the unit
+   * @param fromX where it started, along the width
+   * @param fromY where it started, along the length
+   * @param aimX the point it dashes toward
+   * @param aimY the point it dashes toward
+   * @param radius how far short of the point it stops
+   */
+  default void chainDashStarted(
+      int tick, CharacterEntity unit, int fromX, int fromY, int aimX, int aimY, int radius) {}
+
+  /**
+   * A chain found its next target as the unit left its dash.
+   *
+   * @param tick the tick it happened on
+   * @param unit the unit
+   * @param next the next target
+   * @param count the dashes made before it
+   * @param x where the unit stood
+   * @param y where the unit stood
+   */
+  default void chainDashed(
+      int tick, CharacterEntity unit, WorldEntity next, int count, int x, int y) {}
+
+  /**
+   * A chain ended as the unit left its dash: no next target, its count reached, or a crown tower as
+   * its last target.
+   *
+   * @param tick the tick it happened on
+   * @param unit the unit
+   * @param count the dashes made
+   * @param reference the unit's reference as it ended, before the end gave it up
+   */
+  default void chainDashEnded(int tick, CharacterEntity unit, int count, TargetView reference) {}
+
+  /**
    * An ability's effect gave its unit its buff.
    *
    * @param tick the tick it happened on

@@ -222,6 +222,36 @@ public final class GridStateSetter implements StateSetter {
     this.movementConfig = movementConfig;
   }
 
+  /**
+   * What leaving the dashing state does for a unit whose dashes chain: the chain's next dash, which
+   * keeps the unit dashing, or the dash's end.
+   */
+  public interface DashExit {
+
+    /**
+     * Starts the chain's next dash as the unit is asked to leave for a state, when it may.
+     *
+     * @param newState the state asked for
+     * @return true when a next dash started: the unit stays dashing, and nothing else is done
+     */
+    boolean chain(int newState);
+
+    /** The dash's end, as the unit leaves the dashing state with no next dash. */
+    void end();
+  }
+
+  /** What leaving the dashing state does, for a unit whose dashes chain; null for any other. */
+  private DashExit dashExit;
+
+  /**
+   * Gives the setter what leaving the dashing state does for a unit whose dashes chain.
+   *
+   * @param dashExit the chain and the dash's end
+   */
+  public void setDashExit(DashExit dashExit) {
+    this.dashExit = dashExit;
+  }
+
   @Override
   public void setState(GridEntity entity, int newState) {
     checkArgument(
@@ -238,6 +268,10 @@ public final class GridStateSetter implements StateSetter {
     if (hook && following == null) {
       throw new UnsupportedOperationException(
           owner.getName() + " is asked into or out of a hook's state, not modelled for it");
+    }
+    // Leaving the dashing state, a chain's next dash keeps the unit dashing: nothing is stored.
+    if (oldState == GridEntityState.DASHING && dashExit != null && dashExit.chain(newState)) {
+      return;
     }
     exit(oldState, newState);
     owner.setState(newState);
@@ -286,6 +320,11 @@ public final class GridStateSetter implements StateSetter {
         }
       }
       case GridEntityState.CASTING -> exitCasting();
+      case GridEntityState.DASHING -> {
+        if (dashExit != null) {
+          dashExit.end();
+        }
+      }
       case GridEntityState.FOLLOWING_REMOVED, GridEntityState.FOLLOWING_REMOVED_BUILDING ->
           exitPulled(newState);
       // Leaving a clone's setup empties the route and forgets the point the move aimed at.

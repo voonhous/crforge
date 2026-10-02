@@ -96,15 +96,17 @@ class BattleDashTest {
   }
 
   @Test
-  @DisplayName("a chained dash and a dash's contact damage are refused as the row is created")
-  void unestablishedDashesAreRefused() {
-    BattleWorld world =
-        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false).getWorld();
-    assertThatThrownBy(
-            () ->
-                new CharacterEntity(
-                    world, GameData.unit("GoldenKnight"), "Knight", 0, 3500, 10000, 11))
+  @DisplayName("a chained dash's ability left pending is refused as it is requested")
+  void pendingChainIsRefused() {
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("GoldenKnight"), 11, 0, 3500, 10000, "GoldenKnight");
+    // Deploying, it has no reference: its gate is shut, and the request would wait under its
+    // pending buff, which no reference holds.
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThatThrownBy(knight::requestAbility)
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DashCount");
+        .hasMessageContaining("GoldenKnightCharge");
   }
 }

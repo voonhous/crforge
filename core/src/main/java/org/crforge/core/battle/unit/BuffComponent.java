@@ -102,6 +102,9 @@ public final class BuffComponent implements BattleComponent {
   /** The slot of the buff component on every character and tower. */
   public static final int SLOT = 3;
 
+  /** The hit speed multiplier at or below which a buff stops its carrier's attacks: a stun. */
+  private static final int STUN_HIT_SPEED_MULTIPLIER = -100;
+
   /** Milliseconds one visit takes off each instance. */
   private static final int STEP_MS = 50;
 
@@ -319,6 +322,26 @@ public final class BuffComponent implements BattleComponent {
         world.buffRemoved(entity, instance);
       }
     }
+  }
+
+  /**
+   * The stun cleanse: every listed instance whose buff stops its carrier's attacks - a hit speed
+   * multiplier of -100 or below - removed, from the last to the first.
+   *
+   * @return the removed instances' buffs, in removal order
+   */
+  List<String> cleanseStuns() {
+    List<String> removed = new ArrayList<>();
+    for (int i = items.size() - 1; i >= 0; i--) {
+      BuffInstance instance = items.get(i);
+      if (instance.getBuff().hitSpeedMultiplier() <= STUN_HIT_SPEED_MULTIPLIER) {
+        items.remove(i);
+        onRemoved(instance);
+        world.buffRemoved(entity, instance);
+        removed.add(instance.getBuff().name());
+      }
+    }
+    return removed;
   }
 
   /**

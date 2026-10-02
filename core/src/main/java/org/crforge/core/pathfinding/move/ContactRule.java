@@ -35,8 +35,10 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " every other entity, crown towers included; held by the tower-contact run, the"
             + " regenerated walks past a unit's own tower and the placement runs. An attached entity"
             + " taking no part rests on the translation and a unit test; no run has a unit meet a"
-            + " rider. Supplied: no unit's dash-time column is positive (a dashing"
-            + " unit takes no part), no deploying unit is an unset clone, and no building is of the"
+            + " rider. A dashing unit taking no part, neither pushed nor pushing, is held by"
+            + " golden_knight_chain, golden_knight_ladder_chain and bandit_dash_past; the standard"
+            + " game exempts a row with DashingDamage, which no row sets and the battle refuses."
+            + " Supplied: no deploying unit is an unset clone, and no building is of the"
             + " placeable-building kind whose answer depends on the entities near it; none of"
             + " those is reachable from the units the grid drives.")
 public final class ContactRule {
@@ -60,7 +62,8 @@ public final class ContactRule {
       return 0;
     }
     int state = entity.getState();
-    // The dashing state exempts a unit whose dash-time column is positive; no unit here has one.
+    // The dashing state exempts a row with DashingDamage; no row sets it, and the battle refuses
+    // one.
     if (state <= GridEntityState.FOLLOWING_REMOVED
         && ((1 << state) & STATES_WITHOUT_COLLISION) != 0) {
       return 0;
