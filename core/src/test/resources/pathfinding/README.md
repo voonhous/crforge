@@ -673,6 +673,14 @@ The `goblin_hut` list holds the life state's start and every step, with its four
 
 The towers fight at level 11. Side 0 plays a Goblin Hut at (3500, 11500) on tick 0. Its life state starts on 20 and waits through 603 steps with nobody in reach, and the decay kills the hut on 622, its death spawn a SpearGoblin on its point. `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/goblin_cage_knight.json` - a Goblin Cage pulling a Knight
+
+The towers fight at level 11. Side 0 plays a Goblin Cage at (7500, 12500) on tick 0; side 1 plays a Knight at (3500, 17500), placed at (3499, 17499), on the same tick. The cage's shake, its starting action, runs in its phase-1 pass of 0 and is stepped doing nothing from then on. Both deploys end on 19. On 20 the Knight takes the cage, 6348 away and within its sight and the cage's radius, and leaves its lane for it, reaching (5405, 14154) on 87; the cage takes the Knight on 20 too, but its first hit, which would deal nothing, is not due before 219. PrincessTower_0_1 shoots the Knight from 73. The Knight hits the cage on 96, 120 and 144, 202 each, and the third, with the decay of 195 hundredths a visit from 20, kills it: the cage leaves on 144 and its GoblinBrawler is made on its point, 1080 hit points, deploying for 500 and immune to 149. The Brawler takes the Knight on 155 and kills it on 209, then walks to PrincessTower_1_1, hits it on 349 and 371 and dies to its arrows on 386. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
+## `golden/goblin_cage_lifetime.json` - a Goblin Cage alone
+
+The towers fight at level 11. Side 0 plays a Goblin Cage at (3500, 11500) on tick 0 and nothing else. Its shake runs from 0, doing nothing; its deploy ends on 19 and from 20 it holds PrincessTower_1_1, out of its range, decaying 195 hundredths of a hit point a visit from 780. The decay kills it in the second pass of 419, and its GoblinBrawler stands on its point, deploying to 429, then takes PrincessTower_1_1 on 430 and walks to it. `BattleActionSpawnRunTest` plays it with the spawn runs.
+
 ## `golden/golemite_death_damage.json` - a death that damages and pushes
 
 The towers fight at level 11. A Golemite, level 11, is the run's unit at (3500, 16000); it attacks buildings only and walks at PrincessTower_1_1. A red Knight (`KnightRed`, in `units`) is placed at (3500, 24000) on tick 140 and kills the Golemite with a direct hit on 169 at (3727, 22649). The Golemite's death damage, 39 at the first level and 99 at level 11, lands inside that hit on everything the shared validator accepts within 2000: PrincessTower_1_1 and the Knight each take 99 (`area_hit` and `area` events, the area's `push` 900 and `pushed` listing the Knight). The Knight is pushed 900 away from the Golemite's point (a `pushback` event) and flies from (3500, 23999) to (3388, 24684) by 175. It then walks on, and the towers kill it on 602.
