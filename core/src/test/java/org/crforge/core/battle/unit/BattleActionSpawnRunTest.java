@@ -533,7 +533,9 @@ class BattleActionSpawnRunTest {
         "golden_knight_tower",
         "golden_knight_chain",
         "bandit_dash_past",
-        "golden_knight_ladder_chain"
+        "golden_knight_ladder_chain",
+        "tower_retarget_knight",
+        "tower_retarget_cannon"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -1150,6 +1152,35 @@ class BattleActionSpawnRunTest {
                 }
               }
             });
+    // The reference logs a tower's or a building's reference whenever a targeting visit or a
+    // removal changes it, and, for a removal, the retarget countdown it left. A combat gate's drop
+    // (a freeze) is logged with the events instead, and a tower that takes the same target again
+    // after it logs no change, so a tower's reference is unknown from such a drop until its next
+    // change; a tower that died is not followed further.
+    Map<Integer, List<JsonNode>> referenceChanges = new HashMap<>();
+    for (JsonNode event : reference.path("tower_events")) {
+      if (event.get("event").asText().equals("reference")) {
+        referenceChanges
+            .computeIfAbsent(event.get("tick").asInt(), t -> new ArrayList<>())
+            .add(event);
+      }
+    }
+    Map<Integer, List<String>> gateDrops = new HashMap<>();
+    Map<Integer, List<String>> towerDeaths = new HashMap<>();
+    for (JsonNode event : reference.get("events")) {
+      String kind = event.get("event").asText();
+      if (kind.equals("combat_gate_drop")) {
+        gateDrops
+            .computeIfAbsent(event.get("tick").asInt(), t -> new ArrayList<>())
+            .add(event.get("unit").asText());
+      } else if (kind.equals("death")) {
+        towerDeaths
+            .computeIfAbsent(event.get("tick").asInt(), t -> new ArrayList<>())
+            .add(event.get("target").asText());
+      }
+    }
+    Map<String, String> heldReferences = new HashMap<>();
+    Set<String> unknownReferences = new HashSet<>();
     // The characters seen walking, which a swap may turn into buildings.
     Set<String> walkers = new HashSet<>();
     for (int tick = 0; tick <= lastTick; tick++) {
@@ -1192,6 +1223,32 @@ class BattleActionSpawnRunTest {
           }
           if (referenceName(tower) == null) {
             locked.remove(tower.name());
+          }
+        }
+      }
+      for (JsonNode change : referenceChanges.getOrDefault(tick, List.of())) {
+        JsonNode target = change.get("target");
+        heldReferences.put(change.get("tower").asText(), target.isNull() ? null : target.asText());
+        unknownReferences.remove(change.get("tower").asText());
+      }
+      unknownReferences.addAll(gateDrops.getOrDefault(tick, List.of()));
+      towerDeaths.getOrDefault(tick, List.of()).forEach(heldReferences::remove);
+      for (BattleEntity entity : battle.getHolder().entities()) {
+        if (entity instanceof TowerEntity tower
+            && heldReferences.containsKey(tower.name())
+            && !unknownReferences.contains(tower.name())) {
+          assertThat(referenceName(tower))
+              .as("tick %d: %s's reference", tick, tower.name())
+              .isEqualTo(heldReferences.get(tower.name()));
+          JsonNode change =
+              referenceChanges.getOrDefault(tick, List.of()).stream()
+                  .filter(c -> c.get("tower").asText().equals(tower.name()))
+                  .reduce((first, second) -> second)
+                  .orElse(null);
+          if (change != null && change.has("target_lost_timer")) {
+            assertThat(tower.getTargeting().getTargetLostTimerMs())
+                .as("tick %d: %s's retarget countdown after the removal", tick, tower.name())
+                .isEqualTo(change.get("target_lost_timer").asInt());
           }
         }
       }

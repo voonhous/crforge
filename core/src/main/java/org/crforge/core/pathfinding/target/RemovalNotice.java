@@ -13,7 +13,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * with LoadFirstHit is credited the load time less the attack time and clears its attack; a plain
  * unit with an attack running starts the target-lost countdown, under which the visit lets the
  * attack run on for the attack finish time before it selects again. A previous reference that was
- * the removed entity is forgotten.
+ * the removed entity is forgotten. A reference removed with no replacement that the component's
+ * last visit kept for a lethal pending damage skips the retarget load, whoever killed it, so the
+ * component selects again on its next visit.
  *
  * <p>The notice runs inside the closing cleanup of the tick the entity died in, so no visit ever
  * meets a dead reference.
@@ -25,7 +27,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " previous reference, held by the kill run's five standing ticks after the princess"
             + " tower's death; the retarget load skipped for a reference kept through a killing"
             + " shot in flight, by every tower's re-lock on the tick after its arrow's kill in"
-            + " the battle references. Not modelled: the forgetting of a held pingpong projectile and the"
+            + " the battle references, and with another unit's kill, by tower_retarget_cannon,"
+            + " against the countdown of tower_retarget_knight. Not modelled: the forgetting of a held pingpong projectile and the"
             + " morph back it triggers; the held projectile is read as the suspended flag, and a"
             + " pingpong projectile's return to an owner whose targeting is off, the one case that"
             + " would leave the forgetting to this notice, is refused.")

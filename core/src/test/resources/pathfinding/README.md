@@ -840,6 +840,15 @@ The `golden_knight` list holds every ability dash (the query's point and radius,
 
 Run 67's Bandit at (3500, 10000) and Knight at (3500, 18000), with a second Knight, K2, placed for side 1 at (3700, 13000) on 47, after the dash starts, so it is never the Bandit's reference. The Bandit flies through K2 from 49 to 53 unpushed and lands as in run 67, hitting the Knight for 389 on 53 at (3727, 14465). `BattleActionSpawnRunTest` plays it with the spawn runs.
 
+## `golden/tower_retarget_knight.json` and `golden/tower_retarget_cannon.json` - a tower's target killed by another unit with its arrow in flight
+
+The towers fight at level 11, and side 0 plays a Mini P.E.K.K.A. X on tick 0; each run is 200 ticks. The towers are visited before every card unit and a projectile lands after every targeting visit, so PrincessTower_0_1 sees its target alive on the tick X kills it. The removal then reads what the tower's own visit of that tick left: a target the tower kept for a lethal pending damage skips the retarget load, any other starts the target-lost countdown.
+
+- `tower_retarget_knight`: X at (3500, 4000), placed at (3499, 4500), and side 1's Knight E at (3500, 18000), placed at (3499, 18499). PrincessTower_0_1 locks on E on 71 and fires every 16 ticks from 86, 109 each. X kills E on 152 with the arrow of 150 in flight, 109 against E's 575, so the tower had not kept it: the removal leaves the countdown at 1, and the tower takes PrincessTower_1_1, its default reference, on 158.
+- `tower_retarget_cannon`: a Cannon C placed directly for side 1 at (3500, 12500), and X at (3500, 3000), placed at (3499, 3500). PrincessTower_0_1 locks on C on 0, while it deploys. C has 53 left after the arrow landing on 105 and decays, so the arrow of 111 is lethal and the tower keeps C from 112. X kills C on 120 with that arrow in flight: no countdown, and the tower takes PrincessTower_1_1 on 121.
+
+`BattleActionSpawnRunTest` plays both with the spawn runs, holding every tower's reference on every tick and the countdown each removal leaves.
+
 ## `golden/reference_loss_knight.json` and `golden/reference_loss_musketeer_rage.json` - a target lost earlier in the pass and in the preloaded windup
 
 The towers fight at level 11. Side 0 plays a Mini P.E.K.K.A. X at (3500, 12000), placed at (3499, 12500), and side 1 a Knight E at (3500, 19000), placed at (3499, 19499), on tick 0. They fight from 58 and 53: X deals 755 on 67, 99 and 131, E 202 on 62, 86 and 110. A third unit of side 0, A, targets E and starts its first, preloaded attack on 125. On 131 X kills E earlier in the pass than A's visit. A targeting component's bypass byte is 1, so A's validator does not ask whether E is alive: A keeps E through the pass, its attack time going on, until the closing cleanup removes E and starts A's target-lost timer. A's row stops an attack that loses its target in the preloaded windup: on 132..136 its attack time stands while the timer runs to 250, nothing is hit or fired, and on 137 A takes PrincessTower_1_1 and walks. Both runs end on 149.
