@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -190,5 +191,34 @@ class SpatialIndexTest {
     index.release(List.of());
 
     assertThat(index.query(SpatialQuery.targetCandidates(3500, 10000, 8000))).isNotNull();
+  }
+
+  @Test
+  @DisplayName(
+      "the segment query visits the buckets over the segment's widened box x outer and y inner,"
+          + " tests each entity once, accepted or not, and answers null with no free list")
+  void segmentQueryTestsEachEntityOnce() {
+    List<String> tested = new ArrayList<>();
+    // The segment from the top left princess tower to the unit, widened by 2000: the tower's
+    // square spans several buckets, and the unit is rejected.
+    List<GridEntity> found =
+        index.segmentQuery(
+            3500,
+            6500,
+            3500,
+            10000,
+            2000,
+            entity -> {
+              tested.add(entity.getName());
+              return entity.isBuilding();
+            });
+
+    assertThat(found).containsExactly(princessTopLeft);
+    assertThat(tested).containsExactly("PrincessTower_0_1", "owner");
+
+    for (int i = 1; i < SpatialIndex.RESULT_LIST_POOL_SIZE; i++) {
+      assertThat(index.segmentQuery(0, 0, 0, 0, 0, entity -> true)).isNotNull();
+    }
+    assertThat(index.segmentQuery(0, 0, 0, 0, 0, entity -> true)).isNull();
   }
 }

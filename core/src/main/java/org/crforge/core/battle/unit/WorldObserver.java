@@ -189,6 +189,95 @@ public interface WorldObserver {
       int tick, AreaEffectEntity owner, AreaEffectEntity deathArea) {}
 
   /**
+   * A run of Goblinstein's ability saw its followed object cast, saw the cast end and started its
+   * tether, or ended its tether.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect it runs on
+   * @param step {@code cast_seen}, {@code tether_start} with the tether's time, or {@code
+   *     tether_end}
+   */
+  default void goblinsteinStepped(int tick, AreaEffectEntity owner, String step) {}
+
+  /**
+   * A card-play listener heard a card play.
+   *
+   * @param tick the battle tick
+   * @param owner the listener's owner
+   * @param action the listener's row
+   * @param side the side that played
+   * @param played the card played
+   * @param deployed the card the play put down
+   * @param total the elixir the listener has counted after the play
+   * @param scheduled the action the play scheduled on the owner, or null for none
+   */
+  default void cardPlayHeard(
+      int tick,
+      WorldEntity owner,
+      String action,
+      int side,
+      String played,
+      String deployed,
+      int total,
+      String scheduled) {}
+
+  /**
+   * A tether scheduled one of its activation rows as it started.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect the tether runs on, the row's cause
+   * @param target the object the row is scheduled on: the area effect or the connected object
+   * @param action the row
+   */
+  default void tetherActivated(
+      int tick, AreaEffectEntity owner, BattleEntity target, String action) {}
+
+  /**
+   * A tether's damage pass ran its segment query.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect the tether runs on
+   * @param ax the segment's start along the width: the area effect's point
+   * @param ay the segment's start along the length
+   * @param bx the segment's end along the width: the connected object's point
+   * @param by the segment's end along the length
+   * @param found what the query answered, in its order, or null when it had no list to answer
+   */
+  default void tetherDamagePass(
+      int tick, AreaEffectEntity owner, int ax, int ay, int bx, int by, List<WorldEntity> found) {}
+
+  /**
+   * A tether's damage pass hit an object.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect the tether runs on, the attacker
+   * @param target the object hit
+   * @param damage the damage dealt
+   * @param directionX the hit's direction along the width
+   * @param directionY the hit's direction along the length
+   * @param result what the hit did
+   */
+  default void tetherHit(
+      int tick,
+      AreaEffectEntity owner,
+      WorldEntity target,
+      int damage,
+      int directionX,
+      int directionY,
+      DamageResult result) {}
+
+  /**
+   * A tether's damage pass scheduled its hit action on an object.
+   *
+   * @param tick the battle tick
+   * @param owner the area effect the tether runs on, the action's cause
+   * @param target the object
+   * @param action the row
+   */
+  default void tetherHitAction(
+      int tick, AreaEffectEntity owner, WorldEntity target, String action) {}
+
+  /**
    * The deck pass at a match's setup gave a champion slot its champion, from a card of its deck.
    *
    * @param tick the tick it happened on

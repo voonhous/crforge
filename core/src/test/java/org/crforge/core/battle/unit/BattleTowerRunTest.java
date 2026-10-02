@@ -484,6 +484,31 @@ class BattleTowerRunTest {
       }
 
       @Override
+      public void tetherHit(
+          int tick,
+          AreaEffectEntity owner,
+          WorldEntity target,
+          int damage,
+          int directionX,
+          int directionY,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d tether_hit %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    target.name(),
+                    damage,
+                    target.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      @Override
       public void areaEffectDamaged(
           int tick, AreaEffectEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
         if (currentTick[0] < 0) {
@@ -761,6 +786,14 @@ class BattleTowerRunTest {
           "%d deploy_end_death %s".formatted(tick, event.get("unit").asText());
       case "area_effect_hit" ->
           "%d area_effect_hit %s %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("area_effect").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "tether_hit" ->
+          "%d tether_hit %s %s %d %d"
               .formatted(
                   tick,
                   event.get("area_effect").asText(),

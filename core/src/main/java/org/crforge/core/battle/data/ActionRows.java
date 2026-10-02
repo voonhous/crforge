@@ -140,15 +140,14 @@ public final class ActionRows {
                   "ContainerName",
                   "RequestShowBadge",
                   "RequestShowHealthIndicator")),
-          // The card play's elixir test and the action it runs come only with a play it hears,
-          // which is refused.
+          // The card play's group, card and elixir tests, and the action an activating play runs.
           Map.entry(
               "ActionActivateOnCardDeploy",
               Set.of("CardGroup", "EvaluateDeployedCard", "OnActivateAction", "ElixirCost")),
           // The champion slot's row: whether a slot may follow another champion.
           Map.entry("ActionChampionAbilityData", Set.of("AllowDynamicReassignments")),
-          // Every tether column is read by the tether alone, which is refused; the effects only
-          // show something.
+          // The tether's columns; the tags it sets on both ends are read by no battle code, and
+          // the effects only show something.
           Map.entry(
               "ActionGoblinsteinAbility",
               Set.of(
@@ -580,7 +579,14 @@ public final class ActionRows {
                   "ExecuteIfTrue",
                   "ActionPausedIfTrue",
                   "ForceStopIfTrue");
-              yield new CardDeployListener(shared, f.path("CardGroup").asText(""));
+              String group = f.path("CardGroup").asText("");
+              yield new CardDeployListener(
+                  shared,
+                  group,
+                  group.isEmpty() ? null : records.cardGroup(group),
+                  bool(f, "EvaluateDeployedCard"),
+                  integer(f, "ElixirCost"),
+                  rowName(f.get("OnActivateAction")));
             }
             case "ActionChampionAbilityData" -> {
               refuseShared(
@@ -606,15 +612,23 @@ public final class ActionRows {
                   "NextAction",
                   "ExecuteIfTrue",
                   "ActionPausedIfTrue",
-                  "ForceStopIfTrue");
+                  "ForceStopIfTrue",
+                  "AffectedByHitSpeed");
+              String targets = rowName(f.get("TetherDamageTargets"));
               yield new GoblinsteinAbility(
                   shared,
                   new GoblinsteinAbility.Columns(
                       integer(f, "TetherDuration"),
-                      f.hasNonNull("DeathAreaEffectData")
-                              && !f.get("DeathAreaEffectData").asText().isEmpty()
-                          ? f.get("DeathAreaEffectData").asText()
-                          : null));
+                      rowName(f.get("DeathAreaEffectData")),
+                      integer(f, "TetherWidth"),
+                      integer(f, "TetherDamage"),
+                      integer(f, "TetherCrownTowerDamage"),
+                      integer(f, "TetherHitInterval"),
+                      integer(f, "TetherHitActionInterval"),
+                      targets == null ? null : records.filter(targets),
+                      rowName(f.get("TetherHitAction")),
+                      rowName(f.get("OnTetherActivationAction")),
+                      rowName(f.get("OnTetherActivationActionOnConnectedUnit"))));
             }
             case "ActionInterval" ->
                 new Interval(
@@ -827,9 +841,17 @@ public final class ActionRows {
       }
     }
 
-    /** The columns every row shares. */
+    /**
+     * The columns every row shares. An effect row that sets no tags and is no singleton changes
+     * nothing while its run is listed, so its stop condition only decides when a run that changes
+     * nothing ends: it is not compiled, and may ask what the object it runs on does not answer.
+     */
     private ActionRow shared(GameAction row) {
       JsonNode f = row.fields();
+      boolean bareEffect =
+          row.classType().equals("ActionPlayEffect")
+              && !f.path("Singleton").asBoolean(false)
+              && f.path("GameTagsToSet").asText("").isEmpty();
       return ActionRow.builder()
           .name(row.name())
           .phase(integer(f, "UpdatePhase"))
@@ -839,7 +861,7 @@ public final class ActionRows {
           .nextActionWait(f.path("NextActionWait").asBoolean(false))
           .tags(f.has("GameTagsToSet") ? tagMask(f.get("GameTagsToSet").asText()) : 0)
           .executeIf(expression(f.get("ExecuteIfTrue")))
-          .forceStopIf(expression(f.get("ForceStopIfTrue")))
+          .forceStopIf(bareEffect ? null : expression(f.get("ForceStopIfTrue")))
           .pausedIf(expression(f.get("ActionPausedIfTrue")))
           .abortIfInstigatorDies(f.path("AbortIfInstigatorDies").asBoolean(true))
           .build();
@@ -1496,6 +1518,18 @@ public final class ActionRows {
       }
     }
     return false;
+  }
+
+  /**
+   * A column that names a row, written as the name or as a reference to it: the name, or null when
+   * the column is unset or empty.
+   */
+  private static String rowName(JsonNode value) {
+    if (value == null || value.isNull()) {
+      return null;
+    }
+    String name = value.isObject() ? value.path("action").asText("") : value.asText();
+    return name.isEmpty() ? null : name;
   }
 
   private static int integer(JsonNode fields, String column) {

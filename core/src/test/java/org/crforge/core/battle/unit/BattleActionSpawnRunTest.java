@@ -556,7 +556,9 @@ class BattleActionSpawnRunTest {
         "monk_ability_tower",
         "monk_ability_musketeer",
         "skeleton_king_ability_no_souls",
-        "skeleton_king_ability_souls"
+        "skeleton_king_ability_souls",
+        "goblinstein_ability_tower",
+        "goblinstein_later_plays"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -852,6 +854,9 @@ class BattleActionSpawnRunTest {
     // Every link and unlink of a card's group chain, and what Goblinstein's ability did.
     List<String> goblinsteinLog = new ArrayList<>();
     match.getWorld().addObserver(goblinsteinLog(currentTick, goblinsteinLog));
+    // What Goblinstein's tether did, and every card play a listener heard.
+    List<String> tetherLog = new ArrayList<>();
+    match.getWorld().addObserver(tetherLog(currentTick, tetherLog));
     List<String> guardLog = new ArrayList<>();
     match.getWorld().addObserver(guardLog(currentTick, guardLog));
     // Every start and step of a Boss Bandit ability's run, and every warp.
@@ -1650,6 +1655,19 @@ class BattleActionSpawnRunTest {
     assertThat(goblinsteinLog)
         .as("every group chain link and unlink, and what Goblinstein's ability did")
         .containsExactlyElementsOf(expectedGoblinsteinLog(reference));
+    // The reference lists its tether log only for a run in which a tether ran or a heard card
+    // play acted: a run without one may hear plays that did nothing.
+    List<String> tetherActed =
+        reference.has("tether")
+            ? tetherLog
+            : tetherLog.stream().filter(l -> !l.endsWith(" -")).toList();
+    assertThat(
+            tetherActed.stream()
+                .map(l -> l.endsWith(" -") ? l.substring(0, l.length() - 2) : l)
+                .toList())
+        .as(
+            "every activation row, damage pass, hit and hit action of a tether, and every play heard")
+        .containsExactlyElementsOf(expectedTetherLog(reference));
     assertThat(guardLog)
         .as("every guard made, and every step of a guard spawn's runs")
         .containsExactlyElementsOf(expectedGuardLog(reference));
@@ -3814,7 +3832,179 @@ class BattleActionSpawnRunTest {
         log.add(
             "%d death_area_ended %s %s".formatted(currentTick[0], owner.name(), deathArea.name()));
       }
+
+      @Override
+      public void goblinsteinStepped(int tick, AreaEffectEntity owner, String step) {
+        log.add("%d %s %s".formatted(currentTick[0], step, owner.name()));
+      }
     };
+  }
+
+  /** The name of a tether's end: a unit's or an area effect's. */
+  private static String endName(BattleEntity end) {
+    return end instanceof WorldEntity w ? w.name() : ((AreaEffectEntity) end).name();
+  }
+
+  private static WorldObserver tetherLog(int[] currentTick, List<String> log) {
+    // The elixir each listener has counted, by owner and row.
+    Map<String, Integer> totals = new HashMap<>();
+    return new WorldObserver() {
+      @Override
+      public void cardPlayHeard(
+          int tick,
+          WorldEntity owner,
+          String action,
+          int side,
+          String played,
+          String deployed,
+          int total,
+          String scheduled) {
+        List<String> calls =
+            scheduled == null ? List.of() : List.of("schedule " + owner.name() + " " + scheduled);
+        Integer before = totals.put(owner.name() + " " + action, total);
+        // A play that scheduled nothing and left the count as it was is marked as doing nothing.
+        boolean idle = scheduled == null && total == (before == null ? 0 : before);
+        log.add(
+            "%d card_play_heard %s %s %d %s %s %d %s%s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    action,
+                    side,
+                    played,
+                    deployed,
+                    total,
+                    calls,
+                    idle ? " -" : ""));
+      }
+
+      @Override
+      public void tetherActivated(
+          int tick, AreaEffectEntity owner, BattleEntity target, String action) {
+        log.add(
+            "%d schedule %s %s %s"
+                .formatted(currentTick[0], endName(target), owner.name(), action));
+      }
+
+      @Override
+      public void tetherDamagePass(
+          int tick,
+          AreaEffectEntity owner,
+          int ax,
+          int ay,
+          int bx,
+          int by,
+          List<WorldEntity> found) {
+        log.add(
+            "%d damage_pass %s %d %d %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    ax,
+                    ay,
+                    bx,
+                    by,
+                    found == null ? null : found.stream().map(WorldEntity::name).toList()));
+      }
+
+      @Override
+      public void tetherHit(
+          int tick,
+          AreaEffectEntity owner,
+          WorldEntity target,
+          int damage,
+          int directionX,
+          int directionY,
+          DamageResult result) {
+        log.add(
+            "%d hit %s %s %d %d %d"
+                .formatted(
+                    currentTick[0], owner.name(), target.name(), damage, directionX, directionY));
+      }
+
+      @Override
+      public void tetherHitAction(
+          int tick, AreaEffectEntity owner, WorldEntity target, String action) {
+        log.add(
+            "%d hit_action %s %s %s"
+                .formatted(currentTick[0], owner.name(), target.name(), action));
+      }
+    };
+  }
+
+  /** The reference's tether log, in the battle's layout. */
+  private static List<String> expectedTetherLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode t : reference.path("tether")) {
+      int tick = t.get("tick").asInt();
+      switch (t.get("event").asText()) {
+        case "schedule" ->
+            expected.add(
+                "%d schedule %s %s %s"
+                    .formatted(
+                        tick,
+                        t.get("owner").asText(),
+                        t.get("instigator").asText(),
+                        t.get("action").asText()));
+        case "damage_pass" -> {
+          JsonNode segment = t.get("segment");
+          List<String> found = null;
+          if (!t.get("found").isNull()) {
+            found = new ArrayList<>();
+            for (JsonNode f : t.get("found")) {
+              found.add(f.asText());
+            }
+          }
+          expected.add(
+              "%d damage_pass %s %d %d %d %d %s"
+                  .formatted(
+                      tick,
+                      t.get("owner").asText(),
+                      segment.get(0).get(0).asInt(),
+                      segment.get(0).get(1).asInt(),
+                      segment.get(1).get(0).asInt(),
+                      segment.get(1).get(1).asInt(),
+                      found));
+        }
+        case "hit" ->
+            expected.add(
+                "%d hit %s %s %d %d %d"
+                    .formatted(
+                        tick,
+                        t.get("owner").asText(),
+                        t.get("target").asText(),
+                        t.get("damage").asInt(),
+                        t.get("direction").get(0).asInt(),
+                        t.get("direction").get(1).asInt()));
+        case "hit_action" ->
+            expected.add(
+                "%d hit_action %s %s %s"
+                    .formatted(
+                        tick,
+                        t.get("owner").asText(),
+                        t.get("target").asText(),
+                        t.get("action").asText()));
+        case "card_play_heard" -> {
+          List<String> calls = new ArrayList<>();
+          for (JsonNode c : t.get("calls")) {
+            calls.add(c.get(0).asText() + " " + c.get(1).asText() + " " + c.get(2).asText());
+          }
+          expected.add(
+              "%d card_play_heard %s %s %d %s %s %d %s"
+                  .formatted(
+                      tick,
+                      t.get("owner").asText(),
+                      t.get("action").asText(),
+                      t.get("side").asInt(),
+                      t.get("card").asText(),
+                      t.get("effective").asText(),
+                      t.get("total").asInt(),
+                      calls));
+        }
+        default -> throw new IllegalArgumentException("unknown tether event " + t);
+      }
+    }
+    return expected;
   }
 
   /**
@@ -4406,17 +4596,25 @@ class BattleActionSpawnRunTest {
                         g.get("action").asText(),
                         g.get("phase").asInt()));
         case "step" -> {
-          JsonNode calls = g.get("calls");
-          if (calls.size() != 1 || !calls.get(0).get(0).asText().equals("connect")) {
-            throw new IllegalArgumentException("a Goblinstein step that does more: " + g);
+          // The tether's activation rows and damage passes are held by the tether log.
+          for (JsonNode call : g.get("calls")) {
+            String owner = g.get("owner").asText();
+            switch (call.get(0).asText()) {
+              case "connect" -> {
+                JsonNode connected = call.get(1);
+                expected.add(
+                    "%d connect %s %s"
+                        .formatted(tick, owner, connected.isNull() ? null : connected.asText()));
+              }
+              case "cast_seen", "tether_end" ->
+                  expected.add("%d %s %s".formatted(tick, call.get(0).asText(), owner));
+              case "tether_start" ->
+                  expected.add("%d tether_start %d %s".formatted(tick, call.get(1).asInt(), owner));
+              case "schedule", "damage_pass" -> {}
+              default ->
+                  throw new IllegalArgumentException("a Goblinstein step that does more: " + g);
+            }
           }
-          JsonNode connected = calls.get(0).get(1);
-          expected.add(
-              "%d connect %s %s"
-                  .formatted(
-                      tick,
-                      g.get("owner").asText(),
-                      connected.isNull() ? null : connected.asText()));
         }
         case "death_area" ->
             expected.add(
