@@ -18,7 +18,9 @@ import org.junit.jupiter.api.Test;
 /**
  * The Clone where the reference runs leave it: whom its hit reaches, the clone each unit gets - its
  * level, its 1 hit point and its shield, its buffs - and the move that sets the two apart, a clone
- * never cloned again and its death spawns clones too; and the clones the battle refuses.
+ * never cloned again and its death spawns clones too; and the clones the battle refuses. Then the
+ * area effects with a buff over clones where the runs do not take them: a Rage and a Heal Spirit's
+ * area beside a Minion's clone, a Tornado's pull, and an Earthquake's air test after the buff test.
  */
 class BattleCloneTest {
 
@@ -40,6 +42,7 @@ class BattleCloneTest {
     final List<String> refused = new ArrayList<>();
     final List<String> moves = new ArrayList<>();
     final List<String> copied = new ArrayList<>();
+    final List<String> gate = new ArrayList<>();
     AreaEffectEntity area;
     int tick;
 
@@ -86,6 +89,19 @@ class BattleCloneTest {
                     int t, WorldEntity original, WorldEntity clone, BuffInstance copy) {
                   copied.add(
                       clone.name() + " " + copy.getBuff().name() + " " + copy.getRemaining());
+                }
+
+                @Override
+                public void cloneBuffGateAsked(
+                    int t,
+                    AreaEffectEntity a,
+                    String buff,
+                    CharacterEntity clone,
+                    String path,
+                    int query,
+                    boolean refused) {
+                  gate.add(
+                      "%d %s %s %s %d %b".formatted(t, clone.name(), buff, path, query, refused));
                 }
               });
     }
@@ -286,16 +302,120 @@ class BattleCloneTest {
         .hasMessageContaining("from a clone");
   }
 
-  @Test
-  @DisplayName("an area effect with a buff reaching a clone is refused")
-  void aBuffAreaOnAClone() {
+  /**
+   * A Knight and a Minion beside it cloned, and an area effect placed over them on the next tick:
+   * for side 0 when it buffs its own troops, for side 1 otherwise.
+   */
+  private static Scene clonesUnder(String row, int side) {
     Scene scene = new Scene();
     scene.still(0, 0, "Knight", X, Y, "knight");
+    scene.still(0, 0, "Minion", X + 600, Y, "minion");
     scene.clone(CAST_TICK);
-    scene.match.placeAreaEffect(scene.tick, "Rage", LEVEL, 0, X, Y, "R");
+    scene.match.placeAreaEffect(scene.tick, row, LEVEL, side, X, Y, "A");
+    return scene;
+  }
 
-    assertThatThrownBy(() -> scene.step(10))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("clone knight_clone0");
+  private static boolean present(Scene scene, String name) {
+    return scene.match.getBattle().getHolder().entities().stream()
+        .anyMatch(e -> e instanceof CharacterEntity c && c.name().equals(name));
+  }
+
+  @Test
+  @DisplayName(
+      "a Rage, whose buff heals nothing, buffs the clones as it buffs any unit: its test is asked of"
+          + " each clone twice a hit, by the walk and again by the apply, and passes")
+  void aRageBuffsTheClones() {
+    Scene scene = clonesUnder("Rage", 0);
+    scene.step(6);
+
+    assertThat(scene.gate)
+        .containsExactly(
+            "31 knight_clone0 Rage area_buff 0 false",
+            "31 knight_clone0 Rage area_buff 0 false",
+            "31 minion_clone0 Rage area_buff 0 false",
+            "31 minion_clone0 Rage area_buff 0 false");
+    assertThat(scene.named("knight_clone0").getBuffs().carries("Rage")).isTrue();
+    assertThat(scene.named("minion_clone0").getBuffs().carries("Rage")).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a Heal Spirit's area, whose buff heals 157 a second, refuses the clones in its walk and buffs"
+          + " their originals")
+  void aHealingAreaRefusesTheClones() {
+    Scene scene = clonesUnder("HealSpirit", 0);
+    scene.step(2);
+
+    assertThat(scene.gate)
+        .containsExactly(
+            "26 knight_clone0 HealSpiritBuff area_buff 157 true",
+            "26 minion_clone0 HealSpiritBuff area_buff 157 true");
+    assertThat(scene.named("knight").getBuffs().carries("HealSpiritBuff")).isTrue();
+    assertThat(scene.named("knight_clone0").getBuffs().carries("HealSpiritBuff")).isFalse();
+    assertThat(scene.named("minion_clone0").getBuffs().carries("HealSpiritBuff")).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a Zap kills the clones with its damage, whose validator asks the test, and so does not stun"
+          + " them: the buff's walk tests alive before it asks")
+  void aZapKillsTheClonesBeforeItsBuff() {
+    Scene scene = clonesUnder("Zap", 1);
+    scene.step(1);
+
+    assertThat(scene.gate)
+        .containsExactly(
+            "26 knight_clone0 ZapFreeze area_damage 0 false",
+            "26 minion_clone0 ZapFreeze area_damage 0 false");
+    // Both left in the tick's closing cleanup, neither carrying the stun.
+    assertThat(scene.clones)
+        .allSatisfy(
+            clone -> {
+              assertThat(present(scene, clone.name())).isFalse();
+              assertThat(clone.getBuffs().carries("ZapFreeze")).isFalse();
+            });
+  }
+
+  @Test
+  @DisplayName(
+      "a Tornado pulls the clones before it buffs them, its pull asking the test first, and its"
+          + " damage kills them")
+  void aTornadoPullsTheClones() {
+    Scene scene = clonesUnder("Tornado", 1);
+    scene.step(1);
+
+    assertThat(scene.gate)
+        .containsExactly(
+            "26 knight_clone0 Tornado pull 0 false",
+            "26 minion_clone0 Tornado pull 0 false",
+            "26 knight_clone0 Tornado area_buff 0 false",
+            "26 knight_clone0 Tornado area_buff 0 false",
+            "26 minion_clone0 Tornado area_buff 0 false",
+            "26 minion_clone0 Tornado area_buff 0 false");
+    assertThat(scene.named("knight_clone0").getBuffs().carries("Tornado")).isTrue();
+    scene.step(12);
+    assertThat(present(scene, "knight_clone0")).isFalse();
+    assertThat(present(scene, "minion_clone0")).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "an Earthquake passes a ground clone and buffs it until its damage kills it; an air clone"
+          + " passes the buff test and is refused by the air test after it, so it is asked once a"
+          + " hit and never buffed")
+  void anEarthquakeOnAGroundAndAnAirClone() {
+    Scene scene = clonesUnder("Earthquake", 1);
+    scene.step(2);
+
+    assertThat(scene.gate)
+        .containsExactly(
+            "27 knight_clone0 Earthquake area_buff 0 false",
+            "27 knight_clone0 Earthquake area_buff 0 false",
+            "27 minion_clone0 Earthquake area_buff 0 false");
+    assertThat(scene.named("knight_clone0").getBuffs().carries("Earthquake")).isTrue();
+    assertThat(scene.named("minion_clone0").getBuffs().carries("Earthquake")).isFalse();
+    scene.step(30);
+    assertThat(present(scene, "knight_clone0")).isFalse();
+    assertThat(present(scene, "minion_clone0")).isTrue();
   }
 }

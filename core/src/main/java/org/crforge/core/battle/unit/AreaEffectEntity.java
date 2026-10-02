@@ -112,9 +112,13 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " target's point, for the maker's side and level with the maker as parent, ended by"
             + " its attack, held by goblin_machine_knight and goblin_machine_tower; one admitted"
             + " after its maker left, which would be destroyed unread, is refused. A Clone's hit action on the units its"
-            + " index query finds, in the query's order, and its filter, held by clone_golem_group;"
-            + " an area effect with a buff reaching a clone, whose filter asks an untraced query of"
-            + " the buff, is refused. Its starting action's expressions reading the area effect"
+            + " index query finds, in the query's order, and its filter, held by clone_golem_group."
+            + " Its filter's buff test of a clone, the buff row's HealPerSecond, a healing buff"
+            + " refusing the clone and any other passing it as any unit, asked by the area damage's"
+            + " validator, by the buff's walk and again by its apply, held by clone_rage_group,"
+            + " clone_zap_poison_group and clone_heal_spirit_knight; asked by the pull, held by"
+            + " BattleCloneTest; by the hit action loop and the chooser, which no shipped row"
+            + " with a buff reaches. Its starting action's expressions reading the area effect"
             + " itself, its point and its side, held by graveyard_tower_defender and"
             + " graveyard_right_side1. Created by an action's spawn at the point of the holder's"
             + " owner, for the side and at the level of its cause, the cause kept as its parent,"
@@ -194,6 +198,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   private final ValidatorQueries validatorQueries;
 
   /**
+   * The path that asks its test now, for the observers of the buff test of a clone: "area_damage",
+   * "area_buff", "pull", "on_hit_action" or "chooser".
+   */
+  private String asking;
+
+  /**
    * @param world the battle it belongs to
    * @param data its row
    * @param side its side
@@ -251,23 +261,24 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Its own test of a target: no building for a row that ignores buildings, and a character only
-   * when it reaches the character's air or ground.
+   * Its own test of a target: no building for a row that ignores buildings; for a row with a buff,
+   * no clone when the buff row's HealPerSecond is 1 or more, its value at level 0, which is the
+   * column itself; and a character only when it reaches the character's air or ground.
    */
   private boolean accepts(TargetView target) {
     if (target.building() && data.ignoreBuildings()) {
       return false;
     }
-    // For a clone the filter asks a query of the row's buff, which is not traced.
+    // The buff test: a row whose buff heals refuses a clone, any other passes it as any unit.
     if (data.buff() != null
         && world.entityOf(target.getEntity()) instanceof CharacterEntity unit
         && unit.isClone()) {
-      throw new UnsupportedOperationException(
-          "the area effect "
-              + name
-              + " with a buff reaches the clone "
-              + unit.name()
-              + ", whose filter's test of the buff is not modelled");
+      int query = world.getRecords().buff(data.buff()).healPerSecond();
+      boolean refused = query >= 1;
+      world.cloneBuffGateAsked(this, data.buff(), unit, asking, query, refused);
+      if (refused) {
+        return false;
+      }
     }
     if (target.getEntity().getType() != ReferenceValidator.TYPE_CHARACTER) {
       return true;
@@ -431,6 +442,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * as the cause: from the post-hook, so it starts in the phase-3 pending pass of the tick.
    */
   private void onHitActions(int radius, int hits) {
+    asking = "on_hit_action";
     List<GridEntity> views =
         world
             .getIndex()
@@ -579,6 +591,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * hit points left.
    */
   private Choice choose(int radius) {
+    asking = "chooser";
     List<Integer> before = List.copyOf(struck);
     List<Candidate> candidates = new ArrayList<>();
     List<WorldEntity> refused = new ArrayList<>();
@@ -639,6 +652,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * asked.
    */
   private void pull(int radius, BuffData buff) {
+    asking = "pull";
     List<Pull> pulls = new ArrayList<>();
     // The live list as it stands, its length read once.
     for (BattleEntity live : new ArrayList<>(world.getHolder().entities())) {
@@ -710,6 +724,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * adds the air and ground it reaches.
    */
   boolean buffReaches(WorldEntity target) {
+    asking = "area_buff";
     boolean sameTeam = ((side & 1) == 0) == ((target.side() & 1) == 0);
     if (!sameTeam && data.onlyOwnTroops()) {
       return false;
@@ -749,6 +764,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /** One hit: the area damage around it, with itself as the owner. */
   private void hit(int radius, int damage) {
+    asking = "area_damage";
     int tower = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
     AreaDamage.Area area =
         new AreaDamage.Area(

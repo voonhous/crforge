@@ -3477,7 +3477,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * The characters a buff over a circle reaches: this tick's, in the order they joined, inside the
    * circle and passing the test, until the limit is used up; of the king-class towers only the
-   * first takes a buff that deals damage.
+   * first takes a buff that deals damage. The apply of each asks the test again, as the walk
+   * reaches it, and takes only a target that passes it a second time.
    */
   private List<WorldEntity> buffTargets(
       int x, int y, int radius, BuffData buff, int limit, Predicate<WorldEntity> reaches) {
@@ -3497,6 +3498,9 @@ public class BattleWorld implements HolderPasses {
         if (skip) {
           continue;
         }
+      }
+      if (!reaches.test(entity)) {
+        continue;
       }
       targets.add(entity);
     }
@@ -3607,6 +3611,18 @@ public class BattleWorld implements HolderPasses {
   void buffCopied(WorldEntity original, WorldEntity clone, BuffInstance copy) {
     for (WorldObserver observer : observers) {
       observer.buffCopied(tick, original, clone, copy);
+    }
+  }
+
+  void cloneBuffGateAsked(
+      AreaEffectEntity areaEffect,
+      String buff,
+      CharacterEntity clone,
+      String path,
+      int query,
+      boolean refused) {
+    for (WorldObserver observer : observers) {
+      observer.cloneBuffGateAsked(tick, areaEffect, buff, clone, path, query, refused);
     }
   }
 
