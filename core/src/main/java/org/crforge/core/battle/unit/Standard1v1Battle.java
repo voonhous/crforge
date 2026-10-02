@@ -672,7 +672,13 @@ public class Standard1v1Battle {
     // The play is sent to every listener of a card play after its units are made: never to those
     // its own units start, which are listed only in their pending pass.
     if (result.placed()) {
-      world.cardPlayed(side, card.name());
+      String played = card.name();
+      if (mirror != null) {
+        played = match.side(side).deck().get(mirror.index()).name();
+      } else if (variant != null) {
+        played = match.side(side).deck().get(variant.index()).name();
+      }
+      world.cardPlayed(side, card.name(), played, variant != null);
     }
     // In a match the champion slots hear the play after its cast.
     if (match != null && result.placed()) {

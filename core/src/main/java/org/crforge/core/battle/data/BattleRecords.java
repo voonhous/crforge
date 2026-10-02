@@ -46,6 +46,7 @@ public final class BattleRecords {
   private static final String SPELLS_BUILDINGS = "spells_buildings";
   private static final String GAME_MODES = "game_modes";
   private static final String BATTLE_TIMELINES = "battle_timelines";
+  private static final String CARD_GROUPS = "card_groups";
   private static final String GLOBALS = "globals";
   private static final String LOCATIONS = "locations";
 
@@ -821,6 +822,20 @@ public final class BattleRecords {
       }
     }
     return columns;
+  }
+
+  /**
+   * The cards a card group lists for a plain card's play, from the card groups table: its playable
+   * cards. Its support cards, heroes and augments answer only a play of such a card, which the
+   * battle does not make.
+   *
+   * @param name the row's name
+   * @return the playable cards, in the row's order
+   */
+  public List<String> cardGroup(String name) {
+    GameTable table = tables.table(CARD_GROUPS);
+    checkArgument(table.has(name), () -> "the game tables have no card group " + name);
+    return table.row(name).strings("PlayableCards");
   }
 
   /**

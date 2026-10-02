@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -214,6 +215,56 @@ public final class SpatialIndex {
     }
     if (!result.isEmpty() && query.kingsLast()) {
       moveKingsLast(result);
+    }
+    return result;
+  }
+
+  /**
+   * Answers the entities a segment query accepts: the buckets over the segment's box widened by the
+   * width each way, x outer and y inner, each bucket in insertion order. Every entity is visited
+   * once, whether accepted or not, and accepted by the test, which the caller gives: the filter and
+   * the segment test on its live position. Answers null when no result list is free.
+   *
+   * @param ax the segment's start along the width
+   * @param ay the segment's start along the length
+   * @param bx the segment's end along the width
+   * @param by the segment's end along the length
+   * @param width how far either side of the segment the box reaches
+   * @param accepts whether an entity is answered
+   */
+  public List<GridEntity> segmentQuery(
+      int ax, int ay, int bx, int by, int width, Predicate<GridEntity> accepts) {
+    if (freeResultLists <= 0) {
+      return null;
+    }
+    freeResultLists--;
+    List<GridEntity> result = new ArrayList<>();
+    int xLow = (Math.min(ax, bx) - width) >> BUCKET_SHIFT;
+    int xHigh = (Math.max(ax, bx) + width) >> BUCKET_SHIFT;
+    int yLow = (Math.min(ay, by) - width) >> BUCKET_SHIFT;
+    int yHigh = (Math.max(ay, by) + width) >> BUCKET_SHIFT;
+    if (xLow > xHigh || yLow > yHigh) {
+      return result;
+    }
+    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (int cx = xLow; cx <= xHigh; cx++) {
+      if (cx < 0 || cx >= this.width) {
+        continue;
+      }
+      for (int cy = yLow; cy <= yHigh; cy++) {
+        if (cy < 0 || cy >= high) {
+          continue;
+        }
+        for (GridEntity entity : buckets.get(this.width * cy + cx)) {
+          // Unlike the point queries, a rejected entity is marked too and never tested again.
+          if (!seen.add(entity)) {
+            continue;
+          }
+          if (accepts.test(entity)) {
+            result.add(entity);
+          }
+        }
+      }
     }
     return result;
   }

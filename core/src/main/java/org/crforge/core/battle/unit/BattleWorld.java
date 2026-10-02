@@ -77,6 +77,7 @@ import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.index.SegmentTests;
 import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
@@ -1564,33 +1565,61 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Sends a card play to every listener of its side's card plays, on the live and the queued
-   * objects. A listener answers the cards of its card group, which the battle's tables do not hold,
-   * so a play one hears is refused.
+   * Sends a card play to every card-play listener on the live and the queued objects, in that
+   * order: each hears it as its row says, and an activating play schedules the row's action on the
+   * listener's owner, the owner its cause, to run in its next pending pass.
    *
    * @param side the side that played
-   * @param card the card played
+   * @param deployed the card the play put down: a Mirror's repeated card, a variant's option
+   * @param played the card played: the Mirror, the variant card
+   * @param variant true for a variant card's play, which a listener of its side refuses
    */
-  void cardPlayed(int side, String card) {
+  void cardPlayed(int side, String deployed, String played, boolean variant) {
     List<BattleEntity> all = new ArrayList<>(holder.entities());
     all.addAll(holder.queued());
     for (BattleEntity entity : all) {
-      if (!(entity instanceof WorldEntity listener)
-          || (listener.side() & 1) != (side & 1)
-          || !(entity.actions() instanceof ActionHolder actions)) {
+      if (!(entity instanceof WorldEntity owner)
+          || !(entity.actions() instanceof ActionHolder listening)) {
         continue;
       }
-      for (ActionInstance instance : actions.running()) {
-        if (instance.getAction() instanceof CardDeployListener heard) {
+      for (ActionInstance instance : List.copyOf(listening.running())) {
+        if (!(instance instanceof CardDeployListener.Run run)) {
+          continue;
+        }
+        if (variant && (owner.side() & 1) == (side & 1)) {
           throw new UnsupportedOperationException(
-              card
-                  + " played while "
-                  + listener.name()
+              played
+                  + " played as "
+                  + deployed
+                  + " while "
+                  + owner.name()
                   + "'s "
-                  + heard.name()
-                  + " listens for its side's card plays of "
-                  + heard.getCardGroup()
-                  + ", whose cards are not read, not modelled");
+                  + instance.getAction().name()
+                  + " listens for its side's card plays: a variant card's play, whose kind the"
+                  + " group's lists answer, is not modelled");
+        }
+        String scheduled =
+            run.hear(
+                owner.side(), side, deployed, played, () -> records.matchCard(deployed).cost());
+        if (scheduled != null) {
+          owner
+              .actionHolder()
+              .schedule(
+                  actions.build(scheduled, binding(owner)),
+                  ActionHolder.OWN_DELAY,
+                  false,
+                  owner.actionHolder());
+        }
+        for (WorldObserver observer : observers) {
+          observer.cardPlayHeard(
+              tick,
+              owner,
+              instance.getAction().name(),
+              side,
+              played,
+              deployed,
+              run.getTotal(),
+              scheduled);
         }
       }
     }
@@ -1655,6 +1684,133 @@ public class BattleWorld implements HolderPasses {
   void goblinsteinDeathAreaEnded(AreaEffectEntity owner, AreaEffectEntity deathArea) {
     for (WorldObserver observer : observers) {
       observer.goblinsteinDeathAreaEnded(tick, owner, deathArea);
+    }
+  }
+
+  /** Tells the observers a run of Goblinstein's ability saw a cast, its end, or ended a tether. */
+  void goblinsteinStepped(AreaEffectEntity owner, String step) {
+    for (WorldObserver observer : observers) {
+      observer.goblinsteinStepped(tick, owner, step);
+    }
+  }
+
+  /**
+   * Schedules a tether's activation row on the area effect or on the connected object, built for
+   * that object, the area effect its cause; a row the tether does not name is nothing.
+   *
+   * @param owner the area effect the tether runs on
+   * @param target the area effect itself, or the connected object
+   * @param row the row, or null for none
+   */
+  void tetherActivation(AreaEffectEntity owner, BattleEntity target, String row) {
+    if (row == null) {
+      return;
+    }
+    ActionBinding binding;
+    ActionHolder holder;
+    if (target instanceof AreaEffectEntity area) {
+      binding = area.binding();
+      holder = area.actionHolder();
+    } else {
+      WorldEntity unit = (WorldEntity) target;
+      binding = binding(unit);
+      holder = unit.actionHolder();
+    }
+    holder.schedule(
+        actions.build(row, binding), ActionHolder.OWN_DELAY, false, owner.actionHolder());
+    for (WorldObserver observer : observers) {
+      observer.tetherActivated(tick, owner, target, row);
+    }
+  }
+
+  /**
+   * The segment query of a tether's damage pass: the index's buckets over the segment's box widened
+   * by the width, each object visited once, answered when the filter, asked for the area effect's
+   * team and row name, takes it and it lies within the width of the segment where it stands now - a
+   * building by its square, anything else by its circle.
+   *
+   * @param owner the area effect the tether runs on
+   * @param ax the segment's start along the width
+   * @param ay the segment's start along the length
+   * @param bx the segment's end along the width
+   * @param by the segment's end along the length
+   * @param width how far either side of the segment it reaches
+   * @param filter the targets filter, or null for none
+   * @return the objects, in the query's order; null with no filter or no free result list
+   */
+  List<WorldEntity> segmentQuery(
+      AreaEffectEntity owner, int ax, int ay, int bx, int by, int width, GameObjectFilter filter) {
+    if (filter == null) {
+      return null;
+    }
+    int team = owner.side() & 1;
+    String name = owner.getData().name();
+    List<GridEntity> found =
+        index.segmentQuery(
+            ax,
+            ay,
+            bx,
+            by,
+            width,
+            view ->
+                filter.matches(entityOf(view).filterSubject(), team, name)
+                    && SegmentTests.withinSegment(view, ax, ay, bx, by, width));
+    if (found == null) {
+      return null;
+    }
+    List<WorldEntity> out = new ArrayList<>();
+    for (GridEntity view : found) {
+      out.add(entityOf(view));
+    }
+    index.release(found);
+    return out;
+  }
+
+  /** Tells the observers a tether's damage pass ran its query. */
+  void tetherDamagePass(
+      AreaEffectEntity owner, int ax, int ay, int bx, int by, List<WorldEntity> found) {
+    for (WorldObserver observer : observers) {
+      observer.tetherDamagePass(tick, owner, ax, ay, bx, by, found);
+    }
+  }
+
+  /**
+   * A tether's hit: an area effect's hit, the area effect the attacker, with the damage entry's
+   * hidden test lifted and the hit's direction carried to a death.
+   *
+   * @param owner the area effect the tether runs on
+   * @param victim the object hit
+   * @param damage the damage
+   * @param directionX the hit's direction along the width
+   * @param directionY the hit's direction along the length
+   */
+  void tetherHit(
+      AreaEffectEntity owner, WorldEntity victim, int damage, int directionX, int directionY) {
+    int before = hitPointsOf(victim);
+    DamageResult result = victim.takeDamage(damage, 0, directionX, directionY, true);
+    reflect(victim, owner, before, result, directionX, directionY);
+    for (WorldObserver observer : observers) {
+      observer.tetherHit(tick, owner, victim, damage, directionX, directionY, result);
+    }
+    if (result.died()) {
+      victim.die(owner);
+    }
+  }
+
+  /**
+   * Schedules a tether's hit action on an object it reached, built for that object, the area effect
+   * its cause.
+   */
+  void tetherHitAction(AreaEffectEntity owner, WorldEntity target, String row) {
+    target
+        .actionHolder()
+        .schedule(
+            actions.build(row, binding(target)),
+            ActionHolder.OWN_DELAY,
+            false,
+            owner.actionHolder());
+    for (WorldObserver observer : observers) {
+      observer.tetherHitAction(tick, owner, target, row);
     }
   }
 
