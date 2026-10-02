@@ -182,6 +182,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param dashImmuneToDamageTimeMs how long, after its dash, nothing can hurt it; while it dashes
  *     with one, nothing can
  * @param dashToTargetRadius true when its dash aims at its target's edge rather than its centre
+ * @param dashCount how many dashes one chain of its ability's dash makes; 0 for no chain
+ * @param dashSecondaryRange how far from where a dash of its chain lands it looks for the next
+ *     target; 0 for its greatest dash range
+ * @param backDashRadius within what distance of its landing the next target of a chain may lie in
+ *     any direction; one beyond it must lie ahead
  * @param targetOnlyTroops true for a unit that attacks troops only, never a building
  * @param ignoreTargetsWithBuff the buff row whose carriers it passes over as targets, or null
  * @param deprioritizeTargetsWithBuff true when it ranks such carriers lower instead of passing over
@@ -348,6 +353,9 @@ public record UnitData(
     int dashConstantTimeMs,
     int dashImmuneToDamageTimeMs,
     boolean dashToTargetRadius,
+    int dashCount,
+    int dashSecondaryRange,
+    int backDashRadius,
     boolean targetOnlyTroops,
     String ignoreTargetsWithBuff,
     boolean deprioritizeTargetsWithBuff,

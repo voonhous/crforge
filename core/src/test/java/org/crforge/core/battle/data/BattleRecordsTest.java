@@ -339,7 +339,7 @@ class BattleRecordsTest {
   }
 
   @Test
-  @DisplayName("a unit carries its dash, and a chained dash is among the columns not modelled")
+  @DisplayName("a unit carries its dash, and the Golden Knight its chain and its ability's dash")
   void dashColumns() {
     UnitData bandit = records.unit("Assassin");
     assertThat(bandit.dashCooldown()).isEqualTo(800);
@@ -358,9 +358,19 @@ class BattleRecordsTest {
     assertThat(megaKnight.dashConstantTimeMs()).isEqualTo(800);
     assertThat(megaKnight.jumpHeight()).isEqualTo(3000);
     assertThat(megaKnight.dashToTargetRadius()).isFalse();
-    // The chained dash is listed, and so are its further columns, which nothing reads.
-    assertThat(records.unit("GoldenKnight").unmodelledColumns())
-        .containsExactly("DashCount", "BackDashRadius", "DashSecondaryRange");
+    // The Golden Knight's dashes chain: ten at most, the next looked for within 5500 of the
+    // landing, nearest first within 5500 behind it as ahead.
+    UnitData goldenKnight = records.unit("GoldenKnight");
+    assertThat(goldenKnight.unmodelledColumns()).isEmpty();
+    assertThat(goldenKnight.dashCount()).isEqualTo(10);
+    assertThat(goldenKnight.dashSecondaryRange()).isEqualTo(5500);
+    assertThat(goldenKnight.backDashRadius()).isEqualTo(5500);
+    // Its ability dashes at the nearest within 5500, and keeps its pending buff while it waits.
+    AbilityData chain = goldenKnight.ability();
+    assertThat(chain.unmodelledColumns()).isEmpty();
+    assertThat(chain.dashRange()).isEqualTo(5500);
+    assertThat(chain.dashTargetFurthest()).isFalse();
+    assertThat(chain.pendingBuff()).isEqualTo("GoldenKnightCharge");
     // Its deploy push is read, and its spawner's limit changes nothing without a spawn.
     assertThat(megaKnight.spawnPushback()).isEqualTo(1000);
     assertThat(megaKnight.spawnPushbackRadius()).isEqualTo(1000);
@@ -567,8 +577,8 @@ class BattleRecordsTest {
     assertThat(rider.flyingHeight()).isEqualTo(4000);
     assertThat(rider.deathInheritIgnoreList()).isTrue();
     // The listed columns first, then those the row sets that nothing reads, in name order.
-    assertThat(records.unit("GoldenKnight").unmodelledColumns())
-        .containsExactly("DashCount", "BackDashRadius", "DashSecondaryRange");
+    assertThat(records.unit("SuperWitch").unmodelledColumns())
+        .containsExactly("SpawnCharacter2", "SpawnCharacterLevelIndex2");
   }
 
   @Test

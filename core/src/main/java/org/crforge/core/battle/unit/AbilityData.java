@@ -25,6 +25,10 @@ import lombok.Builder;
  * @param manaCost the elixir a player pays to use the ability, in whole elixir
  * @param cooldownMs how long after a use its controller refuses the next
  * @param maxCharges how many uses one play of the champion allows; 0 for no limit
+ * @param dashRange how far the ability's dash reaches for its first target; 0 for no dash
+ * @param dashTargetFurthest true when the dash takes the furthest target in its reach rather than
+ *     the nearest
+ * @param pendingBuff the buff a unit waiting to cast its dash carries, or null
  * @param unmodelledColumns the columns that make the ability do more than run its activation action
  *     and buff the unit itself, or keep a buff on a unit waiting to cast, which the battle does not
  *     model; a request for such an ability is refused
@@ -42,6 +46,9 @@ public record AbilityData(
     int manaCost,
     int cooldownMs,
     int maxCharges,
+    int dashRange,
+    boolean dashTargetFurthest,
+    String pendingBuff,
     List<String> unmodelledColumns) {
 
   public AbilityData {

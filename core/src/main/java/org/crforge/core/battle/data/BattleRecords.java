@@ -220,9 +220,9 @@ public final class BattleRecords {
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield, hiding before the first hit, a buff at a share of its hit
-   * points, the action a completed charge runs, a chained dash, a dash's contact damage, fixed
-   * distance, area effect and closing action, a limit on the elixir a collector makes, a spawner's
-   * launches, and its second and third characters.
+   * points, the action a completed charge runs, a dash's contact damage, fixed distance, area
+   * effect and closing action, a limit on the elixir a collector makes, a spawner's launches, and
+   * its second and third characters.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -231,7 +231,6 @@ public final class BattleRecords {
           "HideBeforeFirstHit",
           "BuffOnXHP",
           "OnStartChargingAction",
-          "DashCount",
           "DashingDamage",
           "DashDistance",
           "AreaEffectOnDash",
@@ -670,6 +669,9 @@ public final class BattleRecords {
             .dashConstantTimeMs(row.intValue("DashConstantTime"))
             .dashImmuneToDamageTimeMs(row.intValue("DashImmuneToDamageTime"))
             .dashToTargetRadius(row.bool("DashToTargetRadius"))
+            .dashCount(row.intValue("DashCount"))
+            .dashSecondaryRange(row.intValue("DashSecondaryRange"))
+            .backDashRadius(row.intValue("BackDashRadius"))
             .targetOnlyTroops(row.bool("TargetOnlyTroops"))
             .ignoreTargetsWithBuff(
                 row.string("IgnoreTargetsWithBuff").isEmpty()
@@ -1268,21 +1270,19 @@ public final class BattleRecords {
   }
 
   /**
-   * The ability columns that make an ability do more than run its activation action and buff the
-   * unit itself - its dash, a buff over a radius, area object, lane switch, morph, spawn and
-   * follow-up state - or keep a buff on a unit waiting to cast; the rest are the champion
-   * controller's, read into the ability, or presentation, which a request never reads.
+   * The ability columns that make an ability do more than run its activation action, buff the unit
+   * itself and dash - a buff over a radius, area object, lane switch, morph, spawn and follow-up
+   * state; the rest are the champion controller's or the dash's, read into the ability, or
+   * presentation, which a request never reads.
    */
   private static final List<String> UNMODELLED_ABILITY_COLUMNS =
       List.of(
-          "DashRange",
           "BuffRadius",
           "AreaEffectObject",
           "SwitchLanes",
           "MorphTarget",
           "ActivationSpawnCharacter",
-          "AbilityStateDuration",
-          "PendingBuff");
+          "AbilityStateDuration");
 
   /**
    * A unit's ability row, or null for a unit without one. Its activation action, written inline, is
@@ -1310,6 +1310,9 @@ public final class BattleRecords {
         .manaCost(ability.intValue("ManaCost"))
         .cooldownMs(ability.intValue("Cooldown"))
         .maxCharges(ability.intValue("MaxCharges"))
+        .dashRange(ability.intValue("DashRange"))
+        .dashTargetFurthest(ability.bool("DashTargetFurthest"))
+        .pendingBuff(set(ability, "PendingBuff") ? ability.string("PendingBuff") : null)
         .unmodelledColumns(
             UNMODELLED_ABILITY_COLUMNS.stream().filter(column -> set(ability, column)).toList())
         .build();

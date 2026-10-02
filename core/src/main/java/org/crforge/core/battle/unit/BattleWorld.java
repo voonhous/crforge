@@ -1738,6 +1738,39 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** Tells the observers what an ability's dash looked at, the stuns it removed and its winner. */
+  void abilityDashed(
+      CharacterEntity unit,
+      List<CharacterEntity.DashCandidate> candidates,
+      List<String> cleansed,
+      WorldEntity chosen) {
+    for (WorldObserver observer : observers) {
+      observer.abilityDashed(tick, unit, candidates, cleansed, chosen);
+    }
+  }
+
+  /** Tells the observers a unit whose dashes chain started a dash, with its chain's bookkeeping. */
+  void chainDashStarted(
+      CharacterEntity unit, int fromX, int fromY, int aimX, int aimY, int radius) {
+    for (WorldObserver observer : observers) {
+      observer.chainDashStarted(tick, unit, fromX, fromY, aimX, aimY, radius);
+    }
+  }
+
+  /** Tells the observers a chain found its next target as the unit left its dash. */
+  void chainDashed(CharacterEntity unit, WorldEntity next, int count, int x, int y) {
+    for (WorldObserver observer : observers) {
+      observer.chainDashed(tick, unit, next, count, x, y);
+    }
+  }
+
+  /** Tells the observers a chain ended as the unit left its dash. */
+  void chainDashEnded(CharacterEntity unit, int count, TargetView reference) {
+    for (WorldObserver observer : observers) {
+      observer.chainDashEnded(tick, unit, count, reference);
+    }
+  }
+
   /** Tells the observers an ability gave its unit its buff. */
   void abilityBuffed(CharacterEntity unit, String buff, int timeMs, int packedLevel) {
     for (WorldObserver observer : observers) {
