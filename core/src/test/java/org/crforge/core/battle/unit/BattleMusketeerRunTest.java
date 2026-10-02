@@ -35,7 +35,8 @@ import org.junit.jupiter.api.Test;
  * reference byte for byte.
  *
  * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleKillRunTest}, and the
- * same one-tick deploying correction and end-of-step reference allowance apply.
+ * same end-of-step reference allowance applies. Every record is read at the end of its tick, the
+ * deploy-end tick's too, so no deploying correction applies.
  */
 class BattleMusketeerRunTest {
 
@@ -218,7 +219,7 @@ class BattleMusketeerRunTest {
       assertThat(musketeer.getView().getY()).as("%s y", where).isEqualTo(record.get("y").asInt());
       assertThat(musketeer.getView().getState())
           .as("%s state", where)
-          .isEqualTo(BattleGoldenTrajectoryTest.expectedState(records, i));
+          .isEqualTo(record.get("state").asInt());
       assertThat(referenceName(musketeer))
           .as("%s reference", where)
           .isEqualTo(expectedReference(record));

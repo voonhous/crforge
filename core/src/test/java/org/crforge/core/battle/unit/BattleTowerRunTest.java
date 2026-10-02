@@ -34,8 +34,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * three: nothing damages a king tower and no princess tower falls, so neither king is activated.
  *
  * <p>Reference tick {@code n} is battle tick {@code n}, as in {@link BattleKillRunTest}, and the
- * same one-tick deploying correction and end-of-step reference allowance apply. The towers and the
- * unit are visited from the same first tick, as in the reference.
+ * same end-of-step reference allowance applies. Every record is read at the end of its tick, the
+ * deploy-end tick's too, so no deploying correction applies. The towers and the unit are visited
+ * from the same first tick, as in the reference.
  */
 class BattleTowerRunTest {
 
@@ -109,7 +110,7 @@ class BattleTowerRunTest {
       assertThat(unit.getView().getY()).as("%s y", where).isEqualTo(record.get("y").asInt());
       assertThat(unit.getView().getState())
           .as("%s state", where)
-          .isEqualTo(BattleGoldenTrajectoryTest.expectedState(records, i));
+          .isEqualTo(record.get("state").asInt());
       assertThat(BattleMusketeerRunTest.referenceName(unit))
           .as("%s reference", where)
           .isEqualTo(BattleMusketeerRunTest.expectedReference(record));
