@@ -15,6 +15,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * production stop runs, the elixir waits and the stop loses 50 ms instead. A play is checked
  * against the whole elixir, the truncated quotient by 10000, and takes its cost times 10000, never
  * more than there is.
+ *
+ * <p>The king keeps the last card played, which a play of any card but the Mirror replaces, and a
+ * copy of it its visit makes after the regeneration. The copy is the card a Mirror repeats, so a
+ * Mirror after a Mirror repeats the same card again.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -22,7 +26,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Agrees with the reference line for line: the starting elixir, the regeneration, the cap"
             + " and the waste, the production stop, the whole elixir and the spend. Held by"
             + " match_elixir_150s, both elixirs on every tick, and the adds a collector and a"
-            + " death make by match_elixir_sources. Not modelled: a boost's scaled rate"
+            + " death make by match_elixir_sources. The last card and its copy are held by"
+            + " mirror_knight and mirror_fireball. Not modelled: a boost's scaled rate"
             + " and a paused regeneration, which no Ladder battle has, and the views' counters.")
 public final class MatchSide {
 
@@ -45,6 +50,12 @@ public final class MatchSide {
   /** The elixir the cap has turned away so far, in ten-thousandths. */
   @Getter private int wasted;
 
+  /** The last card played that was not the Mirror, or null before any. */
+  private MatchCard lastPlayed;
+
+  /** The copy of the last card the visit makes, which a Mirror repeats; null before any. */
+  private MatchCard lastPlayedCopy;
+
   MatchSide(List<MatchCard> deck, int startingElixir) {
     this.deck = List.copyOf(deck);
     this.elixir = startingElixir * SCALE;
@@ -55,13 +66,23 @@ public final class MatchSide {
     return deck;
   }
 
+  /** The last card played that was not the Mirror, or null before any. */
+  public MatchCard lastPlayed() {
+    return lastPlayed;
+  }
+
+  /** The copy of the last card the king's visit made, which a Mirror repeats; null before any. */
+  public MatchCard lastPlayedCopy() {
+    return lastPlayedCopy;
+  }
+
   /** The whole elixir a play is checked against: the elixir over 10000, truncated. */
   public int wholeElixir() {
     return elixir / SCALE;
   }
 
   /**
-   * The king's visit: the hand refill, then the regeneration.
+   * The king's visit: the hand refill, then the regeneration, then the copy of the last card.
    *
    * @param timeline the battle's timeline, whose rate and cooldown apply now
    * @param maxMana the published maximum elixir
@@ -70,6 +91,7 @@ public final class MatchSide {
   int visit(Timeline timeline, int maxMana) {
     int refilled = hand.refill(timeline.getNextCardCooldownMs());
     regenerate(timeline.getFullBarMs(), maxMana);
+    lastPlayedCopy = lastPlayed;
     return refilled;
   }
 
@@ -106,19 +128,33 @@ public final class MatchSide {
   }
 
   /**
-   * A play of a card from the hand: its cost taken, its production stop started, and the card moved
-   * from its slot to the back of the queue.
+   * A play of a card from the hand: its cost taken, its production stop started, the card moved
+   * from its slot to the back of the queue, and the card kept as the last played.
    *
    * @param index the card's deck index
    */
   void play(int index) {
     MatchCard card = deck.get(index);
-    int cost = card.cost();
+    play(index, card.cost(), card.elixirProductionStopTimeMs());
+    lastPlayed = card;
+  }
+
+  /**
+   * A play of the Mirror: the item's cost taken, the repeated card's production stop started, and
+   * the Mirror moved from its slot to the back of the queue. The last card played stays as it was.
+   *
+   * @param item the Mirror's item, which repeats a card
+   */
+  void playMirror(MirrorItem item) {
+    play(item.index(), item.cost(), item.repeats().elixirProductionStopTimeMs());
+  }
+
+  private void play(int index, int cost, int productionStopTimeMs) {
     int spend = cost > 0 ? Math.min(cost * SCALE, elixir) : 0;
     spent += spend;
     elixir -= spend;
-    if (card.elixirProductionStopTimeMs() >= 1) {
-      productionStopMs = card.elixirProductionStopTimeMs();
+    if (productionStopTimeMs >= 1) {
+      productionStopMs = productionStopTimeMs;
     }
     hand.removeFromHand(hand.slotOf(index));
   }

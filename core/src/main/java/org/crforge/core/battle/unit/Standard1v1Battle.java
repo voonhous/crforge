@@ -16,6 +16,7 @@ import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -42,7 +43,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " created in formation order, each deploying at once or waiting its turn; played as a"
             + " Ladder match, the players' hands, elixir, the match clock, its end and its"
             + " tiebreaker, held by match_elixir_150s, match_knights_king, match_overtime_tiebreak"
-            + " and match_overtime_draw.")
+            + " and match_overtime_draw; a Mirror's play, its item built as it runs, held by"
+            + " mirror_knight and mirror_fireball. Not modelled, and refused: a Mirror outside a"
+            + " match, and one given while another play of its side is pending, which the"
+            + " player's client may repeat in its place.")
 public class Standard1v1Battle {
 
   /** The level the reference runs are played at, and the towers' level when none is given. */
@@ -131,6 +135,7 @@ public class Standard1v1Battle {
    * @param result what the placement came to, or null for a play a match's gate refused
    * @param units the units it created, in creation order
    * @param matchCode the code a match's gate refused the play with, or 0
+   * @param mirror the item a Mirror's play carried, or null for any other card
    */
   public record Play(
       String name,
@@ -140,7 +145,20 @@ public class Standard1v1Battle {
       int tick,
       CardPlacement.Result result,
       List<CharacterEntity> units,
-      int matchCode) {}
+      int matchCode,
+      MirrorItem mirror) {}
+
+  /** A card play queued: the tick it runs on and its side. */
+  private record QueuedPlay(int tick, int side) {}
+
+  /** Every card play queued so far, which a Mirror's item is built against. */
+  private final List<QueuedPlay> queuedPlays = new ArrayList<>();
+
+  /**
+   * How many ticks before a Mirror's own run another play of its side would be pending as the
+   * player gives the Mirror: the play delay and the step it is given in.
+   */
+  private static final int MIRROR_PENDING_TICKS = PLAY_DELAY_TICKS + 1;
 
   /** The match the battle is played as, or null for a battle without players. */
   @Getter private LadderMatch match;
@@ -197,6 +215,7 @@ public class Standard1v1Battle {
    * @param name the play's name: unit {@code k} is named {@code name_k}
    */
   public void play(int tick, DeployCard card, int level, int side, int x, int y, String name) {
+    queuedPlays.add(new QueuedPlay(tick, side));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -211,18 +230,120 @@ public class Standard1v1Battle {
         });
   }
 
+  /**
+   * Queues a Mirror's play to run on the given tick, in a match: it plays its side's last card
+   * again, one level above the Mirror's, for the Mirror's cost plus the card's, and the Mirror goes
+   * to the back of the queue. The repeated card is placed or cast as itself, its units named after
+   * the play.
+   *
+   * <p>The item the play carries is built from the side's last card as the play runs. The player's
+   * client builds it as the play is given, from that card or from a play of its side it has given
+   * and not yet seen run; with no other play of the side due in the ticks between, the two agree. A
+   * Mirror with another play of its side due then is refused, and so is a Mirror outside a match,
+   * which has no last card, and one that repeats a champion, which no reference holds.
+   *
+   * @param tick the tick the play runs on
+   * @param card the Mirror's card row name
+   * @param level the level the Mirror is played at, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void playMirror(int tick, String card, int level, int side, int x, int y, String name) {
+    if (match == null) {
+      throw new UnsupportedOperationException(
+          "the Mirror outside a match, which keeps no last card to play again");
+    }
+    QueuedPlay queued = new QueuedPlay(tick, side);
+    queuedPlays.add(queued);
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            runMirror(target, queued, card, level, x, y, name);
+          }
+        });
+  }
+
+  private void runMirror(
+      Battle target, QueuedPlay queued, String card, int level, int x, int y, String name) {
+    int side = queued.side();
+    for (QueuedPlay other : queuedPlays) {
+      if (other != queued
+          && other.side() == side
+          && other.tick() >= queued.tick() - MIRROR_PENDING_TICKS
+          && other.tick() <= queued.tick()) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a Mirror given while another play of its side is pending, which the client"
+                + " may repeat in place of the last card, is not modelled");
+      }
+    }
+    int deckIndex = match.deckIndex(side, card);
+    MirrorItem item = match.mirrorItem(side, deckIndex, level);
+    // The gates read the Mirror's own hand slot and the item's cost; a refused play changes
+    // nothing.
+    int code = match.gate(side, deckIndex, item.cost());
+    if (code != 0) {
+      plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, item));
+      return;
+    }
+    // With nothing to repeat the search is handed the king's last card, finds none and answers no
+    // position.
+    if (item.repeats() == null) {
+      CardPlacement.Result refused =
+          new CardPlacement.Result(CardPlacement.NO_POSITION, 0, 0, null, 0, List.of());
+      plays.add(new Play(name, side, x, y, target.getTick(), refused, List.of(), 0, item));
+      return;
+    }
+    DeployCard repeated = world.getRecords().card(item.repeats().name());
+    if (repeated.unit() != null && repeated.unit().champion()) {
+      throw new UnsupportedOperationException(
+          name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");
+    }
+    place(
+        target, repeated, item.level(), side, x, y, name, () -> match.playMirror(side, item), item);
+  }
+
   private void runPlay(
       Battle target, DeployCard card, int level, int side, int x, int y, String name) {
     // In a match the play first passes the match's gates; a refused play changes nothing.
-    int deckIndex = -1;
+    Runnable pay = null;
     if (match != null) {
-      deckIndex = match.deckIndex(side, card.name());
+      int deckIndex = match.deckIndex(side, card.name());
       int code = match.gate(side, deckIndex);
       if (code != 0) {
-        plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code));
+        plays.add(new Play(name, side, x, y, target.getTick(), null, List.of(), code, null));
         return;
       }
+      pay = () -> match.play(side, deckIndex);
     }
+    place(target, card, level, side, x, y, name, pay, null);
+  }
+
+  /**
+   * Places or casts a play that passed the match's gates, if any: the placement worked out, the
+   * play paid for and its card cycled, the cast, and the units made.
+   *
+   * @param pay what pays for a placed play and cycles its card, or null outside a match
+   * @param mirror the Mirror's item the play carried, or null
+   */
+  private void place(
+      Battle target,
+      DeployCard card,
+      int level,
+      int side,
+      int x,
+      int y,
+      String name,
+      Runnable pay,
+      MirrorItem mirror) {
     // The mask reads every character of the battle: the live list, then the ones still queued.
     List<MaskEntity> entities = new ArrayList<>();
     List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
@@ -249,8 +370,8 @@ public class Standard1v1Battle {
             SYMMETRICAL_DEPLOY_SNAP,
             LANE_BASED_DEPLOY_SEQUENCE);
     // A play placed or cast pays for itself and cycles its card before anything is made.
-    if (match != null && result.placed()) {
-      match.play(side, deckIndex);
+    if (pay != null && result.placed()) {
+      pay.run();
     }
     // The cast comes before the units are made: a troop card's projectile is queued ahead of them.
     if (card.casts() && result.placed()) {
@@ -300,7 +421,7 @@ public class Standard1v1Battle {
       character.start();
       units.add(character);
     }
-    plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units), 0));
+    plays.add(new Play(name, side, x, y, target.getTick(), result, List.copyOf(units), 0, mirror));
   }
 
   /**

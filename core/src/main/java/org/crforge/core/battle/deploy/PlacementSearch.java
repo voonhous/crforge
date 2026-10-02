@@ -26,8 +26,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
         "Settled: the clamp, the character snap and the tile centre, the footprint, the rings and"
             + " their walk order, the legality test with the margin columns, the mask and the map"
             + " cells, the nearest-in-the-first-ring rule and the symmetrical snap, and a spell's"
-            + " search for its projectile's character or for no unit. Not modelled: the Mirror"
-            + " card, a spell deployed as a thrown projectile, a building unit's morph, and the lane"
+            + " search for its projectile's character or for no unit; a Mirror's play is searched for"
+            + " the card it repeats, and one with nothing to repeat answers no position before the"
+            + " search. Not modelled: a spell deployed as a thrown projectile, a building unit's"
+            + " morph, and the lane"
             + " requirement, which the place-card command does not ask for.")
 public final class PlacementSearch {
 

@@ -369,6 +369,15 @@ A Ladder match at level 11, side 0's deck Cannons, Tombstones and Elixir Collect
 
 `BattleActionSpawnRunTest` plays it with the spawn runs, and holds every play's placed point and units, both kings' elixir on every tick, every spawner firing and decay, and the collector's payout.
 
+## `golden/mirror_knight.json` and `golden/mirror_fireball.json` - the Mirror
+
+A Ladder match at level 11, side 1's deck eight Knights, both players' words 0. A Mirror plays its side's last card again: the king's copy of the last card that was not a Mirror, one level above the Mirror's, for the Mirror's 1 plus the card's cost. The gates read the Mirror's own hand slot and that cost; the card is placed or cast as itself, the play takes the cost, and the Mirror goes to the back of the queue. The last card stays the one repeated. The shuffle keeps the Mirror out of the opening hand; it enters with the refill after the first play.
+
+- `mirror_knight`: side 0's deck Archer, Giant, Knight, MiniPekka, Musketeer, Valkyrie, Mirror and Minions. The Knight on 20 at (3500, 10000) takes 3 (63560 to 33560), and the Mirror enters the hand in that step's refill. The Mirror on 100 at (14500, 10000) repeats the Knight at level 12 for 4 (47800 to 7800): m_0 has 1938 hit points to the first Knight's 1766 and hits PrincessTower_1_2 for 221. The run stops on 400, before the first death.
+- `mirror_fireball`: side 0's deck Fireball, Archer, Giant, MiniPekka, Musketeer, Valkyrie, Mirror and Minions. The Fireball on 20 at PrincessTower_1_1 takes 4 and deals the tower 207. The Mirror on 130 is refused with 0xd: 4 whole elixir for a cost of 5, and nothing moves. The Mirror on 200 casts the Fireball again at level 12 for 5 (55600 to 5600), 227 to the tower.
+
+The `mirror` list holds every item a Mirror play carried (the source, the card it repeats, the Mirror's deck index, its level field and the item's, the cost), every Mirror play the gates refused (the code, the cost, the elixir) and every Mirror play (the level, the cost, the elixir before and after, the last card kept, the hand and the queue). `BattleActionSpawnRunTest` plays both with the spawn runs, and holds every item, the code and cost of a refused one, the level and cost of each play, the last card each side keeps, and both kings' elixir and hands on every tick.
+
 ## `golden/electro_wizard_knights.json` and `golden/ice_wizard_knights.json` - a card that deploys as a spell
 
 The towers fight at level 11. Two side-1 Knights are played at (3000, 17500) and (4000, 17500) on tick 0 and walk down the left lane; on 110 side 0 plays a wizard at (3300, 12100) (`commands`). The card names no unit, so it is cast as a spell: the search snaps the point to the tile centre (3500, 12500), with no unit and so no step left, and the cast creates the card's area effect there in the command pass (`area_effects`, `how` "cast"), at the card's level. The area effect's starting action makes the wizard in its first pending pass of the same tick (`actions`: ElectroWizardZap_3000000_0 or IceWizardCold_3000000_0, state 4, deploy 1000), before the area effect's own hit.
