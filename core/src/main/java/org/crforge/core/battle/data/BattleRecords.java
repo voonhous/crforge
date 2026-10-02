@@ -120,6 +120,7 @@ public final class BattleRecords {
           "OtherBuffDeathSpawnAllowed",
           "LockTarget",
           "AddAsIndividualBuff",
+          "AliveIfTrue",
           // Read only by the apply, to keep the buff off a unit's riders, or to hand them another;
           // a buff on a rider or on a unit that carries riders is refused as it is applied.
           "Clone",
@@ -550,6 +551,7 @@ public final class BattleRecords {
             .selfAsAoeCenter(row.bool("SelfAsAoeCenter"))
             .overrideAttackFinishTime(row.bool("OverrideAttackFinishTime"))
             .attackFinishTimeMs(row.intValue("AttackFinishTime"))
+            .resetHitTimerWhenNoTarget(row.bool("ResetHitTimerWhenNoTarget"))
             .spawnRadius(row.intValue("SpawnRadius"))
             .spawnAngleShift(row.intValue("SpawnAngleShift"))
             .flyingHeight(row.intValue("FlyingHeight"))
@@ -1207,6 +1209,7 @@ public final class BattleRecords {
         .allowedOverHealPercent(row.intValue("AllowedOverHealPerc"))
         .lockTarget(row.bool("LockTarget"))
         .addAsIndividualBuff(row.bool("AddAsIndividualBuff"))
+        .aliveIfTrue(sets(row, "AliveIfTrue") ? row.string("AliveIfTrue") : null)
         .unmodelledColumns(unmodelled)
         .build();
   }

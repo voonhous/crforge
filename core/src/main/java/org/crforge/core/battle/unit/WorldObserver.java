@@ -1014,6 +1014,26 @@ public interface WorldObserver {
       boolean refused) {}
 
   /**
+   * An expression read attack_count, the hit count of its context's current attack.
+   *
+   * @param tick the battle tick
+   * @param context the entity the expression was evaluated for
+   * @param attackTimeMs the context's attack time, which the count divides
+   * @param count the count it answered
+   */
+  default void attackCountRead(int tick, WorldEntity context, int attackTimeMs, int count) {}
+
+  /**
+   * A buff visit asked an instance's life condition of its carrier.
+   *
+   * @param tick the battle tick
+   * @param carrier the entity the buff is on
+   * @param buff the instance
+   * @param answer what the condition answered; 0 ends the instance
+   */
+  default void lifeConditionAsked(int tick, WorldEntity carrier, BuffInstance buff, int answer) {}
+
+  /**
    * A clone or its original started its move apart, toward a point straight ahead or behind it.
    *
    * @param tick the battle tick

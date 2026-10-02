@@ -15,7 +15,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " goblin_curse_knights: the curse and its damage over time on every enemy the base's"
             + " hit reaches, from the base, refreshed every tick; and by dark_magic_knight and"
             + " dark_magic_group: a buff written inline, from the area effect whose laser ball"
-            + " scheduled it on each target, at its level. Refused"
+            + " scheduled it on each target, at its level; and by little_prince_giant and"
+            + " little_prince_retarget: the Little Prince's speed-ups on itself, from itself, the"
+            + " unit whose attack start ran the row. Refused"
             + " as the row is built: a buff its parent controls, a source taken from the owner's"
             + " parent, and a spawn time below 1.")
 public final class SpawnBuff extends RowAction {

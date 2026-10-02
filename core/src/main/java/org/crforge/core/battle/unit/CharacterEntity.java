@@ -1454,6 +1454,7 @@ public class CharacterEntity extends WorldEntity {
         .selfAsAoeCenter(data.selfAsAoeCenter())
         .overrideAttackFinishTime(data.overrideAttackFinishTime())
         .attackFinishTime(data.attackFinishTimeMs())
+        .resetHitTimerWhenNoTarget(data.resetHitTimerWhenNoTarget())
         .minimumRange(data.minimumRange())
         .sightClip(data.sightClip())
         .sightClipSide(data.sightClipSide())

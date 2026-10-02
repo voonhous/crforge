@@ -50,6 +50,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param overrideAttackFinishTime true when the unit waits its own time, not the global one, before
  *     it takes a new target after losing one
  * @param attackFinishTimeMs that own wait
+ * @param resetHitTimerWhenNoTarget true when giving its reference up, short of a target's death,
+ *     clears the unit's attack, the time built up toward its hits among it
  * @param spawnRadius the radius of the formation a card places the unit in, when the card sets
  *     none; 0 for none, which falls back to the collision radius
  * @param spawnAngleShift degrees its spawner's ring is turned by, with the angle it faces; for an
@@ -251,6 +253,7 @@ public record UnitData(
     boolean selfAsAoeCenter,
     boolean overrideAttackFinishTime,
     int attackFinishTimeMs,
+    boolean resetHitTimerWhenNoTarget,
     int spawnRadius,
     int spawnAngleShift,
     int flyingHeight,

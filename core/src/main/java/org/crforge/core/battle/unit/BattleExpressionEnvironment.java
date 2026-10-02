@@ -32,14 +32,17 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " context's reference, its edge and the context's; get_radius as the context's"
             + " row's collision radius, held by giant_buffer_knights; target_is_ground as the"
             + " context's reference's row's flying height 0, none while its targeting is off,"
-            + " held by three_musketeers_pekka and three_musketeers_air_building. Supplied, not"
+            + " held by three_musketeers_pekka and three_musketeers_air_building; attack_count as"
+            + " the context's attack time over its row's hit speed toward zero, 0 for a hit speed"
+            + " below 1, whether its targeting runs or not, held by little_prince_giant and"
+            + " little_prince_retarget. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
-            + " would read first, refused; the other 30 functions, which fail"
+            + " would read first, refused; the other 29 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -59,6 +62,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int GET_RADIUS = BattleFunctions.id("get_radius");
   private static final int TARGET_IN_RANGE = BattleFunctions.id("target_in_range");
   private static final int TARGET_IS_GROUND = BattleFunctions.id("target_is_ground");
+  private static final int ATTACK_COUNT = BattleFunctions.id("attack_count");
 
   /** The game tags that force an object onto a layer, which target_is_ground would read first. */
   private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
@@ -229,6 +233,9 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (id == TARGET_IS_GROUND) {
       return targetIsGround();
     }
+    if (id == ATTACK_COUNT) {
+      return attackCount();
+    }
     if (id == RAND) {
       // One draw from the battle's source, taken as the expression is evaluated.
       return world.getRandom().next(arguments[0]);
@@ -247,6 +254,19 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     throw new UnsupportedOperationException(
         "the battle does not answer " + BattleFunctions.byId(id).name() + " yet");
+  }
+
+  /**
+   * The hit count of the context's current attack: its attack time over its row's hit speed, toward
+   * zero, whether its targeting component runs or not; 0 for a row whose hit speed is below 1. The
+   * row's own hit speed, so under a buff that speeds its hits the count still rises once a hit.
+   */
+  private int attackCount() {
+    int attackTime = context.getTargeting().getAttackTimerMs();
+    int hitSpeed = context.getData().hitSpeedMs();
+    int count = hitSpeed < 1 ? 0 : attackTime / hitSpeed;
+    world.attackCountRead(context, attackTime, count);
+    return count;
   }
 
   /**

@@ -110,6 +110,19 @@ public final class BuffInstance {
     }
   }
 
+  /**
+   * Whether the visit asks its buff's life condition now, after the step of its time: only of an
+   * instance that runs out and has time left.
+   */
+  boolean asksLifeCondition() {
+    return remaining != FOREVER && remaining != 0;
+  }
+
+  /** A life condition that answered 0: its time is spent, and the visit removes it. */
+  void expire() {
+    remaining = 0;
+  }
+
   /** One visit's step of its time: 50 ms off, never below 0; one that never runs out keeps it. */
   void step(int stepMs) {
     if (remaining != FOREVER) {
