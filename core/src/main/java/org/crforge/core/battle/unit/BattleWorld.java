@@ -23,6 +23,7 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
@@ -30,6 +31,7 @@ import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
+import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
@@ -3237,6 +3239,126 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.guardStepped(tick, guard, charging, tags, done, calls);
     }
+  }
+
+  /** A Boss Bandit ability's run started on a unit. */
+  void bossBanditAbilityStarted(
+      CharacterEntity unit,
+      BossBanditAbility action,
+      int phase,
+      int warpTick,
+      int lockTick,
+      List<Boolean> requests) {
+    for (WorldObserver observer : observers) {
+      observer.bossBanditAbilityStarted(
+          tick, unit, action.name(), phase, warpTick, lockTick, requests);
+    }
+  }
+
+  /** A step of a Boss Bandit ability's run that changed it or asked for its lock again. */
+  void bossBanditAbilityStepped(
+      CharacterEntity unit, boolean locked, int releaseMs, List<String> calls) {
+    for (WorldObserver observer : observers) {
+      observer.bossBanditAbilityStepped(tick, unit, locked, releaseMs, calls);
+    }
+  }
+
+  /** The blocked cell value a warp's landing avoids: not placeable, and no lane. */
+  private static final int WARP_BLOCKED_CELL = 0x10;
+
+  /** The rows a warp's landing searches each way for an allowed cell. */
+  private static final int WARP_SEARCH_ROWS = 4;
+
+  /**
+   * A warp's perform: the unit's position plus the offset, negated for side 1, clamped into the
+   * arena; a landing cell the row avoids replaced by the nearest allowed cell of its column within
+   * four rows, the nearer half-row neighbour first at each distance, at that cell's centre, or by
+   * the landing row's centre when none is allowed; the position written once; then the pending
+   * damage reset, the route emptied and the reference dropped, as the row asks. A projectile aimed
+   * at the unit, which the reset would make drop its target, is refused: no reference holds it.
+   *
+   * @param unit the unit
+   * @param action the row
+   * @param phase the pending pass it runs in
+   */
+  void warp(CharacterEntity unit, WarpCharacter action, int phase) {
+    WarpCharacter.Columns columns = action.getColumns();
+    GridEntity view = unit.getView();
+    int startX = view.getX();
+    int startY = view.getY();
+    int sign = unit.side() == 0 ? 1 : -1;
+    int x = columns.warpX() * sign + startX;
+    int y = columns.warpY() * sign + startY;
+    int maxX = grid.getWidth() * TileMap.CELL_UNITS - 1;
+    int maxY = grid.getHeight() * TileMap.CELL_UNITS - 1;
+    x = x > 0 ? Math.min(x, maxX) : 0;
+    y = y > 0 ? Math.min(y, maxY) : 0;
+    if (columns.avoidWater() || columns.avoidBlocked()) {
+      int col = x / TileMap.CELL_UNITS;
+      int row = y / TileMap.CELL_UNITS;
+      if (!warpLandingAllowed(columns, col, row)) {
+        // The nearer half-row neighbour first, at each distance.
+        int first = y - row * TileMap.CELL_UNITS >= TileMap.CELL_UNITS / 2 ? 1 : -1;
+        int found = row;
+        for (int k = 1; k <= WARP_SEARCH_ROWS; k++) {
+          if (warpLandingAllowed(columns, col, row + first * k)) {
+            found = row + first * k;
+            break;
+          }
+          if (warpLandingAllowed(columns, col, row - first * k)) {
+            found = row - first * k;
+            break;
+          }
+        }
+        y = found * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
+      }
+    }
+    TargetView referenceBefore = unit.getUnit().targeting().getReference();
+    unit.warpTo(x, y);
+    if (columns.resetPendingDamage()) {
+      for (BattleEntity entity : holder.entities()) {
+        if (entity instanceof ProjectileEntity p && p.getTarget() == unit) {
+          throw new UnsupportedOperationException(
+              action.name()
+                  + " warps "
+                  + unit.name()
+                  + " with "
+                  + p.name()
+                  + " aimed at it, whose drop no reference holds, not modelled");
+        }
+      }
+      view.setPendingDamageAmount(0);
+    }
+    if (columns.resetPath()) {
+      unit.resetRouteAfterWarp();
+    }
+    if (columns.resetTarget()) {
+      unit.resetTargetAfterWarp();
+    }
+    for (WorldObserver observer : observers) {
+      observer.warped(
+          tick,
+          unit,
+          action.name(),
+          phase,
+          startX,
+          startY,
+          referenceBefore == null ? null : referenceBefore.name());
+    }
+  }
+
+  /**
+   * Whether a warp may land on a cell: inside the arena, not water when the row avoids water, and
+   * not the blocked value when it avoids blocked cells.
+   */
+  private boolean warpLandingAllowed(WarpCharacter.Columns columns, int col, int row) {
+    if (row < 0 || col >= grid.getWidth() || row >= grid.getHeight()) {
+      return false;
+    }
+    if (columns.avoidWater() && (grid.tiles(col, row) & TileMap.WATER_BIT) != 0) {
+      return false;
+    }
+    return !(columns.avoidBlocked() && grid.tiles(col, row) == WARP_BLOCKED_CELL);
   }
 
   /**

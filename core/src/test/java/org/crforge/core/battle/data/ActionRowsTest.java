@@ -20,6 +20,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GameTags;
@@ -31,6 +32,7 @@ import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
+import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -319,6 +321,81 @@ class ActionRowsTest {
     SpawnGuard guard =
         (SpawnGuard) new ActionRows(altered, new BattleRecords(altered)).build(row, INERT_BINDING);
     assertThat(guard.getColumns().targetRadius()).isEqualTo(1000);
+  }
+
+  @Test
+  @DisplayName(
+      "the Boss Bandit's ability reads its warp and lock delays, its release delay and its warp"
+          + " row, waits while dashing by default, and its warp reads its offset, the four resets"
+          + " and avoidances on by default, and the target reset")
+  void aBossBanditAbilityAndItsWarpAreBuilt() {
+    BattleAction built = GameData.actions().build("BossBandit_ability_action", INERT_BINDING);
+    assertThat(built).isInstanceOf(BossBanditAbility.class);
+    BossBanditAbility.Columns columns = ((BossBanditAbility) built).getColumns();
+    assertThat(columns.warpDelayMs()).isEqualTo(700);
+    assertThat(columns.lockDelayMs()).isZero();
+    assertThat(columns.releaseLockDelayMs()).isEqualTo(50);
+    assertThat(columns.waitForDashToFinish()).isTrue();
+    assertThat(columns.warpAction()).isInstanceOf(WarpCharacter.class);
+    WarpCharacter warp = (WarpCharacter) columns.warpAction();
+    assertThat(warp.name()).isEqualTo("BossBandit_ability_warp");
+    assertThat(warp.nextAction().name()).isEqualTo("BossBandit_ability_warp_done_group");
+    assertThat(warp.getColumns())
+        .isEqualTo(
+            WarpCharacter.Columns.builder()
+                .warpX(0)
+                .warpY(-6000)
+                .resetPath(true)
+                .resetTarget(true)
+                .avoidWater(true)
+                .avoidBlocked(true)
+                .resetPendingDamage(true)
+                .build());
+  }
+
+  @Test
+  @DisplayName(
+      "a Boss Bandit ability that sets tags, chains a next action, asks its unit's speeds, has no"
+          + " warp row or releases its lock in the warp's step is refused, and so is a warp in"
+          + " another mode, with a speed or that waits as a next action")
+  void aBossBanditAbilityOrItsWarpIsRefused(@TempDir Path folder) throws IOException {
+    Map<String, Map.Entry<String, Consumer<ObjectNode>>> changes =
+        Map.of(
+            "GameTagsToSet",
+            Map.entry("BossBandit_ability_action", f -> f.put("GameTagsToSet", "NO_MOVE")),
+            "NextAction",
+            Map.entry(
+                "BossBandit_ability_action",
+                f -> f.putObject("NextAction").put("action", "BossBandit_ability_effect")),
+            "speeds",
+            Map.entry(
+                "BossBandit_ability_action", f -> f.put("AllowWarpWhenAttackSpeedZero", false)),
+            "no warp row",
+            Map.entry("BossBandit_ability_action", f -> f.remove("WarpAction")),
+            "in the warp's own step",
+            Map.entry("BossBandit_ability_action", f -> f.put("ReleaseLockDelay", 0)),
+            "mode AbsoluteWarp",
+            Map.entry("BossBandit_ability_warp", f -> f.put("WarpMode", "AbsoluteWarp")),
+            "Speed",
+            Map.entry("BossBandit_ability_warp", f -> f.put("Speed", 1500)),
+            "NextActionWait",
+            Map.entry("BossBandit_ability_warp", f -> f.put("NextActionWait", true)));
+    for (Map.Entry<String, Map.Entry<String, Consumer<ObjectNode>>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_').replace("'", ""));
+      Files.createDirectories(dir);
+      String row = change.getValue().getKey();
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows ->
+                  change.getValue().getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
   }
 
   @Test
@@ -788,12 +865,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 708 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 714 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(708);
+    assertThat(built).as("rows built").isEqualTo(714);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 111, "column", 115, "spawn type", 12));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 104, "column", 116, "spawn type", 12));
   }
 }
