@@ -66,22 +66,23 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * damage deals nothing. A row with a buff applies it with each hit, after the damage, to every
  * character in the circle it reaches, for the row's buff time - no longer than the life it has left
  * and one hit speed more when the row caps it. A row that chains another area effect creates it at
- * its own point and level on its first update. A row whose buff attracts, the Tornado's, pulls
- * every enemy unit in its circle toward its centre with each hit, before the buff, and is the
- * parent of the buff it applies when the buff says so. A row with a projectile launches one after
- * the hits of a step whose hit count rose, onto the enemy with the most hit points and shield in
- * its circle that it has not struck before, or onto its own point; with nobody to strike, the
- * update ends there. A Clone's hit, before any damage, schedules its hit action on every unit of
- * its own side in its circle that the index finds - alive, not hidden, not untouchable, not a
- * building, no unit a Clone passes by and no clone - with itself as the cause, which clones it in
- * the tick's last pending pass. An area effect an action's spawn made keeps the action's cause as
- * its parent, forgotten as the parent leaves; its hit action may be a group of buff spawns, the
- * Goblin Curse's, or a taunt, the Goblin Demolisher's, scheduled the same way on every unit in its
- * circle it reaches, each unit once for a row that reaches each target once. One whose row follows
- * its parent stands on the point of the object it follows first thing in each update, and its life
- * ends as that object leaves, unless its row stays after its parent dies: it then stands on its
- * last point. When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at
- * the cleanup that finds the countdown below 1.
+ * its own point and level on its first update. A row whose buff attracts, the Tornado's and the
+ * evolved Valkyrie's mini tornado's, pulls every enemy unit in its circle whose movement is on
+ * toward its centre with each hit, before the buff, and is the parent of the buff it applies when
+ * the buff says so. A row with a projectile launches one after the hits of a step whose hit count
+ * rose, onto the enemy with the most hit points and shield in its circle that it has not struck
+ * before, or onto its own point; with nobody to strike, the update ends there. A Clone's hit,
+ * before any damage, schedules its hit action on every unit of its own side in its circle that the
+ * index finds - alive, not hidden, not untouchable, not a building, no unit a Clone passes by and
+ * no clone - with itself as the cause, which clones it in the tick's last pending pass. An area
+ * effect an action's spawn made keeps the action's cause as its parent, or the holder's owner for a
+ * row that takes the owner as the source, forgotten as the parent leaves; its hit action may be a
+ * group of buff spawns, the Goblin Curse's, or a taunt, the Goblin Demolisher's, scheduled the same
+ * way on every unit in its circle it reaches, each unit once for a row that reaches each target
+ * once. One whose row follows its parent stands on the point of the object it follows first thing
+ * in each update, and its life ends as that object leaves, unless its row stays after its parent
+ * dies: it then stands on its last point. When the countdown reaches 0 its life-end action is
+ * scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -110,7 +111,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " modelled, and refused by its row: a buff"
             + " boosting one target or lasting longer by level, a hit action but a Clone's, a"
             + " group of buff spawns or a taunt, the shape, a launch from its source"
-            + " or spread about its point, the life condition, following a target, tags, a"
+            + " or spread about its point, the life condition, following a target, tags other"
+            + " than the one that only hides the pushback's presentation, a"
             + " lifetime that grows by level, the push's floor and gate lift and one hit per"
             + " target without a hit action. Created by a unit's ability at the unit, the unit its"
             + " parent and the object it follows, and the deflection radius it measures"
@@ -129,7 +131,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " Tesla, held by tesla_hidden_spells; reaching a unit in its tunnel is refused. The"
             + " pull of an attracting buff before the buff, and the area effect as the parent of"
             + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
-            + " the slot ControlsBuff gates is reached by no path the battle models. The launch of"
+            + " the slot ControlsBuff gates is reached by no path the battle models. The pull of"
+            + " an area effect that follows its parent, from where it stands at each update, and a"
+            + " unit that died earlier in the tick passed over, held by valkyrie_ev1_barbarians;"
+            + " a pull with an angle window is refused. The launch of"
             + " its projectile after its hits, one on an update whose hit count rose, the chooser"
             + " of a row with HitBiggestTargets, the start on the target or on its own point, and"
             + " the area effect as the projectile's launcher, held by lightning_defenders_tower and"
@@ -148,12 +153,15 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " itself, its point and its side, held by graveyard_tower_defender and"
             + " graveyard_right_side1. Created by an action's spawn at the point of the holder's"
             + " owner, for the side and at the level of its cause, the cause kept as its parent,"
-            + " and a hit action that is a group of buff spawns, held by goblin_curse_knights;"
+            + " and a hit action that is a group of buff spawns, held by goblin_curse_knights; for"
+            + " the owner's side and level, the owner its parent, when the row takes the owner as"
+            + " the source, held by valkyrie_ev1_barbarians and royal_giant_ev1_knights;"
             + " such a hit action on an area effect no action made is refused. A taunt as its hit"
             + " action and the following of its parent, held by goblin_demolisher_knight; the end"
             + " as the followed object leaves, held by goblinstein_tower and"
-            + " goblinstein_doctor_first; the following of a moving object and one hit per target"
-            + " over several hits are translated but held by no run. Goblinstein's ability run on"
+            + " goblinstein_doctor_first; the following of a moving object, held by"
+            + " valkyrie_ev1_barbarians; one hit per target over several hits is translated but"
+            + " held by no run. Goblinstein's ability run on"
             + " its holder and the death area it makes, its parent the area effect, ended as the"
             + " area effect leaves, held by goblinstein_tower. Its starting and"
             + " life-end actions written inline, a laser ball's run on its holder and the query"

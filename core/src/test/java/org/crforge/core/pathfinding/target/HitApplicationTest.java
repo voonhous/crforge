@@ -63,6 +63,7 @@ class HitApplicationTest {
 
     @Override
     public void dealDamage(TargetView hit, int damage, int hitId, int directionX, int directionY) {
+      order.add("damage");
       dealt.add(
           "%s %d %d %d %d"
               .formatted(hit.getEntity().getName(), damage, hitId, directionX, directionY));
@@ -74,6 +75,21 @@ class HitApplicationTest {
     @Override
     public void buffOnDamage(TargetView hit) {
       buffed.add(hit == null ? "none" : hit.getEntity().getName());
+      order.add("buff");
+    }
+
+    /** What the hit did, in order: its damage, its buff, its launch and its attack action. */
+    private final List<String> order = new ArrayList<>();
+
+    @Override
+    public void launchProjectiles(
+        TargetingState t, TargetView hit, int sequenceIndex, boolean special) {
+      order.add("launch");
+    }
+
+    @Override
+    public void runAttackAction(TargetView hit) {
+      order.add("attack action on " + (hit == null ? "none" : hit.getEntity().getName()));
     }
   }
 
@@ -182,6 +198,32 @@ class HitApplicationTest {
     t.setConfig(t.getConfig().toBuilder().hasProjectile(true).build());
     HitApplication.apply(t, target, queries);
     assertThat(queries.buffed).as("a unit that fires hands its hit to the projectile").isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "the attack action follows a direct hit and a launch, with the target as its cause, and not"
+          + " a hit cancelled for distance")
+  void theAttackActionFollowsEveryHitNotCancelled() {
+    HitApplication.apply(t, target, queries);
+    assertThat(queries.order).containsExactly("damage", "buff", "attack action on target");
+
+    queries.order.clear();
+    HitApplication.apply(t, targetAt(3300), queries);
+    assertThat(queries.order).as("a hit cancelled for distance").isEmpty();
+
+    queries.order.clear();
+    HitApplication.apply(t, null, queries);
+    assertThat(queries.order)
+        .as("a hit on nothing hands no cause")
+        .containsExactly("buff", "attack action on none");
+
+    t.setConfig(t.getConfig().toBuilder().hasProjectile(true).build());
+    queries.order.clear();
+    HitApplication.apply(t, target, queries);
+    assertThat(queries.order)
+        .as("at the launch")
+        .containsExactly("launch", "attack action on target");
   }
 
   @Test

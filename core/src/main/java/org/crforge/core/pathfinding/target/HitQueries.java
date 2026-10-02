@@ -120,6 +120,15 @@ public interface HitQueries {
   default void runEntryAction(TargetView target) {}
 
   /**
+   * Schedules the action the owner's row runs as it attacks on the owner, with the hit's target as
+   * its cause, after a hit that was not cancelled for distance. An owner whose row names none, and
+   * a hit with no target, schedule nothing.
+   *
+   * @param target what the hit was aimed at, or null when the owner had given it up
+   */
+  default void runAttackAction(TargetView target) {}
+
+  /**
    * Deals the damage of a landed hit to everything in a circle rather than to its target alone,
    * with the owner as the area's owner: its own side is spared and its own columns decide what it
    * may hit. A battle without an area to damage does nothing.

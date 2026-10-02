@@ -70,6 +70,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * a parent that leaves the battle removes its instances at once, where a source that leaves is only
  * forgotten. The not-attacking section removes only the instances of its row without a parent.
  *
+ * <p><b>Tags.</b> The tags every listed instance's row sets join the carrier's tag word at its
+ * pre-hook, from the one after the instance is listed to the last before it is removed.
+ *
  * <p><b>Scales.</b> The speed, the attack time step and the spawn time step each take the largest
  * boost of the listed rows, from 100, times what the largest slow leaves of 100: Rage makes a step
  * of 50 one of 65, and a stun of -100 makes it 0.
@@ -99,7 +102,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Clone row kept from them, a rider's own refusal and the parent's removal leaving"
             + " the riders' instances. A buff applied to a rider other than through its parent is"
             + " refused. Refused by"
-            + " the row: projectiles, chains, spawns, morphs, actions, tags, switching team,"
+            + " the row: projectiles, chains, spawns, morphs, actions, tags other than the one"
+            + " that keeps enemies from pushing the carrier, switching team,"
             + " shields, hit point and damage multipliers, and an action on a reduction. The"
             + " damage reduction, the largest at or above 0 and the smallest at or below 0 under"
             + " the protection cap, at the hit-points entry, held by monk_ability_tower and"
@@ -115,7 +119,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Held by little_prince_giant and little_prince_retarget: a buff's life condition,"
             + " asked of the carrier after the step of an instance with time left, an answer of 0"
             + " ending it on that visit; BuffComponentTest holds that it is not asked of an"
-            + " instance its step spends or of one that never runs out.")
+            + " instance its step spends or of one that never runs out. The tags of the listed"
+            + " rows in the carrier's tag word from its next pre-hook while they are listed, held"
+            + " by valkyrie_ev1_barbarians and BattleAttackActionTest.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -175,6 +181,15 @@ public final class BuffComponent implements BattleComponent {
   /** How many listed instances make the carrier invisible; it is invisible at 1 or more. */
   public int invisibleCount() {
     return invisibleCount;
+  }
+
+  /** The tags every listed instance's row sets, together: the carrier's pre-hook adds them. */
+  public long tags() {
+    long tags = 0;
+    for (BuffInstance instance : items) {
+      tags |= instance.getBuff().gameTagsToSet();
+    }
+    return tags;
   }
 
   /** The listed instances, oldest first. */

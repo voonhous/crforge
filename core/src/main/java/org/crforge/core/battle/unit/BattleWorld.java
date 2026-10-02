@@ -4331,13 +4331,21 @@ public class BattleWorld implements HolderPasses {
               + row
               + " follows its parent and was not made by an action, which is not modelled");
     }
-    if (data.followsParent()
-        && (data.spawnAreaEffectObject() != null
-            || data.buff() != null && buffData(data.buff()).attracts())) {
+    if (data.followsParent() && data.spawnAreaEffectObject() != null) {
       throw new UnsupportedOperationException(
           "the area effect "
               + row
-              + " follows its parent and chains an area effect or pulls, which is not modelled");
+              + " follows its parent and chains an area effect, which is not modelled");
+    }
+    // The pull is handed the area effect's move since the start of the tick, and reads it only for
+    // its angle test; without the test a following area effect pulls as one that stands still.
+    if (data.buff() != null
+        && buffData(data.buff()).attracts()
+        && buffData(data.buff()).attractMaxAngle() >= 1) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " pulls only within an angle of its move, which is not modelled");
     }
     if (data.buff() != null) {
       buffData(data.buff());

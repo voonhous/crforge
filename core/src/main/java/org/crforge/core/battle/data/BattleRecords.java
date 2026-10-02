@@ -192,10 +192,11 @@ public final class BattleRecords {
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
-   * on itself, the shape, the life condition, the tags, the per-level lifetime and the push's floor
-   * and gate lift. Its projectile is modelled, but not a launch from its source or a spread one;
-   * its hit action only for a Clone, as a group of buff spawns and as a taunt; one hit per target
-   * only with a hit action; following only its parent; and its spawns only in a shuffled order.
+   * on itself, the shape, the life condition, the tags other than the one that hides the pushback's
+   * presentation, the per-level lifetime and the push's floor and gate lift. Its projectile is
+   * modelled, but not a launch from its source or a spread one; its hit action only for a Clone, as
+   * a group of buff spawns and as a taunt; one hit per target only with a hit action; following
+   * only its parent; and its spawns only in a shuffled order.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -269,6 +270,12 @@ public final class BattleRecords {
    */
   private static final Set<String> MODELLED_ROW_TAGS =
       Set.of("NO_GIANTBUFFER_CHEF_ENCHANTMENT", "AVOIDANCE_AS_OBSTACLE", "NO_MOVE_ALLOW_ATTRACT");
+
+  /**
+   * The tags a buff may set: the one the push pass reads, which keeps the carrier's enemies from
+   * pushing it. A buff that sets any other is refused.
+   */
+  private static final Set<String> MODELLED_BUFF_TAGS = Set.of("NO_PUSHED_BY_ENEMY");
 
   /**
    * The columns of a unit's row that only show something: its art, texts, effects, shadows,
@@ -718,7 +725,7 @@ public final class BattleRecords {
             .projectileSpecial(
                 set(row, "ProjectileSpecial") ? projectile(row.string("ProjectileSpecial")) : null)
             .specialIgnoreBuildings(row.bool("SpecialIgnoreBuildings"))
-            .unmodelledColumns(unmodelledColumns(row))
+            .unmodelledColumns(withAttackAction(unmodelledColumns(row), row))
             .build();
     return data.toBuilder()
         .unmodelledColumns(
@@ -795,6 +802,20 @@ public final class BattleRecords {
       out.add(element.asInt());
     }
     return List.copyOf(out);
+  }
+
+  /**
+   * The unmodelled columns with OnAttackAction added when the row names an action its hits run that
+   * is not a spawn: every hit schedules the row alike, but only a spawn's run is established.
+   */
+  private List<String> withAttackAction(List<String> columns, GameRow row) {
+    if (!sets(row, "OnAttackAction")
+        || tables.action(row.string("OnAttackAction")).classType().equals("ActionSpawn")) {
+      return columns;
+    }
+    List<String> out = new ArrayList<>(columns);
+    out.add("OnAttackAction");
+    return out;
   }
 
   private static List<String> unmodelledColumns(GameRow row) {
@@ -1081,6 +1102,20 @@ public final class BattleRecords {
   }
 
   /**
+   * Whether every tag an area effect's row lists only keeps its pushback from being shown: the
+   * update hands that tag to the area damage, which reads it only to skip the pushback's
+   * presentation.
+   */
+  private static boolean presentationTags(GameRow row) {
+    for (String tag : row.string("Tags").split(",")) {
+      if (!tag.isBlank() && !tag.trim().equals("NO_AOE_PUSHBACK_VFX")) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
    * An area effect as the battle reads it, from the area effect objects table. A starting or
    * life-end action written inline, as Dark Magic's are, is the actions table's row named after the
    * area effect and the column.
@@ -1093,7 +1128,7 @@ public final class BattleRecords {
     GameRow row = table.row(name).tracking();
     List<String> unmodelled = new ArrayList<>();
     for (String column : UNMODELLED_AREA_EFFECT_COLUMNS) {
-      if (sets(row, column)) {
+      if (sets(row, column) && !(column.equals("Tags") && presentationTags(row))) {
         unmodelled.add(column);
       }
     }
@@ -1234,6 +1269,22 @@ public final class BattleRecords {
   }
 
   /**
+   * Whether a buff column is its tags and every tag it sets is one the battle reads where it reads
+   * the tag word of the buff's carrier: only the one that keeps enemies from pushing it.
+   */
+  private static boolean modelledBuffTags(GameRow row, String column) {
+    if (!column.equals("GameTagsToSet")) {
+      return false;
+    }
+    for (String tag : row.string(column).split(",")) {
+      if (!tag.isBlank() && !MODELLED_BUFF_TAGS.contains(tag.trim())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
    * A character buff as the battle reads it, from the character buffs table, or the buff row a buff
    * spawn row writes inline under that name. Every column it sets that is neither read nor only
    * shows something is listed as not modelled.
@@ -1249,7 +1300,8 @@ public final class BattleRecords {
       if (!MODELLED_BUFF_COLUMNS.contains(column)
           && !PRESENTATION_BUFF_COLUMNS.contains(column)
           && sets(row, column)
-          && !inertDamageReductionAction(row, column)) {
+          && !inertDamageReductionAction(row, column)
+          && !modelledBuffTags(row, column)) {
         unmodelled.add(column);
       }
     }
@@ -1295,6 +1347,7 @@ public final class BattleRecords {
         .ignorePushBack(row.bool("IgnorePushBack"))
         .cloneBuff(row.bool("Clone"))
         .attachedInheritAs(sets(row, "AttachedInheritAs") ? row.string("AttachedInheritAs") : null)
+        .gameTagsToSet(tagBits(row.string("GameTagsToSet")))
         .unmodelledColumns(unmodelled)
         .build();
   }

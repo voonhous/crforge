@@ -12,13 +12,15 @@ import org.crforge.core.fidelity.FidelityStatus;
  * area effect is created at the point of the holder's owner, for the side and at the level of the
  * entity that caused the action, that entity its source and its parent, and handed to the holder,
  * which gives it its id at once and admits it at the next cleanup, so it first updates on the next
- * tick. The level is re-based on the area effect's own rarity. A row that follows its parent
- * follows the holder's owner. It does not last.
+ * tick. A row that takes its parent as the source takes the holder's owner in place of the cause:
+ * the side, the level and the parent are then the owner's. The level is re-based on the area
+ * effect's own rarity. A row that follows its parent follows the holder's owner. It does not last.
  *
  * <p>Refused rather than guessed, as the row is built: a row of the location class, one that sets
- * any spawn column besides its data and type (the source taken from the owner, a level index, the
+ * any spawn column besides its data, its type and the owner as the source (a level index, the
  * offsets), and an area effect whose row sets a column not modelled. Refused as it starts: a row
- * with no cause, and a cause that is a clone, whose byte the area effect would copy.
+ * with no cause that does not take the owner as the source, and a source that is a clone, whose
+ * byte the area effect would copy.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -27,20 +29,28 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the cause, the level re-based on the area effect's rarity, and the queue in the"
             + " pass that ran the action; held by goblin_curse_knights, where the Goblin Curse's"
             + " area effect spawns its base on its first pass, and by goblin_demolisher_knight,"
-            + " where the Goblin Demolisher spawns the area effect that follows it. Refused: the"
-            + " location class, the owner as the source, the level index, the offsets, a cause"
-            + " that is missing or a clone, and an area effect that follows its target.")
+            + " where the Goblin Demolisher spawns the area effect that follows it. The owner as"
+            + " the source, its side, level and parent the owner's, held by"
+            + " valkyrie_ev1_barbarians, where the area effect follows the owner too, and by"
+            + " royal_giant_ev1_knights. Refused: the location class, the level index, the"
+            + " offsets, a cause that is missing or a clone, and an area effect that follows its"
+            + " target.")
 public final class SpawnAreaEffect extends RowAction {
 
   private final String areaEffect;
 
+  /** True when the holder's owner is the source in place of the cause. */
+  private final boolean parentGoAsSource;
+
   /**
    * @param row the row's shared columns
    * @param areaEffect the area effect row's name
+   * @param parentGoAsSource true to take the holder's owner as the source in place of the cause
    */
-  public SpawnAreaEffect(ActionRow row, String areaEffect) {
+  public SpawnAreaEffect(ActionRow row, String areaEffect, boolean parentGoAsSource) {
     super(row);
     this.areaEffect = areaEffect;
+    this.parentGoAsSource = parentGoAsSource;
   }
 
   @Override
@@ -53,7 +63,12 @@ public final class SpawnAreaEffect extends RowAction {
     if (!(holder.getOwner() instanceof SpawnHost owner)) {
       throw new UnsupportedOperationException(name() + " runs on an object that cannot spawn");
     }
-    if (instigator == null || !(instigator.getOwner() instanceof SpawnHost source)) {
+    SpawnHost source;
+    if (parentGoAsSource) {
+      source = owner;
+    } else if (instigator != null && instigator.getOwner() instanceof SpawnHost cause) {
+      source = cause;
+    } else {
       throw new UnsupportedOperationException(name() + " has no source to spawn from");
     }
     owner.spawnAreaEffect(name(), areaEffect, source, holder.passPhase());
