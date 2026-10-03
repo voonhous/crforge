@@ -579,6 +579,28 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return attackDamage();
       }
 
+      // The step's pushback moves a target with a movement component from the owner; one without,
+      // a building or a tower, stays where it is. The push itself is not modelled.
+      @Override
+      public void stepPushback(TargetView target) {
+        int pushback = stepMeleePushback();
+        if (pushback == 0) {
+          return;
+        }
+        if (target == null) {
+          throw new UnsupportedOperationException(
+              name() + " hits an area with its attack sequence step's MeleePushback, not modelled");
+        }
+        WorldEntity pushed = world.entityOf(target.getEntity());
+        if (pushed != null && pushed.hasMovementComponent()) {
+          throw new UnsupportedOperationException(
+              name()
+                  + " pushes "
+                  + pushed.name()
+                  + " with its attack sequence step's MeleePushback, not modelled");
+        }
+      }
+
       @Override
       public int chargeProgress() {
         return WorldEntity.this.chargeProgress();
@@ -1820,6 +1842,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * entity's level and falling back to the entry's projectile as the row's damage does, when the
    * sequence has two or more in its order; otherwise the row's.
    */
+  /** The MeleePushback of the attack sequence step the next hit lands with; 0 without one. */
+  int stepMeleePushback() {
+    AttackSequence sequence = data.attackSequence();
+    if (!sequence.replacesAttack()) {
+      return 0;
+    }
+    return sequence.entryAt(targeting.getAttackSequenceIndex()).meleePushback();
+  }
+
   int attackDamage() {
     AttackSequence sequence = data.attackSequence();
     if (!sequence.replacesAttack()) {
