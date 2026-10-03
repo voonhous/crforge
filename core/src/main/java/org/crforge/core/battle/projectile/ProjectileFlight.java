@@ -139,7 +139,15 @@ final class ProjectileFlight {
       snapToTarget(p);
     }
     int remaining = FixedMath.guardedDistance(p.getX() - p.getAimX(), p.getY() - p.getAimY());
+    // Under the z-distance column the height left to the aim counts too.
+    if (data.considerZDistance()) {
+      remaining = Math.abs(p.getAimZ() - p.getZ()) + remaining;
+    }
     int speed = p.isHooked() ? data.dragBackSpeed() : data.speed();
+    // A speed its launch gave it stands in for the row's, whatever it would be.
+    if (p.getSpeedOverride() > 0) {
+      speed = p.getSpeedOverride();
+    }
     boolean dragsOwner = false;
     if (drags) {
       world.refuseLockedHook(p);
@@ -306,12 +314,21 @@ final class ProjectileFlight {
     return (value + (value < 0 ? 1023 : 0)) >> 10;
   }
 
-  /** One step of the speed along the line to the aim, at the height the arc gives there. */
+  /**
+   * One step of the speed along the line to the aim, at the height the arc gives there; under the
+   * z-distance column the height instead moves its share of the step straight toward the aim's.
+   */
   private static void advance(ProjectileEntity p, int remaining, int speed) {
     int x = p.getX();
     int y = p.getY();
     int nx = FixedMath.divOrZero((p.getAimX() - x) * speed, remaining) + x;
     int ny = FixedMath.divOrZero((p.getAimY() - y) * speed, remaining) + y;
+    if (p.getData().considerZDistance()) {
+      int z = p.getZ();
+      // No row that homes is carried under the column, so the height it steps toward is the aim's.
+      p.moveTo(nx, ny, FixedMath.divOrZero((p.getAimZ() - z) * speed, remaining) + z);
+      return;
+    }
     p.moveTo(nx, ny, arcHeight(p, nx, ny));
   }
 
@@ -482,8 +499,9 @@ final class ProjectileFlight {
       }
       return;
     }
-    if (damage <= 0) {
-      // Without damage only a heal is delivered to the area; no row carried here heals.
+    if (damage <= 0 && !(data.pushback() > 0 && data.alwaysApplyPushback())) {
+      // Without damage only a heal is delivered to the area; no row carried here heals. A row that
+      // always pushes still pushes, with no damage dealt.
       return;
     }
     List<TargetView> entities = new ArrayList<>();

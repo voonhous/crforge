@@ -21,6 +21,8 @@ import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
+import org.crforge.core.battle.action.CannonBarrage;
+import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GameTags;
@@ -36,6 +38,7 @@ import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
+import org.crforge.core.battle.spawn.SpawnProjectile;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -206,6 +209,105 @@ class ActionRowsTest {
     assertThat(defaults.getTransitionDurationMs()).isEqualTo(200);
     assertThat(defaults.getTotalDurationMs()).isEqualTo(1000);
     assertThat(defaults.isAllowIsGroundTagOnIdle()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Furnace's spawn behind it is a projectile from 6000 high; a count, the cause as"
+          + " the source, no aim, the spawn class and a character spawn with an aim are refused")
+  void aProjectileSpawnIsBuilt(@TempDir Path folder) throws IOException {
+    SpawnProjectile left =
+        (SpawnProjectile) GameData.actions().build("Furnace_EV1_Spawn_Behind_Left", INERT_BINDING);
+    assertThat(left.getProjectile()).isEqualTo("Furnace_EV1_Spawn_Spirit_Projectile");
+    assertThat(left.getStartHeight()).isEqualTo(6000);
+
+    Map<String, Consumer<ObjectNode>> refused =
+        Map.of(
+            "sets Count",
+            f -> f.put("Count", 2),
+            "from its cause",
+            f -> f.remove("ParentGOAsSource"),
+            "at its owner's target",
+            f -> {
+              f.remove("TargetExprX");
+              f.remove("TargetExprY");
+            },
+            "from a spawn row's own position",
+            f -> f.put("ClassType", "ActionSpawn"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : refused.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_').replace("'", ""));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> {
+                ObjectNode row = (ObjectNode) rows.get("Furnace_EV1_Spawn_Behind_Left");
+                ObjectNode f = (ObjectNode) row.get("fields");
+                change.getValue().accept(f);
+                if (f.has("ClassType")) {
+                  row.put("ClassType", f.get("ClassType").asText());
+                }
+              });
+      assertThatThrownBy(
+              () ->
+                  new ActionRows(altered, new BattleRecords(altered))
+                      .build("Furnace_EV1_Spawn_Behind_Left", INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+
+    Path characters = folder.resolve("characters");
+    Files.createDirectories(characters);
+    GameTables aimed =
+        GameData.altered(
+            characters,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("Furnace_rework_spawn_forward").get("fields"))
+                    .put("TargetExprX", "x"));
+    assertThatThrownBy(
+            () ->
+                new ActionRows(aimed, new BattleRecords(aimed))
+                    .build("Furnace_rework_spawn_forward", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("spawns characters and sets TargetExprX");
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Cannon's barrage reads its nine bombs; a bomb without an absolute offset is"
+          + " refused, and its drop reads its projectile and height")
+  void aBarrageIsBuilt(@TempDir Path folder) throws IOException {
+    CannonBarrage barrage =
+        (CannonBarrage) GameData.actions().build("Cannon_EV1_barrage", INERT_BINDING);
+    assertThat(barrage.getAreaEffects()).hasSize(9);
+    assertThat(barrage.getAbsoluteHorizontalOffsets())
+        .containsExactly(3, 13, 23, 33, 2, 10, 18, 26, 34);
+    assertThat(barrage.getVerticalOffsets()).containsExactly(3, 3, 3, 3, 17, 17, 17, 17, 17);
+    assertThat(barrage.getAreaEffects().get(5)).isEqualTo("Cannon_EV1_barrage_aeo_JULIO");
+    CannonProjectileSpawn drop =
+        (CannonProjectileSpawn)
+            GameData.actions().build("Cannon_EV1_spawn_projectile_JULIO", INERT_BINDING);
+    assertThat(drop.getProjectile()).isEqualTo("Cannon_EV1_barrage_projectile");
+    assertThat(drop.getHeight()).isEqualTo(70000);
+
+    Files.createDirectories(folder);
+    GameTables relative =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("Cannon_EV1_barrage").get("fields"))
+                    .withArray("BombAbsoluteHorizontalOffsets")
+                    .set(4, -1));
+    assertThatThrownBy(
+            () ->
+                new ActionRows(relative, new BattleRecords(relative))
+                    .build("Cannon_EV1_barrage", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("by its relative offset");
   }
 
   @Test
@@ -930,12 +1032,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 752 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 772 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(752);
+    assertThat(built).as("rows built").isEqualTo(772);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 93, "column", 89, "spawn type", 12));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 88, "column", 73, "spawn type", 13));
   }
 }

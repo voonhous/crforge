@@ -9,6 +9,8 @@ import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
+import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -209,9 +211,39 @@ class BattleExpressionEnvironmentTest {
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
 
-    assertThatThrownBy(() -> environment.call(BattleFunctions.id("is_moving"), new int[0]))
+    assertThatThrownBy(() -> environment.call(BattleFunctions.id("should_hide"), new int[0]))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("is_moving");
+        .hasMessageContaining("should_hide");
+  }
+
+  @Test
+  @DisplayName(
+      "is_moving answers 1 for a walking character only: 0 while it deploys, under a tag that"
+          + " holds it, with its movement component off, and for a tower")
+  void isMovingReadsTheSpeedBudget() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000);
+    int isMoving = BattleFunctions.id("is_moving");
+    BattleExpressionEnvironment environment =
+        new BattleExpressionEnvironment(knight, match.getWorld());
+    match.getBattle().step();
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(environment.call(isMoving, new int[0])).as("deploying").isZero();
+    while (knight.getView().getState() != GridEntityState.MOVING) {
+      match.getBattle().step();
+    }
+    assertThat(environment.call(isMoving, new int[0])).as("walking").isEqualTo(1);
+    knight.getView().setFlags(knight.getView().getFlags() | EntityFlags.NO_MOVE);
+    assertThat(environment.call(isMoving, new int[0])).as("held by NO_MOVE").isZero();
+    knight.getView().setFlags(knight.getView().getFlags() & ~EntityFlags.NO_MOVE);
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    assertThat(environment.call(isMoving, new int[0])).as("its movement off").isZero();
+
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    assertThat(new BattleExpressionEnvironment(king, match.getWorld()).call(isMoving, new int[0]))
+        .as("a tower")
+        .isZero();
   }
 
   @Test

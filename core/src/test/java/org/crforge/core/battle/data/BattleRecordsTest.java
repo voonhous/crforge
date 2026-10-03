@@ -687,13 +687,18 @@ class BattleRecordsTest {
     assertThat(records.unit("Recruit_EV1").shieldLostAction()).isEqualTo("Recruit_EV1_StartCharge");
     assertThat(records.unit("Knight").shieldLostAction()).isNull();
     // The Tesla hides while it does not attack, 800 ms to go down and 800 to come up; its
-    // evolution's actions as it rises and hides are not modelled.
+    // evolution runs an action as it rises and another as it starts to hide.
     UnitData tesla = records.unit("Tesla");
     assertThat(tesla.unmodelledColumns()).isEmpty();
     assertThat(tesla.hidesWhenNotAttacking()).isTrue();
     assertThat(new int[] {tesla.hideTimeMs(), tesla.upTimeMs()}).containsExactly(800, 800);
-    assertThat(records.unit("Tesla_EV1").unmodelledColumns())
-        .containsExactly("OnAppearAction", "OnDisappearAction");
+    UnitData teslaEvo = records.unit("Tesla_EV1");
+    assertThat(teslaEvo.unmodelledColumns()).isEmpty();
+    assertThat(teslaEvo.onAppearAction()).isEqualTo("Tesla_EV1_AppearStun");
+    assertThat(teslaEvo.onDisappearAction()).isEqualTo("Tesla_EV1_Charging");
+    assertThat(tesla.onAppearAction()).isNull();
+    // The evolved Cannon's two shadows are read by no battle logic.
+    assertThat(records.unit("Cannon_EV1").unmodelledColumns()).isEmpty();
     // An elixir collector is modelled: one elixir every 13000 ms; an Elixir Golem's death pays
     // 1000.
     UnitData collector = records.unit("ElixirCollector");

@@ -219,6 +219,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     state visit steps from the end of its deploy
  * @param hideTimeMs the hide counter's value at which it is hidden, the time it takes to go down
  * @param upTimeMs the time it takes to come back up from hidden
+ * @param onAppearAction the action row a hiding building runs on itself as it rises, or null
+ * @param onDisappearAction the action row a hiding building runs on itself as it starts to hide, or
+ *     null
  * @param ignoreClone true for a unit a Clone passes by
  * @param ignoreResurrect true for a unit whose death counts no soul for a unit whose ability
  *     collects them
@@ -386,6 +389,8 @@ public record UnitData(
     boolean hidesWhenNotAttacking,
     int hideTimeMs,
     int upTimeMs,
+    String onAppearAction,
+    String onDisappearAction,
     boolean ignoreClone,
     boolean ignoreResurrect,
     String clonedVersion,

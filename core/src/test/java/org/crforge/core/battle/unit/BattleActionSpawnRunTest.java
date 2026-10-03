@@ -589,7 +589,9 @@ class BattleActionSpawnRunTest {
         "mega_knight_ev1_uppercut",
         "baby_dragon_ev1_wind",
         "knight_ev1_tower_knight",
-        "knight_ev1_fireball_valkyrie"
+        "knight_ev1_fireball_valkyrie",
+        "tesla_ev1_knights",
+        "building_evolutions_barbarians"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -631,8 +633,117 @@ class BattleActionSpawnRunTest {
     List<String> shieldLostLog = new ArrayList<>();
     match.getWorld().addObserver(shieldLostLog(shieldLostLog));
     // What every uppercut, knock and wind did, and every change of a watched tag word.
+    // What the evolved Furnace's runs did, for a run that logs them, and every projectile an
+    // action launched.
+    FurnaceLog evoLog = new FurnaceLog(reference.has("furnace_evo"), new ArrayList<>());
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void actionProjectileLaunched(
+                  int tick,
+                  WorldEntity owner,
+                  String action,
+                  int phase,
+                  ProjectileEntity projectile) {
+                evoLog
+                    .lines()
+                    .add(
+                        "%d spawn_projectile %s %s %d %s %s [%d, %d, %d] [%d, %d] %d"
+                            .formatted(
+                                tick,
+                                owner.name(),
+                                action,
+                                phase,
+                                projectile.name(),
+                                projectile.getData().name(),
+                                projectile.getStartX(),
+                                projectile.getStartY(),
+                                projectile.getStartZ(),
+                                projectile.getAimX(),
+                                projectile.getAimY(),
+                                projectile.getPackedLevel()));
+              }
+            });
+    // Every barrage's start and update, with the bombs' areas it made, and every bomb dropped.
+    List<String> barrageLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void barrageStarted(
+                  int tick, CharacterEntity owner, String action, int phase) {
+                barrageLog.add(
+                    "%d barrage_start %s %s %d".formatted(tick, owner.name(), action, phase));
+              }
+
+              @Override
+              public void barrageStepped(
+                  int tick, CharacterEntity owner, String action, List<AreaEffectEntity> made) {
+                List<String> areas = new ArrayList<>();
+                for (AreaEffectEntity a : made) {
+                  areas.add(
+                      "%s %d %s %d %d %d %d"
+                          .formatted(
+                              a.name(),
+                              a.getId(),
+                              a.getData().name(),
+                              a.getX(),
+                              a.getY(),
+                              a.getPackedLevel(),
+                              a.getCountdown()));
+                }
+                barrageLog.add("%d barrage %s %s %s".formatted(tick, owner.name(), action, areas));
+              }
+
+              @Override
+              public void bombDropped(
+                  int tick,
+                  AreaEffectEntity area,
+                  String action,
+                  int phase,
+                  ProjectileEntity projectile,
+                  int lifetime) {
+                barrageLog.add(
+                    "%d bomb %s %s %s [%d, %d, %d] [%d, %d] %d %d %d %d"
+                        .formatted(
+                            tick,
+                            area.name(),
+                            action,
+                            projectile.name(),
+                            projectile.getStartX(),
+                            projectile.getStartY(),
+                            projectile.getStartZ(),
+                            projectile.getAimX(),
+                            projectile.getAimY(),
+                            projectile.getSpeedOverride(),
+                            lifetime,
+                            projectile.getPackedLevel(),
+                            projectile.side()));
+              }
+            });
+    Set<String> furnaceOwners = new HashSet<>();
+    for (JsonNode e : reference.path("furnace_evo")) {
+      furnaceOwners.add(e.get("owner").asText());
+    }
+    Map<String, String> furnaceRunning = new HashMap<>();
+    Map<String, String> furnaceTags = new HashMap<>();
     List<String> uppercutWindLog = new ArrayList<>();
     match.getWorld().addObserver(uppercutWindLog(match.getWorld(), uppercutWindLog));
+    // Every action a hiding building scheduled on itself as it started to hide or rose.
+    List<String> hidingHookLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void hidingHookScheduled(
+                  int tick, CharacterEntity unit, String column, String action) {
+                hidingHookLog.add("%d %s %s %s".formatted(tick, unit.name(), column, action));
+              }
+            });
     List<CharacterEntity> placed = new ArrayList<>();
     if (!reference.get("card").isNull()) {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
@@ -662,13 +773,16 @@ class BattleActionSpawnRunTest {
       }
     }
     for (CharacterEntity unit : placed) {
-      unit.actionHolder().setListener(listener(unit.name(), currentTick, actions, dropping));
+      unit.actionHolder()
+          .setListener(listener(unit.name(), currentTick, actions, dropping, evoLog));
     }
     // A princess tower's runs are listed like a unit's: a row another entity schedules on it runs
     // in its own passes. The king's holder tells its activation steps instead.
     for (BattleEntity entity : battle.getHolder().entities()) {
       if (entity instanceof TowerEntity tower && !tower.getData().king()) {
-        tower.actionHolder().setListener(listener(tower.name(), currentTick, actions, dropping));
+        tower
+            .actionHolder()
+            .setListener(listener(tower.name(), currentTick, actions, dropping, evoLog));
       }
     }
     // What the champion slots did, every ability's buff, and every slot step; the deck pass runs
@@ -764,7 +878,9 @@ class BattleActionSpawnRunTest {
               o.get("x").asInt(),
               o.get("y").asInt(),
               o.get("level").asInt());
-      owner.actionHolder().setListener(listener(owner.name(), currentTick, actions, dropping));
+      owner
+          .actionHolder()
+          .setListener(listener(owner.name(), currentTick, actions, dropping, evoLog));
       for (JsonNode s : o.get("schedule")) {
         // The row is built from the game's own action rows, for the owner it runs on. A schedule
         // may name another entity as its cause, which is found by name when the schedule is made.
@@ -982,7 +1098,7 @@ class BattleActionSpawnRunTest {
               @Override
               public void characterPlayed(int tick, CharacterEntity unit) {
                 unit.actionHolder()
-                    .setListener(listener(unit.name(), currentTick, actions, dropping));
+                    .setListener(listener(unit.name(), currentTick, actions, dropping, evoLog));
               }
             });
     // Every shape selector's start, step and removal, and every air-to-ground run's start, phase
@@ -1001,7 +1117,8 @@ class BattleActionSpawnRunTest {
               @Override
               public void areaEffectCreated(
                   int tick, AreaEffectEntity a, String how, String source) {
-                ActionHolder.Listener runs = listener(a.name(), currentTick, actions, dropping);
+                ActionHolder.Listener runs =
+                    listener(a.name(), currentTick, actions, dropping, evoLog);
                 a.actionHolder()
                     .setListener(
                         new ActionHolder.Listener() {
@@ -1044,7 +1161,7 @@ class BattleActionSpawnRunTest {
                 // included.
                 child
                     .actionHolder()
-                    .setListener(listener(child.name(), currentTick, actions, dropping));
+                    .setListener(listener(child.name(), currentTick, actions, dropping, evoLog));
                 spawnTicks.put(child.name(), currentTick[0]);
                 spawns.add(
                     "%d spawn %s %s %d at %d %d state %d deploy %d lane %d hp %d then %d %d %d"
@@ -1069,7 +1186,7 @@ class BattleActionSpawnRunTest {
                 // A summon is listed from its making, as a spawned child is.
                 summon
                     .actionHolder()
-                    .setListener(listener(summon.name(), currentTick, actions, dropping));
+                    .setListener(listener(summon.name(), currentTick, actions, dropping, evoLog));
                 spawnTicks.put(summon.name(), currentTick[0]);
               }
 
@@ -1078,7 +1195,7 @@ class BattleActionSpawnRunTest {
                 // A guard is listed from its making, as a spawned child is.
                 guard
                     .actionHolder()
-                    .setListener(listener(guard.name(), currentTick, actions, dropping));
+                    .setListener(listener(guard.name(), currentTick, actions, dropping, evoLog));
                 spawnTicks.put(guard.name(), currentTick[0]);
               }
 
@@ -1092,7 +1209,7 @@ class BattleActionSpawnRunTest {
                 // A clone is listed from its making, as a spawned child is.
                 clone
                     .actionHolder()
-                    .setListener(listener(clone.name(), currentTick, actions, dropping));
+                    .setListener(listener(clone.name(), currentTick, actions, dropping, evoLog));
                 spawnTicks.put(clone.name(), currentTick[0]);
               }
 
@@ -1283,6 +1400,32 @@ class BattleActionSpawnRunTest {
     for (int tick = 0; tick <= lastTick; tick++) {
       currentTick[0] = tick;
       battle.step();
+      // The evolved Furnace's listed runs, each with whether it has finished, and its three tags,
+      // as the tick ends, whenever either changes.
+      for (BattleEntity entity : battle.getHolder().entities()) {
+        if (entity instanceof CharacterEntity c && furnaceOwners.contains(c.name())) {
+          String running =
+              c.actionHolder().running().stream()
+                  .map(i -> "[" + i.getAction().name() + ", " + (i.isFinished() ? 1 : 0) + "]")
+                  .toList()
+                  .toString();
+          if (!running.equals(furnaceRunning.put(c.name(), running))) {
+            evoLog.lines().add("%d running %s %s".formatted(tick, c.name(), running));
+          }
+          List<String> carried = new ArrayList<>();
+          for (String tag : FURNACE_TAGS) {
+            long mask = match.getWorld().gameTagMask(match.getWorld().gameTagIndex(tag));
+            if ((c.getView().getFlags() & mask) == mask) {
+              carried.add(tag);
+            }
+          }
+          String tags = carried.toString();
+          if (!tags.equals(furnaceTags.getOrDefault(c.name(), "[]"))) {
+            furnaceTags.put(c.name(), tags);
+            evoLog.lines().add("%d tags %s %s".formatted(tick, c.name(), tags));
+          }
+        }
+      }
       if (stateAfter.containsKey(tick)) {
         assertThat(Integer.toUnsignedLong(match.getWorld().getRandom().getState()))
             .as("tick %d: the random state after its draws", tick)
@@ -1853,6 +1996,15 @@ class BattleActionSpawnRunTest {
     assertThat(uppercutWindLog)
         .as("every uppercut, knock and wind, and every watched tag word")
         .containsExactlyElementsOf(expectedUppercutWindLog(reference));
+    assertThat(evoLog.furnace() ? evoLog.lines() : List.of())
+        .as("every re-trigger, force stop and launch of the evolved Furnace, its runs and its tags")
+        .containsExactlyElementsOf(expectedFurnaceLog(reference));
+    assertThat(barrageLog)
+        .as("every barrage's start and its bombs' areas, and every bomb dropped")
+        .containsExactlyElementsOf(expectedBarrageLog(reference));
+    assertThat(hidingHookLog)
+        .as("every action a hiding building scheduled as it started to hide or rose")
+        .containsExactlyElementsOf(expectedHidingHookLog(reference));
     assertThat(shieldLostLog)
         .as("every action a broken shield scheduled and every charge reset a listed buff made")
         .containsExactlyElementsOf(expectedShieldLostLog(reference));
@@ -1965,12 +2117,17 @@ class BattleActionSpawnRunTest {
    * with the pass that took it from the queue, or at once for one that did not wait there.
    */
   private static ActionHolder.Listener listener(
-      String owner, int[] currentTick, List<String> actions, List<String> dropping) {
+      String owner,
+      int[] currentTick,
+      List<String> actions,
+      List<String> dropping,
+      FurnaceLog evoLog) {
     return new ActionHolder.Listener() {
       @Override
       public void starting(BattleAction action, int phase, boolean queued) {
-        // A looping effect row only shows something, and the reference leaves it out.
-        if (action instanceof InertAction inert && inert.isLasting()) {
+        // A looping effect row only shows something, and the reference leaves it out, but for a
+        // run that logs the evolved Furnace, which lists its looping effect's run.
+        if (action instanceof InertAction inert && inert.isLasting() && !evoLog.furnace()) {
           return;
         }
         // The request a run supplies is the run's own, not the battle's.
@@ -1982,10 +2139,26 @@ class BattleActionSpawnRunTest {
                 .formatted(currentTick[0], owner, action.name(), queued ? phase : "at once"));
       }
 
-      // A singleton row's start that re-triggers its run is listed as a run too.
+      // A singleton row's start that re-triggers its run is listed as a run too; a run that logs
+      // the evolved Furnace lists it in that log instead.
       @Override
       public void retriggering(BattleAction action, int phase, boolean queued) {
+        if (evoLog.furnace()) {
+          evoLog
+              .lines()
+              .add("%d retrigger %s %s %d".formatted(currentTick[0], owner, action.name(), phase));
+          return;
+        }
         starting(action, phase, queued);
+      }
+
+      @Override
+      public void forceStopped(ActionInstance instance) {
+        evoLog
+            .lines()
+            .add(
+                "%d force_stop %s %s"
+                    .formatted(currentTick[0], owner, instance.getAction().name()));
       }
 
       @Override
@@ -1995,6 +2168,16 @@ class BattleActionSpawnRunTest {
       }
     };
   }
+
+  /**
+   * What the evolved Furnace's runs did, for a run whose reference logs them: each re-trigger,
+   * force stop and projectile launch, and, as each tick ends, its listed runs and its three tags
+   * whenever they change.
+   *
+   * @param furnace true when the reference logs the evolved Furnace
+   * @param lines the log
+   */
+  private record FurnaceLog(boolean furnace, List<String> lines) {}
 
   /** A link or unlink with the source's group as it stands after it, newest first. */
   private static String groupLine(
@@ -3413,6 +3596,141 @@ class BattleActionSpawnRunTest {
     List<String> out = new ArrayList<>();
     list.forEach(n -> out.add(n.asText()));
     return out.toString();
+  }
+
+  /** The reference's barrage log, in its order. */
+  private static List<String> expectedBarrageLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("cannon_barrage")) {
+      int tick = e.get("tick").asInt();
+      String owner = e.get("owner").asText();
+      switch (e.get("event").asText()) {
+        case "barrage_start" ->
+            expected.add(
+                "%d barrage_start %s %s %d"
+                    .formatted(tick, owner, e.get("action").asText(), e.get("phase").asInt()));
+        case "barrage" -> {
+          assertThat(e.get("finished").asBoolean()).as("a barrage finishes in its update").isTrue();
+          List<String> areas = new ArrayList<>();
+          for (JsonNode a : e.get("areas")) {
+            areas.add(
+                "%s %d %s %d %d %d %d"
+                    .formatted(
+                        a.get("area_effect").asText(),
+                        a.get("id").asInt(),
+                        a.get("row").asText(),
+                        a.get("x").asInt(),
+                        a.get("y").asInt(),
+                        a.get("level").asInt(),
+                        a.get("countdown").asInt()));
+          }
+          expected.add(
+              "%d barrage %s %s %s".formatted(tick, owner, e.get("action").asText(), areas));
+        }
+        case "bomb" -> {
+          JsonNode start = e.get("start");
+          JsonNode aim = e.get("aim");
+          expected.add(
+              "%d bomb %s %s %s [%d, %d, %d] [%d, %d] %d %d %d %d"
+                  .formatted(
+                      tick,
+                      owner,
+                      e.get("action").asText(),
+                      e.get("projectile").asText(),
+                      start.get(0).asInt(),
+                      start.get(1).asInt(),
+                      start.get(2).asInt(),
+                      aim.get(0).asInt(),
+                      aim.get(1).asInt(),
+                      e.get("speed").asInt(),
+                      e.get("lifetime").asInt(),
+                      e.get("level").asInt(),
+                      e.get("side").asInt()));
+        }
+        default -> throw new IllegalStateException("a barrage event " + e);
+      }
+    }
+    return expected;
+  }
+
+  /** The three tags the evolved Furnace's runs raise and read, in name order. */
+  private static final List<String> FURNACE_TAGS =
+      List.of("FURNACE_DELAY_NORMAL_SPAWN", "FURNACE_STOP_QUICK_SPAWN", "UNIT_CUSTOM_TAG_1");
+
+  /**
+   * The reference's log of the evolved Furnace, in its order: each re-trigger, force stop and
+   * launch, and its listed runs and tags as each tick ends, whenever they change.
+   */
+  private static List<String> expectedFurnaceLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("furnace_evo")) {
+      int tick = e.get("tick").asInt();
+      String owner = e.get("owner").asText();
+      switch (e.get("event").asText()) {
+        case "retrigger" ->
+            expected.add(
+                "%d retrigger %s %s %d"
+                    .formatted(tick, owner, e.get("action").asText(), e.get("phase").asInt()));
+        case "force_stop" ->
+            expected.add("%d force_stop %s %s".formatted(tick, owner, e.get("action").asText()));
+        case "spawn_projectile" -> {
+          JsonNode start = e.get("start");
+          JsonNode aim = e.get("aim");
+          expected.add(
+              "%d spawn_projectile %s %s %d %s %s [%d, %d, %d] [%d, %d] %d"
+                  .formatted(
+                      tick,
+                      owner,
+                      e.get("action").asText(),
+                      e.get("phase").asInt(),
+                      e.get("projectile").asText(),
+                      e.get("config").asText(),
+                      start.get(0).asInt(),
+                      start.get(1).asInt(),
+                      start.get(2).asInt(),
+                      aim.get(0).asInt(),
+                      aim.get(1).asInt(),
+                      e.get("level").asInt()));
+        }
+        case "running" -> {
+          List<String> runs = new ArrayList<>();
+          e.get("running")
+              .forEach(r -> runs.add("[" + r.get(0).asText() + ", " + r.get(1).asInt() + "]"));
+          expected.add("%d running %s %s".formatted(tick, owner, runs));
+        }
+        case "tags" -> {
+          List<String> tags = new ArrayList<>();
+          e.get("tags").forEach(t -> tags.add(t.asText()));
+          expected.add("%d tags %s %s".formatted(tick, owner, tags));
+        }
+        default -> {
+          // The flips, the durations, the effect's instance and the flip-flop's steps are held by
+          // the runs listed and by the tags.
+        }
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * The actions the reference's hiding buildings scheduled, in its order: the looping effect as
+   * each starts to hide and the action as each rises.
+   */
+  private static List<String> expectedHidingHookLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("tesla_evo")) {
+      String event = e.get("event").asText();
+      if (event.equals("looping_effect") || event.equals("hook")) {
+        expected.add(
+            "%d %s %s %s"
+                .formatted(
+                    e.get("tick").asInt(),
+                    e.get("unit").asText(),
+                    e.get("column").asText(),
+                    e.get("action").asText()));
+      }
+    }
+    return expected;
   }
 
   /** The reference's uppercut, knock and wind log, in its order. */

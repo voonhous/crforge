@@ -12,6 +12,7 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinsteinAbility;
@@ -80,17 +81,18 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * no clone - with itself as the cause, which clones it in the tick's last pending pass. An area
  * effect an action's spawn made keeps the action's cause as its parent, or the holder's owner for a
  * row that takes the owner as the source, forgotten as the parent leaves; its hit action may be a
- * group of buff spawns, the Goblin Curse's, or a taunt, the Goblin Demolisher's, scheduled the same
- * way on every unit in its circle it reaches, each unit once for a row that reaches each target
- * once. One whose row follows its parent stands on the point of the object it follows first thing
- * in each update, moved by the follow offsets a resetable action gave it - the one along the length
- * toward the enemy side of its own side - and its life ends as that object leaves, unless its row
- * stays after its parent dies: it then stands on its last point. A shaped row, the evolved Baby
- * Dragon's wind, lists in each update the characters its filter passes in the rectangle about its
- * point, a building by its square and anything else by its circle, and each hit schedules its hit
- * action, a choice by team, on every one of them with itself as the cause, and does nothing else.
- * When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at the cleanup
- * that finds the countdown below 1.
+ * buff spawn, the evolved Tesla's ring's, a group of buff spawns, the Goblin Curse's, or a taunt,
+ * the Goblin Demolisher's, scheduled the same way on every unit in its circle it reaches, each unit
+ * once for a row that reaches each target once. One whose row follows its parent stands on the
+ * point of the object it follows first thing in each update, moved by the follow offsets a
+ * resetable action gave it - the one along the length toward the enemy side of its own side - and
+ * its life ends as that object leaves, unless its row stays after its parent dies: it then stands
+ * on its last point. A shaped row, the evolved Baby Dragon's wind, lists in each update the
+ * characters its filter passes in the rectangle about its point, a building by its square and
+ * anything else by its circle, and each hit schedules its hit action, a choice by team, on every
+ * one of them with itself as the cause, and does nothing else. When the countdown reaches 0 its
+ * life-end action is scheduled on itself; it leaves at the cleanup that finds the countdown below
+ * 1.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -118,7 +120,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
             + " boosting one target or lasting longer by level, a hit action but a Clone's, a"
-            + " group of buff spawns, a taunt or a shaped row's choice by team, a shape but a"
+            + " buff spawn, a group of buff spawns, a taunt or a shaped row's choice by team, a"
+            + " shape but a"
             + " rectangle with a filter whose hits only schedule their hit action, a launch from"
             + " its source"
             + " or spread about its point, the life condition, following a target, tags other"
@@ -165,7 +168,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " owner, for the side and at the level of its cause, the cause kept as its parent,"
             + " and a hit action that is a group of buff spawns, held by goblin_curse_knights; for"
             + " the owner's side and level, the owner its parent, when the row takes the owner as"
-            + " the source, held by valkyrie_ev1_barbarians and royal_giant_ev1_knights;"
+            + " the source, held by valkyrie_ev1_barbarians and royal_giant_ev1_knights; a"
+            + " growing ring whose hit action spawns a buff, each enemy reached once, a building"
+            + " by its square and a crown tower hit for its own damage, held by tesla_ev1_knights"
+            + " and BattleBuildingEvoTest;"
             + " such a hit action on an area effect no action made is refused. A taunt as its hit"
             + " action and the following of its parent, held by goblin_demolisher_knight; the end"
             + " as the followed object leaves, held by goblinstein_tower and"
@@ -1271,6 +1277,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         world.guardFirstStepped(AreaEffectEntity.this, guardAction);
       }
     };
+  }
+
+  @Override
+  public void cannonBomb(CannonProjectileSpawn action, int phase) {
+    world.cannonBomb(this, action, phase);
   }
 
   @Override

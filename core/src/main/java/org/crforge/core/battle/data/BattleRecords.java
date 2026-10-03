@@ -198,9 +198,10 @@ public final class BattleRecords {
    * on itself, the life condition, the tags other than the one that hides the pushback's
    * presentation, the per-level lifetime and the push's floor and gate lift. Its projectile is
    * modelled, but not a launch from its source or a spread one; its hit action only for a Clone, as
-   * a group of buff spawns and as a taunt, and on a shaped row as a choice by team; one hit per
-   * target only with a hit action; following only its parent; its spawns only in a shuffled order;
-   * and its shape only as a rectangle with a filter whose hits do nothing but their hit action.
+   * a buff spawn, a group of buff spawns and a taunt, and on a shaped row as a choice by team; one
+   * hit per target only with a hit action; following only its parent; its spawns only in a shuffled
+   * order; and its shape only as a rectangle with a filter whose hits do nothing but their hit
+   * action.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -445,6 +446,10 @@ public final class BattleRecords {
           "AttachedCharacterHeight",
           // Stored and never read.
           "TurretMovement",
+          // The evolved Cannon's shadows: the by-name getter that answers them runs in no battle
+          // step, and every battle load of their offsets has a global base, not a row.
+          "BlueShadowExportName",
+          "RedShadowExportName",
           // Times only the attack's turn toward its target and a call of the view, 150 ms before
           // the period's boundary for the Bats; the turn is modelled for no unit, and no hit, timer
           // or readiness reads it.
@@ -512,6 +517,9 @@ public final class BattleRecords {
       Set.of(
           "DeflectedProjectileEffect",
           "DeflectionFBEffect",
+          // The art the evolved Cannon's crosshair shows.
+          "ExportName",
+          "FileName",
           // Handed to the view's listener at each hit an update makes, which shows it and nothing
           // more.
           "HitEffect",
@@ -722,6 +730,8 @@ public final class BattleRecords {
             .hidesWhenNotAttacking(row.bool("HidesWhenNotAttacking"))
             .hideTimeMs(row.intValue("HideTimeMs"))
             .upTimeMs(row.intValue("UpTimeMs"))
+            .onAppearAction(actionName(row, "OnAppearAction"))
+            .onDisappearAction(actionName(row, "OnDisappearAction"))
             .ignoreClone(row.bool("IgnoreClone"))
             .ignoreResurrect(row.bool("IgnoreResurrect"))
             .reflectedAttackBuff(
@@ -1211,8 +1221,8 @@ public final class BattleRecords {
     }
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
     // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
-    // a Clone's whose hit action is a group of buff spawns, as the Goblin Curse's base is, or a
-    // taunt, as the Goblin Demolisher's is.
+    // a Clone's whose hit action is a buff spawn, as the evolved Tesla's ring's is, a group of buff
+    // spawns, as the Goblin Curse's base is, or a taunt, as the Goblin Demolisher's is.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
@@ -1305,9 +1315,15 @@ public final class BattleRecords {
         .build();
   }
 
-  /** Whether an action row is a group whose every part spawns a buff. */
+  /**
+   * Whether an action row spawns buffs only: a buff spawn, as the evolved Tesla's ring runs, or a
+   * group whose every part spawns a buff.
+   */
   private boolean buffSpawnGroup(String action) {
     GameAction row = tables.action(action);
+    if (row.classType().equals("ActionSpawn")) {
+      return row.fields().path("SpawnType").asText("").equals("BuffType");
+    }
     if (!row.classType().equals("ActionGroup")) {
       return false;
     }
@@ -1606,6 +1622,8 @@ public final class BattleRecords {
             .projectileRadius(row.intValue("ProjectileRadius"))
             .projectileRange(row.intValue("ProjectileRange"))
             .checkCollisions(row.bool("CheckCollisions"))
+            .considerZDistance(row.bool("ConsiderZDistance"))
+            .alwaysApplyPushback(row.bool("AlwaysApplyPushback"))
             .minDistance(row.intValue("MinDistance"))
             .circleScatter("Circle".equals(row.string("Scatter")))
             .lineScatter("Line".equals(row.string("Scatter")))
@@ -1676,6 +1694,12 @@ public final class BattleRecords {
     // flies to a point buffs through its hits on the way instead, which is not.
     if (data.targetBuff() != null && data.homingLike()) {
       unmodelled.add(0, "TargetBuff");
+    }
+    // The height a projectile under the z-distance column steps toward is its target's for one
+    // that homes, which no shipped row does; and one that flies to a point has no single aim
+    // height to fall onto.
+    if (data.considerZDistance() && (data.homing() || data.homingLike())) {
+      unmodelled.add("ConsiderZDistance");
     }
     return data.toBuilder()
         .unmodelledColumns(

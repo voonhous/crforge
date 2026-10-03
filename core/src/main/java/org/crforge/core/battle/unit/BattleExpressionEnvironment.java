@@ -36,14 +36,16 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " the context's attack time over its row's hit speed toward zero, 0 for a hit speed"
             + " below 1, whether its targeting runs or not, held by little_prince_giant and"
             + " little_prince_retarget; is_clone as a character's clone byte, held by"
-            + " buff_after_hits_ghost_evo. Supplied, not"
+            + " buff_after_hits_ghost_evo; is_moving as a character's movement component on and"
+            + " its speed budget above 0, 0 for any other object, held by"
+            + " building_evolutions_barbarians. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
-            + " would read first, refused; the other 28 functions, which fail"
+            + " would read first, refused; the other 27 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -65,6 +67,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int TARGET_IS_GROUND = BattleFunctions.id("target_is_ground");
   private static final int ATTACK_COUNT = BattleFunctions.id("attack_count");
   private static final int IS_CLONE = BattleFunctions.id("is_clone");
+  private static final int IS_MOVING = BattleFunctions.id("is_moving");
 
   /** The game tags that force an object onto a layer, which target_is_ground would read first. */
   private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
@@ -257,6 +260,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
             "is_clone on " + context.name() + ", which is not a character, is not modelled");
       }
       return character.isClone() ? 1 : 0;
+    }
+    if (id == IS_MOVING) {
+      // A character's movement component on and its speed budget above 0; every other object's
+      // budget slot answers 0.
+      return context instanceof CharacterEntity character ? character.movingAnswer() : 0;
     }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.

@@ -19,7 +19,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the counter in thousandths of a millisecond, compared with the duration before"
             + " it is advanced, the step of one tick or of the hit speed percentage times 500, the"
             + " reset a re-trigger makes when the row asks for it, and the tags the run sets. Held"
-            + " by the recorded cases and the king tower's runs. Supplied: the hit speed"
+            + " by the recorded cases and the king tower's runs; the tags, and the stop gate that"
+            + " ends a run of 99,999 ms, by building_evolutions_barbarians. Supplied: the hit speed"
             + " percentage answers as given.")
 public final class WithDuration extends RowAction {
 

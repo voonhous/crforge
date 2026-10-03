@@ -17,7 +17,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled and held by the recorded cases: the start value, the half-rate step, the reload"
             + " by adding the interval, the action scheduled on the owner, the pause tag and that"
-            + " it never ends. The rate percentage answers as given: the row builder gives a row"
+            + " it never ends; a pause tag of several names, any one of which holds it, and a"
+            + " singleton run re-triggered with nothing restarted, held by"
+            + " building_evolutions_barbarians. The rate percentage answers as given: the row"
+            + " builder gives a row"
             + " affected by the spawn speed its owner's spawn rate, which no run holds with a"
             + " buff, and any other 100.")
 public final class Interval extends RowAction {

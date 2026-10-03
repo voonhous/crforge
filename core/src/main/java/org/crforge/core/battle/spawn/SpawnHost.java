@@ -1,6 +1,7 @@
 package org.crforge.core.battle.spawn;
 
 import java.util.List;
+import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionHolder;
 
 /**
@@ -44,6 +45,27 @@ public interface SpawnHost extends SpawnObject {
    */
   default void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
     throw new UnsupportedOperationException(name() + " cannot spawn an area effect");
+  }
+
+  /**
+   * Launches a projectile an action's spawn row names from this object's point, with this object as
+   * its launcher and owner, at no target.
+   *
+   * @param action the spawn row's name
+   * @param projectile the projectile row's name
+   * @param startHeight the height it is launched from
+   * @param aimX the aim along the arena's width, or null for this object's own coordinate
+   * @param aimY the aim along the arena's length, or null for this object's own coordinate
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   */
+  default void spawnProjectile(
+      String action,
+      String projectile,
+      int startHeight,
+      IntSupplier aimX,
+      IntSupplier aimY,
+      int phase) {
+    throw new UnsupportedOperationException(name() + " cannot launch a projectile");
   }
 
   /**

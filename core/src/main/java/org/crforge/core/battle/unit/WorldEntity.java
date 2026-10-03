@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntSupplier;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
@@ -1408,6 +1409,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
     world.spawnAreaEffect(this, action, areaEffect, source, phase);
+  }
+
+  @Override
+  public void spawnProjectile(
+      String action,
+      String projectile,
+      int startHeight,
+      IntSupplier aimX,
+      IntSupplier aimY,
+      int phase) {
+    world.actionProjectile(this, action, projectile, startHeight, aimX, aimY, phase);
   }
 
   /**

@@ -39,6 +39,10 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param projectileRange how far a projectile without a target flies from its launcher; 0 for one
  *     that flies to its target
  * @param checkCollisions true when the projectile stops at the first entity its body touches
+ * @param considerZDistance true when the flight counts the height above the aim into the distance
+ *     left and steps its height straight toward the aim's, as the evolved Cannon's bomb falls
+ * @param alwaysApplyPushback true when the area of the impact pushes its victims even without
+ *     damage
  * @param minDistance the least distance from the start the aim is pushed out to; 0 for none
  * @param circleScatter true for a row whose scatter pattern is the circle, which counts it among
  *     the projectiles that fly to a point rather than to a target
@@ -133,6 +137,8 @@ public record ProjectileData(
     int projectileRadius,
     int projectileRange,
     boolean checkCollisions,
+    boolean considerZDistance,
+    boolean alwaysApplyPushback,
     int minDistance,
     boolean circleScatter,
     boolean lineScatter,

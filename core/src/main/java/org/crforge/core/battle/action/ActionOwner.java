@@ -368,6 +368,29 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts a barrage run on the owner, which makes every bomb's area effect in its first update.
+   *
+   * @param action the barrage
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance cannonBarrage(CannonBarrage action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Drops a barrage's bomb onto this owner, the area effect that caused the drop.
+   *
+   * @param action the drop
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   */
+  default void cannonBomb(CannonProjectileSpawn action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " drops a bomb onto an object other than an area effect, not modelled");
+  }
+
+  /**
    * Starts a run that makes an area effect the row may give its lifetime back to.
    *
    * @param action the row

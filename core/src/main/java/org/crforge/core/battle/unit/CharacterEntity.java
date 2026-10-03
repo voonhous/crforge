@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BossBanditAbility;
+import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
@@ -202,7 +203,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " its targeting visit, its hide counter, hidden only at its hide time, its targets"
             + " kept with no range extension as a building's, and its hidden answer to every"
             + " asker but an area effect that reaches hidden units, whose damage and buff get"
-            + " through, held by tesla_giant_passing and tesla_hidden_spells. Refused for a clone: a"
+            + " through, held by tesla_giant_passing and tesla_hidden_spells. A hiding"
+            + " building's actions as it starts to hide and as it rises, scheduled on itself and"
+            + " run in its phase-3 pending pass, held by tesla_ev1_knights; their cause, itself,"
+            + " which the evolved Tesla's ring does not read, by no run. Refused for a clone: a"
             + " building, a unit whose hit destroys it, a champion, one with a cloned version or"
             + " riders, one still deploying or running an action, and a clone that deploys. Held"
             + " by no run: a"
@@ -1915,6 +1919,13 @@ public class CharacterEntity extends WorldEntity {
     return new KnockbackRun(action, this, phase, instigator(instigator));
   }
 
+  /** Starts a barrage's run on the character. A clone, a rider and a carrier are refused. */
+  @Override
+  public ActionInstance cannonBarrage(CannonBarrage action, int phase) {
+    refuseRun(action.name());
+    return new CannonBarrageRun(action, this, phase);
+  }
+
   /**
    * Starts a resetable area effect's run on the character. A clone, a rider and a carrier are
    * refused.
@@ -2485,6 +2496,35 @@ public class CharacterEntity extends WorldEntity {
             effects);
     unit.timers().setHideCounterMs(after);
     world.hideVisited(this, state, before, after, step, effects);
+    // A building schedules its row's action beside each effect, on itself with itself as the
+    // cause. The state visit runs outside every pending pass, so a row with no delay waits for the
+    // building's phase-3 pending pass of the tick.
+    for (String effect : effects) {
+      String column =
+          effect.equals(HideHandler.HIDE_EFFECT) ? "OnDisappearAction" : "OnAppearAction";
+      String action =
+          effect.equals(HideHandler.HIDE_EFFECT)
+              ? getData().onDisappearAction()
+              : getData().onAppearAction();
+      if (action == null) {
+        continue;
+      }
+      BattleAction row = world.getActions().build(action, world.binding(this));
+      world.hidingHookScheduled(this, column, row.name());
+      actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, actionHolder());
+    }
+  }
+
+  /**
+   * What is_moving() answers for the character: 1 with its movement component on and a speed budget
+   * above 0 as it stands now, so a test of its state rather than of its motion - walking yes,
+   * attacking, deploying, idle, held by a tag or stunned no.
+   */
+  int movingAnswer() {
+    if (!hasMovementComponent() || !isActive(MOVEMENT_SLOT)) {
+      return 0;
+    }
+    return movementQueries().speedBudget() > 0 ? 1 : 0;
   }
 
   /** The movement pass's answers for the character as it stands now, reference included. */

@@ -158,36 +158,40 @@ class ActionCompositesTest {
     for (int[] c : cases) {
       int value = c[0];
       ActionHolder h = new ActionHolder();
-      h.schedule(new Select(row("select"), parts, () -> value, null), 0, false);
+      h.schedule(new Select(row("select"), parts, () -> value, null, false), 0, false);
       assertThat(parts(h)).as("condition %d", value).containsExactly(parts.get(c[1]).name() + " 0");
     }
     ActionHolder negative = new ActionHolder();
-    negative.schedule(new Select(row("select"), parts, () -> -1, null), 0, false);
+    negative.schedule(new Select(row("select"), parts, () -> -1, null, false), 0, false);
     assertThat(parts(negative)).as("a negative condition selects nothing").isEmpty();
     ActionHolder none = new ActionHolder();
-    none.schedule(new Select(row("select"), parts, null, null), 0, false);
+    none.schedule(new Select(row("select"), parts, null, null, false), 0, false);
     assertThat(parts(none)).as("no condition at all selects nothing").isEmpty();
 
     ActionHolder first = new ActionHolder();
     first.schedule(
-        new Select(row("select"), parts, () -> -1, List.of(() -> 0, () -> 1, () -> 1)), 0, false);
+        new Select(row("select"), parts, () -> -1, List.of(() -> 0, () -> 1, () -> 1), false),
+        0,
+        false);
     assertThat(parts(first)).as("the first true per-part condition wins").containsExactly("sb 0");
     ActionHolder otherwise = new ActionHolder();
     otherwise.schedule(
-        new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0)), 0, false);
+        new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0), false), 0, false);
     assertThat(parts(otherwise))
         .as("every condition false and a part past them: that part, the else")
         .containsExactly("sc 0");
     ActionHolder nothing = new ActionHolder();
     nothing.schedule(
-        new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0, () -> 0)), 0, false);
+        new Select(row("select"), parts, () -> 0, List.of(() -> 0, () -> 0, () -> 0), false),
+        0,
+        false);
     assertThat(parts(nothing)).as("no true condition and no part past them").isEmpty();
   }
 
   @Test
   @DisplayName(
       "a select's part is scheduled with no delay, whatever the select's delay or the part's own,"
-          + " and with the select's cause")
+          + " unless the select passes its delay on, and with the select's cause")
   void selectPartDelay() {
     Leaf own = new Leaf("own");
     BattleAction delayedPart =
@@ -203,16 +207,31 @@ class ActionCompositesTest {
             row("select").toBuilder().delayMs(500).build(),
             List.<BattleAction>of(delayedPart, own),
             () -> 0,
-            null),
+            null,
+            false),
         ActionHolder.OWN_DELAY,
         false);
     assertThat(queue(h))
         .as("the select waits its own 10 ticks; its part is queued with none")
         .containsExactly("select 10", "delayed 0");
 
+    ActionHolder passed = new ActionHolder();
+    passed.schedule(
+        new Select(
+            row("select").toBuilder().delayMs(500).build(),
+            List.<BattleAction>of(delayedPart, own),
+            () -> 0,
+            null,
+            true),
+        ActionHolder.OWN_DELAY,
+        false);
+    assertThat(queue(passed))
+        .as("a select that passes its delay on: its part waits the select's 10 ticks too")
+        .containsExactly("select 10", "delayed 10");
+
     ActionHolder cause = new ActionHolder();
     ActionHolder owner = new ActionHolder();
-    owner.schedule(new Select(row("select"), List.of(own), () -> 0, null), 0, false, cause);
+    owner.schedule(new Select(row("select"), List.of(own), () -> 0, null, false), 0, false, cause);
     assertThat(owner.queuedInstigators()).containsOnly(cause);
   }
 
@@ -230,7 +249,8 @@ class ActionCompositesTest {
               evaluated[0]++;
               return 0;
             },
-            null);
+            null,
+            false);
     ActionHolder h = new ActionHolder();
     h.schedule(gated, 0, false);
     assertThat(queue(h)).containsExactly("select 0");

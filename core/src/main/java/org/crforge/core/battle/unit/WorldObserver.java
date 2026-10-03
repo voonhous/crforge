@@ -1021,6 +1021,58 @@ public interface WorldObserver {
       int step,
       List<String> effects) {}
 
+  /**
+   * A barrage's run started on a character.
+   *
+   * @param action the barrage row's name
+   * @param phase the phase of the pending pass that ran it, or 0 outside every pass
+   */
+  default void barrageStarted(int tick, CharacterEntity owner, String action, int phase) {}
+
+  /**
+   * A barrage's update made its bombs' area effects and finished.
+   *
+   * @param action the barrage row's name
+   * @param made the area effects, in the order it made them
+   */
+  default void barrageStepped(
+      int tick, CharacterEntity owner, String action, List<AreaEffectEntity> made) {}
+
+  /**
+   * A barrage's bomb was dropped onto the area effect that caused the drop.
+   *
+   * @param area the area effect
+   * @param action the drop row's name
+   * @param phase the phase of the pending pass that ran the drop
+   * @param projectile the bomb, placed at its start and aimed
+   * @param lifetime the area effect's lifetime its speed was worked out from
+   */
+  default void bombDropped(
+      int tick,
+      AreaEffectEntity area,
+      String action,
+      int phase,
+      ProjectileEntity projectile,
+      int lifetime) {}
+
+  /**
+   * An action's spawn row launched a projectile from the entity it runs on.
+   *
+   * @param action the spawn row's name
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param projectile the projectile, placed at its start and aimed
+   */
+  default void actionProjectileLaunched(
+      int tick, WorldEntity owner, String action, int phase, ProjectileEntity projectile) {}
+
+  /**
+   * A hiding building scheduled its row's action on itself beside an effect of its hide handler.
+   *
+   * @param column OnDisappearAction as it starts to hide, OnAppearAction as it rises
+   * @param action the row scheduled
+   */
+  default void hidingHookScheduled(int tick, CharacterEntity unit, String column, String action) {}
+
   /** An evolved Royal Ghost's run started on it, in the given pending pass or 0 outside. */
   default void ghostEvoStarted(int tick, CharacterEntity ghost, String action, int phase) {}
 
