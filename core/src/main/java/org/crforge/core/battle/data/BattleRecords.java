@@ -439,6 +439,9 @@ public final class BattleRecords {
           // a building fires its own shots.
           "AttachedCharacter",
           "AttachedCharacterHeight",
+          // Read only by the character view, where it offsets the attached object's sprite, and by
+          // a by-name getter nothing calls.
+          "AttachedCharacterOffsetY",
           // Stored and never read.
           "TurretMovement",
           // The evolved Cannon's shadows: the by-name getter that answers them runs in no battle

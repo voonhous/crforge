@@ -174,7 +174,7 @@ public final class ReplaySmokeRun {
     manifest.put("adapter", adapter);
     ScenarioPlan plan = translator.translate(scenario);
 
-    Standard1v1Battle battle = new Standard1v1Battle(tables, plan.towerLevel());
+    Standard1v1Battle battle = new Standard1v1Battle(tables, plan.towers(), true);
     battle.getWorld().seed(plan.seed());
     // Each player's data is handed over before the decks are dealt, in the scenario's order.
     for (int choices : plan.playerDataChoices()) {
