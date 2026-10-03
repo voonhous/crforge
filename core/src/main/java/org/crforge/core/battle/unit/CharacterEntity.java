@@ -1781,6 +1781,35 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The push of an attack sequence step's direct hit on the character, away from where the attacker
+   * stands: the whole distance, not counted as the character's own attack, refused while a pushback
+   * is in flight or the character is hidden, and refused by its row, its buffs, its no-pushback
+   * flag or its being dragged unless the step lifts those gates. Its movement is not switched on.
+   *
+   * @param x the attacker's position along the width
+   * @param y the attacker's position along the length
+   * @param distance how far
+   * @param liftGates true when the step's push lifts the gates (IsMeleePushbackAll)
+   */
+  void pushedByStep(int x, int y, int distance, boolean liftGates) {
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            x,
+            y,
+            distance,
+            liftGates,
+            false,
+            false,
+            false,
+            false);
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+  }
+
+  /**
    * The push of a unit entering the deploying state near the character: a pushback away from the
    * unit with the gates lifted, so even a row that ignores pushback is pushed, refused only while a
    * pushback is in flight or the character is hidden. Its movement is not switched on: only one

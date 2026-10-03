@@ -15,6 +15,7 @@ class DirectHitTest {
   private TargetingState t;
   private TargetView target;
   private final List<String> dealt = new ArrayList<>();
+  private final List<String> order = new ArrayList<>();
   private final HitQueries queries =
       new HitQueries() {
         private int hitCounter;
@@ -33,6 +34,17 @@ class DirectHitTest {
         public void dealDamage(
             TargetView hit, int damage, int hitId, int directionX, int directionY) {
           dealt.add("%d %d %d %d".formatted(damage, hitId, directionX, directionY));
+          order.add("damage");
+        }
+
+        @Override
+        public void stepPushback(TargetView pushed) {
+          order.add("pushback");
+        }
+
+        @Override
+        public void directHitDealt() {
+          order.add("dealt");
         }
       };
 
@@ -60,6 +72,15 @@ class DirectHitTest {
     DirectHit.resolve(t, target, 202, false, queries);
 
     assertThat(dealt).containsExactly("202 1 0 2000");
+  }
+
+  @Test
+  @DisplayName(
+      "the step's pushback is asked for before the target's damage, as 0xe69fb4 precedes it")
+  void theStepPushbackComesBeforeTheDamage() {
+    DirectHit.resolve(t, target, 202, false, queries);
+
+    assertThat(order).containsExactly("pushback", "damage", "dealt");
   }
 
   @Test
