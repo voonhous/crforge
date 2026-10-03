@@ -23,8 +23,10 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
+import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.LaserBall;
@@ -273,6 +275,84 @@ class ActionRowsTest {
                     .build("Furnace_rework_spawn_forward", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("spawns characters and sets TargetExprX");
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Executioner's controller reads its two damages, its range, the loader's 3000"
+          + " when it is left out, its push and its strong hit's action; an action on a plain hit"
+          + " and a push below 1 are refused")
+  void anAxeControllerIsBuilt(@TempDir Path folder) throws IOException {
+    ExecutionerEvoProjectile controller =
+        (ExecutionerEvoProjectile)
+            GameData.actions().build("AxeMan_EV1_Projectile_Controller", INERT_BINDING);
+    assertThat(controller.getDamage()).isEqualTo(70);
+    assertThat(controller.getStrongDamage()).isEqualTo(105);
+    assertThat(controller.getStrongDamageRange()).isEqualTo(3500);
+    assertThat(controller.getFirstStrongHitPushback()).isEqualTo(1000);
+    assertThat(controller.getStrongHitAction().name()).isEqualTo("AxeMan_EV1_Projectile_StrongHit");
+
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "range",
+            f -> f.remove("StrongDamageRange"),
+            "an action on a plain hit",
+            f -> f.put("hitAction", "AxeMan_EV1_Projectile_StrongHit"),
+            "by less than 1",
+            f -> f.put("FirstStrongHitPushback", 0));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows ->
+                  change
+                      .getValue()
+                      .accept(
+                          (ObjectNode) rows.get("AxeMan_EV1_Projectile_Controller").get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      if (change.getKey().equals("range")) {
+        assertThat(
+                ((ExecutionerEvoProjectile)
+                        rows.build("AxeMan_EV1_Projectile_Controller", INERT_BINDING))
+                    .getStrongDamageRange())
+            .isEqualTo(3000);
+      } else {
+        assertThatThrownBy(() -> rows.build("AxeMan_EV1_Projectile_Controller", INERT_BINDING))
+            .isInstanceOf(UnsupportedOperationException.class)
+            .hasMessageContaining(change.getKey());
+      }
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a projectile row's swap is built for a row the battle models; one that also sets a"
+          + " character's row is refused")
+  void aProjectileSwapIsBuilt(@TempDir Path folder) throws IOException {
+    assertThat(
+            GameData.actions()
+                .build("AxeMan_EV1_WaitToChangeProjectile1_OnActivateAction", INERT_BINDING))
+        .isInstanceOf(ChangeGameObjectData.class);
+
+    Files.createDirectories(folder);
+    GameTables both =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode)
+                        rows.get("AxeMan_EV1_WaitToChangeProjectile1_OnActivateAction")
+                            .get("fields"))
+                    .put("NewCharacterData", "Knight"));
+    assertThatThrownBy(
+            () ->
+                new ActionRows(both, new BattleRecords(both))
+                    .build("AxeMan_EV1_WaitToChangeProjectile1_OnActivateAction", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("swaps a projectile's row and sets a character's");
   }
 
   @Test
@@ -1032,12 +1112,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 772 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 778 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(772);
+    assertThat(built).as("rows built").isEqualTo(778);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 88, "column", 73, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 87, "column", 68, "spawn type", 13));
   }
 }

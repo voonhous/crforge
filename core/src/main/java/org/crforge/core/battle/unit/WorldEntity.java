@@ -358,6 +358,24 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       boolean passesHidden,
       WorldEntity dealer,
       SpawnHost cause) {
+    return takeDamage(damage, dedupeId, directionX, directionY, passesHidden, dealer, cause, null);
+  }
+
+  /**
+   * Deals one damage event to the entity, as {@link #takeDamage(int, int, int, int)} does.
+   *
+   * @param heard told in the subtraction, before anything is taken off, or null: the listening runs
+   *     of the projectile that dealt the hit
+   */
+  DamageResult takeDamage(
+      int damage,
+      int dedupeId,
+      int directionX,
+      int directionY,
+      boolean passesHidden,
+      WorldEntity dealer,
+      SpawnHost cause,
+      Runnable heard) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -369,7 +387,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             dedupeId,
             directionX,
             directionY,
-            damageQueries(passesHidden, dealer, true));
+            damageQueries(passesHidden, dealer, true, heard));
     shieldHit(damage, shieldBefore, cause);
     refreshHitPoints();
     return result;
@@ -837,7 +855,25 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   private DamageQueries damageQueries(
       boolean passesHidden, WorldEntity dealer, boolean buffAfterHitsHeld) {
+    return damageQueries(passesHidden, dealer, buffAfterHitsHeld, null);
+  }
+
+  /**
+   * What the damage chain asks about the entity, who counts the hit, and who hears of it before the
+   * subtraction.
+   *
+   * @param heard told in the subtraction, before anything is taken off, or null for nobody
+   */
+  private DamageQueries damageQueries(
+      boolean passesHidden, WorldEntity dealer, boolean buffAfterHitsHeld, Runnable heard) {
     return new DamageQueries() {
+      @Override
+      public void beforeSubtraction() {
+        if (heard != null) {
+          heard.run();
+        }
+      }
+
       @Override
       public void hitCounted() {
         if (dealer != null) {

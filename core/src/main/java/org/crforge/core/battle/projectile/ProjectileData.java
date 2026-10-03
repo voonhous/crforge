@@ -62,6 +62,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param pushbackAll true when the push of a hit along a flying body's way lifts the gates that
  *     would refuse it
  * @param spawnProjectile the projectile the impact launches beyond the aim, or null
+ * @param onStartingAction the action row the projectile runs on itself as it is admitted, or null
  * @param spawnChain how many links of spawned projectiles are left: at least one when the row names
  *     a spawned projectile, else 0
  * @param constantHeight the height the projectile starts at and aims at, in place of its
@@ -152,6 +153,7 @@ public record ProjectileData(
     int projectileStartExtraRadius,
     boolean pushbackAll,
     String spawnProjectile,
+    String onStartingAction,
     int spawnChain,
     int constantHeight,
     String targetBuff,

@@ -368,6 +368,28 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts the evolved Executioner's axe controller on the owner, a run that listens to its hits.
+   *
+   * @param action the controller
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance executionerController(ExecutionerEvoProjectile action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a projectile, not modelled");
+  }
+
+  /**
+   * Swaps the owner's projectile row for another, as a data-changing action gives it.
+   *
+   * @param rowName the projectile row it takes
+   */
+  default void changeProjectileData(String rowName) {
+    throw new UnsupportedOperationException(
+        "a projectile row's swap on an owner other than a projectile, not modelled");
+  }
+
+  /**
    * Starts a barrage run on the owner, which makes every bomb's area effect in its first update.
    *
    * @param action the barrage

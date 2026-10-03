@@ -591,7 +591,9 @@ class BattleActionSpawnRunTest {
         "knight_ev1_tower_knight",
         "knight_ev1_fireball_valkyrie",
         "tesla_ev1_knights",
-        "building_evolutions_barbarians"
+        "building_evolutions_barbarians",
+        "ice_axe_barbarians",
+        "axe_man_ev1_barbarians"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -635,7 +637,14 @@ class BattleActionSpawnRunTest {
     // What every uppercut, knock and wind did, and every change of a watched tag word.
     // What the evolved Furnace's runs did, for a run that logs them, and every projectile an
     // action launched.
-    FurnaceLog evoLog = new FurnaceLog(reference.has("furnace_evo"), new ArrayList<>());
+    // A run that logs the evolved Furnace or the evolved Executioner's axe lists the looping
+    // effects'
+    // runs too.
+    FurnaceLog evoLog =
+        new FurnaceLog(
+            reference.has("furnace_evo"),
+            reference.has("furnace_evo") || reference.has("axe_man_evo"),
+            new ArrayList<>());
     match
         .getWorld()
         .addObserver(
@@ -722,6 +731,142 @@ class BattleActionSpawnRunTest {
                             lifetime,
                             projectile.getPackedLevel(),
                             projectile.side()));
+              }
+            });
+    // A projectile's runs are listed like a unit's, its listener set as it schedules its
+    // starting action; and every axe controller's start, damage, hit action and push, and every
+    // swap of a projectile's row.
+    List<String> axeLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileStarting(int tick, ProjectileEntity projectile, String action) {
+                projectile
+                    .actionHolder()
+                    .setListener(
+                        listener(projectile.name(), currentTick, actions, dropping, evoLog));
+                axeLog.add(
+                    "%d start %s %s %s"
+                        .formatted(tick, projectile.name(), projectile.getData().name(), action));
+              }
+
+              @Override
+              public void projectileSwapped(
+                  int tick, ProjectileEntity projectile, String from, String to) {
+                axeLog.add(
+                    "%d swap %s %s %s %d %d"
+                        .formatted(
+                            tick,
+                            projectile.name(),
+                            from,
+                            to,
+                            projectile.getPingpongDistance(),
+                            projectile.getPingpongTimeMs()));
+              }
+
+              @Override
+              public void executionerStarted(
+                  int tick, ProjectileEntity axe, String action, int phase) {
+                axeLog.add(
+                    "%d controller_start %s %s %d %d"
+                        .formatted(tick, axe.name(), action, phase, axe.getPackedLevel()));
+              }
+
+              @Override
+              public void axeDamage(
+                  int tick,
+                  ProjectileEntity axe,
+                  WorldEntity target,
+                  int hitId,
+                  int before,
+                  int after,
+                  Integer edge,
+                  boolean strong) {
+                axeLog.add(
+                    "%d damage %s %s %d [%d, %d] %s %d"
+                        .formatted(
+                            tick,
+                            axe.name(),
+                            target == null ? null : target.name(),
+                            hitId,
+                            before,
+                            after,
+                            edge,
+                            strong ? 1 : 0));
+              }
+
+              @Override
+              public void axeHitAction(
+                  int tick, ProjectileEntity axe, WorldEntity target, String action, int hitId) {
+                axeLog.add(
+                    "%d hit_action %s %s %s %d"
+                        .formatted(tick, axe.name(), target.name(), action, hitId));
+              }
+
+              @Override
+              public void axePushed(
+                  int tick,
+                  ProjectileEntity axe,
+                  WorldEntity target,
+                  int x,
+                  int y,
+                  int distance,
+                  int hitId) {
+                axeLog.add(
+                    "%d push %s %s [%d, %d] %d %d"
+                        .formatted(tick, axe.name(), target.name(), x, y, distance, hitId));
+              }
+            });
+    // Every area effect an impact made that follows the projectile's target, and each of its
+    // updates with its point and what it follows.
+    List<String> iceLog = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileAreaEffect(
+                  int tick, ProjectileEntity projectile, AreaEffectEntity a) {
+                if (!a.getData().followsTarget()) {
+                  return;
+                }
+                iceLog.add(
+                    "%d made %s %s %d %d %s %d %d"
+                        .formatted(
+                            tick,
+                            a.name(),
+                            projectile.name(),
+                            a.getX(),
+                            a.getY(),
+                            a.getFollow() == null ? null : a.getFollow().name(),
+                            a.getPackedLevel(),
+                            a.getCountdown()));
+              }
+
+              @Override
+              public void areaEffectUpdated(
+                  int tick,
+                  AreaEffectEntity a,
+                  int before,
+                  int after,
+                  int hits,
+                  int radius,
+                  List<Integer> damages) {
+                if (!a.getData().followsTarget()) {
+                  return;
+                }
+                iceLog.add(
+                    "%d update %s %d %d %s %d %d"
+                        .formatted(
+                            tick,
+                            a.name(),
+                            a.getX(),
+                            a.getY(),
+                            a.getFollow() == null ? null : a.getFollow().name(),
+                            after,
+                            hits));
               }
             });
     Set<String> furnaceOwners = new HashSet<>();
@@ -1999,6 +2144,12 @@ class BattleActionSpawnRunTest {
     assertThat(evoLog.furnace() ? evoLog.lines() : List.of())
         .as("every re-trigger, force stop and launch of the evolved Furnace, its runs and its tags")
         .containsExactlyElementsOf(expectedFurnaceLog(reference));
+    assertThat(iceLog)
+        .as("every area effect following a projectile's target, made and updated")
+        .containsExactlyElementsOf(expectedIceLog(reference));
+    assertThat(axeLog)
+        .as("every axe's start, controller, damage, hit action, push and swap")
+        .containsExactlyElementsOf(expectedAxeLog(reference));
     assertThat(barrageLog)
         .as("every barrage's start and its bombs' areas, and every bomb dropped")
         .containsExactlyElementsOf(expectedBarrageLog(reference));
@@ -2126,8 +2277,9 @@ class BattleActionSpawnRunTest {
       @Override
       public void starting(BattleAction action, int phase, boolean queued) {
         // A looping effect row only shows something, and the reference leaves it out, but for a
-        // run that logs the evolved Furnace, which lists its looping effect's run.
-        if (action instanceof InertAction inert && inert.isLasting() && !evoLog.furnace()) {
+        // run that logs the evolved Furnace or the evolved Executioner's axe, which lists its
+        // looping effects' runs.
+        if (action instanceof InertAction inert && inert.isLasting() && !evoLog.lasting()) {
           return;
         }
         // The request a run supplies is the run's own, not the battle's.
@@ -2175,9 +2327,10 @@ class BattleActionSpawnRunTest {
    * whenever they change.
    *
    * @param furnace true when the reference logs the evolved Furnace
+   * @param lasting true when the reference lists the looping effects' runs
    * @param lines the log
    */
-  private record FurnaceLog(boolean furnace, List<String> lines) {}
+  private record FurnaceLog(boolean furnace, boolean lasting, List<String> lines) {}
 
   /** A link or unlink with the source's group as it stands after it, newest first. */
   private static String groupLine(
@@ -2671,9 +2824,10 @@ class BattleActionSpawnRunTest {
           int time,
           int packedLevel,
           SpawnHost source) {
-        // The reference lists the buffs a Clone's actions spawn; every buff any spawn applies is
-        // in the buff log.
-        if (!(source instanceof AreaEffectEntity a && a.getData().cloning())) {
+        // The reference lists the buffs a Clone's actions spawn and those a projectile's hit
+        // action spawns; every buff any spawn applies is in the buff log.
+        if (!(source instanceof AreaEffectEntity a && a.getData().cloning())
+            && !(source instanceof ProjectileEntity)) {
           return;
         }
         lines.add(
@@ -3596,6 +3750,117 @@ class BattleActionSpawnRunTest {
     List<String> out = new ArrayList<>();
     list.forEach(n -> out.add(n.asText()));
     return out.toString();
+  }
+
+  /** The reference's log of the area effects that follow a projectile's target, in its order. */
+  private static List<String> expectedIceLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("ice_spirits_evo")) {
+      int tick = e.get("tick").asInt();
+      String follow = e.get("follow").asText(null);
+      if (e.get("event").asText().equals("made")) {
+        expected.add(
+            "%d made %s %s %d %d %s %d %d"
+                .formatted(
+                    tick,
+                    e.get("area_effect").asText(),
+                    e.get("projectile").asText(),
+                    e.get("x").asInt(),
+                    e.get("y").asInt(),
+                    follow,
+                    e.get("level").asInt(),
+                    e.get("countdown").asInt()));
+      } else {
+        expected.add(
+            "%d update %s %d %d %s %d %d"
+                .formatted(
+                    tick,
+                    e.get("area_effect").asText(),
+                    e.get("x").asInt(),
+                    e.get("y").asInt(),
+                    follow,
+                    e.get("countdown").asInt(),
+                    e.get("hits").asInt()));
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * The reference's log of the evolved Executioner's axe, in its order: each axe's start, its
+   * controller's start, each damage asked of it, each strong hit's action and push, and each swap
+   * of its row.
+   */
+  private static List<String> expectedAxeLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("axe_man_evo")) {
+      int tick = e.get("tick").asInt();
+      switch (e.get("event").asText()) {
+        case "start" ->
+            expected.add(
+                "%d start %s %s %s"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("row").asText(),
+                        e.get("action").asText()));
+        case "controller_start" ->
+            expected.add(
+                "%d controller_start %s %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("owner").asText(),
+                        e.get("action").asText(),
+                        e.get("phase").asInt(),
+                        e.get("level").asInt()));
+        case "damage" ->
+            expected.add(
+                "%d damage %s %s %d [%d, %d] %s %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("target").asText(null),
+                        e.get("hit_id").asInt(),
+                        e.get("damage").get(0).asInt(),
+                        e.get("damage").get(1).asInt(),
+                        e.get("edge").isNull() ? null : e.get("edge").asInt(),
+                        e.get("strong").asInt()));
+        case "hit_action" ->
+            expected.add(
+                "%d hit_action %s %s %s %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("target").asText(),
+                        e.get("action").asText(),
+                        e.get("hit_id").asInt()));
+        case "push" ->
+            expected.add(
+                "%d push %s %s [%d, %d] %d %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("target").asText(),
+                        e.get("frm").get(0).asInt(),
+                        e.get("frm").get(1).asInt(),
+                        e.get("distance").asInt(),
+                        e.get("hit_id").asInt()));
+        case "swap" ->
+            expected.add(
+                "%d swap %s %s %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("row").get(0).asText(),
+                        e.get("row").get(1).asText(),
+                        e.get("distance").asInt(),
+                        e.get("time").asInt()));
+        default -> {
+          // The waits, the effects' instances and their stops are held by the runs listed.
+        }
+      }
+    }
+    return expected;
   }
 
   /** The reference's barrage log, in its order. */
@@ -6491,14 +6756,23 @@ class BattleActionSpawnRunTest {
    * asked for once its loop ends, so it lists them after the last hit. Nothing a push does reaches
    * the later victims' damage, so only the order they are listed in differs. An area's hits are an
    * area effect's or a unit's area hits of one tick, or the impacts of one projectile on one tick.
+   * A push asked before its own hit's damage, as the evolved Executioner's strong hit asks it, is
+   * listed just before that hit in both, and stays where it is.
    */
   private static List<String> pushesAfterTheirArea(List<String> events) {
     List<String> ordered = new ArrayList<>();
     List<String> pushes = new ArrayList<>();
     String area = null;
-    for (String event : events) {
+    for (int i = 0; i < events.size(); i++) {
+      String event = events.get(i);
       String[] words = event.split(" ");
       String last = ordered.isEmpty() ? null : areaOf(ordered.get(ordered.size() - 1));
+      if (words[1].equals("pushback") && pushedBeforeItsHit(words, events, i)) {
+        ordered.addAll(pushes);
+        pushes.clear();
+        ordered.add(event);
+        continue;
+      }
       if (words[1].equals("pushback") && (!pushes.isEmpty() || last != null)) {
         if (pushes.isEmpty()) {
           area = last;
@@ -6514,6 +6788,18 @@ class BattleActionSpawnRunTest {
     }
     ordered.addAll(pushes);
     return ordered;
+  }
+
+  /**
+   * Whether a push is followed at once by an impact on the unit it pushed, on the same tick: a push
+   * the hit asked for before its damage.
+   */
+  private static boolean pushedBeforeItsHit(String[] words, List<String> events, int i) {
+    if (i + 1 >= events.size()) {
+      return false;
+    }
+    String[] next = events.get(i + 1).split(" ");
+    return next[0].equals(words[0]) && next[1].equals("impact") && next[3].equals(words[2]);
   }
 
   /** The area a hit event belongs to, or null for an event that is not an area's hit. */

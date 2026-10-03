@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
+import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.FilterByEnemy;
 import org.crforge.core.battle.action.FlipFlop;
@@ -204,7 +205,20 @@ public final class ActionRows {
           Map.entry("ActionKill", Set.of("OnKillAction")),
           Map.entry(
               "ActionSetAttackSequenceIndex", Set.of("AttackIndex", "SetEvenIfCombatDisabled")),
-          Map.entry("ActionChangeGameObjectData", Set.of("NewCharacterData", "ResetTarget")),
+          Map.entry(
+              "ActionChangeGameObjectData",
+              Set.of("NewCharacterData", "ResetTarget", "NewProjectileData")),
+          // HitAction is written by the row but read by nothing: the class reads hitAction.
+          Map.entry(
+              "ActionExecutionerEvoProjectile",
+              Set.of(
+                  "Damage",
+                  "StrongDamage",
+                  "StrongDamageRange",
+                  "FirstStrongHitPushback",
+                  "StrongHitAction",
+                  "HitAction",
+                  "hitAction")),
           // Every other column a taunt has keeps the loader's default here: the reach by
           // distance, the end as the duration runs out with no falloff, no end by a stun, no
           // building retargeting, the buff removed as it finishes, and no invalid or crown tower
@@ -791,12 +805,32 @@ public final class ActionRows {
             }
             case "ActionAeoRunActionAtAliveTimerData" -> aliveTimer(name, shared, f);
             case "ActionChangeGameObjectData" -> {
+              // A projectile row's swap: the new row must read as a projectile the battle models,
+              // and nothing else may be set.
+              if (f.hasNonNull("NewProjectileData")) {
+                if (f.hasNonNull("NewCharacterData") || bool(f, "ResetTarget")) {
+                  throw new UnsupportedOperationException(
+                      name + " swaps a projectile's row and sets a character's, not modelled");
+                }
+                String projectile = f.get("NewProjectileData").asText();
+                List<String> unmodelled = records.projectile(projectile).unmodelledColumns();
+                if (!unmodelled.isEmpty()) {
+                  throw new UnsupportedOperationException(
+                      name
+                          + " swaps to "
+                          + projectile
+                          + ", which sets columns not modelled: "
+                          + unmodelled);
+                }
+                yield new ChangeGameObjectData(shared, null, false, projectile);
+              }
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
               String newRow = f.path("NewCharacterData").asText();
               records.unit(newRow);
               yield new ChangeGameObjectData(shared, newRow, bool(f, "ResetTarget"));
             }
+            case "ActionExecutionerEvoProjectile" -> executioner(name, shared, f);
             case "ActionRunIfGameObjectExists" ->
                 new RunIfGameObjectExists(
                     shared,
@@ -1241,6 +1275,30 @@ public final class ActionRows {
         }
       }
       return new Knockback(shared, integer(f, "Height"), integer(f, "Duration"));
+    }
+
+    /**
+     * The evolved Executioner's axe controller: its two damages, its strong range, the loader's
+     * 3000 when it is left out, its push and its strong hit's action. A plain hit's action, read
+     * under hitAction, and a push below 1 are refused.
+     */
+    private ExecutionerEvoProjectile executioner(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, false);
+      if (action(f.get("hitAction")) != null) {
+        throw new UnsupportedOperationException(
+            name + " runs an action on a plain hit, which is not modelled");
+      }
+      if (integer(f, "FirstStrongHitPushback") < 1) {
+        throw new UnsupportedOperationException(
+            name + " pushes by less than 1 on a strong hit, which is not modelled");
+      }
+      return new ExecutionerEvoProjectile(
+          shared,
+          integer(f, "Damage"),
+          integer(f, "StrongDamage"),
+          f.hasNonNull("StrongDamageRange") ? integer(f, "StrongDamageRange") : 3000,
+          integer(f, "FirstStrongHitPushback"),
+          action(f.get("StrongHitAction")));
     }
 
     /**

@@ -302,7 +302,9 @@ final class ProjectileFlight {
     int sine = FixedMath.sine1024(FixedMath.div(after * 180, total));
     int nx = p.getStartX() + shiftTowardZero(sine * (p.getAimX() - p.getStartX()));
     int ny = p.getStartY() + shiftTowardZero(sine * (p.getAimY() - p.getStartY()));
-    // The distance flown so far is stored here too; nothing the battle reads uses it.
+    // The distance from the start before the step is stored, which an expression on it reads.
+    p.setPingpongDistance(
+        FixedMath.isqrt(FixedMath.guardedSumOfSquares(x - p.getStartX(), y - p.getStartY())));
     if (p.getData().homingLike()) {
       world.cellPass(p, x, y, 0);
     }
@@ -414,8 +416,8 @@ final class ProjectileFlight {
     ProjectileData data = p.getData();
     int hitId = world.nextHitId();
     // The enchanting copies it carries change both damages, after the hit id is taken.
-    int damage = p.listenedDamage(p.damage(), hitId, false);
-    int towerDamage = p.listenedDamage(p.towerDamage(), hitId, true);
+    int damage = p.listenedDamage(p.damage(), hitId, false, p.getTarget());
+    int towerDamage = p.listenedDamage(p.towerDamage(), hitId, true, p.getTarget());
     ProjectileChain chain = p.getChain();
     boolean onRing = chain != null && chain.isRingPoints();
     int px = onRing ? p.getRingX() : p.getAimX();

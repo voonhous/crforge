@@ -524,6 +524,8 @@ public final class BattleRecords {
           // more.
           "HitEffect",
           "LoopingEffect",
+          // The effect a following area effect shows while it follows nothing.
+          "NoFollowObjectEffect",
           "OneShotEffect",
           "ScaledEffect",
           "ScaledEffectFollowAeO",
@@ -1197,6 +1199,7 @@ public final class BattleRecords {
             .onHitAction(actionName(row, "OnHitAction"))
             .oneHitPerTarget(row.bool("OneHitPerTarget"))
             .followsParent(row.string("FollowBehaviour").equals("FollowParent"))
+            .followsTarget(row.string("FollowBehaviour").equals("FollowTarget"))
             .deflectsProjectiles(row.bool("DeflectProjectilesEnabled"))
             .spawnCharacter(set(row, "SpawnCharacter") ? row.string("SpawnCharacter") : null)
             .spawnIntervalMs(row.intValue("SpawnInterval"))
@@ -1246,8 +1249,9 @@ public final class BattleRecords {
     if (data.oneHitPerTarget() && data.onHitAction() == null) {
       unmodelled.add("OneHitPerTarget");
     }
-    // Only FollowParent is modelled; FollowTarget follows the target of its maker.
-    if (sets(row, "FollowBehaviour") && !data.followsParent()) {
+    // FollowParent follows its parent; FollowTarget the target of the projectile whose impact made
+    // it, the only maker that hands it one. Any other behaviour is not modelled.
+    if (sets(row, "FollowBehaviour") && !data.followsParent() && !data.followsTarget()) {
       unmodelled.add("FollowBehaviour");
     }
     // The Filter is read only by the Shape path, which a row without a Shape never enters.
@@ -1639,6 +1643,7 @@ public final class BattleRecords {
             .projectileStartExtraRadius(row.intValue("ProjectileStartExtraRadius"))
             .pushbackAll(row.bool("PushbackAll"))
             .spawnProjectile(set(row, "SpawnProjectile") ? row.string("SpawnProjectile") : null)
+            .onStartingAction(actionName(row, "OnStartingAction"))
             // The loader stores at least one link for a row that names a spawned projectile.
             .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
             .constantHeight(row.intValue("ConstantHeight"))

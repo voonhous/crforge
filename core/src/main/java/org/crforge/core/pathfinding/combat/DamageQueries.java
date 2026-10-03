@@ -106,6 +106,13 @@ public interface DamageQueries {
    */
   default void hitCounted() {}
 
+  /**
+   * Told in the subtraction, past the battle's hold and with hit points left, before anything is
+   * taken off: the listening runs of what dealt the hit hear of it. Supplied as doing nothing, for
+   * a hit nothing that listens dealt.
+   */
+  default void beforeSubtraction() {}
+
   /** The battle tick a dedupe id is listed with. */
   default int battleTick() {
     return 0;
