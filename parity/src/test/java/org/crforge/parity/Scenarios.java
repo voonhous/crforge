@@ -101,6 +101,22 @@ final class Scenarios {
     return scenario;
   }
 
+  /**
+   * The {@link #knight()} battle with side 1's towers the Dagger Duchess's (support card 159000002)
+   * and side 0's Giant in place of its Knight: the Giant takes deck index 0 and the Knight index 3,
+   * so the Giant is in the opening hand, and it is played where the Knight was, on tick 220.
+   */
+  static ObjectNode giantVsDuchessTower() {
+    ObjectNode scenario = knight();
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    ((ObjectNode) battle.path("deck1").path("sc").get(0)).put("d", 159000002);
+    ((ObjectNode) battle.path("deck0").path("sp").get(0)).put("d", 26000003);
+    ((ObjectNode) battle.path("deck0").path("sp").get(3)).put("d", 26000000);
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 220, 26000003, 0x50400800, 3500, 14000);
+    return scenario;
+  }
+
   /** Adds side 0's play of a card, given 20 ticks before the tick it runs on. */
   private static void addPlay(ArrayNode commands, int runTick, int card, int item, int x, int y) {
     ObjectNode command = commands.addObject();

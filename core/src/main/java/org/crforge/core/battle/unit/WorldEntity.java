@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
@@ -681,7 +682,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
       @Override
       public boolean hitListeners() {
-        return !hitListenerRuns().isEmpty() || berserking() || ghostEvoRunning();
+        return !hitListenerRuns().isEmpty()
+            || berserking()
+            || ghostEvoRunning()
+            || burstAttackRunning();
       }
 
       @Override
@@ -748,6 +752,49 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
     }
     return false;
+  }
+
+  /** Whether a charge counter's run is listed, which spends a charge on every landed attack. */
+  private boolean burstAttackRunning() {
+    if (actionHolder == null || data.king()) {
+      return false;
+    }
+    for (ActionInstance instance : actionHolder.running()) {
+      if (instance instanceof BurstAttack.Run) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * What a charge counter's run reads of the entity - whether its targeting component is on, its
+   * attack timer and its buffs' scaling of a time step - and the attack sequence index it stores,
+   * as an index-setting action does with the component on.
+   */
+  @Override
+  public BurstAttack.Host burstAttackHost(BurstAttack action) {
+    return new BurstAttack.Host() {
+      @Override
+      public boolean targetingActive() {
+        return isActive(0);
+      }
+
+      @Override
+      public int attackTimerMs() {
+        return targeting.getAttackTimerMs();
+      }
+
+      @Override
+      public int timeStep(int stepMs) {
+        return buffs.hitSpeed(stepMs);
+      }
+
+      @Override
+      public void setAttackSequenceIndex(int index) {
+        WorldEntity.this.setAttackSequenceIndex(index, false);
+      }
+    };
   }
 
   /**

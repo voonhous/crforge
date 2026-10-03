@@ -56,18 +56,15 @@ public final class ReplayScenario {
   private static final String SUPPORT_RARITIES = "support_rarities";
 
   /**
-   * The tower selections the simulator builds, by support card: the princess towers and the
-   * cannoneer towers, each placed from the card's spawn group.
+   * The tower selections the simulator builds, by support card: the princess towers, the cannoneer
+   * towers and the Dagger Duchess's towers, each placed from the card's spawn group.
    */
   private static final Set<String> BUILT_TOWER_SELECTIONS =
-      Set.of("King_PrincessTowers", "King_CannonTowers");
+      Set.of("King_PrincessTowers", "King_CannonTowers", "King_KnifeTowers");
 
   /** What the simulator does not model of each other tower selection, by support card. */
   private static final Map<String, String> UNBUILT_TOWER_SELECTIONS =
       Map.of(
-          "King_KnifeTowers",
-          "the Dagger Duchess, whose burst attack (ActionBurstAttack) and attack sequence are not"
-              + " modelled",
           "GoblinQueen_SpawnAbility",
           "the Goblin Queen's towers, a selection the game data marks not in use",
           "King_ChefTowers",
