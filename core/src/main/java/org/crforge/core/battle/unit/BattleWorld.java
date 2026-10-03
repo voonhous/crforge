@@ -2656,9 +2656,9 @@ public class BattleWorld implements HolderPasses {
    * The character spawn of a projectile's impact: its children in the card formation around the
    * impact point, the spread their collision radius when there are several, each created kept
    * inside the arena, at the projectile's level, deploying for the row's deploy time when it has
-   * one, and registered with its registration visit; only then is it moved off the water, onto the
-   * point the relocation gives its created point, which also undoes whatever its registration visit
-   * moved it by.
+   * one, and registered with its registration visit; only then is a child on the ground moved off
+   * the water, onto the point the relocation gives where the child then stands, so the step its
+   * registration visit took is kept.
    *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
@@ -2718,9 +2718,17 @@ public class BattleWorld implements HolderPasses {
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, projectile, spawned, cx, cy);
       }
-      int packed = Relocation.relocate(grid.getWidth(), grid.getHeight(), cx, cy, -1, grid::water);
-      spawned.getView().setX(Relocation.unpackX(packed));
-      spawned.getView().setY(Relocation.unpackY(packed));
+      // The relocation reads where the child stands after its registration visit (0xe36e9c..
+      // 0xe36eb0), so the step that visit took is kept, and runs only for a child on the ground
+      // (0xe38fe4, its height and height offset, 0xe36ebc).
+      GridEntity view = spawned.getView();
+      if (view.getZ() + view.getHeightOffset() == 0) {
+        int packed =
+            Relocation.relocate(
+                grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), -1, grid::water);
+        view.setX(Relocation.unpackX(packed));
+        view.setY(Relocation.unpackY(packed));
+      }
     }
   }
 
