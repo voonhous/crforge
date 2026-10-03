@@ -587,7 +587,9 @@ class BattleActionSpawnRunTest {
         "shield_lost_wizard",
         "shield_lost_recruits",
         "mega_knight_ev1_uppercut",
-        "baby_dragon_ev1_wind"
+        "baby_dragon_ev1_wind",
+        "knight_ev1_tower_knight",
+        "knight_ev1_fireball_valkyrie"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
