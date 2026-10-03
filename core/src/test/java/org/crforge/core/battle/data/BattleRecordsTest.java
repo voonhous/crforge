@@ -70,6 +70,78 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "a unit that stops walking for a while is loaded at a speed raised by its walk and wait"
+          + " times, so its pauses cost it nothing")
+  void aWalkAndWaitUnitsSpeedIsRaisedAsItLoads() {
+    // (WaitMS + StopMovementAfterMS) * 1000 / StopMovementAfterMS, truncated, times Speed, over
+    // 1000, truncated.
+    // The Giant: 45 at 640 / 100, a ratio of 1156.
+    assertThat(records.unit("Giant").speed()).isEqualTo(52);
+    assertThat(records.unit("Giant").stopMovementAfterMs()).isEqualTo(640);
+    assertThat(records.unit("Giant").waitMs()).isEqualTo(100);
+    // The Golem: 45 at 1000 / 200, a ratio of 1200.
+    assertThat(records.unit("Golem").speed()).isEqualTo(54);
+    // The Ice Golem: 45 at 470 / 80, a ratio of 1170, and 52.65 truncated.
+    assertThat(records.unit("IceGolemite").speed()).isEqualTo(52);
+    // The Goblin Giant: 60 at 640 / 100, 69.36 truncated.
+    assertThat(records.unit("GoblinGiant").speed()).isEqualTo(69);
+    // A unit that never stops keeps its column.
+    assertThat(records.unit("Knight").speed()).isEqualTo(60);
+    assertThat(records.unit("Knight").stopMovementAfterMs()).isZero();
+  }
+
+  @Test
+  @DisplayName("the speed a row is loaded at: its column, raised only by a walk time of at least 1")
+  void theLoadedSpeed() {
+    assertThat(BattleRecords.loadedSpeed(45, 640, 100)).isEqualTo(52);
+    assertThat(BattleRecords.loadedSpeed(30, 470, 80)).isEqualTo(35);
+    assertThat(BattleRecords.loadedSpeed(180, 640, 100)).isEqualTo(208);
+    // No walk time: the wait is not read.
+    assertThat(BattleRecords.loadedSpeed(45, 0, 100)).isEqualTo(45);
+    assertThat(BattleRecords.loadedSpeed(45, -5, 100)).isEqualTo(45);
+    // A walk time without a wait leaves the speed as it is.
+    assertThat(BattleRecords.loadedSpeed(45, 640, 0)).isEqualTo(45);
+    // Each division truncates on its own: 1999 * 1000 / 1000 = 1999, and 1999 * 1 / 1000 = 1.
+    assertThat(BattleRecords.loadedSpeed(1, 1000, 999)).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a row without a mass is loaded with one worked out from its collision radius, and every"
+          + " mass is held between 1 and 20")
+  void aRowsMassIsWorkedOutAndHeldAsItLoads() {
+    // A building's row writes no mass: (radius * radius / 250) * radius / 62500, held to 20.
+    assertThat(records.unit("PrincessTower").mass()).isEqualTo(20);
+    assertThat(records.unit("KingTower").mass()).isEqualTo(20);
+    // A written mass within the bounds is kept.
+    assertThat(records.unit("Knight").mass()).isEqualTo(6);
+    assertThat(records.unit("Skeleton").mass()).isEqualTo(1);
+    assertThat(records.unit("Giant").mass()).isEqualTo(18);
+  }
+
+  @Test
+  @DisplayName(
+      "the mass a row is loaded at: its column held to 1..20, or its radius's when it is 0")
+  void theLoadedMass() {
+    // Radius 1000: 4000 * 1000 / 62500 = 64, held to 20.
+    assertThat(BattleRecords.loadedMass(0, 1000)).isEqualTo(20);
+    // Radius 500: 1000 * 500 / 62500 = 8.
+    assertThat(BattleRecords.loadedMass(0, 500)).isEqualTo(8);
+    // Radius 600: 1440 * 600 / 62500 = 13.8, truncated.
+    assertThat(BattleRecords.loadedMass(0, 600)).isEqualTo(13);
+    // Radius 300: 360 * 300 / 62500 = 1.7, truncated to 1.
+    assertThat(BattleRecords.loadedMass(0, 300)).isEqualTo(1);
+    // A radius too small for a whole unit of mass, and none at all, are held up to 1.
+    assertThat(BattleRecords.loadedMass(0, 200)).isEqualTo(1);
+    assertThat(BattleRecords.loadedMass(0, 0)).isEqualTo(1);
+    // A written mass is not worked out, only held: above 20 comes down to 20.
+    assertThat(BattleRecords.loadedMass(6, 500)).isEqualTo(6);
+    assertThat(BattleRecords.loadedMass(28, 500)).isEqualTo(20);
+    assertThat(BattleRecords.loadedMass(20, 1000)).isEqualTo(20);
+  }
+
+  @Test
   @DisplayName("a unit with a flying height flies")
   void aFlyingUnit() {
     UnitData minion = records.unit("Minion");

@@ -18,14 +18,19 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
 /**
- * Replays forty-eight reference trajectories through {@link Battle} and compares every tick.
+ * Replays thirty-seven reference trajectories through {@link Battle} and compares every tick.
  *
  * <p>The five Knight trajectories all start on the bottom side with one set of unit columns. This
- * sweep widens that: sixteen ground units whose speed, attack range, sight range, collision radius
+ * sweep widens that: thirteen ground units whose speed, attack range, sight range, collision radius
  * and deploy time all differ, deployed at random points on both sides, two thirds of them at a
  * point from which the unit first heads for the king tower and then switches to a princess tower. A
  * change to a cell cost, to the default target rule, to the endpoint scan or to lane assignment
  * moves a route somewhere in here even when it leaves the five Knight walks alone.
+ *
+ * <p>The sweep held forty-eight trajectories of sixteen units. Eleven were removed: the model
+ * walked the Giant, the Golem and the Royal Giant at their Speed column as written, where the game
+ * loads a unit that walks in bursts at a raised speed, and it gave every tower a mass of 0, where
+ * the game loads it at 20, which moved one Bowler and one Wizard walk past a tower.
  *
  * <p>The trajectories come from the same model as the Knight ones and carry the same caveat: they
  * pin the simulator to the model, not the model to the game. See {@code
@@ -51,7 +56,7 @@ class BattleTrajectorySweepTest {
 
     List<JsonNode> cases = new ArrayList<>();
     sweep.get("cases").forEach(cases::add);
-    assertThat(cases).as("the sweep file holds its cases").hasSize(48);
+    assertThat(cases).as("the sweep file holds its cases").hasSize(37);
     return cases.stream()
         .map(
             trajectory ->

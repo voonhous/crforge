@@ -11,14 +11,19 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * units per 50 ms step.
  *
  * <p>Nothing here is converted. A speed of 60 is 60 game units per step, a hit speed of 1200 is
- * 1200 ms; the battle steps integer milliseconds, so no column ever passes through a float.
+ * 1200 ms; the battle steps integer milliseconds, so no column ever passes through a float. Two
+ * fields are not their columns as written: the speed of a row with a walk time, which the game
+ * raises as it loads the row, and the mass, which the game works out for a row that writes none and
+ * holds between 1 and 20.
  *
  * @param name the unit's data name, which is also the identity of its configuration row
- * @param speed movement budget in game units per step; 0 for a building
+ * @param speed movement budget in game units per step, as the row is loaded: its Speed column,
+ *     raised for a row that stops walking for a while; 0 for a building
  * @param range attack range
  * @param sightRange how far the unit notices targets
  * @param collisionRadius radius of the unit's collision circle
- * @param mass weight in pushes; 0 for a building
+ * @param mass weight in pushes, as the row is loaded: between 1 and 20, a row that writes none
+ *     (every building) given one from its collision radius
  * @param hitSpeedMs time between two hits
  * @param loadTimeMs wind-up before a hit
  * @param deployTimeMs countdown between placement and the first move

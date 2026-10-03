@@ -561,11 +561,15 @@ public final class BattleRecords {
     UnitData data =
         UnitData.builder()
             .name(row.name())
-            .speed(row.intValue("Speed"))
+            .speed(
+                loadedSpeed(
+                    row.intValue("Speed"),
+                    row.intValue("StopMovementAfterMS"),
+                    row.intValue("WaitMS")))
             .range(row.intValue("Range"))
             .sightRange(row.intValue("SightRange"))
             .collisionRadius(row.intValue("CollisionRadius"))
-            .mass(row.intValue("Mass"))
+            .mass(loadedMass(row.intValue("Mass"), row.intValue("CollisionRadius")))
             .hitSpeedMs(row.intValue("HitSpeed"))
             .loadTimeMs(row.intValue("LoadTime"))
             .deployTimeMs(row.intValue("DeployTime"))
@@ -2109,6 +2113,47 @@ public final class BattleRecords {
    */
   public boolean troopCard(String name) {
     return tables.table(SPELLS_CHARACTERS).has(name);
+  }
+
+  /**
+   * The mass a unit's or building's row is loaded at. A row that writes no mass - every building,
+   * the crown towers among them - is given one worked out from its collision radius as the row is
+   * loaded: the radius squared over 250, truncated, times the radius, over 62500, truncated. Every
+   * mass, written or worked out, is then held to at most 20 and at least 1. A princess tower, of
+   * radius 1000, is loaded at 20; a building of radius 500 at 8.
+   *
+   * @param mass the row's Mass column
+   * @param collisionRadius the row's CollisionRadius column
+   * @return the mass the battle reads
+   */
+  static int loadedMass(int mass, int collisionRadius) {
+    int loaded = mass;
+    if (loaded == 0) {
+      int squareOver250 = Integer.divideUnsigned(collisionRadius * collisionRadius, 250);
+      loaded = squareOver250 * collisionRadius / 62500;
+    }
+    return Math.max(Math.min(loaded, 20), 1);
+  }
+
+  /**
+   * The speed a unit's row is loaded at. A row with a walk time - a unit that walks for
+   * StopMovementAfterMS and then stands for WaitMS, over and over - has its Speed column raised as
+   * the row is loaded, so that the time it stands costs it nothing: the walk and the wait together
+   * over the walk, as a ratio in thousandths, truncated, times the column, over a thousand,
+   * truncated again. A Giant's 45, walking 640 ms and waiting 100, is loaded as 52. A row without a
+   * walk time keeps its column, and its wait is not read.
+   *
+   * @param speed the row's Speed column
+   * @param stopMovementAfterMs the row's StopMovementAfterMS column
+   * @param waitMs the row's WaitMS column
+   * @return the speed the battle reads
+   */
+  static int loadedSpeed(int speed, int stopMovementAfterMs, int waitMs) {
+    if (stopMovementAfterMs < 1) {
+      return speed;
+    }
+    int ratio = (waitMs + stopMovementAfterMs) * 1000 / stopMovementAfterMs;
+    return ratio * speed / 1000;
   }
 
   /** A card's row, looked up in the card tables in turn. */

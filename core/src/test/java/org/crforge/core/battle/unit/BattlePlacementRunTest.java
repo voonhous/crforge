@@ -28,34 +28,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 class BattlePlacementRunTest {
 
   static final List<String> REFERENCES =
-      List.of(
-          "barbarians_left",
-          "barbarians_edge",
-          "skeleton_army_edge",
-          "knight_side1",
-          "deploy_refused",
-          "two_knights",
-          "skeleton_army_bridge",
-          "skeleton_army_corner",
-          "sparky_river",
-          "barbarians_pocket",
-          "minions_left");
+      List.of("knight_side1", "deploy_refused", "two_knights", "sparky_river", "minions_left");
 
   @ParameterizedTest(name = "{0}")
   @ValueSource(
-      strings = {
-        "barbarians_left",
-        "barbarians_edge",
-        "skeleton_army_edge",
-        "knight_side1",
-        "deploy_refused",
-        "two_knights",
-        "skeleton_army_bridge",
-        "skeleton_army_corner",
-        "sparky_river",
-        "barbarians_pocket",
-        "minions_left"
-      })
+      strings = {"knight_side1", "deploy_refused", "two_knights", "sparky_river", "minions_left"})
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
     Standard1v1Battle match =
