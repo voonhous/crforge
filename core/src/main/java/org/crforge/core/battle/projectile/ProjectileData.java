@@ -107,6 +107,12 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param deflectRadius the radius a deflecting area effect measures it by in place of its own; 0
  *     for its own
  * @param actionOnDeflector the action a deflection runs on the deflector, or null
+ * @param customDeflectAction the action a deflection runs on the projectile in place of turning it,
+ *     or null
+ * @param useCustomMovement true for a projectile whose flight visit moves it not at all, which a
+ *     run on it moves instead, as the evolved Snowball's rolling snowball rolls
+ * @param spawnAxisY true for a projectile whose impact aims the projectile it spawns straight
+ *     forward for its side, its minimum distance beyond the aim, in place of the fan
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -180,6 +186,9 @@ public record ProjectileData(
     int deflectBehaviour,
     int deflectRadius,
     String actionOnDeflector,
+    String customDeflectAction,
+    boolean useCustomMovement,
+    boolean spawnAxisY,
     List<String> unmodelledColumns) {
 
   /** The deflection bit of a projectile no deflecting area effect turns around. */

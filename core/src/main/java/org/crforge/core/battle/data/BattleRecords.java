@@ -81,18 +81,13 @@ public final class BattleRecords {
 
   /**
    * The columns of a projectile the impact does not model: the action on reaching its target,
-   * spawned projectiles laid along an axis, and the push's floor and a push along the flight. A
+   * spawned projectiles laid along the width, and the push's floor and a push along the flight. A
    * spell whose projectile, or the projectile that one spawns, sets one is refused as it is cast or
    * spawned, and a unit's shot as it is fired. The area effect it spawns is modelled unless its row
    * is refused.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
-      List.of(
-          "OnTargetReachedAction",
-          "SpawnAxisX",
-          "SpawnAxisY",
-          "MinPushback",
-          "DoDirectionalPushback");
+      List.of("OnTargetReachedAction", "SpawnAxisX", "MinPushback", "DoDirectionalPushback");
 
   /** The target limit the loader stores for a projectile row that leaves it empty. */
   private static final int DEFAULT_MAXIMUM_TARGETS = 1000;
@@ -486,6 +481,7 @@ public final class BattleRecords {
           "PrestigeRedExportName3",
           "PrestigeSWF",
           "RedExportName",
+          "RedShadowExportName",
           "Scale",
           "ShadowDisableRotate",
           "ShadowExportName",
@@ -856,15 +852,14 @@ public final class BattleRecords {
       }
     }
     // The special attack is modelled in one shape: a troop that loads it in its ring and fires its
-    // special projectile. A special projectile without a ring is another kind of special, a ring
-    // without a projectile a special direct hit, and a building's special one whose owner has no
-    // movement component. A special that lists its targets, which the ring would not re-arm on, is
-    // refused as a column nothing reads.
+    // special projectile. A ring without a projectile is a special direct hit, and a building's
+    // special one whose owner has no movement component. A special projectile without a ring is
+    // never fired: only the ring loads a special hit, the other special columns are set by no row,
+    // and the charged shot that would also take it is refused for a unit that fires, so the row's
+    // own projectile is every shot, as the evolved Firecracker's are. A special that lists its
+    // targets, which the ring would not re-arm on, is refused as a column nothing reads.
     boolean ring = sets(row, "SpecialRange");
     boolean special = sets(row, "ProjectileSpecial");
-    if (special && !ring) {
-      columns.add("ProjectileSpecial");
-    }
     if (ring && (!special || row.bool("IsBuilding"))) {
       columns.add("SpecialRange");
     }
@@ -1678,6 +1673,9 @@ public final class BattleRecords {
             .deflectRadius(row.intValue("DeflectRadius"))
             .actionOnDeflector(
                 set(row, "ActionOnDeflector") ? row.string("ActionOnDeflector") : null)
+            .customDeflectAction(actionName(row, "CustomDeflectAction"))
+            .useCustomMovement(row.bool("UseCustomMovement"))
+            .spawnAxisY(row.bool("SpawnAxisY"))
             .build();
     List<String> unmodelled =
         new ArrayList<>(

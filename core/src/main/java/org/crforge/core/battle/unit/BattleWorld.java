@@ -2729,9 +2729,11 @@ public class BattleWorld implements HolderPasses {
    * aimed beyond the parent's aim along the line it came, that line turned by the spawned row's
    * spawn radius, taken as degrees, times the projectile's step in the fan over the count - the
    * steps running from minus half the count up by one - at the parent's level, with the parent's
-   * root. Each is handed to the holder, which admits it at the next cleanup, and one that flies to
-   * a point runs its first pass at once, its body widened by the row's start radius, before the
-   * next is made.
+   * root. A parent whose row lays its spawn along the length aims each at the parent's minimum
+   * distance straight beyond its aim, forward for its side - up the length for side 0, down for
+   * side 1 - in place of the fan's line. Each is handed to the holder, which admits it at the next
+   * cleanup, and one that flies to a point runs its first pass at once, its body widened by the
+   * row's start radius, before the next is made.
    *
    * @param parent the projectile that landed
    */
@@ -2751,7 +2753,14 @@ public class BattleWorld implements HolderPasses {
       int[] vec = {parent.getAimX() - parent.getStartX(), parent.getAimY() - parent.getStartY()};
       FixedMath.rotate1024(vec, data.spawnRadius() * step / fan);
       ProjectileEntity projectile = new ProjectileEntity(this, data, parent.side());
-      projectile.launchSpawned(parent, vec[0] + parent.getAimX(), vec[1] + parent.getAimY());
+      if (parent.getData().spawnAxisY()) {
+        // The side's sign: -1 for side 0, whose forward is up the length, else 1.
+        int sign = (parent.side() & 1) == 0 ? -1 : 1;
+        projectile.launchSpawned(
+            parent, parent.getAimX(), parent.getAimY() - sign * parent.getData().minDistance());
+      } else {
+        projectile.launchSpawned(parent, vec[0] + parent.getAimX(), vec[1] + parent.getAimY());
+      }
       holder.add(projectile);
       registrationPass(projectile);
       step++;
@@ -4306,6 +4315,13 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** Tells the observers a run that waited for its cause to leave scheduled its action. */
+  void instigatorGone(WorldEntity unit, String action, String scheduled) {
+    for (WorldObserver observer : observers) {
+      observer.instigatorGone(tick, unit, action, scheduled);
+    }
+  }
+
   /** Tells the observers an action run at an age was scheduled on an area effect. */
   void aliveTimerFired(AreaEffectEntity areaEffect, String action) {
     for (WorldObserver observer : observers) {
@@ -4811,6 +4827,281 @@ public class BattleWorld implements HolderPasses {
       observer.axePushed(tick, axe, target, x, y, distance, hitId);
     }
     character.pushedFrom(x, y, distance);
+  }
+
+  /** A roll started on a projectile, with the destination it took. */
+  public void rollStarted(
+      ProjectileEntity projectile, String action, int phase, int destinationX, int destinationY) {
+    for (WorldObserver observer : observers) {
+      observer.rollStarted(tick, projectile, action, phase, destinationX, destinationY);
+    }
+  }
+
+  /** A capture started on a projectile. */
+  public void captureStarted(ProjectileEntity projectile, String action, int phase) {
+    for (WorldObserver observer : observers) {
+      observer.captureStarted(tick, projectile, action, phase);
+    }
+  }
+
+  /** The not-placeable value alone, which a cell blocks a roll's destination with. */
+  private static final int ROLL_BLOCKING_CELL = TileMap.NOT_PLACEABLE_BIT;
+
+  /** The tags a capture's drag raises on its unit for one step. */
+  static final long CAPTURE_TAGS =
+      EntityFlags.NO_DASH
+          | EntityFlags.BUILDING_DEATH_SPAWN_FIND_LOCATION
+          | EntityFlags.ABILITY_DISABLED
+          | EntityFlags.NO_REFLECTED_ATTACK
+          | EntityFlags.CAPTURED;
+
+  /**
+   * The deflection pass a roll runs at its projectile's point as it starts and after each step,
+   * which finds nothing without a deflecting area effect; one in the battle is refused.
+   *
+   * @param projectile the rolling projectile
+   */
+  public void rollDeflectionPass(ProjectileEntity projectile) {
+    if (!deflectors().isEmpty()) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " rolls beside a deflecting area effect, which is not modelled");
+    }
+  }
+
+  /**
+   * Whether a roll's destination is blocked: off the map, or with a cell of the not-placeable value
+   * alone in the two by two block of its tile.
+   *
+   * @param x the point along the width
+   * @param y the point along the length
+   */
+  public boolean rollBlocked(int x, int y) {
+    if ((x | y) < 0 || x >= tileMap.widthUnits() || y >= tileMap.heightUnits()) {
+      return true;
+    }
+    int col = (x / TileMap.CELL_UNITS) & ~1;
+    int row = (y / TileMap.CELL_UNITS) & ~1;
+    for (int j = 0; j < 2; j++) {
+      for (int i = 0; i < 2; i++) {
+        if (grid.tiles(col + i, row + j) == ROLL_BLOCKING_CELL) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The query a roll runs around its projectile: the object query at the projectile's point,
+   * testing a building by its square, the filter asked for the projectile's side and row name.
+   *
+   * @param projectile the rolling projectile
+   * @param radius the circle's radius
+   * @param filter the filter row
+   */
+  public List<WorldEntity> rollQuery(
+      ProjectileEntity projectile, int radius, GameObjectFilter filter) {
+    return objectQuery(
+        projectile.getX(),
+        projectile.getY(),
+        projectile.side(),
+        projectile.getData().name(),
+        radius,
+        filter,
+        true);
+  }
+
+  /**
+   * A roll's buff on what it found: with no parent, the projectile its source, at its level and for
+   * its side.
+   *
+   * @param projectile the rolling projectile
+   * @param target what it found
+   * @param buff the buff's row name
+   * @param timeMs how long it lasts
+   */
+  public void rollBuff(ProjectileEntity projectile, WorldEntity target, String buff, int timeMs) {
+    for (WorldObserver observer : observers) {
+      observer.rollBuffed(tick, projectile, target, buff, timeMs);
+    }
+    target
+        .getBuffs()
+        .apply(
+            records.buff(buff), timeMs, projectile.getPackedLevel(), projectile, projectile.side());
+  }
+
+  /**
+   * A roll moved its projectile, or put it on its destination and released it.
+   *
+   * @param projectile the rolling projectile
+   * @param released true for the step that released it
+   */
+  public void rolled(ProjectileEntity projectile, boolean released) {
+    for (WorldObserver observer : observers) {
+      observer.rolled(tick, projectile, released);
+    }
+  }
+
+  /** Whether an object with an id is in the live list and alive, as a lock's holder is tested. */
+  public boolean listedAndAlive(int id) {
+    return listedAlive(id);
+  }
+
+  /** The entity with an id in the live list, or null for none or for another kind of object. */
+  public WorldEntity liveEntity(int id) {
+    return liveObject(id) instanceof WorldEntity entity ? entity : null;
+  }
+
+  /**
+   * The query a capture runs around its projectile: the object query at the projectile's point, the
+   * filter asked for the projectile's side and row name.
+   *
+   * @param projectile the capturing projectile
+   * @param radius the circle's radius
+   * @param filter the filter row
+   */
+  public List<WorldEntity> captureQuery(
+      ProjectileEntity projectile, int radius, GameObjectFilter filter) {
+    return objectQuery(
+        projectile.getX(),
+        projectile.getY(),
+        projectile.side(),
+        projectile.getData().name(),
+        radius,
+        filter,
+        false);
+  }
+
+  /** Whether a claimed unit still passes a capture's filter, asked for the projectile's side. */
+  public boolean capturePasses(
+      ProjectileEntity projectile, WorldEntity unit, GameObjectFilter filter) {
+    return filter.matches(unit.filterSubject(), projectile.side() & 1, projectile.getData().name());
+  }
+
+  /** A capture asked for a lock on a unit, with the request's answer. */
+  public void captureRequested(
+      ProjectileEntity projectile, WorldEntity unit, int priority, boolean answer) {
+    for (WorldObserver observer : observers) {
+      observer.captureRequested(tick, projectile, unit, priority, answer);
+    }
+  }
+
+  /** A capture scheduled an action on an object, with another as its cause. */
+  public void captureScheduled(BattleEntity owner, BattleEntity cause, String action) {
+    for (WorldObserver observer : observers) {
+      observer.captureScheduled(tick, owner, cause, action);
+    }
+  }
+
+  /**
+   * A capture's buff on a unit it captured: the projectile its parent and source, at its level and
+   * for its side.
+   */
+  public void captureBuff(ProjectileEntity projectile, WorldEntity unit, String buff, int timeMs) {
+    unit.getBuffs()
+        .apply(
+            records.buff(buff),
+            timeMs,
+            projectile.getPackedLevel(),
+            projectile,
+            projectile.side(),
+            projectile);
+  }
+
+  /** Whether a unit's tag word holds the hidden tag. */
+  public boolean taggedHidden(WorldEntity unit) {
+    return (unit.getView().getFlags() & EntityFlags.HIDDEN) != 0;
+  }
+
+  /**
+   * The capture's tags on a unit it drags, for one step. Refused: a unit whose death spawns a
+   * building, and a reflecting unit in the battle, whose readers of two of the tags are not
+   * modelled.
+   */
+  public void captureTagged(WorldEntity unit) {
+    String deathSpawn = unit.getData().deathSpawnCharacter();
+    if (deathSpawn != null && records.unit(deathSpawn).building()) {
+      throw new UnsupportedOperationException(
+          unit.name() + " is captured and its death spawns a building, not modelled");
+    }
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof WorldEntity other && other.getData().reflectedAttackRadius() >= 1) {
+        throw new UnsupportedOperationException(
+            unit.name() + " is captured beside the reflecting " + other.name() + ", not modelled");
+      }
+    }
+    unit.raiseCaptureTags(CAPTURE_TAGS);
+  }
+
+  /** A captured unit's pre-hook changed its hidden tag or the capture's tags in its word. */
+  void captureTagsFolded(WorldEntity unit, boolean hidden, long word) {
+    for (WorldObserver observer : observers) {
+      observer.captureTagsFolded(tick, unit, hidden, word);
+    }
+  }
+
+  /**
+   * A capture's drag step: the unit moved toward the projectile's point, then turned to it.
+   *
+   * @param projectile the capturing projectile
+   * @param unit the unit dragged
+   * @param x where it is moved, along the width
+   * @param y where it is moved, along the length
+   * @param toX the projectile's point it turns to, along the width
+   * @param toY the projectile's point it turns to, along the length
+   */
+  public void captureDragged(
+      ProjectileEntity projectile, WorldEntity unit, int x, int y, int toX, int toY) {
+    CharacterEntity character = captured(projectile, unit);
+    character.warpTo(x, y);
+    character.faceToward(toX, toY);
+  }
+
+  /**
+   * A completed drag: the unit put on the projectile's point and, with a movement component, its
+   * jump ended and its route reset. A unit in a jump, or a dash with a height, would be put down
+   * first, which is refused.
+   */
+  public void capturePutOn(ProjectileEntity projectile, WorldEntity unit, int x, int y) {
+    CharacterEntity character = captured(projectile, unit);
+    character.warpTo(x, y);
+    if (character.hasMovementComponent()) {
+      int state = unit.getView().getState();
+      if (state == GridEntityState.JUMPING
+          || (state == GridEntityState.DASHING && unit.getData().jumpHeight() >= 1)) {
+        throw new UnsupportedOperationException(
+            projectile.name() + " captures " + unit.name() + " in the air, not modelled");
+      }
+      character.resetRoute();
+    }
+  }
+
+  /** A captured object as the character it must be. */
+  private static CharacterEntity captured(ProjectileEntity projectile, WorldEntity unit) {
+    if (!(unit instanceof CharacterEntity character)) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " captures " + unit.name() + ", not a character, not modelled");
+    }
+    return character;
+  }
+
+  /**
+   * A capture's step ended.
+   *
+   * @param projectile the capturing projectile
+   * @param captured the ids it holds
+   * @param complete the ids whose drag is complete
+   * @param timesMs the time of each capture
+   */
+  public void captureStepped(
+      ProjectileEntity projectile,
+      List<Integer> captured,
+      List<Integer> complete,
+      List<Integer> timesMs) {
+    for (WorldObserver observer : observers) {
+      observer.captureStepped(
+          tick, projectile, List.copyOf(captured), List.copyOf(complete), List.copyOf(timesMs));
+    }
   }
 
   /**

@@ -1078,11 +1078,11 @@ class BattleRecordsTest {
   void everyUnreadColumnIsListed() {
     BattleRecords records = GameData.records();
     // Read, and modelled in one shape only: a troop's special in its ring firing its special
-    // projectile. A special projectile without a ring, and a building's special, are refused.
+    // projectile. A special projectile without a ring is never fired and carried; a building's
+    // special is refused.
     assertThat(records.unit("Fisherman").unmodelledColumns()).isEmpty();
     assertThat(records.projectile("FishermanProjectile").unmodelledColumns()).isEmpty();
-    assertThat(records.unit("Firecracker_EV1").unmodelledColumns())
-        .containsExactly("ProjectileSpecial");
+    assertThat(records.unit("Firecracker_EV1").unmodelledColumns()).isEmpty();
     assertThat(records.unit("Fisherbarrel").unmodelledColumns()).contains("SpecialRange");
     assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns())
         .containsExactly("OnHitAction");

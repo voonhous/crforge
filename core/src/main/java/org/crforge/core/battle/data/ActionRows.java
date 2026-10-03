@@ -18,6 +18,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
+import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
@@ -35,6 +36,7 @@ import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Heal;
+import org.crforge.core.battle.action.Hide;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
@@ -43,7 +45,9 @@ import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionAtHealth;
+import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunIfInstigatorMatches;
 import org.crforge.core.battle.action.RunOnInstigator;
@@ -219,6 +223,47 @@ public final class ActionRows {
                   "StrongHitAction",
                   "HitAction",
                   "hitAction")),
+          Map.entry(
+              "ActionRollingProjectile",
+              Set.of(
+                  "TargetFilter",
+                  "Speed",
+                  "DistanceY",
+                  "DistanceX",
+                  "Radius",
+                  "BuffOnHit",
+                  "BuffTime")),
+          // The pull's clips and its start effect only show something.
+          Map.entry(
+              "ActionCaptureCharacter",
+              Set.of(
+                  "CaptureRadius",
+                  "DamagePerHit",
+                  "HitFrequency",
+                  "NumberOfUnitsToCapture",
+                  "CapturePriority",
+                  "TargetFilter",
+                  "DragDelay",
+                  "CaptureDragTime",
+                  "HideDistance",
+                  "CaptureCooldown",
+                  "PullCenterOffsetX",
+                  "PullCenterOffsetY",
+                  "HideAction",
+                  "TimePausedWhenGrabbing",
+                  "OnFirstCaptureAction",
+                  "OnCaptureAction",
+                  "ActionOnCapturedObject",
+                  "BuffDuringCapture",
+                  "HeightModifier",
+                  "HeightModifierCap",
+                  "PullEndClipExportName",
+                  "PullFileName",
+                  "PullStartEffect",
+                  "StretchingClipExportName")),
+          // The health bar's offset only shows something.
+          Map.entry("ActionHide", Set.of("Duration", "StopWhenHiderDies", "HealthBarYOffset")),
+          Map.entry("ActionRunActionOnInstigatorDeath", Set.of("ActionToRun")),
           // Every other column a taunt has keeps the loader's default here: the reach by
           // distance, the end as the duration runs out with no falloff, no end by a stun, no
           // building retargeting, the buff removed as it finishes, and no invalid or crown tower
@@ -831,6 +876,25 @@ public final class ActionRows {
               yield new ChangeGameObjectData(shared, newRow, bool(f, "ResetTarget"));
             }
             case "ActionExecutionerEvoProjectile" -> executioner(name, shared, f);
+            case "ActionRollingProjectile" -> rollingProjectile(name, shared, f);
+            case "ActionCaptureCharacter" -> captureCharacter(name, shared, f);
+            case "ActionHide" -> {
+              refuseUnread(name, f, false);
+              // The loader stores true for an empty column.
+              yield new Hide(
+                  shared,
+                  integer(f, "Duration"),
+                  !f.hasNonNull("StopWhenHiderDies") || bool(f, "StopWhenHiderDies"));
+            }
+            case "ActionRunActionOnInstigatorDeath" -> {
+              refuseUnread(name, f, true);
+              BattleAction toRun = action(f.get("ActionToRun"));
+              if (toRun == null) {
+                throw new UnsupportedOperationException(
+                    name + " waits for its cause with no action to run, not modelled");
+              }
+              yield new RunActionOnInstigatorDeath(shared, toRun);
+            }
             case "ActionRunIfGameObjectExists" ->
                 new RunIfGameObjectExists(
                     shared,
@@ -1299,6 +1363,82 @@ public final class ActionRows {
           f.hasNonNull("StrongDamageRange") ? integer(f, "StrongDamageRange") : 3000,
           integer(f, "FirstStrongHitPushback"),
           action(f.get("StrongHitAction")));
+    }
+
+    /**
+     * A rolling projectile's columns. Refused: the shared columns its run does not read, and a row
+     * without a filter or a buff.
+     */
+    private RollingProjectile rollingProjectile(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      for (String column : List.of("TargetFilter", "BuffOnHit")) {
+        if (!sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + " rolls without " + column + ", which is not modelled");
+        }
+      }
+      return new RollingProjectile(
+          shared,
+          RollingProjectile.Columns.builder()
+              .speed(integer(f, "Speed"))
+              .distanceY(integer(f, "DistanceY"))
+              .distanceX(integer(f, "DistanceX"))
+              .radius(integer(f, "Radius"))
+              .buffOnHit(records.buff(f.get("BuffOnHit").asText()).name())
+              .buffTimeMs(integer(f, "BuffTime"))
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              .build());
+    }
+
+    /**
+     * A capture's columns. Its three actions are built here, so a row the battle cannot take is
+     * refused as the capture is built, and each is built again on what it runs on as it is
+     * scheduled. Refused: a delay before the drag, a pause in it, a pull centre off the projectile,
+     * a cooldown, a height change, an action on each completed capture, damage per hit, a row
+     * without a filter or a capture buff, and the shared columns its run does not read.
+     */
+    private CaptureCharacter captureCharacter(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      for (String column :
+          List.of(
+              "DragDelay",
+              "TimePausedWhenGrabbing",
+              "PullCenterOffsetX",
+              "PullCenterOffsetY",
+              "CaptureCooldown",
+              "HeightModifier",
+              "HeightModifierCap",
+              "OnCaptureAction",
+              "DamagePerHit")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + " is a capture that sets " + column + ", which is not modelled");
+        }
+      }
+      for (String column : List.of("TargetFilter", "BuffDuringCapture")) {
+        if (!sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + " captures without " + column + ", which is not modelled");
+        }
+      }
+      BattleAction hide = action(f.get("HideAction"));
+      BattleAction first = action(f.get("OnFirstCaptureAction"));
+      BattleAction onCaptured = action(f.get("ActionOnCapturedObject"));
+      return new CaptureCharacter(
+          shared,
+          CaptureCharacter.Columns.builder()
+              .captureRadius(integer(f, "CaptureRadius"))
+              .numberOfUnitsToCapture(integer(f, "NumberOfUnitsToCapture"))
+              .capturePriority(integer(f, "CapturePriority"))
+              .captureDragTimeMs(integer(f, "CaptureDragTime"))
+              .hideDistance(integer(f, "HideDistance"))
+              .hitFrequencyMs(integer(f, "HitFrequency"))
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              .hideAction(hide == null ? null : hide.name())
+              .onFirstCaptureAction(first == null ? null : first.name())
+              .actionOnCapturedObject(onCaptured == null ? null : onCaptured.name())
+              .buffDuringCapture(records.buff(f.get("BuffDuringCapture").asText()).name())
+              .build());
     }
 
     /**
