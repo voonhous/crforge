@@ -167,4 +167,38 @@ class BattleTargetIndicatorTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("admitted after its maker left");
   }
+
+  @Test
+  @DisplayName(
+      "a machine fighting a princess tower marks the king beyond the ring's outer circle: the"
+          + " query lists the king by its square, and the finder's ring test asks only the inner"
+          + " edge")
+  void theKingIsMarkedByItsSquare() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    // 2244 from the left princess tower, inside the ring's inner edge and in melee reach, and
+    // 7689 from the king's centre, beyond its radius plus the 5750 outer reach: the point clamped
+    // into the king's square is 5713 away, within the query's 5750.
+    CharacterEntity machine =
+        match.deploy(0, GameData.unit("GoblinMachine"), LEVEL, 0, 3857, 23284, "M");
+    TowerEntity king = match.getWorld().kingTower(1);
+    List<Integer> marked = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void targetIndicatorLogged(
+                  int t, CharacterEntity unit, TargetIndicatorAttack.Event event) {
+                if (event instanceof TargetIndicatorAttack.Signalled e) {
+                  marked.add(e.target());
+                }
+              }
+            });
+    for (int tick = 0; tick < 80; tick++) {
+      match.getBattle().step();
+    }
+    assertThat(new int[] {machine.getView().getX(), machine.getView().getY()})
+        .containsExactly(3857, 23284);
+    assertThat(marked).isNotEmpty().allMatch(id -> id == king.getId());
+  }
 }

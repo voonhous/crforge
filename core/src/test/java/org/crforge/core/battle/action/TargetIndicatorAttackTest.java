@@ -15,12 +15,13 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The Goblin Machine's rocket run against a machine of its own row's radius at the origin, facing
- * up the arena, whose query lists every object it is given: the ring's edges, the nearest pick with
- * the const-priority offset, the abort that holds a started cooldown at 0, and the stop tags a shot
+ * up the arena, whose query lists every object strictly within the radius plus the object's own, as
+ * the battle's query does for anything but a building: the ring's edges, the nearest pick with the
+ * const-priority offset, the abort that holds a started cooldown at 0, and the stop tags a shot
  * sets until the next step. The inner edge and the abort are the native cases inner_in, inner_out
- * and stun_after_shot. At the outer edge the native case outer_in marks a Knight at 6249, and in
- * outer_out the battle's strict object query drops one at 6250 before the ring test sees it; here,
- * where the query lists everything, the ring test marks 6250 and not 6251.
+ * and stun_after_shot. The outer edge is the query's alone: the native case outer_in marks a Knight
+ * at 6249, and in outer_out the query drops one at 6250; the finder's ring test asks only the inner
+ * edge.
  */
 class TargetIndicatorAttackTest {
 
@@ -137,7 +138,15 @@ class TargetIndicatorAttackTest {
 
     @Override
     public List<Integer> query(int radius, GameObjectFilter filter) {
-      return new ArrayList<>(objects.keySet());
+      List<Integer> listed = new ArrayList<>();
+      for (Map.Entry<Integer, int[]> object : objects.entrySet()) {
+        int[] o = object.getValue();
+        long reach = (long) radius + o[2];
+        if ((long) o[0] * o[0] + (long) o[1] * o[1] < reach * reach) {
+          listed.add(object.getKey());
+        }
+      }
+      return listed;
     }
 
     @Override
@@ -196,15 +205,15 @@ class TargetIndicatorAttackTest {
 
   @Test
   @DisplayName(
-      "the ring keeps a centre 2500 to 5000 beyond both radii, both ends included: a Knight at"
-          + " 3750 or 6250 is marked, one at 3749 or 6251 is not")
+      "a centre at least 2500 beyond both radii and listed by the query is marked: a Knight at"
+          + " 3750 or 6249 is, one at 3749, or at 6250 where the query drops it, is not")
   void theRingsEdges() {
-    for (int distance : List.of(3749, 3750, 6250, 6251)) {
+    for (int distance : List.of(3749, 3750, 6249, 6250)) {
       Machine machine = new Machine();
       machine.object(5000000, 0, distance, 0);
       // The load passes 1500 on the 31st step.
       machine.steps(31);
-      boolean marked = distance == 3750 || distance == 6250;
+      boolean marked = distance == 3750 || distance == 6249;
       assertThat(machine.made)
           .as("a Knight at %d", distance)
           .isEqualTo(marked ? List.of("signal at 5000000") : List.of());
