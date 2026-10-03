@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
@@ -1229,6 +1230,33 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (layered) {
       foldLayer();
     }
+    if (captureWatched) {
+      long word = view.getFlags() & BattleWorld.CAPTURE_TAGS;
+      boolean hidden = (view.getFlags() & EntityFlags.HIDDEN) != 0;
+      if (word != captureWord || hidden != captureHidden) {
+        captureWord = word;
+        captureHidden = hidden;
+        world.captureTagsFolded(this, hidden, word);
+      }
+    }
+  }
+
+  /**
+   * True once a capture has dragged the entity: from then on each pre-hook tells the observers when
+   * its hidden tag or the capture's tags in its word change.
+   */
+  private boolean captureWatched;
+
+  /** The capture's tags of the word the last pre-hook made. */
+  private long captureWord;
+
+  /** Whether the word the last pre-hook made held the hidden tag. */
+  private boolean captureHidden;
+
+  /** Raises the capture's tags for one step, and watches them from the next pre-hook. */
+  void raiseCaptureTags(long tags) {
+    getView().setPendingFlags(getView().getPendingFlags() | tags);
+    captureWatched = true;
   }
 
   /**
@@ -1376,6 +1404,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       String action, ActionOwner instigator, boolean sameTeam, String chosen) {
     world.filteredByTeam(
         this, action, instigator instanceof SpawnHost host ? host : null, sameTeam, chosen);
+  }
+
+  @Override
+  public void instigatorGone(RunActionOnInstigatorDeath action, BattleAction scheduled) {
+    world.instigatorGone(this, action.name(), scheduled.name());
   }
 
   /** The tags of every action the entity lists, finished ones included. */

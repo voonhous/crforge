@@ -390,6 +390,39 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts a rolling run on the owner, which moves it in place of its flight.
+   *
+   * @param action the roll
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance rollingProjectile(RollingProjectile action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a projectile, not modelled");
+  }
+
+  /**
+   * Starts a capture run on the owner, which captures the enemies around it and carries them.
+   *
+   * @param action the capture
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance captureCharacter(CaptureCharacter action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a projectile, not modelled");
+  }
+
+  /**
+   * Tells the owner's battle a run that waited for its cause to leave schedules its action. By
+   * default nothing.
+   *
+   * @param action the waiting row
+   * @param scheduled the action it schedules on the owner
+   */
+  default void instigatorGone(RunActionOnInstigatorDeath action, BattleAction scheduled) {}
+
+  /**
    * Starts a barrage run on the owner, which makes every bomb's area effect in its first update.
    *
    * @param action the barrage

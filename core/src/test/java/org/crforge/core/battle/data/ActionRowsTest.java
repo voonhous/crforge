@@ -23,15 +23,19 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
+import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
+import org.crforge.core.battle.action.Hide;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.RollingProjectile;
+import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
@@ -323,6 +327,85 @@ class ActionRowsTest {
         assertThatThrownBy(() -> rows.build("AxeMan_EV1_Projectile_Controller", INERT_BINDING))
             .isInstanceOf(UnsupportedOperationException.class)
             .hasMessageContaining(change.getKey());
+      }
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Snowball's roll, capture, hide and wait read their columns, the hide stopping"
+          + " with its hider when the row leaves it empty; a capture's unmodelled columns, one"
+          + " without a capture buff and a roll without a buff are refused")
+  void theSnowballActionsAreBuilt(@TempDir Path folder) throws IOException {
+    RollingProjectile roll =
+        (RollingProjectile)
+            GameData.actions().build("SnowballSpell_EV1_rolling_projectile", INERT_BINDING);
+    assertThat(roll.getColumns().speed()).isEqualTo(300);
+    assertThat(roll.getColumns().distanceY()).isEqualTo(4500);
+    assertThat(roll.getColumns().distanceX()).isZero();
+    assertThat(roll.getColumns().radius()).isEqualTo(2500);
+    assertThat(roll.getColumns().buffOnHit()).isEqualTo("snowball_spell_ev1_hit");
+    assertThat(roll.getColumns().buffTimeMs()).isEqualTo(4000);
+    assertThat(roll.getColumns().targetFilter()).isNotNull();
+
+    CaptureCharacter capture =
+        (CaptureCharacter)
+            GameData.actions().build("SnowballSpell_EV1_capture_unit", INERT_BINDING);
+    CaptureCharacter.Columns c = capture.getColumns();
+    assertThat(c.captureRadius()).isEqualTo(2500);
+    assertThat(c.numberOfUnitsToCapture()).isEqualTo(1000);
+    assertThat(c.capturePriority()).isEqualTo(10);
+    assertThat(c.captureDragTimeMs()).isEqualTo(300);
+    assertThat(c.hideDistance()).isEqualTo(100);
+    assertThat(c.hitFrequencyMs()).isEqualTo(1000000);
+    assertThat(c.hideAction()).isEqualTo("SnowballSpell_EV1_hide_captured_unit");
+    assertThat(c.onFirstCaptureAction()).isEqualTo("snowball_spell_ev1_on_capture_visual");
+    assertThat(c.actionOnCapturedObject()).isEqualTo("snowball_spell_ev1_run_action_on_release");
+    assertThat(c.buffDuringCapture()).isEqualTo("snowball_spell_ev1_incapacitate_target");
+
+    Hide hide =
+        (Hide) GameData.actions().build("SnowballSpell_EV1_hide_captured_unit", INERT_BINDING);
+    assertThat(hide.getDurationMs()).isZero();
+    assertThat(hide.isStopWhenHiderDies()).isTrue();
+    assertThat(hide.singleton()).isTrue();
+    RunActionOnInstigatorDeath release =
+        (RunActionOnInstigatorDeath)
+            GameData.actions().build("snowball_spell_ev1_run_action_on_release", INERT_BINDING);
+    assertThat(release.getActionToRun().name()).isEqualTo("snowball_spell_ev1_after_release");
+    // The evolved Goblin Cage's capture sets columns no reference holds.
+    assertThatThrownBy(() -> GameData.actions().build("GoblinCage_EV1_CaptureUnit", INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class);
+
+    record Change(String row, String expected, Consumer<ObjectNode> change) {}
+    List<Change> changes =
+        List.of(
+            new Change("SnowballSpell_EV1_capture_unit", "DragDelay", f -> f.put("DragDelay", 100)),
+            new Change(
+                "SnowballSpell_EV1_capture_unit",
+                "BuffDuringCapture",
+                f -> f.remove("BuffDuringCapture")),
+            new Change(
+                "SnowballSpell_EV1_rolling_projectile", "BuffOnHit", f -> f.remove("BuffOnHit")),
+            new Change(
+                "SnowballSpell_EV1_hide_captured_unit",
+                "stops",
+                f -> f.put("StopWhenHiderDies", false)));
+    for (Change change : changes) {
+      Path dir = folder.resolve(change.expected());
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.change().accept((ObjectNode) rows.get(change.row()).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      if (change.expected().equals("stops")) {
+        assertThat(((Hide) rows.build(change.row(), INERT_BINDING)).isStopWhenHiderDies())
+            .isFalse();
+      } else {
+        assertThatThrownBy(() -> rows.build(change.row(), INERT_BINDING))
+            .isInstanceOf(UnsupportedOperationException.class)
+            .hasMessageContaining(change.expected());
       }
     }
   }
@@ -1112,12 +1195,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 778 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 785 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(778);
+    assertThat(built).as("rows built").isEqualTo(785);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 87, "column", 68, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 79, "column", 69, "spawn type", 13));
   }
 }

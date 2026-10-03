@@ -2189,15 +2189,22 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Hidden while it tunnels to its placement, in the spawn-pathfinding state, while it routes to a
-   * point its ability sent it to, unless its row keeps it visible there, and, for a row that hides
-   * while it does not attack, while its hide counter stands exactly at its hide time.
+   * point its ability sent it to, unless its row keeps it visible there, for a row that hides while
+   * it does not attack, while its hide counter stands exactly at its hide time, and while its tag
+   * word holds the hidden tag, which a hiding run sets.
    */
   @Override
   public boolean hidden() {
     return tunnelling()
         || ingamePathfinding() && !getData().ingamePathfindVisible()
         || getData().hidesWhenNotAttacking()
-            && HideHandler.hidden(unit.timers().getHideCounterMs(), getData().hideTimeMs());
+            && HideHandler.hidden(unit.timers().getHideCounterMs(), getData().hideTimeMs())
+        || taggedHidden();
+  }
+
+  /** Whether its tag word holds the hidden tag. */
+  private boolean taggedHidden() {
+    return (getView().getFlags() & EntityFlags.HIDDEN) != 0;
   }
 
   /** Whether it routes to a point its ability sent it to, in the in-game pathfinding state. */
@@ -2213,11 +2220,12 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * An area effect that reaches hidden units reaches it hidden by its hide counter. One reaching it
-   * in its tunnel, or routing to a point its ability sent it to, is not modelled.
+   * in its tunnel, routing to a point its ability sent it to, or hidden by its tag, is not
+   * modelled.
    */
   @Override
   protected boolean reachableWhileHidden() {
-    return !tunnelling() && !ingamePathfinding();
+    return !tunnelling() && !ingamePathfinding() && !taggedHidden();
   }
 
   /**

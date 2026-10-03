@@ -1990,4 +1990,111 @@ public interface WorldObserver {
 
   /** An action run at an age was scheduled on an area effect. */
   default void aliveTimerFired(int tick, AreaEffectEntity areaEffect, String action) {}
+
+  /**
+   * A run that waited for its cause to leave scheduled its action on its unit.
+   *
+   * @param tick the battle tick
+   * @param unit the unit it ran on
+   * @param action the waiting row's name
+   * @param scheduled the action's row name
+   */
+  default void instigatorGone(int tick, WorldEntity unit, String action, String scheduled) {}
+
+  /**
+   * A captured unit's pre-hook changed its hidden tag or the capture's tags in its word.
+   *
+   * @param tick the battle tick
+   * @param unit the unit
+   * @param hidden whether its word holds the hidden tag
+   * @param word the capture's tags its word holds
+   */
+  default void captureTagsFolded(int tick, WorldEntity unit, boolean hidden, long word) {}
+
+  /**
+   * A roll started on a projectile.
+   *
+   * @param tick the battle tick
+   * @param projectile the projectile
+   * @param action the roll's row name
+   * @param phase the phase of the pending pass that ran it
+   * @param destinationX where it ends, along the width
+   * @param destinationY where it ends, along the length
+   */
+  default void rollStarted(
+      int tick,
+      ProjectileEntity projectile,
+      String action,
+      int phase,
+      int destinationX,
+      int destinationY) {}
+
+  /**
+   * A capture started on a projectile.
+   *
+   * @param tick the battle tick
+   * @param projectile the projectile
+   * @param action the capture's row name
+   * @param phase the phase of the pending pass that ran it
+   */
+  default void captureStarted(int tick, ProjectileEntity projectile, String action, int phase) {}
+
+  /**
+   * A roll buffed what it found.
+   *
+   * @param tick the battle tick
+   * @param projectile the rolling projectile
+   * @param target what it found
+   * @param buff the buff's row name
+   * @param timeMs how long it lasts
+   */
+  default void rollBuffed(
+      int tick, ProjectileEntity projectile, WorldEntity target, String buff, int timeMs) {}
+
+  /**
+   * A roll moved its projectile, or put it on its destination and released it.
+   *
+   * @param tick the battle tick
+   * @param projectile the rolling projectile
+   * @param released true for the step that released it
+   */
+  default void rolled(int tick, ProjectileEntity projectile, boolean released) {}
+
+  /**
+   * A capture asked for a lock on a unit.
+   *
+   * @param tick the battle tick
+   * @param projectile the capturing projectile
+   * @param unit the unit
+   * @param priority the request's priority
+   * @param answer the request's answer
+   */
+  default void captureRequested(
+      int tick, ProjectileEntity projectile, WorldEntity unit, int priority, boolean answer) {}
+
+  /**
+   * A capture scheduled an action on an object, with another as its cause.
+   *
+   * @param tick the battle tick
+   * @param owner what it runs on
+   * @param cause its cause
+   * @param action the action's row name
+   */
+  default void captureScheduled(int tick, BattleEntity owner, BattleEntity cause, String action) {}
+
+  /**
+   * A capture's step ended.
+   *
+   * @param tick the battle tick
+   * @param projectile the capturing projectile
+   * @param captured the ids it holds
+   * @param complete the ids whose drag is complete
+   * @param timesMs the time of each capture
+   */
+  default void captureStepped(
+      int tick,
+      ProjectileEntity projectile,
+      List<Integer> captured,
+      List<Integer> complete,
+      List<Integer> timesMs) {}
 }

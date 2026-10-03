@@ -54,14 +54,26 @@ public final class EntityFlags {
   /** The entity may not be pushed by the other side. */
   public static final long NO_PUSHED_BY_ENEMY = 1L << 17;
 
+  /** The entity is hidden: no attacker takes it and the damage entry refuses it. */
+  public static final long HIDDEN = 1L << 24;
+
   /** The entity's ability may not be cast at all. */
   public static final long ABILITY_DISABLED = 1L << 25;
+
+  /** A building the entity's death spawns looks for a free location. */
+  public static final long BUILDING_DEATH_SPAWN_FIND_LOCATION = 1L << 26;
 
   /** The entity's ability waits: a request leaves it pending. */
   public static final long ABILITY_POSTPONED = 1L << 29;
 
   /** The entity may not use its special attack. */
   public static final long NO_SPECIAL_ATTACK = 1L << 35;
+
+  /** The entity holds a capture: set on a capturing projectile, which keeps no tag word. */
+  public static final long HAS_CAPTURE = 1L << 37;
+
+  /** A reflecting unit does not reflect the entity's attack. */
+  public static final long NO_REFLECTED_ATTACK = 1L << 38;
 
   /** The entity refuses a pushback unless the request lifts the gates. */
   public static final long NO_PUSHBACK = 1L << 41;

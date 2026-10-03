@@ -593,7 +593,10 @@ class BattleActionSpawnRunTest {
         "tesla_ev1_knights",
         "building_evolutions_barbarians",
         "ice_axe_barbarians",
-        "axe_man_ev1_barbarians"
+        "axe_man_ev1_barbarians",
+        "firecracker_ev1_giant",
+        "firecracker_snowball_goblins",
+        "snowball_ev1_goblins"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -735,8 +738,11 @@ class BattleActionSpawnRunTest {
             });
     // A projectile's runs are listed like a unit's, its listener set as it schedules its
     // starting action; and every axe controller's start, damage, hit action and push, and every
-    // swap of a projectile's row.
+    // swap of a projectile's row; a run that logs the evolved Snowball lists its starts and swaps
+    // in its own log.
     List<String> axeLog = new ArrayList<>();
+    List<String> snowLog = new ArrayList<>();
+    List<String> projectileLog = reference.has("snowball_evo") ? snowLog : axeLog;
     match
         .getWorld()
         .addObserver(
@@ -747,7 +753,7 @@ class BattleActionSpawnRunTest {
                     .actionHolder()
                     .setListener(
                         listener(projectile.name(), currentTick, actions, dropping, evoLog));
-                axeLog.add(
+                projectileLog.add(
                     "%d start %s %s %s"
                         .formatted(tick, projectile.name(), projectile.getData().name(), action));
               }
@@ -755,7 +761,7 @@ class BattleActionSpawnRunTest {
               @Override
               public void projectileSwapped(
                   int tick, ProjectileEntity projectile, String from, String to) {
-                axeLog.add(
+                projectileLog.add(
                     "%d swap %s %s %s %d %d"
                         .formatted(
                             tick,
@@ -819,6 +825,9 @@ class BattleActionSpawnRunTest {
                         .formatted(tick, axe.name(), target.name(), x, y, distance, hitId));
               }
             });
+    // Every roll's start, step and buff, every capture's start, lock request, step and schedule,
+    // and every run that waited for its cause to leave.
+    match.getWorld().addObserver(snowballLog(match, snowLog));
     // Every area effect an impact made that follows the projectile's target, and each of its
     // updates with its point and what it follows.
     List<String> iceLog = new ArrayList<>();
@@ -1133,7 +1142,11 @@ class BattleActionSpawnRunTest {
     match.getWorld().addObserver(deployPushLog(currentTick, deployPushLog));
     // What every Clone did, and every area effect a projectile's impact made.
     List<String> cloneLog = new ArrayList<>();
-    match.getWorld().addObserver(cloneLog(currentTick, cloneLog));
+    match
+        .getWorld()
+        .addObserver(
+            cloneLog(
+                currentTick, cloneLog, reference.has("snowball_evo") && reference.has("clones")));
     // Every hit that reached a reflecting unit's reflect.
     List<String> reflectLog = new ArrayList<>();
     match
@@ -1737,7 +1750,28 @@ class BattleActionSpawnRunTest {
                     after.get(2).asInt()));
       }
     }
-    if (reference.has("actions")
+    if (reference.has("snowball_evo")) {
+      // The evolved Snowball's log lists the runs of its four classes, each as it starts or is
+      // re-triggered; the other runs are held by their own logs.
+      List<String> snowballRuns = new ArrayList<>();
+      Set<String> rows = new HashSet<>();
+      for (JsonNode e : reference.get("snowball_evo")) {
+        String kind = e.get("event").asText();
+        if (kind.equals("instance") || kind.equals("retrigger")) {
+          rows.add(e.get("action").asText());
+          snowballRuns.add(
+              "%d run %s %s %d"
+                  .formatted(
+                      e.get("tick").asInt(),
+                      e.get("owner").asText(),
+                      e.get("action").asText(),
+                      e.get("phase").asInt()));
+        }
+      }
+      assertThat(actions.stream().filter(line -> rows.contains(line.split(" ")[3])).toList())
+          .as("every run of the evolved Snowball's classes")
+          .containsExactlyElementsOf(snowballRuns);
+    } else if (reference.has("actions")
         || !(reference.has("buff_after_hits") || reference.has("shield_lost"))) {
       assertThat(actions).as("every run of an action").containsExactlyElementsOf(expectedActions);
     } else if (reference.has("buff_after_hits")) {
@@ -2150,6 +2184,9 @@ class BattleActionSpawnRunTest {
     assertThat(axeLog)
         .as("every axe's start, controller, damage, hit action, push and swap")
         .containsExactlyElementsOf(expectedAxeLog(reference));
+    assertThat(snowLog)
+        .as("every rolling snowball's start, roll, buff, lock, capture, schedule and release")
+        .containsExactlyElementsOf(expectedSnowballLog(reference));
     assertThat(barrageLog)
         .as("every barrage's start and its bombs' areas, and every bomb dropped")
         .containsExactlyElementsOf(expectedBarrageLog(reference));
@@ -2787,8 +2824,11 @@ class BattleActionSpawnRunTest {
 
   /**
    * Lists what every Clone does, and every area effect an impact makes, in the reference's layout.
+   *
+   * @param everyBuffSpawn true for a reference that lists every buff a spawn applies, as the
+   *     evolved Snowball's does
    */
-  static WorldObserver cloneLog(int[] currentTick, List<String> lines) {
+  static WorldObserver cloneLog(int[] currentTick, List<String> lines, boolean everyBuffSpawn) {
     return new WorldObserver() {
       @Override
       public void projectileAreaEffect(int tick, ProjectileEntity p, AreaEffectEntity a) {
@@ -2825,8 +2865,9 @@ class BattleActionSpawnRunTest {
           int packedLevel,
           SpawnHost source) {
         // The reference lists the buffs a Clone's actions spawn and those a projectile's hit
-        // action spawns; every buff any spawn applies is in the buff log.
-        if (!(source instanceof AreaEffectEntity a && a.getData().cloning())
+        // action spawns, or every one; every buff any spawn applies is in the buff log.
+        if (!everyBuffSpawn
+            && !(source instanceof AreaEffectEntity a && a.getData().cloning())
             && !(source instanceof ProjectileEntity)) {
           return;
         }
@@ -3781,6 +3822,246 @@ class BattleActionSpawnRunTest {
                     follow,
                     e.get("countdown").asInt(),
                     e.get("hits").asInt()));
+      }
+    }
+    return expected;
+  }
+
+  /**
+   * What the evolved Snowball's runs did, as its log writes it: each projectile's start and swap,
+   * each roll's start with its destination, its steps and its buffs, each capture's start, lock
+   * request, step and schedule, and each run that waited for its cause to leave.
+   */
+  private static WorldObserver snowballLog(Standard1v1Battle match, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void rollStarted(
+          int tick,
+          ProjectileEntity projectile,
+          String action,
+          int phase,
+          int destinationX,
+          int destinationY) {
+        log.add(
+            "%d instance %s %s %d [%d, %d]"
+                .formatted(tick, projectile.name(), action, phase, destinationX, destinationY));
+      }
+
+      @Override
+      public void captureStarted(int tick, ProjectileEntity projectile, String action, int phase) {
+        log.add("%d instance %s %s %d".formatted(tick, projectile.name(), action, phase));
+      }
+
+      @Override
+      public void rollBuffed(
+          int tick, ProjectileEntity projectile, WorldEntity target, String buff, int timeMs) {
+        log.add(
+            "%d roll_buff %s %s %s %d"
+                .formatted(tick, projectile.name(), target.name(), buff, timeMs));
+      }
+
+      @Override
+      public void rolled(int tick, ProjectileEntity projectile, boolean released) {
+        // The release is listed before the step that made it.
+        if (released) {
+          log.add(
+              "%d roll_end %s %d %d"
+                  .formatted(tick, projectile.name(), projectile.getX(), projectile.getY()));
+        }
+        log.add(
+            "%d roll %s %d %d %d"
+                .formatted(
+                    tick,
+                    projectile.name(),
+                    projectile.getX(),
+                    projectile.getY(),
+                    released ? 1 : 0));
+      }
+
+      @Override
+      public void captureRequested(
+          int tick, ProjectileEntity projectile, WorldEntity unit, int priority, boolean answer) {
+        log.add(
+            "%d lock_request %s %s %d %d"
+                .formatted(tick, projectile.name(), unit.name(), priority, answer ? 1 : 0));
+      }
+
+      @Override
+      public void captureScheduled(
+          int tick, BattleEntity owner, BattleEntity cause, String action) {
+        log.add("%d schedule %s %s %s".formatted(tick, nameOf(owner), nameOf(cause), action));
+      }
+
+      @Override
+      public void captureStepped(
+          int tick,
+          ProjectileEntity projectile,
+          List<Integer> captured,
+          List<Integer> complete,
+          List<Integer> timesMs) {
+        List<String> names = new ArrayList<>();
+        List<String> positions = new ArrayList<>();
+        for (int id : captured) {
+          WorldEntity unit = match.getWorld().liveEntity(id);
+          names.add(unit.name());
+          positions.add(
+              "%s [%d, %d]".formatted(unit.name(), unit.getView().getX(), unit.getView().getY()));
+        }
+        List<String> done = new ArrayList<>();
+        for (int id : complete) {
+          done.add(match.getWorld().liveEntity(id).name());
+        }
+        log.add(
+            "%d capture %s %s %s %s %s"
+                .formatted(tick, projectile.name(), names, done, timesMs, positions));
+      }
+
+      @Override
+      public void instigatorGone(int tick, WorldEntity unit, String action, String scheduled) {
+        log.add("%d instigator_gone %s %s".formatted(tick, unit.name(), scheduled));
+      }
+
+      @Override
+      public void captureTagsFolded(int tick, WorldEntity unit, boolean hidden, long word) {
+        log.add("%d tags %s %d 0x%x".formatted(tick, unit.name(), hidden ? 1 : 0, word));
+      }
+    };
+  }
+
+  /** The name an entity goes by in the logs: a projectile's, or a unit's. */
+  private static String nameOf(BattleEntity entity) {
+    return entity instanceof ProjectileEntity projectile
+        ? projectile.name()
+        : ((WorldEntity) entity).name();
+  }
+
+  /**
+   * The reference's log of the evolved Snowball, in its order, as {@link #snowballLog} writes it.
+   * The runs of its hiding and waiting classes are held by the run list.
+   */
+  private static List<String> expectedSnowballLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("snowball_evo")) {
+      int tick = e.get("tick").asInt();
+      switch (e.get("event").asText()) {
+        case "start" ->
+            expected.add(
+                "%d start %s %s %s"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("config").asText(),
+                        e.get("action").asText()));
+        case "instance" -> {
+          // The hiding and waiting runs on units are held by the run list.
+          if (!e.get("owner").asText().startsWith("proj_")) {
+            continue;
+          }
+          JsonNode to = e.get("destination");
+          expected.add(
+              to == null
+                  ? "%d instance %s %s %d"
+                      .formatted(
+                          tick,
+                          e.get("owner").asText(),
+                          e.get("action").asText(),
+                          e.get("phase").asInt())
+                  : "%d instance %s %s %d [%d, %d]"
+                      .formatted(
+                          tick,
+                          e.get("owner").asText(),
+                          e.get("action").asText(),
+                          e.get("phase").asInt(),
+                          to.get(0).asInt(),
+                          to.get(1).asInt()));
+        }
+        case "roll_buff" ->
+            expected.add(
+                "%d roll_buff %s %s %s %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("unit").asText(),
+                        e.get("buff").asText(),
+                        e.get("time").asInt()));
+        case "roll" ->
+            expected.add(
+                "%d roll %s %d %d %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt(),
+                        e.get("done").asInt()));
+        case "roll_end" ->
+            expected.add(
+                "%d roll_end %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt()));
+        case "lock_request" ->
+            expected.add(
+                "%d lock_request %s %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("unit").asText(),
+                        e.get("priority").asInt(),
+                        e.get("answer").asInt()));
+        case "schedule" ->
+            expected.add(
+                "%d schedule %s %s %s"
+                    .formatted(
+                        tick,
+                        e.get("owner").asText(),
+                        e.get("instigator").asText(),
+                        e.get("action").asText()));
+        case "capture" -> {
+          List<String> positions = new ArrayList<>();
+          for (JsonNode name : e.get("captured")) {
+            JsonNode at = e.get("positions").get(name.asText());
+            positions.add(
+                "%s [%d, %d]".formatted(name.asText(), at.get(0).asInt(), at.get(1).asInt()));
+          }
+          List<Integer> times = new ArrayList<>();
+          e.get("times").forEach(t -> times.add(t.asInt()));
+          expected.add(
+              "%d capture %s %s %s %s %s"
+                  .formatted(
+                      tick,
+                      e.get("projectile").asText(),
+                      names(e.get("captured")),
+                      names(e.get("complete")),
+                      times,
+                      positions));
+        }
+        case "projectile_data" ->
+            expected.add(
+                "%d swap %s %s %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("projectile").asText(),
+                        e.get("row").get(0).asText(),
+                        e.get("row").get(1).asText(),
+                        0,
+                        0));
+        case "instigator_gone" ->
+            expected.add(
+                "%d instigator_gone %s %s"
+                    .formatted(tick, e.get("unit").asText(), e.get("action").asText()));
+        case "tags" ->
+            expected.add(
+                "%d tags %s %d %s"
+                    .formatted(
+                        tick,
+                        e.get("unit").asText(),
+                        e.get("hidden").asInt(),
+                        e.get("b0").asText()));
+        default -> {
+          // Re-triggers and the ends of the hiding runs are held elsewhere.
+        }
       }
     }
     return expected;

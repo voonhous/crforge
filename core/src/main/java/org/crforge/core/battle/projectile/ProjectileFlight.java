@@ -110,6 +110,10 @@ final class ProjectileFlight {
     // The first step would spawn a following area effect and run the initial collision check,
     // neither of which any row carried here has.
     p.takeFirstVisit();
+    // A projectile with a custom movement is moved by a run on it: its visit ends here.
+    if (data.useCustomMovement()) {
+      return;
+    }
     if (p.getHomingTimeMs() >= 1) {
       if (p.getHomingTarget() == null) {
         p.setHomingTimeMs(0);

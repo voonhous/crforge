@@ -11,9 +11,11 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.unit.AreaEffectEntity;
@@ -640,6 +642,10 @@ public class ProjectileEntity extends BattleEntity
    * @param source the projectile's root owner, which it is sent back at
    */
   public void deflect(WorldEntity deflector, WorldEntity source) {
+    if (data.customDeflectAction() != null) {
+      throw new UnsupportedOperationException(
+          name() + " is deflected, which runs " + data.customDeflectAction() + ", not modelled");
+    }
     if (data.homing() && target != null) {
       handBackPending();
     }
@@ -782,6 +788,21 @@ public class ProjectileEntity extends BattleEntity
   public ActionInstance executionerController(ExecutionerEvoProjectile action, int phase) {
     world.executionerStarted(this, action.name(), phase);
     return new ExecutionerRun(action, this);
+  }
+
+  /** Starts a roll on the projectile, which moves it in place of its flight. */
+  @Override
+  public ActionInstance rollingProjectile(RollingProjectile action, int phase) {
+    RollingRun run = new RollingRun(action, this);
+    world.rollStarted(this, action.name(), phase, run.destinationX(), run.destinationY());
+    return run;
+  }
+
+  /** Starts a capture on the projectile. */
+  @Override
+  public ActionInstance captureCharacter(CaptureCharacter action, int phase) {
+    world.captureStarted(this, action.name(), phase);
+    return new CaptureRun(action, this);
   }
 
   /**
