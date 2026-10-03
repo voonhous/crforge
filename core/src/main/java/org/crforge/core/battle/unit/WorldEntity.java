@@ -332,7 +332,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   public DamageResult takeDamage(
       int damage, int dedupeId, int directionX, int directionY, boolean passesHidden) {
-    return takeDamage(damage, dedupeId, directionX, directionY, passesHidden, null);
+    return takeDamage(damage, dedupeId, directionX, directionY, passesHidden, null, null);
   }
 
   /**
@@ -342,6 +342,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    *     area effect's that reaches hidden units
    * @param dealer the character or tower that dealt the hit and counts it once the bookkeeping lets
    *     it through, a projectile's shooter for its impact; null for a hit none dealt
+   * @param cause what the hit came from - the unit, the projectile, the area effect - which a
+   *     shield the hit breaks names as the cause of its action; null for none
    */
   DamageResult takeDamage(
       int damage,
@@ -349,7 +351,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int directionX,
       int directionY,
       boolean passesHidden,
-      WorldEntity dealer) {
+      WorldEntity dealer,
+      SpawnHost cause) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -362,7 +365,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             directionX,
             directionY,
             damageQueries(passesHidden, dealer, true));
-    shieldHit(damage, shieldBefore);
+    shieldHit(damage, shieldBefore, cause);
     refreshHitPoints();
     return result;
   }
@@ -402,7 +405,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
                 reflecting.countHit(WorldEntity.this, true);
               }
             });
-    shieldHit(damage, shieldBefore);
+    shieldHit(damage, shieldBefore, reflecting);
     refreshHitPoints();
     return result;
   }
@@ -1039,7 +1042,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             hitPoints,
             damage,
             damageQueries(false, source instanceof WorldEntity dealer ? dealer : null, false));
-    shieldHit(damage, shieldBefore);
+    shieldHit(damage, shieldBefore, source);
     refreshHitPoints();
     return result;
   }
@@ -1060,15 +1063,36 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * After a hit that met the shield: the battle hears of it, and a hit that brought the shield to 0
    * broke it, in the hit's own pass.
+   *
+   * @param cause what the hit came from, or null for none
    */
-  private void shieldHit(int damage, int shieldBefore) {
+  private void shieldHit(int damage, int shieldBefore, SpawnHost cause) {
     if (shieldBefore < 1 || damage < 1 || hitPoints.getShield() == shieldBefore) {
       return;
     }
     world.shieldHit(this, damage, shieldBefore, hitPoints.getShield());
     if (hitPoints.getShield() == 0) {
-      world.shieldBroken(this);
+      world.shieldBroken(this, cause);
     }
+  }
+
+  /**
+   * The row's action as its shield breaks, scheduled on the entity's own holder with what the
+   * breaking hit came from as its cause and the row's own delay: with none it is queued for the
+   * battle's next pending pass of the tick, or started at once when the break comes inside one. The
+   * hit's excess past the shield is lost with it, whatever the action does.
+   *
+   * @param cause what the breaking hit came from, or null for none
+   */
+  void scheduleShieldLost(SpawnHost cause) {
+    if (data.shieldLostAction() == null) {
+      return;
+    }
+    // Built at each break, from the row the entity has then.
+    BattleAction row = world.getActions().build(data.shieldLostAction(), world.binding(this));
+    world.shieldLostScheduled(this, row.name(), cause);
+    actionHolder()
+        .schedule(row, ActionHolder.OWN_DELAY, false, cause == null ? null : cause.actionHolder());
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */
@@ -1794,7 +1818,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             directionX,
             directionY,
             damageQueries(false, source, false));
-    shieldHit(amount, shieldBefore);
+    shieldHit(amount, shieldBefore, source);
     refreshHitPoints();
 
     return result;
@@ -1806,16 +1830,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @return what the kill did; the death it causes is the battle's to run
    */
   DamageResult takeKill() {
-    return takeKill(null);
+    return takeKill(null, null);
   }
 
   /**
    * Takes a kill, counted by the one that dealt it.
    *
    * @param dealer what counts the kill as its hit: a Kamikaze unit killing itself; null for none
+   * @param cause what the kill came from, which a shield it breaks names as the cause of its
+   *     action; null for none
    * @return what the kill did; the death it causes is the battle's to run
    */
-  DamageResult takeKill(WorldEntity dealer) {
+  DamageResult takeKill(WorldEntity dealer, SpawnHost cause) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -1823,7 +1849,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     int shieldBefore = hitPoints.getShield();
     int whole = hitPoints.getHitPoints();
     DamageResult result = DamageApplication.kill(hitPoints, damageQueries(false, dealer, true));
-    shieldHit(whole, shieldBefore);
+    shieldHit(whole, shieldBefore, cause);
     refreshHitPoints();
 
     return result;
@@ -1845,7 +1871,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     // The unit is its own attacker, and counts the step.
     DamageResult result =
         DamageApplication.kamikazeDrain(hitPoints, damage, damageQueries(false, this, true));
-    shieldHit(damage, shieldBefore);
+    shieldHit(damage, shieldBefore, this);
     refreshHitPoints();
     return result;
   }
@@ -1862,7 +1888,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     int shieldBefore = hitPoints.getShield();
     DamageResult result = DamageApplication.drain(hitPoints, damage, damageQueries());
-    shieldHit(damage, shieldBefore);
+    shieldHit(damage, shieldBefore, null);
     refreshHitPoints();
     return result;
   }

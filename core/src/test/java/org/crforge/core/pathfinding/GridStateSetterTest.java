@@ -246,6 +246,24 @@ class GridStateSetterTest {
   }
 
   @Test
+  @DisplayName(
+      "the charge reset leaves 0 for a row without a charge range when the unit's buffs give one")
+  void aBuffsChargeRangeKeepsTheCharge() {
+    StateTimers timers = new StateTimers();
+    GridStateSetter withCharge =
+        new GridStateSetter(
+            unit, movement, targeting, () -> null, -1, MovementConfig.forGroundUnit());
+    withCharge.setCasting(new GridStateSetter.Casting(timers, 933, 100, false, () -> {}));
+    withCharge.setChargeRangeFromModifiers(() -> 250);
+    withCharge.setState(unit, GridEntityState.CASTING);
+    movement.setChargeProgress(MovementState.CHARGE_INACTIVE);
+
+    withCharge.setState(unit, GridEntityState.STANDING);
+
+    assertThat(movement.getChargeProgress()).isZero();
+  }
+
+  @Test
   @DisplayName("a unit without an ability may not enter the casting state")
   void castingWithoutAnAbilityIsRefused() {
     assertThatThrownBy(() -> setter.setState(unit, GridEntityState.CASTING))

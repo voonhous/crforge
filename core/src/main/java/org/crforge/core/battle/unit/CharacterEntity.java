@@ -566,6 +566,8 @@ public class CharacterEntity extends WorldEntity {
             this::movementChain,
             data.deployTimeMs(),
             unit.movementConfig());
+    // A buff may give a row without a charge range one, which the setter's charge reset reads.
+    setter.setChargeRangeFromModifiers(() -> getBuffs().overrideChargeRange());
     // A unit with an ability casts through its setter, which seeds the cast's countdowns and ends a
     // change into or out of the cast with the combat gate.
     // A unit whose dashes chain starts its chain's next dash, or ends the dash, as it leaves the
@@ -1270,6 +1272,7 @@ public class CharacterEntity extends WorldEntity {
       refused = "another ability";
     } else if (current.chargeRange() != 0
         || next.chargeRange() != 0
+        || getBuffs().overrideChargeRange() != 0
         || current.jumpEnabled()
         || next.jumpEnabled()) {
       refused = "a charge or a river jump";
@@ -2363,7 +2366,10 @@ public class CharacterEntity extends WorldEntity {
   /** The movement pass's answers for the character as it stands now, reference included. */
   private GridMovementQueries movementQueries() {
     return new GridMovementQueries(unit, world.getGrid(), world.getCosts(), world::unitStateOf)
-        .withBuffs(getBuffs().speedPercents(), getBuffs().speed(FOLLOWER_STEP));
+        .withBuffs(
+            getBuffs().speedPercents(),
+            getBuffs().speed(FOLLOWER_STEP),
+            getBuffs().overrideChargeRange());
   }
 
   /** A movement chain over the character's current reference, for one visit or one preparation. */
@@ -2488,14 +2494,34 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The charge reset: the progress back to 0 for a row with a charge range and to no charge for one
-   * without, and the targeting component's strike-now byte cleared. A buff that gives a charge
-   * range is refused with its row.
+   * The charge reset a buff that gives a charge range makes as its instance is listed: the charge
+   * starts from 0 for a row without a charge range of its own, which tracked none. A character that
+   * fires, whose charged shot is not established, is refused.
+   *
+   * @param instance the instance just listed
+   */
+  void buffChargeReset(BuffInstance instance) {
+    if (getData().hasProjectile()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " takes "
+              + instance.getBuff().name()
+              + ", a charge range on a unit that fires, whose charged shot is not established");
+    }
+    int before = unit.movement().getChargeProgress();
+    resetCharge();
+    world.buffChargeReset(this, instance, before, unit.movement().getChargeProgress());
+  }
+
+  /**
+   * The charge reset: the progress back to 0 for a row with a charge range or a character a listed
+   * buff gives one, and to no charge otherwise, and the targeting component's strike-now byte
+   * cleared.
    */
   @Override
   protected void resetCharge() {
-    unit.movement()
-        .setChargeProgress(getData().chargeRange() != 0 ? 0 : MovementState.CHARGE_INACTIVE);
+    boolean charges = getData().chargeRange() != 0 || getBuffs().overrideChargeRange() != 0;
+    unit.movement().setChargeProgress(charges ? 0 : MovementState.CHARGE_INACTIVE);
     unit.targeting().setChargeStrike(false);
   }
 

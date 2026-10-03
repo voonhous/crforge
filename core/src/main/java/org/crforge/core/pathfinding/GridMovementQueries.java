@@ -66,6 +66,9 @@ public final class GridMovementQueries implements MovementQueries {
    */
   private boolean modifierComponent;
 
+  /** The charge range the unit's buffs give it, 0 for none: given with its buffs. */
+  private int chargeRangeFromModifiers;
+
   /** The last budget this visit asked for, kept so the tick driver can report it afterwards. */
   private int lastSpeedBudget;
 
@@ -99,18 +102,20 @@ public final class GridMovementQueries implements MovementQueries {
   }
 
   /**
-   * Gives the answers the unit's buffs: the speed percents the budget scales by and the follower's
-   * time step, which makes the unit one with the modifier component. Of that component's other two
-   * answers, a charge range and a facing held still, neither comes from a buff the battle models,
-   * so both stay 0.
+   * Gives the answers the unit's buffs: the speed percents the budget scales by, the follower's
+   * time step and the charge range a buff overrides, which makes the unit one with the modifier
+   * component. That component's other answer, a facing held still, comes from no buff the battle
+   * models, so it stays 0.
    *
    * @param speedPercents the speed percent of each listed buff
    * @param followerStep 100 scaled by the buffs' speed
+   * @param chargeRange the charge range of the first listed buff that sets one, or 0 for none
    * @return these answers
    */
-  public GridMovementQueries withBuffs(int[] speedPercents, int followerStep) {
+  public GridMovementQueries withBuffs(int[] speedPercents, int followerStep, int chargeRange) {
     this.speedPercents = speedPercents.clone();
     this.followerStep = followerStep;
+    this.chargeRangeFromModifiers = chargeRange;
     this.modifierComponent = true;
     return this;
   }
@@ -118,6 +123,11 @@ public final class GridMovementQueries implements MovementQueries {
   @Override
   public boolean hasModifierComponent() {
     return modifierComponent;
+  }
+
+  @Override
+  public int chargeRangeFromModifiers() {
+    return chargeRangeFromModifiers;
   }
 
   @Override

@@ -582,7 +582,9 @@ class BattleActionSpawnRunTest {
         "valkyrie_ev1_barbarians",
         "royal_giant_ev1_knights",
         "buff_after_hits_barbarians_bats",
-        "buff_after_hits_ghost_evo"
+        "buff_after_hits_ghost_evo",
+        "shield_lost_wizard",
+        "shield_lost_recruits"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -620,6 +622,9 @@ class BattleActionSpawnRunTest {
     // before the placements: a unit's start buff is applied as it is placed.
     List<String> buffAfterHitsLog = new ArrayList<>();
     match.getWorld().addObserver(buffAfterHitsLog(buffAfterHitsLog));
+    // Every action a broken shield scheduled, and every charge reset a listed buff made.
+    List<String> shieldLostLog = new ArrayList<>();
+    match.getWorld().addObserver(shieldLostLog(shieldLostLog));
     List<CharacterEntity> placed = new ArrayList<>();
     if (!reference.get("card").isNull()) {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
@@ -1436,9 +1441,10 @@ class BattleActionSpawnRunTest {
                     after.get(2).asInt()));
       }
     }
-    if (reference.has("actions") || !reference.has("buff_after_hits")) {
+    if (reference.has("actions")
+        || !(reference.has("buff_after_hits") || reference.has("shield_lost"))) {
       assertThat(actions).as("every run of an action").containsExactlyElementsOf(expectedActions);
-    } else {
+    } else if (reference.has("buff_after_hits")) {
       // A run that lists no runs of its own still lists every buff hook it scheduled: each run is
       // one of those, on its unit and tick.
       List<String> hookRuns = new ArrayList<>();
@@ -1453,6 +1459,24 @@ class BattleActionSpawnRunTest {
       assertThat(actions.stream().map(line -> line.substring(0, line.lastIndexOf(' '))).toList())
           .as("every run of an action, each a buff hook the reference scheduled")
           .containsExactlyElementsOf(hookRuns);
+    } else {
+      // A run that lists no runs of its own still lists every run of a broken shield's action,
+      // with its pending pass.
+      List<String> shieldRuns = new ArrayList<>();
+      for (JsonNode e : reference.get("shield_lost")) {
+        if (e.get("event").asText().equals("run")) {
+          shieldRuns.add(
+              "%d run %s %s %d"
+                  .formatted(
+                      e.get("tick").asInt(),
+                      e.get("unit").asText(),
+                      e.get("action").asText(),
+                      e.get("phase").asInt()));
+        }
+      }
+      assertThat(actions)
+          .as("every run of an action, each a broken shield's the reference ran")
+          .containsExactlyElementsOf(shieldRuns);
     }
     List<String> expectedDrops = new ArrayList<>();
     for (JsonNode a : reference.path("actions")) {
@@ -1818,6 +1842,9 @@ class BattleActionSpawnRunTest {
     assertThat(buffAfterHitsLog)
         .as("every count that applied a BuffAfterHits buff and every buff's start or remove action")
         .containsExactlyElementsOf(expectedBuffAfterHitsLog(reference));
+    assertThat(shieldLostLog)
+        .as("every action a broken shield scheduled and every charge reset a listed buff made")
+        .containsExactlyElementsOf(expectedShieldLostLog(reference));
     assertThat(vinesLog)
         .as("every shape selector's start, step and removal, and every air-to-ground run")
         .containsExactlyElementsOf(expectedVinesLog(reference));
@@ -3135,6 +3162,61 @@ class BattleActionSpawnRunTest {
                 .formatted(tick, carrier.name(), action, carrier.actionHolder().passPhase() != 0));
       }
     };
+  }
+
+  /**
+   * Logs every action a broken shield scheduled, with what broke it and whether a pending pass was
+   * in progress, and every charge reset a listed buff that gives a charge range made.
+   */
+  private static WorldObserver shieldLostLog(List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void shieldLostScheduled(
+          int tick, WorldEntity unit, String action, SpawnHost cause, boolean inPendingPass) {
+        log.add(
+            "%d scheduled %s %s %s %b"
+                .formatted(
+                    tick, unit.name(), action, cause == null ? null : cause.name(), inPendingPass));
+      }
+
+      @Override
+      public void buffChargeReset(
+          int tick, CharacterEntity unit, BuffInstance instance, int before, int after) {
+        log.add("%d charge_reset %s %d %d".formatted(tick, unit.name(), before, after));
+      }
+    };
+  }
+
+  /** The reference's broken shields' schedules and charge resets, in its log's order. */
+  private static List<String> expectedShieldLostLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("shield_lost")) {
+      int tick = e.get("tick").asInt();
+      switch (e.get("event").asText()) {
+        case "scheduled" ->
+            expected.add(
+                "%d scheduled %s %s %s %b"
+                    .formatted(
+                        tick,
+                        e.get("unit").asText(),
+                        e.get("action").asText(),
+                        e.get("by").isNull() ? null : e.get("by").asText(),
+                        e.get("in_pending").asBoolean()));
+        case "charge_reset" ->
+            expected.add(
+                "%d charge_reset %s %d %d"
+                    .formatted(
+                        tick,
+                        e.get("unit").asText(),
+                        e.get("charge").get(0).asInt(),
+                        e.get("charge").get(1).asInt()));
+        case "run" -> {
+          // Each run is held by the action runs.
+        }
+        default -> throw new IllegalStateException("unknown shield_lost event " + e);
+      }
+    }
+    return expected;
   }
 
   /** The reference's BuffAfterHits applies and buff hooks, in its log's order. */
