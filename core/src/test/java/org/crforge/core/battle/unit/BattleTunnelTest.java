@@ -195,8 +195,9 @@ class BattleTunnelTest {
     assertThat(made)
         .containsExactly(
             "spawn_area_object Drill_0_GoblinDrill",
-            // A building faces as the dig did as it surfaced: up its side's length.
-            "Drill_0 Drill_0_GoblinDrill 4 1000 1307 facing 0 256");
+            // The building's registration visit attacks the princess tower it surfaced beside, and
+            // an attack tick turns it toward its reference: (2500, -500) scaled to 256.
+            "Drill_0 Drill_0_GoblinDrill 4 1000 1307 facing 251 -50");
     assertThat(dig.getView().getX()).as("on the searched corner").isEqualTo(1000);
     match.getBattle().step();
     assertThat(match.getBattle().getHolder().entities()).doesNotContain(dig);

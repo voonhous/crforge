@@ -3422,21 +3422,20 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The targeting visit's turn toward the reference: the facing becomes the vector to it, scaled to
-   * 256. Only a character running a target indicator attack turns, the one reader of its facing
-   * while it fights; a turn toward no reference is refused for it.
+   * The targeting visit's turn toward the reference: the facing becomes the vector from the unit to
+   * it, scaled to 256; a reference on the unit's own spot leaves the zero vector. A turn toward no
+   * reference changes nothing, and is refused for a character running a target indicator attack,
+   * whose shot reads the facing and where that turn is not established.
    */
   private void turnToward(TargetView reference) {
-    boolean indicating = false;
-    for (ActionInstance instance : actionHolder().running()) {
-      indicating |= instance.getAction() instanceof TargetIndicatorAttack;
-    }
-    if (!indicating) {
-      return;
-    }
     if (reference == null) {
-      throw new UnsupportedOperationException(
-          name() + " turns toward no reference with a target indicator attack, not modelled");
+      for (ActionInstance instance : actionHolder().running()) {
+        if (instance.getAction() instanceof TargetIndicatorAttack) {
+          throw new UnsupportedOperationException(
+              name() + " turns toward no reference with a target indicator attack, not modelled");
+        }
+      }
+      return;
     }
     int[] vector = {reference.x() - getView().getX(), reference.y() - getView().getY()};
     FixedMath.normalize(vector, FACING_LENGTH);

@@ -120,9 +120,11 @@ public interface TargetingQueries {
   }
 
   /**
-   * Turns the unit toward its reference, as the visit does while a special loads, while a dash
-   * winds up and as each attack starts; with no reference, toward none. Nothing by default: the
-   * facing it writes is read only by a target indicator attack's shot.
+   * Turns the unit toward its reference, as the visit does as a special starts to load and while it
+   * loads, while a dash winds up, on every attack tick and as a step crosses a hit boundary; with
+   * no reference, toward none. Nothing by default. The facing it writes is the unit's own: the
+   * avoidance of a unit that walks on afterwards reads it, as a target indicator attack's shot
+   * does.
    *
    * @param reference the reference, or null for none
    */
