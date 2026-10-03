@@ -961,16 +961,18 @@ public final class ActionRows {
     }
 
     /**
-     * A buff spawn row's columns: the buff and its time, nothing more. A buff written inline is the
-     * buff row of its Name. A row that sets any other spawn column, names a buff the battle does
-     * not model or one its parent controls, or gives it a time below 1 is refused.
+     * A buff spawn row's columns: the buff, its time and whether the owner is the source, nothing
+     * more. A buff written inline is the buff row of its Name. A row that sets any other spawn
+     * column, names a buff the battle does not model or one its parent controls, or gives it a time
+     * below 1 is refused.
      */
     private SpawnBuff spawnBuff(String name, ActionRow shared, JsonNode f) {
       f.fieldNames()
           .forEachRemaining(
               column -> {
                 if (spawnColumns().contains(column)
-                    && !Set.of("SpawnData", "SpawnType", "SpawnTime").contains(column)) {
+                    && !Set.of("SpawnData", "SpawnType", "SpawnTime", "ParentGOAsSource")
+                        .contains(column)) {
                   throw new UnsupportedOperationException(
                       name + " spawns a buff and sets " + column + ", which is not modelled");
                 }
@@ -989,7 +991,7 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + " spawns a buff its parent controls or for no time, which is not modelled");
       }
-      return new SpawnBuff(shared, buff, integer(f, "SpawnTime"));
+      return new SpawnBuff(shared, buff, integer(f, "SpawnTime"), bool(f, "ParentGOAsSource"));
     }
 
     /**

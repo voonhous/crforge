@@ -343,6 +343,10 @@ public final class BuffComponent implements BattleComponent {
           new BuffInstance(world.nextBuffKey(), buff, time, level, source, side, parent);
       items.add(instance);
       onListed(instance);
+      // A buff that gives a charge range resets the charge, now that it is listed.
+      if (buff.overrideChargeRange() != 0 && entity instanceof CharacterEntity character) {
+        character.buffChargeReset(instance);
+      }
       hook(instance, instance.getBuff().onStartAction(), true);
       world.buffApplied(entity, instance);
     }
@@ -403,6 +407,13 @@ public final class BuffComponent implements BattleComponent {
                 + " is cloned carrying "
                 + instance.getBuff().name()
                 + ", which runs an action as it is listed or removed, not modelled");
+      }
+      if (instance.getBuff().overrideChargeRange() != 0) {
+        throw new UnsupportedOperationException(
+            original.entity.name()
+                + " is cloned carrying "
+                + instance.getBuff().name()
+                + ", which gives a charge range, not modelled");
       }
       if (instance.getBuff().notCloned()) {
         throw new UnsupportedOperationException(
@@ -476,6 +487,15 @@ public final class BuffComponent implements BattleComponent {
    * locking count, and its parent.
    */
   private void onRemoved(BuffInstance instance) {
+    // The removal resets the charge again, with the instance taken out or not: no reference holds
+    // which.
+    if (instance.getBuff().overrideChargeRange() != 0) {
+      throw new UnsupportedOperationException(
+          entity.name()
+              + " loses "
+              + instance.getBuff().name()
+              + ", which gives a charge range, not modelled");
+    }
     hook(instance, instance.getBuff().onRemoveAction(), false);
     if (instance.getBuff().invisible()) {
       invisibleCount--;
@@ -724,6 +744,19 @@ public final class BuffComponent implements BattleComponent {
   /** A spawn time step a base step scales to, as a Goblin Hut's life state advances its timer. */
   public int spawnSpeed(int base) {
     return scale(BuffData::spawnSpeedMultiplier, base);
+  }
+
+  /**
+   * The charge range the listed buffs give their carrier: the first listed instance's whose row
+   * sets one, whatever comes after it; 0 for none.
+   */
+  public int overrideChargeRange() {
+    for (BuffInstance instance : items) {
+      if (instance.getBuff().overrideChargeRange() != 0) {
+        return instance.getBuff().overrideChargeRange();
+      }
+    }
+    return 0;
   }
 
   /** The speed percents of the listed rows, which the speed budget scales by. */

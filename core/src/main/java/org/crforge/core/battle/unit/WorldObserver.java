@@ -1122,6 +1122,28 @@ public interface WorldObserver {
       int tick, WorldEntity target, int damage, int shieldBefore, int shieldAfter) {}
 
   /**
+   * A listed buff that gives a charge range reset a character's charge.
+   *
+   * @param unit the character
+   * @param instance the instance just listed
+   * @param before the charge progress before the reset, -1 for none tracked
+   * @param after the charge progress after it
+   */
+  default void buffChargeReset(
+      int tick, CharacterEntity unit, BuffInstance instance, int before, int after) {}
+
+  /**
+   * An entity's broken shield scheduled its row's action on the entity's own holder.
+   *
+   * @param unit the entity
+   * @param action the action's row
+   * @param cause what the breaking hit came from, or null for none
+   * @param inPendingPass whether the battle was inside a pending pass, which starts it at once
+   */
+  default void shieldLostScheduled(
+      int tick, WorldEntity unit, String action, SpawnHost cause, boolean inPendingPass) {}
+
+  /**
    * A buff instance was removed: its time ran out, or the not-attacking section took its row off.
    */
   default void buffRemoved(int tick, WorldEntity target, BuffInstance buff) {}

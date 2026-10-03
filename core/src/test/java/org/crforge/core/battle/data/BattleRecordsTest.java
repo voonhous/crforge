@@ -656,7 +656,11 @@ class BattleRecordsTest {
     assertThat(records.unit("Ram_crazy_1").unmodelledColumns())
         .containsExactly("OnStartChargingAction");
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
-    assertThat(records.unit("Wizard_EV1").unmodelledColumns()).contains("ShieldLostAction");
+    // The evolved Wizard runs an action as its shield breaks; a push as it breaks is refused.
+    assertThat(records.unit("Wizard_EV1").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("Wizard_EV1").shieldLostAction()).isEqualTo("Wizard_EV1_ShieldLost");
+    assertThat(records.unit("Recruit_EV1").shieldLostAction()).isEqualTo("Recruit_EV1_StartCharge");
+    assertThat(records.unit("Knight").shieldLostAction()).isNull();
     // The Tesla hides while it does not attack, 800 ms to go down and 800 to come up; its
     // evolution's actions as it rises and hides are not modelled.
     UnitData tesla = records.unit("Tesla");

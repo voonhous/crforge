@@ -153,6 +153,9 @@ public final class BattleRecords {
           // and a buff naming another hands them that one.
           "Clone",
           "AttachedInheritAs",
+          // Read by the charge reset as an instance is listed, and by the post-move charge for a
+          // unit whose row has no charge range.
+          "OverrideChargeRange",
           // Resolved when the tables are derived: a row that names a base already carries every
           // column it inherits.
           "Base");
@@ -235,15 +238,14 @@ public final class BattleRecords {
 
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
-   * refused as it is created. A shield, hiding before the first hit, a buff at a share of its hit
-   * points, the action a completed charge runs, a dash's contact damage, fixed distance, area
-   * effect and closing action, a limit on the elixir a collector makes, a spawner's launches, and
-   * its second and third characters.
+   * refused as it is created. A shield's push as it breaks, hiding before the first hit, a buff at
+   * a share of its hit points, the action a completed charge runs, a dash's contact damage, fixed
+   * distance, area effect and closing action, a limit on the elixir a collector makes, a spawner's
+   * launches, and its second and third characters.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
           "ShieldDiePushback",
-          "ShieldLostAction",
           "HideBeforeFirstHit",
           "BuffOnXHP",
           "OnStartChargingAction",
@@ -510,6 +512,9 @@ public final class BattleRecords {
       Set.of(
           "DeflectedProjectileEffect",
           "DeflectionFBEffect",
+          // Handed to the view's listener at each hit an update makes, which shows it and nothing
+          // more.
+          "HitEffect",
           "LoopingEffect",
           "OneShotEffect",
           "ScaledEffect",
@@ -636,6 +641,7 @@ public final class BattleRecords {
             .attackSequence(attackSequence(row))
             .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
             .onAttackAction(actionName(row, "OnAttackAction"))
+            .shieldLostAction(actionName(row, "ShieldLostAction"))
             .minimumRange(row.intValue("MinimumRange"))
             .sightClip(sightClip(row))
             .sightClipSide(row.intValue("SightClipSide"))
@@ -1382,6 +1388,7 @@ public final class BattleRecords {
         .cloneBuff(row.bool("Clone"))
         .attachedInheritAs(sets(row, "AttachedInheritAs") ? row.string("AttachedInheritAs") : null)
         .gameTagsToSet(tagBits(row.string("GameTagsToSet")))
+        .overrideChargeRange(row.intValue("OverrideChargeRange"))
         .onStartAction(hookAction(row, "OnStartAction"))
         .onRemoveAction(hookAction(row, "OnRemoveAction"))
         .unmodelledColumns(unmodelled)

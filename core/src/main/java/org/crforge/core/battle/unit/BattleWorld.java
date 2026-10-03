@@ -530,7 +530,8 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     int before = hitPointsOf(entity);
-    DamageResult result = entity.takeDamage(damage, 0, directionX, directionY, false, attacker);
+    DamageResult result =
+        entity.takeDamage(damage, 0, directionX, directionY, false, attacker, attacker);
     reflect(entity, attacker, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
@@ -997,7 +998,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void kill(WorldEntity target, WorldEntity killer) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
-    DamageResult result = target.takeKill();
+    DamageResult result = target.takeKill(null, killer);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, target, before, result);
     }
@@ -1165,7 +1166,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void kamikazeKill(WorldEntity unit) {
     int before = unit.getHitPoints().getHitPoints();
-    DamageResult result = unit.takeKill(unit);
+    DamageResult result = unit.takeKill(unit, unit);
     for (WorldObserver observer : observers) {
       observer.kamikazeKilled(tick, unit, before, result);
     }
@@ -1288,7 +1289,7 @@ public class BattleWorld implements HolderPasses {
     }
     // A character's area carries no dedupe id and no direction.
     int before = hitPointsOf(victim);
-    DamageResult result = victim.takeDamage(damage, 0, 0, 0, false, attacker);
+    DamageResult result = victim.takeDamage(damage, 0, 0, 0, false, attacker, attacker);
     reflect(victim, attacker, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.areaHit(tick, attacker, victim, damage, hitId, result);
@@ -1334,7 +1335,8 @@ public class BattleWorld implements HolderPasses {
     int before = hitPointsOf(target);
     // The impact counts for the projectile's shooter, while it is in the battle.
     DamageResult result =
-        target.takeDamage(damage, 0, directionX, directionY, false, projectile.getOwner());
+        target.takeDamage(
+            damage, 0, directionX, directionY, false, projectile.getOwner(), projectile);
     reflect(target, projectile, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.projectileImpacted(tick, projectile, target, damage, result);
@@ -1793,7 +1795,7 @@ public class BattleWorld implements HolderPasses {
   void tetherHit(
       AreaEffectEntity owner, WorldEntity victim, int damage, int directionX, int directionY) {
     int before = hitPointsOf(victim);
-    DamageResult result = victim.takeDamage(damage, 0, directionX, directionY, true);
+    DamageResult result = victim.takeDamage(damage, 0, directionX, directionY, true, null, owner);
     reflect(victim, owner, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.tetherHit(tick, owner, victim, damage, directionX, directionY, result);
@@ -2973,11 +2975,14 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A shield broken by a hit, in the hit's own pass: every character of the tick with an attack
-   * sequence mode that is attacking the entity has its attack reset, as an inferno's ramp is. The
-   * row columns the break also reads - a pushback on the entity and an action it schedules - are
-   * refused as it is created.
+   * sequence mode that is attacking the entity has its attack reset, as an inferno's ramp is; then
+   * the entity schedules its row's action for a broken shield, with what the hit came from as its
+   * cause. The pushback the break would also read is refused with the row as it is created.
+   *
+   * @param broken the entity whose shield broke
+   * @param cause what the breaking hit came from, or null for none
    */
-  void shieldBroken(WorldEntity broken) {
+  void shieldBroken(WorldEntity broken, SpawnHost cause) {
     for (WorldEntity entity : present) {
       if (entity instanceof CharacterEntity character
           && character.getData().attackSequence().mode() != 0
@@ -2986,6 +2991,35 @@ public class BattleWorld implements HolderPasses {
           && character.getView().getState() == GridEntityState.ATTACKING) {
         character.getTargeting().clearAttack();
       }
+    }
+    broken.scheduleShieldLost(cause);
+  }
+
+  /**
+   * Tells the observers a listed buff that gives a charge range reset a character's charge.
+   *
+   * @param unit the character
+   * @param instance the instance just listed
+   * @param before the charge progress before the reset
+   * @param after the charge progress after it
+   */
+  void buffChargeReset(CharacterEntity unit, BuffInstance instance, int before, int after) {
+    for (WorldObserver observer : observers) {
+      observer.buffChargeReset(tick, unit, instance, before, after);
+    }
+  }
+
+  /**
+   * Tells the observers an entity's broken shield scheduled its row's action.
+   *
+   * @param unit the entity
+   * @param action the action's row
+   * @param cause what the breaking hit came from, or null for none
+   */
+  void shieldLostScheduled(WorldEntity unit, String action, SpawnHost cause) {
+    boolean inPendingPass = holder.isInPendingPass();
+    for (WorldObserver observer : observers) {
+      observer.shieldLostScheduled(tick, unit, action, cause, inPendingPass);
     }
   }
 
@@ -5220,7 +5254,8 @@ public class BattleWorld implements HolderPasses {
     // The damage entry lets the hit of an area effect that reaches hidden units through while its
     // victim is hidden.
     int before = hitPointsOf(victim);
-    DamageResult result = victim.takeDamage(damage, 0, 0, 0, areaEffect.getData().affectsHidden());
+    DamageResult result =
+        victim.takeDamage(damage, 0, 0, 0, areaEffect.getData().affectsHidden(), null, areaEffect);
     reflect(victim, areaEffect, before, result, 0, 0);
     for (WorldObserver observer : observers) {
       observer.areaEffectHit(tick, areaEffect, victim, damage, result);

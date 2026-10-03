@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import lombok.Setter;
 import org.crforge.core.fidelity.Fidelity;
@@ -166,6 +167,12 @@ public final class GridStateSetter implements StateSetter {
 
   /** The unit's casting, or null for a unit without an ability, which never casts. */
   @Setter private Casting casting;
+
+  /**
+   * The charge range the unit's buffs give it, which the charge reset reads for a row without one,
+   * or null for a unit whose buffs give none.
+   */
+  @Setter private IntSupplier chargeRangeFromModifiers;
 
   /**
    * What entering the deploying state makes besides its countdown - a row's area object, made and
@@ -440,15 +447,17 @@ public final class GridStateSetter implements StateSetter {
   }
 
   /**
-   * The charge reset: to 0 for a row with a charge range, to none without, with the targeting
-   * component's strike-now byte cleared.
+   * The charge reset: to 0 for a row with a charge range or a unit whose buffs give one, to none
+   * otherwise, with the targeting component's strike-now byte cleared.
    */
   private void resetCharge() {
     checkArgument(
         movementConfig != null,
         () -> "the setter of " + owner.getName() + " has no movement columns to reset a charge by");
-    movement.setChargeProgress(
-        movementConfig.chargeRange() != 0 ? 0 : MovementState.CHARGE_INACTIVE);
+    boolean charges =
+        movementConfig.chargeRange() != 0
+            || (chargeRangeFromModifiers != null && chargeRangeFromModifiers.getAsInt() != 0);
+    movement.setChargeProgress(charges ? 0 : MovementState.CHARGE_INACTIVE);
     if (targeting != null) {
       targeting.setChargeStrike(false);
     }

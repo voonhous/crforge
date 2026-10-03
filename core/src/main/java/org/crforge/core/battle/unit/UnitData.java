@@ -120,6 +120,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onStartingAttackAction the action row the unit runs as it starts an attack and at each
  *     hit, or null
  * @param onAttackAction the action row the unit runs as it attacks, or null
+ * @param shieldLostAction the action row the unit runs as its shield breaks, or null
  * @param minimumRange the closest distance to a target's edge it may attack from; 0 for none
  * @param sightClip how far short of its reach behind the unit a candidate may stand, as the loader
  *     leaves it: 1000 for a row that leaves it 0, 0 for a building
@@ -314,6 +315,7 @@ public record UnitData(
     AttackSequence attackSequence,
     String onStartingAttackAction,
     String onAttackAction,
+    String shieldLostAction,
     int minimumRange,
     int sightClip,
     int sightClipSide,
