@@ -1021,6 +1021,42 @@ public interface WorldObserver {
       int step,
       List<String> effects) {}
 
+  /** A projectile admitted to the battle scheduled its row's starting action. */
+  default void projectileStarting(int tick, ProjectileEntity projectile, String action) {}
+
+  /** A data-changing action swapped a projectile's row. */
+  default void projectileSwapped(int tick, ProjectileEntity projectile, String from, String to) {}
+
+  /** The evolved Executioner's axe controller started on its axe. */
+  default void executionerStarted(int tick, ProjectileEntity axe, String action, int phase) {}
+
+  /**
+   * The axe controller was asked for a hit's damage.
+   *
+   * @param target what the hit lands on, or null
+   * @param before the damage handed in
+   * @param after the damage handed on
+   * @param edge the target's distance from the axe's start less its radius, or null without one
+   * @param strong true for a strong hit
+   */
+  default void axeDamage(
+      int tick,
+      ProjectileEntity axe,
+      WorldEntity target,
+      int hitId,
+      int before,
+      int after,
+      Integer edge,
+      boolean strong) {}
+
+  /** A strong hit of the axe scheduled its action on its target. */
+  default void axeHitAction(
+      int tick, ProjectileEntity axe, WorldEntity target, String action, int hitId) {}
+
+  /** A strong hit of the axe on its way out asked for a push of its target from the axe's start. */
+  default void axePushed(
+      int tick, ProjectileEntity axe, WorldEntity target, int x, int y, int distance, int hitId) {}
+
   /**
    * A barrage's run started on a character.
    *

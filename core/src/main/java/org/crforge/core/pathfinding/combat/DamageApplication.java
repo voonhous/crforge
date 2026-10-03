@@ -247,6 +247,7 @@ public final class DamageApplication {
       // Already dead: the event is accepted, but there is nothing left to take.
       return new DamageResult(true, 0, false);
     }
+    queries.beforeSubtraction();
     int applied;
     int shield = hitPoints.getShield();
     if (shield >= 1) {

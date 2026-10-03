@@ -414,7 +414,7 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** The key of a declared variable; fails for a name the battle does not declare. */
-  int declaredVariable(String name) {
+  public int declaredVariable(String name) {
     Integer key = variableKeys.get(name);
     if (key == null) {
       throw new IllegalArgumentException("the battle declares no variable " + name);
@@ -1336,9 +1336,18 @@ public class BattleWorld implements HolderPasses {
     // A projectile carries no dedupe id unless it belongs to a group, which none here does.
     int before = hitPointsOf(target);
     // The impact counts for the projectile's shooter, while it is in the battle.
+    // A projectile with an action holder has its listening runs hear of the hit in the
+    // subtraction.
     DamageResult result =
         target.takeDamage(
-            damage, 0, directionX, directionY, false, projectile.getOwner(), projectile);
+            damage,
+            0,
+            directionX,
+            directionY,
+            false,
+            projectile.getOwner(),
+            projectile,
+            projectile.hasActionHolder() ? () -> projectile.hitHeard(hitId, target) : null);
     reflect(target, projectile, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.projectileImpacted(tick, projectile, target, damage, result);
@@ -2615,7 +2624,8 @@ public class BattleWorld implements HolderPasses {
    * at once and admits it at the tick's closing cleanup, where the projectile itself leaves. The
    * projectile is its parent and the projectile's target its own; the deflection, which is not
    * modelled, is the only reader known of the one, and none is known of the other, so neither is
-   * carried.
+   * carried. A row that follows its target follows the projectile's target, a unit or a tower, when
+   * it still has one; without one it follows nothing and stays on the impact point.
    *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
@@ -2631,7 +2641,11 @@ public class BattleWorld implements HolderPasses {
             projectile.getPackedLevel(),
             null,
             "projectile",
-            projectile.name());
+            projectile.name(),
+            null,
+            records.areaEffect(projectile.getData().spawnAreaEffectObject()).followsTarget()
+                ? projectile.getTarget()
+                : null);
     for (WorldObserver observer : observers) {
       observer.projectileAreaEffect(tick, projectile, areaEffect);
     }
@@ -2938,10 +2952,12 @@ public class BattleWorld implements HolderPasses {
    * hits enemies only, none on an entity it has hit already; an untouchable character is listed as
    * hit and spared; a character on a layer the projectile does not reach, or in the air, is spared.
    * An entity with hit points takes the projectile's damage at its level, or its crown-tower share,
-   * from the direction of the pass's centre, and is listed as hit; then a character whose movement
-   * is still on is pushed the row's pushback away from the projectile, the row's push-all lifting
-   * the gates. A projectile that stops at collisions is finished by a hit that landed on an entity
-   * with hit points left, and the pass ends; held by the Hunter's pellets.
+   * as the listening runs of a projectile with an action holder change it - the evolved
+   * Executioner's controller in place of it - from the direction of the pass's centre, and is
+   * listed as hit; then a character whose movement is still on is pushed the row's pushback away
+   * from the projectile, the row's push-all lifting the gates. A projectile that stops at
+   * collisions is finished by a hit that landed on an entity with hit points left, and the pass
+   * ends; held by the Hunter's pellets.
    *
    * @return true when the hit finished the projectile
    */
@@ -2972,8 +2988,12 @@ public class BattleWorld implements HolderPasses {
     if (entity.getHitPoints() == null) {
       return false;
     }
-    int damage =
-        entity.getTargetView().crownTower() ? projectile.towerDamage() : projectile.damage();
+    boolean crownTower = entity.getTargetView().crownTower();
+    int damage = crownTower ? projectile.towerDamage() : projectile.damage();
+    // A projectile with an action holder has its listening runs change the damage.
+    if (projectile.hasActionHolder()) {
+      damage = projectile.listenedDamage(damage, hitId, crownTower, entity);
+    }
     boolean standing = entity.getHitPoints().getHitPoints() >= 1;
     projectile.getHitIds().add(id);
     DamageResult result =
@@ -4599,7 +4619,14 @@ public class BattleWorld implements HolderPasses {
               + row
               + " follows its parent and was not made by an action, which is not modelled");
     }
-    if (data.followsParent() && data.spawnAreaEffectObject() != null) {
+    if (data.followsTarget() && !how.equals("projectile")) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " follows a target and was not made by a projectile's impact, which is not"
+              + " modelled");
+    }
+    if ((data.followsParent() || data.followsTarget()) && data.spawnAreaEffectObject() != null) {
       throw new UnsupportedOperationException(
           "the area effect "
               + row
@@ -4716,6 +4743,74 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.actionProjectileLaunched(tick, owner, action, phase, projectile);
     }
+  }
+
+  /**
+   * Tells every observer that a projectile admitted to the battle scheduled its starting action.
+   */
+  public void projectileStarting(ProjectileEntity projectile, String action) {
+    for (WorldObserver observer : observers) {
+      observer.projectileStarting(tick, projectile, action);
+    }
+  }
+
+  /** Tells every observer that a data-changing action swapped a projectile's row. */
+  public void projectileSwapped(ProjectileEntity projectile, String from, String to) {
+    for (WorldObserver observer : observers) {
+      observer.projectileSwapped(tick, projectile, from, to);
+    }
+  }
+
+  /** Tells every observer that the evolved Executioner's axe controller started on its axe. */
+  public void executionerStarted(ProjectileEntity axe, String action, int phase) {
+    for (WorldObserver observer : observers) {
+      observer.executionerStarted(tick, axe, action, phase);
+    }
+  }
+
+  /**
+   * Tells every observer of a damage the axe controller was asked for.
+   *
+   * @param target what the hit lands on, or null
+   * @param before the damage handed in
+   * @param after the damage handed on
+   * @param edge the target's distance from the axe's start less its radius, or null without one
+   * @param strong true for a strong hit
+   */
+  public void axeDamage(
+      ProjectileEntity axe,
+      WorldEntity target,
+      int hitId,
+      int before,
+      int after,
+      Integer edge,
+      boolean strong) {
+    for (WorldObserver observer : observers) {
+      observer.axeDamage(tick, axe, target, hitId, before, after, edge, strong);
+    }
+  }
+
+  /** Tells every observer that a strong hit of the axe scheduled its action on its target. */
+  public void axeHitAction(ProjectileEntity axe, WorldEntity target, String action, int hitId) {
+    for (WorldObserver observer : observers) {
+      observer.axeHitAction(tick, axe, target, action, hitId);
+    }
+  }
+
+  /**
+   * A strong hit of the axe on its way out asks for a push of its target away from the axe's start:
+   * of a character whose movement component is on, with every gate in place; the observers are told
+   * first.
+   */
+  public void axePush(
+      ProjectileEntity axe, WorldEntity target, int x, int y, int distance, int hitId) {
+    if (!(target instanceof CharacterEntity character) || !character.movementOn()) {
+      return;
+    }
+    for (WorldObserver observer : observers) {
+      observer.axePushed(tick, axe, target, x, y, distance, hitId);
+    }
+    character.pushedFrom(x, y, distance);
   }
 
   /**

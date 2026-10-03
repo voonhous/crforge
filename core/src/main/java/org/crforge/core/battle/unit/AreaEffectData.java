@@ -44,10 +44,12 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     one tagged against clones by
  * @param onHitAction the action each of its hits schedules on every unit in its circle it reaches,
  *     or in its rectangle for a shaped one, or null for none; only a Clone's, a group of buff
- *     spawns, a taunt and, for a shaped one, a choice by team are modelled
+ *     spawns, a buff spawn, a taunt and, for a shaped one, a choice by team are modelled
  * @param oneHitPerTarget true when its hit action reaches each object once in its life
  * @param followsParent true when it moves with the object it follows, its parent, standing on that
  *     object's point at each update
+ * @param followsTarget true when it moves with the target of the projectile whose impact made it,
+ *     standing on that object's point at each update
  * @param deflectsProjectiles true when the enemy projectiles that fly within its radius are sent
  *     back at their source, its parent taking their damage
  * @param spawnCharacter the row of the characters it makes about its point over its life, or null
@@ -103,6 +105,7 @@ public record AreaEffectData(
     String onHitAction,
     boolean oneHitPerTarget,
     boolean followsParent,
+    boolean followsTarget,
     boolean deflectsProjectiles,
     String spawnCharacter,
     int spawnIntervalMs,

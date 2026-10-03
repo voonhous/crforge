@@ -1747,6 +1747,37 @@ public class CharacterEntity extends WorldEntity {
     return true;
   }
 
+  /** Whether the character's movement component is on, which a push request asks first. */
+  boolean movementOn() {
+    return hasMovementComponent() && isActive(MOVEMENT_SLOT);
+  }
+
+  /**
+   * A push request away from a point, as the evolved Executioner's strong hit asks it: every gate
+   * in place and nothing lifted, the whole distance, refused while a pushback is in flight.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param distance how far
+   */
+  void pushedFrom(int x, int y, int distance) {
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            x,
+            y,
+            distance,
+            false,
+            false,
+            false,
+            false,
+            false);
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+  }
+
   /**
    * The push of a unit entering the deploying state near the character: a pushback away from the
    * unit with the gates lifted, so even a row that ignores pushback is pushed, refused only while a

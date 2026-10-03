@@ -10,7 +10,9 @@ import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -91,11 +93,15 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " and the registration at a chained hop by electro_dragon_knights; the crown-tower"
             + " amount, the homing gate and the hand-backs at a release and a collision's finish"
             + " by unit tests alone, since every reference shot hands its damage back as it"
-            + " arrives."
+            + " arrives. The row's starting action, scheduled on the projectile's own holder as the"
+            + " holder admits it, itself the cause, so it runs in the projectile's phase-1 pending"
+            + " pass of the next tick before its first flight step; the listening runs of its"
+            + " holder changing a hit's damage along its way and hearing of each hit before its"
+            + " damage is taken off; and a swap of its row for one alike in the battle, held by"
+            + " ice_axe_barbarians and axe_man_ev1_barbarians."
             + " Not modelled: a pingpong projectile, or one with a random delay, that a spell casts or an impact spawns, the angular delay, the drag-back"
-            + " hook, the custom movement, the far-distance clamp with its cell pull, the row's"
-            + " starting action the start would schedule, which no projectile row carried here"
-            + " has, a redirect to a point, and a deflection past the most a projectile takes.")
+            + " hook, the custom movement, the far-distance clamp with its cell pull, a redirect to"
+            + " a point, and a deflection past the most a projectile takes.")
 public class ProjectileEntity extends BattleEntity
     implements ActionOwner, SpawnHost, FollowedObject {
 
@@ -119,7 +125,8 @@ public class ProjectileEntity extends BattleEntity
   private final BattleWorld world;
 
   /** The projectile's published columns. */
-  @Getter private final ProjectileData data;
+  /** Its row's columns; a data-changing action may swap the row for one alike in the battle. */
+  @Getter private ProjectileData data;
 
   /**
    * The side of the launcher, which the projectile fights for; a deflection turns it to the
@@ -234,6 +241,12 @@ public class ProjectileEntity extends BattleEntity
 
   /** How far into its sweep a pingpong projectile is, in milliseconds. */
   @Getter private int pingpongTimeMs;
+
+  /**
+   * How far a pingpong projectile stood from its start before its last sweep step, which an
+   * expression on it reads.
+   */
+  @Getter private int pingpongDistance;
 
   /** How much of its sweep a pingpong projectile covers each step, fixed at its launch. */
   @Getter private int pingpongStepMs;
@@ -682,6 +695,15 @@ public class ProjectileEntity extends BattleEntity
     pingpongTimeMs = ms;
   }
 
+  void setPingpongDistance(int distance) {
+    pingpongDistance = distance;
+  }
+
+  /** The battle the projectile belongs to. */
+  BattleWorld world() {
+    return world;
+  }
+
   /**
    * Loses the target, handing no damage back, as a projectile whose row allows it does when its
    * target goes into a pathfinding state: it flies on to its aim and lands on nothing.
@@ -716,12 +738,69 @@ public class ProjectileEntity extends BattleEntity
 
   /**
    * The projectile's start, as the holder admits it to its live list at the closing cleanup of its
-   * launch tick: a homing projectile registers its damage on its target, from where it stands. The
-   * start would first schedule the row's starting action, which no projectile row carried here has.
+   * launch tick: first its row's starting action is scheduled on its own holder, itself the cause,
+   * so outside every pending pass it waits for the projectile's phase-1 pending pass of the next
+   * tick, before its first flight step; then a homing projectile registers its damage on its
+   * target, from where it stands.
    */
   @Override
   protected void onRegistered() {
+    if (data.onStartingAction() != null) {
+      BattleAction starting =
+          world.getActions().build(data.onStartingAction(), new ProjectileBinding(world, this));
+      world.projectileStarting(this, starting.name());
+      actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
+    }
     registerPending();
+  }
+
+  /**
+   * Takes another projectile row, as a data-changing action gives it: only the row changes, so a
+   * row whose battle columns differ from this one's, but for its starting action, which does not
+   * run again, is refused.
+   *
+   * @param rowName the row it takes
+   */
+  @Override
+  public void changeProjectileData(String rowName) {
+    ProjectileData next = world.getRecords().projectile(rowName);
+    if (!battleColumns(next).equals(battleColumns(data))) {
+      throw new UnsupportedOperationException(
+          name() + " swaps " + data.name() + " for " + rowName + ", whose columns differ");
+    }
+    world.projectileSwapped(this, data.name(), rowName);
+    data = next;
+  }
+
+  /** A row's battle columns: everything but its name and its starting action. */
+  private static ProjectileData battleColumns(ProjectileData row) {
+    return row.toBuilder().name("").onStartingAction(null).build();
+  }
+
+  /** Starts the evolved Executioner's axe controller on the projectile. */
+  @Override
+  public ActionInstance executionerController(ExecutionerEvoProjectile action, int phase) {
+    world.executionerStarted(this, action.name(), phase);
+    return new ExecutionerRun(action, this);
+  }
+
+  /**
+   * Tells the projectile's listening runs, from the last listed down, of a hit it lands, before the
+   * hit's damage is taken off.
+   *
+   * @param hitId the hit's id
+   * @param target what the hit lands on
+   */
+  public void hitHeard(int hitId, WorldEntity target) {
+    if (actionHolder == null) {
+      return;
+    }
+    List<ActionInstance> runs = actionHolder.running();
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      if (runs.get(i) instanceof ExecutionerRun controller) {
+        controller.hit(hitId, target);
+      }
+    }
   }
 
   /**
@@ -939,14 +1018,16 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
-   * The damage of the projectile's impact as the enchanting copies it carries change it, from the
-   * last listed down; unchanged without one.
+   * The damage of a hit of the projectile as its listening runs change it, from the last listed
+   * down: an enchanting copy it carries, or the evolved Executioner's axe controller; unchanged
+   * without one.
    *
    * @param damage the damage so far
-   * @param hitId the impact's hit id
+   * @param hitId the hit's id
    * @param crownTower true for the crown-tower damage
+   * @param target what the hit lands on, or null
    */
-  int listenedDamage(int damage, int hitId, boolean crownTower) {
+  public int listenedDamage(int damage, int hitId, boolean crownTower, WorldEntity target) {
     if (actionHolder == null) {
       return damage;
     }
@@ -955,9 +1036,16 @@ public class ProjectileEntity extends BattleEntity
     for (int i = runs.size() - 1; i >= 0; i--) {
       if (runs.get(i) instanceof GiantBufferBuff.Run copy) {
         out = copy.damage(out, hitId, crownTower);
+      } else if (runs.get(i) instanceof ExecutionerRun controller) {
+        out = controller.damage(out, hitId, target);
       }
     }
     return out;
+  }
+
+  /** Whether the projectile has an action holder, whose runs listen to its hits. */
+  public boolean hasActionHolder() {
+    return actionHolder != null;
   }
 
   /** Whether the projectile carries an enchanting copy that changes its damage. */

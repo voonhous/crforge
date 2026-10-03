@@ -579,8 +579,8 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a projectile carries the area effect its impact makes, refused when that row follows the"
-          + " projectile or its target")
+      "a projectile carries the area effect its impact makes, one that follows its target"
+          + " included; refused when that row follows the projectile")
   void aProjectileThatSpawnsAnAreaEffect() {
     ProjectileData spirit = records.projectile("HealSpiritProjectile");
     assertThat(spirit.spawnAreaEffectObject()).isEqualTo("HealSpirit");
@@ -590,8 +590,8 @@ class BattleRecordsTest {
     ProjectileData parent = records.projectile("SuperArcherChargeArrow");
     assertThat(parent.spawnAreaEffectObject()).isEqualTo("SuperArcherChargePull");
     assertThat(parent.unmodelledColumns()).contains("SpawnAreaEffectObject");
-    assertThat(records.projectile("IceSpiritsProjectile_EV1").unmodelledColumns())
-        .contains("SpawnAreaEffectObject");
+    // The evolved Ice Spirit's area follows the projectile's target, which the impact hands it.
+    assertThat(records.projectile("IceSpiritsProjectile_EV1").unmodelledColumns()).isEmpty();
   }
 
   @Test
@@ -1170,8 +1170,8 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "an area effect carries a taunt as its hit action, one hit per target with it, following its"
-          + " parent and a Filter off the Shape path; following a target, and one hit per target"
-          + " without a hit action, are listed as not modelled")
+          + " parent or a target and a Filter off the Shape path; one hit per target without a hit"
+          + " action is listed as not modelled")
   void aTauntingAreaEffect(@TempDir Path folder) throws IOException {
     BattleRecords records = GameData.records();
     AreaEffectData cancel = records.areaEffect("CancelTauntAEO");
@@ -1180,8 +1180,10 @@ class BattleRecordsTest {
     assertThat(cancel.followsParent()).isTrue();
     assertThat(cancel.unmodelledColumns()).as("its Filter among them").isEmpty();
     assertThat(records.areaEffect("GoblinCurseBase").followsParent()).isFalse();
-    assertThat(records.areaEffect("IceSpiritsAOE_EV1").unmodelledColumns())
-        .contains("FollowBehaviour");
+    AreaEffectData ice = records.areaEffect("IceSpiritsAOE_EV1");
+    assertThat(ice.followsTarget()).isTrue();
+    assertThat(ice.followsParent()).isFalse();
+    assertThat(ice.unmodelledColumns()).isEmpty();
 
     GameTables tables =
         GameData.altered(

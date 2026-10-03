@@ -83,16 +83,16 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * row that takes the owner as the source, forgotten as the parent leaves; its hit action may be a
  * buff spawn, the evolved Tesla's ring's, a group of buff spawns, the Goblin Curse's, or a taunt,
  * the Goblin Demolisher's, scheduled the same way on every unit in its circle it reaches, each unit
- * once for a row that reaches each target once. One whose row follows its parent stands on the
- * point of the object it follows first thing in each update, moved by the follow offsets a
- * resetable action gave it - the one along the length toward the enemy side of its own side - and
- * its life ends as that object leaves, unless its row stays after its parent dies: it then stands
- * on its last point. A shaped row, the evolved Baby Dragon's wind, lists in each update the
- * characters its filter passes in the rectangle about its point, a building by its square and
- * anything else by its circle, and each hit schedules its hit action, a choice by team, on every
- * one of them with itself as the cause, and does nothing else. When the countdown reaches 0 its
- * life-end action is scheduled on itself; it leaves at the cleanup that finds the countdown below
- * 1.
+ * once for a row that reaches each target once. One whose row follows its parent, or that a
+ * projectile's impact made following the projectile's target, stands on the point of the object it
+ * follows first thing in each update, moved by the follow offsets a resetable action gave it - the
+ * one along the length toward the enemy side of its own side - and its life ends as that object
+ * leaves, unless its row stays after its parent dies: it then stands on its last point. A shaped
+ * row, the evolved Baby Dragon's wind, lists in each update the characters its filter passes in the
+ * rectangle about its point, a building by its square and anything else by its circle, and each hit
+ * schedules its hit action, a choice by team, on every one of them with itself as the cause, and
+ * does nothing else. When the countdown reaches 0 its life-end action is scheduled on itself; it
+ * leaves at the cleanup that finds the countdown below 1.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -124,7 +124,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " shape but a"
             + " rectangle with a filter whose hits only schedule their hit action, a launch from"
             + " its source"
-            + " or spread about its point, the life condition, following a target, tags other"
+            + " or spread about its point, the life condition, following a target on an area"
+            + " effect no projectile's impact made, tags other"
             + " than the one that only hides the pushback's presentation, a"
             + " lifetime that grows by level, the push's floor and gate lift and one hit per"
             + " target without a hit action. Created by a unit's ability at the unit, the unit its"
@@ -146,6 +147,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " a buff it controls, held by tornado_group_off_lane and tornado_heavy_light_tower;"
             + " the slot ControlsBuff gates is reached by no path the battle models. The pull of"
             + " an area effect that follows its parent, from where it stands at each update, and a"
+            + " projectile's area that follows its target, staying on that target's last point"
+            + " when it leaves, held by ice_axe_barbarians and BattleIceSpiritEvoTest; and a"
             + " unit that died earlier in the tick passed over, held by valkyrie_ev1_barbarians;"
             + " a pull with an angle window is refused. The launch of"
             + " its projectile after its hits, one on an update whose hit count rose, the chooser"
