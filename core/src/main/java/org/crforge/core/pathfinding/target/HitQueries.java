@@ -61,6 +61,14 @@ public interface HitQueries {
    * Told after a direct hit's damage was dealt to its one target: a row with an area effect on its
    * hits makes it here, where the owner stands.
    */
+  /**
+   * The pushback of the attack sequence step a direct hit lands with: on the target, or, from the
+   * area branch, on every victim. A target without a movement component is not pushed.
+   *
+   * @param target the target the hit landed on, or null from the area branch
+   */
+  default void stepPushback(TargetView target) {}
+
   default void directHitDealt() {}
 
   /** True when the owner may not attack at all, which discards the hit before any other step. */

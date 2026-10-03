@@ -30,7 +30,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " centred on the unit or on the reference's last position. Held by every hit of the"
             + " kill run and every area of the Valkyrie runs. Not modelled: the damage"
             + " effect and the fallback, the attacker's buffs changing either"
-            + " damage, the attack sequence step's pushback, the elixir a drainer moves, the"
+            + " damage, the attack sequence step's pushback on a target that moves (refused),"
+            + " the elixir a drainer moves, the"
             + " area-effect entity a hit may create and the pushback on the owner.")
 public final class DirectHit {
 
@@ -64,6 +65,7 @@ public final class DirectHit {
       int x = cfg.selfAsAoeCenter() ? t.getOwner().getX() : t.getLastReferenceX();
       int y = cfg.selfAsAoeCenter() ? t.getOwner().getY() : t.getLastReferenceY();
       queries.areaDamage(x, y, cfg.areaDamageRadius(), damage, crownTowerDamage, hitId);
+      queries.stepPushback(null);
       return;
     }
     if (target == null || missed) {
@@ -75,6 +77,9 @@ public final class DirectHit {
     int directionY = t.getLastReferenceY() - t.getOwner().getY();
     int dealt = target.isCrownTowerTarget() ? crownTowerDamage : damage;
     queries.dealDamage(target, dealt, hitId, directionX, directionY);
+    // The step's MeleePushback reaches the direct hit ungated (0xe69c04, 0xe69c14,
+    // 0xe69f1c..0xe69f7c): the target, when it has a movement component, is pushed from the owner.
+    queries.stepPushback(target);
     queries.directHitDealt();
   }
 
