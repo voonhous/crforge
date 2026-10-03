@@ -202,8 +202,9 @@ class EntityHolderTest {
 
   @Test
   @DisplayName(
-      "an entity handed over already removable is admitted by the cleanup, and leaves at the next")
-  void aRemovableNewcomerIsAdmittedFirst() {
+      "an entity handed over already removable is never admitted: the cleanup removes it from the"
+          + " entities waiting before it folds them in")
+  void aRemovableNewcomerIsNeverAdmitted() {
     EntityHolder holder = new EntityHolder(HolderPasses.NONE);
     RecordingEntity first = new RecordingEntity("a");
     RecordingEntity spent = new RecordingEntity("spent");
@@ -213,15 +214,16 @@ class EntityHolderTest {
 
     holder.tick(0);
 
-    // The closing cleanup removes from the live list only, so it is admitted as it stands.
-    assertThat(holder.entities()).containsExactly(first, spent);
-    assertThat(log).contains("spent registered as 5000001");
+    // The closing cleanup walks the entities waiting first, so it is gone before the fold.
+    assertThat(holder.entities()).containsExactly(first);
+    assertThat(log).doesNotContain("spent registered as 5000001");
+    // Its notice reaches the entities waiting, itself among them, then the live list.
+    assertThat(log).containsSubsequence("spent told spent left", "a told spent left");
 
     first.duringPostHook = () -> {};
     log.clear();
     holder.tick(1);
 
-    // The opening cleanup of the next tick removes it, before any of its hooks.
     assertThat(holder.entities()).containsExactly(first);
     assertThat(log).doesNotContain("spent preHook");
   }
