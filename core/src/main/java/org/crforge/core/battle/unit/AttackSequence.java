@@ -21,6 +21,12 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
   public static final int MODE_NONE = 0;
 
   /**
+   * The mode in which every hit step moves the index on by one, around the order: after the hits of
+   * each hit step the targeting visit stores the index plus one, modulo the order's length.
+   */
+  public static final int MODE_STATIC_LOOP = 1;
+
+  /**
    * The mode of a continuous-damage attacker: the attack timer carries a ramp, and every attack
    * step stores the window its timer has reached into the index.
    */
@@ -62,14 +68,17 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
       int meleePushback,
       String doAttackAction) {
 
-    /** True when the entry sets anything but its damage, its projectile and its action. */
+    /**
+     * True when the entry sets anything but its damage, its projectile, its action and its direct
+     * hit's pushback.
+     */
     public boolean overridesMore() {
       return variableDamageTime != 0 || overridesMoreThanItsWindow();
     }
 
     /**
-     * True when the entry sets anything but its damage, its projectile, its action and its variable
-     * damage time, the window a timer-driven mode walks.
+     * True when the entry sets anything but its damage, its projectile, its action, its direct
+     * hit's pushback and its variable damage time, the window a timer-driven mode walks.
      */
     public boolean overridesMoreThanItsWindow() {
       return hitSpeedMultiplier != 100
@@ -77,8 +86,7 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
           || customSightRange != -1
           || customMinimumRange != -1
           || customProjectileStartZ != -1
-          || customProjectileStartRadius != -1
-          || meleePushback != 0;
+          || customProjectileStartRadius != -1;
     }
   }
 
