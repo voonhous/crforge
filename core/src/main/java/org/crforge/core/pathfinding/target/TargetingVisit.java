@@ -500,6 +500,8 @@ public final class TargetingVisit {
         && !(reference.building() && cfg.specialIgnoreBuildings())) {
       t.setSpecialLoadTimerMs(cfg.specialLoadTime());
       t.setSpecialLoadPending(true);
+      // The unit turns toward its reference as its special starts to load.
+      queries.turnToward(reference);
     }
     boolean specialReady = t.isSpecialLoadPending() && t.getSpecialLoadTimerMs() < 1;
     if (t.isSpecialLoadPending() && reference != null && t.getSpecialLoadTimerMs() >= 1) {
@@ -564,6 +566,11 @@ public final class TargetingVisit {
       t.setDashWindupMs(0);
     }
     queries.stateSetter().setState(e, STATE_ATTACKING);
+    // Every attack tick turns the unit toward the reference it has once the setter is done; one
+    // that goes on without a reference keeps its facing.
+    if (t.getReference() != null) {
+      queries.turnToward(t.getReference());
+    }
     int hitsBefore = attackTimerOnEntry / hitSpeed;
     AttackTimerAdvance.advance(t, cfg, queries);
     t.setHitInProgress(t.getAttackTimerMs() % hitSpeed > TargetingQueries.TICK_MS);

@@ -406,10 +406,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * hits and pushes both Knights back the next tick.
  *
  * <p>Not every run described above is still played. The references are the battle generator's,
- * which walked a unit that walks in bursts at its Speed column as written and gave every building a
- * mass of 0; the game loads the first at a raised speed and the second at a mass worked out from
- * its radius. The runs those two rules move were removed with their files, and are listed in {@code
- * core/src/test/resources/pathfinding/README.md}; the list below is what is played.
+ * which walked a unit that walks in bursts at its Speed column as written, gave every building a
+ * mass of 0 and never turned an attacking unit toward its reference; the game loads the first at a
+ * raised speed and the second at a mass worked out from its radius, and turns the unit on every
+ * attack tick. The runs those three rules move were removed with their files, and are listed in
+ * {@code core/src/test/resources/pathfinding/README.md}; the list below is what is played.
  */
 class BattleActionSpawnRunTest {
 
@@ -440,7 +441,6 @@ class BattleActionSpawnRunTest {
         "minion_musketeer",
         "balloon_tower",
         "balloons_cross",
-        "balloon_river",
         "lava_hound_river",
         "baby_dragon_left",
         "zap_knight_cast",
@@ -450,7 +450,6 @@ class BattleActionSpawnRunTest {
         "recruit_tower",
         "guards_knight",
         "poison_guards",
-        "night_witch",
         "prince_tower",
         "dark_prince_tower",
         "hog_river",
@@ -460,8 +459,6 @@ class BattleActionSpawnRunTest {
         "match_knights_king",
         "match_overtime_tiebreak",
         "match_overtime_draw",
-        "match_elixir_sources",
-        "match_building_cards",
         "mirror_knight",
         "mirror_fireball",
         "merge_maiden_mounted",
@@ -470,7 +467,6 @@ class BattleActionSpawnRunTest {
         "ice_wizard_knights",
         "elite_archer_knight",
         "snowball_knights",
-        "witch_mother_skeletons",
         "electro_dragon_knights",
         "firecracker_knight",
         "axe_man_knights",
@@ -502,7 +498,6 @@ class BattleActionSpawnRunTest {
         "mega_knight_jump",
         "lightning_defenders_tower",
         "royal_delivery_group",
-        "heal_spirit_group",
         "clone_rage_group",
         "clone_zap_poison_group",
         "clone_heal_spirit_knight",
