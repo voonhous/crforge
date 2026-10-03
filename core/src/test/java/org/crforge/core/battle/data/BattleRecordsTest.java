@@ -750,8 +750,11 @@ class BattleRecordsTest {
     assertThat(records.unit("Mortar").minimumRange()).isEqualTo(2900);
     assertThat(records.unit("Cannon").spawnCharacter()).isNull();
     assertThat(records.unit("DarkPrince").unmodelledColumns()).isEmpty();
-    assertThat(records.unit("Ram_crazy_1").unmodelledColumns())
-        .containsExactly("OnStartChargingAction");
+    // The evolved Battle Ram's completed charge runs its push, which is modelled.
+    assertThat(records.unit("BattleRam_EV1").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("BattleRam_EV1").onStartChargingAction())
+        .isEqualTo("BattleRam_EV1_PushBack");
+    assertThat(records.unit("BattleRam").onStartChargingAction()).isNull();
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     // The evolved Wizard runs an action as its shield breaks; a push as it breaks is refused.
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).isEmpty();

@@ -235,16 +235,16 @@ public final class BattleRecords {
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield's push as it breaks, hiding before the first hit, a buff at
-   * a share of its hit points, the action a completed charge runs, a dash's contact damage, fixed
-   * distance, area effect and closing action, a limit on the elixir a collector makes, a spawner's
-   * launches, and its second and third characters.
+   * a share of its hit points, a dash's contact damage, fixed distance, area effect and closing
+   * action, a limit on the elixir a collector makes, a spawner's launches, and its second and third
+   * characters. The action a completed charge runs is refused apart, unless it is of a class whose
+   * run is established.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
           "ShieldDiePushback",
           "HideBeforeFirstHit",
           "BuffOnXHP",
-          "OnStartChargingAction",
           "DashingDamage",
           "DashDistance",
           "AreaEffectOnDash",
@@ -651,6 +651,7 @@ public final class BattleRecords {
             .attackSequence(attackSequence(row))
             .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
             .onAttackAction(actionName(row, "OnAttackAction"))
+            .onStartChargingAction(actionName(row, "OnStartChargingAction"))
             .shieldLostAction(actionName(row, "ShieldLostAction"))
             .minimumRange(row.intValue("MinimumRange"))
             .sightClip(sightClip(row))
@@ -749,7 +750,7 @@ public final class BattleRecords {
             .projectileSpecial(
                 set(row, "ProjectileSpecial") ? projectile(row.string("ProjectileSpecial")) : null)
             .specialIgnoreBuildings(row.bool("SpecialIgnoreBuildings"))
-            .unmodelledColumns(withAttackAction(unmodelledColumns(row), row))
+            .unmodelledColumns(withChargeAction(withAttackAction(unmodelledColumns(row), row), row))
             .build();
     return data.toBuilder()
         .unmodelledColumns(
@@ -831,6 +832,24 @@ public final class BattleRecords {
   /** The classes of the actions a unit's hits run whose runs are established. */
   private static final Set<String> ATTACK_ACTION_CLASSES =
       Set.of("ActionSpawn", "ActionMegaKnightUppercut", "ActionSpawnResetableAeO");
+
+  /** The classes of the actions a completed charge runs whose runs are established. */
+  private static final Set<String> CHARGE_ACTION_CLASSES = Set.of("ActionDamagingPushBack");
+
+  /**
+   * The unmodelled columns with OnStartChargingAction added when the row names an action a
+   * completed charge runs whose run is not established: only the evolved Battle Ram's push is.
+   */
+  private List<String> withChargeAction(List<String> columns, GameRow row) {
+    if (!sets(row, "OnStartChargingAction")
+        || CHARGE_ACTION_CLASSES.contains(
+            tables.action(row.string("OnStartChargingAction")).classType())) {
+      return columns;
+    }
+    List<String> out = new ArrayList<>(columns);
+    out.add("OnStartChargingAction");
+    return out;
+  }
 
   /**
    * The unmodelled columns with OnAttackAction added when the row names an action its hits run
