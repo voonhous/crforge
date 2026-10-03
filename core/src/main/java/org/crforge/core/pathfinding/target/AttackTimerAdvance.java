@@ -41,7 +41,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " timer and the animation freeze. Held by the kill run's hit ticks for a unit with"
             + " one sequence step and no bursts, and the round-up under the charge's strike-now"
             + " byte by prince_tower and dark_prince_tower, and the hold from a match's end by"
-            + " match_knights_king. Supplied: no status effect scales the step.")
+            + " BattleKingKillTest and the native card_Pekka run's end delay. Supplied: no status"
+            + " effect scales the step.")
 public final class AttackTimerAdvance {
 
   private AttackTimerAdvance() {

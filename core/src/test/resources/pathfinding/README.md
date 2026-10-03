@@ -12,17 +12,20 @@ model, not necessarily with the game.
 
 ## References removed
 
-The model that made these files differs from the game in three things. It read two columns as the data file writes them, where the game changes them as it loads a row, and it left out one turn:
+The model that made these files differs from the game in four things. It read two columns as the data file writes them, where the game changes them as it loads a row, it left out one turn, and it dropped a dead king:
 
 - **Speed.** A unit that walks in bursts (a row with StopMovementAfterMS: the Giant, the Golem, the Royal Giant, the Goblin Giant, the Ice Golem) is loaded at a speed raised by its walk and wait times. The Giant's 45 is loaded as 52.
 - **Mass.** A row that writes no mass, which is every building, is loaded at one worked out from its collision radius, and every mass is held between 1 and 20. A crown tower is loaded at 20, not 0, so it pushes a unit inside its reach hard.
 
 - **Attack facing.** The model never turned an attacking unit toward its reference. The game turns it on every attack tick: its facing becomes the line from where it stands to where its reference stands. What reads the facing afterwards moves with it: the avoidance of a unit that walks on, the ring a spawner places its children on, the facing a replacement inherits.
 
-The battle now does all three as the game does, and the runs these rules move were removed rather than kept on the old reading. Their sections below, and the notes elsewhere that name them, describe files that are no longer here.
+- **A dead king as a reference.** The model refused a fallen king to a unit holding it, so the unit dropped it on the step after the fall and walked to another target. The game keeps it: every unit's targeting component skips the alive check, a fallen king stays in the holder, and with every attack timer held from the match's end the unit stands where it is, attacking the dead king, through the end delay.
+
+The battle now does all four as the game does, and the runs these rules move were removed rather than kept on the old reading. Their sections below, and the notes elsewhere that name them, describe files that are no longer here.
 
 - Runs of `BattleActionSpawnRunTest` (35): `brawler_goblins`, `building_evolutions_barbarians`, `clone_golem_group`, `dark_magic_group`, `evolution_hero_mirror`, `fireball_knight_tower`, `firecracker_ev1_giant`, `firecracker_snowball_goblins`, `goblin_barrel_tower`, `goblin_drill_princess`, `goblin_giant_tower`, `goblin_hut_passing`, `goblinstein_ability_tower`, `goblinstein_later_plays`, `golem_death_pushback`, `golemite_death_damage`, `graveyard_tower_defender`, `inferno_tower_giant_knight`, `kamikaze_battle_ram`, `little_prince_ability_giant`, `little_prince_giant`, `match_elixir_150s`, `parent_buff_goblin_giant`, `poison_knight_tower`, `royal_giant_ev1_knights`, `royal_giant_tower`, `skeleton_barrel_tower`, `skeleton_king_ability_no_souls`, `snowball_ev1_goblins`, `tesla_giant_passing`, `tombstone_crazy_life`, `tornado_heavy_light_tower`, `vines_group`, `witch_hooks`, `witch_left_lane`.
 - Six more runs of `BattleActionSpawnRunTest`, moved by the attack facing: `balloon_river`, `heal_spirit_group`, `match_building_cards`, `match_elixir_sources`, `night_witch`, `witch_mother_skeletons`.
+- `match_knights_king` of `BattleActionSpawnRunTest`, moved by the dead king: from 1221 its Knights that held the fallen king walk off it.
 - Runs of `BattlePlacementRunTest` (6): `barbarians_edge`, `barbarians_left`, `barbarians_pocket`, `skeleton_army_bridge`, `skeleton_army_corner`, `skeleton_army_edge`. The files of `barbarians_left`, `barbarians_edge` and `skeleton_army_edge` stay: `CardPlacementTest` reads their placements, which do not move.
 - `knight_behind_king` in `BattleGoldenTrajectoryTest` (its file stays for the routing tests that read it), and `BattleTowerContactTest`, which stated the massless king's push by hand.
 - Eleven of the 48 sweep trajectories: the three each of the Giant, the Golem and the Royal Giant, the Bowler on side 1 and the Wizard at (13725, 7103).

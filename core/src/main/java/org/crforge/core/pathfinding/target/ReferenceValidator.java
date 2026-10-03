@@ -24,13 +24,13 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
             + " other than air and ground, the excluded configuration, buffs that hide a"
             + " target, and the jumping and in-game-pathfind states. The pending-damage rule's"
             + " refusal is held by the battle references whose selections and drops it"
-            + " decides, lava_hound_river, tombstone_death_hook, match_knights_king and"
+            + " decides, lava_hound_river, tombstone_death_hook and"
             + " match_elixir_150s among them, and its shield gate by pending_shield_guards; its"
             + " dash, healing and timed-unit keeps by unit tests alone. Supplied: a target is"
             + " ground exactly when it is not air, which the"
-            + " standard game reads from two separate columns; a dead king refused under the"
-            + " bypass, as the battle references were made, where the standard game's answer"
-            + " while its end timer runs is not established.")
+            + " standard game reads from two separate columns. The bypass keeps a dead king, as"
+            + " the native card_Pekka, card_MegaKnight, card_MightyMiner and card_BossBandit runs"
+            + " do through the end delay.")
 public final class ReferenceValidator {
 
   /** Mode used by the re-check of a target that is already held. */
@@ -60,8 +60,8 @@ public final class ReferenceValidator {
    *
    * <p>Two gates run before the shared rules: a target already on the component's hit list is
    * refused to a unit that attacks with a dash or a special attack, and unless the alive check is
-   * bypassed the target must still have hit points; a dead king always fails it. The shared rules
-   * then run with the owner's TargetOnlyBuildings column as the building filter.
+   * bypassed the target must still have hit points. The shared rules then run with the owner's
+   * TargetOnlyBuildings column as the building filter.
    */
   public static boolean validate(
       TargetingState t, TargetView target, int mode, ValidatorQueries queries) {
@@ -72,12 +72,13 @@ public final class ReferenceValidator {
         return false;
       }
     }
-    // With the bypass, a target killed earlier in the pass still validates until the cleanup
-    // removes it. A dead king is refused all the same: a fallen king ends the standard game's
-    // battle, and what a validator answers for it while the end timer runs is not established, so
-    // the battle keeps the refusal its references were made with.
-    boolean deadKing = target != null && target.towerFlag() && !target.alive();
-    if (!t.isAliveCheckBypass() || deadKing) {
+    // With the bypass, a target with no hit points still validates until it leaves the holder: a
+    // target killed earlier in the pass until the cleanup removes it, and a fallen king, which
+    // stays
+    // in the holder, for the rest of the battle. The standard game's wrapper (0xe66624) skips the
+    // alive slot whenever the component's bypass byte is set (0xe666a8..0xe666ac), and every unit's
+    // is; its killer keeps the dead king through the end delay.
+    if (!t.isAliveCheckBypass()) {
       if (target == null || !target.alive()) {
         return false;
       }
