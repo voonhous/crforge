@@ -12,7 +12,7 @@ model, not necessarily with the game.
 
 ## References removed
 
-The model that made these files differs from the game in six things. It read two columns as the data file writes them, where the game changes them as it loads a row, it left out one turn, it dropped a dead king, it left a spawned bottle standing, and it read the Monk without its attack sequence:
+The model that made these files differs from the game in seven things. It read two columns as the data file writes them, where the game changes them as it loads a row, it left out one turn, it dropped a dead king, it left a spawned bottle standing, it read the Monk without its attack sequence, and it relocated an impact's child from the wrong point:
 
 - **Speed.** A unit that walks in bursts (a row with StopMovementAfterMS: the Giant, the Golem, the Royal Giant, the Goblin Giant, the Ice Golem) is loaded at a speed raised by its walk and wait times. The Giant's 45 is loaded as 52.
 - **Mass.** A row that writes no mass, which is every building, is loaded at one worked out from its collision radius, and every mass is held between 1 and 20. A crown tower is loaded at 20, not 0, so it pushes a unit inside its reach hard.
@@ -21,12 +21,14 @@ The model that made these files differs from the game in six things. It read two
 
 - **A spawned child without hit points.** The model left a spawned child standing unless its spawn asked for a deploy. The game's spawner also starts deploying a child whose row has no hit points and a deploy time, whatever the spawn asks: the Lumberjack's bottle deploys for its 500 ms, leaves as the deploy ends and makes its rage.
 - **The Monk's order.** The tables the model read gave the Monk no attack sequence order. The game loads the order 0, 1, 2 in the static loop, so the Monk walks with its range 500 short and stops closer to what it attacks.
+- **Where an impact's child is relocated.** The model moved a projectile impact's child off water from the point it was made on, undoing the step its registration visit took. The game relocates it from where it stands after that visit, so the step is kept.
 - **A dead king as a reference.** The model refused a fallen king to a unit holding it, so the unit dropped it on the step after the fall and walked to another target. The game keeps it: every unit's targeting component skips the alive check, a fallen king stays in the holder, and with every attack timer held from the match's end the unit stands where it is, attacking the dead king, through the end delay.
 
-The battle now does all six as the game does, and the runs these rules move were removed rather than kept on the old reading. Their sections below, and the notes elsewhere that name them, describe files that are no longer here.
+The battle now does all seven as the game does, and the runs these rules move were removed rather than kept on the old reading. Their sections below, and the notes elsewhere that name them, describe files that are no longer here.
 
 - Runs of `BattleActionSpawnRunTest` (35): `brawler_goblins`, `building_evolutions_barbarians`, `clone_golem_group`, `dark_magic_group`, `evolution_hero_mirror`, `fireball_knight_tower`, `firecracker_ev1_giant`, `firecracker_snowball_goblins`, `goblin_barrel_tower`, `goblin_drill_princess`, `goblin_giant_tower`, `goblin_hut_passing`, `goblinstein_ability_tower`, `goblinstein_later_plays`, `golem_death_pushback`, `golemite_death_damage`, `graveyard_tower_defender`, `inferno_tower_giant_knight`, `kamikaze_battle_ram`, `little_prince_ability_giant`, `little_prince_giant`, `match_elixir_150s`, `parent_buff_goblin_giant`, `poison_knight_tower`, `royal_giant_ev1_knights`, `royal_giant_tower`, `skeleton_barrel_tower`, `skeleton_king_ability_no_souls`, `snowball_ev1_goblins`, `tesla_giant_passing`, `tombstone_crazy_life`, `tornado_heavy_light_tower`, `vines_group`, `witch_hooks`, `witch_left_lane`.
 - Six more runs of `BattleActionSpawnRunTest`, moved by the attack facing: `balloon_river`, `heal_spirit_group`, `match_building_cards`, `match_elixir_sources`, `night_witch`, `witch_mother_skeletons`.
+- `phoenix_egg_hatch` of `BattleActionSpawnRunTest`, moved by the relocation: on 60 the fireball's egg keeps the 12 its registration visit moved it.
 - `monk_ability_tower` and `monk_ability_musketeer` of `BattleActionSpawnRunTest`, moved by the Monk's order: their Monk stops 60 short of where the game's does; against the Knight its third hit would push, which the battle refuses until the push is traced.
 - `area_effect_death` of `BattleActionSpawnRunTest`, moved by the bottle: on 221 the Lumberjack's bottle stands in state 0 there, where the game has it deploying.
 - `match_knights_king` of `BattleActionSpawnRunTest`, moved by the dead king: from 1221 its Knights that held the fallen king walk off it.
