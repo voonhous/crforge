@@ -92,7 +92,7 @@ public abstract class ActionInstance {
   }
 
   /** Sets the row's tags on the run as it starts, or tags the run sets itself. */
-  void addTags(long more) {
+  protected void addTags(long more) {
     tags |= more;
   }
 

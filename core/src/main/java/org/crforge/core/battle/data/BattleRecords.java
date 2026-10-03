@@ -195,11 +195,12 @@ public final class BattleRecords {
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
-   * on itself, the shape, the life condition, the tags other than the one that hides the pushback's
+   * on itself, the life condition, the tags other than the one that hides the pushback's
    * presentation, the per-level lifetime and the push's floor and gate lift. Its projectile is
    * modelled, but not a launch from its source or a spread one; its hit action only for a Clone, as
-   * a group of buff spawns and as a taunt; one hit per target only with a hit action; following
-   * only its parent; and its spawns only in a shuffled order.
+   * a group of buff spawns and as a taunt, and on a shaped row as a choice by team; one hit per
+   * target only with a hit action; following only its parent; its spawns only in a shuffled order;
+   * and its shape only as a rectangle with a filter whose hits do nothing but their hit action.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -207,7 +208,6 @@ public final class BattleRecords {
           "BuffTimeIncreasePerLevel",
           "BuffTimeIncreaseAfterTournamentCap",
           "OnHitSelfAction",
-          "Shape",
           "AliveIfTrue",
           "Tags",
           "LifeDurationIncreasePerLevel",
@@ -816,13 +816,19 @@ public final class BattleRecords {
     return List.copyOf(out);
   }
 
+  /** The classes of the actions a unit's hits run whose runs are established. */
+  private static final Set<String> ATTACK_ACTION_CLASSES =
+      Set.of("ActionSpawn", "ActionMegaKnightUppercut", "ActionSpawnResetableAeO");
+
   /**
-   * The unmodelled columns with OnAttackAction added when the row names an action its hits run that
-   * is not a spawn: every hit schedules the row alike, but only a spawn's run is established.
+   * The unmodelled columns with OnAttackAction added when the row names an action its hits run
+   * whose run is not established: every hit schedules the row alike, but only a spawn's, the
+   * evolved Mega Knight's uppercut and the evolved Baby Dragon's wind are.
    */
   private List<String> withAttackAction(List<String> columns, GameRow row) {
     if (!sets(row, "OnAttackAction")
-        || tables.action(row.string("OnAttackAction")).classType().equals("ActionSpawn")) {
+        || ATTACK_ACTION_CLASSES.contains(
+            tables.action(row.string("OnAttackAction")).classType())) {
       return columns;
     }
     List<String> out = new ArrayList<>(columns);
@@ -1191,8 +1197,18 @@ public final class BattleRecords {
             .spawnRandomizeSequence(row.bool("SpawnRandomizeSequence"))
             .spawnClones(row.bool("SpawnClones"))
             .stayAfterParentDies(row.bool("StayAfterParentDies"))
+            .shaped(sets(row, "Shape"))
+            .filter(sets(row, "Shape") && sets(row, "Filter") ? row.string("Filter") : null)
             .unmodelledColumns(unmodelled)
             .build();
+    if (data.shaped()) {
+      data = shaped(data, row.string("Shape"), unmodelled);
+      // A shaped row's damage type is read only by its hits' damage, which a row without damage
+      // never deals.
+      if (data.damage() == 0) {
+        row.has("DamageType");
+      }
+    }
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
     // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
     // a Clone's whose hit action is a group of buff spawns, as the Goblin Curse's base is, or a
@@ -1204,9 +1220,15 @@ public final class BattleRecords {
     boolean taunt =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionTaunt");
+    // A shaped row's hit pass schedules a choice by team, as the evolved Baby Dragon's wind does.
+    boolean byTeam =
+        data.onHitAction() != null
+            && data.shaped()
+            && tables.action(data.onHitAction()).classType().equals("ActionFilterByEnemy");
     if (data.onHitAction() != null
         && !(data.cloning() && cloning)
-        && !(!data.cloning() && (buffSpawns || taunt))) {
+        && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt))
+        && !byTeam) {
       unmodelled.add("OnHitAction");
     }
     // One hit per target is read by the hit action's loop; whether anything else reads it is not
@@ -1219,7 +1241,7 @@ public final class BattleRecords {
       unmodelled.add("FollowBehaviour");
     }
     // The Filter is read only by the Shape path, which a row without a Shape never enters.
-    if (!sets(row, "Shape")) {
+    if (!data.shaped()) {
       row.has("Filter");
     }
     if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
@@ -1251,6 +1273,35 @@ public final class BattleRecords {
                 PRESENTATION_AREA_EFFECT_COLUMNS,
                 INERT_AREA_EFFECT_COLUMNS,
                 PENDING_AREA_EFFECT_COLUMNS))
+        .build();
+  }
+
+  /**
+   * A shaped row with its rectangle read. Refused, by its Shape column: a shape of another class or
+   * none, a rectangle without a filter, and one whose hits would do more than schedule their hit
+   * action - a damage, a buff, a push, a launch, a spawner, a growth or one hit per target - none
+   * of which the shape's hit pass is held for.
+   */
+  private AreaEffectData shaped(AreaEffectData data, String shape, List<String> unmodelled) {
+    GameTable table = tables.table(SHAPES);
+    if (!table.has(shape) || !table.row(shape).string("ClassType").equals("Rectangle")) {
+      unmodelled.add("Shape");
+      return data;
+    }
+    GameRow row = table.row(shape);
+    if (data.filter() == null
+        || data.damage() != 0
+        || data.buff() != null
+        || data.pushback() != 0
+        || data.projectile() != null
+        || data.spawnCharacter() != null
+        || data.maxRadius() != 0
+        || data.oneHitPerTarget()) {
+      unmodelled.add("Shape");
+    }
+    return data.toBuilder()
+        .shapeWidth(row.intValue("Width"))
+        .shapeHeight(row.intValue("Height"))
         .build();
   }
 

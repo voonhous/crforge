@@ -30,10 +30,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * that does not wait is scheduled alongside, its delay the one carried in less the row's own plus
  * its own, and never below zero.
  *
- * <p><b>Starting.</b> A singleton row with a run already listed re-triggers that run and starts
- * nothing. Otherwise a start gate that answers 0 ends the start; the action then does what it does,
- * its run, if it lasts, is listed carrying the row's tags, and a next action that waits is
- * scheduled with its own delay.
+ * <p><b>Starting.</b> A singleton row whose first listed run has not finished re-triggers that run
+ * and starts nothing; once that run has finished, the row starts a new one. Otherwise a start gate
+ * that answers 0 ends the start; the action then does what it does, its run, if it lasts, is listed
+ * carrying the row's tags, and a next action that waits is scheduled with its own delay.
  *
  * <p><b>The passes.</b> A pending pass takes each due entry of its phase whose pause gate does not
  * hold it, and a held entry keeps counting down past zero. The run pass removes an instance that
@@ -52,7 +52,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " entity's pending pass, as the battle's one flag says - delays in"
             + " milliseconds queued as whole ticks, the row's own delay standing in for none, the"
             + " swap-with-last order of a pending pass, the pause, start and stop gates, the"
-            + " singleton re-trigger, the next action scheduled after the run or alongside with"
+            + " singleton re-trigger of a run that has not finished and a new run past a finished"
+            + " one, held by baby_dragon_ev1_wind and ActionRuntimeTest, the next action"
+            + " scheduled after the run or alongside with"
             + " the carried delay, the row's tags on the run, the run pass removing a finished run"
             + " at its next pass and a stopped one at once, the tags of every listed run folded in,"
             + " and the delay taken off in the end pass. Held by the recorded runtime cases. The"
@@ -88,6 +90,14 @@ public class ActionHolder implements EntityActions {
      *     as it is scheduled, or as it is started directly
      */
     default void starting(BattleAction action, int phase, boolean queued) {}
+
+    /**
+     * A singleton row's start found its run listed and not finished, and is about to re-trigger it,
+     * in the pending pass of the given phase, or 0 outside every pass.
+     *
+     * @param queued true when the pending pass took it from the queue
+     */
+    default void retriggering(BattleAction action, int phase, boolean queued) {}
 
     /** An action started, in the pending pass of the given phase, or 0 outside every pass. */
     default void started(BattleAction action, int phase) {}
@@ -252,11 +262,17 @@ public class ActionHolder implements EntityActions {
   private void start(BattleAction action, ActionHolder instigator, boolean queued) {
     if (action.singleton()) {
       // A row is one of the game's rows, whichever entity's tree it was built in: a second tree
-      // built from the same row finds the first one's run.
+      // built from the same row finds the first one's run. The first listed run of the row ends
+      // the walk: one that has not finished is re-triggered, and one that has lets the row start
+      // a new run.
       for (ActionInstance instance : running) {
         if (instance.getAction().name().equals(action.name())) {
-          instance.retrigger(this);
-          return;
+          if (!instance.isFinished()) {
+            listener.retriggering(action, passPhase, queued);
+            instance.retrigger(this);
+            return;
+          }
+          break;
         }
       }
     }

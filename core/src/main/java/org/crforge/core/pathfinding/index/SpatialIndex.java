@@ -35,7 +35,9 @@ import org.crforge.core.pathfinding.GridEntity;
         "Bucket layout, insertion margin, bucket visiting order, the seen mark, the"
             + " type mask, the team rule and both kings-last orderings agree with the"
             + " reference line for line; the 53 reference walks hold the circle query, the"
-            + " multi-unit parity scenes hold it with several movers.")
+            + " multi-unit parity scenes hold it with several movers. The box query of a shaped"
+            + " area effect, a building by its square and anything else by its circle after the"
+            + " filter, is held by baby_dragon_ev1_wind and SpatialIndexTest.")
 public final class SpatialIndex {
 
   /** Bucket edge length in game units; the bucket of a coordinate is that coordinate shifted. */
@@ -262,6 +264,61 @@ public final class SpatialIndex {
           }
           if (accepts.test(entity)) {
             result.add(entity);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Answers the entities a rectangle about a point reaches that pass a filter: the buckets over the
+   * rectangle, x outer and y inner, each bucket in insertion order, each entity at most once. An
+   * entity is tested by the filter first, then by its geometry on its live position: a building by
+   * its square overlapping the rectangle, anything else by its circle meeting it. Only an accepted
+   * entity is marked, so a rejected one is tested again in its next bucket. The answer is a list of
+   * the caller's, not one of the pool's.
+   *
+   * @param x the rectangle's centre along the width
+   * @param y the rectangle's centre along the length
+   * @param halfWidth half the rectangle's width
+   * @param halfHeight half its height
+   * @param passes the filter
+   */
+  public List<GridEntity> boxQuery(
+      int x, int y, int halfWidth, int halfHeight, Predicate<GridEntity> passes) {
+    List<GridEntity> result = new ArrayList<>();
+    int xLow = (x - halfWidth) >> BUCKET_SHIFT;
+    int xHigh = (x + halfWidth) >> BUCKET_SHIFT;
+    if (xLow > xHigh) {
+      return result;
+    }
+    int yLow = (y - halfHeight) >> BUCKET_SHIFT;
+    int yHigh = (y + halfHeight) >> BUCKET_SHIFT;
+    if (yLow > yHigh) {
+      return result;
+    }
+    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (int cx = xLow; cx <= xHigh; cx++) {
+      if (cx < 0 || cx >= width) {
+        continue;
+      }
+      for (int cy = yLow; cy <= yHigh; cy++) {
+        if (cy < 0 || cy >= high) {
+          continue;
+        }
+        for (GridEntity entity : buckets.get(width * cy + cx)) {
+          if (seen.contains(entity) || !passes.test(entity)) {
+            continue;
+          }
+          boolean inside =
+              entity.isBuilding()
+                  ? ShapeTests.boxOverlap(entity, x, y, halfWidth, halfHeight)
+                  : ShapeTests.withinBox(
+                      entity, x - halfWidth, y - halfHeight, 2 * halfWidth, 2 * halfHeight);
+          if (inside) {
+            result.add(entity);
+            seen.add(entity);
           }
         }
       }

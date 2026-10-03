@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
+import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
@@ -23,6 +24,7 @@ import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.Filter;
+import org.crforge.core.battle.action.FilterByEnemy;
 import org.crforge.core.battle.action.FlipFlop;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
@@ -33,7 +35,9 @@ import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
+import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
+import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RunActionAtHealth;
@@ -48,6 +52,7 @@ import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
+import org.crforge.core.battle.action.SpawnResetableAreaEffect;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
@@ -232,6 +237,50 @@ public final class ActionRows {
                   "ActionOnLanding",
                   "ActionOnLandingEnd",
                   "ActionOnGround")),
+          // The follow-up dash's range, radius test and track are read only by the dash, which a
+          // row
+          // without DoFollowUpJump never reaches, and the push's gate byte only by the request's
+          // path; its two effects only show something.
+          Map.entry(
+              "ActionMegaKnightUppercut",
+              Set.of(
+                  "PushBackStrength",
+                  "PushRadiusDirectionalOffset",
+                  "ResetPushbackIfStronger",
+                  "DistanceProportinalPush",
+                  "IgnorePushbackChecks",
+                  "OnlyRunActionOnPushback",
+                  "DoFollowUpJump",
+                  "DashFollowUpMinRange",
+                  "DashFollowUpMaxRange",
+                  "DashFollowUpDelay",
+                  "DashFollowUpUseRadius",
+                  "DashFollowUpTrackEffect",
+                  "DashFollowUpStartEffect",
+                  "ActionOnTargets")),
+          // Its landing and attached effects only show something.
+          Map.entry(
+              "ActionKnockback",
+              Set.of(
+                  "Height",
+                  "Duration",
+                  "ApplyNoCollisionTag",
+                  "PassInstigatorToLandingAction",
+                  "ActionOnLanding",
+                  "LandingEffect",
+                  "AttachedEffect")),
+          Map.entry(
+              "ActionSpawnResetableAeO",
+              Set.of(
+                  "Aeo",
+                  "OffsetX",
+                  "OffsetY",
+                  "StopAeoIfParentHasCombatDisabled",
+                  "StayAliveAfterParentDiesDuration")),
+          Map.entry("ActionFilterByEnemy", Set.of("IsEnemyAction", "IsSameTeamAction")),
+          Map.entry(
+              "ActionAeoRunActionAtAliveTimerData",
+              Set.of("AliveTimeList", "Actions", "AllowRepeatAction")),
           // The effects it lists, and which one its count picks, reach its client view alone.
           Map.entry(
               "ActionLaserBall",
@@ -707,6 +756,15 @@ public final class ActionRows {
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
+            case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
+            case "ActionKnockback" -> knockback(name, shared, f);
+            case "ActionSpawnResetableAeO" -> resetableAreaEffect(name, shared, f);
+            case "ActionFilterByEnemy" -> {
+              refuseUnread(name, f, true);
+              yield new FilterByEnemy(
+                  shared, action(f.get("IsSameTeamAction")), action(f.get("IsEnemyAction")));
+            }
+            case "ActionAeoRunActionAtAliveTimerData" -> aliveTimer(name, shared, f);
             case "ActionChangeGameObjectData" -> {
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
@@ -1084,6 +1142,120 @@ public final class ActionRows {
           f.path("TotalDuration").asInt(1000),
           f.path("AllowIsGroundTagOnIdle").asBoolean(false),
           f.path("ResetPathAtEnd").asBoolean(true));
+    }
+
+    /**
+     * Refuses a row that sets one of the shared columns the runs of the evolved Mega Knight's and
+     * Baby Dragon's classes do not read: tags, a next action, the three gates, a delay and a phase,
+     * and, unless the class reads it, Singleton.
+     */
+    private void refuseUnread(String name, JsonNode f, boolean singleton) {
+      List<String> columns =
+          new ArrayList<>(
+              List.of(
+                  "GameTagsToSet",
+                  "NextAction",
+                  "ExecuteIfTrue",
+                  "ActionPausedIfTrue",
+                  "ForceStopIfTrue",
+                  "ActionDelay",
+                  "UpdatePhase"));
+      if (singleton) {
+        columns.add("Singleton");
+      }
+      for (String column : columns) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name
+                  + ", an "
+                  + f.path("ClassType").asText()
+                  + ", sets "
+                  + column
+                  + ", which is not modelled");
+        }
+      }
+    }
+
+    /**
+     * An uppercut's columns, a column it leaves out taking the loader's default: an offset of 50, a
+     * longer pushback kept, no proportional push, the follow-up dash and a delay of 1000. A row
+     * that pushes through the request's gates or dashes after the delay is refused.
+     */
+    private MegaKnightUppercut uppercut(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      if (!f.path("IgnorePushbackChecks").asBoolean(false)) {
+        throw new UnsupportedOperationException(
+            name + " pushes through the pushback request's gates, which is not modelled");
+      }
+      if (f.path("DoFollowUpJump").asBoolean(true)) {
+        throw new UnsupportedOperationException(
+            name + " dashes after its delay, which is not modelled");
+      }
+      return new MegaKnightUppercut(
+          shared,
+          integer(f, "PushBackStrength"),
+          f.path("PushRadiusDirectionalOffset").asInt(50),
+          f.path("DistanceProportinalPush").asBoolean(false),
+          f.path("ResetPushbackIfStronger").asBoolean(true),
+          f.path("DashFollowUpDelay").asInt(1000),
+          action(f.get("ActionOnTargets")));
+    }
+
+    /**
+     * A knock's columns. A row with a landing action, passing the cause on to it or the
+     * no-collision tag is refused.
+     */
+    private Knockback knockback(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      for (String column :
+          List.of("ActionOnLanding", "PassInstigatorToLandingAction", "ApplyNoCollisionTag")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + ", a knock, sets " + column + ", which is not modelled");
+        }
+      }
+      return new Knockback(shared, integer(f, "Height"), integer(f, "Duration"));
+    }
+
+    /**
+     * A resetable area effect's columns, its stay -1, for no cut, when the row leaves it out. A row
+     * that destroys its area effect while its owner's combat is disabled is refused.
+     */
+    private SpawnResetableAreaEffect resetableAreaEffect(
+        String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, false);
+      if (f.path("StopAeoIfParentHasCombatDisabled").asBoolean(false)) {
+        throw new UnsupportedOperationException(
+            name
+                + " destroys its area effect while its owner's combat is disabled, which is not"
+                + " modelled");
+      }
+      return new SpawnResetableAreaEffect(
+          shared,
+          f.get("Aeo").asText(),
+          integer(f, "OffsetX"),
+          integer(f, "OffsetY"),
+          f.path("StayAliveAfterParentDiesDuration").asInt(-1));
+    }
+
+    /**
+     * The columns of actions run at ages, repeats allowed when the row leaves it out. An action
+     * that is not an effect is refused.
+     */
+    private AliveTimer aliveTimer(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      for (JsonNode reference : f.path("Actions")) {
+        String action = reference.path("action").asText();
+        if (!playsEffect(action)) {
+          throw new UnsupportedOperationException(
+              name + " runs " + action + " at an age, which is not an effect, not modelled");
+        }
+      }
+      return new AliveTimer(
+          shared,
+          ints(f.get("AliveTimeList")),
+          actions(f.get("Actions")),
+          f.path("AllowRepeatAction").asBoolean(true));
     }
 
     /** Whether a row sets a column to a value other than empty, 0, false or an empty list. */

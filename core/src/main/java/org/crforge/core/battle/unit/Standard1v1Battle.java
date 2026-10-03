@@ -843,7 +843,9 @@ public class Standard1v1Battle {
 
   /**
    * Queues the placement of one character under a name of its own, for a battle with more than one
-   * character of the same row.
+   * character of the same row. The character starts deploying without its setter's entry, so a row
+   * that pushes the enemies around it as a card play sets it deploying pushes nobody; the cast its
+   * card makes as it plays is a play's, which a placement makes none of.
    *
    * @param tick the tick the placement is due on
    * @param data the character's published columns
@@ -859,12 +861,6 @@ public class Standard1v1Battle {
     if (data.spawnAttach()) {
       throw new UnsupportedOperationException(
           data.name() + " makes its riders as a card play sets it deploying; play it by its card");
-    }
-    if (data.pushesOnDeploy()) {
-      throw new UnsupportedOperationException(
-          data.name()
-              + " pushes as a card play sets it deploying, and its card casts as it plays; play"
-              + " it by its card");
     }
     CharacterEntity character = new CharacterEntity(world, data, name, side, x, y, level);
     battle.queue(

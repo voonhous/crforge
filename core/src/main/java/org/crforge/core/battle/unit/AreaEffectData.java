@@ -43,7 +43,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param cloning true for a Clone: its on-hit action passes a clone, a unit a Clone passes by and
  *     one tagged against clones by
  * @param onHitAction the action each of its hits schedules on every unit in its circle it reaches,
- *     or null for none; only a Clone's, a group of buff spawns and a taunt are modelled
+ *     or in its rectangle for a shaped one, or null for none; only a Clone's, a group of buff
+ *     spawns, a taunt and, for a shaped one, a choice by team are modelled
  * @param oneHitPerTarget true when its hit action reaches each object once in its life
  * @param followsParent true when it moves with the object it follows, its parent, standing on that
  *     object's point at each update
@@ -61,6 +62,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnClones true when each it makes is a clone
  * @param stayAfterParentDies true when it stays, standing on its last point, as the object it
  *     follows leaves; false to end with it
+ * @param shaped true when each update lists its targets in a rectangle, through its filter, in
+ *     place of its circle
+ * @param shapeWidth the width of that rectangle
+ * @param shapeHeight its height
+ * @param filter the game object filter the rectangle's list passes its objects through, or null
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)
@@ -107,6 +113,10 @@ public record AreaEffectData(
     boolean spawnRandomizeSequence,
     boolean spawnClones,
     boolean stayAfterParentDies,
+    boolean shaped,
+    int shapeWidth,
+    int shapeHeight,
+    String filter,
     List<String> unmodelledColumns) {
 
   public AreaEffectData {

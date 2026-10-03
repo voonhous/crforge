@@ -164,7 +164,7 @@ final class AirToGroundRun extends ActionInstance {
   /** Pushes a height change to a unit with a movement component. */
   private void push(int delta, List<Integer> pushes) {
     if (unit.hasMovementComponent()) {
-      unit.pushHeight(delta);
+      unit.pushHeight(delta, 0);
       pushes.add(delta);
     }
   }

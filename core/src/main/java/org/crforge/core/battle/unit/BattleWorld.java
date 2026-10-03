@@ -1365,6 +1365,22 @@ public class BattleWorld implements HolderPasses {
     return count;
   }
 
+  /**
+   * The princess towers of a side still in the battle, in the order the holder lists them: the
+   * side's list of map objects. A destroyed one is listed until the cleanup that removes it.
+   */
+  List<TowerEntity> princessTowers(int side) {
+    List<TowerEntity> out = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof TowerEntity tower
+          && tower.getData().summonerTower()
+          && tower.side() == side) {
+        out.add(tower);
+      }
+    }
+    return out;
+  }
+
   /** The kings' elixir in a match, which collectors and deaths pay into; null outside one. */
   @Getter @Setter private KingElixir kingElixir;
 
@@ -3822,7 +3838,7 @@ public class BattleWorld implements HolderPasses {
       view.setPendingDamageAmount(0);
     }
     if (columns.resetPath()) {
-      unit.resetRouteAfterWarp();
+      unit.resetRoute();
     }
     if (columns.resetTarget()) {
       unit.resetTargetAfterWarp();
@@ -4067,6 +4083,204 @@ public class BattleWorld implements HolderPasses {
       for (WorldObserver observer : observers) {
         observer.projectilesDropped(tick, unit, dropped);
       }
+    }
+  }
+
+  /**
+   * The area effect a resetable action makes: at the given point, for the unit's side, at its level
+   * re-based on the area effect's rarity, the unit its parent and, for a row that follows its
+   * parent, the object it follows; queued, so it joins the live list at the tick's closing cleanup
+   * and first updates on the next tick. A row its creation refuses is refused here too.
+   *
+   * @param unit the unit the action runs on
+   * @param row the area effect's row
+   * @param x its point along the width
+   * @param y its point along the length
+   * @return the area effect
+   */
+  AreaEffectEntity resetableAreaEffect(CharacterEntity unit, String row, int x, int y) {
+    if (unit.isClone()) {
+      throw new UnsupportedOperationException(
+          "a clone makes " + row + ", whose clone byte nothing the battle models reads");
+    }
+    AreaEffectData data = records.areaEffect(row);
+    return createAreaEffect(
+        row,
+        x,
+        y,
+        unit.side(),
+        unit.getPackedLevel(),
+        null,
+        "resetable",
+        unit.name(),
+        unit,
+        data.followsParent() ? unit : null);
+  }
+
+  /**
+   * The objects a shaped area effect lists: those in the rectangle about the point that pass the
+   * filter for the area effect's team and row, in the index's bucket order, x outer and y inner,
+   * each once. A building is tested by its square overlapping the rectangle, anything else by its
+   * circle meeting it, both on live positions.
+   *
+   * @param owner the area effect
+   * @param x the rectangle's centre along the width
+   * @param y the rectangle's centre along the length
+   * @param halfWidth half its width
+   * @param halfHeight half its height
+   * @param filter the filter
+   * @return the objects, in the query's order
+   */
+  List<WorldEntity> rectangleQuery(
+      AreaEffectEntity owner,
+      int x,
+      int y,
+      int halfWidth,
+      int halfHeight,
+      GameObjectFilter filter) {
+    int team = owner.side() & 1;
+    String name = owner.getData().name();
+    List<WorldEntity> out = new ArrayList<>();
+    for (GridEntity view :
+        index.boxQuery(
+            x,
+            y,
+            halfWidth,
+            halfHeight,
+            v -> filter.matches(entityOf(v).filterSubject(), team, name))) {
+      out.add(entityOf(view));
+    }
+    return out;
+  }
+
+  /** Tells the observers the hold, layer and contact tags of an entity's word changed. */
+  void tagWordChanged(WorldEntity entity, long word) {
+    for (WorldObserver observer : observers) {
+      observer.tagWordChanged(tick, entity, word);
+    }
+  }
+
+  /** Tells the observers an uppercut started on a unit. */
+  void uppercutStarted(
+      CharacterEntity unit,
+      String action,
+      int phase,
+      WorldEntity instigator,
+      WorldEntity target,
+      boolean finished) {
+    for (WorldObserver observer : observers) {
+      observer.uppercutStarted(tick, unit, action, phase, instigator, target, finished);
+    }
+  }
+
+  /** Tells the observers an uppercut's update changed its delay, pushed or finished. */
+  void uppercutStepped(
+      CharacterEntity unit, int delay, boolean finished, String outcome, int[] pushPoint) {
+    for (WorldObserver observer : observers) {
+      observer.uppercutStepped(tick, unit, delay, finished, outcome, pushPoint);
+    }
+  }
+
+  /** Tells the observers an uppercut marked its target in the unit's targeting queue. */
+  void uppercutMarked(CharacterEntity unit, WorldEntity target, int priority) {
+    for (WorldObserver observer : observers) {
+      observer.uppercutMarked(tick, unit, target, priority, unit.currentTarget());
+    }
+  }
+
+  /** Tells the observers a unit's pre-hook emptied its targeting queue. */
+  void targetQueueFlushed(CharacterEntity unit) {
+    for (WorldObserver observer : observers) {
+      observer.targetQueueFlushed(tick, unit);
+    }
+  }
+
+  /** Tells the observers an uppercut's target left the battle. */
+  void uppercutTargetLeft(CharacterEntity unit, WorldEntity target) {
+    for (WorldObserver observer : observers) {
+      observer.uppercutTargetLeft(tick, unit, target);
+    }
+  }
+
+  /** Tells the observers a knock started on a unit. */
+  void knockbackStarted(
+      CharacterEntity unit, String action, int phase, WorldEntity instigator, int counter) {
+    for (WorldObserver observer : observers) {
+      observer.knockbackStarted(tick, unit, action, phase, instigator, counter);
+    }
+  }
+
+  /** Tells the observers a knock's update ran. */
+  void knockbackStepped(
+      CharacterEntity unit, int before, int after, int height, long tags, boolean finished) {
+    for (WorldObserver observer : observers) {
+      observer.knockbackStepped(tick, unit, before, after, height, tags, finished);
+    }
+  }
+
+  /** Tells the observers a resetable action made its area effect. */
+  void resetableStarted(
+      CharacterEntity unit,
+      int phase,
+      WorldEntity instigator,
+      AreaEffectEntity areaEffect,
+      int x,
+      int y) {
+    for (WorldObserver observer : observers) {
+      observer.resetableStarted(tick, unit, phase, instigator, areaEffect, x, y);
+    }
+  }
+
+  /** Tells the observers a resetable action's run ended after its area effect left. */
+  void resetableEnded(CharacterEntity unit, String areaEffect) {
+    for (WorldObserver observer : observers) {
+      observer.resetableEnded(tick, unit, areaEffect);
+    }
+  }
+
+  /**
+   * Tells the observers a resetable action's singleton row was started again: the countdown its
+   * area effect got back, or null with none live.
+   */
+  void resetableRetriggered(CharacterEntity unit, int phase, String areaEffect, Integer countdown) {
+    for (WorldObserver observer : observers) {
+      observer.resetableRetriggered(tick, unit, phase, areaEffect, countdown);
+    }
+  }
+
+  /** Tells the observers a resetable action's area effect left. */
+  void resetableLeft(CharacterEntity unit, String areaEffect) {
+    for (WorldObserver observer : observers) {
+      observer.resetableLeft(tick, unit, areaEffect);
+    }
+  }
+
+  /** Tells the observers a resetable action's area effect had its life cut as the unit left. */
+  void resetableReleased(CharacterEntity unit, String areaEffect, int before, int after) {
+    for (WorldObserver observer : observers) {
+      observer.resetableReleased(tick, unit, areaEffect, before, after);
+    }
+  }
+
+  /** Tells the observers what a shaped area effect listed. */
+  void shapeListed(AreaEffectEntity areaEffect, List<WorldEntity> listed) {
+    for (WorldObserver observer : observers) {
+      observer.shapeListed(tick, areaEffect, listed);
+    }
+  }
+
+  /** Tells the observers a choice by team ran on an entity. */
+  void filteredByTeam(
+      WorldEntity unit, String action, SpawnHost instigator, boolean sameTeam, String chosen) {
+    for (WorldObserver observer : observers) {
+      observer.filteredByTeam(tick, unit, action, instigator, sameTeam, chosen);
+    }
+  }
+
+  /** Tells the observers an action run at an age was scheduled on an area effect. */
+  void aliveTimerFired(AreaEffectEntity areaEffect, String action) {
+    for (WorldObserver observer : observers) {
+      observer.aliveTimerFired(tick, areaEffect, action);
     }
   }
 
@@ -4343,7 +4557,10 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           "the area effect " + row + " sets columns not modelled: " + data.unmodelledColumns());
     }
-    if (data.onHitAction() != null && !data.cloning() && !how.equals("action")) {
+    if (data.onHitAction() != null
+        && !data.cloning()
+        && !how.equals("action")
+        && !how.equals("resetable")) {
       throw new UnsupportedOperationException(
           "the area effect "
               + row
@@ -4364,7 +4581,10 @@ public class BattleWorld implements HolderPasses {
               + " spawns characters and was not made by an ability, or hits, chains or runs an"
               + " action too, which is not modelled");
     }
-    if (data.followsParent() && !how.equals("action") && !how.equals("ability")) {
+    if (data.followsParent()
+        && !how.equals("action")
+        && !how.equals("ability")
+        && !how.equals("resetable")) {
       throw new UnsupportedOperationException(
           "the area effect "
               + row

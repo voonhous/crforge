@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 /**
  * The action runtime's rules as its recorded cases pin them: scheduling and the millisecond
  * boundary, the three phases, the pause and execute gates, instances and their removal, the forced
- * stop, the singleton re-trigger, the next action both ways, the tags a run carries and the order a
- * pending pass takes its entries in.
+ * stop, the singleton re-trigger of a run that has not finished, the next action both ways, the
+ * tags a run carries and the order a pending pass takes its entries in.
  *
  * <p>Every case schedules the way the recorded ones did, as the battle does inside a pending pass:
  * an action whose delay has run out starts at once, in the caller's stack.
@@ -337,6 +337,40 @@ class ActionRuntimeTest {
     h2.start(many);
     h2.start(many);
     assertThat(running(h2)).containsExactly("many", "many");
+  }
+
+  @Test
+  @DisplayName(
+      "a singleton whose listed run has finished starts a new run, the finished one waiting for"
+          + " the next run pass; the listener hears of a re-trigger before it")
+  void aFinishedSingletonStartsANewRun() {
+    ActionHolder h = holder();
+    List<String> heard = new ArrayList<>();
+    h.setListener(
+        new ActionHolder.Listener() {
+          @Override
+          public void retriggering(BattleAction action, int phase, boolean queued) {
+            heard.add("retriggering " + action.name());
+          }
+
+          @Override
+          public void starting(BattleAction action, int phase, boolean queued) {
+            heard.add("starting " + action.name());
+          }
+        });
+    Row once = new Row("once");
+    once.lasting = true;
+    once.singleton = true;
+    once.finishOnNextUpdate = true;
+    h.start(once);
+    h.start(once);
+    h.runPass(1);
+    take();
+    h.start(once);
+
+    assertThat(take()).containsExactly("perform once", "new instance once");
+    assertThat(running(h)).containsExactly("once", "once");
+    assertThat(heard).containsExactly("starting once", "retriggering once", "starting once");
   }
 
   @Test
