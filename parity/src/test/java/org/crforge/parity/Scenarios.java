@@ -75,4 +75,44 @@ final class Scenarios {
     scenario.putArray("evt");
     return scenario;
   }
+
+  /**
+   * The {@link #knight()} battle with side 0's Knight in the deck's evolution slot ({@code el} 1),
+   * played three times with four other cards between its plays, so it cycles back into the hand.
+   * Each play carries the packed item the player's client builds for it: the Knight's carry the
+   * slot flags (bit 19) and the count plus 1 (bits 7..9), 1, 2 and 3, and the third, whose count
+   * has reached its evolved row's DarkElixirCost of 2, the evolution field 1.
+   */
+  static ObjectNode knightEvolvedThirdPlay() {
+    ObjectNode scenario = knight();
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(0)).put("el", 1);
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 220, 26000000, 0x30480080, 3500, 14000);
+    addPlay(commands, 260, 26000002, 0x20c00000, 14500, 3000);
+    addPlay(commands, 300, 26000001, 0x30800000, 14500, 3000);
+    addPlay(commands, 340, 26000005, 0x31400000, 14500, 3000);
+    addPlay(commands, 461, 28000001, 0x32000000, 9000, 9000);
+    addPlay(commands, 630, 26000000, 0x30480100, 3500, 14000);
+    addPlay(commands, 742, 26000002, 0x20c00000, 14500, 3000);
+    addPlay(commands, 911, 26000001, 0x30800000, 14500, 3000);
+    addPlay(commands, 1079, 26000005, 0x31400000, 14500, 3000);
+    addPlay(commands, 1248, 28000001, 0x32000000, 9000, 9000);
+    addPlay(commands, 1416, 26000000, 0x30480181, 3500, 14000);
+    return scenario;
+  }
+
+  /** Adds side 0's play of a card, given 20 ticks before the tick it runs on. */
+  private static void addPlay(ArrayNode commands, int runTick, int card, int item, int x, int y) {
+    ObjectNode command = commands.addObject();
+    command.put("ct", 124);
+    ObjectNode body = command.putObject("c");
+    body.put("t", runTick - 20);
+    body.put("t2", runTick);
+    body.put("idHi", 0);
+    body.put("idLo", 1);
+    body.put("px", x);
+    body.put("py", y);
+    body.put("sid", -1);
+    body.putObject("sel").put("os", card).put("pd", item);
+  }
 }

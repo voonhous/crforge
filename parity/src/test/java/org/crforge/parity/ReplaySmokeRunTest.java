@@ -187,6 +187,73 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void anEvolutionSlotsCardIsPlayedPlainTwiceAndEvolvedOnItsThirdPlay() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.knightEvolvedThirdPlay(), out, terminalIdentity, 1430);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("plays_run")).hasSize(11);
+    for (JsonNode play : manifest.path("plays_run")) {
+      assertThat(play.path("placed").asBoolean()).as(play.toString()).isTrue();
+    }
+    // Each Knight play's unit is in the observation after its run tick, as the row its item casts.
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    assertThat(rowOfNewestUnit(lines.get(221))).isEqualTo("Knight");
+    assertThat(rowOfNewestUnit(lines.get(631))).isEqualTo("Knight");
+    assertThat(rowOfNewestUnit(lines.get(1417))).isEqualTo("Knight_EV1");
+    assertThat(manifest.has("items_not_built")).isFalse();
+  }
+
+  @Test
+  void anEvolutionSlotsPlayThatNeverRunsIsListedAsNotBuilt() throws IOException {
+    Path out = folder.resolve("run");
+
+    // The horizon ends before the third Knight play's run tick, 1416.
+    int exit = run(Scenarios.knightEvolvedThirdPlay(), out, terminalIdentity, 1400);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("plays_run")).hasSize(10);
+    assertThat(manifest.path("items_not_built").toString()).isEqualTo("[\"cmd[10]\"]");
+  }
+
+  @Test
+  void aPlayWhoseItemIsNotTheItemTheSimulatorBuildsIsUnsupported() throws IOException {
+    ObjectNode scenario = Scenarios.knightEvolvedThirdPlay();
+    // The first play claims the evolved item of the third: field 1 at the count plus 1 of 3.
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", 0x30480181);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, terminalIdentity, 1430);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("status").asText()).isEqualTo("unsupported");
+    assertThat(manifest.path("unsupported").path("feature").asText()).contains("packed item");
+    assertThat(manifest.path("unsupported").path("input").asText())
+        .startsWith("cmd[0].c.sel.pd=" + 0x30480181);
+    assertThat(out.resolve("COMPLETE")).doesNotExist();
+  }
+
+  @Test
+  void aPlayWhoseCountIsNotTheSimulatorsIsUnsupported() throws IOException {
+    ObjectNode scenario = Scenarios.knightEvolvedThirdPlay();
+    // The second Knight play repeats the first's count plus 1, 1, where the simulator counts 2.
+    ((ObjectNode) scenario.path("cmd").get(5).path("c").path("sel")).put("pd", 0x30480080);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, terminalIdentity, 1430);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("unsupported").path("input").asText())
+        .startsWith("cmd[5].c.sel.pd=" + 0x30480080);
+    assertThat(out.resolve("COMPLETE")).doesNotExist();
+  }
+
+  @Test
   void anUnsupportedScenarioWritesNoObservationAndNoMarker() throws IOException {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000004);
@@ -228,6 +295,17 @@ class ReplaySmokeRunTest {
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.INVALID);
     assertThat(out.resolve("manifest.json")).doesNotExist();
+  }
+
+  /** The row of the entity with the highest id an observation lists, the newest unit. */
+  private static String rowOfNewestUnit(String line) throws IOException {
+    JsonNode newest = null;
+    for (JsonNode entity : MAPPER.readTree(line).path("entities")) {
+      if (newest == null || entity.path("id").asInt() > newest.path("id").asInt()) {
+        newest = entity;
+      }
+    }
+    return newest == null ? null : newest.path("row").asText();
   }
 
   private int run(ObjectNode scenario, Path out, Path identityFile, int ticks) throws IOException {

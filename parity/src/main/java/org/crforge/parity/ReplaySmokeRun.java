@@ -180,13 +180,18 @@ public final class ReplaySmokeRun {
     for (int choices : plan.playerDataChoices()) {
       battle.addPlayerData(choices);
     }
-    // A player's word, which joins its deck shuffle's draw, is the low word of its account id.
+    // A player's word, which joins its deck shuffle's draw, is the low word of its account id. Each
+    // deck card comes with its slot flags.
     battle.startLadderMatch(
         plan.decks().get(0),
         plan.decks().get(1),
         plan.accounts().get(0)[1],
-        plan.accounts().get(1)[1]);
+        plan.accounts().get(1)[1],
+        plan.slotFlags().get(0),
+        plan.slotFlags().get(1));
+    Map<String, ScenarioPlan.Play> planned = new LinkedHashMap<>();
     for (ScenarioPlan.Play play : plan.plays()) {
+      planned.put("cmd" + play.index(), play);
       battle.play(
           play.runTick(),
           battle.getWorld().getRecords().card(play.card()),
@@ -203,9 +208,13 @@ public final class ReplaySmokeRun {
     // Exact horizon: every requested step. Terminal-aware: until the battle's own stop predicate
     // holds after a step, or the horizon, whichever is first; a stopped battle is not stepped.
     int executed = 0;
+    int checked = 0;
     while (executed < ticks && !(schema.terminal() && SmokeObserver.stopped(battle))) {
       battle.getBattle().step();
       executed++;
+      // Each play that ran in the step carries the item the simulator built for it, which the
+      // scenario's packed item must be.
+      checked = checkItems(battle, plan, planned, checked);
       observations += write(trace, SmokeObserver.observe(battle, schema), observations);
     }
     byte[] bytes = trace.toByteArray();
@@ -231,9 +240,49 @@ public final class ReplaySmokeRun {
       plays.add(entry);
     }
     manifest.put("plays_run", plays);
+    // A play that never ran had no item built: when its item depends on the battle (an evolution
+    // slot's card, or an evolved or hero field), the parts the run checks are listed as unchecked.
+    List<String> unchecked = new ArrayList<>();
+    for (ScenarioPlan.Play play : plan.plays()) {
+      boolean ran = battle.getPlays().stream().anyMatch(p -> p.name().equals("cmd" + play.index()));
+      int deckIndex = plan.decks().get(play.side()).indexOf(play.card());
+      if (!ran
+          && ReplayScenario.dependsOnBattle(play, plan.slotFlags().get(play.side())[deckIndex])) {
+        unchecked.add("cmd[" + play.index() + "]");
+      }
+    }
+    if (!unchecked.isEmpty()) {
+      manifest.put("items_not_built", unchecked);
+    }
     manifest.put("status", "completed");
     Files.writeString(out.resolve("COMPLETE"), digest + "\n");
     return COMPLETED;
+  }
+
+  /**
+   * Checks the items of the plays that ran since the last check against the scenario's.
+   *
+   * @param checked how many of the battle's plays have been checked
+   * @return how many have been checked now
+   */
+  private static int checkItems(
+      Standard1v1Battle battle,
+      ScenarioPlan plan,
+      Map<String, ScenarioPlan.Play> planned,
+      int checked) {
+    List<Standard1v1Battle.Play> run = battle.getPlays();
+    for (int i = checked; i < run.size(); i++) {
+      Standard1v1Battle.Play play = run.get(i);
+      ScenarioPlan.Play given = planned.get(play.name());
+      if (given == null) {
+        throw new IllegalStateException(
+            "the battle ran a play the scenario does not give: " + play);
+      }
+      int deckIndex = plan.decks().get(given.side()).indexOf(given.card());
+      ReplayScenario.checkItem(
+          given, plan.slotFlags().get(given.side())[deckIndex], play.evolution());
+    }
+    return run.size();
   }
 
   /**

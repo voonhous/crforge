@@ -33,7 +33,59 @@ class ReplayScenarioTest {
     assertThat(plan.accounts().get(1)).containsExactly(0, 2);
     assertThat(plan.playerDataChoices()).containsExactly(1, 1);
     assertThat(plan.plays())
-        .containsExactly(new ScenarioPlan.Play(0, 200, 220, 0, "Knight", 1, 3500, 14000));
+        .containsExactly(
+            new ScenarioPlan.Play(0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000));
+    // No deck item names slot flags: every card is in neither slot.
+    assertThat(plan.slotFlags().get(0)).containsOnly(0);
+    assertThat(plan.slotFlags().get(1)).containsOnly(0);
+  }
+
+  @Test
+  void readsADeckCardsSlotFlagsAndTheItemsOfItsEvolutionSlotsPlays() {
+    ScenarioPlan plan = new ReplayScenario(tables).translate(Scenarios.knightEvolvedThirdPlay());
+
+    // The Knight's el 1: the evolution slot, bit 0.
+    assertThat(plan.slotFlags().get(0)).containsExactly(1, 0, 0, 0, 0, 0, 0, 0);
+    assertThat(plan.slotFlags().get(1)).containsOnly(0);
+    // The Knight's three items are kept for the run, which checks them against the items the
+    // simulator builds as each play runs: the count plus 1, then the evolution field.
+    assertThat(
+            plan.plays().stream()
+                .filter(play -> play.card().equals("Knight"))
+                .map(ScenarioPlan.Play::item))
+        .containsExactly(0x30480080, 0x30480100, 0x30480181);
+    assertThat(plan.plays()).hasSize(11);
+  }
+
+  @Test
+  void refusesSlotFlagsOtherThanTheEvolutionAndHeroSlots() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sp").get(2)).put("el", 4);
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("battle.deck1.sp[2].el=4");
+  }
+
+  @Test
+  void refusesAnItemWhoseSlotFlagsAreNotItsDeckCards() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(0)).put("el", 1);
+    // The plain item, whose flags field (bits 19..21) is 0, for an evolution slot's card.
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("slot flags field 0");
+  }
+
+  @Test
+  void refusesACountOnTheItemOfACardOutsideTheEvolutionSlot() {
+    ObjectNode scenario = Scenarios.knight();
+    // The count plus 1, bits 7..9, which only an evolution slot's card carries.
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", 0x30400080);
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("count field 1");
   }
 
   @Test
@@ -121,11 +173,24 @@ class ReplayScenarioTest {
   @Test
   void refusesAPlayWhoseItemSetsAnEvolutionBit() {
     ObjectNode scenario = Scenarios.knight();
+    // The evolution field 1 on a card in neither slot, which is never evolved.
     ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", 0x30400001);
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
-        .hasMessageContaining("other bits 1");
+        .hasMessageContaining("evolution field 1");
+  }
+
+  @Test
+  void refusesAPlayWhoseItemSetsAnOptionOrCosmeticBit() {
+    for (int bits : new int[] {0x10, 0x20000}) {
+      ObjectNode scenario = Scenarios.knight();
+      ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", 0x30400000 | bits);
+
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessageContaining("packed item");
+    }
   }
 
   @Test
