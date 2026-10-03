@@ -80,9 +80,10 @@ env.close()
 | `data`       | Card/unit/projectile config loading from JSON into typed objects  |
 | `desktop`    | LibGDX debug visualizer for watching and interacting with matches |
 | `gym-bridge` | ZMQ server + Python Gymnasium environment for RL training         |
+| `parity`     | Runs a replay scenario on the battle core and writes its trace    |
 
 `core` has no GUI dependencies. `data` depends on `core`. `desktop` and `gym-bridge` depend on
-both.
+both. `parity` depends on `core` only.
 
 ## Docs
 

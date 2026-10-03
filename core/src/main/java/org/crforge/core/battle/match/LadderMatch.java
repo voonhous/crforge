@@ -309,6 +309,11 @@ public final class LadderMatch implements BattleMode {
     }
   }
 
+  /** How many players the match was set up between. */
+  public int playerCount() {
+    return sides.size();
+  }
+
   /**
    * One side of the match.
    *

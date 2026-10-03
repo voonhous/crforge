@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
+import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +55,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " the elixir after the step 21 before its run, held by merge_maiden_mounted and"
             + " merge_maiden_normal; a play of a deck card with slots, its item built as it runs"
             + " and its evolved or hero row placed, held by evolution_knight and"
-            + " evolution_hero_mirror. Not modelled, and refused: a Mirror outside a match, and one"
+            + " evolution_hero_mirror; the draw each player's data takes of the battle's random"
+            + " source before the decks are dealt, bounded by the number of its choices, held by"
+            + " the recorded Knight battle's opening hands. Not established: what the choices of"
+            + " a player's data are. Not modelled, and refused: a Mirror outside a match, and one"
             + " given while another play of its side is pending, which the player's client may"
             + " repeat in its place; a variant card outside a match, run before tick 21, or given"
             + " while another play of its side is pending, whose cost the pick would set aside;"
@@ -191,6 +195,32 @@ public class Standard1v1Battle {
 
   /** The match the battle is played as, or null for a battle without players. */
   @Getter private LadderMatch match;
+
+  /** What a player's data that lists no choice picks: nothing, with no draw. */
+  public static final int NO_PICK = -1;
+
+  /** What each player's data picked, in the order the data was handed over. */
+  @Getter private final List<Integer> playerDataPicks = new ArrayList<>();
+
+  /**
+   * Hands the battle one player's data, as its setup does for each player in turn before the decks
+   * are dealt. Data that lists choices has one of them picked by a draw of the battle's random
+   * source, bounded by their number: the draw is taken of a single choice too, where it answers 0
+   * and still moves the source, so the shuffles that follow are seeded by later draws. Data that
+   * lists none keeps its default and draws nothing.
+   *
+   * <p>What the choices are is not established: only their number is read here, and the pick is
+   * kept for whoever comes to read it.
+   *
+   * @param choices how many choices the player's data lists
+   * @return the index picked, or {@link #NO_PICK} when nothing was drawn
+   */
+  public int addPlayerData(int choices) {
+    checkState(match == null, "a player's data is handed over before the decks are dealt");
+    int picked = choices >= 1 ? world.getRandom().next(choices) : NO_PICK;
+    playerDataPicks.add(picked);
+    return picked;
+  }
 
   /**
    * Plays the battle as a Ladder match between two players, set up before the first step: each
