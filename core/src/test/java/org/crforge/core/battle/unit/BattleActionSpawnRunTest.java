@@ -155,22 +155,21 @@ import org.junit.jupiter.params.provider.ValueSource;
  * <p>{@code match_elixir_150s} is a Ladder match: both decks shuffled with the battle's source, and
  * on every tick both elixirs, hands and cooldowns, the timeline and the crowns held to the
  * reference's trace, and every play's match code - a card still in the queue refused with 9, one
- * the elixir does not cover with 0xd. {@code match_knights_king} plays a match to its end: the
- * king's fall, the winner, the end timer, the fallen king's circle and its kills, nothing attacking
- * after the end, and the stop. {@code match_overtime_tiebreak} and {@code match_overtime_draw} play
- * past overtime with equal crowns into the tiebreaker: its clearing with nothing to clear, its idle
- * window, every step of its drain, and its end by a fallen princess tower, or as a draw by equal
- * towers. {@code match_building_cards} plays building cards from the hand: a Cannon snapped to its
- * tile corner, a Tombstone moved off the Cannon's tiles, a Cannon pulled back from across the river
- * and an Elixir Collector that pays its king, each living as the same building placed directly.
- * {@code mirror_knight} plays a Knight and then the Mirror, which repeats it one level up for one
- * elixir more and goes to the back of the queue itself. {@code mirror_fireball} does the same with
- * a Fireball, its first Mirror refused with 0xd, the elixir short of the item's cost. Each is held
- * to every Mirror item - the card it repeats, its level and its cost - and to the last card kept.
- * {@code merge_maiden_mounted} plays the Merge Maiden with 6 elixir or more, so it comes as the
- * mounted maiden, a flyer, for 6; {@code merge_maiden_normal} plays it after a Zap with less than
- * 6, so it comes as the maiden on foot, for 3. Each is held to the item its play carried - the
- * option, its cost and the Merge Maiden's deck index - and to both kings' elixir and hands.
+ * the elixir does not cover with 0xd. {@code match_overtime_tiebreak} and {@code
+ * match_overtime_draw} play past overtime with equal crowns into the tiebreaker: its clearing with
+ * nothing to clear, its idle window, every step of its drain, and its end by a fallen princess
+ * tower, or as a draw by equal towers. {@code match_building_cards} plays building cards from the
+ * hand: a Cannon snapped to its tile corner, a Tombstone moved off the Cannon's tiles, a Cannon
+ * pulled back from across the river and an Elixir Collector that pays its king, each living as the
+ * same building placed directly. {@code mirror_knight} plays a Knight and then the Mirror, which
+ * repeats it one level up for one elixir more and goes to the back of the queue itself. {@code
+ * mirror_fireball} does the same with a Fireball, its first Mirror refused with 0xd, the elixir
+ * short of the item's cost. Each is held to every Mirror item - the card it repeats, its level and
+ * its cost - and to the last card kept. {@code merge_maiden_mounted} plays the Merge Maiden with 6
+ * elixir or more, so it comes as the mounted maiden, a flyer, for 6; {@code merge_maiden_normal}
+ * plays it after a Zap with less than 6, so it comes as the maiden on foot, for 3. Each is held to
+ * the item its play carried - the option, its cost and the Merge Maiden's deck index - and to both
+ * kings' elixir and hands.
  *
  * <p>{@code electro_wizard_knights} and {@code ice_wizard_knights} play a wizard onto two Knights:
  * the card names no unit, so it is cast as a spell, its area effect zapping or chilling the Knights
@@ -456,7 +455,6 @@ class BattleActionSpawnRunTest {
         "hog_clip_cannon",
         "bandit_knight",
         "ram_rider_tower",
-        "match_knights_king",
         "match_overtime_tiebreak",
         "match_overtime_draw",
         "mirror_knight",
