@@ -7,17 +7,29 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ChampionAbility;
+import org.crforge.core.battle.action.CookingHost;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.expression.BattleFunctions;
+import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridStateSetter;
+import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.math.FixedMath;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.state.EntityStateVisit;
 import org.crforge.core.pathfinding.state.ResumeHelper;
 import org.crforge.core.pathfinding.state.StateQueries;
@@ -381,6 +393,175 @@ public class TowerEntity extends WorldEntity {
     if (holdingFire) {
       setActive(TARGETING_SLOT, false);
     }
+  }
+
+  /**
+   * What a Royal Chef's cooking run on the king asks of the battle: its side's princess-slot towers
+   * and what they are doing, the live list's friendly candidates and their hit points and buffs,
+   * and the throw from a tower.
+   */
+  @Override
+  public CookingHost cookingHost() {
+    if (!getData().king()) {
+      throw new UnsupportedOperationException(
+          name() + " cooks, which only a king tower is modelled to do");
+    }
+    return new CookingHost() {
+      /** The side's towers as the first step found them; one that leaves is refused. */
+      private List<Integer> listed;
+
+      @Override
+      public List<Integer> towers() {
+        List<Integer> ids = new ArrayList<>();
+        for (TowerEntity tower : world.princessTowers(side())) {
+          if (!HitPoints.alive(tower.getHitPoints())) {
+            throw destroyed(tower.name());
+          }
+          ids.add(tower.getId());
+        }
+        if (listed == null) {
+          listed = List.copyOf(ids);
+        } else if (!listed.equals(ids)) {
+          throw destroyed("a princess tower");
+        }
+        return ids;
+      }
+
+      private UnsupportedOperationException destroyed(String tower) {
+        return new UnsupportedOperationException(
+            "the Royal Chef's cooking with "
+                + tower
+                + " destroyed, whose contribution is not modelled");
+      }
+
+      @Override
+      public boolean attacking(int towerId) {
+        return entity(towerId).getView().getState() == GridEntityState.ATTACKING;
+      }
+
+      @Override
+      public int scaled(int towerId, int contribution) {
+        return entity(towerId).getBuffs().hitSpeed(contribution);
+      }
+
+      @Override
+      public List<Integer> candidates(GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.filteredEntities(filter, side() & 1, getData().name())) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public boolean found(int id) {
+        return world.liveObject(id) != null;
+      }
+
+      @Override
+      public int state(int id) {
+        return entity(id).getView().getState();
+      }
+
+      @Override
+      public boolean hasHitPoints(int id) {
+        return entity(id).getHitPoints() != null;
+      }
+
+      @Override
+      public int maximum(int id) {
+        HitPoints hp = entity(id).getHitPoints();
+        return hp.getMaximum() + hp.getShieldMaximum();
+      }
+
+      @Override
+      public int current(int id) {
+        HitPoints hp = entity(id).getHitPoints();
+        return hp.getHitPoints() + hp.getShield();
+      }
+
+      @Override
+      public int scaledThreshold(int id, int base) {
+        WorldEntity entity = entity(id);
+        return LevelScaling.scale(
+            ScalingGlobals.standard(),
+            base,
+            entity.getPackedLevel(),
+            ScalingMode.CARD_HITPOINTS,
+            entity.getData().rarity());
+      }
+
+      @Override
+      public int buffCount(int id, String buff) {
+        int count = 0;
+        for (var instance : entity(id).getBuffs().items()) {
+          if (instance.getBuff().name().equals(buff)) {
+            count++;
+          }
+        }
+        return count;
+      }
+
+      @Override
+      public int squaredDistance(int towerId, int id) {
+        GridEntity tower = entity(towerId).getView();
+        GridEntity other = entity(id).getView();
+        return FixedMath.squaredDistance(tower.getX(), tower.getY(), other.getX(), other.getY());
+      }
+
+      @Override
+      public boolean throwAllowed(int towerId, int waitAfterAttackMs, int thresholdMs) {
+        WorldEntity tower = entity(towerId);
+        if (!tower.isActive(TARGETING_SLOT)
+            || tower.getView().getState() != GridEntityState.ATTACKING) {
+          return true;
+        }
+        UnitData row = tower.getData();
+        if (row.loadTimeMs() - tower.getTargeting().getLoadTimerMs() <= waitAfterAttackMs) {
+          return false;
+        }
+        int hitSpeed = row.hitSpeedMs();
+        int attackTime = tower.getTargeting().getAttackTimerMs();
+        return hitSpeed - (attackTime - attackTime / hitSpeed * hitSpeed) > thresholdMs;
+      }
+
+      @Override
+      public void turn(int towerId, int id) {
+        GridEntity tower = entity(towerId).getView();
+        GridEntity other = entity(id).getView();
+        int[] facing = {other.getX() - tower.getX(), other.getY() - tower.getY()};
+        FixedMath.normalize(facing, MovementState.DIRECTION_SCALE);
+        tower.setDirX(facing[0]);
+        tower.setDirY(facing[1]);
+      }
+
+      @Override
+      public void throwAt(ProjectileData data, int towerId, int targetId, int startOffset) {
+        ProjectileEntity projectile = new ProjectileEntity(world, data, side());
+        GridEntity tower = entity(towerId).getView();
+        WorldEntity target = entity(targetId);
+        int dx = target.getView().getX() - tower.getX();
+        int dy = target.getView().getY() - tower.getY();
+        int length = FixedMath.isqrt(dx * dx + dy * dy);
+        if (length != 0) {
+          dx = FixedMath.div(startOffset * dx, length);
+          dy = FixedMath.div(dy * startOffset, length);
+        }
+        GridEntity king = getView();
+        ProjectileLauncher.launchThrown(
+            projectile,
+            TowerEntity.this,
+            target,
+            tower.getX() + dx,
+            tower.getY() + dy,
+            king.getZ() + king.getHeightOffset());
+        world.launch(projectile);
+      }
+
+      private WorldEntity entity(int id) {
+        return (WorldEntity) world.liveObject(id);
+      }
+    };
   }
 
   /** Chooses, keeps or drops the tower's target and decides whether it fires this tick. */

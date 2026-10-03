@@ -1608,6 +1608,25 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The live list's arena entities a game object filter lets through, asked for a team and a row
+   * name, in the holder's order. Any other object is left out: none has hit points.
+   *
+   * @param filter the filter row
+   * @param team the asking entity's team
+   * @param rowName the asking entity's row name
+   */
+  List<WorldEntity> filteredEntities(GameObjectFilter filter, int team, String rowName) {
+    List<WorldEntity> out = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof WorldEntity arena
+          && filter.matches(arena.filterSubject(), team, rowName)) {
+        out.add(arena);
+      }
+    }
+    return out;
+  }
+
+  /**
    * Sends a card play to every card-play listener on the live and the queued objects, in that
    * order: each hears it as its row says, and an activating play schedules the row's action on the
    * listener's owner, the owner its cause, to run in its next pending pass.

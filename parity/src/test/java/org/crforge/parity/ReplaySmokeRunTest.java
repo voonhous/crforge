@@ -138,6 +138,56 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void aRoyalChefTowerSelectionCooksAPancakeThatRaisesAFriendlyTroopsLevel() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.knightAgainstTheRoyalChef(), out, identity, 700);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    // Side 1 stands the Royal Chef's king row and two ChefTower rows, eight levels above their
+    // first.
+    assertThat(first.get(3).path("row").asText()).isEqualTo("ChefTowerKing");
+    assertThat(first.get(3).path("hp").asInt()).isEqualTo(2400);
+    for (int i = 4; i <= 5; i++) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("ChefTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2244);
+    }
+    // The cooking starts 7 s in and fills at 40 a step while the low tower shoots side 0's Knight
+    // and 50 a step while both towers idle; the full bar throws a pancake from the tower nearer
+    // side 1's Giant, 200 toward it, on tick 638. Its landing raises the Giant one level: its hit
+    // points and its maximum from 1875 to 2061 on tick 644.
+    JsonNode pancake = null;
+    int pancakeTick = -1;
+    int levelUpTick = -1;
+    for (String line : lines) {
+      JsonNode observation = MAPPER.readTree(line);
+      int tick = observation.path("tick").asInt();
+      for (JsonNode entity : observation.path("entities")) {
+        if (pancake == null
+            && tick > 450
+            && !entity.has("row")
+            && entity.path("side").asInt() == 1) {
+          pancake = entity;
+          pancakeTick = tick;
+        }
+        if (levelUpTick < 0
+            && entity.path("row").asText().equals("Giant")
+            && entity.path("max_hp").asInt() != 1875) {
+          assertThat(entity.path("max_hp").asInt()).isEqualTo(2061);
+          assertThat(entity.path("hp").asInt()).isEqualTo(2061);
+          levelUpTick = tick;
+        }
+      }
+    }
+    assertThat(pancakeTick).isEqualTo(638);
+    assertThat(pancake.path("x").asInt()).isEqualTo(3440);
+    assertThat(pancake.path("y").asInt()).isEqualTo(25310);
+    assertThat(levelUpTick).isEqualTo(644);
+  }
+
+  @Test
   void anUnknownSchemaOrAScopeOfAnotherSchemaIsAnInvalidRun() throws IOException {
     Path unknown = identity("unknown.json", "test-schema", SmokeSchema.V1.observationScope());
     Path crossed = identity("crossed.json", SmokeSchema.V2.id(), SmokeSchema.V1.observationScope());
@@ -301,7 +351,7 @@ class ReplaySmokeRunTest {
   @Test
   void anUnsupportedScenarioWritesNoObservationAndNoMarker() throws IOException {
     ObjectNode scenario = Scenarios.knight();
-    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000004);
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000002);
     Path out = folder.resolve("run");
 
     int exit = run(scenario, out, identity, 30);
@@ -310,7 +360,7 @@ class ReplaySmokeRunTest {
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
     assertThat(manifest.path("status").asText()).isEqualTo("unsupported");
     assertThat(manifest.path("unsupported").path("input").asText())
-        .isEqualTo("battle.deck0.sc[0].d=159000004");
+        .isEqualTo("battle.deck0.sc[0].d=159000002");
     assertThat(out.resolve("COMPLETE")).doesNotExist();
     assertThat(out.resolve("observations.jsonl")).doesNotExist();
   }

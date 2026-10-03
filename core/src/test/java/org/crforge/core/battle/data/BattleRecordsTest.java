@@ -555,8 +555,8 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a buff's start and remove actions are read when they name an action row, and listed as not"
-          + " modelled when written inline")
+      "a buff's start and remove actions are read when they name an action row or are an inline"
+          + " group of named rows, and listed as not modelled when written inline otherwise")
   void aBuffsHooksAreReadByName() {
     BuffData invisibility = records.buff("Ghost_EV1_Invisibility");
     assertThat(invisibility.onStartAction()).isEqualTo("Ghost_EV1_Invisible_Group");
@@ -564,9 +564,11 @@ class BattleRecordsTest {
     assertThat(invisibility.unmodelledColumns()).isEmpty();
     assertThat(records.buff("Rage").onStartAction()).isNull();
 
+    // The Royal Chef's level-up buff writes its start action inline, as a group of named rows,
+    // which is the actions table's row named after the buff and the column.
     BuffData chef = records.buff("ChefTower_increase_level_buff");
-    assertThat(chef.onStartAction()).isNull();
-    assertThat(chef.unmodelledColumns()).contains("OnStartAction");
+    assertThat(chef.onStartAction()).isEqualTo("ChefTower_increase_level_buff_OnStartAction");
+    assertThat(chef.unmodelledColumns()).isEmpty();
   }
 
   @Test

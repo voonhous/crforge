@@ -110,6 +110,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What a Royal Chef's cooking run asks of the battle around the owner. Only a king tower runs
+   * one.
+   *
+   * @return the owner's answers
+   */
+  default CookingHost cookingHost() {
+    throw new UnsupportedOperationException(
+        "a Royal Chef's cooking on an owner other than a king tower is not modelled");
+  }
+
+  /**
    * What a shape selector's run asks of the battle around the owner. Only an area effect runs one.
    *
    * @return the owner's answers
