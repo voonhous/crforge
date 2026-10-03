@@ -579,25 +579,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return attackDamage();
       }
 
-      // The step's pushback moves a target with a movement component from the owner; one without,
-      // a building or a tower, stays where it is. The push itself is not modelled.
+      // The step's pushback of at least 1 moves a target with a movement component away from where
+      // the owner stands (0xe69f28..0xe69fb4, then 0xe725c4), the gates lifted by the step's
+      // IsMeleePushbackAll; one without, a building or a tower, stays where it is. The area
+      // branch's push is not modelled.
       @Override
       public void stepPushback(TargetView target) {
         int pushback = stepMeleePushback();
-        if (pushback == 0) {
+        if (pushback < 1) {
           return;
         }
         if (target == null) {
           throw new UnsupportedOperationException(
               name() + " hits an area with its attack sequence step's MeleePushback, not modelled");
         }
-        WorldEntity pushed = world.entityOf(target.getEntity());
-        if (pushed != null && pushed.hasMovementComponent()) {
-          throw new UnsupportedOperationException(
-              name()
-                  + " pushes "
-                  + pushed.name()
-                  + " with its attack sequence step's MeleePushback, not modelled");
+        if (world.entityOf(target.getEntity()) instanceof CharacterEntity pushed
+            && pushed.hasMovementComponent()) {
+          pushed.pushedByStep(getView().getX(), getView().getY(), pushback, stepMeleePushbackAll());
         }
       }
 
@@ -1849,6 +1847,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       return 0;
     }
     return sequence.entryAt(targeting.getAttackSequenceIndex()).meleePushback();
+  }
+
+  /**
+   * Whether the push of the attack sequence step the next hit lands with lifts the gates that would
+   * refuse it (IsMeleePushbackAll); false without one.
+   */
+  boolean stepMeleePushbackAll() {
+    AttackSequence sequence = data.attackSequence();
+    if (!sequence.replacesAttack()) {
+      return false;
+    }
+    return sequence.entryAt(targeting.getAttackSequenceIndex()).meleePushbackAll();
   }
 
   int attackDamage() {

@@ -1049,7 +1049,8 @@ public final class BattleRecords {
             row.intValue("Damage"),
             row.string("Projectile"),
             row.intValue("VariableDamageTime1"),
-            row.intValue("MeleePushback")));
+            row.intValue("MeleePushback"),
+            row.bool("IsMeleePushbackAll")));
     if (!order.isEmpty()) {
       entries.add(numbered(row, 2));
       entries.add(numbered(row, 3));
@@ -1075,12 +1076,17 @@ public final class BattleRecords {
         row.intValue("VariableDamage" + n),
         row.string("Projectile" + n),
         n < 3 ? row.intValue("VariableDamageTime" + n) : 0,
-        row.intValue("MeleePushback" + n));
+        row.intValue("MeleePushback" + n),
+        row.bool("IsMeleePushbackAll" + n));
   }
 
-  /** An entry of the four columns the row's own and numbered entries carry, the rest defaults. */
+  /** An entry of the five columns the row's own and numbered entries carry, the rest defaults. */
   private AttackSequence.Entry entry(
-      int damage, String projectile, int variableDamageTime, int meleePushback) {
+      int damage,
+      String projectile,
+      int variableDamageTime,
+      int meleePushback,
+      boolean meleePushbackAll) {
     return new AttackSequence.Entry(
         damage,
         projectile.isEmpty() ? null : projectile(projectile),
@@ -1092,6 +1098,7 @@ public final class BattleRecords {
         -1,
         -1,
         meleePushback,
+        meleePushbackAll,
         null);
   }
 
@@ -1109,6 +1116,7 @@ public final class BattleRecords {
         element.path("CustomProjectileStartZ").asInt(-1),
         element.path("CustomProjectileStartRadius").asInt(-1),
         element.path("MeleePushback").asInt(0),
+        element.path("IsMeleePushbackAll").asBoolean(false),
         actionName(row.name(), "DoAttackAction", element.path("DoAttackAction")));
   }
 

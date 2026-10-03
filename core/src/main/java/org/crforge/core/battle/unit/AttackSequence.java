@@ -53,6 +53,8 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
    * @param customProjectileStartZ the entry's launch height, or -1 for the row's
    * @param customProjectileStartRadius the entry's launch distance, or -1 for the row's
    * @param meleePushback how far the entry's direct hit pushes its target
+   * @param meleePushbackAll true when that push lifts the gates that would refuse it: the target's
+   *     row or buffs ignoring pushback, its no-pushback flag or its being dragged
    * @param doAttackAction the action the entry's hit schedules instead of hitting, or null
    */
   public record Entry(
@@ -66,6 +68,7 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
       int customProjectileStartZ,
       int customProjectileStartRadius,
       int meleePushback,
+      boolean meleePushbackAll,
       String doAttackAction) {
 
     /**
