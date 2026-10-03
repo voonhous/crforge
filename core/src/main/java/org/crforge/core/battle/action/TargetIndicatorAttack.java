@@ -36,11 +36,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p>The finished attacks are removed from the last, then every attack's time and a started
  * cooldown gain the step. The finder queries around the owner's point to the range beyond its
- * radius, testing a building by its square, keeps the objects whose centre lies between the minimum
- * range and the range beyond both radii, ends included, and takes the least squared distance less
- * the object's const-priority offset, floored at 0, the earlier of equals; it asks no validator.
- * When the owner leaves the battle the run stops: every attack ends and the stop tags are set. A
- * projectile in flight still lands.
+ * radius, testing a building by its square and anything else strictly within the range beyond both
+ * radii, keeps the listed objects whose centre lies at least the minimum range beyond both radii,
+ * and takes the least squared distance less the object's const-priority offset, floored at 0, the
+ * earlier of equals; it asks no validator. When the owner leaves the battle the run stops: every
+ * attack ends and the stop tags are set. A projectile in flight still lands.
  *
  * <p>Refused as the row is built: an indication delay, a negative attack delay, a minimum range
  * below 1, a following signal, a homing projectile, a singleton, a next action, tags and the gates.
@@ -55,9 +55,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " once the projectile has gone, the stop tags and the stop as the owner leaves; held"
             + " by goblin_machine_knight, a Musketeer marked beyond a Knight inside the ring, and"
             + " goblin_machine_tower, a princess tower marked and shot while the machine walks,"
-            + " then hit from inside the ring, the run stopped at its death. Held by the tests"
-            + " alone: the ring's edges, an abort by a stun, and a signal whose target has walked"
-            + " off. Not held by a reference: the step under a hit-speed buff. Refused: an"
+            + " then hit from inside the ring, the run stopped at its death; the king marked by"
+            + " its square beyond the outer circle, by the native card_GoblinMachine run. Held by"
+            + " the tests alone: the ring's inner edge, an abort by a stun, and a signal whose"
+            + " target has walked off. Not held by a reference: the step under a hit-speed buff. Refused: an"
             + " indication delay, a negative attack delay, a minimum range below 1, a following"
             + " signal, a homing projectile, a singleton, a next action, tags, the gates, an"
             + " owner other than a character and a clone.")
@@ -359,7 +360,7 @@ public final class TargetIndicatorAttack extends RowAction {
       int best = NONE;
       int bestDistance = Integer.MAX_VALUE;
       for (int id : listed) {
-        if (!inRing(id, x, y, outer, inner)) {
+        if (!inRing(id, x, y, inner)) {
           continue;
         }
         int d = FixedMath.squaredDistance(host.x(id), host.y(id), x, y) - host.priority(id);
@@ -376,15 +377,21 @@ public final class TargetIndicatorAttack extends RowAction {
     }
 
     /**
-     * The ring test: the object's squared distance at most its radius plus the outer reach,
-     * squared, and at least its radius plus the inner reach, squared.
+     * The ring test as the finder asks it, with its flag set: with an inner reach of 1 or more,
+     * only the object's squared distance at least its radius plus the inner reach, squared; the
+     * outer edge is the query's. The game's test (0xe3a7a8) checks both edges only with the flag
+     * clear (0xe3a838..0xe3a83c: {@code tst w19, #1; csel w8, w9, w8, eq}), and the finder passes
+     * it set, so a building the query lists by its square is kept however far its centre is.
      */
-    private boolean inRing(int id, int x, int y, int outer, int inner) {
+    private boolean inRing(int id, int x, int y, int inner) {
+      if (inner < 1) {
+        // The flag is or-ed into the outer test then: every listed object is kept.
+        return true;
+      }
       int r = host.radius(id);
-      int far = (r + outer) * (r + outer);
       int near = (r + inner) * (r + inner);
       int d = FixedMath.squaredDistance(x, y, host.x(id), host.y(id));
-      return d <= far && d >= near;
+      return d >= near;
     }
 
     /** Sets the stop tags and removes every attack, from the last. */
