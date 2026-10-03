@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
@@ -135,6 +136,44 @@ class ReplaySmokeRunTest {
       }
     }
     assertThat(firstHit).isEqualTo(299);
+  }
+
+  @Test
+  void aDaggerDuchessSpendsItsEightChargesThenAttacksOnlyAsItRecharges() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.giantVsDuchessTower(), out, identity, 820);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    for (int i = 4; i <= 5; i++) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("DaggerDuchess");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2298);
+    }
+    // The low Duchess's knives take 89 off the Giant. Its first seven hits come at the full pace,
+    // every nine or ten ticks; the eighth, its last charge's, at the slower pace of its entry 2;
+    // with no charge left it cannot attack until a charge comes back, 900 ms later, and then
+    // throws it at the depleted entry's pace: one hit every 31 ticks until the Giant dies.
+    List<Integer> hits = new ArrayList<>();
+    int hp = -1;
+    for (String line : lines) {
+      JsonNode observation = MAPPER.readTree(line);
+      for (JsonNode entity : observation.path("entities")) {
+        if (entity.path("row").asText().equals("Giant")) {
+          int now = entity.path("hp").asInt();
+          if (hp >= 0 && now != hp) {
+            assertThat(hp - now).isEqualTo(89);
+            hits.add(observation.path("tick").asInt());
+          }
+          hp = now;
+        }
+      }
+    }
+    assertThat(hits)
+        .containsExactly(
+            298, 307, 317, 326, 336, 345, 355, 369, 399, 429, 460, 491, 522, 553, 584, 615, 646,
+            677, 708, 739, 770);
   }
 
   @Test

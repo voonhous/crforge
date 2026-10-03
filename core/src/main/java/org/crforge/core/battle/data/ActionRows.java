@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
+import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CaptureCharacter;
@@ -550,6 +551,23 @@ public final class ActionRows {
           // The Berserker's starting action has no column of its own: its run sets and flips the
           // attack sequence index.
           Map.entry("ActionBerserk", Set.of()),
+          // The Dagger Duchess's charge counter. Its run reads the charges, the recharge and the
+          // indices; the counter it shows above the tower (the indicator's file, export name and
+          // offsets) and its state name are stored by the row and read by none of the run's
+          // start, step or notice.
+          Map.entry(
+              "ActionBurstAttack",
+              Set.of(
+                  "MaxChargeCount",
+                  "RechargeTime",
+                  "RechargeIncrement",
+                  "AttackSequenceIndices",
+                  "DepletedAttackSequenceIndex",
+                  "IndicatorFileName",
+                  "IndicatorExportName",
+                  "IndicatorOffsetYBlue",
+                  "IndicatorOffsetYRed",
+                  "AIStateName")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -959,6 +977,16 @@ public final class ActionRows {
               }
               yield new PlayAnimationIfHasTarget(shared);
             }
+            case "ActionBurstAttack" ->
+                new BurstAttack(
+                    shared,
+                    BurstAttack.Columns.builder()
+                        .maxChargeCount(integer(f, "MaxChargeCount"))
+                        .rechargeTimeMs(integer(f, "RechargeTime"))
+                        .rechargeIncrement(integer(f, "RechargeIncrement"))
+                        .attackSequenceIndices(ints(f.get("AttackSequenceIndices")))
+                        .depletedAttackSequenceIndex(integer(f, "DepletedAttackSequenceIndex"))
+                        .build());
             case "ActionBerserk" -> {
               // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained
               // action on such a run is held by no reference.
