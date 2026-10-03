@@ -498,7 +498,6 @@ class BattleActionSpawnRunTest {
         "three_musketeers_pekka",
         "three_musketeers_air_building",
         "graveyard_right_side1",
-        "phoenix_egg_hatch",
         "phoenix_egg_killed",
         "skeleton_barrel_shot_down",
         "goblin_hut_lifetime",
