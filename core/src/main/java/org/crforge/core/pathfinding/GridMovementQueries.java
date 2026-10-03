@@ -42,7 +42,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " the 53 reference walks. Supplied: every map cell an acceptable endpoint, no status effects in the speed inputs, and a unit that"
             + " always carries both components. Given its buffs, as a battle's unit is, it carries"
             + " the modifier component, and the follower's time step is scaled by them, held by"
-            + " clone_golem_group.")
+            + " clone_golem_group. The ground and hovering tests read the unit's layer from its"
+            + " tag word and live height, never its row: a knocked unit under FORCE_IS_AIR takes"
+            + " the single-node route an air unit takes, held by mega_knight_ev1_uppercut; a"
+            + " hovering unit under either force tag hovers no longer, held by"
+            + " GridMovementAnswersTest.")
 public final class GridMovementQueries implements MovementQueries {
 
   /** Every relocation this visit asked for, in order. */
@@ -144,7 +148,7 @@ public final class GridMovementQueries implements MovementQueries {
         costs,
         entity.getState(),
         entity.getLane(),
-        unit.movementConfig().hovering(),
+        hovers(),
         unit.movementConfig().jumpEnabled(),
         startCol,
         startRow,
@@ -188,7 +192,16 @@ public final class GridMovementQueries implements MovementQueries {
   /** 1 for a hovering unit, which a push does not move off water. */
   @Override
   public int hovering() {
-    return unit.movementConfig().hovering() ? 1 : 0;
+    return hovers() ? 1 : 0;
+  }
+
+  /**
+   * Whether the unit hovers, as its layer slot answers it: never while either force tag is in its
+   * tag word, else as its row says.
+   */
+  private boolean hovers() {
+    long forced = EntityFlags.FORCE_IS_AIR | EntityFlags.FORCE_IS_GROUND;
+    return (unit.entity().getFlags() & forced) == 0 && unit.movementConfig().hovering();
   }
 
   @Override

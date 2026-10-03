@@ -342,6 +342,75 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts the evolved Mega Knight's uppercut on the owner, as the unit attacks.
+   *
+   * @param action the uppercut
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param instigator what caused it, the target of the hit, or null for none
+   * @return the run
+   */
+  default ActionInstance uppercut(MegaKnightUppercut action, int phase, ActionOwner instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Knocks the owner into the air.
+   *
+   * @param action the knock
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param instigator what caused it, or null for none
+   * @return the run
+   */
+  default ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Starts a run that makes an area effect the row may give its lifetime back to.
+   *
+   * @param action the row
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param instigator what caused it, or null for none
+   * @return the run
+   */
+  default ActionInstance resetableAreaEffect(
+      SpawnResetableAreaEffect action, int phase, ActionOwner instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Tells the owner's battle an action run at an age was scheduled on it. By default nothing.
+   *
+   * @param action the name of the action scheduled
+   */
+  default void aliveTimerFired(String action) {}
+
+  /** The owner's age, which actions run at ages of an area effect read. */
+  default AliveTimer.Age aliveAge() {
+    throw new UnsupportedOperationException(
+        "an action run at an age of an owner other than an area effect is not modelled");
+  }
+
+  /** The owner's team: 2 for a neutral side, else its side's lowest bit. */
+  default int actionTeam() {
+    throw new UnsupportedOperationException("this owner has no team");
+  }
+
+  /**
+   * Tells the owner's battle a choice by team ran on it. By default nothing.
+   *
+   * @param action the choice's name
+   * @param instigator what caused it
+   * @param sameTeam true when the owner and its cause are on the same team
+   * @param chosen the name of the action it scheduled, or null for none
+   */
+  default void filteredByTeam(
+      String action, ActionOwner instigator, boolean sameTeam, String chosen) {}
+
+  /**
    * Kills the owner, as a hit of its whole hit points that ignores the battle's holds.
    *
    * @param killer the entity that caused it, or null for none

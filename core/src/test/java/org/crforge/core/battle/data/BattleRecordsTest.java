@@ -442,18 +442,43 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a unit's action run as it attacks is read when it is a spawn, and listed as not modelled"
-          + " otherwise")
-  void anAttackActionOtherThanASpawnIsNotModelled() {
+      "a unit's action run as it attacks is read when it is a spawn, an uppercut or a resetable"
+          + " area effect, and listed as not modelled otherwise")
+  void anAttackActionOtherThanAModelledOneIsNotModelled() {
     UnitData valkyrie = records.unit("Valkyrie_EV1");
     assertThat(valkyrie.onAttackAction()).isEqualTo("Valkyrie_EV1_Tornado");
-    assertThat(valkyrie.unmodelledColumns()).doesNotContain("OnAttackAction");
-    assertThat(records.unit("RoyalGiant_EV1").unmodelledColumns()).doesNotContain("OnAttackAction");
-    // An uppercut, a variable set, a resettable area effect and a group.
     for (String name :
-        List.of("MegaKnight_EV1", "InfernoDragon_EV1", "BabyDragon_EV1", "RoyalHog_EV1")) {
+        List.of("Valkyrie_EV1", "RoyalGiant_EV1", "MegaKnight_EV1", "BabyDragon_EV1")) {
+      assertThat(records.unit(name).unmodelledColumns()).as(name).isEmpty();
+    }
+    assertThat(records.unit("MegaKnight_EV1").onAttackAction())
+        .isEqualTo("MegaKnight_EV1_uppercut");
+    assertThat(records.unit("BabyDragon_EV1").onAttackAction())
+        .isEqualTo("baby_dragon_evo_wind_action");
+    // A variable set and a group.
+    for (String name : List.of("InfernoDragon_EV1", "RoyalHog_EV1")) {
       assertThat(records.unit(name).unmodelledColumns()).as(name).contains("OnAttackAction");
     }
+  }
+
+  @Test
+  @DisplayName(
+      "a shaped area effect reads its rectangle and its filter, and its damage type without"
+          + " damage; a shape of another class is not modelled")
+  void aShapedAreaEffect() {
+    AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
+    assertThat(wind.shaped()).isTrue();
+    assertThat(List.of(wind.shapeWidth(), wind.shapeHeight())).containsExactly(8000, 9000);
+    assertThat(wind.filter()).isEqualTo("all_characters_from_both_teams");
+    assertThat(wind.onHitAction()).isEqualTo("BabyDragon_EV1_AEO_select_buff");
+    assertThat(wind.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Zap").shaped()).isFalse();
+    assertThat(records.areaEffect("Zap").filter()).isNull();
+    // Two circles, the second dealing damage, whose damage type stays unread.
+    assertThat(records.areaEffect("IceGolemiteHero_KnockBack_AEO").unmodelledColumns())
+        .contains("Shape");
+    assertThat(records.areaEffect("GiantHero_LandingAEO").unmodelledColumns())
+        .contains("Shape", "DamageType");
   }
 
   @Test

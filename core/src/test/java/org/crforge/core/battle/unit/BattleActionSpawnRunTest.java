@@ -38,6 +38,7 @@ import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
@@ -584,7 +585,9 @@ class BattleActionSpawnRunTest {
         "buff_after_hits_barbarians_bats",
         "buff_after_hits_ghost_evo",
         "shield_lost_wizard",
-        "shield_lost_recruits"
+        "shield_lost_recruits",
+        "mega_knight_ev1_uppercut",
+        "baby_dragon_ev1_wind"
       })
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
@@ -625,6 +628,9 @@ class BattleActionSpawnRunTest {
     // Every action a broken shield scheduled, and every charge reset a listed buff made.
     List<String> shieldLostLog = new ArrayList<>();
     match.getWorld().addObserver(shieldLostLog(shieldLostLog));
+    // What every uppercut, knock and wind did, and every change of a watched tag word.
+    List<String> uppercutWindLog = new ArrayList<>();
+    match.getWorld().addObserver(uppercutWindLog(match.getWorld(), uppercutWindLog));
     List<CharacterEntity> placed = new ArrayList<>();
     if (!reference.get("card").isNull()) {
       placed.addAll(BattleTowerRunTest.deployAll(match, reference));
@@ -1842,6 +1848,9 @@ class BattleActionSpawnRunTest {
     assertThat(buffAfterHitsLog)
         .as("every count that applied a BuffAfterHits buff and every buff's start or remove action")
         .containsExactlyElementsOf(expectedBuffAfterHitsLog(reference));
+    assertThat(uppercutWindLog)
+        .as("every uppercut, knock and wind, and every watched tag word")
+        .containsExactlyElementsOf(expectedUppercutWindLog(reference));
     assertThat(shieldLostLog)
         .as("every action a broken shield scheduled and every charge reset a listed buff made")
         .containsExactlyElementsOf(expectedShieldLostLog(reference));
@@ -1971,6 +1980,12 @@ class BattleActionSpawnRunTest {
                 .formatted(currentTick[0], owner, action.name(), queued ? phase : "at once"));
       }
 
+      // A singleton row's start that re-triggers its run is listed as a run too.
+      @Override
+      public void retriggering(BattleAction action, int phase, boolean queued) {
+        starting(action, phase, queued);
+      }
+
       @Override
       public void dropped(BattleAction action, int ticksLeft) {
         dropping.add(
@@ -2098,14 +2113,15 @@ class BattleActionSpawnRunTest {
                             a.get("countdown").asInt())
                     // The battle keeps the parent of an area effect an action made, a target
                     // indicator attack made as its signal, Goblinstein's ability made as its
-                    // death area, a unit's ability made at the unit, or an evolved Royal Ghost's
-                    // run made, and only that.
+                    // death area, a unit's ability made at the unit, an evolved Royal Ghost's
+                    // run made, or a resetable action made, and only that.
                     + (Set.of(
                                     "action",
                                     "target_indicator",
                                     "goblinstein_death",
                                     "ability",
-                                    "ghost_evo")
+                                    "ghost_evo",
+                                    "resetable")
                                 .contains(a.get("how").asText())
                             && !a.get("parent").isNull()
                         ? " parent " + a.get("parent").asText()
@@ -3185,6 +3201,333 @@ class BattleActionSpawnRunTest {
         log.add("%d charge_reset %s %d %d".formatted(tick, unit.name(), before, after));
       }
     };
+  }
+
+  /** The names of the watched tags a word carries, in the reference's order. */
+  private static String tagNames(BattleWorld world, long word) {
+    List<String> names = new ArrayList<>();
+    String[] all = {"NO_MOVE", "NO_ATTACK", "LOCK_TARGET", "FORCE_IS_AIR", "DISABLE_PHYSICAL"};
+    long[] bits = {
+      EntityFlags.NO_MOVE,
+      EntityFlags.NO_ATTACK,
+      EntityFlags.LOCK_TARGET,
+      world.forceIsAir(),
+      EntityFlags.DISABLE_PHYSICAL
+    };
+    for (int i = 0; i < all.length; i++) {
+      if ((word & bits[i]) != 0) {
+        names.add(all[i]);
+      }
+    }
+    return names.toString();
+  }
+
+  /** A name, or null for no entity. */
+  private static String nameOf(WorldEntity entity) {
+    return entity == null ? null : entity.name();
+  }
+
+  /**
+   * Logs what every uppercut, knock and wind did, every change of a watched tag word, every
+   * rectangle's list, every choice by team and every action run at an age.
+   */
+  private static WorldObserver uppercutWindLog(BattleWorld world, List<String> log) {
+    return new WorldObserver() {
+      @Override
+      public void tagWordChanged(int tick, WorldEntity entity, long word) {
+        log.add("%d tags %s %s".formatted(tick, entity.name(), tagNames(world, word)));
+      }
+
+      @Override
+      public void uppercutStarted(
+          int tick,
+          CharacterEntity unit,
+          String action,
+          int phase,
+          WorldEntity instigator,
+          WorldEntity target,
+          boolean finished) {
+        log.add(
+            "%d uppercut_start %s %d %s %s %b"
+                .formatted(tick, unit.name(), phase, nameOf(instigator), nameOf(target), finished));
+      }
+
+      @Override
+      public void uppercutStepped(
+          int tick,
+          CharacterEntity unit,
+          int delay,
+          boolean finished,
+          String outcome,
+          int[] pushPoint) {
+        log.add(
+            "%d uppercut_update %s %d %b %s %s %s"
+                .formatted(
+                    tick,
+                    unit.name(),
+                    delay,
+                    finished,
+                    outcome,
+                    pushPoint == null ? null : List.of(pushPoint[0], pushPoint[1]),
+                    pushPoint == null ? null : List.of(pushPoint[2], pushPoint[3])));
+      }
+
+      @Override
+      public void uppercutMarked(
+          int tick, CharacterEntity unit, WorldEntity target, int priority, WorldEntity current) {
+        log.add(
+            "%d uppercut_mark %s %s %d %s"
+                .formatted(tick, unit.name(), target.name(), priority, nameOf(current)));
+      }
+
+      @Override
+      public void targetQueueFlushed(int tick, CharacterEntity unit) {
+        log.add("%d queue_flushed %s".formatted(tick, unit.name()));
+      }
+
+      @Override
+      public void uppercutTargetLeft(int tick, CharacterEntity unit, WorldEntity target) {
+        log.add("%d uppercut_target_left %s %s".formatted(tick, unit.name(), target.name()));
+      }
+
+      @Override
+      public void knockbackStarted(
+          int tick,
+          CharacterEntity unit,
+          String action,
+          int phase,
+          WorldEntity instigator,
+          int counter) {
+        log.add(
+            "%d knockback_start %s %d %s %d %b"
+                .formatted(tick, unit.name(), phase, nameOf(instigator), counter, false));
+      }
+
+      @Override
+      public void knockbackStepped(
+          int tick,
+          CharacterEntity unit,
+          int before,
+          int after,
+          int height,
+          long tags,
+          boolean finished) {
+        log.add(
+            "%d knockback_update %s %d %d %d %s %b"
+                .formatted(
+                    tick, unit.name(), before, after, height, tagNames(world, tags), finished));
+      }
+
+      @Override
+      public void resetableStarted(
+          int tick,
+          CharacterEntity unit,
+          int phase,
+          WorldEntity instigator,
+          AreaEffectEntity areaEffect,
+          int x,
+          int y) {
+        log.add(
+            "%d wind_start %s %d %s %s %d %d"
+                .formatted(tick, unit.name(), phase, nameOf(instigator), areaEffect.name(), x, y));
+      }
+
+      @Override
+      public void resetableEnded(int tick, CharacterEntity unit, String areaEffect) {
+        log.add("%d wind_update %s %s %b".formatted(tick, unit.name(), "area effect gone", true));
+      }
+
+      @Override
+      public void resetableRetriggered(
+          int tick, CharacterEntity unit, int phase, String areaEffect, Integer countdown) {
+        log.add(
+            "%d wind_retrigger %s %d %s %s"
+                .formatted(tick, unit.name(), phase, areaEffect, countdown));
+      }
+
+      @Override
+      public void resetableLeft(int tick, CharacterEntity unit, String areaEffect) {
+        log.add("%d wind_left %s %s".formatted(tick, unit.name(), areaEffect));
+      }
+
+      @Override
+      public void resetableReleased(
+          int tick, CharacterEntity unit, String areaEffect, int before, int after) {
+        log.add(
+            "%d wind_release %s %s %s %d %d"
+                .formatted(tick, unit.name(), "owner left", areaEffect, before, after));
+      }
+
+      @Override
+      public void shapeListed(int tick, AreaEffectEntity areaEffect, List<WorldEntity> listed) {
+        log.add(
+            "%d wind_collect %s %d %d %d %s"
+                .formatted(
+                    tick,
+                    areaEffect.name(),
+                    areaEffect.getX(),
+                    areaEffect.getY(),
+                    areaEffect.getCountdown(),
+                    listed.stream().map(WorldEntity::name).toList()));
+      }
+
+      @Override
+      public void filteredByTeam(
+          int tick,
+          WorldEntity unit,
+          String action,
+          SpawnHost instigator,
+          boolean sameTeam,
+          String chosen) {
+        log.add(
+            "%d filter_by_enemy %s %s %d %s"
+                .formatted(
+                    tick,
+                    unit.name(),
+                    instigator == null ? null : instigator.name(),
+                    sameTeam ? 1 : 0,
+                    chosen));
+      }
+
+      @Override
+      public void aliveTimerFired(int tick, AreaEffectEntity areaEffect, String action) {
+        log.add("%d alive_timer %s %s".formatted(tick, areaEffect.name(), action));
+      }
+    };
+  }
+
+  /** A list of numbers in the reference as the log writes it, or null. */
+  private static String numbers(JsonNode list) {
+    if (list == null || list.isNull()) {
+      return null;
+    }
+    List<Integer> out = new ArrayList<>();
+    list.forEach(n -> out.add(n.asInt()));
+    return out.toString();
+  }
+
+  /** A list of names in the reference as the log writes it. */
+  private static String names(JsonNode list) {
+    List<String> out = new ArrayList<>();
+    list.forEach(n -> out.add(n.asText()));
+    return out.toString();
+  }
+
+  /** The reference's uppercut, knock and wind log, in its order. */
+  private static List<String> expectedUppercutWindLog(JsonNode reference) {
+    List<String> expected = new ArrayList<>();
+    for (JsonNode e : reference.path("uppercut_wind")) {
+      int tick = e.get("tick").asInt();
+      String unit = e.path("unit").asText(null);
+      expected.add(
+          switch (e.get("event").asText()) {
+            case "tags" -> "%d tags %s %s".formatted(tick, unit, names(e.get("tags")));
+            case "uppercut_start" ->
+                "%d uppercut_start %s %d %s %s %b"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("phase").asInt(),
+                        e.get("instigator").asText(null),
+                        e.get("target").asText(null),
+                        e.get("finished").asBoolean());
+            case "uppercut_update" ->
+                "%d uppercut_update %s %d %b %s %s %s"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("delay").asInt(),
+                        e.get("finished").asBoolean(),
+                        e.get("outcome").get(0).asText(),
+                        numbers(e.get("push_point")),
+                        numbers(e.get("vector")));
+            case "uppercut_mark" ->
+                "%d uppercut_mark %s %s %d %s"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("target").asText(),
+                        e.get("priority").asInt(),
+                        e.get("current").asText(null));
+            case "queue_flushed" -> "%d queue_flushed %s".formatted(tick, unit);
+            case "uppercut_target_left" ->
+                "%d uppercut_target_left %s %s".formatted(tick, unit, e.get("target").asText());
+            case "knockback_start" ->
+                "%d knockback_start %s %d %s %d %b"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("phase").asInt(),
+                        e.get("instigator").asText(null),
+                        e.get("counter").asInt(),
+                        e.get("finished").asBoolean());
+            case "knockback_update" ->
+                "%d knockback_update %s %d %d %d %s %b"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("counter").get(0).asInt(),
+                        e.get("counter").get(1).asInt(),
+                        e.get("height").asInt(),
+                        names(e.get("tags")),
+                        e.get("finished").asBoolean());
+            case "wind_start" ->
+                "%d wind_start %s %d %s %s %d %d"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("phase").asInt(),
+                        e.get("instigator").asText(null),
+                        e.get("area_effect").asText(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt());
+            case "wind_update" ->
+                "%d wind_update %s %s %b"
+                    .formatted(
+                        tick, unit, e.get("outcome").asText(), e.get("finished").asBoolean());
+            case "wind_retrigger" ->
+                "%d wind_retrigger %s %d %s %s"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("phase").asInt(),
+                        e.get("area_effect").asText(),
+                        e.get("countdown").isNull() ? null : e.get("countdown").get(0).asText());
+            case "wind_left" ->
+                "%d wind_left %s %s".formatted(tick, unit, e.get("area_effect").asText());
+            case "wind_release" ->
+                "%d wind_release %s %s %s %d %d"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("why").asText(),
+                        e.get("area_effect").asText(),
+                        e.get("countdown").get(0).asInt(),
+                        e.get("countdown").get(1).asInt());
+            case "wind_collect" ->
+                "%d wind_collect %s %d %d %d %s"
+                    .formatted(
+                        tick,
+                        e.get("area_effect").asText(),
+                        e.get("x").asInt(),
+                        e.get("y").asInt(),
+                        e.get("countdown").asInt(),
+                        names(e.get("found")));
+            case "filter_by_enemy" ->
+                "%d filter_by_enemy %s %s %d %s"
+                    .formatted(
+                        tick,
+                        unit,
+                        e.get("instigator").asText(),
+                        e.get("same_team").asInt(),
+                        e.get("action").asText(null));
+            case "alive_timer" ->
+                "%d alive_timer %s %s"
+                    .formatted(tick, e.get("area_effect").asText(), e.get("action").asText());
+            default -> throw new IllegalStateException("unknown uppercut_wind event " + e);
+          });
+    }
+    return expected;
   }
 
   /** The reference's broken shields' schedules and charge resets, in its log's order. */

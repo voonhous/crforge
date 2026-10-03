@@ -75,6 +75,18 @@ public final class EntityFlags {
    */
   public static final long NO_GIANTBUFFER_CHEF_ENCHANTMENT = 1L << 44;
 
+  /**
+   * The entity is a ground unit to every reader of its layer, an air one's height pulled to 0, as
+   * an air-to-ground run holds it; with FORCE_IS_AIR too, its live height decides.
+   */
+  public static final long FORCE_IS_GROUND = 1L << 40;
+
+  /**
+   * The entity is an air unit to every reader of its layer, as a knock lifts it; with
+   * FORCE_IS_GROUND too, its live height decides.
+   */
+  public static final long FORCE_IS_AIR = 1L << 45;
+
   /** The entity has been captured by the other side. */
   public static final long CAPTURED = 1L << 46;
 

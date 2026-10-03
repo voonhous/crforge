@@ -23,6 +23,9 @@ import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GuardHost;
+import org.crforge.core.battle.action.Knockback;
+import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.SpawnResetableAreaEffect;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
@@ -1805,14 +1808,133 @@ public class CharacterEntity extends WorldEntity {
     if (!getView().isMovementComponent() || !isActive(MOVEMENT_SLOT) || waiting()) {
       return -1;
     }
+    return pushEntry(x, y, distance, false, subtract, keepLonger);
+  }
+
+  /**
+   * The pushback entry: refused while a pushback is in flight unless the longer one is to be kept;
+   * otherwise the pushback setter itself, every gate the request has skipped, so neither the row's
+   * ignoring of pushback nor a flag or state stops it.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param distance how far
+   * @param attack true when the push counts as an attack's
+   * @param subtract true to take the current separation off the distance first
+   * @param keepLonger true to accept the push with a pushback in flight, keeping the longer one
+   * @return 1 when the setter ran and 0 when it was refused
+   */
+  int pushEntry(int x, int y, int distance, boolean attack, boolean subtract, boolean keepLonger) {
     MovementState movement = unit.movement();
     if (movement.getPushbackInFlight() != 0 && !keepLonger) {
       return 0;
     }
     PushbackRequest.set(
-        movement, getView(), pushbackQueries, x, y, distance, false, subtract, keepLonger);
+        movement, getView(), pushbackQueries, x, y, distance, attack, subtract, keepLonger);
     world.pushbackRequested(this, movement.getPushbackInFlight() == 1, x, y, movement);
     return 1;
+  }
+
+  /** The object the targeting component has as its target while the component is on, or null. */
+  WorldEntity currentTarget() {
+    if (!isActive(TARGETING_SLOT)) {
+      return null;
+    }
+    TargetView reference = unit.targeting().getReference();
+    return reference == null ? null : world.entityOf(reference.getEntity());
+  }
+
+  /**
+   * The targeting queue: the ids marked since the last pre-hook, each with the highest priority it
+   * was marked at, in the order first marked.
+   */
+  private final List<int[]> targetQueue = new ArrayList<>();
+
+  /**
+   * Marks an object in the targeting queue, as an uppercut does with the battle's target queueing
+   * on: an id already marked keeps the higher of its priorities.
+   *
+   * @param target the object
+   * @param priority its priority
+   */
+  void markTarget(WorldEntity target, int priority) {
+    world.uppercutMarked(this, target, priority);
+    for (int[] entry : targetQueue) {
+      if (entry[0] == target.getId()) {
+        entry[1] = Math.max(entry[1], priority);
+        return;
+      }
+    }
+    targetQueue.add(new int[] {target.getId(), priority});
+  }
+
+  /**
+   * The pre-hook, with the targeting queue's flush at its tail while the targeting component is on:
+   * the last entry with a priority of 1 or more whose object is still listed would become the
+   * reference, which is refused, and the queue is emptied.
+   */
+  @Override
+  protected void preHook() {
+    super.preHook();
+    if (targetQueue.isEmpty() || !isActive(TARGETING_SLOT)) {
+      return;
+    }
+    for (int[] entry : targetQueue) {
+      if (entry[1] >= 1 && world.liveObject(entry[0]) != null) {
+        throw new UnsupportedOperationException(
+            name() + " takes a target from its targeting queue, which is not modelled");
+      }
+    }
+    targetQueue.clear();
+    world.targetQueueFlushed(this);
+  }
+
+  /**
+   * Starts the evolved Mega Knight's uppercut on the character. A clone, a rider and a carrier are
+   * refused.
+   */
+  @Override
+  public ActionInstance uppercut(MegaKnightUppercut action, int phase, ActionOwner instigator) {
+    refuseRun(action.name());
+    return new UppercutRun(action, this, phase, instigator(instigator));
+  }
+
+  /**
+   * Knocks the character into the air. A clone, a rider, a carrier and a unit with an ability,
+   * whose postponing no run holds, are refused.
+   */
+  @Override
+  public ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
+    refuseRun(action.name());
+    if (getData().ability() != null) {
+      throw new UnsupportedOperationException(
+          action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
+    }
+    return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /**
+   * Starts a resetable area effect's run on the character. A clone, a rider and a carrier are
+   * refused.
+   */
+  @Override
+  public ActionInstance resetableAreaEffect(
+      SpawnResetableAreaEffect action, int phase, ActionOwner instigator) {
+    refuseRun(action.name());
+    return new ResetableAreaEffectRun(action, this, phase, instigator(instigator));
+  }
+
+  /** Refuses a run of the evolved Mega Knight's or Baby Dragon's on a clone, rider or carrier. */
+  private void refuseRun(String action) {
+    if (isClone() || getParent() != null || !riders().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action + " runs on " + name() + ", a clone, a rider or a carrier, not modelled");
+    }
+  }
+
+  /** The entity behind a cause, or null. */
+  private static WorldEntity instigator(ActionOwner instigator) {
+    return instigator instanceof WorldEntity entity ? entity : null;
   }
 
   /**
@@ -3389,8 +3511,8 @@ public class CharacterEntity extends WorldEntity {
     getView().setY(y);
   }
 
-  /** Empties the route and clears its route-leads-away bit, as a warp's route reset does. */
-  void resetRouteAfterWarp() {
+  /** Empties the route and clears its route-leads-away bit, as a warp and a landing knock do. */
+  void resetRoute() {
     MovementState movement = unit.movement();
     if (movement == null) {
       return;

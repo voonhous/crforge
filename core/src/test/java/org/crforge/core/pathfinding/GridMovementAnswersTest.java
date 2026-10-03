@@ -58,6 +58,22 @@ class GridMovementAnswersTest {
     assertThat(answersFor(unitWithReferenceAt(0)).specialWaypoint()).containsExactly(0, 1700);
   }
 
+  @Test
+  @DisplayName(
+      "a hovering unit hovers while neither force tag is in its word, and never under either; one"
+          + " that does not hover never does")
+  void hoveringAnswersFromTheLayer() {
+    GridUnitState hovering =
+        unitWithReferenceAt(null, MovementConfig.forGroundUnit().withHovering(true));
+    assertThat(answersFor(hovering).hovering()).isEqualTo(1);
+    for (long tag : new long[] {EntityFlags.FORCE_IS_AIR, EntityFlags.FORCE_IS_GROUND}) {
+      hovering.entity().setFlags(tag);
+      assertThat(answersFor(hovering).hovering()).isZero();
+    }
+    GridUnitState walking = unitWithReferenceAt(null);
+    assertThat(answersFor(walking).hovering()).isZero();
+  }
+
   /**
    * The movement answers for one visit of the unit. The range answer reads nothing but the unit's
    * own targeting state, so no routing grid, costs or neighbours are needed.
@@ -71,6 +87,11 @@ class GridMovementAnswersTest {
    * the arena's length, or holds no reference when the distance is null.
    */
   private static GridUnitState unitWithReferenceAt(Integer distance) {
+    return unitWithReferenceAt(distance, MovementConfig.forGroundUnit());
+  }
+
+  /** The same unit with movement columns of its own. */
+  private static GridUnitState unitWithReferenceAt(Integer distance, MovementConfig movement) {
     GridEntity owner = new GridEntity();
     owner.setX(0);
     owner.setY(0);
@@ -96,7 +117,7 @@ class GridMovementAnswersTest {
         MovementState.forSide(0, 0, 0),
         targeting,
         new StateTimers(),
-        MovementConfig.forGroundUnit(),
+        movement,
         SpeedConfig.forGroundUnit(60),
         StateVisitConfig.forGroundUnit(1000),
         null,

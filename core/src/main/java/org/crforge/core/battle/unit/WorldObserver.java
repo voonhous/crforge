@@ -1772,4 +1772,134 @@ public interface WorldObserver {
       boolean kills,
       boolean active,
       TargetView dropped) {}
+
+  /**
+   * The hold, layer and contact tags of an entity's word changed at its pre-hook, once an uppercut
+   * or a knock has raised tags on it.
+   *
+   * @param word the word's NO_MOVE, NO_ATTACK, LOCK_TARGET, FORCE_IS_AIR and
+   *     DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS bits
+   */
+  default void tagWordChanged(int tick, WorldEntity entity, long word) {}
+
+  /**
+   * An uppercut started on a unit.
+   *
+   * @param target the object it keeps as its target
+   * @param finished true when the target has no movement component, which ends the run at once
+   */
+  default void uppercutStarted(
+      int tick,
+      CharacterEntity unit,
+      String action,
+      int phase,
+      WorldEntity instigator,
+      WorldEntity target,
+      boolean finished) {}
+
+  /**
+   * An uppercut's update changed its delay, pushed or finished.
+   *
+   * @param outcome what the update did
+   * @param pushPoint the point it pushed away from and the vector from the nearest tower, as x, y,
+   *     vx and vy, or null for no push
+   */
+  default void uppercutStepped(
+      int tick,
+      CharacterEntity unit,
+      int delay,
+      boolean finished,
+      String outcome,
+      int[] pushPoint) {}
+
+  /**
+   * An uppercut marked its target in the unit's targeting queue.
+   *
+   * @param current the unit's current target
+   */
+  default void uppercutMarked(
+      int tick, CharacterEntity unit, WorldEntity target, int priority, WorldEntity current) {}
+
+  /** A unit's pre-hook emptied its targeting queue, taking nothing from it. */
+  default void targetQueueFlushed(int tick, CharacterEntity unit) {}
+
+  /** An uppercut's target left the battle and was forgotten. */
+  default void uppercutTargetLeft(int tick, CharacterEntity unit, WorldEntity target) {}
+
+  /**
+   * A knock started on a unit.
+   *
+   * @param counter its duration, what is left of it
+   */
+  default void knockbackStarted(
+      int tick,
+      CharacterEntity unit,
+      String action,
+      int phase,
+      WorldEntity instigator,
+      int counter) {}
+
+  /**
+   * A knock's update ran.
+   *
+   * @param before the counter before it
+   * @param after the counter after it
+   * @param height the height it pushed last
+   * @param tags the tags it raised
+   */
+  default void knockbackStepped(
+      int tick,
+      CharacterEntity unit,
+      int before,
+      int after,
+      int height,
+      long tags,
+      boolean finished) {}
+
+  /** A resetable action made its area effect at a point. */
+  default void resetableStarted(
+      int tick,
+      CharacterEntity unit,
+      int phase,
+      WorldEntity instigator,
+      AreaEffectEntity areaEffect,
+      int x,
+      int y) {}
+
+  /** A resetable action's run ended, its area effect gone. */
+  default void resetableEnded(int tick, CharacterEntity unit, String areaEffect) {}
+
+  /**
+   * A resetable action's singleton row was started again.
+   *
+   * @param countdown the countdown its area effect got back, or null with none live
+   */
+  default void resetableRetriggered(
+      int tick, CharacterEntity unit, int phase, String areaEffect, Integer countdown) {}
+
+  /** A resetable action's area effect left the battle. */
+  default void resetableLeft(int tick, CharacterEntity unit, String areaEffect) {}
+
+  /** A resetable action's area effect had its life cut as the unit left. */
+  default void resetableReleased(
+      int tick, CharacterEntity unit, String areaEffect, int before, int after) {}
+
+  /** A shaped area effect listed what its rectangle reached, in the query's order. */
+  default void shapeListed(int tick, AreaEffectEntity areaEffect, List<WorldEntity> listed) {}
+
+  /**
+   * A choice by team ran on an entity.
+   *
+   * @param chosen the name of the action it scheduled, or null for none
+   */
+  default void filteredByTeam(
+      int tick,
+      WorldEntity unit,
+      String action,
+      SpawnHost instigator,
+      boolean sameTeam,
+      String chosen) {}
+
+  /** An action run at an age was scheduled on an area effect. */
+  default void aliveTimerFired(int tick, AreaEffectEntity areaEffect, String action) {}
 }

@@ -29,6 +29,7 @@ import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageApplication;
@@ -41,6 +42,7 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
+import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.target.DefaultSelectionQueries;
 import org.crforge.core.pathfinding.target.DefaultTargetSelection;
 import org.crforge.core.pathfinding.target.HitApplication;
@@ -110,8 +112,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and drops, the rounding, the raise, the cap and the level by unit tests alone."
             + " Once an air-to-ground run has held it, the pre-hook folds the height changes"
             + " pushed since the last one into its height offset and reads its layer from its"
-            + " tag word and live height, held by vines_group and vines_tower; FORCE_IS_AIR on"
-            + " such an entity is refused. The row's action run as it attacks, scheduled on the"
+            + " tag word and live height, held by vines_group and vines_tower; once a knock has"
+            + " started on it, the same with each push's floor and FORCE_IS_AIR, and the hold,"
+            + " layer and contact tags of its word told as they change, held by"
+            + " mega_knight_ev1_uppercut. The row's action run as it attacks, scheduled on the"
             + " entity with the hit's target as its cause and run in its pending pass of the same"
             + " tick, held by valkyrie_ev1_barbarians and royal_giant_ev1_knights; nothing"
             + " scheduled for a hit with no target, carried and held by no run. Every hit its"
@@ -1178,42 +1182,82 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     GridEntity view = getView();
     view.setFlags(view.getPendingFlags() | actionTags() | buffs.tags() | rowTags());
     view.setPendingFlags(0);
+    if (tagsWatched) {
+      long word = view.getFlags() & watchedTagMask();
+      if (word != watchedWord) {
+        watchedWord = word;
+        world.tagWordChanged(this, word);
+      }
+    }
     if (layered) {
       foldLayer();
     }
   }
 
   /**
-   * True once an air-to-ground run has started on the entity: from then on its pre-hook folds the
-   * height changes pushed since the last one and reads its layer from its tag word.
+   * True once an uppercut or a knock has raised tags on the entity: from then on each pre-hook
+   * tells the observers when the hold, layer and contact tags of its word change.
+   */
+  private boolean tagsWatched;
+
+  /** The watched tags of the word the last pre-hook made. */
+  private long watchedWord;
+
+  /** The tags an uppercut and a knock raise and hold: the word's watched part. */
+  long watchedTagMask() {
+    return EntityFlags.NO_MOVE
+        | EntityFlags.NO_ATTACK
+        | EntityFlags.LOCK_TARGET
+        | world.forceIsAir()
+        | EntityFlags.DISABLE_PHYSICAL;
+  }
+
+  /**
+   * Raises tags for one step, as an uppercut or a knock does: in the tag word from the next
+   * pre-hook, which from then on watches the word.
+   */
+  void raiseWatched(long tags) {
+    getView().setPendingFlags(getView().getPendingFlags() | tags);
+    tagsWatched = true;
+  }
+
+  /**
+   * True once an air-to-ground run or a knock has started on the entity: from then on its pre-hook
+   * folds the height changes pushed since the last one and reads its layer from its tag word.
    */
   private boolean layered;
 
-  /** The height changes pushed since the last pre-hook, in order. */
-  private final List<Integer> heightPushes = new ArrayList<>();
+  /** The height changes pushed since the last pre-hook, each with its floor, in order. */
+  private final List<int[]> heightPushes = new ArrayList<>();
+
+  /** Makes the pre-hook fold the entity's height and read its layer from then on. */
+  void startLayering() {
+    layered = true;
+  }
 
   /**
-   * The pre-hook's fold for an entity an air-to-ground run has held: for one with a movement
-   * component the pushed changes become its height offset - their sum, clamped so the live height
-   * stays between 0 and its base height, and 0 with none pushed - and its layer is read again from
-   * its tag word and its live height. Its push height is its live height.
+   * The pre-hook's fold for an entity an air-to-ground run or a knock has held: for one with a
+   * movement component the pushed changes become its height offset - their sum, clamped so the live
+   * height stays between the lowest and the highest of its base height and the pushes' floors, and
+   * 0 with none pushed - and its layer is read again from its tag word and its live height. Its
+   * push height is its live height.
    */
   private void foldLayer() {
     GridEntity view = getView();
-    if ((view.getFlags() & world.forceIsAir()) != 0) {
-      throw new UnsupportedOperationException(
-          name() + " carries FORCE_IS_AIR, whose layer is not modelled");
-    }
     if (hasMovementComponent()) {
       int base = view.getZ();
       int total = 0;
-      for (int delta : heightPushes) {
-        total += delta;
+      int low = base;
+      int high = base;
+      for (int[] push : heightPushes) {
+        total += push[0];
+        if (push[1] > high) {
+          high = push[1];
+        } else if (push[1] < low) {
+          low = push[1];
+        }
       }
-      // Every push's floor is 0: the live height stays between 0 and the base height.
-      int up = Math.max(0, base) - base;
-      int down = Math.min(0, base) - base;
-      view.setHeightOffset(Math.max(Math.min(total, up), down));
+      view.setHeightOffset(Math.max(Math.min(total, high - base), low - base));
     }
     heightPushes.clear();
     view.setZTotal(view.getZ() + view.getHeightOffset());
@@ -1243,9 +1287,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return component(CharacterEntity.MOVEMENT_SLOT) != null;
   }
 
-  /** Pushes a change of height, which the next pre-hook folds into the height offset. */
-  void pushHeight(int delta) {
-    heightPushes.add(delta);
+  /**
+   * Pushes a change of height, which the next pre-hook folds into the height offset.
+   *
+   * @param delta the change
+   * @param floor a height the fold lets the live height reach, beyond the base height
+   */
+  void pushHeight(int delta, int floor) {
+    heightPushes.add(new int[] {delta, floor});
   }
 
   /** Raises FORCE_IS_GROUND for one step: in the tag word from the next pre-hook. */
@@ -1273,10 +1322,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               + name()
               + ", a clone, a hovering unit, a rider or a carrier, which is not modelled");
     }
-    layered = true;
+    startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);
     world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
     return run;
+  }
+
+  /** The entity's team: 2 for a neutral side, else its side's lowest bit. */
+  @Override
+  public int actionTeam() {
+    return SpatialIndex.team(getView());
+  }
+
+  @Override
+  public void filteredByTeam(
+      String action, ActionOwner instigator, boolean sameTeam, String chosen) {
+    world.filteredByTeam(
+        this, action, instigator instanceof SpawnHost host ? host : null, sameTeam, chosen);
   }
 
   /** The tags of every action the entity lists, finished ones included. */

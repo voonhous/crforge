@@ -221,4 +221,36 @@ class SpatialIndexTest {
     }
     assertThat(index.segmentQuery(0, 0, 0, 0, 0, entity -> true)).isNull();
   }
+
+  @Test
+  @DisplayName(
+      "the box query tests a building by its square and anything else by its circle, after the"
+          + " filter, each once, from a list of its own")
+  void theBoxQuery() {
+    // The box is 1200 wide and 2000 high about (3500, 8000): its lower edge at 7000 meets the
+    // tower's square, which reaches 7500, and its upper edge at 9000 stops 1000 short of the
+    // unit, whose circle reaches 500.
+    assertThat(index.boxQuery(3500, 8000, 600, 1000, entity -> true))
+        .containsExactly(princessTopLeft);
+    assertThat(index.boxQuery(3500, 8000, 600, 1000, entity -> !entity.isBuilding())).isEmpty();
+    // A box over the corner of the tower's square, 1273 from its centre: the square overlaps it,
+    // the circle of 1000 would not.
+    assertThat(index.boxQuery(4700, 7700, 300, 300, entity -> true))
+        .containsExactly(princessTopLeft);
+
+    // 400 from the upper edge, the unit's circle meets the box; it stands in several buckets and
+    // is answered once.
+    unit.setY(9400);
+    index.rebuild(List.of(princessTopLeft, unit));
+    assertThat(index.boxQuery(3500, 8000, 600, 1000, entity -> true))
+        .containsExactly(princessTopLeft, unit);
+    assertThat(index.boxQuery(3500, 8000, 600, 1000, entity -> entity == unit))
+        .containsExactly(unit);
+
+    // The pool of result lists is not drawn on.
+    for (int i = 0; i < SpatialIndex.RESULT_LIST_POOL_SIZE + 1; i++) {
+      assertThat(index.boxQuery(3500, 8000, 600, 1000, entity -> true)).isNotNull();
+    }
+    assertThat(index.query(SpatialQuery.targetCandidates(3500, 8000, 100))).isNotNull();
+  }
 }

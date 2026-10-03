@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -289,12 +288,17 @@ class BattleMegaKnightTest {
   }
 
   @Test
-  @DisplayName("a Mega Knight placed directly is refused: its card pushes and casts as it plays")
-  void aDirectPlacementIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
-    assertThatThrownBy(
-            () -> match.deploy(0, GameData.unit("MegaKnight"), LEVEL, 0, 3500, 10000, "MK"))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("play it by its card");
+  @DisplayName(
+      "a Mega Knight placed directly starts deploying without the setter's entry: it pushes"
+          + " nobody, and casts nothing, a play's cast being the card's")
+  void aDirectPlacementPushesNobodyAndCastsNothing() {
+    Scene scene = new Scene();
+    scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, 3500, 10500, "k");
+    scene.match.deploy(5, GameData.unit("MegaKnight_EV1"), LEVEL, 0, 3500, 10000, "mk");
+    scene.stepThrough(8);
+
+    assertThat(scene.deployPushes).isEmpty();
+    assertThat(scene.pushbacks).isEmpty();
+    assertThat(scene.projectiles()).isEmpty();
   }
 }

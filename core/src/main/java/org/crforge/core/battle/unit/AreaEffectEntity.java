@@ -10,6 +10,7 @@ import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
@@ -37,6 +38,7 @@ import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.index.ShapeTests;
+import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.move.BuffPush;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -81,9 +83,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * group of buff spawns, the Goblin Curse's, or a taunt, the Goblin Demolisher's, scheduled the same
  * way on every unit in its circle it reaches, each unit once for a row that reaches each target
  * once. One whose row follows its parent stands on the point of the object it follows first thing
- * in each update, and its life ends as that object leaves, unless its row stays after its parent
- * dies: it then stands on its last point. When the countdown reaches 0 its life-end action is
- * scheduled on itself; it leaves at the cleanup that finds the countdown below 1.
+ * in each update, moved by the follow offsets a resetable action gave it - the one along the length
+ * toward the enemy side of its own side - and its life ends as that object leaves, unless its row
+ * stays after its parent dies: it then stands on its last point. A shaped row, the evolved Baby
+ * Dragon's wind, lists in each update the characters its filter passes in the rectangle about its
+ * point, a building by its square and anything else by its circle, and each hit schedules its hit
+ * action, a choice by team, on every one of them with itself as the cause, and does nothing else.
+ * When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at the cleanup
+ * that finds the countdown below 1.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -111,7 +118,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " chains, created on its first update; its own-troops test, which no run meets. Not"
             + " modelled, and refused by its row: a buff"
             + " boosting one target or lasting longer by level, a hit action but a Clone's, a"
-            + " group of buff spawns or a taunt, the shape, a launch from its source"
+            + " group of buff spawns, a taunt or a shaped row's choice by team, a shape but a"
+            + " rectangle with a filter whose hits only schedule their hit action, a launch from"
+            + " its source"
             + " or spread about its point, the life condition, following a target, tags other"
             + " than the one that only hides the pushback's presentation, a"
             + " lifetime that grows by level, the push's floor and gate lift and one hit per"
@@ -167,7 +176,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " area effect leaves, held by goblinstein_tower. Its starting and"
             + " life-end actions written inline, a laser ball's run on its holder and the query"
             + " it answers, held by dark_magic_knight and dark_magic_group; a building found by"
-            + " its square alone is held by BattleLaserBallTest.")
+            + " its square alone is held by BattleLaserBallTest. The rectangle's list through its"
+            + " filter, the hit action on each listed character, the follow offsets turned by its"
+            + " side, its life given back and cut by the resetable action that made it, and the"
+            + " actions run at its ages, held by baby_dragon_ev1_wind; the offsets of the top side"
+            + " and the ages' repeats by BattleUppercutWindTest.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -402,10 +415,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    */
   @Override
   protected void postHook() {
-    // An area effect that follows stands on the followed object's point before anything else.
+    // An area effect that follows stands on the followed object's point, moved by its follow
+    // offsets, before anything else.
     if (follow != null) {
-      x = follow.x();
-      y = follow.y();
+      x = followOffsetX + follow.x();
+      y = yDirection(side) * followOffsetY + follow.y();
       owner.getOwner().setX(x);
       owner.getOwner().setY(y);
     }
@@ -450,6 +464,27 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       world.createAreaEffect(
           data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", name);
     }
+    if (data.shaped()) {
+      shapeHits(hits);
+    } else if (!circleHits(hits, radius, damage, speed, hit, bound)) {
+      return;
+    }
+    if (countdown <= 0 && data.onLifeTimeEndAction() != null) {
+      BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
+      world.lifeTimeEndScheduled(this, ending.name());
+      actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
+    }
+  }
+
+  /**
+   * The hits of a row without a shape: the hit action on every unit in its circle it reaches, then
+   * each hit's damage and buff; then the launch, after the hits: one projectile at most, on a step
+   * whose hit count rose.
+   *
+   * @return false when the launch found nobody to drop its projectile on, which ends the update
+   *     without its life-end action
+   */
+  private boolean circleHits(int hits, int radius, int damage, int speed, int hit, int bound) {
     if (data.onHitAction() != null && hits >= 1) {
       onHitActions(radius, hits);
     }
@@ -472,16 +507,97 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         }
       }
     }
-    // The launch, after the hits: one projectile at most, on a step whose hit count rose. With
-    // nobody to drop it on, the update ends there, without its life-end action.
-    if (data.projectile() != null && hit > bound && !launch(hit, bound, radius)) {
+    // The launch, after the hits: one projectile at most, on a step whose hit count rose.
+    return data.projectile() == null || hit <= bound || launch(hit, bound, radius);
+  }
+
+  /**
+   * The hits of a shaped row: the objects in its rectangle, centred on its point, that pass its
+   * filter, listed once for the update; each hit schedules its hit action on every one of them,
+   * built for that object, with the area effect as the cause. The row's load refuses a shaped row
+   * whose hits would do more.
+   */
+  private void shapeHits(int hits) {
+    List<WorldEntity> listed =
+        world.rectangleQuery(
+            this,
+            x,
+            y,
+            half(data.shapeWidth()),
+            half(data.shapeHeight()),
+            world.getRecords().filter(data.filter()));
+    world.shapeListed(this, listed);
+    if (data.onHitAction() == null) {
       return;
     }
-    if (countdown <= 0 && data.onLifeTimeEndAction() != null) {
-      BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
-      world.lifeTimeEndScheduled(this, ending.name());
-      actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
+    for (int i = 0; i < hits; i++) {
+      for (WorldEntity target : listed) {
+        BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
+        target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
+      }
     }
+  }
+
+  /** Half a size, rounded toward zero. */
+  private static int half(int size) {
+    return size / 2;
+  }
+
+  /**
+   * The direction along the length a side's area effect moves its follow offset: toward the top for
+   * side 0, toward the bottom for the other.
+   *
+   * @param side the side
+   */
+  static int yDirection(int side) {
+    return (side & 1) == 0 ? 1 : -1;
+  }
+
+  /** The offsets it keeps from the object it follows, the one along the length by its side. */
+  private int followOffsetX;
+
+  private int followOffsetY;
+
+  /**
+   * Sets the offsets it keeps from the object it follows at each update, as the resetable action
+   * that made it does.
+   *
+   * @param offsetX the offset along the width
+   * @param offsetY the offset along the length, turned by its side's direction
+   */
+  void followWithOffsets(int offsetX, int offsetY) {
+    followOffsetX = offsetX;
+    followOffsetY = offsetY;
+  }
+
+  /** Gives it its whole lifetime back. */
+  void restartLife() {
+    countdown = lifetime();
+  }
+
+  /**
+   * Cuts what is left of its life.
+   *
+   * @param countdownMs the countdown it keeps
+   */
+  void cutLife(int countdownMs) {
+    countdown = countdownMs;
+  }
+
+  /** Its age, for the actions run at its ages: its lifetime less its countdown. */
+  @Override
+  public AliveTimer.Age aliveAge() {
+    return () -> lifetime() - countdown;
+  }
+
+  @Override
+  public int actionTeam() {
+    return SpatialIndex.team(owner.getOwner());
+  }
+
+  @Override
+  public void aliveTimerFired(String action) {
+    world.aliveTimerFired(this, action);
   }
 
   /**
