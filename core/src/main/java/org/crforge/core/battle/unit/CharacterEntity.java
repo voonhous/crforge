@@ -1692,6 +1692,20 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   public void launched(int aimX, int aimY) {
+    recoil(aimX, aimY);
+  }
+
+  /**
+   * The unit's recoil by its row's attack pushback, away from a point: after each projectile it
+   * launches, away from the projectile's aim, and after a direct hit, away from where its reference
+   * stood. The same request either way: the gates lifted, as an attack's pushback, the whole
+   * distance, and refused while a pushback is still in flight. A row without an attack pushback
+   * does not recoil.
+   *
+   * @param aimX the point it recoils from, along the width
+   * @param aimY the point it recoils from, along the length
+   */
+  void recoil(int aimX, int aimY) {
     int distance = getData().attackPushBack();
     if (distance < 1) {
       return;
