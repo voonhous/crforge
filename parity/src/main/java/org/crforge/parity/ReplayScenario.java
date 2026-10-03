@@ -1,0 +1,454 @@
+package org.crforge.parity;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTable;
+import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.unit.Standard1v1Battle;
+
+/**
+ * Translates a replay scenario into the production simulator's inputs.
+ *
+ * <p>Every field of the scenario is one of three things, and {@link #mapping()} lists which:
+ *
+ * <ul>
+ *   <li><b>consumed</b>: translated into a production input, by the rule the entry states;
+ *   <li><b>pinned</b>: the production simulator has no input for it, so only the one value the
+ *       mapping was established on is accepted, and any other value is reported unsupported rather
+ *       than ignored;
+ *   <li><b>carried</b>: presentation or identity only, kept in the run's artifacts.
+ * </ul>
+ *
+ * <p>A data id is its table's id times a million plus the row's index in the table: 26000000 is row
+ * 0 of table 26. A level in the scenario is the card's own level index, counted from 0 on its
+ * rarity's first level; the simulator counts levels from 1 across all rarities, so a level is the
+ * index plus the rarity's RelativeLevel plus 1.
+ */
+public final class ReplayScenario {
+
+  /** The command type of a card play in the scenario's protocol version. */
+  public static final int PLACE_CARD = 124;
+
+  /** Ids per table. */
+  private static final int IDS_PER_TABLE = 1_000_000;
+
+  /** The table of the tower selections, which the game tables do not hold. */
+  private static final int SUPPORT_CARD_TABLE = 159;
+
+  /**
+   * The one tower selection the simulator builds: row 0 of the tower selections, the king tower and
+   * the two princess towers of {@link Standard1v1Battle}.
+   */
+  private static final int PRINCESS_TOWERS = SUPPORT_CARD_TABLE * IDS_PER_TABLE;
+
+  /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
+  private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
+
+  /** The level field of a play's packed item: seven bits from bit 10. */
+  private static final int ITEM_LEVEL_SHIFT = 10;
+
+  private static final int ITEM_LEVEL_MASK = 0x7f;
+
+  /** The deck index field of a play's packed item, the index plus 1: six bits from bit 22. */
+  private static final int ITEM_INDEX_SHIFT = 22;
+
+  private static final int ITEM_INDEX_MASK = 0x3f;
+
+  /** The cost field of a play's packed item: the bits from bit 28. */
+  private static final int ITEM_COST_SHIFT = 28;
+
+  /** A player's data with no emotes listed. */
+  private static final String NO_EMOTES = "{\"em\":{\"oe\":[],\"de\":[]}}";
+
+  /** How many choices the game builds such data with. */
+  private static final int NO_EMOTES_CHOICES = 1;
+
+  private final GameTables tables;
+  private final Map<String, String> mapping = new LinkedHashMap<>();
+
+  /**
+   * @param tables the game tables the ids are resolved against
+   */
+  public ReplayScenario(GameTables tables) {
+    this.tables = tables;
+  }
+
+  /** What became of each scenario field, in the order they were read. */
+  public Map<String, String> mapping() {
+    return mapping;
+  }
+
+  /**
+   * Translates a scenario.
+   *
+   * @param scenario the scenario document
+   * @return the production inputs
+   * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
+   */
+  public ScenarioPlan translate(JsonNode scenario) {
+    int seed = required(scenario, "rndSeed").asInt();
+    mapping.put("rndSeed", "consumed: BattleWorld.seed, the battle stream's seed");
+    mapping.put("time", "carried: the replay's wall clock, no battle input");
+    pin(scenario, "evt", "[]");
+    onlyFields(scenario, "$", "rndSeed", "time", "battle", "cmd", "evt");
+    JsonNode battle = required(scenario, "battle");
+    onlyFields(
+        battle,
+        "battle",
+        "gmt",
+        "plt",
+        "t1s",
+        "t2s",
+        "gamemode",
+        "hm",
+        "lvlcap",
+        "stp",
+        "trail",
+        "te",
+        "tps",
+        "arena",
+        "deck0",
+        "avatar0",
+        "deck1",
+        "avatar1",
+        "location",
+        "hbd");
+    gameMode(battle);
+    location(battle);
+    for (String field : List.of("gmt", "plt", "tps")) {
+      pin(battle, field, "1");
+    }
+    for (String field : List.of("t1s", "t2s", "lvlcap", "stp")) {
+      pin(battle, field, "0");
+    }
+    pin(battle, "hm", "false");
+    pin(battle, "trail", "170000000");
+    pin(battle, "te", "-1");
+    pin(battle, "arena", "54000001");
+    List<Integer> playerDataChoices = playerData(battle);
+
+    List<List<String>> decks = new ArrayList<>();
+    List<int[]> deckLevels = new ArrayList<>();
+    List<int[]> accounts = new ArrayList<>();
+    int[] towerLevels = new int[2];
+    for (int side = 0; side < 2; side++) {
+      JsonNode deck = required(battle, "deck" + side);
+      List<String> names = new ArrayList<>();
+      List<Integer> levels = new ArrayList<>();
+      for (JsonNode entry : required(deck, "sp")) {
+        GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
+        names.add(card.name());
+        levels.add(level(required(entry, "l").asInt(), card));
+        onlyFields(entry, "battle.deck" + side + ".sp", "d", "l");
+      }
+      decks.add(names);
+      deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
+      towerLevels[side] = towers(deck, side);
+      onlyFields(deck, "battle.deck" + side, "sp", "sc");
+      accounts.add(avatar(required(battle, "avatar" + side), side));
+    }
+    mapping.put(
+        "battle.deckN.sp[i].d",
+        "consumed: the card row, table id times a million plus row index; the deck's order kept");
+    mapping.put(
+        "battle.deckN.sp[i].l",
+        "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1");
+    if (towerLevels[0] != towerLevels[1]) {
+      throw new UnsupportedScenarioException(
+          "towers of a different level on each side",
+          "battle.deck0.sc[0].l / battle.deck1.sc[0].l");
+    }
+    if (accounts.get(0)[0] == accounts.get(1)[0] && accounts.get(0)[1] == accounts.get(1)[1]) {
+      throw new UnsupportedScenarioException(
+          "two sides of one account, whose commands name no side", "battle.avatarN.accountID");
+    }
+    List<ScenarioPlan.Play> plays = new ArrayList<>();
+    int index = 0;
+    for (JsonNode command : required(scenario, "cmd")) {
+      plays.add(play(command, index++, decks, deckLevels, accounts));
+    }
+    mapping.put("cmd[i].ct", "consumed: " + PLACE_CARD + ", a card play; any other is unsupported");
+    mapping.put("cmd[i].c.t", "carried: the tick the play was given on");
+    mapping.put(
+        "cmd[i].c.t2", "consumed: Standard1v1Battle.play's tick, the tick the play runs on");
+    mapping.put(
+        "cmd[i].c.idHi/idLo",
+        "consumed: the playing side, the side whose avatar has this account id");
+    mapping.put("cmd[i].c.px/py", "consumed: the requested point in game units, as given");
+    mapping.put("cmd[i].c.sid", "pinned: -1");
+    mapping.put("cmd[i].c.sel.os", "consumed: the card row played, which must be in the deck");
+    mapping.put(
+        "cmd[i].c.sel.pd",
+        "checked: the packed item's level field (bits 10..16) against the deck card's level index"
+            + " plus its rarity's RelativeLevel, its deck index field (bits 22..27) against the"
+            + " card's deck index plus 1, its cost field (bits 28..31) against the card row's"
+            + " ManaCost, and every other bit 0 (no evolution, option or other field); the"
+            + " simulator builds the item itself as the play runs");
+    return new ScenarioPlan(
+        seed, towerLevels[0], decks, deckLevels, accounts, playerDataChoices, plays);
+  }
+
+  /**
+   * The players' data, one entry each: only the entry with no emotes listed is known, whose data
+   * the game builds with one choice.
+   *
+   * @return how many choices each entry's data lists
+   */
+  private List<Integer> playerData(JsonNode battle) {
+    List<Integer> choices = new ArrayList<>();
+    for (JsonNode entry : required(battle, "hbd")) {
+      if (!entry.toString().equals(NO_EMOTES)) {
+        throw new UnsupportedScenarioException(
+            "a player's data other than one with no emotes listed, whose number of choices is not"
+                + " established",
+            "battle.hbd=" + entry);
+      }
+      choices.add(NO_EMOTES_CHOICES);
+    }
+    mapping.put(
+        "battle.hbd[i]",
+        "consumed: Standard1v1Battle.addPlayerData, one entry each in order; only "
+            + NO_EMOTES
+            + ", whose data lists "
+            + NO_EMOTES_CHOICES
+            + " choice");
+    return choices;
+  }
+
+  /** The game mode: a Ladder match is the one mode the simulator plays. */
+  private void gameMode(JsonNode battle) {
+    GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
+    if (!mode.name().equals(LadderMatch.GAME_MODE)) {
+      throw new UnsupportedScenarioException(
+          "the game mode " + mode.name(), "battle.gamemode=" + battle.get("gamemode"));
+    }
+    mapping.put(
+        "battle.gamemode", "consumed: the game mode row, which must be " + LadderMatch.GAME_MODE);
+  }
+
+  /** The location: only one on the standard map is built. */
+  private void location(JsonNode battle) {
+    GameRow location = row(required(battle, "location").asInt(), "battle.location");
+    String tileMap = location.string("TileDataFileName");
+    if (!STANDARD_TILE_MAP.equals(tileMap)) {
+      throw new UnsupportedScenarioException(
+          "the map " + tileMap + " of location " + location.name(),
+          "battle.location=" + battle.get("location"));
+    }
+    mapping.put(
+        "battle.location",
+        "consumed: the location row, whose map must be "
+            + STANDARD_TILE_MAP
+            + ", the bundled standard arena");
+  }
+
+  /**
+   * A deck's tower selection.
+   *
+   * @return the towers' level, counted from 1
+   */
+  private int towers(JsonNode deck, int side) {
+    JsonNode selections = required(deck, "sc");
+    String field = "battle.deck" + side + ".sc";
+    if (selections.size() != 1) {
+      throw new UnsupportedScenarioException(
+          "a deck with " + selections.size() + " tower selections", field);
+    }
+    JsonNode selection = selections.get(0);
+    int id = required(selection, "d").asInt();
+    if (id != PRINCESS_TOWERS) {
+      throw new UnsupportedScenarioException(
+          "a tower selection other than the princess towers (the game tables hold no table "
+              + SUPPORT_CARD_TABLE
+              + ", and Standard1v1Battle builds only the princess towers)",
+          field + "[0].d=" + id);
+    }
+    pin(selection, "t", "0");
+    pin(selection, "c", "1");
+    onlyFields(selection, field + "[0]", "d", "l", "t", "c");
+    mapping.put(
+        "battle.deckN.sc[0].d",
+        "consumed: the tower selection; only " + PRINCESS_TOWERS + ", the princess towers");
+    mapping.put(
+        "battle.deckN.sc[0].l",
+        "consumed: the towers' level index, plus 1 (the selection is of the first rarity); both"
+            + " sides must agree, and the king tower is created at the same level");
+    return required(selection, "l").asInt() + 1;
+  }
+
+  /**
+   * An avatar.
+   *
+   * @return its account id, high word then low word
+   */
+  private int[] avatar(JsonNode avatar, int side) {
+    String field = "battle.avatar" + side;
+    // The king tower is created at the towers' level; an avatar level that would disagree with it
+    // has no production input.
+    pin(avatar, "expLevel", "1");
+    pin(avatar, "npc", "false");
+    pin(avatar, "arena", "54000001");
+    onlyFields(avatar, field, "accountID.hi", "accountID.lo", "expLevel", "name", "arena", "npc");
+    mapping.put(
+        "battle.avatarN.accountID.hi/lo",
+        "consumed: names the side of a command; the low word is the player's word that joins its"
+            + " deck shuffle's draw");
+    mapping.put("battle.avatarN.name", "carried: presentation");
+    return new int[] {
+      required(avatar, "accountID.hi").asInt(), required(avatar, "accountID.lo").asInt()
+    };
+  }
+
+  private ScenarioPlan.Play play(
+      JsonNode command,
+      int index,
+      List<List<String>> decks,
+      List<int[]> deckLevels,
+      List<int[]> accounts) {
+    String field = "cmd[" + index + "]";
+    int type = required(command, "ct").asInt();
+    if (type != PLACE_CARD) {
+      throw new UnsupportedScenarioException("the command type " + type, field + ".ct");
+    }
+    JsonNode body = required(command, "c");
+    onlyFields(command, field, "ct", "c");
+    onlyFields(body, field + ".c", "t", "t2", "idHi", "idLo", "px", "py", "sid", "sel");
+    pin(body, "sid", "-1");
+    int hi = required(body, "idHi").asInt();
+    int lo = required(body, "idLo").asInt();
+    int side = -1;
+    for (int s = 0; s < 2; s++) {
+      if (accounts.get(s)[0] == hi && accounts.get(s)[1] == lo) {
+        side = s;
+      }
+    }
+    if (side < 0) {
+      throw new IllegalArgumentException(field + " names the account " + hi + "/" + lo);
+    }
+    JsonNode item = required(body, "sel");
+    onlyFields(item, field + ".c.sel", "os", "pd");
+    GameRow card = cardRow(required(item, "os").asInt(), field + ".c.sel.os");
+    int deckIndex = decks.get(side).indexOf(card.name());
+    if (deckIndex < 0) {
+      throw new IllegalArgumentException(
+          field + " plays " + card.name() + ", which is not in side " + side + "'s deck");
+    }
+    int level = deckLevels.get(side)[deckIndex];
+    int packed = required(item, "pd").asInt();
+    int packedLevel = (packed >>> ITEM_LEVEL_SHIFT) & ITEM_LEVEL_MASK;
+    int packedIndex = (packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK;
+    int packedCost = packed >>> ITEM_COST_SHIFT;
+    int rest =
+        packed
+            & ~((ITEM_LEVEL_MASK << ITEM_LEVEL_SHIFT)
+                | (ITEM_INDEX_MASK << ITEM_INDEX_SHIFT)
+                | (-1 << ITEM_COST_SHIFT));
+    if (packedLevel != level - 1
+        || packedIndex != deckIndex + 1
+        || packedCost != card.intValue("ManaCost")
+        || rest != 0) {
+      throw new UnsupportedScenarioException(
+          "a play whose packed item is not its deck card's plain item",
+          field
+              + ".c.sel.pd="
+              + packed
+              + " (level field "
+              + packedLevel
+              + ", deck index field "
+              + packedIndex
+              + ", cost "
+              + packedCost
+              + ", other bits "
+              + rest
+              + ") for "
+              + card.name()
+              + " at deck index "
+              + deckIndex
+              + " and level "
+              + level);
+    }
+    return new ScenarioPlan.Play(
+        index,
+        required(body, "t").asInt(),
+        required(body, "t2").asInt(),
+        side,
+        card.name(),
+        level,
+        required(body, "px").asInt(),
+        required(body, "py").asInt());
+  }
+
+  /** A card's level counted from 1 across all rarities, from its own level index. */
+  private int level(int levelIndex, GameRow card) {
+    GameRow rarity = tables.table("rarities").row(card.string("Rarity"));
+    return levelIndex + rarity.intValue("RelativeLevel") + 1;
+  }
+
+  /** The card row of a data id, which must be of one of the three card tables. */
+  private GameRow cardRow(int id, String field) {
+    GameRow row = row(id, field);
+    int tableId = id / IDS_PER_TABLE;
+    if (tableId != 26 && tableId != 27 && tableId != 28) {
+      throw new UnsupportedScenarioException(
+          "a deck card of table " + tableId + " (" + row.name() + ")", field + "=" + id);
+    }
+    return row;
+  }
+
+  /** The row of a data id: its table's id times a million plus the row's index. */
+  private GameRow row(int id, String field) {
+    String tableId = Integer.toString(id / IDS_PER_TABLE);
+    int index = id % IDS_PER_TABLE;
+    for (String name : tables.tableNames()) {
+      GameTable table = tables.table(name);
+      if (!table.id().equals(tableId)) {
+        continue;
+      }
+      for (GameRow row : table.rows()) {
+        if (row.index() == index) {
+          return row;
+        }
+      }
+      throw new IllegalArgumentException(field + "=" + id + " names no row of " + name);
+    }
+    throw new UnsupportedScenarioException(
+        "a row of table " + tableId + ", which the game tables do not hold", field + "=" + id);
+  }
+
+  /** Accepts only the value the mapping was established on. */
+  private void pin(JsonNode node, String field, String expected) {
+    JsonNode value = required(node, field);
+    if (!value.toString().equals(expected)) {
+      throw new UnsupportedScenarioException(
+          "a value of " + field + " other than " + expected + ", which has no production input",
+          field + "=" + value);
+    }
+    mapping.put(field, "pinned: " + expected);
+  }
+
+  /** Refuses a field the mapping does not know. */
+  private static void onlyFields(JsonNode node, String where, String... known) {
+    List<String> names = List.of(known);
+    for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
+      String name = it.next();
+      if (!names.contains(name)) {
+        throw new UnsupportedScenarioException(
+            "the field " + name + ", which has no mapping", where + "." + name);
+      }
+    }
+  }
+
+  private static JsonNode required(JsonNode node, String field) {
+    JsonNode value = node.get(field);
+    if (value == null) {
+      throw new IllegalArgumentException("the scenario has no " + field);
+    }
+    return value;
+  }
+}
