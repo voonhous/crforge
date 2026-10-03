@@ -22,6 +22,7 @@ import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
+import org.crforge.core.battle.action.ChefCooking;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
@@ -140,6 +141,38 @@ public final class ActionRows {
   private static final Map<String, Set<String>> READS =
       Map.ofEntries(
           Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay")),
+          // The Royal Chef's cooking. Its animation share, view indicator, AI state name, full-bar
+          // hold and throw duration only show something; any other column of the class (an
+          // overflow, the king's own shot, a cooking-done action, single buffs, deploying troops
+          // or shields left out) is set by no shipped row and refused as one nothing reads.
+          Map.entry(
+              "ActionChefTower",
+              Set.of(
+                  "StartCookingDelay",
+                  "ContributionNeeded",
+                  "ContributionBaseline",
+                  "ContributionIdle",
+                  "ContributionAttacking",
+                  "ContributionDestroyed",
+                  "TargetFilter",
+                  "MinCurrentHpThreshold",
+                  "MinCurrentHpPercentageThreshold",
+                  "MinMaxHpThreshold",
+                  "DeprioritizeBuffed",
+                  "BuffProjectile",
+                  "PancakeThrowDelay",
+                  "PancakeStartOffset",
+                  "PancakeThrowDelayTreshold",
+                  "WaitPancakeThrowAfterAttackTime",
+                  "FinishWhenBothTowersLost",
+                  "ContributionPercentForAltAnimation",
+                  "IndicatorFileName",
+                  "IndicatorExportName",
+                  "IndicatorOffsetYBlue",
+                  "IndicatorOffsetYRed",
+                  "AIStateName",
+                  "HoldFullBarTime",
+                  "PancakeThrowDuration")),
           Map.entry(
               "ActionSelect",
               Set.of("SubActions", "Condition", "PerActionConditions", "PassOptionalActionDelay")),
@@ -938,6 +971,7 @@ public final class ActionRows {
                   default -> new SpawnCharacters(shared, spawn(name, type, f));
                 };
             case "ActionGiantBufferCollectFriends" -> collectFriends(name, shared, f);
+            case "ActionChefTower" -> chefCooking(shared, f);
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
@@ -1106,6 +1140,37 @@ public final class ActionRows {
               .onBuffAction(action(f.get("OnBuffAction")))
               .onTargetBuffAction(action(f.get("OnTargetBuffAction")))
               .projectile(records.projectile(f.get("Projectile").asText()))
+              .build());
+    }
+
+    /**
+     * The Royal Chef's cooking columns, each with the default the game's loader gives a column the
+     * row leaves out.
+     */
+    private ChefCooking chefCooking(ActionRow shared, JsonNode f) {
+      return new ChefCooking(
+          shared,
+          ChefCooking.Columns.builder()
+              .startCookingDelayMs(f.path("StartCookingDelay").asInt(0))
+              .contributionNeeded(f.path("ContributionNeeded").asInt(1000))
+              .contributionBaseline(f.path("ContributionBaseline").asInt(22))
+              .contributionIdle(f.path("ContributionIdle").asInt(22))
+              .contributionAttacking(f.path("ContributionAttacking").asInt(11))
+              .contributionDestroyed(f.path("ContributionDestroyed").asInt(8))
+              .targetFilter(
+                  f.hasNonNull("TargetFilter")
+                      ? records.filter(f.get("TargetFilter").asText())
+                      : null)
+              .minCurrentHpThreshold(f.path("MinCurrentHpThreshold").asInt(0))
+              .minCurrentHpPercentage(f.path("MinCurrentHpPercentageThreshold").asInt(0))
+              .minMaxHpThreshold(f.path("MinMaxHpThreshold").asInt(0))
+              .deprioritizeBuffed(f.path("DeprioritizeBuffed").asBoolean(false))
+              .buffProjectile(records.projectile(f.get("BuffProjectile").asText()))
+              .pancakeThrowDelayMs(f.path("PancakeThrowDelay").asInt(300))
+              .pancakeStartOffset(f.path("PancakeStartOffset").asInt(0))
+              .pancakeThrowDelayThresholdMs(f.path("PancakeThrowDelayTreshold").asInt(200))
+              .waitPancakeThrowAfterAttackMs(f.path("WaitPancakeThrowAfterAttackTime").asInt(200))
+              .finishWhenBothTowersLost(f.path("FinishWhenBothTowersLost").asBoolean(true))
               .build());
     }
 

@@ -56,11 +56,11 @@ public final class ReplayScenario {
   private static final String SUPPORT_RARITIES = "support_rarities";
 
   /**
-   * The tower selections the simulator builds, by support card: the princess towers and the
-   * cannoneer towers, each placed from the card's spawn group.
+   * The tower selections the simulator builds, by support card: the princess towers, the cannoneer
+   * towers and the Royal Chef's towers, each placed from the card's spawn group.
    */
   private static final Set<String> BUILT_TOWER_SELECTIONS =
-      Set.of("King_PrincessTowers", "King_CannonTowers");
+      Set.of("King_PrincessTowers", "King_CannonTowers", "King_ChefTowers");
 
   /** What the simulator does not model of each other tower selection, by support card. */
   private static final Map<String, String> UNBUILT_TOWER_SELECTIONS =
@@ -69,10 +69,7 @@ public final class ReplayScenario {
           "the Dagger Duchess, whose burst attack (ActionBurstAttack) and attack sequence are not"
               + " modelled",
           "GoblinQueen_SpawnAbility",
-          "the Goblin Queen's towers, a selection the game data marks not in use",
-          "King_ChefTowers",
-          "the Royal Chef, whose king row's starting group and cooking (ActionChefTower) are not"
-              + " modelled");
+          "the Goblin Queen's towers, a selection the game data marks not in use");
 
   /**
    * The only avatar exp level the adapter accepts. The exp level table is not one of the game
