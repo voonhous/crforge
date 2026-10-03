@@ -26,16 +26,26 @@ class ReplaySmokeRunTest {
   private Path tablesFolder;
   private Path identity;
 
+  private Path terminalIdentity;
+
   @BeforeEach
-  void writeTheIdentity() throws IOException {
+  void writeTheIdentities() throws IOException {
     tablesFolder = GameTables.configuredDirectory().orElseThrow();
+    identity = identity("identity.json", SmokeSchema.V1.id(), SmokeSchema.V1.observationScope());
+    terminalIdentity =
+        identity("identity-v2.json", SmokeSchema.V2.id(), SmokeSchema.V2.observationScope());
+  }
+
+  private Path identity(String name, String schema, String scope) throws IOException {
     GameTables tables = GameTables.load(tablesFolder);
-    identity = folder.resolve("identity.json");
+    Path file = folder.resolve(name);
     ObjectNode fields = MAPPER.createObjectNode();
-    fields.put("schema", "test-schema");
+    fields.put("schema", schema);
+    fields.put("observation_scope", scope);
     fields.put("content_version", tables.version());
     fields.put("content_sha", tables.contentSha());
-    MAPPER.writeValue(identity.toFile(), fields);
+    MAPPER.writeValue(file.toFile(), fields);
+    return file;
   }
 
   @Test
@@ -49,7 +59,10 @@ class ReplaySmokeRunTest {
     byte[] trace = Files.readAllBytes(out.resolve("observations.jsonl"));
     assertThat(manifest.path("status").asText()).isEqualTo("completed");
     assertThat(manifest.path("engine").asText()).isEqualTo("java");
-    assertThat(manifest.path("schema").asText()).isEqualTo("test-schema");
+    assertThat(manifest.path("schema").asText()).isEqualTo(SmokeSchema.V1.id());
+    // The exact-horizon schema keeps its fields: no stop predicate, no termination record.
+    assertThat(manifest.has("executed_ticks")).isFalse();
+    assertThat(manifest.has("termination")).isFalse();
     assertThat(manifest.path("ticks").asInt()).isEqualTo(30);
     assertThat(manifest.path("observations").asInt()).isEqualTo(31);
     assertThat(manifest.path("trace_sha256").asText()).isEqualTo(sha256(trace));
@@ -76,6 +89,73 @@ class ReplaySmokeRunTest {
     assertThat(first.path("sides").get(1).path("queue").toString()).isEqualTo("[0,1,4,2]");
     assertThat(first.path("rng").asLong()).isEqualTo(4153772180L);
     assertThat(MAPPER.readTree(lines.get(30)).path("tick").asInt()).isEqualTo(30);
+    assertThat(first.has("stopped")).isFalse();
+  }
+
+  @Test
+  void anUnknownSchemaOrAScopeOfAnotherSchemaIsAnInvalidRun() throws IOException {
+    Path unknown = identity("unknown.json", "test-schema", SmokeSchema.V1.observationScope());
+    Path crossed = identity("crossed.json", SmokeSchema.V2.id(), SmokeSchema.V1.observationScope());
+
+    assertThat(run(Scenarios.knight(), folder.resolve("unknown"), unknown, 30))
+        .isEqualTo(ReplaySmokeRun.INVALID);
+    assertThat(run(Scenarios.knight(), folder.resolve("crossed"), crossed, 30))
+        .isEqualTo(ReplaySmokeRun.INVALID);
+    assertThat(folder.resolve("unknown").resolve("COMPLETE")).doesNotExist();
+    assertThat(folder.resolve("crossed").resolve("COMPLETE")).doesNotExist();
+  }
+
+  @Test
+  void aTerminalRunThatReachesItsHorizonStepsEveryTickAndSaysSo() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.knight(), out, terminalIdentity, 30);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("schema").asText()).isEqualTo(SmokeSchema.V2.id());
+    assertThat(manifest.path("ticks").asInt()).isEqualTo(30);
+    assertThat(manifest.path("executed_ticks").asInt()).isEqualTo(30);
+    assertThat(manifest.path("observations").asInt()).isEqualTo(31);
+    assertThat(manifest.path("termination").path("reason").asText()).isEqualTo("horizon");
+    assertThat(manifest.path("termination").path("tick").asInt()).isEqualTo(30);
+    for (String line : Files.readAllLines(out.resolve("observations.jsonl"))) {
+      assertThat(MAPPER.readTree(line).path("stopped").isBoolean()).isTrue();
+      assertThat(MAPPER.readTree(line).path("stopped").asBoolean()).isFalse();
+    }
+  }
+
+  @Test
+  void aTerminalRunStopsAtTheBattlesOwnStopAndKeepsTheEndDelay() throws IOException {
+    ObjectNode idle = Scenarios.knight();
+    idle.putArray("cmd");
+    Path out = folder.resolve("run");
+
+    int exit = run(idle, out, terminalIdentity, 6600);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    int executed = manifest.path("executed_ticks").asInt();
+    assertThat(executed).isLessThan(6600);
+    assertThat(lines).hasSize(executed + 1);
+    assertThat(manifest.path("observations").asInt()).isEqualTo(executed + 1);
+    assertThat(manifest.path("termination").path("reason").asText()).isEqualTo("battle_stopped");
+    assertThat(manifest.path("termination").path("tick").asInt()).isEqualTo(executed);
+    // Only the last observation is stopped; the match was ended for a while before it.
+    int firstEnded = -1;
+    for (int i = 0; i < lines.size(); i++) {
+      JsonNode observation = MAPPER.readTree(lines.get(i));
+      assertThat(observation.path("tick").asInt()).isEqualTo(i);
+      assertThat(observation.path("stopped").asBoolean()).isEqualTo(i == executed);
+      if (firstEnded < 0 && observation.path("ended").asBoolean()) {
+        firstEnded = i;
+      }
+    }
+    assertThat(firstEnded).isPositive().isLessThan(executed);
+    // The exact-horizon schema cannot represent that battle over the same horizon.
+    assertThat(run(idle, folder.resolve("exact"), identity, 6600))
+        .isEqualTo(ReplaySmokeRun.INVALID);
   }
 
   @Test

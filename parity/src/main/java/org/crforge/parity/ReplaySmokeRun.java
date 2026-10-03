@@ -37,10 +37,17 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * unsupported (3: an input the production simulator has no mapping for, or a behaviour it refuses).
  * Only a completed run has a {@code COMPLETE} marker.
  *
+ * <p>The identity names the schema ({@link SmokeSchema}). In the exact-horizon schema the run steps
+ * exactly {@code ticks} times. In the terminal-aware schema {@code ticks} is the requested horizon:
+ * the run steps until the battle's own stop predicate holds or the horizon is reached, and the
+ * manifest records {@code executed_ticks} and {@code termination} ({@code battle_stopped} or {@code
+ * horizon}, with the tick). Nothing from a reference decides where the run stops.
+ *
  * <p>Arguments: {@code --scenario FILE --tables DIR --identity FILE --ticks N --out NEW_DIR
  * [--provenance FILE]}. The identity file gives the run's identity fields, copied into the
- * manifest; its content version and content hash must be those of the tables. The provenance file
- * is the caller's record of the source tree that was built, copied into the manifest as given.
+ * manifest; its schema and observation scope must be a supported pair, and its content version and
+ * content hash must be those of the tables. The provenance file is the caller's record of the
+ * source tree that was built, copied into the manifest as given.
  */
 public final class ReplaySmokeRun {
 
@@ -122,7 +129,14 @@ public final class ReplaySmokeRun {
       throws IOException {
     JsonNode identity = MAPPER.readTree(Paths.get(required(options, "identity")).toFile());
     identity.fields().forEachRemaining(f -> manifest.put(f.getKey(), f.getValue()));
+    // The contract the run is made in: a supported schema with its own observation scope.
+    SmokeSchema schema =
+        SmokeSchema.of(
+            identity.path("schema").asText(), identity.path("observation_scope").asText());
     int ticks = Integer.parseInt(required(options, "ticks"));
+    if (ticks < 0) {
+      throw new IllegalArgumentException("a negative horizon: " + ticks);
+    }
     manifest.put("ticks", ticks);
     if (options.containsKey("provenance")) {
       manifest.put("java", MAPPER.readTree(Paths.get(options.get("provenance")).toFile()));
@@ -185,14 +199,25 @@ public final class ReplaySmokeRun {
 
     ByteArrayOutputStream trace = new ByteArrayOutputStream();
     int observations = 0;
-    observations += write(trace, SmokeObserver.observe(battle), observations);
-    for (int step = 0; step < ticks; step++) {
+    observations += write(trace, SmokeObserver.observe(battle, schema), observations);
+    // Exact horizon: every requested step. Terminal-aware: until the battle's own stop predicate
+    // holds after a step, or the horizon, whichever is first; a stopped battle is not stepped.
+    int executed = 0;
+    while (executed < ticks && !(schema.terminal() && SmokeObserver.stopped(battle))) {
       battle.getBattle().step();
-      observations += write(trace, SmokeObserver.observe(battle), observations);
+      executed++;
+      observations += write(trace, SmokeObserver.observe(battle, schema), observations);
     }
     byte[] bytes = trace.toByteArray();
     Files.write(out.resolve("observations.jsonl"), bytes);
     String digest = sha256(bytes);
+    if (schema.terminal()) {
+      manifest.put("executed_ticks", executed);
+      Map<String, Object> termination = new LinkedHashMap<>();
+      termination.put("reason", SmokeObserver.stopped(battle) ? "battle_stopped" : "horizon");
+      termination.put("tick", executed);
+      manifest.put("termination", termination);
+    }
     manifest.put("observations", observations);
     manifest.put("trace_sha256", digest);
     List<Map<String, Object>> plays = new ArrayList<>();
