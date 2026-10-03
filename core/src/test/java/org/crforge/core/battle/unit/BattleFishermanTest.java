@@ -237,7 +237,9 @@ class BattleFishermanTest {
     ProjectileEntity pull = golem.stepToTheHook();
     int from = pull.getY();
     golem.step(1);
-    assertThat(from - pull.getY()).isEqualTo(850 * 45 / 100);
+    // The pull reads the speed the Golem's row is loaded at: its 45, raised to 54 by its walk and
+    // wait times.
+    assertThat(from - pull.getY()).isEqualTo(850 * 54 / 100);
   }
 
   @Test

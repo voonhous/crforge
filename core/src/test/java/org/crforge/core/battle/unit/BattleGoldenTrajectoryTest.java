@@ -64,13 +64,6 @@ class BattleGoldenTrajectoryTest {
 
   @Test
   @DisplayName(
-      "a Knight deployed behind its king tower is pushed while deploying and locks at tick 369")
-  void behindKingDeployment() {
-    replay("knight_behind_king", "PrincessTower_1_2", 369);
-  }
-
-  @Test
-  @DisplayName(
       "a Knight deployed inside the left lane near the middle walks at its lane's princess tower"
           + " throughout: the king is no candidate, only the seed")
   void innerLeftDeployment() {

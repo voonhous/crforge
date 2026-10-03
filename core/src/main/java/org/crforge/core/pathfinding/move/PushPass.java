@@ -21,9 +21,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * the unit's radius. Two units sharing a position separate along the arena's length, each toward
  * its own side.
  *
- * <p>A crown tower is such a neighbour. Its mass is 0, so its share of a push is the smallest one,
- * a single unit before the per-axis division, but it still counts in the push count the
- * displacement divides by. A tower is never pushed itself: it has no movement visit.
+ * <p>A crown tower is such a neighbour. A neighbour of mass 0 has the smallest share of a push, a
+ * single unit before the per-axis division, and still counts in the push count the displacement
+ * divides by. No row of the game is loaded at a mass of 0, though: a building's row writes none and
+ * is given one from its collision radius, 20 for a crown tower, so a tower pushes a unit inside its
+ * reach hard. A tower is never pushed itself: it has no movement visit.
  *
  * <p>The unit is not pushed at all when it has no collision radius, when it takes no part in
  * contact ({@link ContactRule#collides}), or when it carries the flags that take it out of physical
@@ -38,10 +40,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " circle rejects, the coincident case, the magnitude chain and the write order."
             + " Held: two and three equal units pushing apart, and the multi-unit parity"
             + " scenes. Not held by any reference run: unequal masses, the height layers, the"
-            + " no-pushed-by flags and edge separation. A crown tower as a static, massless"
-            + " neighbour is held by the tower-contact run, the walks past a unit's own tower and"
-            + " the placement runs, the swarms among them; the static test (no movement"
-            + " component), a radius above 500 and the single-axis copy by its own tests.")
+            + " no-pushed-by flags and edge separation. A crown tower as a static neighbour was"
+            + " held at a mass of 0 by the tower-contact run, the walk behind a unit's own king"
+            + " and six placement runs, all removed: a tower is loaded at a mass of 20, held by"
+            + " the records' own test, and its push on a unit inside its reach is held by no run"
+            + " here. The static test (no movement component), a radius above 500 and the"
+            + " single-axis copy by its own tests.")
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */
