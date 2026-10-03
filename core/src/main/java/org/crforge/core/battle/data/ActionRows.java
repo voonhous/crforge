@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.Filter;
@@ -322,6 +323,26 @@ public final class ActionRows {
                   "DashFollowUpTrackEffect",
                   "DashFollowUpStartEffect",
                   "ActionOnTargets")),
+          // The four switches are loaded but read by nothing the class does, and the push effect
+          // and its interval only show something.
+          Map.entry(
+              "ActionDamagingPushBack",
+              Set.of(
+                  "PushBackStrength",
+                  "PushBackRadius",
+                  "ContinuosPushBack",
+                  "DistanceProportinalPush",
+                  "PushBackDamage",
+                  "AffectInvisible",
+                  "AffectFlying",
+                  "AffectBuildings",
+                  "FullPushBackCollisionCheck",
+                  "PushToSide",
+                  "PushRadiusDirectionalOffset",
+                  "OnPushEffect",
+                  "OnPushEffectMinInterval",
+                  "GameObjectFilter",
+                  "PushFilter")),
           // Its landing and attached effects only show something.
           Map.entry(
               "ActionKnockback",
@@ -840,6 +861,7 @@ public final class ActionRows {
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
+            case "ActionDamagingPushBack" -> damagingPushBack(name, shared, f);
             case "ActionCannonBarrage" -> cannonBarrage(name, shared, f);
             case "ActionCannonProjectileSpawn" -> cannonProjectileSpawn(name, shared, f);
             case "ActionSpawnResetableAeO" -> resetableAreaEffect(name, shared, f);
@@ -1323,6 +1345,42 @@ public final class ActionRows {
           f.path("ResetPushbackIfStronger").asBoolean(true),
           f.path("DashFollowUpDelay").asInt(1000),
           action(f.get("ActionOnTargets")));
+    }
+
+    /**
+     * A carried push's columns. A row that sets tags, a singleton, a next action, the run or pause
+     * gate or a phase of its own, or that leaves out either filter, is refused; its delay and stop
+     * gate are the runtime's.
+     */
+    private DamagingPushBack damagingPushBack(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "GameTagsToSet",
+          "Singleton",
+          "NextAction",
+          "ExecuteIfTrue",
+          "ActionPausedIfTrue",
+          "UpdatePhase");
+      for (String column : List.of("GameObjectFilter", "PushFilter")) {
+        if (f.path(column).asText("").isEmpty()) {
+          throw new UnsupportedOperationException(
+              name + " is a carried push without its " + column + ", which is not modelled");
+        }
+      }
+      return new DamagingPushBack(
+          shared,
+          DamagingPushBack.Columns.builder()
+              .pushBackStrength(integer(f, "PushBackStrength"))
+              .pushBackRadius(integer(f, "PushBackRadius"))
+              .continuousPushBack(bool(f, "ContinuosPushBack"))
+              .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
+              .pushBackDamage(integer(f, "PushBackDamage"))
+              .pushToSide(bool(f, "PushToSide"))
+              .pushRadiusDirectionalOffset(integer(f, "PushRadiusDirectionalOffset"))
+              .gameObjectFilter(records.filter(f.get("GameObjectFilter").asText()))
+              .pushFilter(records.filter(f.get("PushFilter").asText()))
+              .build());
     }
 
     /**
