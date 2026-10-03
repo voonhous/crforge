@@ -46,7 +46,8 @@ class BattleSelectDrawTest {
             ActionRow.builder().name("select").delayMs(500).build(),
             parts,
             owner.binding().expression("rand(3)"),
-            null);
+            null,
+            false);
 
     owner.actionHolder().schedule(select, ActionHolder.OWN_DELAY, false, owner.actionHolder());
 

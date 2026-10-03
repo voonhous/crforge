@@ -16,17 +16,17 @@ import org.crforge.core.pathfinding.GridEntityState;
  * attacking while still going down, it turns back into a negative count towards 0, and a building
  * more than half-way down rises at once. A step of 0, under a stun that stops time, holds the
  * counter. A building plays its hide effect as it starts to hide and rises as it starts to come up;
- * both only show something, and the rise's action, area object and push are refused with the row
- * that sets them.
+ * both effects only show something, and beside each the character schedules its row's action on
+ * itself. The rise's area object and push are refused with the row that sets them.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the counter's step in every state, the turn back from part-way down, the"
             + " wrap, the step of 0, the hide start and the rise of a building, and the hidden"
-            + " test. Held by tesla_giant_passing and tesla_hidden_spells. Not modelled: hiding"
-            + " before the first hit, and the rise's action, area object and push, which no row"
-            + " the battle builds sets.")
+            + " test. Held by tesla_giant_passing, tesla_hidden_spells and tesla_ev1_knights."
+            + " Not modelled: hiding before the first hit, and the rise's area object and push,"
+            + " which no shipped row sets.")
 public final class HideHandler {
 
   /** The effect a building plays as it starts to hide. */

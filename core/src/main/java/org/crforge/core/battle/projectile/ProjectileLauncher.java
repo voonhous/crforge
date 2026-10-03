@@ -152,6 +152,33 @@ public final class ProjectileLauncher {
     projectile.launch(dying, null, view.getX(), view.getY(), view.getZ(), hx, hy);
   }
 
+  /**
+   * Places a projectile an action's spawn row launches and aims it: from the given start, with the
+   * entity the action runs on as launcher and owner and no target, at the given point. Refused: a
+   * pingpong or hooking row, which its launcher's targeting component would hold.
+   *
+   * @param projectile the projectile, not yet launched
+   * @param owner the entity the action runs on
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   * @param hx the aim along the arena's width
+   * @param hy the aim along the arena's length
+   */
+  public static void launchFromAction(
+      ProjectileEntity projectile, WorldEntity owner, int sx, int sy, int sz, int hx, int hy) {
+    ProjectileData data = projectile.getData();
+    refuseUnmodelled(owner, data);
+    if (data.pingpongVisualTimeMs() >= 1 || data.dragBackSpeed() >= 1) {
+      throw new UnsupportedOperationException(
+          owner.name()
+              + " launches "
+              + data.name()
+              + " from an action, which its targeting component would hold, not modelled");
+    }
+    projectile.launch(owner, null, sx, sy, sz, hx, hy);
+  }
+
   /** Refuses a projectile row that sets columns its flight and impact do not model. */
   private static void refuseUnmodelled(WorldEntity launcher, ProjectileData data) {
     if (!data.unmodelledColumns().isEmpty()) {

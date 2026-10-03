@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
+import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
@@ -86,6 +87,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
+import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.ValidatorQueries;
@@ -1471,6 +1473,13 @@ public class BattleWorld implements HolderPasses {
       CharacterEntity unit, int state, int before, int after, int step, List<String> effects) {
     for (WorldObserver observer : observers) {
       observer.hideVisited(tick, unit, state, before, after, step, List.copyOf(effects));
+    }
+  }
+
+  /** Tells every observer that a hiding building scheduled one of its hide handler's actions. */
+  void hidingHookScheduled(CharacterEntity unit, String column, String action) {
+    for (WorldObserver observer : observers) {
+      observer.hidingHookScheduled(tick, unit, column, action);
     }
   }
 
@@ -4667,6 +4676,101 @@ public class BattleWorld implements HolderPasses {
             records.areaEffect(row).followsParent() ? owner : null);
     for (WorldObserver observer : observers) {
       observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
+    }
+  }
+
+  /**
+   * Launches the projectile an action's spawn row names from the owner's point at the row's start
+   * height, with the owner as its launcher and owner, at no target, toward the point the row's two
+   * expressions give, each evaluated now on the owner, the owner's own coordinate for one the row
+   * does not set; handed to the holder.
+   *
+   * @param owner the entity the action runs on
+   * @param action the spawn row's name
+   * @param row the projectile row's name
+   * @param startHeight the height it is launched from
+   * @param aimX the aim along the arena's width, or null for the owner's own coordinate
+   * @param aimY the aim along the arena's length, or null for the owner's own coordinate
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   */
+  void actionProjectile(
+      WorldEntity owner,
+      String action,
+      String row,
+      int startHeight,
+      IntSupplier aimX,
+      IntSupplier aimY,
+      int phase) {
+    if (owner instanceof CharacterEntity unit && unit.isClone()) {
+      throw new UnsupportedOperationException(
+          action + " launches " + row + " from a clone, which is not modelled");
+    }
+    int sx = owner.getView().getX();
+    int sy = owner.getView().getY();
+    // The width's expression is evaluated first, then the length's.
+    int hx = aimX == null ? sx : aimX.getAsInt();
+    int hy = aimY == null ? sy : aimY.getAsInt();
+    ProjectileEntity projectile = new ProjectileEntity(this, records.projectile(row), owner.side());
+    ProjectileLauncher.launchFromAction(projectile, owner, sx, sy, startHeight, hx, hy);
+    launch(projectile);
+    for (WorldObserver observer : observers) {
+      observer.actionProjectileLaunched(tick, owner, action, phase, projectile);
+    }
+  }
+
+  /**
+   * Makes one bomb's area effect of a barrage: its row at the point, for the owner's side and at
+   * its level, re-based on the area effect's rarity, with no parent, handed to the holder, which
+   * admits it at the tick's closing cleanup.
+   *
+   * @param owner the character running the barrage
+   * @param row the area effect row
+   * @param x its point along the width
+   * @param y its point along the length
+   * @return the area effect
+   */
+  AreaEffectEntity barrageAreaEffect(CharacterEntity owner, String row, int x, int y) {
+    return createAreaEffect(
+        row, x, y, owner.side(), owner.getPackedLevel(), null, "barrage", owner.name());
+  }
+
+  /** Tells every observer that a barrage's run started on a character. */
+  void barrageStarted(CharacterEntity owner, String action, int phase) {
+    for (WorldObserver observer : observers) {
+      observer.barrageStarted(tick, owner, action, phase);
+    }
+  }
+
+  /** Tells every observer of the area effects a barrage's update made. */
+  void barrageStepped(CharacterEntity owner, String action, List<AreaEffectEntity> made) {
+    for (WorldObserver observer : observers) {
+      observer.barrageStepped(tick, owner, action, List.copyOf(made));
+    }
+  }
+
+  /**
+   * Drops a barrage's bomb onto the area effect that caused the drop: its projectile from the area
+   * effect's point at the row's height, with the area effect as its launcher, side and level, aimed
+   * at the same point, at the speed that lands it over the area effect's lifetime - the height over
+   * the lifetime's steps of 50 ms, 0 for a lifetime under one step; handed to the holder.
+   *
+   * @param area the area effect
+   * @param action the drop
+   * @param phase the phase of the pending pass that ran the drop
+   */
+  void cannonBomb(AreaEffectEntity area, CannonProjectileSpawn action, int phase) {
+    int lifetime =
+        area.getLifetimeOverride() >= 0
+            ? area.getLifetimeOverride()
+            : area.getData().lifeDurationMs();
+    int steps = lifetime / StateQueries.TICK_MS;
+    int speed = steps == 0 ? 0 : action.getHeight() / steps;
+    ProjectileEntity projectile =
+        new ProjectileEntity(this, records.projectile(action.getProjectile()), area.side());
+    projectile.dropOnto(area, action.getHeight(), speed);
+    launch(projectile);
+    for (WorldObserver observer : observers) {
+      observer.bombDropped(tick, area, action.name(), phase, projectile, lifetime);
     }
   }
 

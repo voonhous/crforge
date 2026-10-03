@@ -159,9 +159,9 @@ public class ProjectileEntity extends BattleEntity
   @Getter private WorldEntity target;
 
   /**
-   * The area effect the projectile was fired at, as a target indicator attack fires at its signal,
-   * or null once it has left or for one fired at none. Its flight never takes it as a live target:
-   * the projectile flies to the point it was aimed at.
+   * The area effect the projectile was fired at, as a target indicator attack fires at its signal
+   * and a barrage drops its bomb onto its area, or null once it has left or for one fired at none.
+   * Its flight never takes it as a live target: the projectile flies to the point it was aimed at.
    */
   @Getter private AreaEffectEntity areaTarget;
 
@@ -211,6 +211,9 @@ public class ProjectileEntity extends BattleEntity
 
   /** Milliseconds its flight still waits before it moves, 50 off each visit. */
   @Getter private int delayMs;
+
+  /** The speed its launch gave it in place of its row's, or 0 for none. */
+  @Getter private int speedOverride;
 
   /** The ids of the entities its flying body has hit, which it does not hit again. */
   @Getter private final List<Integer> hitIds = new ArrayList<>();
@@ -392,6 +395,21 @@ public class ProjectileEntity extends BattleEntity
         view.getX(),
         view.getY());
     areaTarget = signal;
+  }
+
+  /**
+   * Places a bomb a barrage drops onto its area effect, as {@link #launchFromArea} does, the area
+   * effect kept as what it was dropped onto, and gives it the speed the drop works out in place of
+   * its row's.
+   *
+   * @param area the area effect it is dropped onto, its launcher
+   * @param sz the height it is dropped from
+   * @param speed the speed it flies at
+   */
+  public void dropOnto(AreaEffectEntity area, int sz, int speed) {
+    launchFromArea(area, null, area.getX(), area.getY(), sz, area.getX(), area.getY());
+    areaTarget = area;
+    speedOverride = speed;
   }
 
   /** The name of what the projectile was fired at while it is in the battle, or null for none. */

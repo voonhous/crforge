@@ -16,6 +16,8 @@ import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
+import org.crforge.core.battle.action.CannonBarrage;
+import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
@@ -61,6 +63,7 @@ import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
+import org.crforge.core.battle.spawn.SpawnProjectile;
 import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.fidelity.Fidelity;
@@ -132,7 +135,9 @@ public final class ActionRows {
   private static final Map<String, Set<String>> READS =
       Map.ofEntries(
           Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay")),
-          Map.entry("ActionSelect", Set.of("SubActions", "Condition", "PerActionConditions")),
+          Map.entry(
+              "ActionSelect",
+              Set.of("SubActions", "Condition", "PerActionConditions", "PassOptionalActionDelay")),
           Map.entry("ActionFilter", Set.of("Condition", "OnTrueAction", "OnFalseAction")),
           Map.entry("ActionRunOnInstigator", Set.of("ActionToExecute")),
           Map.entry("ActionWaitToActivate", Set.of("Condition", "OnActivateAction")),
@@ -496,9 +501,22 @@ public final class ActionRows {
               "ActionClone",
               Set.of("OnClonedAction", "CloneDuration", "SpawnDeployBaseAnim", "CardDataForStats")),
           Map.entry("ActionSpawn", spawnColumns()),
-          Map.entry("ActionSpawnToLocation", spawnColumns()));
+          Map.entry("ActionSpawnToLocation", spawnColumns()),
+          // The evolved Cannon's barrage: its bombs' areas and points. The relative offsets are
+          // read only where an absolute one is missing or negative; the indicator clips and files
+          // are read only by the card's placement preview.
+          Map.entry(
+              "ActionCannonBarrage",
+              Set.of(
+                  "BombVerticalOffsets",
+                  "BombHorizontalOffsets",
+                  "BombAbsoluteHorizontalOffsets",
+                  "BombAreaEffectObjects",
+                  "BombSpellTargetIndicatorClips",
+                  "BombSpellTargetIndicatorFiles")),
+          Map.entry("ActionCannonProjectileSpawn", Set.of("BombProjectile", "BombZOffset")));
 
-  /** The spawn columns: the character branch's, and the three it never reads. */
+  /** The spawn columns: the character branch's, and the other branches' it does not read. */
   private static Set<String> spawnColumns() {
     return Set.of(
         "SpawnData",
@@ -529,11 +547,15 @@ public final class ActionRows {
         "MirroredY",
         "XPositionExpression",
         "YPositionExpression",
-        // Not read by the character branch: the offsets are the area-effect branch's and the spawn
-        // time is the buff branch's.
+        // Not read by the character branch: the offsets are the area-effect branch's, the spawn
+        // time is the buff branch's, and the start height and the target expressions are the
+        // projectile branch's.
         "OffsetX",
         "OffsetY",
-        "SpawnTime");
+        "SpawnTime",
+        "StartPositionZOffset",
+        "TargetExprX",
+        "TargetExprY");
   }
 
   private final GameTables tables;
@@ -622,7 +644,8 @@ public final class ActionRows {
                     actions(f.get("SubActions")),
                     // A condition the data writes as a list compiles from its first element.
                     expression(first(f.get("Condition"))),
-                    expressions(f.get("PerActionConditions")));
+                    expressions(f.get("PerActionConditions")),
+                    bool(f, "PassOptionalActionDelay"));
             case "ActionFilter" ->
                 new Filter(
                     shared,
@@ -758,6 +781,8 @@ public final class ActionRows {
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
+            case "ActionCannonBarrage" -> cannonBarrage(name, shared, f);
+            case "ActionCannonProjectileSpawn" -> cannonProjectileSpawn(name, shared, f);
             case "ActionSpawnResetableAeO" -> resetableAreaEffect(name, shared, f);
             case "ActionFilterByEnemy" -> {
               refuseUnread(name, f, true);
@@ -811,6 +836,7 @@ public final class ActionRows {
                           ? spawnBuff(name, shared, f)
                           : new SpawnCharacters(shared, spawn(name, type, f));
                   case "AreaEffectType" -> spawnAreaEffect(name, type, shared, f);
+                  case "ProjectileType" -> spawnProjectile(name, type, shared, f);
                   default -> new SpawnCharacters(shared, spawn(name, type, f));
                 };
             case "ActionGiantBufferCollectFriends" -> collectFriends(name, shared, f);
@@ -1218,6 +1244,75 @@ public final class ActionRows {
     }
 
     /**
+     * A barrage's columns. A row whose every bomb does not have an absolute, non-negative offset
+     * across the arena is refused: the relative offset, counted from the edge of the owner's half,
+     * is the one the shipped row never reaches. So is an area effect a bomb names that the battle
+     * does not have, which would make no bomb.
+     */
+    private CannonBarrage cannonBarrage(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      List<Integer> vertical = ints(f.get("BombVerticalOffsets"));
+      List<Integer> absolute = ints(f.get("BombAbsoluteHorizontalOffsets"));
+      List<String> areas = new ArrayList<>();
+      f.path("BombAreaEffectObjects").forEach(a -> areas.add(a.asText()));
+      int bombs =
+          Math.min(
+              vertical.size(), Math.min(ints(f.get("BombHorizontalOffsets")).size(), areas.size()));
+      for (int i = 0; i < bombs; i++) {
+        if (i >= absolute.size() || absolute.get(i) < 0) {
+          throw new UnsupportedOperationException(
+              name + " places a bomb by its relative offset, which is not modelled");
+        }
+        List<String> unmodelled = records.areaEffect(areas.get(i)).unmodelledColumns();
+        if (!unmodelled.isEmpty()) {
+          throw new UnsupportedOperationException(
+              name + " drops " + areas.get(i) + ", which sets columns not modelled: " + unmodelled);
+        }
+      }
+      return new CannonBarrage(
+          shared, vertical.subList(0, bombs), absolute.subList(0, bombs), areas.subList(0, bombs));
+    }
+
+    /**
+     * A bomb drop's columns: its projectile, which must be one the battle models and must not home,
+     * and its height. Its next action is read as any row's; the other shared columns are refused.
+     */
+    private CannonProjectileSpawn cannonProjectileSpawn(String name, ActionRow shared, JsonNode f) {
+      for (String column :
+          List.of(
+              "GameTagsToSet",
+              "Singleton",
+              "ExecuteIfTrue",
+              "ActionPausedIfTrue",
+              "ForceStopIfTrue",
+              "ActionDelay",
+              "UpdatePhase")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name
+                  + ", an ActionCannonProjectileSpawn, sets "
+                  + column
+                  + ", which is not modelled");
+        }
+      }
+      String projectile = f.path("BombProjectile").asText("");
+      if (projectile.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " drops no projectile, which is not modelled");
+      }
+      List<String> unmodelled = records.projectile(projectile).unmodelledColumns();
+      if (!unmodelled.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " drops " + projectile + ", which sets columns not modelled: " + unmodelled);
+      }
+      if (records.projectile(projectile).homing()) {
+        throw new UnsupportedOperationException(
+            name + " drops a homing projectile, which is not modelled");
+      }
+      return new CannonProjectileSpawn(shared, projectile, integer(f, "BombZOffset"));
+    }
+
+    /**
      * A resetable area effect's columns, its stay -1, for no cut, when the row leaves it out. A row
      * that destroys its area effect while its owner's combat is disabled is refused.
      */
@@ -1619,12 +1714,64 @@ public final class ActionRows {
       return new Taunt(shared, duration, buff);
     }
 
+    /**
+     * A projectile spawn row: of the location class, the owner as its source, aimed by at least one
+     * target expression; any other spawn column but the action to run on what it spawned, which
+     * this branch does not read, is refused.
+     */
+    private SpawnProjectile spawnProjectile(
+        String name, String type, ActionRow shared, JsonNode f) {
+      if (!type.equals("ActionSpawnToLocation")) {
+        throw new UnsupportedOperationException(
+            name + " spawns a projectile from a spawn row's own position, which is not modelled");
+      }
+      for (Iterator<String> columns = f.fieldNames(); columns.hasNext(); ) {
+        String column = columns.next();
+        if (spawnColumns().contains(column)
+            && !Set.of(
+                    "SpawnData",
+                    "SpawnType",
+                    "ParentGOAsSource",
+                    "StartPositionZOffset",
+                    "TargetExprX",
+                    "TargetExprY",
+                    "ActionToRunOnSpawned")
+                .contains(column)) {
+          throw new UnsupportedOperationException(
+              name + " spawns a projectile and sets " + column + ", which is not modelled");
+        }
+      }
+      if (!bool(f, "ParentGOAsSource")) {
+        throw new UnsupportedOperationException(
+            name + " spawns a projectile from its cause, which is not modelled");
+      }
+      IntSupplier aimX = expression(f.get("TargetExprX"));
+      IntSupplier aimY = expression(f.get("TargetExprY"));
+      if (aimX == null && aimY == null) {
+        throw new UnsupportedOperationException(
+            name + " spawns a projectile at its owner's target, which is not modelled");
+      }
+      if (!f.path("SpawnData").isTextual()) {
+        throw new UnsupportedOperationException(
+            name + " spawns a projectile written inline, which is not modelled");
+      }
+      return new SpawnProjectile(
+          shared, f.path("SpawnData").asText(), integer(f, "StartPositionZOffset"), aimX, aimY);
+    }
+
     /** A character spawn row's columns; any other spawn type is refused. */
     private SpawnRow spawn(String name, String type, JsonNode f) {
       String spawnType = f.path("SpawnType").asText("");
       if (!spawnType.equals("CharacterType")) {
         throw new UnsupportedOperationException(
             name + " spawns " + spawnType + ", which is not modelled");
+      }
+      // The projectile branch's columns, which the character branch does not read.
+      for (String column : List.of("StartPositionZOffset", "TargetExprX", "TargetExprY")) {
+        if (f.has(column)) {
+          throw new UnsupportedOperationException(
+              name + " spawns characters and sets " + column + ", which is not modelled");
+        }
       }
       SpawnRow.SpawnRowBuilder row =
           SpawnRow.builder()

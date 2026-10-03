@@ -14,8 +14,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * there is a part past the last condition, that part; otherwise the part its condition's value
  * names, taken modulo the list, and none for a negative value or no condition at all. So a
  * condition that draws from the battle's random source draws as the select is scheduled, not when
- * it runs. The part is scheduled with no delay - neither the select's nor its own - and the
- * select's cause, without being asked to start at once. Its own start does nothing.
+ * it runs. The part is scheduled with no delay - neither the select's nor its own - unless the row
+ * passes its delay on, when it waits the delay the select was scheduled with, as the evolved
+ * Furnace's side choice does; either way with the select's cause, without being asked to start at
+ * once. Its own start does nothing.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -24,30 +26,34 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " before the choice, the per-part conditions taking precedence, the first true one"
             + " chosen, the part past the last condition when none is true, the condition modulo"
             + " the list, none for a negative one or none at all, and the part scheduled with no"
-            + " delay and the select's cause; held by gift_select's draws at scheduling. Not"
-            + " modelled: the select's delay passed on to the part, which a row asks for with a"
-            + " column that is refused, and the context the chosen part inherits.")
+            + " delay and the select's cause; held by gift_select's draws at scheduling. The"
+            + " select's delay passed on to the part, held by building_evolutions_barbarians. Not"
+            + " modelled: the context the chosen part inherits.")
 public final class Select extends RowAction {
 
   private final List<BattleAction> parts;
   private final IntSupplier condition;
   private final List<IntSupplier> partConditions;
+  private final boolean passDelay;
 
   /**
    * @param row the row's shared columns
    * @param parts the actions it chooses between
    * @param condition the index of the part to choose, or null for none, which chooses nothing
    * @param partConditions a condition per part, or null for none
+   * @param passDelay true when the chosen part waits the delay the select was scheduled with
    */
   public Select(
       ActionRow row,
       List<BattleAction> parts,
       IntSupplier condition,
-      List<IntSupplier> partConditions) {
+      List<IntSupplier> partConditions,
+      boolean passDelay) {
     super(row);
     this.parts = List.copyOf(parts);
     this.condition = condition;
     this.partConditions = partConditions == null ? null : List.copyOf(partConditions);
+    this.passDelay = passDelay;
   }
 
   @Override
@@ -58,8 +64,9 @@ public final class Select extends RowAction {
     }
     BattleAction chosen = choose();
     if (chosen != null) {
-      // No delay, the select's own or the part's: a delay of 0 is not the row's own.
-      holder.schedule(chosen, 0, false, instigator);
+      // No delay of the part's own: a delay of 0 is not the row's own. The select's, only for a
+      // row that passes it on.
+      holder.schedule(chosen, passDelay ? delayMs : 0, false, instigator);
     }
   }
 
