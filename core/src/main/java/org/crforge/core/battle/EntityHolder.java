@@ -144,12 +144,13 @@ public class EntityHolder {
   }
 
   /**
-   * Drops every removable entity of the live list, telling every entity still listed and the passes
-   * of each removal in turn, then folds the pending additions into the live list, which stays
-   * sorted by id: an entity of a lower kind lands ahead of every entity of a higher one however
-   * late it arrived. The admitted entities are told of their registration in ascending id. One
-   * handed over already removable, such as an area object spent in the update that made it, is
-   * admitted all the same and leaves at the next cleanup.
+   * Drops every removable entity, first of those waiting to be admitted, then of the live list,
+   * telling every entity still listed and the passes of each removal in turn, then folds the
+   * pending additions into the live list, which stays sorted by id: an entity of a lower kind lands
+   * ahead of every entity of a higher one however late it arrived. The admitted entities are told
+   * of their registration in ascending id. One handed over already removable, such as an area
+   * object spent in the update that made it, is never admitted (the game's cleanup 0xe31880 walks
+   * its queue before its live list, and folds only after both).
    */
   public void cleanup() {
     // A removal can make another entity removable - a rider let go by its parent - so the rounds
@@ -184,8 +185,26 @@ public class EntityHolder {
    * @return true when the round removed anything
    */
   private boolean removalRound() {
-    // Only the live list is walked: an entity handed over this tick is admitted first, whatever
-    // it has come to, and leaves at a later cleanup.
+    // The entities waiting to be admitted are walked first (0xe31880's first loop): one handed
+    // over already removable, such as an area object spent in the update that made it, is never
+    // admitted. Each hears of its own leaving while it is still waiting, as the game's notice
+    // walks the queue before the queue lets it go; it gets no owner-leaving call, which the game
+    // makes only for a live object (its slot +0x30).
+    boolean any = false;
+    for (int i = 0; i < pendingAdditions.size(); i++) {
+      BattleEntity gone = pendingAdditions.get(i);
+      if (!gone.isRemovable()) {
+        continue;
+      }
+      any = true;
+      notifyRemoval(gone);
+      // The game's queue removal takes the last entry into the gap and looks at it next.
+      int last = pendingAdditions.size() - 1;
+      pendingAdditions.set(i, pendingAdditions.get(last));
+      pendingAdditions.remove(last);
+      i--;
+      gone.actions().released();
+    }
     List<BattleEntity> removed = new ArrayList<>();
     drainRemovable(live, removed);
     for (BattleEntity gone : removed) {
@@ -203,7 +222,23 @@ public class EntityHolder {
       gone.actions().released();
       passes.entityRemoved(gone);
     }
-    return !removed.isEmpty();
+    return any || !removed.isEmpty();
+  }
+
+  /**
+   * The notice of a waiting entity that leaves before it was admitted: every waiting entity, the
+   * leaving one among them, then the live list, hears of it, then the side lists.
+   */
+  private void notifyRemoval(BattleEntity gone) {
+    List<BattleEntity> listed = new ArrayList<>(pendingAdditions);
+    listed.addAll(live);
+    for (BattleEntity entity : listed) {
+      entity.entityRemoved(gone);
+      entity.actions().objectLeft(gone.getId());
+      entity.actions().instigatorLeft(gone.actions());
+      entity.parentRemoved(gone);
+    }
+    passes.entityRemoved(gone);
   }
 
   /** One pending pass over the snapshot, with the battle's in-pass flag set around it. */
