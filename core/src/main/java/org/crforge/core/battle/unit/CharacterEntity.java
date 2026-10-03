@@ -1309,18 +1309,19 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
-   * mode moves the index by itself other than a continuous-damage attacker's, an entry that sets
-   * more than its damage, its projectile and its action (and, for a continuous-damage attacker, its
-   * window), and an entry without a projectile or an action on a unit that fires. An entry's action
-   * is established in place of a projectile, read from an order of two or more by an index only
-   * actions move; one with a projectile, in a sequence of one, in a continuous-damage attacker's or
-   * on a charging row is refused.
+   * mode moves the index by itself other than a continuous-damage attacker's and a static loop's,
+   * an entry that sets more than its damage, its projectile, its action and its direct hit's
+   * pushback (and, for a continuous-damage attacker, its window), and an entry without a projectile
+   * or an action on a unit that fires. An entry's action is established in place of a projectile,
+   * read from an order of two or more by an index only actions move; one with a projectile, in a
+   * sequence of one, in a continuous-damage attacker's or on a charging row is refused.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
     boolean windowed = sequence.mode() == AttackSequence.MODE_HITTIME;
+    boolean looped = sequence.mode() == AttackSequence.MODE_STATIC_LOOP;
     String refused = null;
-    if (sequence.mode() != AttackSequence.MODE_NONE && !windowed) {
+    if (sequence.mode() != AttackSequence.MODE_NONE && !windowed && !looped) {
       refused = "an attack sequence whose mode " + sequence.mode() + " moves the index itself";
     } else if (!sequence.replacesAttack()) {
       for (AttackSequence.Entry entry : sequence.entries()) {
