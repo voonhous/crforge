@@ -10,6 +10,8 @@ import java.util.List;
  * @param towerLevel the level the six towers are created at, counted from 1
  * @param decks each side's deck, by card row name, in the scenario's order
  * @param deckLevels each side's card levels by deck index, counted from 1 across all rarities
+ * @param slotFlags each side's slot flags by deck index: bit 0 the deck's evolution slot, bit 1 its
+ *     hero slot
  * @param accounts each side's account id, high word then low word
  * @param playerDataChoices how many choices each player's data lists, in the scenario's order
  * @param plays the card plays, in the scenario's order
@@ -19,6 +21,7 @@ public record ScenarioPlan(
     int towerLevel,
     List<List<String>> decks,
     List<int[]> deckLevels,
+    List<int[]> slotFlags,
     List<int[]> accounts,
     List<Integer> playerDataChoices,
     List<Play> plays) {
@@ -34,7 +37,18 @@ public record ScenarioPlan(
    * @param level the level it is played at, counted from 1 across all rarities
    * @param x the requested point, in game units
    * @param y the requested point, in game units
+   * @param item the packed item the play carries, as given; the parts that depend on the battle are
+   *     checked against the item the simulator builds as the play runs ({@link
+   *     ReplayScenario#checkItem})
    */
   public record Play(
-      int index, int givenTick, int runTick, int side, String card, int level, int x, int y) {}
+      int index,
+      int givenTick,
+      int runTick,
+      int side,
+      String card,
+      int level,
+      int x,
+      int y,
+      int item) {}
 }
