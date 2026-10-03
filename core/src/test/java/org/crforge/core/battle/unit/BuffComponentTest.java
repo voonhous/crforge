@@ -65,6 +65,19 @@ class BuffComponentTest {
   }
 
   @Test
+  @DisplayName(
+      "two reducing buffs do not add: an arrow of 109 takes 43 under the evolved Knight's Fortify"
+          + " alone, and 38 under Fortify and the Monk's 65")
+  void theLargestReductionCounts() {
+    BuffComponent buffs = knight().getBuffs();
+    assertThat(buffs.damageReduction(109)).isEqualTo(109);
+    buffs.apply(GameData.records().buff("Knight_Fortify_EV1"), 1000, LEVEL_11, null, 0);
+    assertThat(buffs.damageReduction(109)).isEqualTo(43);
+    buffs.apply(GameData.records().buff("ShieldBoostMonk"), 1000, LEVEL_11, null, 0);
+    assertThat(buffs.damageReduction(109)).isEqualTo(38);
+  }
+
+  @Test
   @DisplayName("a re-application of the same row refreshes the instance to the longer time")
   void aRefreshKeepsTheLongerTime() {
     BuffComponent buffs = knight().getBuffs();
