@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
@@ -31,7 +32,10 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  *       position in game units; an entity of the character kind also has its row's name, its state
  *       number and its hit points, maximum and shield, null when it has no hit points;
  *   <li>{@code sides}: side 0 then side 1, each with its elixir in ten-thousandths, its hand and
- *       queue as deck indices, and the hand's refill cooldown in milliseconds.
+ *       queue as deck indices, and the hand's refill cooldown in milliseconds;
+ *   <li>{@code stopped}, in a terminal-aware schema only: the battle mode's own stop predicate
+ *       ({@link BattleMode#isOver()}), the question the battle asks before it runs a step. It is
+ *       not the match's ended flag: a decided match keeps stepping through its end delay.
  * </ul>
  */
 public final class SmokeObserver {
@@ -43,11 +47,21 @@ public final class SmokeObserver {
   }
 
   /**
-   * One observation.
+   * One observation of the exact-horizon schema.
    *
    * @param standard the battle, played as a match
    */
   public static JsonNode observe(Standard1v1Battle standard) {
+    return observe(standard, SmokeSchema.V1);
+  }
+
+  /**
+   * One observation of the given schema.
+   *
+   * @param standard the battle, played as a match
+   * @param schema the schema the run is made in
+   */
+  public static JsonNode observe(Standard1v1Battle standard, SmokeSchema schema) {
     Battle battle = standard.getBattle();
     LadderMatch match = standard.getMatch();
     if (match == null) {
@@ -68,7 +82,18 @@ public final class SmokeObserver {
     for (int side = 0; side < match.playerCount(); side++) {
       sides.add(side(match.side(side), side));
     }
+    if (schema.terminal()) {
+      observation.put("stopped", stopped(standard));
+    }
     return observation;
+  }
+
+  /**
+   * Whether the battle has stopped: the predicate {@link Battle#step()} asks first, under which a
+   * stopped battle runs no step at all.
+   */
+  static boolean stopped(Standard1v1Battle standard) {
+    return standard.getBattle().getMode().isOver();
   }
 
   private static ObjectNode entity(BattleEntity entity) {
