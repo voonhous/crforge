@@ -110,7 +110,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled and held by area_effect_direct and area_effect_death: the creation by a death"
+        "Settled and held by area_effect_direct and the native card_RageBarbarian run: the creation by a death"
             + " and by a direct placement, the level re-based, the id band, the admission and the"
             + " starting action scheduled then, the update as the post-hook, the countdown, the hit"
             + " schedule, the radius, a hit as the area damage with the area effect as its owner"

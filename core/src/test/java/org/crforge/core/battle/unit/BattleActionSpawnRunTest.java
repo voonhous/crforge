@@ -429,7 +429,6 @@ class BattleActionSpawnRunTest {
         "archer_ev1_vs_tower",
         "archer_ev1_knight",
         "area_effect_direct",
-        "area_effect_death",
         "giant_skeleton_bomb",
         "cannon_knight",
         "tombstone_life",

@@ -133,7 +133,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " a lifetime's death without the death handler and a building spawner's children in"
             + " front of it, held by tombstone_life and goblin_hut_life; an area effect created by"
             + " a death or placed directly and its hits dealt, held by area_effect_direct and"
-            + " area_effect_death; a troop card's projectile cast before its units and a unit's"
+            + " the native card_RageBarbarian run, whose bottle, a child without hit points, deploys"
+            + " for its row's deploy time though its spawn does not ask; a troop card's projectile cast before its units and a unit's"
             + " push as it enters the deploying state, finding nobody in a card play's command"
             + " pass, held by mega_knight_group and mega_knight_jump, and the push's tests on what"
             + " it finds by a unit that waits its turn, held by no run. Refused: a death whose row"
@@ -3913,12 +3914,13 @@ public class BattleWorld implements HolderPasses {
    * <p>For each child, in order: where it stands (on the point, one unit right of it over water, or
    * on the ring), kept 250 inside the arena; its creation, for the source's side, in the lane of
    * its own position; its level, the row's or the source's, re-based on the child's own rarity;
-   * walking at once as the level setter leaves it, or deploying when the row asks, for the row's
-   * own deploy time when it has one; its id and its registration visit at once, inside the pass
-   * that runs the spawn, over this tick's index, so a push from a unit already standing there moves
-   * it; its first-tick immunity; and the action it runs as it is spawned, which starts at once when
-   * it has no delay, since a pending pass is in progress. It joins the live list at the tick's
-   * closing cleanup and is first visited on the next tick.
+   * walking at once as the level setter leaves it, or deploying when the row asks or when the child
+   * has no hit points and a deploy time, for the row's own deploy time when it has one; its id and
+   * its registration visit at once, inside the pass that runs the spawn, over this tick's index, so
+   * a push from a unit already standing there moves it; its first-tick immunity; and the action it
+   * runs as it is spawned, which starts at once when it has no delay, since a pending pass is in
+   * progress. It joins the live list at the tick's closing cleanup and is first visited on the next
+   * tick.
    *
    * <p>A creation that ignores effects is the same creation: the flag only skips the spawn effect,
    * which is presentation.
@@ -3961,7 +3963,7 @@ public class BattleWorld implements HolderPasses {
               x,
               y,
               PackedLevel.level(PackedLevel.pack(level, data.rarity())));
-      if (arguments.useDeploy()) {
+      if (arguments.useDeploy() || deploysWithoutAsking(data, arguments.deployTimeMs())) {
         child.startDeploying();
       }
       if (arguments.deployTimeMs() != 0) {
@@ -3982,6 +3984,19 @@ public class BattleWorld implements HolderPasses {
       made.add(child);
     }
     return made;
+  }
+
+  /**
+   * Whether the spawner starts a child deploying although its spawn does not ask for a deploy: a
+   * row without hit points, a bomb or a bottle, whose deploy time (the spawn's own when positive,
+   * else the row's) is at least 1 and which does not walk to its spawn point. The spawner's deploy
+   * decision (0xe2ff4c..0xe2ff90: the row's Hitpoints at level 0 through 0xcbbdd4, the deploy time,
+   * SpawnPathfindSpeed) is or-ed with the spawn's own deploy flag before the state is set to
+   * deploying (0xe30270..0xe30288).
+   */
+  private static boolean deploysWithoutAsking(UnitData data, int spawnDeployTimeMs) {
+    int deployTimeMs = spawnDeployTimeMs > 0 ? spawnDeployTimeMs : data.deployTimeMs();
+    return data.hitpoints() == 0 && deployTimeMs >= 1 && data.spawnPathfindSpeed() == 0;
   }
 
   /**
