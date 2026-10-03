@@ -9,7 +9,9 @@ import java.util.Map;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -29,6 +31,14 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * 0 of table 26. A level in the scenario is the card's own level index, counted from 0 on its
  * rarity's first level; the simulator counts levels from 1 across all rarities, so a level is the
  * index plus the rarity's RelativeLevel plus 1.
+ *
+ * <p>A play's packed item ({@code pd}) is the word the player's client builds for it: the evolution
+ * field in bits 0..3 (1 evolved, 2 the hero form), the option plus 1 in bits 4..6, the count plus 1
+ * in bits 7..9 for a card in the deck's evolution slot, the level in bits 10..16, a cosmetic value
+ * in bits 17..18, the deck card's slot flags in bits 19..21, the deck index plus 1 in bits 22..27
+ * and the cost from bit 28. The parts the deck alone decides are checked as the scenario is read;
+ * the evolution field, the count and the cost of a play whose item depends on the battle are
+ * checked as the play runs, against the item the simulator builds ({@link #checkItem}).
  */
 public final class ReplayScenario {
 
@@ -50,10 +60,39 @@ public final class ReplayScenario {
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
+  /** The evolution field of a play's packed item: bits 0..3. */
+  private static final int ITEM_FIELD_MASK = 0xf;
+
+  /** The option field of a play's packed item, the option plus 1: three bits from bit 4. */
+  private static final int ITEM_OPTION_SHIFT = 4;
+
+  private static final int ITEM_OPTION_MASK = 0x7;
+
+  /**
+   * The count field of a play's packed item, an evolution slot's count plus 1: three bits from bit
+   * 7.
+   */
+  private static final int ITEM_COUNT_SHIFT = 7;
+
+  private static final int ITEM_COUNT_MASK = 0x7;
+
   /** The level field of a play's packed item: seven bits from bit 10. */
   private static final int ITEM_LEVEL_SHIFT = 10;
 
   private static final int ITEM_LEVEL_MASK = 0x7f;
+
+  /** The cosmetic field of a play's packed item: two bits from bit 17. */
+  private static final int ITEM_COSMETIC_SHIFT = 17;
+
+  private static final int ITEM_COSMETIC_MASK = 0x3;
+
+  /** The slot flags field of a play's packed item, the deck card's: three bits from bit 19. */
+  private static final int ITEM_FLAGS_SHIFT = 19;
+
+  private static final int ITEM_FLAGS_MASK = 0x7;
+
+  /** The slot flags the simulator models: the evolution slot and the hero slot. */
+  private static final int MODELLED_SLOT_FLAGS = MatchSide.EVOLUTION_SLOT | MatchSide.HERO_SLOT;
 
   /** The deck index field of a play's packed item, the index plus 1: six bits from bit 22. */
   private static final int ITEM_INDEX_SHIFT = 22;
@@ -135,20 +174,24 @@ public final class ReplayScenario {
 
     List<List<String>> decks = new ArrayList<>();
     List<int[]> deckLevels = new ArrayList<>();
+    List<int[]> slotFlags = new ArrayList<>();
     List<int[]> accounts = new ArrayList<>();
     int[] towerLevels = new int[2];
     for (int side = 0; side < 2; side++) {
       JsonNode deck = required(battle, "deck" + side);
       List<String> names = new ArrayList<>();
       List<Integer> levels = new ArrayList<>();
+      List<Integer> slots = new ArrayList<>();
       for (JsonNode entry : required(deck, "sp")) {
         GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
         names.add(card.name());
         levels.add(level(required(entry, "l").asInt(), card));
-        onlyFields(entry, "battle.deck" + side + ".sp", "d", "l");
+        slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
+        onlyFields(entry, "battle.deck" + side + ".sp", "d", "l", "el");
       }
       decks.add(names);
       deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
+      slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
       towerLevels[side] = towers(deck, side);
       onlyFields(deck, "battle.deck" + side, "sp", "sc");
       accounts.add(avatar(required(battle, "avatar" + side), side));
@@ -159,6 +202,11 @@ public final class ReplayScenario {
     mapping.put(
         "battle.deckN.sp[i].l",
         "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1");
+    mapping.put(
+        "battle.deckN.sp[i].el",
+        "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
+            + " slot, Standard1v1Battle.startLadderMatch's slots; absent is 0, and any other bit is"
+            + " unsupported");
     if (towerLevels[0] != towerLevels[1]) {
       throw new UnsupportedScenarioException(
           "towers of a different level on each side",
@@ -171,7 +219,7 @@ public final class ReplayScenario {
     List<ScenarioPlan.Play> plays = new ArrayList<>();
     int index = 0;
     for (JsonNode command : required(scenario, "cmd")) {
-      plays.add(play(command, index++, decks, deckLevels, accounts));
+      plays.add(play(command, index++, decks, deckLevels, slotFlags, accounts));
     }
     mapping.put("cmd[i].ct", "consumed: " + PLACE_CARD + ", a card play; any other is unsupported");
     mapping.put("cmd[i].c.t", "carried: the tick the play was given on");
@@ -187,11 +235,14 @@ public final class ReplayScenario {
         "cmd[i].c.sel.pd",
         "checked: the packed item's level field (bits 10..16) against the deck card's level index"
             + " plus its rarity's RelativeLevel, its deck index field (bits 22..27) against the"
-            + " card's deck index plus 1, its cost field (bits 28..31) against the card row's"
-            + " ManaCost, and every other bit 0 (no evolution, option or other field); the"
-            + " simulator builds the item itself as the play runs");
+            + " card's deck index plus 1, its slot flags field (bits 19..21) against the deck"
+            + " card's, and its option (bits 4..6) and cosmetic (bits 17..18) fields 0; its"
+            + " evolution field (bits 0..3), count field (bits 7..9) and cost field (bits 28..31)"
+            + " against the item the simulator builds as the play runs, and as the scenario is"
+            + " read for a card outside the evolution slot: the evolution field 2 for a hero"
+            + " slot's card, else 0, no count, and a plain play's cost the card row's ManaCost");
     return new ScenarioPlan(
-        seed, towerLevels[0], decks, deckLevels, accounts, playerDataChoices, plays);
+        seed, towerLevels[0], decks, deckLevels, slotFlags, accounts, playerDataChoices, plays);
   }
 
   /**
@@ -219,6 +270,27 @@ public final class ReplayScenario {
             + NO_EMOTES_CHOICES
             + " choice");
     return choices;
+  }
+
+  /**
+   * A deck card's slot flags, its {@code el}: 0 when absent, and only the evolution and hero slots'
+   * bits, which the simulator models.
+   */
+  private static int slotFlags(JsonNode entry, String field) {
+    JsonNode value = entry.get("el");
+    if (value == null) {
+      return 0;
+    }
+    if (!value.isInt() || (value.asInt() & ~MODELLED_SLOT_FLAGS) != 0) {
+      throw new UnsupportedScenarioException(
+          "slot flags other than the evolution slot ("
+              + MatchSide.EVOLUTION_SLOT
+              + ") and the hero slot ("
+              + MatchSide.HERO_SLOT
+              + "), which the simulator has no input for",
+          field + ".el=" + value);
+    }
+    return value.asInt();
   }
 
   /** The game mode: a Ladder match is the one mode the simulator plays. */
@@ -310,6 +382,7 @@ public final class ReplayScenario {
       int index,
       List<List<String>> decks,
       List<int[]> deckLevels,
+      List<int[]> slotFlags,
       List<int[]> accounts) {
     String field = "cmd[" + index + "]";
     int type = required(command, "ct").asInt();
@@ -340,36 +413,45 @@ public final class ReplayScenario {
           field + " plays " + card.name() + ", which is not in side " + side + "'s deck");
     }
     int level = deckLevels.get(side)[deckIndex];
+    int slots = slotFlags.get(side)[deckIndex];
     int packed = required(item, "pd").asInt();
+    int packedField = packed & ITEM_FIELD_MASK;
+    int packedOption = (packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK;
+    int packedCount = (packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK;
     int packedLevel = (packed >>> ITEM_LEVEL_SHIFT) & ITEM_LEVEL_MASK;
+    int packedCosmetic = (packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK;
+    int packedFlags = (packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK;
     int packedIndex = (packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK;
     int packedCost = packed >>> ITEM_COST_SHIFT;
-    int rest =
-        packed
-            & ~((ITEM_LEVEL_MASK << ITEM_LEVEL_SHIFT)
-                | (ITEM_INDEX_MASK << ITEM_INDEX_SHIFT)
-                | (-1 << ITEM_COST_SHIFT));
+    // A card outside the evolution slot has no count, and its item is the same on every play: the
+    // hero form for a hero slot's card, else plain. An evolution slot's card carries its count plus
+    // 1 and is evolved once the count reaches its evolved row's cost, which the run checks.
+    int formField = (slots & MatchSide.HERO_SLOT) != 0 ? EvolutionItem.HERO : 0;
+    boolean evolutionSlot = (slots & MatchSide.EVOLUTION_SLOT) != 0;
+    boolean fieldAllowed =
+        evolutionSlot
+            ? (packedField == formField || packedField == EvolutionItem.EVOLVED) && packedCount >= 1
+            : packedField == formField && packedCount == 0;
     if (packedLevel != level - 1
         || packedIndex != deckIndex + 1
-        || packedCost != card.intValue("ManaCost")
-        || rest != 0) {
+        || packedFlags != slots
+        || packedOption != 0
+        || packedCosmetic != 0
+        || !fieldAllowed
+        || (packedField == 0 && packedCost != card.intValue("ManaCost"))) {
       throw new UnsupportedScenarioException(
-          "a play whose packed item is not its deck card's plain item",
+          "a play whose packed item is not one its deck card can carry",
           field
               + ".c.sel.pd="
               + packed
-              + " (level field "
-              + packedLevel
-              + ", deck index field "
-              + packedIndex
-              + ", cost "
-              + packedCost
-              + ", other bits "
-              + rest
+              + " ("
+              + describe(packed)
               + ") for "
               + card.name()
               + " at deck index "
               + deckIndex
+              + ", slot flags "
+              + slots
               + " and level "
               + level);
     }
@@ -381,7 +463,83 @@ public final class ReplayScenario {
         card.name(),
         level,
         required(body, "px").asInt(),
-        required(body, "py").asInt());
+        required(body, "py").asInt(),
+        packed);
+  }
+
+  /**
+   * Checks a play's packed item against the item the simulator built as the play ran: the evolution
+   * field, the count field (the count plus 1 for an evolution slot's card, else 0) and the cost
+   * must be the built item's. The simulator builds the item from its own count, so a play given
+   * with another item is one it does not model.
+   *
+   * @param play the play as the scenario gives it
+   * @param slotFlags the slot flags of the play's deck card
+   * @param built the item the simulator built as the play ran, or null if it built none
+   * @throws UnsupportedScenarioException for an item other than the built one
+   */
+  public static void checkItem(ScenarioPlan.Play play, int slotFlags, EvolutionItem built) {
+    String field = "cmd[" + play.index() + "].c.sel.pd=" + play.item();
+    if (built == null) {
+      throw new UnsupportedScenarioException(
+          "a play the simulator ran without building its deck card's item", field);
+    }
+    // The count field holds three bits of the count plus 1, as the client packs it.
+    int count = (slotFlags & MatchSide.EVOLUTION_SLOT) != 0 ? built.count() + 1 : 0;
+    // The parts the deck decides are as given, checked as the scenario was read.
+    int fromDeck =
+        play.item()
+            & ~(ITEM_FIELD_MASK | (ITEM_COUNT_MASK << ITEM_COUNT_SHIFT) | (-1 << ITEM_COST_SHIFT));
+    int expected =
+        fromDeck
+            | (built.field() & ITEM_FIELD_MASK)
+            | ((count & ITEM_COUNT_MASK) << ITEM_COUNT_SHIFT)
+            | (built.cost() << ITEM_COST_SHIFT);
+    if (expected != play.item()) {
+      throw new UnsupportedScenarioException(
+          "a play whose packed item is not the item the simulator builds as it runs",
+          field
+              + " ("
+              + describe(play.item())
+              + ") for "
+              + play.card()
+              + ", where the simulator builds "
+              + expected
+              + " ("
+              + describe(expected)
+              + ")");
+    }
+  }
+
+  /**
+   * Whether a play's item depends on the battle, so that only the run can check its evolution
+   * field, count and cost: a play of an evolution slot's card, or one with an evolution field.
+   *
+   * @param play the play as the scenario gives it
+   * @param slotFlags the slot flags of the play's deck card
+   */
+  public static boolean dependsOnBattle(ScenarioPlan.Play play, int slotFlags) {
+    return (slotFlags & MatchSide.EVOLUTION_SLOT) != 0 || (play.item() & ITEM_FIELD_MASK) != 0;
+  }
+
+  /** A packed item's fields, by name. */
+  private static String describe(int packed) {
+    return "evolution field "
+        + (packed & ITEM_FIELD_MASK)
+        + ", option field "
+        + ((packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK)
+        + ", count field "
+        + ((packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK)
+        + ", level field "
+        + ((packed >>> ITEM_LEVEL_SHIFT) & ITEM_LEVEL_MASK)
+        + ", cosmetic field "
+        + ((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK)
+        + ", slot flags field "
+        + ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK)
+        + ", deck index field "
+        + ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK)
+        + ", cost "
+        + (packed >>> ITEM_COST_SHIFT);
   }
 
   /** A card's level counted from 1 across all rarities, from its own level index. */
