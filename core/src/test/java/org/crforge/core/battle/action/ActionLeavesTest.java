@@ -135,8 +135,11 @@ class ActionLeavesTest {
   // ---------------------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("a shield is its percentage of max hit points, clamped to 0..100 and truncated")
+  @DisplayName(
+      "a shield is its percentage of the shield maximum, not of max hit points, clamped to 0..100"
+          + " and truncated")
   void setShield() {
+    // {ShieldPercent, shield maximum, shield written}; the hit points' maximum is 5000 throughout.
     int[][] cases = {
       {40, 1000, 400},
       {100, 1000, 1000},
@@ -146,17 +149,23 @@ class ActionLeavesTest {
       {33, 999, 329}
     };
     for (int[] c : cases) {
-      HitPoints hp = hitPoints(c[1], c[1]);
+      HitPoints hp = hitPoints(5000, 5000);
+      hp.setShieldMaximum(c[1]);
+      hp.setShield(17);
       new ActionHolder(new Owner(hp)).start(new SetShield(ActionRow.named("shield"), c[0]));
-      assertThat(hp.getShield()).as("%d%% of %d", c[0], c[1]).isEqualTo(c[2]);
+      assertThat(hp.getShield()).as("%d%% of a shield maximum of %d", c[0], c[1]).isEqualTo(c[2]);
+      assertThat(hp.getShieldMaximum()).as("the maximum is left as it is").isEqualTo(c[1]);
     }
 
     new ActionHolder(new Owner(null)).start(new SetShield(ActionRow.named("shield"), 40));
 
-    HitPoints none = new HitPoints(1000);
-    none.setMaximum(0);
-    new ActionHolder(new Owner(none)).start(new SetShield(ActionRow.named("shield"), 40));
-    assertThat(none.getShield()).as("zero max hit points, no shield").isZero();
+    // A shield maximum below 1 writes nothing: the shield is left as it is, even a 0 percent.
+    for (int percent : new int[] {40, 0}) {
+      HitPoints none = hitPoints(1000, 1000);
+      none.setShield(1);
+      new ActionHolder(new Owner(none)).start(new SetShield(ActionRow.named("shield"), percent));
+      assertThat(none.getShield()).as("no shield maximum, %d%%: nothing written", percent).isOne();
+    }
   }
 
   // ---------------------------------------------------------------------------------------------
