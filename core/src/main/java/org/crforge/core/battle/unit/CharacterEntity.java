@@ -779,11 +779,29 @@ public class CharacterEntity extends WorldEntity {
    */
   static CharacterEntity spawned(
       BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    return spawned(world, data, name, side, x, y, level, -1);
+  }
+
+  /**
+   * Creates a character as a spawn creates it, in a lane its spawner works out for it, and
+   * otherwise as {@link #spawned(BattleWorld, UnitData, String, int, int, int, int)} does.
+   *
+   * @param world the battle's shared arena state
+   * @param data the child's published columns; only ground units are supported
+   * @param name the child's unique name within the battle
+   * @param side the side that owns the child, its source's
+   * @param x position in game units, already inside the arena
+   * @param y position in game units, already inside the arena
+   * @param level the child's level, counted from 1
+   * @param lane the lane the spawner gives it, or -1 for the lane of the road nearest to it
+   */
+  static CharacterEntity spawned(
+      BattleWorld world, UnitData data, String name, int side, int x, int y, int level, int lane) {
     if (data.spawnAttach()) {
       throw new UnsupportedOperationException(
           data.name() + " is spawned and would make its riders as it deploys, which is not held");
     }
-    CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level);
+    CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level, lane, -1);
     // The level setter leaves a unit with a speed walking and one without standing.
     child.getView().setState(data.speed() >= 1 ? GridEntityState.MOVING : GridEntityState.STANDING);
     child.getView().setDeployCountdown(0);
