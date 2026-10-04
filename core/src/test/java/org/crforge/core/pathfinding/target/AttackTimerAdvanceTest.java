@@ -210,16 +210,16 @@ class AttackTimerAdvanceTest {
   }
 
   @Test
-  @DisplayName("a restored component rounds its attack time up to the next hit, once")
-  void aRestoreFlagRoundsUpOnce() {
-    t.setRestoredRoundUp(true);
+  @DisplayName("the instant-hit byte rounds the attack time up to the next hit, once")
+  void theInstantHitRoundsUpOnce() {
+    t.setInstantHit(true);
     t.setAttackTimerMs(750);
 
     advance();
 
     assertThat(t.getAttackTimerMs()).isEqualTo(HIT_SPEED);
     assertThat(t.isChargeStrike()).isFalse();
-    assertThat(t.isRestoredRoundUp()).isFalse();
+    assertThat(t.isInstantHit()).isFalse();
     assertThat(t.isAttackTimeRoundedUp()).isTrue();
 
     advance();
