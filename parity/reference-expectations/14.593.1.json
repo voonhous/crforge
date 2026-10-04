@@ -238,7 +238,7 @@
   "spell-interaction-v2/spell_arrows_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_barblog_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_clone_into_push": {"outcome": "diagnostic_match"},
-  "spell-interaction-v2/spell_darkmagic_into_push": {"outcome": "mismatch", "first_divergent_tick": 541, "path": "$.entities[20].hp"},
+  "spell-interaction-v2/spell_darkmagic_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_earthquake_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_fireball_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_freeze_into_push": {"outcome": "diagnostic_match"},
