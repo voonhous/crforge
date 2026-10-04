@@ -208,6 +208,8 @@
   "hero-sweep-v2/hero_mini_pekka": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_musketeer": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_wizard": {"outcome": "diagnostic_match"},
+  "hooked-push-v2/fisherman_holding_fireballed": {"outcome": "diagnostic_match"},
+  "hooked-push-v2/fisherman_hooked_knight_fireballed": {"outcome": "diagnostic_match"},
   "launch-recoil-v2/zap_machine_fireballed_on_launch": {"outcome": "diagnostic_match"},
   "launch-recoil-v2/zap_machine_launch_recoil": {"outcome": "diagnostic_match"},
   "pekka-resurrect-v2/evo_pekka_kills_giant_knight_musketeer": {"outcome": "diagnostic_match"},
