@@ -391,6 +391,19 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts a push the owner carries ahead of itself, as the evolved Battle Ram's completed charge
+   * runs it.
+   *
+   * @param action the push
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance damagingPushBack(DamagingPushBack action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * Starts the evolved Executioner's axe controller on the owner, a run that listens to its hits.
    *
    * @param action the controller

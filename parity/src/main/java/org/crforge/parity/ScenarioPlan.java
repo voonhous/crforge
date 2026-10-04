@@ -1,13 +1,15 @@
 package org.crforge.parity;
 
 import java.util.List;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
  * A replay scenario translated into the production simulator's own inputs: nothing here is read
  * from a reference run's observations.
  *
  * @param seed the battle stream's seed
- * @param towerLevel the level the six towers are created at, counted from 1
+ * @param towers each side's towers: the spawn group of its tower selection, with the level of its
+ *     king row and of its other rows, counted from 1
  * @param decks each side's deck, by card row name, in the scenario's order
  * @param deckLevels each side's card levels by deck index, counted from 1 across all rarities
  * @param slotFlags each side's slot flags by deck index: bit 0 the deck's evolution slot, bit 1 its
@@ -18,7 +20,7 @@ import java.util.List;
  */
 public record ScenarioPlan(
     int seed,
-    int towerLevel,
+    List<Standard1v1Battle.Towers> towers,
     List<List<String>> decks,
     List<int[]> deckLevels,
     List<int[]> slotFlags,
