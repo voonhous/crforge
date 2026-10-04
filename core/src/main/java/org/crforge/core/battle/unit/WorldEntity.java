@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
@@ -645,6 +646,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public boolean ownerMovementOn() {
+        return WorldEntity.this instanceof CharacterEntity c && c.movementOn();
+      }
+
+      @Override
+      public void attackRecoil(int x, int y) {
+        if (WorldEntity.this instanceof CharacterEntity c) {
+          c.recoil(x, y);
+        }
+      }
+
+      @Override
       public int nextHitId() {
         return world.nextHitId();
       }
@@ -688,7 +701,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
       @Override
       public boolean hitListeners() {
-        return !hitListenerRuns().isEmpty() || berserking() || ghostEvoRunning();
+        return !hitListenerRuns().isEmpty()
+            || berserking()
+            || ghostEvoRunning()
+            || burstAttackRunning();
       }
 
       @Override
@@ -726,6 +742,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * A damage the entity deals outside a direct hit or a launch, handed through its listening
+   * actions from the last listed down, as its hits' damage is, with the hit id it carries.
+   *
+   * @param damage the damage before the listeners
+   * @param hitId the hit's id
+   * @return the damage the listeners hand back
+   */
+  int listenedDamage(int damage, int hitId) {
+    List<GiantBufferBuff.Run> runs = hitListenerRuns();
+    int out = damage;
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      out = runs.get(i).damage(out, hitId, false);
+    }
+    return out;
+  }
+
+  /**
    * The entity's running actions that change its hits' damage, in list order: its enchanting buffs.
    * Every other class keeps the base damage slots, which hand a damage on unchanged, so the chains
    * are those of the enchanting buffs alone. The king tower's own actions are never listed as
@@ -755,6 +788,49 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
     }
     return false;
+  }
+
+  /** Whether a charge counter's run is listed, which spends a charge on every landed attack. */
+  private boolean burstAttackRunning() {
+    if (actionHolder == null || data.king()) {
+      return false;
+    }
+    for (ActionInstance instance : actionHolder.running()) {
+      if (instance instanceof BurstAttack.Run) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * What a charge counter's run reads of the entity - whether its targeting component is on, its
+   * attack timer and its buffs' scaling of a time step - and the attack sequence index it stores,
+   * as an index-setting action does with the component on.
+   */
+  @Override
+  public BurstAttack.Host burstAttackHost(BurstAttack action) {
+    return new BurstAttack.Host() {
+      @Override
+      public boolean targetingActive() {
+        return isActive(0);
+      }
+
+      @Override
+      public int attackTimerMs() {
+        return targeting.getAttackTimerMs();
+      }
+
+      @Override
+      public int timeStep(int stepMs) {
+        return buffs.hitSpeed(stepMs);
+      }
+
+      @Override
+      public void setAttackSequenceIndex(int index) {
+        WorldEntity.this.setAttackSequenceIndex(index, false);
+      }
+    };
   }
 
   /**

@@ -1,9 +1,11 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,14 +51,164 @@ class BattleChargeTest {
     assertThat(tower.getHitPoints().getHitPoints()).isLessThan(tower.getHitPoints().getMaximum());
   }
 
+  /**
+   * Steps an evolved Battle Ram until its charge completes, then places an enemy Knight beside the
+   * point the push pass will be centred on 16 steps later, the action's delay of 825 ms in whole
+   * steps. Answers the tick the charge completed on; fills in the Knight, and its hit points and
+   * position along the width after each of the next 30 steps.
+   */
+  private static int chargeThenKnight(
+      Standard1v1Battle match,
+      CharacterEntity ram,
+      CharacterEntity[] knight,
+      int[] hitPoints,
+      int[] widths) {
+    int completed = -1;
+    for (int tick = 0; tick < 200 && completed < 0; tick++) {
+      match.getBattle().step();
+      if (ram.getUnit().movement().getChargeProgress() >= MovementState.CHARGE_COMPLETE) {
+        completed = match.getWorld().tick();
+      }
+    }
+    assertThat(completed).isPositive();
+    // The ram walks 120 units a step once charged; the push pass is centred 800 ahead of it, with
+    // a radius of 1000. The Knight, still deploying, stands 300 to the side of that centre.
+    int y = ram.getView().getY() + 16 * 120 + 800;
+    knight[0] =
+        match.deploy(completed + 1, GameData.unit("Knight"), 3, 1, ram.getView().getX() + 300, y);
+    for (int i = 0; i < 30; i++) {
+      match.getBattle().step();
+      hitPoints[i] =
+          knight[0].getHitPoints() == null ? -1 : knight[0].getHitPoints().getHitPoints();
+      widths[i] = knight[0].getView().getX();
+    }
+    return completed;
+  }
+
   @Test
-  @DisplayName("a row whose completed charge runs an action is refused as it is created")
-  void aChargeActionIsRefused() {
-    BattleWorld world = passiveTowers().getWorld();
-    assertThatThrownBy(
-            () ->
-                new CharacterEntity(world, GameData.unit("Ram_crazy_1"), "Ram", 0, 3500, 10000, 11))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("OnStartChargingAction");
+  @DisplayName(
+      "an evolved Battle Ram's completed charge runs its push 825 ms later: an enemy beside its"
+          + " path is pushed to the side and hit once for the push damage")
+  void theEvolvedRamPushesAndHitsOnce() {
+    Standard1v1Battle match = passiveTowers();
+    // Level 3, as a Rare card at level index 0 plays it.
+    CharacterEntity ram = match.deploy(0, GameData.unit("BattleRam_EV1"), 3, 0, 14500, 9000);
+    CharacterEntity[] knight = new CharacterEntity[1];
+    int[] hitPoints = new int[30];
+    int[] widths = new int[30];
+    int completed = chargeThenKnight(match, ram, knight, hitPoints, widths);
+
+    int full = knight[0].getHitPoints().getMaximum();
+    // Index i holds the hit points after the step of tick completed + 1 + i; the push pass first
+    // runs on tick completed + 16.
+    int first = 15;
+    for (int i = 0; i < first; i++) {
+      assertThat(hitPoints[i]).as("after step %d", i).isEqualTo(full);
+    }
+    // PushBackDamage 83 at level 3 of the character row's Common rarity, and only once, though
+    // the Knight stays inside the pass for several steps.
+    for (int i = first; i < 30; i++) {
+      assertThat(hitPoints[i]).as("after step %d", i).isEqualTo(full - 100);
+    }
+    // The push carries it away from the ram's line, to the side it stood on.
+    assertThat(widths[first + 5]).isGreaterThan(widths[first - 1] + 500);
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Battle Ram's push run goes on through its recoil and ends with its charge")
+  void thePushRunEndsWithTheCharge() {
+    Standard1v1Battle match = passiveTowers();
+    // Just short of the red princess tower: it charges, hits the tower and keeps hitting it.
+    CharacterEntity ram = match.deploy(0, GameData.unit("BattleRam_EV1"), 11, 0, 14500, 17000);
+    boolean ran = false;
+    for (int tick = 0; tick < 200; tick++) {
+      match.getBattle().step();
+      boolean running =
+          ram.actionHolder().running().stream()
+              .anyMatch(r -> r.getAction().name().equals("BattleRam_EV1_PushBack"));
+      ran |= running;
+      if (ran && ram.getView().getState() == GridEntityState.ATTACKING) {
+        break;
+      }
+    }
+    assertThat(ran).isTrue();
+    // Its hit recoils it and it keeps its charge, so the run goes on through the recoil.
+    for (int tick = 0; tick < 5; tick++) {
+      match.getBattle().step();
+    }
+    assertThat(ram.actionHolder().running())
+        .anyMatch(r -> r.getAction().name().equals("BattleRam_EV1_PushBack"));
+    // A Zap's stun takes its charge away once the recoil has flown: no charged displacement
+    // follows, so the stop gate holds.
+    int tick = match.getWorld().tick() + 1;
+    match.placeAreaEffect(tick, "Zap", 11, 1, ram.getView().getX(), ram.getView().getY(), "zap");
+    for (int i = 0; i < 20; i++) {
+      match.getBattle().step();
+    }
+    assertThat(ram.actionHolder().running())
+        .noneMatch(r -> r.getAction().name().equals("BattleRam_EV1_PushBack"));
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Battle Ram's direct hit on a tower recoils it by its AttackPushBack, away from"
+          + " where the tower stood, in the tick the hit lands")
+  void theEvolvedRamRecoilsAfterItsHit() {
+    Standard1v1Battle match = passiveTowers();
+    // Just short of the red princess tower on the right lane: it charges and hits the tower.
+    CharacterEntity ram = match.deploy(0, GameData.unit("BattleRam_EV1"), 11, 0, 14500, 17000);
+    // The towers are present from the first step on.
+    match.getBattle().step();
+    WorldEntity tower =
+        match.getWorld().present().stream()
+            .filter(e -> e.side() == 1 && e.name().startsWith("PrincessTower"))
+            .filter(e -> e.getView().getX() > 9000)
+            .findFirst()
+            .orElseThrow();
+    // Every pushback asked for the ram: the tick, whether it started, and the point it is pushed
+    // away from.
+    List<int[]> recoils = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void pushbackRequested(
+                  int t,
+                  WorldEntity unit,
+                  boolean started,
+                  int fromX,
+                  int fromY,
+                  MovementState pushback) {
+                if (unit == ram) {
+                  recoils.add(new int[] {t, started ? 1 : 0, fromX, fromY});
+                }
+              }
+            });
+    int full = tower.getHitPoints().getHitPoints();
+    int hitTick = -1;
+    int hitY = 0;
+    for (int tick = 0; tick < 200 && hitTick < 0; tick++) {
+      match.getBattle().step();
+      if (tower.getHitPoints().getHitPoints() < full) {
+        hitTick = match.getWorld().tick();
+        hitY = ram.getView().getY();
+      }
+    }
+    assertThat(hitTick).as("the ram's first hit on the tower").isPositive();
+
+    // One request, in the hit's tick, started, away from the tower it hit.
+    assertThat(recoils).hasSize(1);
+    assertThat(recoils.get(0))
+        .containsExactly(hitTick, 1, tower.getView().getX(), tower.getView().getY());
+    MovementState movement = ram.getUnit().movement();
+    assertThat(movement.getPushbackInFlight()).isEqualTo(1);
+    assertThat(movement.getAttackPushback()).as("an attack's pushback").isEqualTo(1);
+    // The pushback flies it back along the lane, away from the tower ahead of it.
+    for (int i = 0; i < 10; i++) {
+      match.getBattle().step();
+    }
+    assertThat(ram.getView().getY()).isLessThan(hitY - 1000);
   }
 }

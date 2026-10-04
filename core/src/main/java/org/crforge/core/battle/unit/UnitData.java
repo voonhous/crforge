@@ -125,6 +125,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onStartingAttackAction the action row the unit runs as it starts an attack and at each
  *     hit, or null
  * @param onAttackAction the action row the unit runs as it attacks, or null
+ * @param onStartChargingAction the action row the unit runs each time its charge completes, or null
  * @param shieldLostAction the action row the unit runs as its shield breaks, or null
  * @param onAttackSelfAction the action row the unit runs on itself, as its own cause, after each
  *     hit not cancelled for distance, or null
@@ -325,6 +326,7 @@ public record UnitData(
     AttackSequence attackSequence,
     String onStartingAttackAction,
     String onAttackAction,
+    String onStartChargingAction,
     String shieldLostAction,
     String onAttackSelfAction,
     int minimumRange,

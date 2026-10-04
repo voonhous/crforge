@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +23,11 @@ class ReplayScenarioTest {
     ScenarioPlan plan = new ReplayScenario(tables).translate(Scenarios.knight());
 
     assertThat(plan.seed()).isEqualTo(1131);
-    assertThat(plan.towerLevel()).isEqualTo(1);
+    // Both sides select the princess towers at level index 0: every tower at level 1.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1));
     assertThat(plan.decks().get(0))
         .containsExactly(
             "Knight", "Archer", "Goblins", "Giant", "Minions", "Musketeer", "Fireball", "Arrows");
@@ -109,13 +114,108 @@ class ReplayScenarioTest {
   }
 
   @Test
-  void refusesATowerSelectionTheSimulatorDoesNotBuild() {
+  void buildsTheCannoneerTowersOfASidesTowerSelection() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000001);
 
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // Row 1 of the tower selections, King_CannonTowers, an Epic selection: its Cannoneer rows stand
+    // five levels above the first, its king tower at the first. Side 0 keeps the princess towers.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_CannonTowers", 1, 6));
+  }
+
+  @Test
+  void buildsTheDaggerDuchessTowersOfASidesTowerSelection() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000002);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // Row 2 of the tower selections, King_KnifeTowers, a Legendary selection: its DaggerDuchess
+    // rows stand eight levels above the first, its king tower at the first.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_KnifeTowers", 1, 9));
+  }
+
+  @Test
+  void buildsTheRoyalChefTowersOfASidesTowerSelection() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000004);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // Row 4 of the tower selections, King_ChefTowers, a Legendary selection: its ChefTower rows
+    // stand eight levels above the first, its king row at the first.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_ChefTowers", 1, 9));
+  }
+
+  @Test
+  void readsEachSidesTowerLevelFromItsOwnSelection() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0))
+        .put("d", 159000001)
+        .put("l", 10);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // The level index plus the selection rarity's RelativeLevel plus 1: Common 0, Epic 5.
+    assertThat(plan.towers().get(0).level()).isEqualTo(3);
+    assertThat(plan.towers().get(1).level()).isEqualTo(16);
+  }
+
+  @Test
+  void buildsEachKingTowerAtTheAvatarsLevelWhateverTheSelectionLevel() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0))
+        .put("d", 159000001)
+        .put("l", 10);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // The king row's level comes from the avatar's exp level, not from the tower selection: the
+    // first level at exp level 1, the only exp level the adapter accepts.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 3),
+            new Standard1v1Battle.Towers("King_CannonTowers", 1, 16));
+  }
+
+  @Test
+  void refusesATowerLevelOutsideItsSelectionsLevels() {
+    for (int level : new int[] {11, -1}) {
+      ObjectNode scenario = Scenarios.knight();
+      // An Epic selection has 11 levels, index 0 to 10.
+      ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0))
+          .put("d", 159000001)
+          .put("l", level);
+
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessageContaining("battle.deck1.sc[0].l=" + level);
+    }
+  }
+
+  @Test
+  void refusesATowerSelectionTheSimulatorDoesNotBuild() {
+    // The Goblin Queen's towers, the one selection left unbuilt.
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000003);
+
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
-        .hasMessageContaining("battle.deck1.sc[0].d=159000001");
+        .hasMessageContaining("battle.deck1.sc[0].d=159000003")
+        .hasMessageNotContaining("hold no table");
   }
 
   @Test

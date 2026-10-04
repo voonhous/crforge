@@ -539,13 +539,39 @@ public class BattleWorld implements HolderPasses {
    */
   public DamageResult dealDamage(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
+    return dealDamage(attacker, target, damage, directionX, directionY, false);
+  }
+
+  /**
+   * Deals the damage of a carried push's hit to an entity, as {@link #dealDamage(WorldEntity,
+   * TargetView, int, int, int)} deals a direct hit's, but past the hidden test.
+   *
+   * @param attacker the entity carrying the push
+   * @param target the entity hit
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   * @return what the damage did to the target
+   */
+  public DamageResult dealCarriedPushDamage(
+      WorldEntity attacker, WorldEntity target, int damage, int directionX, int directionY) {
+    return dealDamage(attacker, target.getTargetView(), damage, directionX, directionY, true);
+  }
+
+  private DamageResult dealDamage(
+      WorldEntity attacker,
+      TargetView target,
+      int damage,
+      int directionX,
+      int directionY,
+      boolean passesHidden) {
     WorldEntity entity = known.get(target.getEntity());
     if (entity == null) {
       return DamageResult.NOTHING;
     }
     int before = hitPointsOf(entity);
     DamageResult result =
-        entity.takeDamage(damage, 0, directionX, directionY, false, attacker, attacker);
+        entity.takeDamage(damage, 0, directionX, directionY, passesHidden, attacker, attacker);
     reflect(entity, attacker, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
@@ -907,6 +933,23 @@ public class BattleWorld implements HolderPasses {
    */
   public List<WorldEntity> objectQuery(WorldEntity asking, int radius, GameObjectFilter filter) {
     return objectQuery(asking, radius, filter, false);
+  }
+
+  /**
+   * The object query around a given point, accepted as {@link #objectQuery(WorldEntity, int,
+   * GameObjectFilter)} accepts around the asking entity's own, the filter asked for its team and
+   * row name.
+   *
+   * @param asking the entity running the query
+   * @param x the circle's centre along the width
+   * @param y the circle's centre along the length
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> objectQuery(
+      WorldEntity asking, int x, int y, int radius, GameObjectFilter filter) {
+    return objectQuery(x, y, asking.side(), asking.getData().name(), radius, filter, false);
   }
 
   /**
@@ -1616,6 +1659,25 @@ public class BattleWorld implements HolderPasses {
       }
     }
     return subjects;
+  }
+
+  /**
+   * The live list's arena entities a game object filter lets through, asked for a team and a row
+   * name, in the holder's order. Any other object is left out: none has hit points.
+   *
+   * @param filter the filter row
+   * @param team the asking entity's team
+   * @param rowName the asking entity's row name
+   */
+  List<WorldEntity> filteredEntities(GameObjectFilter filter, int team, String rowName) {
+    List<WorldEntity> out = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof WorldEntity arena
+          && filter.matches(arena.filterSubject(), team, rowName)) {
+        out.add(arena);
+      }
+    }
+    return out;
   }
 
   /**

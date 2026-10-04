@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
@@ -48,14 +49,38 @@ public final class ReplayScenario {
   /** Ids per table. */
   private static final int IDS_PER_TABLE = 1_000_000;
 
-  /** The table of the tower selections, which the game tables do not hold. */
+  /** The table of the tower selections, the support cards. */
   private static final int SUPPORT_CARD_TABLE = 159;
 
+  /** The table of the support cards' rarities, which set a tower selection's levels. */
+  private static final String SUPPORT_RARITIES = "support_rarities";
+
   /**
-   * The one tower selection the simulator builds: row 0 of the tower selections, the king tower and
-   * the two princess towers of {@link Standard1v1Battle}.
+   * The tower selections the simulator builds, by support card: the princess towers, the cannoneer
+   * towers, the Dagger Duchess's towers and the Royal Chef's towers, each placed from the card's
+   * spawn group.
    */
-  private static final int PRINCESS_TOWERS = SUPPORT_CARD_TABLE * IDS_PER_TABLE;
+  private static final Set<String> BUILT_TOWER_SELECTIONS =
+      Set.of("King_PrincessTowers", "King_CannonTowers", "King_KnifeTowers", "King_ChefTowers");
+
+  /** What the simulator does not model of each other tower selection, by support card. */
+  private static final Map<String, String> UNBUILT_TOWER_SELECTIONS =
+      Map.of(
+          "GoblinQueen_SpawnAbility",
+          "the Goblin Queen's towers, a selection the game data marks not in use");
+
+  /**
+   * The only avatar exp level the adapter accepts. The exp level table is not one of the game
+   * tables, so another exp level has no production input.
+   */
+  private static final int EXP_LEVEL = 1;
+
+  /**
+   * The level a side's king row is created at, counted from 1: the summoner level of the avatar's
+   * exp level, which for {@link #EXP_LEVEL} is the first. It does not depend on the side's tower
+   * selection or its level index.
+   */
+  private static final int KING_LEVEL = 1;
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
@@ -176,7 +201,7 @@ public final class ReplayScenario {
     List<int[]> deckLevels = new ArrayList<>();
     List<int[]> slotFlags = new ArrayList<>();
     List<int[]> accounts = new ArrayList<>();
-    int[] towerLevels = new int[2];
+    List<Standard1v1Battle.Towers> towers = new ArrayList<>();
     for (int side = 0; side < 2; side++) {
       JsonNode deck = required(battle, "deck" + side);
       List<String> names = new ArrayList<>();
@@ -192,7 +217,7 @@ public final class ReplayScenario {
       decks.add(names);
       deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
       slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
-      towerLevels[side] = towers(deck, side);
+      towers.add(towers(deck, side));
       onlyFields(deck, "battle.deck" + side, "sp", "sc");
       accounts.add(avatar(required(battle, "avatar" + side), side));
     }
@@ -207,11 +232,6 @@ public final class ReplayScenario {
         "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
             + " slot, Standard1v1Battle.startLadderMatch's slots; absent is 0, and any other bit is"
             + " unsupported");
-    if (towerLevels[0] != towerLevels[1]) {
-      throw new UnsupportedScenarioException(
-          "towers of a different level on each side",
-          "battle.deck0.sc[0].l / battle.deck1.sc[0].l");
-    }
     if (accounts.get(0)[0] == accounts.get(1)[0] && accounts.get(0)[1] == accounts.get(1)[1]) {
       throw new UnsupportedScenarioException(
           "two sides of one account, whose commands name no side", "battle.avatarN.accountID");
@@ -242,7 +262,7 @@ public final class ReplayScenario {
             + " read for a card outside the evolution slot: the evolution field 2 for a hero"
             + " slot's card, else 0, no count, and a plain play's cost the card row's ManaCost");
     return new ScenarioPlan(
-        seed, towerLevels[0], decks, deckLevels, slotFlags, accounts, playerDataChoices, plays);
+        seed, towers, decks, deckLevels, slotFlags, accounts, playerDataChoices, plays);
   }
 
   /**
@@ -321,11 +341,16 @@ public final class ReplayScenario {
   }
 
   /**
-   * A deck's tower selection.
+   * A deck's tower selection: a support card, whose spawn group places the side's towers, at a
+   * level index counted from 0 on the card's rarity's first level.
    *
-   * @return the towers' level, counted from 1
+   * <p>The rows in the princess slots stand at the level index plus the support rarity's
+   * RelativeLevel plus 1, as a Common row. The king row stands at the avatar's level, {@link
+   * #KING_LEVEL}, whatever the selection and its level index are.
+   *
+   * @return the side's towers
    */
-  private int towers(JsonNode deck, int side) {
+  private Standard1v1Battle.Towers towers(JsonNode deck, int side) {
     JsonNode selections = required(deck, "sc");
     String field = "battle.deck" + side + ".sc";
     if (selections.size() != 1) {
@@ -334,24 +359,47 @@ public final class ReplayScenario {
     }
     JsonNode selection = selections.get(0);
     int id = required(selection, "d").asInt();
-    if (id != PRINCESS_TOWERS) {
+    if (id / IDS_PER_TABLE != SUPPORT_CARD_TABLE) {
       throw new UnsupportedScenarioException(
-          "a tower selection other than the princess towers (the game tables hold no table "
-              + SUPPORT_CARD_TABLE
-              + ", and Standard1v1Battle builds only the princess towers)",
+          "a tower selection of table " + id / IDS_PER_TABLE, field + "[0].d=" + id);
+    }
+    GameRow card = row(id, field + "[0].d");
+    if (!BUILT_TOWER_SELECTIONS.contains(card.name())) {
+      throw new UnsupportedScenarioException(
+          "the tower selection "
+              + card.name()
+              + ", "
+              + UNBUILT_TOWER_SELECTIONS.getOrDefault(card.name(), "which is not modelled"),
           field + "[0].d=" + id);
     }
     pin(selection, "t", "0");
     pin(selection, "c", "1");
     onlyFields(selection, field + "[0]", "d", "l", "t", "c");
+    GameRow rarity = tables.table(SUPPORT_RARITIES).row(card.string("Rarity"));
+    int levelIndex = required(selection, "l").asInt();
+    int levelCount = rarity.intValue("LevelCount");
+    if (levelIndex < 0 || levelIndex >= levelCount) {
+      throw new UnsupportedScenarioException(
+          "a tower level index outside the "
+              + levelCount
+              + " levels of the selection's rarity "
+              + rarity.name(),
+          field + "[0].l=" + levelIndex);
+    }
     mapping.put(
         "battle.deckN.sc[0].d",
-        "consumed: the tower selection; only " + PRINCESS_TOWERS + ", the princess towers");
+        "consumed: the tower selection, a support card (table "
+            + SUPPORT_CARD_TABLE
+            + "), whose spawn group places the side's towers; only "
+            + String.join(" and ", BUILT_TOWER_SELECTIONS.stream().sorted().toList())
+            + ", the others unsupported");
     mapping.put(
         "battle.deckN.sc[0].l",
-        "consumed: the towers' level index, plus 1 (the selection is of the first rarity); both"
-            + " sides must agree, and the king tower is created at the same level");
-    return required(selection, "l").asInt() + 1;
+        "consumed: the towers' level index, 0 to the support rarity's LevelCount less 1; the"
+            + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1;"
+            + " the king row does not use it");
+    return new Standard1v1Battle.Towers(
+        card.string("SpawnGroup"), KING_LEVEL, levelIndex + rarity.intValue("RelativeLevel") + 1);
   }
 
   /**
@@ -361,9 +409,9 @@ public final class ReplayScenario {
    */
   private int[] avatar(JsonNode avatar, int side) {
     String field = "battle.avatar" + side;
-    // The king tower is created at the towers' level; an avatar level that would disagree with it
-    // has no production input.
-    pin(avatar, "expLevel", "1");
+    // The king tower is created at the summoner level of the avatar's exp level; only the first
+    // exp level, whose king level is KING_LEVEL, has a production input.
+    pin(avatar, "expLevel", String.valueOf(EXP_LEVEL));
     pin(avatar, "npc", "false");
     pin(avatar, "arena", "54000001");
     onlyFields(avatar, field, "accountID.hi", "accountID.lo", "expLevel", "name", "arena", "npc");

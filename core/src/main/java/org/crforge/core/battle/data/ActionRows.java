@@ -17,15 +17,18 @@ import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
+import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
+import org.crforge.core.battle.action.ChefCooking;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.Filter;
@@ -147,6 +150,38 @@ public final class ActionRows {
   private static final Map<String, Set<String>> READS =
       Map.ofEntries(
           Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay")),
+          // The Royal Chef's cooking. Its animation share, view indicator, AI state name, full-bar
+          // hold and throw duration only show something; any other column of the class (an
+          // overflow, the king's own shot, a cooking-done action, single buffs, deploying troops
+          // or shields left out) is set by no shipped row and refused as one nothing reads.
+          Map.entry(
+              "ActionChefTower",
+              Set.of(
+                  "StartCookingDelay",
+                  "ContributionNeeded",
+                  "ContributionBaseline",
+                  "ContributionIdle",
+                  "ContributionAttacking",
+                  "ContributionDestroyed",
+                  "TargetFilter",
+                  "MinCurrentHpThreshold",
+                  "MinCurrentHpPercentageThreshold",
+                  "MinMaxHpThreshold",
+                  "DeprioritizeBuffed",
+                  "BuffProjectile",
+                  "PancakeThrowDelay",
+                  "PancakeStartOffset",
+                  "PancakeThrowDelayTreshold",
+                  "WaitPancakeThrowAfterAttackTime",
+                  "FinishWhenBothTowersLost",
+                  "ContributionPercentForAltAnimation",
+                  "IndicatorFileName",
+                  "IndicatorExportName",
+                  "IndicatorOffsetYBlue",
+                  "IndicatorOffsetYRed",
+                  "AIStateName",
+                  "HoldFullBarTime",
+                  "PancakeThrowDuration")),
           Map.entry(
               "ActionSelect",
               Set.of("SubActions", "Condition", "PerActionConditions", "PassOptionalActionDelay")),
@@ -364,6 +399,26 @@ public final class ActionRows {
                   "DashFollowUpTrackEffect",
                   "DashFollowUpStartEffect",
                   "ActionOnTargets")),
+          // The four switches are loaded but read by nothing the class does, and the push effect
+          // and its interval only show something.
+          Map.entry(
+              "ActionDamagingPushBack",
+              Set.of(
+                  "PushBackStrength",
+                  "PushBackRadius",
+                  "ContinuosPushBack",
+                  "DistanceProportinalPush",
+                  "PushBackDamage",
+                  "AffectInvisible",
+                  "AffectFlying",
+                  "AffectBuildings",
+                  "FullPushBackCollisionCheck",
+                  "PushToSide",
+                  "PushRadiusDirectionalOffset",
+                  "OnPushEffect",
+                  "OnPushEffectMinInterval",
+                  "GameObjectFilter",
+                  "PushFilter")),
           // Its landing and attached effects only show something.
           Map.entry(
               "ActionKnockback",
@@ -592,6 +647,23 @@ public final class ActionRows {
           // The Berserker's starting action has no column of its own: its run sets and flips the
           // attack sequence index.
           Map.entry("ActionBerserk", Set.of()),
+          // The Dagger Duchess's charge counter. Its run reads the charges, the recharge and the
+          // indices; the counter it shows above the tower (the indicator's file, export name and
+          // offsets) and its state name are stored by the row and read by none of the run's
+          // start, step or notice.
+          Map.entry(
+              "ActionBurstAttack",
+              Set.of(
+                  "MaxChargeCount",
+                  "RechargeTime",
+                  "RechargeIncrement",
+                  "AttackSequenceIndices",
+                  "DepletedAttackSequenceIndex",
+                  "IndicatorFileName",
+                  "IndicatorExportName",
+                  "IndicatorOffsetYBlue",
+                  "IndicatorOffsetYRed",
+                  "AIStateName")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -925,6 +997,7 @@ public final class ActionRows {
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
+            case "ActionDamagingPushBack" -> damagingPushBack(name, shared, f);
             case "ActionCannonBarrage" -> cannonBarrage(name, shared, f);
             case "ActionCannonProjectileSpawn" -> cannonProjectileSpawn(name, shared, f);
             case "ActionSpawnResetableAeO" -> resetableAreaEffect(name, shared, f);
@@ -1023,6 +1096,7 @@ public final class ActionRows {
                   default -> new SpawnCharacters(shared, spawn(name, type, f));
                 };
             case "ActionGiantBufferCollectFriends" -> collectFriends(name, shared, f);
+            case "ActionChefTower" -> chefCooking(shared, f);
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
@@ -1044,6 +1118,16 @@ public final class ActionRows {
               }
               yield new PlayAnimationIfHasTarget(shared);
             }
+            case "ActionBurstAttack" ->
+                new BurstAttack(
+                    shared,
+                    BurstAttack.Columns.builder()
+                        .maxChargeCount(integer(f, "MaxChargeCount"))
+                        .rechargeTimeMs(integer(f, "RechargeTime"))
+                        .rechargeIncrement(integer(f, "RechargeIncrement"))
+                        .attackSequenceIndices(ints(f.get("AttackSequenceIndices")))
+                        .depletedAttackSequenceIndex(integer(f, "DepletedAttackSequenceIndex"))
+                        .build());
             case "ActionBerserk" -> {
               // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained
               // action on such a run is held by no reference.
@@ -1191,6 +1275,37 @@ public final class ActionRows {
               .onBuffAction(action(f.get("OnBuffAction")))
               .onTargetBuffAction(action(f.get("OnTargetBuffAction")))
               .projectile(records.projectile(f.get("Projectile").asText()))
+              .build());
+    }
+
+    /**
+     * The Royal Chef's cooking columns, each with the default the game's loader gives a column the
+     * row leaves out.
+     */
+    private ChefCooking chefCooking(ActionRow shared, JsonNode f) {
+      return new ChefCooking(
+          shared,
+          ChefCooking.Columns.builder()
+              .startCookingDelayMs(f.path("StartCookingDelay").asInt(0))
+              .contributionNeeded(f.path("ContributionNeeded").asInt(1000))
+              .contributionBaseline(f.path("ContributionBaseline").asInt(22))
+              .contributionIdle(f.path("ContributionIdle").asInt(22))
+              .contributionAttacking(f.path("ContributionAttacking").asInt(11))
+              .contributionDestroyed(f.path("ContributionDestroyed").asInt(8))
+              .targetFilter(
+                  f.hasNonNull("TargetFilter")
+                      ? records.filter(f.get("TargetFilter").asText())
+                      : null)
+              .minCurrentHpThreshold(f.path("MinCurrentHpThreshold").asInt(0))
+              .minCurrentHpPercentage(f.path("MinCurrentHpPercentageThreshold").asInt(0))
+              .minMaxHpThreshold(f.path("MinMaxHpThreshold").asInt(0))
+              .deprioritizeBuffed(f.path("DeprioritizeBuffed").asBoolean(false))
+              .buffProjectile(records.projectile(f.get("BuffProjectile").asText()))
+              .pancakeThrowDelayMs(f.path("PancakeThrowDelay").asInt(300))
+              .pancakeStartOffset(f.path("PancakeStartOffset").asInt(0))
+              .pancakeThrowDelayThresholdMs(f.path("PancakeThrowDelayTreshold").asInt(200))
+              .waitPancakeThrowAfterAttackMs(f.path("WaitPancakeThrowAfterAttackTime").asInt(200))
+              .finishWhenBothTowersLost(f.path("FinishWhenBothTowersLost").asBoolean(true))
               .build());
     }
 
@@ -1408,6 +1523,42 @@ public final class ActionRows {
           f.path("ResetPushbackIfStronger").asBoolean(true),
           f.path("DashFollowUpDelay").asInt(1000),
           action(f.get("ActionOnTargets")));
+    }
+
+    /**
+     * A carried push's columns. A row that sets tags, a singleton, a next action, the run or pause
+     * gate or a phase of its own, or that leaves out either filter, is refused; its delay and stop
+     * gate are the runtime's.
+     */
+    private DamagingPushBack damagingPushBack(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "GameTagsToSet",
+          "Singleton",
+          "NextAction",
+          "ExecuteIfTrue",
+          "ActionPausedIfTrue",
+          "UpdatePhase");
+      for (String column : List.of("GameObjectFilter", "PushFilter")) {
+        if (f.path(column).asText("").isEmpty()) {
+          throw new UnsupportedOperationException(
+              name + " is a carried push without its " + column + ", which is not modelled");
+        }
+      }
+      return new DamagingPushBack(
+          shared,
+          DamagingPushBack.Columns.builder()
+              .pushBackStrength(integer(f, "PushBackStrength"))
+              .pushBackRadius(integer(f, "PushBackRadius"))
+              .continuousPushBack(bool(f, "ContinuosPushBack"))
+              .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
+              .pushBackDamage(integer(f, "PushBackDamage"))
+              .pushToSide(bool(f, "PushToSide"))
+              .pushRadiusDirectionalOffset(integer(f, "PushRadiusDirectionalOffset"))
+              .gameObjectFilter(records.filter(f.get("GameObjectFilter").asText()))
+              .pushFilter(records.filter(f.get("PushFilter").asText()))
+              .build());
     }
 
     /**
