@@ -1667,7 +1667,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void overrideAbilityButton(OverrideAbilityButtonState action) {
-    world.overrideAbilityButton(this, action);
+    world.overrideAbilityButton(side(), action);
   }
 
   @Override

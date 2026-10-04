@@ -3,7 +3,9 @@ package org.crforge.core.battle.projectile;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
@@ -16,6 +18,7 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.MirroredExtraSpell;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.spawn.SpawnArguments;
@@ -102,7 +105,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " pass of the next tick before its first flight step; the listening runs of its"
             + " holder changing a hit's damage along its way and hearing of each hit before its"
             + " damage is taken off; and a swap of its row for one alike in the battle, held by"
-            + " ice_axe_barbarians and axe_man_ev1_barbarians."
+            + " ice_axe_barbarians and axe_man_ev1_barbarians. Its own variable map, empty"
+            + " when it is made, which its expressions read; a button state override's perform"
+            + " handed to its launcher and the run's writes by its own side, held by"
+            + " hero_barb_log, where no variable is written for it."
             + " Not modelled: a pingpong projectile, or one with a random delay, that a spell casts or an impact spawns, the angular delay, the drag-back"
             + " hook, the custom movement, the far-distance clamp with its cell pull, a redirect to"
             + " a point, and a deflection past the most a projectile takes.")
@@ -155,6 +161,17 @@ public class ProjectileEntity extends BattleEntity
    * another projectile's impact spawned.
    */
   @Getter private WorldEntity owner;
+
+  /**
+   * The play that cast the projectile, by its king's count of card plays before it: a spell's cast
+   * stamps it, and a projectile its impact spawns, a mirrored extra spell's and a character its
+   * impact makes carry it on; -1 for none. A unit's shot carries none here: the stamp its launch
+   * copies from its owner is read by nothing a reference holds.
+   */
+  @Getter private int deployIndex = -1;
+
+  /** The projectile's variables, which its actions write and its expressions read. */
+  private final Map<Integer, Integer> variables = new HashMap<>();
 
   /**
    * The id of the entity that launched the projectile, kept after it leaves the battle; 0 for none.
@@ -369,13 +386,23 @@ public class ProjectileEntity extends BattleEntity
    * @param hx the placed point along the arena's width
    * @param hy the placed point along the arena's length
    * @param delayMs how long its flight waits before it moves
+   * @param play the play that casts it, by its king's count of card plays before it; -1 for none
    */
   public void cast(
-      WorldEntity king, int cardLevel, int sx, int sy, int sz, int hx, int hy, int delayMs) {
+      WorldEntity king,
+      int cardLevel,
+      int sx,
+      int sy,
+      int sz,
+      int hx,
+      int hy,
+      int delayMs,
+      int play) {
     refuseUnitOnly("cast");
     // The cast has no launcher: a projectile that aims by its range would aim from its start.
     place(king, king, null, cardLevel, sx, sy, sz, hx, hy, sx, sy);
     this.delayMs = delayMs;
+    this.deployIndex = play;
   }
 
   /**
@@ -408,6 +435,7 @@ public class ProjectileEntity extends BattleEntity
         source.x,
         source.y);
     this.delayMs = 0;
+    this.deployIndex = source.deployIndex;
   }
 
   /**
@@ -566,6 +594,7 @@ public class ProjectileEntity extends BattleEntity
         parent.x,
         parent.y);
     spawnChain = parent.spawnChain - 1;
+    deployIndex = parent.deployIndex;
   }
 
   /**
@@ -1294,14 +1323,41 @@ public class ProjectileEntity extends BattleEntity
     return data.name();
   }
 
+  /**
+   * A variable as the projectile's own map holds it: every game object has one, empty when it is
+   * made, so a variable never written for the projectile reads 0.
+   */
   @Override
   public int variable(int key) {
-    throw new UnsupportedOperationException("a projectile's variables are not modelled");
+    return variables.getOrDefault(key, 0);
   }
 
+  /** Writes a variable into the projectile's own map, replacing what it held. */
   @Override
   public void setVariable(int key, int value) {
-    throw new UnsupportedOperationException("a projectile's variables are not modelled");
+    variables.put(key, value);
+  }
+
+  /**
+   * The button state override's later writes, from its run: into the slots of the projectile's own
+   * side.
+   */
+  @Override
+  public void overrideAbilityButton(OverrideAbilityButtonState action) {
+    world.overrideAbilityButton(side(), action);
+  }
+
+  /**
+   * The button state override's first write, as the row is performed: handed to the object that
+   * launched the projectile, and nothing when it is gone or none launched it - one another
+   * projectile's impact spawned, whose launcher is that projectile, or one an area effect launched,
+   * neither of which is a character or a building.
+   */
+  @Override
+  public void performAbilityButtonOverride(OverrideAbilityButtonState action) {
+    if (owner != null) {
+      owner.overrideAbilityButton(action);
+    }
   }
 
   @Override
