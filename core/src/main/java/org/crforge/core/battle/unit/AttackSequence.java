@@ -10,7 +10,8 @@ import org.crforge.core.pathfinding.target.AttackSequenceEntry;
  *
  * <p>Every unit has one: a row without a sequence keeps an order of one element and the mode 0, so
  * its index stays 0. The entries replace the row's own projectile and damage only when the order
- * has at least two elements; every lookup is the entry the order names at the index.
+ * has at least two elements, while an entry's action is read at any length; every lookup is the
+ * entry the order names at the index.
  *
  * @param mode None 0, StaticLoop 1, HittimeLoop 2, Hittime 3, Manual 4
  * @param order the entries' indices, in the order the index walks them

@@ -249,6 +249,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What a chain projectile attack's run asks of the battle around the owner. Only a character runs
+   * one.
+   *
+   * @return the owner's answers
+   */
+  default ChainAttackHost chainAttackHost() {
+    throw new UnsupportedOperationException(
+        "a chain projectile attack on an owner other than a character is not modelled");
+  }
+
+  /**
    * Makes the run of Goblinstein's ability action on the owner. Only an area effect that follows
    * its parent runs one.
    *
@@ -450,6 +461,42 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts the evolved Dart Goblin's dart choice on the owner. Only a character runs one.
+   *
+   * @param action the row
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @return the run
+   */
+  default ActionInstance blowdartDartSelect(BlowdartDartSelect action, ActionHolder instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Starts the evolved Dart Goblin's poison controller on the owner, the object its darts hit.
+   *
+   * @param action the row
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @return the run
+   */
+  default ActionInstance blowdartController(BlowdartController action, ActionHolder instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner that is not a unit, building or tower, not modelled");
+  }
+
+  /**
+   * Starts the evolved Dart Goblin's poison damage on the owner, the object a poison area reached.
+   *
+   * @param action the row
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @return the run
+   */
+  default ActionInstance blowdartDamage(BlowdartDamage action, ActionHolder instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner that is not a unit, building or tower, not modelled");
+  }
+
+  /**
    * Starts a push the owner carries ahead of itself, as the evolved Battle Ram's completed charge
    * runs it.
    *
@@ -482,6 +529,17 @@ public interface ActionOwner {
   default void changeProjectileData(String rowName) {
     throw new UnsupportedOperationException(
         "a projectile row's swap on an owner other than a projectile, not modelled");
+  }
+
+  /**
+   * Throws a mirrored extra spell from the owner as its cause, as the action's perform reads it.
+   * Only a projectile is a cause the perform reads; any other is refused.
+   *
+   * @param action the mirrored extra spell, which names the projectile row it throws
+   */
+  default void mirroredExtraSpell(MirroredExtraSpell action) {
+    throw new UnsupportedOperationException(
+        action.name() + " mirrors a cause other than a projectile, which is not modelled");
   }
 
   /**

@@ -1034,6 +1034,76 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The centre query of a chain attack's search: the index's buckets over the circle, in their
+   * order, each entity once, accepted by the filter, asked for the team and row name of the entity
+   * asking, and with its centre strictly within the radius, whatever its collision radius and
+   * whether or not it is a building.
+   *
+   * @param asking the entity running the query
+   * @param x the circle's centre along the width
+   * @param y the circle's centre along the length
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> centreQuery(
+      WorldEntity asking, int x, int y, int radius, GameObjectFilter filter) {
+    int side = asking.side() & 1;
+    String name = asking.getData().name();
+    List<GridEntity> found =
+        index.centreQuery(
+            x, y, radius, view -> filter.matches(entityOf(view).filterSubject(), side, name));
+    List<WorldEntity> out = new ArrayList<>();
+    if (found == null) {
+      return out;
+    }
+    for (GridEntity view : found) {
+      out.add(entityOf(view));
+    }
+    index.release(found);
+    return out;
+  }
+
+  /**
+   * Launches a chain attack's first hop at its target: from the launcher's own start, as a hit's
+   * single projectile starts, at where the target stands now, at the launcher's level and on its
+   * side, handed to the holder.
+   *
+   * @param launcher the entity running the chain attack
+   * @param data the projectile's row
+   * @param target the hop's target
+   * @return the projectile
+   */
+  public ProjectileEntity launchChainHop(
+      WorldEntity launcher, ProjectileData data, WorldEntity target) {
+    ProjectileEntity projectile = new ProjectileEntity(this, data, launcher.side());
+    ProjectileLauncher.launchAt(projectile, launcher, target);
+    launch(projectile);
+    return projectile;
+  }
+
+  /**
+   * Launches a chain attack's later hop at its target: from the given start, at where the target
+   * stands now, the launcher as launcher and owner, at its level and on its side, handed to the
+   * holder.
+   *
+   * @param launcher the entity running the chain attack
+   * @param data the projectile's row
+   * @param target the hop's target
+   * @param sx the start along the width
+   * @param sy the start along the length
+   * @param sz the start's height
+   * @return the projectile
+   */
+  public ProjectileEntity launchChainHop(
+      WorldEntity launcher, ProjectileData data, WorldEntity target, int sx, int sy, int sz) {
+    ProjectileEntity projectile = new ProjectileEntity(this, data, launcher.side());
+    ProjectileLauncher.launchThrown(projectile, launcher, target, sx, sy, sz);
+    launch(projectile);
+    return projectile;
+  }
+
+  /**
    * Launches a collector's projectile at a friend: from the launcher's own start, at where the
    * friend stands now, at the launcher's level and on its side, handed to the holder.
    *
@@ -2599,9 +2669,11 @@ public class BattleWorld implements HolderPasses {
    * @param name the play's name, which a cast area effect names as its source
    */
   public void castSpell(DeployCard card, int cardLevel, int side, int x, int y, String name) {
+    AreaEffectEntity areaEffect = null;
     if (card.areaEffect() != null) {
-      createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
+      areaEffect = createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
     }
+    ProjectileEntity firstProjectile = null;
     if (card.projectile() != null) {
       ProjectileData data = records.projectile(card.projectile());
       if (!data.unmodelledColumns().isEmpty()) {
@@ -2614,8 +2686,57 @@ public class BattleWorld implements HolderPasses {
       }
       TowerEntity king = kingTower(side);
       checkState(king != null, () -> "side " + side + " has no king tower to cast from");
-      castProjectiles(card, data, king, cardLevel, side, x, y);
+      firstProjectile = castProjectiles(card, data, king, cardLevel, side, x, y);
     }
+    if (card.onExecuteAction() != null) {
+      // The cast's last step: the action runs on the king at once, with the first object the cast
+      // made as its cause - its first projectile, else its area effect. A cast that made nothing
+      // schedules nothing.
+      ActionHolder cause =
+          firstProjectile != null
+              ? firstProjectile.actionHolder()
+              : areaEffect != null ? areaEffect.actionHolder() : null;
+      TowerEntity king = kingTower(side);
+      checkState(king != null, () -> "side " + side + " has no king tower to run an action on");
+      if (cause != null) {
+        king.actionHolder()
+            .schedule(
+                actions.build(card.onExecuteAction(), binding(king)),
+                ActionHolder.OWN_DELAY,
+                true,
+                cause);
+      }
+    }
+  }
+
+  /**
+   * A mirrored extra spell's projectile, thrown for a cast projectile: the row's projectile for the
+   * cast's side, from where the cast stands to the cast's aim - its target's position when it homes
+   * onto one - turned over across the arena's width, handed to the holder as the cast's are.
+   *
+   * @param source the cast projectile, the extra spell's cause
+   * @param projectileName the projectile row the extra spell throws
+   * @param action the extra spell's name
+   */
+  public void castMirroredExtraSpell(
+      ProjectileEntity source, String projectileName, String action) {
+    ProjectileData data = records.projectile(projectileName);
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action
+              + " throws "
+              + data.name()
+              + ", which sets columns its impact does not model: "
+              + data.unmodelledColumns());
+    }
+    WorldEntity sourceTarget = source.getTarget();
+    boolean homing = sourceTarget != null && source.getData().homing();
+    int aimX = homing ? sourceTarget.getView().getX() : source.getAimX();
+    int aimY = homing ? sourceTarget.getView().getY() : source.getAimY();
+    ProjectileEntity projectile = new ProjectileEntity(this, data, source.side());
+    projectile.castMirrored(source, tileMap.width() * TileMap.CELL_UNITS - aimX, aimY);
+    holder.add(projectile);
+    registrationPass(projectile);
   }
 
   /**
@@ -2627,8 +2748,10 @@ public class BattleWorld implements HolderPasses {
    * tenths of the spell's radius, and starts at the king tower plus a quarter of that offset across
    * and the whole of it along. A chain shares its circle, the placed point and the spell's radius,
    * and the ids it has hit.
+   *
+   * @return the first projectile cast
    */
-  private void castProjectiles(
+  private ProjectileEntity castProjectiles(
       DeployCard card,
       ProjectileData data,
       TowerEntity king,
@@ -2651,6 +2774,7 @@ public class BattleWorld implements HolderPasses {
     int ky = king.getView().getY();
     int height = 3 * king.getData().collisionRadius();
     int base = 0;
+    ProjectileEntity first = null;
     for (int wave = 0; wave < waves; wave++) {
       int delay = base;
       ProjectileChain chain = ring ? new ProjectileChain(x, y, radius) : null;
@@ -2711,10 +2835,14 @@ public class BattleWorld implements HolderPasses {
         if (chain != null) {
           projectile.joinChain(chain, rx, ry);
         }
+        if (first == null) {
+          first = projectile;
+        }
         delay += card.projectileIntervalMs();
       }
       base += card.projectileWaveIntervalMs();
     }
+    return first;
   }
 
   /** A vector's squared length; the largest int when a component or the sum would overflow. */

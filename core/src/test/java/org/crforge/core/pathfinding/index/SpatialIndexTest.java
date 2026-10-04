@@ -91,6 +91,27 @@ class SpatialIndexTest {
   }
 
   @Test
+  @DisplayName(
+      "the centre query takes a centre strictly within the radius, adding no collision radius and"
+          + " testing a building like anything else")
+  void centreQueryMeasuresCentreToCentre() {
+    // The right bottom princess tower stands at (14500, 25500): 4001 from the point below, past a
+    // radius of 4000 however wide the tower is, and exactly 4000 from the second point.
+    List<GridEntity> beyond = index.centreQuery(14500, 21499, 4000, e -> true);
+    assertThat(beyond).doesNotContain(princessBottomRight);
+    index.release(beyond);
+    List<GridEntity> onTheEdge = index.centreQuery(14500, 21500, 4000, e -> true);
+    assertThat(onTheEdge).as("strictly within").doesNotContain(princessBottomRight);
+    index.release(onTheEdge);
+    List<GridEntity> inside = index.centreQuery(14500, 21501, 4000, e -> true);
+    assertThat(inside).containsExactly(princessBottomRight);
+    index.release(inside);
+    List<GridEntity> filtered = index.centreQuery(14500, 21501, 4000, e -> false);
+    assertThat(filtered).as("the filter refuses it").isEmpty();
+    index.release(filtered);
+  }
+
+  @Test
   @DisplayName("the standard arena is covered by 18 by 32 buckets of 1024 units")
   void dimensionsOfTheStandardArena() {
     SpatialIndex.Dimensions dimensions =

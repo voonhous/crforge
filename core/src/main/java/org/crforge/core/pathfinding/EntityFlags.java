@@ -33,6 +33,12 @@ public final class EntityFlags {
   /** Set on the entity while its charge is complete. */
   public static final long CHARGING = 1L << 3;
 
+  /**
+   * The entity attacked on the step before: a hit not cancelled for distance raises it on the
+   * pending flags, so it lasts one step.
+   */
+  public static final long ATTACKING = 1L << 5;
+
   /** Movement is forbidden outright. */
   public static final long NO_MOVE = 1L << 6;
 
