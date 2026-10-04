@@ -14,6 +14,9 @@ import org.crforge.core.battle.data.GameTables;
  * GameTables#ENVIRONMENT}; a blank value counts as none. {@code ./gradlew :desktop:run} passes the
  * Gradle property {@code crforge.gameTables}, or the variable, to the program as the system
  * property, the same way the test tasks do.
+ *
+ * <p>This is the second of the rules {@link DataSelection} chooses the tables by: a data version
+ * asked for explicitly comes first, and the lock's data version in the data root last.
  */
 public final class GameTablesSetting {
 
@@ -25,7 +28,8 @@ public final class GameTablesSetting {
    * A configured folder and the setting that named it.
    *
    * @param folder the folder
-   * @param source the setting it came from: the property's name or the variable's
+   * @param source the setting or rule it came from: the property's name or the variable's, or one
+   *     of {@link DataSelection}'s rules, such as {@code --data-version 16.402.18 in the data root}
    */
   public record Configured(Path folder, String source) {}
 
@@ -51,23 +55,9 @@ public final class GameTablesSetting {
     return resolve(System.getProperty(GameTables.PROPERTY), System.getenv(GameTables.ENVIRONMENT));
   }
 
-  /** What the visualizer says when no folder is configured, and how to configure one. */
-  public static String missingMessage() {
-    return "No game tables configured: the debug visualizer runs the battle core, which reads the"
-        + " game's tables. Set the Gradle property "
-        + GameTables.PROPERTY
-        + "=<folder> (for example in ~/.gradle/gradle.properties, or -P"
-        + GameTables.PROPERTY
-        + "=<folder>), the system property -D"
-        + GameTables.PROPERTY
-        + "=<folder>, or the environment variable "
-        + GameTables.ENVIRONMENT
-        + "=<folder>.";
-  }
-
   /**
-   * The startup lines about the tables loaded: the folder and the setting that named it, the data
-   * version and the content hash.
+   * The startup lines about the tables loaded: the folder and the setting or rule that chose it,
+   * the data version and the content hash.
    */
   public static List<String> describe(Configured configured, GameTables tables) {
     return List.of(

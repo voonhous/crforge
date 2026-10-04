@@ -123,15 +123,33 @@ org.crforge.core/
 
 ### Game tables
 
-The battle core reads the game's tables from the folder the `crforge.gameTables` system property names, else the `CRFORGE_GAME_TABLES` environment variable. The `run` task passes the Gradle property `crforge.gameTables` (for example from `~/.gradle/gradle.properties`) or the variable to the program, the same way the test tasks get it. At startup the launcher prints the folder and the setting that named it, the data version and the content sha:
+The battle core reads the game's tables of one data version. The visualizer finds them in a **data root**, a checkout of the game data repository with one folder of tables per data version (`<root>/<version>/`) beside `references/`:
+
+- the system property `crforge.dataRoot`, else the environment variable `CRFORGE_DATA_ROOT`;
+- with neither, the `crforge-data` folder beside the project folder, when it exists. The project folder is the system property `crforge.projectDir`, which the `run` task sets to the root project's folder; an IDE run that does not set it uses the nearest folder up from its working folder that holds `crforge-data.lock`.
+
+So a `crforge-data` checkout next to the `crforge` checkout needs no setting at all. The tables are then chosen by the first of these rules that applies:
+
+1. An explicit data version: the argument `--data-version <v>` (`./gradlew :desktop:run --args="--data-version 16.402.18"`), else the property `crforge.dataVersion`. It opens `<root>/<v>`, and needs a data root.
+2. A tables folder named outright, as before data roots: the property `crforge.gameTables`, else the variable `CRFORGE_GAME_TABLES`.
+3. The `version=` of the project's `crforge-data.lock`, in the data root: `<root>/<version>`.
+
+The `run` task passes the Gradle properties `crforge.dataRoot`, `crforge.dataVersion` and `crforge.gameTables` (for example from `~/.gradle/gradle.properties`, or `-P<name>=<value>`), or the variables `CRFORGE_DATA_ROOT` and `CRFORGE_GAME_TABLES`, to the program as system properties. A `crforge.gameTables` set for the test tasks therefore also wins over the lock's version here; the data root still gives `V` its versions.
+
+At startup the launcher prints the data root and the setting that named it, the commit the root has checked out (read from its `.git` folder) against the lock's commit, which is informational only, the root's data versions, then the tables folder and the rule that chose it, the data version and the content sha:
 
 ```
-game tables: /path/to/tables (from crforge.gameTables)
+data root: /path/to/crforge-data (from the crforge-data folder beside the project)
+data root commit: e61b362a... (differs from the lock's 0f84a50d...; informational only)
+data versions: 14.593.1, 16.402.18 (V switches)
+game tables: /path/to/crforge-data/14.593.1 (from version=14.593.1 of crforge-data.lock in the data root)
 data version: 14.593.1
 content sha: 2be4aad4...
 ```
 
-With neither setting it stops with a message naming both, and with a folder it cannot read it stops naming the folder.
+With no rule that applies it stops with a message naming `crforge.dataRoot`, `CRFORGE_DATA_ROOT`, `crforge.gameTables` and `CRFORGE_GAME_TABLES`; with a folder it cannot read it stops naming the folder (and the root's versions); and when the battle core refuses a battle on the chosen tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
+
+`V` switches the screen to the data root's next version folder, in version order and wrapping round, and starts a new Ladder battle on its tables; each version's tables are loaded once and kept. The status column shows the current data version (`data: 14.593.1 (V: 2 versions)`). When a version's tables cannot be read, or the battle core refuses a battle on them (16.402.18 today), the battle on screen stays, the reason joins its messages, `R` resets on the version still on and `V` again tries the version after the refused one.
 
 ### The battle
 
@@ -160,6 +178,7 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `N`           | Toggle the route, reference and state overlay                                 |
 | `S`           | Run the next golden scenario (passive towers, the reference unit on tick 0)   |
 | `E`           | Export the recorded trajectories of the played units to `build/trajectories`  |
+| `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                                            |
 | `1`-`4`       | Select a card from the blue player's hand                                     |
 | `5`-`8`       | Select a card from the red player's hand                                      |
