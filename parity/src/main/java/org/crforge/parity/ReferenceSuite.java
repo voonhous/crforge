@@ -40,7 +40,9 @@ import org.crforge.core.battle.data.GameTables;
  * folder, the scenario's SHA-256 and the horizon) and the content the references were recorded
  * with, and one folder per reference battle: {@code scenario.json}, {@code reference.json} (the
  * schema, horizon, executed steps and termination, observation count and the digests of the trace
- * and the scenario) and {@code observations.jsonl.gz}.
+ * and the scenario) and {@code observations.jsonl.gz}. A listing may name the kind of scenario its
+ * cases are ({@code scenario_shape}, {@link ScenarioShape}): {@code generated} for cases generated
+ * in 14.593.1's replay shape; without it they are replays.
  *
  * <p>Each case is run in this process through {@link ReplaySmokeRun#runInProcess} and compared with
  * {@link ReferenceComparison}. Its outcome is {@code diagnostic_match}, {@code mismatch} (with the
@@ -81,9 +83,22 @@ public final class ReferenceSuite {
    * @param scenarioSha256 the scenario's SHA-256 the corpus names
    * @param ticks the horizon the corpus names
    * @param schema the schema the corpus declares, or null
+   * @param shape the kind of scenario the corpus names its cases, a replay when it names none
    */
   public record Case(
-      String corpus, String id, Path reference, String scenarioSha256, int ticks, String schema) {
+      String corpus,
+      String id,
+      Path reference,
+      String scenarioSha256,
+      int ticks,
+      String schema,
+      ScenarioShape shape) {
+
+    /** A case of a corpus of replays. */
+    public Case(
+        String corpus, String id, Path reference, String scenarioSha256, int ticks, String schema) {
+      this(corpus, id, reference, scenarioSha256, ticks, schema, ScenarioShape.REPLAY);
+    }
 
     /** The case's key in the expectations: corpus and id. */
     public String key() {
@@ -157,6 +172,11 @@ public final class ReferenceSuite {
       }
       String name = corpus.path("corpus").asText();
       String schema = corpus.hasNonNull("schema") ? corpus.get("schema").asText() : null;
+      // The listing names its cases' kind; a listing that names none lists replays.
+      ScenarioShape shape =
+          corpus.hasNonNull("scenario_shape")
+              ? ScenarioShape.of(corpus.get("scenario_shape").asText())
+              : ScenarioShape.REPLAY;
       for (JsonNode entry : corpus.path("cases")) {
         cases.add(
             new Case(
@@ -165,7 +185,8 @@ public final class ReferenceSuite {
                 folder.resolve(entry.path("reference").asText()),
                 entry.path("scenario_sha256").asText(),
                 entry.path("ticks").asInt(),
-                schema));
+                schema,
+                shape));
       }
     }
     return new References(version, contentSha, cases);
@@ -282,7 +303,7 @@ public final class ReferenceSuite {
     }
 
     ReplaySmokeRun.InProcessRun run =
-        ReplaySmokeRun.runInProcess(schema.get(), entry.ticks(), scenario, tables);
+        ReplaySmokeRun.runInProcess(schema.get(), entry.ticks(), scenario, tables, entry.shape());
     ObjectNode result = JSON.objectNode();
     switch (run.status()) {
       case "unsupported" -> {

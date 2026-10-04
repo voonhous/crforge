@@ -388,6 +388,56 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void aCaseGeneratedForVersion16_402_18RunsWhenTheRunNamesItsShape() throws IOException {
+    GameTables tables = Version16Tables.load();
+    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnightOfVersion16());
+
+    ReplaySmokeRun.InProcessRun generated =
+        ReplaySmokeRun.runInProcess(SmokeSchema.V2, 260, scenario, tables, ScenarioShape.GENERATED);
+    ReplaySmokeRun.InProcessRun replay =
+        ReplaySmokeRun.runInProcess(SmokeSchema.V2, 260, scenario, tables);
+
+    assertThat(generated.status()).isEqualTo("completed");
+    JsonNode manifest = MAPPER.valueToTree(generated.manifest());
+    assertThat(manifest.path("adapter").path("scenario_shape").asText()).isEqualTo("generated");
+    List<String> lines = List.of(new String(generated.trace()).split("\n"));
+    assertThat(lines).hasSize(261);
+    // Each king at level 1, as the recorded battles of the version's generated cases hold it, and
+    // the Knight placed on the play's run tick.
+    JsonNode first = MAPPER.readTree(lines.get(0));
+    assertThat(first.path("entities").get(0).path("row").asText()).isEqualTo("KingTower");
+    assertThat(first.path("entities").get(0).path("hp").asInt()).isEqualTo(2400);
+    assertThat(first.path("entities").get(3).path("hp").asInt()).isEqualTo(2400);
+    assertThat(MAPPER.readTree(lines.get(221)).path("entities").get(6).path("row").asText())
+        .isEqualTo("Knight");
+    // Read as a replay of the version, the case lacks the request lists.
+    assertThat(replay.status()).isEqualTo("invalid");
+    assertThat(replay.manifest().get("error").toString()).contains("the scenario has no srq");
+  }
+
+  @Test
+  void theRunOptionNamesTheScenarioShapeAndRefusesAnUnknownOne() throws IOException {
+    Path generated = folder.resolve("generated");
+    Path unknown = folder.resolve("unknown");
+
+    int exit = run(Scenarios.knight(), generated, identity, 30, "generated");
+    int refused = run(Scenarios.knight(), unknown, identity, 30, "recorded");
+
+    // A 14.593.1 case is in its own version's replay shape: generated, it runs the same battle.
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    run(Scenarios.knight(), folder.resolve("replay"), identity, 30);
+    assertThat(Files.readAllBytes(generated.resolve("observations.jsonl")))
+        .isEqualTo(Files.readAllBytes(folder.resolve("replay/observations.jsonl")));
+    JsonNode manifest = MAPPER.readTree(generated.resolve("manifest.json").toFile());
+    assertThat(manifest.path("adapter").path("scenario_shape").asText()).isEqualTo("generated");
+    JsonNode replayManifest = MAPPER.readTree(folder.resolve("replay/manifest.json").toFile());
+    assertThat(replayManifest.path("adapter").path("scenario_shape").asText()).isEqualTo("replay");
+    assertThat(refused).isEqualTo(ReplaySmokeRun.INVALID);
+    assertThat(MAPPER.readTree(unknown.resolve("manifest.json").toFile()).path("error").asText())
+        .contains("not a scenario shape: recorded");
+  }
+
+  @Test
   void aRunRepeatsByteForByteFromAFreshBattle() throws IOException {
     run(Scenarios.knight(), folder.resolve("one"), identity, 260);
     run(Scenarios.knight(), folder.resolve("two"), identity, 260);
@@ -771,6 +821,22 @@ class ReplaySmokeRunTest {
           "--identity", identityFile.toString(),
           "--ticks", Integer.toString(ticks),
           "--out", out.toString()
+        });
+  }
+
+  /** A run from the command line that names the scenario's shape. */
+  private int run(ObjectNode scenario, Path out, Path identityFile, int ticks, String shape)
+      throws IOException {
+    Path file = folder.resolve("scenario-" + out.getFileName() + ".json");
+    MAPPER.writeValue(file.toFile(), scenario);
+    return ReplaySmokeRun.run(
+        new String[] {
+          "--scenario", file.toString(),
+          "--tables", tablesFolder.toString(),
+          "--identity", identityFile.toString(),
+          "--ticks", Integer.toString(ticks),
+          "--out", out.toString(),
+          "--scenario-shape", shape
         });
   }
 
