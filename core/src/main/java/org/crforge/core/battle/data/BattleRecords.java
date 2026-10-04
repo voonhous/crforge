@@ -1653,6 +1653,7 @@ public final class BattleRecords {
             .onStartingAction(actionName(row, "OnStartingAction"))
             // The loader stores at least one link for a row that names a spawned projectile.
             .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
+            .chainIsNewProjectile(row.bool("ChainIsNewProjectile"))
             .constantHeight(row.intValue("ConstantHeight"))
             .targetBuff(set(row, "TargetBuff") ? row.string("TargetBuff") : null)
             .applyBuffBeforeDamage(row.bool("ApplyBuffBeforeDamage"))

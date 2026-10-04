@@ -185,6 +185,12 @@ public class BattleWorld implements HolderPasses {
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
 
+  /**
+   * The battle's projectile group counter, apart from the hit counter: a projectile that shares a
+   * group with the ones its impact spawns takes the next id from it as it is launched.
+   */
+  private int projectileGroupCounter;
+
   /** How many buff instances the battle has listed, which names the next. */
   private int buffKeys;
 
@@ -494,6 +500,14 @@ public class BattleWorld implements HolderPasses {
   /** The id of the next hit, counted from one. */
   public int nextHitId() {
     return ++hitCounter;
+  }
+
+  /**
+   * The group id of the next projectile that shares one with the projectiles its impact spawns,
+   * counted from one by a counter of its own.
+   */
+  public int nextProjectileGroupId() {
+    return ++projectileGroupCounter;
   }
 
   /** Attaches an observer; it is told about every tick and every hit from the next one on. */
@@ -1334,7 +1348,8 @@ public class BattleWorld implements HolderPasses {
     if (target == null || known.get(target.getView()) != target) {
       return DamageResult.NOTHING;
     }
-    // A projectile carries no dedupe id unless it belongs to a group, which none here does.
+    // A projectile's hit carries its group id as the dedupe id: 0 for one of no group, which lands
+    // every time; the projectiles of one group land on the target once.
     int before = hitPointsOf(target);
     // The impact counts for the projectile's shooter, while it is in the battle.
     // A projectile with an action holder has its listening runs hear of the hit in the
@@ -1342,7 +1357,7 @@ public class BattleWorld implements HolderPasses {
     DamageResult result =
         target.takeDamage(
             damage,
-            0,
+            projectile.getGroupId(),
             directionX,
             directionY,
             false,

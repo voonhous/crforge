@@ -65,6 +65,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param onStartingAction the action row the projectile runs on itself as it is admitted, or null
  * @param spawnChain how many links of spawned projectiles are left: at least one when the row names
  *     a spawned projectile, else 0
+ * @param chainIsNewProjectile true when the projectiles its impact spawns do not share its group
+ *     id, each taking a group of its own as it is launched
  * @param constantHeight the height the projectile starts at and aims at, in place of its
  *     launcher's, and lands at; 0 for none
  * @param targetBuff the buff its impact applies to what its area holds, or to its one target, or
@@ -161,6 +163,7 @@ public record ProjectileData(
     String spawnProjectile,
     String onStartingAction,
     int spawnChain,
+    boolean chainIsNewProjectile,
     int constantHeight,
     String targetBuff,
     boolean applyBuffBeforeDamage,
