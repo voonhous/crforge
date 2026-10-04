@@ -599,8 +599,9 @@ class BattleRecordsTest {
   @DisplayName(
       "a shaped area effect reads its rectangle and its filter, and its damage type without"
           + " damage; a circle with a filter and damage reads its radius and damage type, with a"
-          + " crown tower share too, and a circle that pushes without damage its push; a circle"
-          + " that neither damages nor pushes, or splits its damage, is not modelled")
+          + " crown tower share too, a circle that pushes without damage its push, and one whose"
+          + " hit action chooses a buff its hit action; a circle that neither damages, pushes nor"
+          + " has such a hit action, or splits its damage, is not modelled")
   void aShapedAreaEffect(@TempDir Path folder) throws IOException {
     AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
     assertThat(wind.shaped()).isTrue();
@@ -631,6 +632,15 @@ class BattleRecordsTest {
                 .areaEffect("IceGolemiteHero_KnockBack_AEO")
                 .unmodelledColumns())
         .contains("Shape");
+    // A circle whose hit action chooses a buff to spawn on what it reaches, hitting on every
+    // update, as the Ice Golemite hero form's slow circle does; its damage type is read by no hit.
+    AreaEffectData slow = records.areaEffect("IceGolemiteHero_Slow_AEO");
+    assertThat(slow.unmodelledColumns()).isEmpty();
+    assertThat(slow.shapeRadius()).isEqualTo(4000);
+    assertThat(slow.onHitAction()).isEqualTo("IceGolemiteHero_Select_Slow_Buff");
+    assertThat(slow.damage()).isZero();
+    assertThat(slow.damageType()).isNull();
+    assertThat(slow.hitSpeedMs()).isEqualTo(50);
     // A circle whose damage a crown tower takes less of, hitting every 1500 ms, as the Ice
     // Golemite hero form's ability has; where its looping effect is shown is the view's.
     AreaEffectData storm = records.areaEffect("IceGolemiteHero_Damage_AEO");

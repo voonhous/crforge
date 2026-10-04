@@ -1512,15 +1512,32 @@ class ActionRowsTest {
     assertThatThrownBy(() -> GameData.actions().build("ElectroWizardAOE", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("to a location");
-    assertThatThrownBy(
-            () -> GameData.actions().build("IceGolemiteHero_Spawn_Slow_AEO", INERT_BINDING))
+    // The Ice Golemite hero form's damage, knockback, slow and freeze circles are held.
+    for (String held :
+        List.of(
+            "IceGolemiteHero_Spawn_Damage_AEO",
+            "IceGolemiteHero_Spawn_KnockBack_AEO",
+            "IceGolemiteHero_Spawn_Slow_AEO",
+            "IceGolemiteHero_Spawn_Freeze_AEO")) {
+      assertThat(GameData.actions().build(held, INERT_BINDING)).as(held).isNotNull();
+    }
+    // A circle whose hit action chooses anything but a buff spawn is not.
+    Files.createDirectories(folder.resolve("select"));
+    GameTables select =
+        GameData.altered(
+            folder.resolve("select"),
+            "actions",
+            rows ->
+                ((ObjectNode)
+                        rows.get("IceGolemiteHero_Select_Slow_Buff")
+                            .get("fields")
+                            .get("SubActions")
+                            .get(0))
+                    .put("action", "IceGolemiteHero_AEO_HitEffect"));
+    ActionRows selectRows = new ActionRows(select, new BattleRecords(select));
+    assertThatThrownBy(() -> selectRows.build("IceGolemiteHero_Spawn_Slow_AEO", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("IceGolemiteHero_Slow_AEO, which sets columns not modelled");
-    // The Ice Golemite hero form's damage circle and knockback circle are held.
-    assertThat(GameData.actions().build("IceGolemiteHero_Spawn_Damage_AEO", INERT_BINDING))
-        .isNotNull();
-    assertThat(GameData.actions().build("IceGolemiteHero_Spawn_KnockBack_AEO", INERT_BINDING))
-        .isNotNull();
 
     // The hero Wizard's air shot spawns its two area effects with an offset along the length.
     assertThat(GameData.actions().build("WizardHeroAbilityProjectile_spawn_tornado", INERT_BINDING))
@@ -1632,12 +1649,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 886 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 891 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(886);
+    assertThat(built).as("rows built").isEqualTo(891);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 43, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 38, "spawn type", 9));
   }
 }
