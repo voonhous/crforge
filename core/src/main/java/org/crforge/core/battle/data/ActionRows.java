@@ -16,6 +16,9 @@ import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BlowdartController;
+import org.crforge.core.battle.action.BlowdartDamage;
+import org.crforge.core.battle.action.BlowdartDartSelect;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.CannonBarrage;
@@ -689,6 +692,33 @@ public final class ActionRows {
                   "ExtraSpellTargetIndicator",
                   "ExtraSpellTargetIndicatorXOffset",
                   "ExtraSpellTargetIndicatorYOffset")),
+          // The evolved Dart Goblin's dart choice: the controller row it looks for and schedules,
+          // and the special dart.
+          Map.entry(
+              "ActionBlowdartGoblinEvoDartSelect",
+              Set.of("ActionToTakeDataFrom", "SpecialProjectile")),
+          // Its poison controller. OnStackIncrementAction is read only to be refused.
+          Map.entry(
+              "ActionBlowdartGoblinEvoController",
+              Set.of(
+                  "Duration",
+                  "CrownTowerDuration",
+                  "StackAmountChecks",
+                  "MaxStacks",
+                  "SpawnInterval",
+                  "AeoList",
+                  "OnStackIncrementAction")),
+          // Its poison damage. OnHitAction is read only to be refused.
+          Map.entry(
+              "ActionBlowdartGoblinEvoDamage",
+              Set.of(
+                  "ActionToGetDataFrom",
+                  "Duration",
+                  "HitSpeed",
+                  "CrownTowerDuration",
+                  "CrownDamageDamageMultiplier",
+                  "DamageList",
+                  "OnHitAction")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -1163,6 +1193,77 @@ public final class ActionRows {
                         .snipeMinRange(integer(f, "SnipeMinRange"))
                         .snipeTargetFilter(records.filter(f.path("SnipeTargetFilter").asText()))
                         .build());
+            case "ActionBlowdartGoblinEvoDartSelect" -> {
+              BattleAction controller = action(f.get("ActionToTakeDataFrom"));
+              String special = f.path("SpecialProjectile").asText("");
+              if (!(controller instanceof BlowdartController) || special.isEmpty()) {
+                throw new UnsupportedOperationException(
+                    name
+                        + " picks darts without a poison controller or a special dart, which is"
+                        + " not modelled");
+              }
+              records.projectile(special);
+              yield new BlowdartDartSelect(shared, controller, special);
+            }
+            case "ActionBlowdartGoblinEvoController" -> {
+              if (action(f.get("OnStackIncrementAction")) != null) {
+                throw new UnsupportedOperationException(
+                    name + " sets OnStackIncrementAction, which is not modelled");
+              }
+              List<Integer> checks = ints(f.get("StackAmountChecks"));
+              List<String> areas = new ArrayList<>();
+              f.path("AeoList").forEach(area -> areas.add(area.asText()));
+              int maxStacks = integer(f, "MaxStacks");
+              if (maxStacks < 1 || checks.size() < maxStacks || areas.isEmpty()) {
+                throw new UnsupportedOperationException(
+                    name
+                        + " has fewer stack counts than stacks, or no area, which is not"
+                        + " modelled");
+              }
+              for (String area : areas) {
+                records.areaEffect(area);
+              }
+              yield new BlowdartController(
+                  shared,
+                  BlowdartController.Columns.builder()
+                      .durationMs(f.has("Duration") ? integer(f, "Duration") : 1000)
+                      .crownTowerDurationMs(
+                          f.has("CrownTowerDuration") ? integer(f, "CrownTowerDuration") : -1)
+                      .stackAmountChecks(List.copyOf(checks))
+                      .maxStacks(maxStacks)
+                      .spawnIntervalMs(integer(f, "SpawnInterval"))
+                      .aeoList(List.copyOf(areas))
+                      .build());
+            }
+            case "ActionBlowdartGoblinEvoDamage" -> {
+              if (action(f.get("OnHitAction")) != null) {
+                throw new UnsupportedOperationException(
+                    name + " sets OnHitAction, which is not modelled");
+              }
+              String controller = rowName(f.get("ActionToGetDataFrom"));
+              if (controller == null
+                  || !tables
+                      .action(controller)
+                      .classType()
+                      .equals("ActionBlowdartGoblinEvoController")
+                  || integer(f, "HitSpeed") < 1) {
+                throw new UnsupportedOperationException(
+                    name
+                        + " deals poison without a poison controller or a hit speed, which is not"
+                        + " modelled");
+              }
+              yield new BlowdartDamage(
+                  shared,
+                  BlowdartDamage.Columns.builder()
+                      .controller(controller)
+                      .durationMs(integer(f, "Duration"))
+                      .hitSpeedMs(integer(f, "HitSpeed"))
+                      .crownTowerDurationMs(
+                          f.has("CrownTowerDuration") ? integer(f, "CrownTowerDuration") : -1)
+                      .crownDamageMultiplier(integer(f, "CrownDamageDamageMultiplier"))
+                      .damageList(List.copyOf(ints(f.get("DamageList"))))
+                      .build());
+            }
             case "ActionBerserk" -> {
               // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained
               // action on such a run is held by no reference.
