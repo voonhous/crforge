@@ -10,16 +10,19 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.crforge.core.battle.unit.AreaDamageType;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The tables of data version 16.402.18 write three forms the battle does not read: an area effect's
- * damage as a table of a base and a tower damage, or as the name of a damage type row; an area
- * effect's targets chosen by a filter in place of its air, ground and enemy switches; and a unit's
- * death damage as a death area effect of those forms. Each is refused, never read as 0 or false.
+ * The tables of data version 16.402.18 write an area effect in the filter form: its targets chosen
+ * by a filter in place of its air, ground and enemy switches, and its damage as a table of a base
+ * and a tower damage or as the name of a damage type row; a unit's death damage is a death area
+ * effect of that form. Each row of the form without a shape is read as the filter form, its damage
+ * as its damage type, never as 0 or as hitting nothing; a shaped row whose damage is written so is
+ * still refused as it is built.
  *
  * <p>Run when the configured game tables are those of 16.402.18, or sit beside a folder of them as
  * in a checkout of the game data repository; skipped otherwise.
@@ -67,55 +70,84 @@ class NewTableFormsTest {
     return rows;
   }
 
-  /** Whether an area effect row is refused: as it is built, or by a column it lists. */
-  private static boolean refused(String areaEffect, String column) {
-    try {
-      return records.areaEffect(areaEffect).unmodelledColumns().contains(column);
-    } catch (UnsupportedOperationException e) {
-      return e.getMessage().contains(" sets " + column + " ");
-    }
+  /** The damage type an inline table or a damage types row gives. */
+  private static AreaDamageType typeOf(String name, JsonNode table) {
+    JsonNode tower = table.get("TowerDamage");
+    return new AreaDamageType(
+        name,
+        table.has("BaseDamage") ? table.get("BaseDamage").asInt() : 0,
+        tower == null || tower.isNull() ? AreaDamageType.NO_TOWER_DAMAGE : tower.asInt());
   }
 
   @Test
-  @DisplayName("an area effect's damage written as a table is refused as the area effect is built")
-  void aDamageTableIsRefused() {
+  @DisplayName(
+      "an area effect's damage written as a table is read as its damage type, and refused for a"
+          + " shaped row")
+  void aDamageTableIsReadAsItsDamageType() {
     List<String> rows = damageWritten(true);
     assertThat(rows).hasSize(42).contains("Zap", "GolemDeathExplosion");
     for (String row : rows) {
-      assertThatThrownBy(() -> records.areaEffect(row))
-          .as(row)
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageStartingWith(
-              "the area_effect_objects row " + row + " sets Damage to a table of BaseDamage")
-          .hasMessageEndingWith(" where a number is read, which is not modelled");
+      GameRow source = tables.table("area_effect_objects").row(row);
+      if (!source.string("Shape").isEmpty()) {
+        assertThatThrownBy(() -> records.areaEffect(row))
+            .as(row)
+            .isInstanceOf(UnsupportedOperationException.class)
+            .hasMessageStartingWith(
+                "the area_effect_objects row " + row + " sets Damage to a table of BaseDamage")
+            .hasMessageEndingWith(" where a number is read, which is not modelled");
+        continue;
+      }
+      AreaEffectData data = records.areaEffect(row);
+      assertThat(data.filterHits()).as(row).isTrue();
+      assertThat(data.typedDamage()).as(row).isEqualTo(typeOf(null, source.value("Damage")));
+      assertThat(data.unmodelledColumns()).as(row).doesNotContain("Damage", "Filter");
     }
+    assertThat(records.areaEffect("Zap").typedDamage()).isEqualTo(new AreaDamageType(null, 75, 19));
   }
 
   @Test
-  @DisplayName("an area effect's damage written as a damage type's name is refused")
-  void aDamageByNameIsRefused() {
+  @DisplayName(
+      "an area effect's damage written as a damage type's name is read as that row, and refused"
+          + " for a shaped row")
+  void aDamageByNameIsReadAsThatRow() {
     List<String> rows = damageWritten(false);
     assertThat(rows).hasSize(6).contains("ElectroWizardZap", "IceWizardCold");
     for (String row : rows) {
-      JsonNode damage = tables.table("area_effect_objects").row(row).value("Damage");
+      GameRow source = tables.table("area_effect_objects").row(row);
+      JsonNode damage = source.value("Damage");
       assertThat(tables.table("damage_types").has(damage.asText())).as(row).isTrue();
-      assertThatThrownBy(() -> records.areaEffect(row))
+      if (!source.string("Shape").isEmpty()) {
+        assertThatThrownBy(() -> records.areaEffect(row))
+            .as(row)
+            .isInstanceOf(UnsupportedOperationException.class)
+            .hasMessage(
+                "the area_effect_objects row "
+                    + row
+                    + " sets Damage to the text \""
+                    + damage.asText()
+                    + "\" where a number is read, which is not modelled");
+        continue;
+      }
+      GameRow type = tables.table("damage_types").row(damage.asText());
+      AreaEffectData data = records.areaEffect(row);
+      assertThat(data.filterHits()).as(row).isTrue();
+      assertThat(data.typedDamage())
           .as(row)
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessage(
-              "the area_effect_objects row "
-                  + row
-                  + " sets Damage to the text \""
-                  + damage.asText()
-                  + "\" where a number is read, which is not modelled");
+          .isEqualTo(
+              new AreaDamageType(
+                  type.name(),
+                  type.intValue("BaseDamage"),
+                  type.has("TowerDamage")
+                      ? type.intValue("TowerDamage")
+                      : AreaDamageType.NO_TOWER_DAMAGE));
     }
   }
 
   @Test
   @DisplayName(
       "an area effect without a shape that chooses its targets by a filter, setting neither its air"
-          + " nor its ground switch, is refused by its Filter")
-  void aFilterInPlaceOfTheSwitchesIsRefused() {
+          + " nor its ground switch, is read as the filter form, its filter its own")
+  void aFilterInPlaceOfTheSwitchesIsTheFilterForm() {
     List<String> rows = new ArrayList<>();
     for (GameRow row : tables.table("area_effect_objects").rows()) {
       if (!row.string("Filter").isEmpty()
@@ -127,21 +159,22 @@ class NewTableFormsTest {
     }
     assertThat(rows).hasSizeGreaterThan(100).contains("Zap", "Heal", "Rage");
     for (String row : rows) {
-      assertThat(refused(row, "Filter") || refused(row, "Damage"))
-          .as("%s refused by its Filter or its Damage", row)
-          .isTrue();
+      AreaEffectData data = records.areaEffect(row);
+      assertThat(data.filterHits()).as(row).isTrue();
+      assertThat(data.filter())
+          .as(row)
+          .isEqualTo(tables.table("area_effect_objects").row(row).string("Filter"));
+      assertThat(data.unmodelledColumns()).as(row).doesNotContain("Filter");
     }
-    // Neither of them is read as hitting nothing: Zap's damage table is refused as it is built,
-    // and Heal, without one, lists its Filter.
-    assertThat(records.areaEffect("Heal").unmodelledColumns()).contains("Filter");
+    assertThat(records.areaEffect("Rage").filter()).isEqualTo("all_friendly_troops");
   }
 
   @Test
   @DisplayName(
-      "a unit whose death area effect writes a damage table or a filter is refused as it dies,"
-          + " never read as a death without damage")
-  void aDeathAreaEffectOfTheNewFormsIsRefused() {
-    int refusedDeaths = 0;
+      "a unit whose death area effect writes a damage table or a filter has it read as the filter"
+          + " form, never as a death without damage")
+  void aDeathAreaEffectOfTheNewFormsIsTheFilterForm() {
+    int deaths = 0;
     for (String table : List.of("characters", "buildings")) {
       for (GameRow row : tables.table(table).rows()) {
         String areaEffect = row.string("DeathAreaEffect");
@@ -153,14 +186,16 @@ class NewTableFormsTest {
           continue;
         }
         assertThat(records.unit(row.name()).deathAreaEffect()).as(row.name()).isEqualTo(areaEffect);
-        assertThat(refused(areaEffect, "Damage") || refused(areaEffect, "Filter"))
-            .as("%s's death area effect %s refused", row.name(), areaEffect)
+        AreaEffectData data = records.areaEffect(areaEffect);
+        assertThat(data.filterHits())
+            .as("%s's death area effect %s", row.name(), areaEffect)
             .isTrue();
-        refusedDeaths++;
+        assertThat(data.unmodelledColumns())
+            .as("%s's death area effect %s", row.name(), areaEffect)
+            .doesNotContain("Damage", "Filter");
+        deaths++;
       }
     }
-    assertThat(refusedDeaths).isEqualTo(26);
-    AreaEffectData heal = records.areaEffect("Heal");
-    assertThat(heal.unmodelledColumns()).contains("Filter");
+    assertThat(deaths).isEqualTo(26);
   }
 }

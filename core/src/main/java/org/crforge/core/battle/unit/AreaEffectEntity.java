@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.BuffPush;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
@@ -192,7 +194,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " filter, the hit action on each listed character, the follow offsets turned by its"
             + " side, its life given back and cut by the resetable action that made it, and the"
             + " actions run at its ages, held by baby_dragon_ev1_wind; the offsets of the top side"
-            + " and the ages' repeats by BattleUppercutWindTest.")
+            + " and the ages' repeats by BattleUppercutWindTest. The filter form: its hit"
+            + " schedule, its list through its filter nearest first, its damage type's amounts"
+            + " for a troop and a crown tower, its buff on each listed object and its one more"
+            + " update, held by the newer data's Zap, Rage, Poison and Freeze plays; its damage"
+            + " order within a tick and a protecting buff on its target held by no run.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -373,9 +379,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     creatorId = id;
   }
 
-  /** Ends it: its countdown goes to 0, so the next cleanup after its update removes it. */
+  /**
+   * Ends it: its countdown goes to 0, or below it for the filter form, so the next cleanup after
+   * its update removes it.
+   */
   void end() {
-    countdown = 0;
+    countdown = data.filterHits() ? -1 : 0;
   }
 
   /**
@@ -454,7 +463,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       hit = 0;
       bound = 0;
     }
-    int hits = hit - bound;
+    int hits = data.filterHits() ? (filterHitDue(start, speed) ? 1 : 0) : hit - bound;
     int radius = radiusNow(lifetime());
     int damage =
         LevelScaling.scale(
@@ -464,7 +473,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
             ScalingMode.CARD_DAMAGE,
             data.rarity());
     List<Integer> dealt = new ArrayList<>();
-    for (int i = 0; i < hits && damage >= 1; i++) {
+    for (int i = 0; i < hits && damage >= 1 && !data.filterHits(); i++) {
       dealt.add(damage);
     }
     world.areaEffectUpdated(this, before, countdown, hits, radius, dealt);
@@ -475,6 +484,15 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       chained = true;
       world.createAreaEffect(
           data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", name);
+    }
+    if (data.filterHits()) {
+      filterHits(start, speed, radius);
+      if (countdown < 0 && data.onLifeTimeEndAction() != null) {
+        BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
+        world.lifeTimeEndScheduled(this, ending.name());
+        actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
+      }
+      return;
     }
     if (data.shaped() && data.shapeRadius() >= 1) {
       circleShapeHits(hits, damage);
@@ -487,6 +505,68 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       world.lifeTimeEndScheduled(this, ending.name());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
+    }
+  }
+
+  /**
+   * Whether the filter form hits in the update that starts at the given elapsed time, counted in
+   * whole steps of 50 ms: on the step its HitSpeedOffset falls in, and after it on every step a
+   * whole number of HitSpeed steps later, when HitSpeed is at least one step. So a row without a
+   * HitSpeed hits once, on the step of its offset, and a row hits at most once in an update.
+   *
+   * @param start the elapsed time at the start of the step, on the row's lifetime
+   * @param speed the row's HitSpeed
+   */
+  private boolean filterHitDue(int start, int speed) {
+    int step = start / STEP_MS;
+    int offset = data.hitSpeedOffsetMs() / STEP_MS;
+    if (step == offset) {
+      return true;
+    }
+    int every = speed / STEP_MS;
+    return every >= 1 && step - offset > 0 && (step - offset) % every == 0;
+  }
+
+  /**
+   * The hits of the filter form, on an update a hit is due: the objects in the circle around its
+   * point that pass its filter, asked for its side and row name - a building when its square comes
+   * within the radius, anything else when its centre lies strictly within the radius plus its
+   * collision radius - listed once, nearest first by the squared distance of where each stands now
+   * from the area effect's point, objects as near listed in the query's order. Each in turn gets
+   * the damage, queued as a typed hit of the row's damage type with the area effect its source, and
+   * then the buff, applied for the buff time - capped at the countdown and one HitSpeed more when
+   * the row caps it - when that time is at least 1, at the area effect's level and for its side,
+   * the area effect its parent when the buff is controlled by its parent.
+   *
+   * @param start the elapsed time at the start of the step, on the row's lifetime
+   * @param speed the row's HitSpeed
+   * @param radius the radius of its hits now
+   */
+  private void filterHits(int start, int speed, int radius) {
+    if (!filterHitDue(start, speed)) {
+      return;
+    }
+    List<WorldEntity> listed =
+        new ArrayList<>(world.shapeQuery(this, radius, world.getRecords().filter(data.filter())));
+    listed.sort(
+        Comparator.comparingInt(
+            target ->
+                FixedMath.squaredDistance(x, y, target.getView().getX(), target.getView().getY())));
+    world.shapeListed(this, listed);
+    BuffData buff = data.buff() == null ? null : world.buffData(data.buff());
+    for (WorldEntity target : listed) {
+      if (data.typedDamage() != null) {
+        world.queueAreaDamage(this, target, data.typedDamage());
+      }
+      if (buff != null) {
+        int time = data.buffTimeMs();
+        if (data.capBuffTimeToAreaEffectTime()) {
+          time = Math.min(time, countdown + speed);
+        }
+        if (time >= 1) {
+          world.filterBuff(this, target, buff, time);
+        }
+      }
     }
   }
 
@@ -677,7 +757,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     }
     if (follow == removed) {
       if (!data.stayAfterParentDies()) {
-        countdown = 0;
+        end();
       }
       follow = null;
     }
@@ -1112,9 +1192,13 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     world.areaEffectDamaged(this, area, outcome);
   }
 
+  /**
+   * Whether the cleanup removes it: once its countdown is below 1, or, for the filter form, below
+   * 0, so a filter form row whose countdown reaches 0 exactly has one more update.
+   */
   @Override
   public boolean isRemovable() {
-    return countdown < 1;
+    return data.filterHits() ? countdown < 0 : countdown < 1;
   }
 
   /**
