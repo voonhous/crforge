@@ -939,6 +939,74 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
+      "the Mega Minion hero's teleport is a flying warp to an injected target: its speed, its"
+          + " acceleration, no offsets, the target kept on arrival and its end action's name, the"
+          + " route and pending damage resets on by default; started by the runner it is refused")
+  void theMegaMinionHeroTeleportIsAFlyingWarp() {
+    BattleAction built = GameData.actions().build("MegaMinion_hero_teleport_action", INERT_BINDING);
+    assertThat(built).isInstanceOf(WarpCharacter.class);
+    WarpCharacter warp = (WarpCharacter) built;
+    assertThat(warp.singleton()).isTrue();
+    assertThat(warp.getFlight())
+        .isEqualTo(
+            WarpCharacter.Flight.builder()
+                .speedPerStep(1500)
+                .acceleration(400)
+                .offsetX(0)
+                .offsetY(0)
+                .forceKeepTarget(true)
+                .onWarpEnd("MegaMinion_hero_on_teleport_group")
+                .build());
+    assertThat(warp.getColumns().resetPath()).isTrue();
+    assertThat(warp.getColumns().resetTarget()).isFalse();
+    assertThat(warp.getColumns().resetPendingDamage()).isTrue();
+    assertThatThrownBy(() -> new ActionHolder().start(warp))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("no injected target");
+  }
+
+  @Test
+  @DisplayName(
+      "a flying warp with no speed, a tower offset, a step of untargetability or a next action is"
+          + " refused, and so is a relative warp with an end action")
+  void aFlyingWarpOutsideTheShippedOneIsRefused(@TempDir Path folder) throws IOException {
+    String teleport = "MegaMinion_hero_teleport_action";
+    Map<String, Map.Entry<String, Consumer<ObjectNode>>> changes =
+        Map.of(
+            "no Speed",
+            Map.entry(teleport, f -> f.remove("Speed")),
+            "OffsetToTargetConsideringDirectionToTower",
+            Map.entry(teleport, f -> f.put("OffsetToTargetConsideringDirectionToTower", 500)),
+            "MakeUntargetableForTickAfterWarp",
+            Map.entry(teleport, f -> f.put("MakeUntargetableForTickAfterWarp", true)),
+            "NextAction",
+            Map.entry(
+                teleport,
+                f -> f.putObject("NextAction").put("action", "MegaMinion_hero_first_hit")),
+            "OnWarpEndAction",
+            Map.entry(
+                "BossBandit_ability_warp",
+                f -> f.putObject("OnWarpEndAction").put("action", "MegaMinion_hero_first_hit")));
+    for (Map.Entry<String, Map.Entry<String, Consumer<ObjectNode>>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      String row = change.getValue().getKey();
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows ->
+                  change.getValue().getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+  }
+
+  @Test
+  @DisplayName(
       "a Boss Bandit ability that sets tags, chains a next action, asks its unit's speeds, has no"
           + " warp row or releases its lock in the warp's step is refused, and so is a warp in"
           + " another mode, with a speed or that waits as a next action")
@@ -1564,12 +1632,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 885 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 886 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(885);
+    assertThat(built).as("rows built").isEqualTo(886);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 44, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 43, "spawn type", 9));
   }
 }

@@ -30,6 +30,11 @@ final class MarkCandidate implements SetIndicatorOnTarget.Candidate {
     this.action = action;
   }
 
+  /** The object itself. */
+  WorldEntity entity() {
+    return entity;
+  }
+
   @Override
   public int id() {
     return entity.getId();

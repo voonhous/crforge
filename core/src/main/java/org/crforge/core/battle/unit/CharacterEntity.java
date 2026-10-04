@@ -4041,6 +4041,43 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * Builds and starts the flying warp a hand-over launches on the character: the warp's row built
+   * for it, which must be a flying warp, its run given the target the mark gave the hand-over and
+   * that target's last recorded position.
+   */
+  @Override
+  public ActionInstance launchWarp(
+      BattleAction handOver,
+      String warpRow,
+      SetIndicatorOnTarget.Candidate target,
+      int lastX,
+      int lastY) {
+    if (warpRow == null) {
+      throw new UnsupportedOperationException(
+          handOver.name() + " is re-triggered with no warp to launch, not modelled");
+    }
+    BattleAction built = world.getActions().build(warpRow, world.binding(this));
+    if (!(built instanceof WarpCharacter warp) || warp.getFlight() == null) {
+      throw new UnsupportedOperationException(
+          handOver.name() + " launches " + warpRow + ", which is not a flying warp, not modelled");
+    }
+    WorldEntity entity = null;
+    if (target != null) {
+      if (!(target instanceof MarkCandidate candidate)) {
+        throw new UnsupportedOperationException(
+            handOver.name() + " launches " + warpRow + " at an object not in the battle");
+      }
+      entity = candidate.entity();
+    }
+    return new WarpRun(warp, this, entity, lastX, lastY);
+  }
+
+  /** Raises a flying warp's step tags for one step. */
+  void raiseWarpTags(long tags) {
+    getView().setPendingFlags(getView().getPendingFlags() | tags);
+  }
+
+  /**
    * Moves the character to a warp's landing in one write, as a warp's perform does: no route, no
    * displacement pass.
    */
