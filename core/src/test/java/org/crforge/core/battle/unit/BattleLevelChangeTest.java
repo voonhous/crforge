@@ -3,12 +3,18 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.SetCharacterLevel;
+import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A level-changing action on units in the battle: it changes its cause's level, and the unit's
@@ -84,6 +90,73 @@ class BattleLevelChangeTest {
         .start(new SetCharacterLevel(ActionRow.named("level"), 0, 5), knight.actionHolder());
     assertThat(knight.level()).isEqualTo(5);
     assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(hitPoints);
+  }
+
+  /** The configured tables with the Royal Chef's level-up written as a newer data version does. */
+  private static GameTables asExpression(Path folder, String expression) throws IOException {
+    return GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode fields = (ObjectNode) rows.get(CHEF_LEVEL_UP).get("fields");
+          fields.remove("RelativeLevelAdjustment");
+          fields.put("RelativeLevelAdjustmentExpression", expression);
+        });
+  }
+
+  private static final String CHEF_LEVEL_UP = "ChefTower_increase_level_action";
+
+  @Test
+  @DisplayName(
+      "a level change written as an expression moves its cause by the expression's value, held"
+          + " between the first level and 99 steps above it")
+  void anExpressionMovesTheLevel(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            asExpression(Files.createDirectories(folder.resolve("up")), "1"), 11, false);
+    CharacterEntity knight = knight(match, 11, "Knight", 3500);
+    CharacterEntity twelve = knight(match, 12, "Twelve", 14500);
+    match.getBattle().step();
+    knight
+        .actionHolder()
+        .start(
+            match.getWorld().getActions().build(CHEF_LEVEL_UP, match.getWorld().binding(knight)),
+            knight.actionHolder());
+    assertThat(knight.level()).isEqualTo(12);
+    assertThat(knight.getHitPoints().getMaximum()).isEqualTo(twelve.getHitPoints().getMaximum());
+
+    Standard1v1Battle low =
+        new Standard1v1Battle(
+            asExpression(Files.createDirectories(folder.resolve("down")), "-20"), 11, false);
+    CharacterEntity one = knight(low, 1, "One", 3500);
+    low.getBattle().step();
+    one.actionHolder()
+        .start(
+            low.getWorld().getActions().build(CHEF_LEVEL_UP, low.getWorld().binding(one)),
+            one.actionHolder());
+    assertThat(one.level()).as("held at the rarity's first level").isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("a level change written both as an expression and as a number is refused")
+  void bothFormsAreRefused(@TempDir Path folder) throws IOException {
+    GameTables both =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get(CHEF_LEVEL_UP).get("fields"))
+                    .put("RelativeLevelAdjustmentExpression", "1"));
+    Standard1v1Battle match = new Standard1v1Battle(both, 11, false);
+    CharacterEntity knight = knight(match, 11, "Knight", 3500);
+    assertThatThrownBy(
+            () ->
+                match
+                    .getWorld()
+                    .getActions()
+                    .build(CHEF_LEVEL_UP, match.getWorld().binding(knight)))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("as an expression and as a number");
   }
 
   @Test
