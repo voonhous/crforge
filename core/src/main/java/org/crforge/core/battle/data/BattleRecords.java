@@ -72,12 +72,18 @@ public final class BattleRecords {
 
   /**
    * The columns of a spell card the cast does not model yet: a Mirror, which a match plays as the
-   * card it repeats instead, a first projectile of its own, and a variant card's class and its
-   * projected summon, which a match plays as the option picked instead. A spell that sets one is
-   * refused.
+   * card it repeats instead, a first projectile of its own, a variant card's class and its
+   * projected summon, which a match plays as the option picked instead, and an action run as the
+   * spell is cast, which only the evolved Goblin Barrel sets (its decoy barrel). A spell that sets
+   * one is refused.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
-      List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
+      List.of(
+          "Mirror",
+          "CustomFirstProjectile",
+          "CustomClassType",
+          "UseProjectedTimeSummon",
+          "OnExecuteAction");
 
   /**
    * The columns of a projectile the impact does not model: the action on reaching its target,
@@ -2243,6 +2249,15 @@ public final class BattleRecords {
    */
   public boolean troopCard(String name) {
     return tables.table(SPELLS_CHARACTERS).has(name);
+  }
+
+  /**
+   * Whether a card is a spell or building card: a row of the other spells' or the buildings' cards.
+   *
+   * @param name the card row's name
+   */
+  public boolean spellOrBuildingCard(String name) {
+    return tables.table(SPELLS_OTHER).has(name) || tables.table(SPELLS_BUILDINGS).has(name);
   }
 
   /**

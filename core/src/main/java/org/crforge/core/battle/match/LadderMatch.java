@@ -273,9 +273,14 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * Refuses the slot flags no reference holds: flags on a card other than a troop card - a spell, a
-   * building, the Mirror or a variant card - and two copies of an evolution slot's card in a deck,
-   * whose counts the play's deck index would mix.
+   * Refuses the slot flags no reference holds: flags on the Mirror or a variant card, a hero slot
+   * on a card other than a troop card, an evolution slot on a card that is not a troop, spell or
+   * building card, and two copies of an evolution slot's card in a deck, whose counts the play's
+   * deck index would mix.
+   *
+   * <p>A spell or building card in the evolution slot is counted and cast as a troop card is: the
+   * item, the count and the row cast do not ask which kind of card it is. The evolved row it is
+   * cast as is refused as it is cast when it sets something its kind's cast does not model.
    */
   private static void checkSlots(
       int side, List<MatchCard> deck, int[] flags, BattleRecords records) {
@@ -291,11 +296,26 @@ public final class LadderMatch implements BattleMode {
       if (flag == 0) {
         continue;
       }
-      if (card.mirror() || card.variant() != null || !records.troopCard(card.name())) {
+      if (card.mirror() || card.variant() != null) {
         throw new UnsupportedOperationException(
             card.name()
-                + " in an evolution or hero slot, which is not a troop card, is held by no"
-                + " reference");
+                + " in an evolution or hero slot, which is the Mirror or a variant card, is held"
+                + " by no reference");
+      }
+      if (!records.troopCard(card.name())) {
+        // A hero form of a spell or building card: its cast and its ability are not modelled.
+        if ((flag & MatchSide.HERO_SLOT) != 0) {
+          throw new UnsupportedOperationException(
+              card.name()
+                  + " in an evolution or hero slot, which is not a troop card, is held by no"
+                  + " reference");
+        }
+        if (!records.spellOrBuildingCard(card.name())) {
+          throw new UnsupportedOperationException(
+              card.name()
+                  + " in an evolution slot, which is not a troop, spell or building card, is held"
+                  + " by no reference");
+        }
       }
       if ((flag & MatchSide.EVOLUTION_SLOT) != 0
           && deck.stream().filter(c -> c.name().equals(card.name())).count() > 1) {
