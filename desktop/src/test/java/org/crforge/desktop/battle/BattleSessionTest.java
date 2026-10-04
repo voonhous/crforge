@@ -66,6 +66,24 @@ class BattleSessionTest {
   }
 
   @Test
+  @DisplayName("a message about a side names it as the reader names the sides when it is read")
+  void aSidesMessageIsNamedWhenRead() {
+    BattleSession session = only("Golem");
+
+    session.play(0, 0, 9500, 8500);
+    session.note(1, " taps a test ability");
+    session.note("no side named");
+
+    List<String> standing = session.messages();
+    assertThat(standing.get(standing.size() - 3)).startsWith("[0] blue: Golem refused");
+    assertThat(standing.get(standing.size() - 2)).isEqualTo("[0] red taps a test ability");
+    List<String> flipped = session.messages(side -> side == 1 ? "blue" : "red");
+    assertThat(flipped.get(flipped.size() - 3)).startsWith("[0] red: Golem refused");
+    assertThat(flipped.get(flipped.size() - 2)).isEqualTo("[0] blue taps a test ability");
+    assertThat(flipped).last().isEqualTo("[0] no side named");
+  }
+
+  @Test
   @DisplayName("a card already played is refused until its play has run, and then cycled")
   void aPendingCardIsRefused() {
     BattleSession session = only("Knight");

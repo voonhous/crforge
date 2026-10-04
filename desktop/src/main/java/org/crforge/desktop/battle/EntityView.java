@@ -8,7 +8,8 @@ import org.crforge.core.pathfinding.GridUnitState;
  *
  * @param id the entity's id in the battle
  * @param kind what the renderers draw it as
- * @param side 0 for the blue side (the bottom), 1 for the red side (the top)
+ * @param side the battle's side, 0 or 1; the screen's {@code ViewOrientation} decides which is
+ *     drawn blue at the bottom
  * @param name the row name: the unit, building, tower, projectile or area effect row
  * @param x position along the arena's width
  * @param y position along the arena's length

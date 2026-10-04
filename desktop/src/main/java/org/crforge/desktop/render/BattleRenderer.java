@@ -18,7 +18,6 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleFrame;
@@ -34,6 +33,11 @@ import org.crforge.desktop.battle.EntityView;
  * <p>It shares the original renderer's resources, colours and layout, and draws the overlays that
  * exist for both engines through the same renderers: the routing cell costs, the routes, the golden
  * trajectory, the damage numbers and the area damage indicators.
+ *
+ * <p>Every arena position, team colour and side name goes through the screen's {@link
+ * ViewOrientation}, so a flipped view draws the whole arena and every overlay turned by 180
+ * degrees, the side at the bottom in blue with the bottom HUD panel. The screen's {@link ViewState}
+ * also says whether the text annotations are drawn (see {@link HudText}).
  */
 public class BattleRenderer {
 
@@ -58,6 +62,9 @@ public class BattleRenderer {
   @Getter private boolean drawHpNumbers = false;
   @Getter private boolean drawCellCosts = false;
   @Getter private boolean drawRoutes = false;
+
+  /** Which way up the frame being drawn has the arena, from the screen's view settings. */
+  private ViewOrientation view = ViewOrientation.STANDARD;
 
   public BattleRenderer() {
     this.ctx = new RenderContext();
@@ -113,6 +120,7 @@ public class BattleRenderer {
    * @param goldenOverlay the golden scenario's trajectory, or {@link GoldenOverlay#none()}
    * @param scenarioLines the golden scenario's status lines
    * @param notes lines about controls this screen does not offer
+   * @param view the screen's view settings: the orientation and whether annotations are shown
    */
   public record Inputs(
       BattleWorld world,
@@ -127,17 +135,20 @@ public class BattleRenderer {
       CardPlacement.Result preview,
       GoldenOverlay goldenOverlay,
       List<String> scenarioLines,
-      List<String> notes) {}
+      List<String> notes,
+      ViewState view) {}
 
   /** Renders one frame. */
   public void render(BattleFrame frame, OrthographicCamera camera, Inputs inputs) {
     ctx.setProjection(camera);
     TileMap tileMap = inputs.world().getTileMap();
+    view = inputs.view().getOrientation();
+    HudText hud = HudText.of(frame, inputs.view(), statusLines(inputs));
 
     backgrounds.renderBackgrounds(camera);
     renderArena(tileMap);
     if (drawCellCosts) {
-      cellCosts.render(inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY());
+      cellCosts.render(inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY(), view);
     }
     renderAreaEffects(frame);
     renderBodies(frame);
@@ -148,22 +159,25 @@ public class BattleRenderer {
     if (drawPaths) {
       renderHeadings(frame);
     }
-    golden.render(inputs.goldenOverlay());
+    golden.render(inputs.goldenOverlay(), view);
     if (drawRoutes) {
-      routes.render(routed(frame));
+      routes.render(routed(frame), view);
     }
     if (drawRanges) {
       renderRanges(frame);
     }
-    renderLabels(frame);
+    if (hud.labels()) {
+      renderLabels(frame);
+    }
 
-    // Kept current every frame, drawn only when toggled on.
+    // Kept current every frame, drawn only when toggled on. Both renderers take positions in game
+    // units as drawn, so the view's mirror is applied as each sample and hit is handed over.
     damageNumbers.update(healthSamples(frame));
     if (drawDamageNumbers) {
       damageNumbers.render();
     }
     for (AreaHitLog.AreaHit hit : inputs.newAreaHits()) {
-      areaHits.add(hit.x(), hit.y(), hit.radius(), team(hit.side()));
+      areaHits.add(view.x(hit.x()), view.y(hit.y()), hit.radius(), view.team(hit.side()));
     }
     areaHits.age();
     if (drawAoeDamage) {
@@ -172,17 +186,20 @@ public class BattleRenderer {
     if (drawHpNumbers) {
       renderHpNumbers(frame);
     }
-    renderHud(frame, camera, inputs);
+    renderHud(frame, camera, inputs, hud);
   }
 
-  /** The arena's cells from the battle's tile map, a tile's checkerboard and the tile grid. */
+  /**
+   * The arena's cells from the battle's tile map, a tile's checkerboard and the tile grid, each
+   * cell where the view draws it.
+   */
   private void renderArena(TileMap tileMap) {
     ShapeRenderer shapes = ctx.getShapeRenderer();
     shapes.begin(ShapeType.Filled);
     for (int row = 0; row < tileMap.height(); row++) {
       boolean riverRow = riverRow(tileMap, row);
       for (int col = 0; col < tileMap.width(); col++) {
-        Color color = cellColor(tileMap, col, row, riverRow);
+        Color color = cellColor(tileMap, col, row, riverRow, view);
         boolean water = (tileMap.bits(col, row) & TileMap.WATER_BIT) != 0;
         if (!water && ((col / 2) + (row / 2)) % 2 == 0) {
           shapes.setColor(
@@ -191,7 +208,10 @@ public class BattleRenderer {
           shapes.setColor(color);
         }
         shapes.rect(
-            col * CELL_PIXELS, row * CELL_PIXELS + BOTTOM_UI_HEIGHT, CELL_PIXELS, CELL_PIXELS);
+            view.left(col * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
+            view.bottom(row * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
+            CELL_PIXELS,
+            CELL_PIXELS);
       }
     }
     shapes.end();
@@ -220,8 +240,12 @@ public class BattleRenderer {
     return false;
   }
 
-  /** A cell's colour: water, blocked, a bridge across the river, or its side's half. */
-  static Color cellColor(TileMap tileMap, int col, int row, boolean riverRow) {
+  /**
+   * A cell's colour: water, blocked, a bridge across the river, or its side's half, in the colour
+   * the view draws that side in.
+   */
+  static Color cellColor(
+      TileMap tileMap, int col, int row, boolean riverRow, ViewOrientation view) {
     int bits = tileMap.bits(col, row);
     if ((bits & TileMap.WATER_BIT) != 0) {
       return COLOR_RIVER;
@@ -232,7 +256,8 @@ public class BattleRenderer {
     if (riverRow) {
       return COLOR_BRIDGE;
     }
-    return row < tileMap.height() / 2 ? COLOR_BLUE_ZONE : COLOR_RED_ZONE;
+    int half = row < tileMap.height() / 2 ? 0 : 1;
+    return view.blue(half) ? COLOR_BLUE_ZONE : COLOR_RED_ZONE;
   }
 
   /** Area effects: a translucent disc in the side's colour with an outline, under the bodies. */
@@ -311,18 +336,15 @@ public class BattleRenderer {
   private void renderHover(Inputs inputs) {
     int tileX = inputs.hoverTileX();
     int tileY = inputs.hoverTileY();
-    TileMap tileMap = inputs.world().getTileMap();
-    int tilesWide = tileMap.widthUnits() / GameUnits.UNITS_PER_TILE;
-    int tilesLong = tileMap.heightUnits() / GameUnits.UNITS_PER_TILE;
-    if (tileX < 0 || tileY < 0 || tileX >= tilesWide || tileY >= tilesLong) {
+    if (tileX < 0 || tileY < 0 || tileX >= view.tilesWide() || tileY >= view.tilesLong()) {
       return;
     }
     ShapeRenderer shapes = ctx.getShapeRenderer();
     Gdx.gl.glEnable(GL20.GL_BLEND);
     shapes.begin(ShapeType.Filled);
     CardPlacement.Result preview = inputs.preview();
-    float tileLeft = tileX * TILE_PIXELS;
-    float tileBottom = tileY * TILE_PIXELS + BOTTOM_UI_HEIGHT;
+    float tileLeft = view.left(tileX * GameUnits.UNITS_PER_TILE, GameUnits.UNITS_PER_TILE);
+    float tileBottom = view.bottom(tileY * GameUnits.UNITS_PER_TILE, GameUnits.UNITS_PER_TILE);
     if (preview != null && !preview.placed()) {
       shapes.setColor(COLOR_HOVER_INVALID);
       shapes.rect(tileLeft, tileBottom, TILE_PIXELS, TILE_PIXELS);
@@ -333,7 +355,7 @@ public class BattleRenderer {
     shapes.rect(tileLeft, tileBottom, TILE_PIXELS, TILE_PIXELS);
     DeployCard card = inputs.selectedCard();
     if (preview != null && card != null) {
-      Color ghost = inputs.selectedSide() == 0 ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
+      Color ghost = view.blue(inputs.selectedSide()) ? COLOR_BLUE_GHOST : COLOR_RED_GHOST;
       if (preview.units().isEmpty()) {
         shapes.setColor(COLOR_SPELL_RADIUS);
         float radius = spellRadius(inputs.world(), card);
@@ -403,7 +425,8 @@ public class BattleRenderer {
         continue;
       }
       if (projectile.radius() > 0) {
-        shapes.setColor(projectile.side() == 0 ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE);
+        shapes.setColor(
+            view.blue(projectile.side()) ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE);
         shapes.circle(
             px(projectile.aimX()),
             py(projectile.aimY()),
@@ -499,8 +522,8 @@ public class BattleRenderer {
       shapes.line(
           x,
           y,
-          x + (float) (entity.headingX() / length) * HEADING_PIXELS,
-          y + (float) (entity.headingY() / length) * HEADING_PIXELS);
+          x + view.dx((float) (entity.headingX() / length)) * HEADING_PIXELS,
+          y + view.dy((float) (entity.headingY() / length)) * HEADING_PIXELS);
     }
     shapes.end();
   }
@@ -583,14 +606,18 @@ public class BattleRenderer {
     ctx.getSpriteBatch().end();
   }
 
-  /** Every character's hit points, for the damage numbers. */
-  private static List<DamageNumberRenderer.HealthSample> healthSamples(BattleFrame frame) {
+  /** Every character's hit points, at its position as drawn, for the damage numbers. */
+  private List<DamageNumberRenderer.HealthSample> healthSamples(BattleFrame frame) {
     List<DamageNumberRenderer.HealthSample> samples = new ArrayList<>();
     for (EntityView entity : frame.entities()) {
       if (entity.isCharacter() && entity.hasHitPoints()) {
         samples.add(
             new DamageNumberRenderer.HealthSample(
-                entity.id(), entity.x(), entity.y(), entity.hitPoints(), entity.shield()));
+                entity.id(),
+                view.x(entity.x()),
+                view.y(entity.y()),
+                entity.hitPoints(),
+                entity.shield()));
       }
     }
     return samples;
@@ -618,8 +645,11 @@ public class BattleRenderer {
     ctx.getSpriteBatch().end();
   }
 
-  /** The clock, both hands and elixir bars, the result, the status column and the messages. */
-  private void renderHud(BattleFrame frame, OrthographicCamera camera, Inputs inputs) {
+  /**
+   * The clock, both hands and elixir bars, the crowns and the result, and the annotations the view
+   * shows: the tick line, the status column and the messages.
+   */
+  private void renderHud(BattleFrame frame, OrthographicCamera camera, Inputs inputs, HudText hud) {
     float width = camera.viewportWidth;
     float height = camera.viewportHeight;
     for (BattleFrame.SideView side : frame.sides()) {
@@ -643,29 +673,24 @@ public class BattleRenderer {
               ctx.getSpriteBatch(), "x" + frame.elixirRate(), timerX + timerWidth + 8, height - 10);
       ctx.getTimerFont().setColor(Color.WHITE);
     }
-    if (!frame.sides().isEmpty()) {
-      String crowns = frame.sides().get(0).crowns() + " - " + frame.sides().get(1).crowns();
-      ctx.getFont().draw(ctx.getSpriteBatch(), "crowns " + crowns, 10, height - 12);
+    if (hud.crowns() != null) {
+      ctx.getFont().draw(ctx.getSpriteBatch(), hud.crowns(), 10, height - 12);
     }
 
     float middle = BOTTOM_UI_HEIGHT + unitsToPixels(inputs.world().getTileMap().heightUnits()) / 2;
-    ctx.getFont()
-        .draw(
-            ctx.getSpriteBatch(),
-            "tick " + frame.tick() + "  entities " + frame.entities().size(),
-            10,
-            middle + 20);
+    if (hud.tickLine() != null) {
+      ctx.getFont().draw(ctx.getSpriteBatch(), hud.tickLine(), 10, middle + 20);
+    }
 
-    if (frame.ended() || frame.over()) {
-      String result =
-          frame.winner() < 0 ? "DRAW!" : (frame.winner() == 0 ? "BLUE" : "RED") + " WINS!";
+    if (hud.result() != null) {
+      String result = hud.result();
       ctx.getGlyphLayout().setText(ctx.getTitleFont(), result);
       ctx.getTitleFont()
           .draw(ctx.getSpriteBatch(), result, (width - ctx.getGlyphLayout().width) / 2, middle);
     }
 
     // The status column, right aligned and bottom up, as the original screen has it.
-    List<String> status = statusLines(inputs);
+    List<String> status = hud.status();
     for (int line = 0; line < status.size(); line++) {
       String text = status.get(line);
       ctx.getGlyphLayout().setText(ctx.getFont(), text);
@@ -678,7 +703,7 @@ public class BattleRenderer {
     }
 
     // The session's messages, newest at the bottom, just above the bottom panel.
-    List<String> messages = frame.messages();
+    List<String> messages = hud.messages();
     ctx.getEntityNameFont().setColor(Color.LIGHT_GRAY);
     for (int line = 0; line < messages.size(); line++) {
       ctx.getEntityNameFont()
@@ -688,7 +713,7 @@ public class BattleRenderer {
               6,
               BOTTOM_UI_HEIGHT + 8 + (messages.size() - 1 - line) * (LINE_HEIGHT - 2));
     }
-    if (frame.halted() != null) {
+    if (hud.halted()) {
       ctx.getEntityNameFont().setColor(COLOR_HEALTH_RED);
       ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), "HALTED: R resets", 6, middle - 30);
     }
@@ -725,13 +750,16 @@ public class BattleRenderer {
     }
     lines.addAll(inputs.scenarioLines());
     lines.add("engine: battle core");
+    lines.addAll(inputs.view().statusLines());
     lines.addAll(inputs.notes());
     return lines;
   }
 
-  /** One side's elixir bar, hand and next card, in its panel. */
+  /**
+   * One side's elixir bar, hand and next card, in its panel: the top one for the view's top side.
+   */
   private void renderSide(BattleFrame.SideView side, float width, float height, Inputs inputs) {
-    boolean top = side.side() == 1;
+    boolean top = view.atTop(side.side());
     float panelBottom = top ? height - TOP_UI_HEIGHT : 0;
     float cardY = CardLayout.cardY(top, panelBottom + (top ? TOP_UI_HEIGHT : BOTTOM_UI_HEIGHT));
     float barX = (width - ELIXIR_BAR_WIDTH) / 2;
@@ -814,32 +842,42 @@ public class BattleRenderer {
   }
 
   /** A body's fill: the side's tower colours for towers, else the side's entity colour. */
-  private static Color bodyColor(EntityView entity) {
+  private Color bodyColor(EntityView entity) {
+    return bodyColor(entity, view);
+  }
+
+  /**
+   * A body's fill in a view: the tower colours of the side's team for towers, else the team's
+   * entity colour.
+   */
+  static Color bodyColor(EntityView entity, ViewOrientation view) {
+    boolean blue = view.blue(entity.side());
     if (entity.kind() == EntityView.Kind.TOWER) {
       if (entity.king()) {
-        return entity.side() == 0 ? COLOR_BLUE_CROWN_TOWER : COLOR_RED_CROWN_TOWER;
+        return blue ? COLOR_BLUE_CROWN_TOWER : COLOR_RED_CROWN_TOWER;
       }
-      return entity.side() == 0 ? COLOR_BLUE_PRINCESS_TOWER : COLOR_RED_PRINCESS_TOWER;
+      return blue ? COLOR_BLUE_PRINCESS_TOWER : COLOR_RED_PRINCESS_TOWER;
     }
-    return sideColor(entity.side());
+    return sideColor(entity.side(), view);
   }
 
-  /** A side's colour: blue for side 0, red for side 1. */
-  static Color sideColor(int side) {
-    return side == 0 ? COLOR_BLUE_ENTITY : COLOR_RED_ENTITY;
+  private Color sideColor(int side) {
+    return sideColor(side, view);
   }
 
-  /** The team whose colour a side's indicators take. */
-  private static Team team(int side) {
-    return side == 0 ? Team.BLUE : Team.RED;
+  /** A side's colour in a view: blue for the side at the bottom, red for the side at the top. */
+  static Color sideColor(int side, ViewOrientation view) {
+    return view.blue(side) ? COLOR_BLUE_ENTITY : COLOR_RED_ENTITY;
   }
 
-  private static float px(int x) {
-    return unitsToPixels(x);
+  /** The window's pixel column of a position along the width, as the view draws it. */
+  private float px(int x) {
+    return view.px(x);
   }
 
-  private static float py(int y) {
-    return unitsToPixels(y) + BOTTOM_UI_HEIGHT;
+  /** The window's pixel row of a position along the length, as the view draws it. */
+  private float py(int y) {
+    return view.py(y);
   }
 
   /**

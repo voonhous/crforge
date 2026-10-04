@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.IntFunction;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
@@ -35,8 +36,18 @@ public final class BattleAdapter {
     // Utility class
   }
 
-  /** Reads one frame of a session. */
+  /** Reads one frame of a session, its messages naming side 0 blue and side 1 red. */
   public static BattleFrame frame(BattleSession session) {
+    return frame(session, BattleSession::sideName);
+  }
+
+  /**
+   * Reads one frame of a session.
+   *
+   * @param session the session
+   * @param sideNames the name the frame's messages give each side, as the screen colours it
+   */
+  public static BattleFrame frame(BattleSession session, IntFunction<String> sideNames) {
     List<EntityView> entities = new ArrayList<>();
     for (BattleEntity entity : session.getBattle().getBattle().getHolder().entities()) {
       EntityView view = entity(entity);
@@ -75,7 +86,7 @@ public final class BattleAdapter {
         session.isOver(),
         session.getHalted(),
         session.getScenarioCase() == null ? null : session.getScenarioCase().name(),
-        session.messages());
+        session.messages(sideNames));
   }
 
   /**

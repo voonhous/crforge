@@ -179,6 +179,8 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `S`           | Run the next golden scenario (passive towers, the reference unit on tick 0)   |
 | `E`           | Export the recorded trajectories of the played units to `build/trajectories`  |
 | `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |
+| `F`           | Not offered here (logs a note): the view flips in the replay viewer only      |
+| `T`           | Hide / show the text annotations (see below)                                  |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                                            |
 | `1`-`4`       | Select a card from the blue player's hand                                     |
 | `5`-`8`       | Select a card from the red player's hand                                      |
@@ -186,6 +188,10 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | Right click   | Deselect the current card                                                     |
 
 The number keys only *select* a card; playing always goes through a left click on the arena.
+
+`F` does not flip the Ladder screen: its hand panels, number keys and clicks play for a side by the arena and panels as drawn standing, so the screen keeps side 0 at the bottom in blue.
+
+`T` hides the text annotations and shows them again; they are shown at first, on both screens. The annotations are the status column (the tick and entity count, the overlays that are on, the replay's or golden scenario's status, the data version and the controls legend) and the message column with its halted line. The battle itself (bodies, towers, health and shield bars, and the characters' and area effects' name labels), the hands, elixir, clock, crowns and result line, and the overlays with keys of their own (`P`, `O`, `D`, `A`, `H`, `G`, `N`) stay as they are.
 
 ### Replays
 
@@ -198,8 +204,8 @@ At startup the launcher prints the replay's file, its battle header (the game mo
 ```
 replay: /path/to/replay.json
   game mode: Ladder, location PvP_goblin
-  blue deck: ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
-  red deck: ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
+  side 0 deck (red, top): ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
+  side 1 deck (blue, bottom): ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
   end tick: 400
   commands: 2 (type 124 x1, a card play; type 178 x1, an ability command)
   recorded result: none in the replay
@@ -208,7 +214,7 @@ replay: /path/to/replay.json
 
 A replay is refused, never played in part, when the mapping refuses any of it (a field it has no mapping for, a pinned value other than the one it was established on, a command type the data version does not map, a play it cannot read), when the battle core refuses the tables, or when it refuses to set up the replay's battle. Each reason is listed once with its count (`the command type 153: cmd[0].ct and 36 more (37 in all)`), and the window shows the same list instead of a battle. Tables the battle core refuses do not stop the launcher here, as they do for a Ladder battle: the refusal is one of the replay's reasons.
 
-A replay that is played shows both sides' hands, elixir, crowns and the clock as the battle holds them. Each play and ability command that runs is noted in the message column (`blue plays ArcherQueen on tick 220 (cmd0)`), and each play's item is checked against the item the battle built for it, as a parity run checks it: a play that ran with another item halts the replay with the reason. The replay stops at its end tick (`endTick`), or when the battle ends by its own rule; one with no end tick plays until the battle ends. The status column then shows why it stopped, the battle's result and the replay's own recorded result; neither the replay files nor the scenario cases record a result, so that line reads "none in the replay".
+A replay that is played shows both sides' hands, elixir, crowns and the clock as the battle holds them. Each play and ability command that runs is noted in the message column (`red plays ArcherQueen on tick 220 (cmd0)` for side 0 in the flipped view), and each play's item is checked against the item the battle built for it, as a parity run checks it: a play that ran with another item halts the replay with the reason. The replay stops at its end tick (`endTick`), or when the battle ends by its own rule; one with no end tick plays until the battle ends. The status column then shows why it stopped, the battle's result and the replay's own recorded result; neither the replay files nor the scenario cases record a result, so that line reads "none in the replay".
 
 | Key           | Action                                                   |
 |---------------|----------------------------------------------------------|
@@ -216,8 +222,12 @@ A replay that is played shows both sides' hands, elixir, crowns and the clock as
 | `R`           | Restart the replay from tick 0                           |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                       |
 | `P`, `O`, `D`, `A`, `H`, `G`, `N` | The overlays, as on the debug screen |
+| `F`           | Flip the view: side 1 at the bottom (the default) or side 0 |
+| `T`           | Hide / show the text annotations, as on the debug screen |
 
 Cards are not selected or played from the viewer: the plays are the replay's own.
+
+A replay opens **flipped**: the arena is mirrored along its length only, as the game's own replay view draws it (a play on the right stays on the right), so the battle's side 1 (`deck1`) stands at the bottom in blue and side 0 (`deck0`) at the top in red. `F` flips it back to side 0 at the bottom and again, and the status column says which (`view: side 1 at bottom (F flips)`). The flip is a view only, made in one place (`org.crforge.desktop.render.ViewOrientation`): the battle's sides, positions and inputs are the replay's either way. Every position goes through it, so the arena's cells and halves, the bodies, bars, labels, target and heading lines, projectiles, area effects and every overlay (`P`, `O`, `D`, `A`, `H`, `G`, `N`) mirror together, and the mouse's tile and cell map back to the battle's own. The side at the bottom is always the one drawn blue and named blue: its hand and elixir take the bottom panel, its crowns are listed first, and the result line and the play notes name the sides by these colours.
 
 ### Overlays
 
