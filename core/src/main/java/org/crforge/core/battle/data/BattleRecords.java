@@ -2188,15 +2188,22 @@ public final class BattleRecords {
     if (!namesUnit && casts) {
       return spell(row);
     }
-    if (casts && row.bool("SpellAsDeploy")) {
+    // A card with a unit and an area effect makes the area effect at the placed point after its
+    // units, as the cast makes them in that order. Deployed as a spell, as the wizards of a newer
+    // data version are, its search does not snap to its unit; without that, or with a projectile
+    // as well, it is in no row and is refused.
+    boolean areaEffect = set(row, "AreaEffectObject");
+    if (areaEffect && (!row.bool("SpellAsDeploy") || set(row, "Projectile"))) {
       throw new UnsupportedOperationException(
           name
-              + " deploys as a spell with a unit and a cast, which clears the search's snap and is"
-              + " not modelled");
+              + " makes an area effect as well as a unit, without deploying as a spell or with a"
+              + " projectile besides, which the cast does not model");
     }
-    if (set(row, "AreaEffectObject")) {
+    if (casts && !areaEffect && row.bool("SpellAsDeploy")) {
       throw new UnsupportedOperationException(
-          name + " makes an area effect as well as a unit, which the cast does not model");
+          name
+              + " deploys as a spell with a unit and a projectile, which moves the projectile's"
+              + " start and is not modelled");
     }
     List<DeployCard.Listed> listed = listed(row);
     boolean namesCharacter = !row.string("SummonCharacter").isEmpty();
@@ -2230,10 +2237,10 @@ public final class BattleRecords {
         row.intValue("DeployStartY"),
         row.intValue("DeployEndY"),
         set(row, "Projectile") ? row.string("Projectile") : null,
-        null,
+        areaEffect ? row.string("AreaEffectObject") : null,
         // A unit that tunnels and morphs as it surfaces is searched for as its morph.
         tunnelMorph(summoned),
-        false,
+        areaEffect,
         row.intValue("Radius"),
         row.intValue("MultipleProjectiles"),
         row.intValue("ProjectileWaves"),
@@ -2266,7 +2273,9 @@ public final class BattleRecords {
 
   /**
    * The characters a card lists, each with its offsets at its index in the two offset lists, which
-   * the placement reads unchecked: a list longer than either is refused.
+   * the placement reads unchecked: a list longer than either is refused. Each waits before it
+   * deploys the entry of the card's delay list at its index, or the list's last entry past its end;
+   * a card without the list gives none.
    */
   private List<DeployCard.Listed> listed(GameRow row) {
     List<String> names = row.strings("SummonCharactersList");
@@ -2276,9 +2285,11 @@ public final class BattleRecords {
       throw new UnsupportedOperationException(
           row.name() + " lists more characters than offsets, which the placement reads past");
     }
+    List<Integer> delays = row.ints("SummonCharactersDelayList");
     List<DeployCard.Listed> listed = new ArrayList<>();
     for (int j = 0; j < names.size(); j++) {
-      listed.add(new DeployCard.Listed(unit(names.get(j)), xs.get(j), ys.get(j)));
+      int delay = delays.isEmpty() ? 0 : delays.get(Math.min(j, delays.size() - 1));
+      listed.add(new DeployCard.Listed(unit(names.get(j)), xs.get(j), ys.get(j), delay));
     }
     return listed;
   }
