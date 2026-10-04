@@ -473,7 +473,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       world.createAreaEffect(
           data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", name);
     }
-    if (data.shaped()) {
+    if (data.shaped() && data.shapeRadius() >= 1) {
+      circleShapeHits(hits, damage);
+    } else if (data.shaped()) {
       shapeHits(hits);
     } else if (!circleHits(hits, radius, damage, speed, hit, bound)) {
       return;
@@ -543,6 +545,30 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       for (WorldEntity target : listed) {
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
+      }
+    }
+  }
+
+  /**
+   * The hits of a row shaped as a circle, as the Giant hero form's landing is: the objects in the
+   * circle around its point that pass its filter, listed once for the update - a building when its
+   * square comes within the radius, anything else when its centre lies strictly within the radius
+   * plus its collision radius - and, for each hit, the level-scaled damage queued on every one of
+   * them as a typed hit of the row's damage type, the area effect its source, with no direction;
+   * the queue is dealt after the tick's post-hooks. The row's load refuses a circle whose hits
+   * would do more, or share or scale their damage for a crown tower.
+   */
+  private void circleShapeHits(int hits, int damage) {
+    List<WorldEntity> listed =
+        world.shapeQuery(this, data.shapeRadius(), world.getRecords().filter(data.filter()));
+    world.shapeListed(this, listed);
+    if (damage < 1) {
+      return;
+    }
+    DamageType type = world.getActions().damageType(data.damageType(), binding());
+    for (int i = 0; i < hits; i++) {
+      for (WorldEntity target : listed) {
+        world.queueTypedHit(this, target, type, damage);
       }
     }
   }
