@@ -1123,6 +1123,49 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The projectile a hero Barbarian Barrel's reroll rolls its barbarian in, refused when its row
+   * sets a column its flight does not model.
+   *
+   * @param action the reroll row's name
+   * @param row the projectile's row
+   * @return its columns
+   */
+  ProjectileData reRollProjectile(String action, String row) {
+    ProjectileData data = records.projectile(row);
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action
+              + " rolls in "
+              + row
+              + ", which sets columns its flight does not model: "
+              + data.unmodelledColumns());
+    }
+    return data;
+  }
+
+  /**
+   * Launches a projectile a unit's action fires at a point: from the given start, with no target,
+   * the unit as launcher and owner, at its level re-based on the row's rarity, carrying the unit's
+   * play, handed to the holder, which admits it at the next cleanup.
+   *
+   * @param unit the unit
+   * @param data the projectile's row
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   * @param hx the point it is fired at along the width
+   * @param hy the point it is fired at along the length
+   * @return the projectile
+   */
+  ProjectileEntity launchFromUnit(
+      CharacterEntity unit, ProjectileData data, int sx, int sy, int sz, int hx, int hy) {
+    ProjectileEntity projectile = new ProjectileEntity(this, data, unit.side());
+    projectile.launchFromUnit(unit, unit.getDeployIndex(), sx, sy, sz, hx, hy);
+    launch(projectile);
+    return projectile;
+  }
+
+  /**
    * Launches a collector's projectile at a friend: from the launcher's own start, at where the
    * friend stands now, at the launcher's level and on its side, handed to the holder.
    *
