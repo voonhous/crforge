@@ -725,7 +725,8 @@ public interface WorldObserver {
       int tick, AreaEffectEntity areaEffect, CharacterEntity child, int retries, int stateAfter) {}
 
   /**
-   * Projectiles aimed at a unit lost it as their target as it went into a pathfinding state.
+   * Projectiles aimed at a unit lost it as their target as it went into a pathfinding state, or as
+   * a warp reset its pending damage.
    *
    * @param tick the battle tick
    * @param unit the unit
