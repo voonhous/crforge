@@ -303,13 +303,21 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "the evolved Furnace's spawn behind it is a projectile from 6000 high; a count, the cause as"
-          + " the source, no aim, the spawn class and a character spawn with an aim are refused")
+      "the evolved Furnace's spawn behind it is a projectile from 6000 high and the evolved Wall"
+          + " Breaker's barrel one of the plain class; a count, the cause as the source, no aim on"
+          + " the location class and a character spawn with an aim are refused")
   void aProjectileSpawnIsBuilt(@TempDir Path folder) throws IOException {
     SpawnProjectile left =
         (SpawnProjectile) GameData.actions().build("Furnace_EV1_Spawn_Behind_Left", INERT_BINDING);
     assertThat(left.getProjectile()).isEqualTo("Furnace_EV1_Spawn_Spirit_Projectile");
     assertThat(left.getStartHeight()).isEqualTo(6000);
+    assertThat(left.isSpawnClass()).isFalse();
+    SpawnProjectile barrel =
+        (SpawnProjectile)
+            GameData.actions().build("WallBreaker_EV1_SpawnMini_NextAction", INERT_BINDING);
+    assertThat(barrel.getProjectile()).isEqualTo("WallbreakerBarrelExplosion_EV1");
+    assertThat(barrel.getStartHeight()).isZero();
+    assertThat(barrel.isSpawnClass()).isTrue();
 
     Map<String, Consumer<ObjectNode>> refused =
         Map.of(
@@ -322,8 +330,11 @@ class ActionRowsTest {
               f.remove("TargetExprX");
               f.remove("TargetExprY");
             },
-            "from a spawn row's own position",
-            f -> f.put("ClassType", "ActionSpawn"));
+            "and sets SpawnRadius",
+            f -> {
+              f.put("ClassType", "ActionSpawn");
+              f.put("SpawnRadius", 500);
+            });
     for (Map.Entry<String, Consumer<ObjectNode>> change : refused.entrySet()) {
       Path dir = folder.resolve(change.getKey().replace(' ', '_').replace("'", ""));
       Files.createDirectories(dir);
@@ -1343,12 +1354,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 840 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 842 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(840);
+    assertThat(built).as("rows built").isEqualTo(842);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 29, "column", 64, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 29, "column", 64, "spawn type", 11));
   }
 }

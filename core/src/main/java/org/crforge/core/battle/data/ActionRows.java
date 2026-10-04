@@ -2625,16 +2625,15 @@ public final class ActionRows {
     }
 
     /**
-     * A projectile spawn row: of the location class, the owner as its source, aimed by at least one
-     * target expression; any other spawn column but the action to run on what it spawned, which
-     * this branch does not read, is refused.
+     * A projectile spawn row: of the location class aimed by at least one target expression, or of
+     * the plain class, which starts it from the owner's own point and height and, aimed by neither
+     * expression, launches it at the owner's current target, refused as it starts while the owner
+     * holds one; the owner as its source. Any other spawn column but the action to run on what it
+     * spawned, which this branch does not read, is refused.
      */
     private SpawnProjectile spawnProjectile(
         String name, String type, ActionRow shared, JsonNode f) {
-      if (!type.equals("ActionSpawnToLocation")) {
-        throw new UnsupportedOperationException(
-            name + " spawns a projectile from a spawn row's own position, which is not modelled");
-      }
+      boolean spawnClass = type.equals("ActionSpawn");
       for (Iterator<String> columns = f.fieldNames(); columns.hasNext(); ) {
         String column = columns.next();
         if (spawnColumns().contains(column)
@@ -2657,7 +2656,7 @@ public final class ActionRows {
       }
       IntSupplier aimX = expression(f.get("TargetExprX"));
       IntSupplier aimY = expression(f.get("TargetExprY"));
-      if (aimX == null && aimY == null) {
+      if (aimX == null && aimY == null && !spawnClass) {
         throw new UnsupportedOperationException(
             name + " spawns a projectile at its owner's target, which is not modelled");
       }
@@ -2666,7 +2665,12 @@ public final class ActionRows {
             name + " spawns a projectile written inline, which is not modelled");
       }
       return new SpawnProjectile(
-          shared, f.path("SpawnData").asText(), integer(f, "StartPositionZOffset"), aimX, aimY);
+          shared,
+          f.path("SpawnData").asText(),
+          integer(f, "StartPositionZOffset"),
+          aimX,
+          aimY,
+          spawnClass);
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */

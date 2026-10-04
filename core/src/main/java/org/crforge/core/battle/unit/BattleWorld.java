@@ -5380,17 +5380,21 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Launches the projectile an action's spawn row names from the owner's point at the row's start
-   * height, with the owner as its launcher and owner, at no target, toward the point the row's two
-   * expressions give, each evaluated now on the owner, the owner's own coordinate for one the row
-   * does not set; handed to the holder.
+   * Launches the projectile an action's spawn row names from the owner's point, with the owner as
+   * its launcher and owner, toward the point the row's two expressions give, each evaluated now on
+   * the owner, the owner's own coordinate for one the row does not set, at no target; handed to the
+   * holder. A row of the location class starts it at the row's start height; a row of the plain
+   * class at the row's start height above the owner's live height. A plain row aimed by neither
+   * expression launches at the owner's current target, which is refused unless the owner is a
+   * character whose targeting component is off or holds nothing.
    *
    * @param owner the entity the action runs on
    * @param action the spawn row's name
    * @param row the projectile row's name
-   * @param startHeight the height it is launched from
+   * @param startHeight the row's start height
    * @param aimX the aim along the arena's width, or null for the owner's own coordinate
    * @param aimY the aim along the arena's length, or null for the owner's own coordinate
+   * @param spawnClass true for a row of the plain spawn class, false for the location class
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    */
   void actionProjectile(
@@ -5400,18 +5404,36 @@ public class BattleWorld implements HolderPasses {
       int startHeight,
       IntSupplier aimX,
       IntSupplier aimY,
+      boolean spawnClass,
       int phase) {
     if (owner instanceof CharacterEntity unit && unit.isClone()) {
       throw new UnsupportedOperationException(
           action + " launches " + row + " from a clone, which is not modelled");
     }
+    // The plain class aimed by neither expression launches at the owner's current target, read
+    // before the start; an expression drops it. A dying unit's combat gate has switched its
+    // targeting off by the time its killed action runs, so it launches at none.
+    if (spawnClass
+        && aimX == null
+        && aimY == null
+        && (!(owner instanceof CharacterEntity unit) || unit.referenceHeld())) {
+      throw new UnsupportedOperationException(
+          action
+              + " launches "
+              + row
+              + " at the current target of "
+              + owner.name()
+              + ", which is held or not a character's, not modelled");
+    }
     int sx = owner.getView().getX();
     int sy = owner.getView().getY();
+    // The plain class's height slot is the owner's live height; the location class's answers 0.
+    int sz = startHeight + (spawnClass ? owner.getView().getZTotal() : 0);
     // The width's expression is evaluated first, then the length's.
     int hx = aimX == null ? sx : aimX.getAsInt();
     int hy = aimY == null ? sy : aimY.getAsInt();
     ProjectileEntity projectile = new ProjectileEntity(this, records.projectile(row), owner.side());
-    ProjectileLauncher.launchFromAction(projectile, owner, sx, sy, startHeight, hx, hy);
+    ProjectileLauncher.launchFromAction(projectile, owner, sx, sy, sz, hx, hy);
     launch(projectile);
     for (WorldObserver observer : observers) {
       observer.actionProjectileLaunched(tick, owner, action, phase, projectile);
