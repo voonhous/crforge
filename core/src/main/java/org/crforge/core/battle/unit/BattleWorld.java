@@ -5472,9 +5472,9 @@ public class BattleWorld implements HolderPasses {
    * its launcher and owner, toward the point the row's two expressions give, each evaluated now on
    * the owner, the owner's own coordinate for one the row does not set, at no target; handed to the
    * holder. A row of the location class starts it at the row's start height; a row of the plain
-   * class at the row's start height above the owner's live height. A plain row aimed by neither
-   * expression launches at the owner's current target, which is refused unless the owner is a
-   * character whose targeting component is off or holds nothing.
+   * class at the row's start height above the owner's live height. A row of either class aimed by
+   * neither expression launches at the owner's current target, which is refused unless the owner is
+   * a character whose targeting component is off or holds nothing.
    *
    * @param owner the entity the action runs on
    * @param action the spawn row's name
@@ -5498,11 +5498,10 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           action + " launches " + row + " from a clone, which is not modelled");
     }
-    // The plain class aimed by neither expression launches at the owner's current target, read
+    // Either class aimed by neither expression launches at the owner's current target, read
     // before the start; an expression drops it. A dying unit's combat gate has switched its
     // targeting off by the time its killed action runs, so it launches at none.
-    if (spawnClass
-        && aimX == null
+    if (aimX == null
         && aimY == null
         && (!(owner instanceof CharacterEntity unit) || unit.referenceHeld())) {
       throw new UnsupportedOperationException(
