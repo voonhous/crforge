@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.battle.TableCopies;
 
@@ -19,6 +21,16 @@ final class Replays {
 
   /** The fixture: side 0 plays its Archer Queen on tick 220 and taps her ability on tick 350. */
   static final String ARCHER_QUEEN = "/replays/archer_queen_ability.json";
+
+  /**
+   * The fixture as a replay of the game client whose data version is 16.402.18 writes it, with
+   * made-up players: its command types 153 and 189, and the fields that version's replays write
+   * beyond 14.593.1's.
+   */
+  static final String ARCHER_QUEEN_VERSION_16 = "/replays/archer_queen_version16.json";
+
+  /** The data version of {@link #ARCHER_QUEEN_VERSION_16}. */
+  static final String VERSION_16 = "16.402.18";
 
   private static GameTables tables;
 
@@ -34,9 +46,39 @@ final class Replays {
     return tables;
   }
 
+  /**
+   * The tables of {@link #VERSION_16}: the configured tables when they are of that version, else a
+   * folder of them beside the configured ones, as in a checkout of the game data repository.
+   *
+   * @return the tables, or empty when there are none
+   */
+  static Optional<GameTables> version16Tables() {
+    Optional<Path> configured = GameTables.configuredDirectory();
+    if (configured.isEmpty()) {
+      return Optional.empty();
+    }
+    Path folder = configured.get().toAbsolutePath();
+    Path version16 =
+        folder.getFileName().toString().equals(VERSION_16)
+            ? folder
+            : folder.resolveSibling(VERSION_16);
+    return Files.isDirectory(version16)
+        ? Optional.of(GameTables.load(version16))
+        : Optional.empty();
+  }
+
   /** The fixture as a document, to change in a test. */
   static ObjectNode archerQueen() {
-    try (InputStream in = Replays.class.getResourceAsStream(ARCHER_QUEEN)) {
+    return read(ARCHER_QUEEN);
+  }
+
+  /** The fixture of version 16.402.18 as a document. */
+  static ObjectNode archerQueenOfVersion16() {
+    return read(ARCHER_QUEEN_VERSION_16);
+  }
+
+  private static ObjectNode read(String resource) {
+    try (InputStream in = Replays.class.getResourceAsStream(resource)) {
       return (ObjectNode) MAPPER.readTree(in);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
