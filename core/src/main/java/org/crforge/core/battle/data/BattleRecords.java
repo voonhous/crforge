@@ -579,6 +579,9 @@ public final class BattleRecords {
           "LoopingEffect",
           // The effect a following area effect shows while it follows nothing.
           "NoFollowObjectEffect",
+          // Whether the view shows the looping effect on the area effect itself or on its parent;
+          // only the area effect's view reads it.
+          "ParentLoopingEffectToSelf",
           "OneShotEffect",
           "ScaledEffect",
           "ScaledEffectFollowAeO",
@@ -1437,11 +1440,12 @@ public final class BattleRecords {
   }
 
   /**
-   * A shaped row with its circle read, as the Giant hero form's landing has: a filter, a damage
-   * queued through a damage type as a typed hit, and nothing else a hit would do. Refused, by its
-   * Shape column: a circle without a filter, without damage or a damage type, with a hit action, a
-   * buff, a push, a launch, a spawner, a growth, one hit per target, shared damage or a crown tower
-   * share, none of which the circle's hit pass is held for.
+   * A shaped row with its circle read, as the Giant hero form's landing and the Ice Golemite hero
+   * form's damage circle have: a filter, a damage queued through a damage type as a typed hit, a
+   * crown tower taking its share of it, and nothing else a hit would do. Refused, by its Shape
+   * column: a circle without a filter, without damage or a damage type, with a hit action, a buff,
+   * a push, a launch, a spawner, a growth, one hit per target or shared damage, none of which the
+   * circle's hit pass is held for.
    */
   private AreaEffectData circle(AreaEffectData data, GameRow row, List<String> unmodelled) {
     if (data.filter() == null
@@ -1453,8 +1457,7 @@ public final class BattleRecords {
         || data.spawnCharacter() != null
         || data.maxRadius() != 0
         || data.oneHitPerTarget()
-        || data.sharedDamage()
-        || data.crownTowerDamagePercent() != 0) {
+        || data.sharedDamage()) {
       unmodelled.add("Shape");
     }
     return data.toBuilder().shapeRadius(row.intValue("Radius")).build();

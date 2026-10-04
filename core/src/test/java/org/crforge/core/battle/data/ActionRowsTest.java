@@ -1379,9 +1379,12 @@ class ActionRowsTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("to a location");
     assertThatThrownBy(
-            () -> GameData.actions().build("IceGolemiteHero_Spawn_Damage_AEO", INERT_BINDING))
+            () -> GameData.actions().build("IceGolemiteHero_Spawn_KnockBack_AEO", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("IceGolemiteHero_Damage_AEO, which sets columns not modelled");
+        .hasMessageContaining("IceGolemiteHero_KnockBack_AEO, which sets columns not modelled");
+    // The Ice Golemite hero form's damage circle is held.
+    assertThat(GameData.actions().build("IceGolemiteHero_Spawn_Damage_AEO", INERT_BINDING))
+        .isNotNull();
 
     Files.createDirectories(folder.resolve("offset"));
     GameTables offset =
@@ -1489,12 +1492,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 870 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 871 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(870);
+    assertThat(built).as("rows built").isEqualTo(871);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 16, "column", 51, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 16, "column", 50, "spawn type", 9));
   }
 }
