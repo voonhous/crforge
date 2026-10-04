@@ -23,6 +23,7 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
+import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.Taunt;
@@ -1496,6 +1497,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The battle the entity belongs to. */
   BattleWorld world() {
     return world;
+  }
+
+  /**
+   * Empties the entity's route for a path reset row, as the reset does on the movement component
+   * when the entity has one: a character's route and its route-leads-away bit are cleared; an
+   * entity without one is left alone. Any other entity with a movement component is refused.
+   */
+  @Override
+  public void resetPath(ResetPath action) {
+    if (!hasMovementComponent()) {
+      return;
+    }
+    if (!(this instanceof CharacterEntity unit)) {
+      throw new UnsupportedOperationException(
+          action.name() + " resets the path of " + name() + ", which is not modelled");
+    }
+    unit.resetRoute();
   }
 
   /**

@@ -156,6 +156,17 @@ public interface ActionOwner {
   }
 
   /**
+   * Empties the owner's route for a path reset row. Only a character or a building owner is
+   * modelled: a character's route is emptied and a building, which does not move, is left alone.
+   *
+   * @param action the row
+   */
+  default void resetPath(ResetPath action) {
+    throw new UnsupportedOperationException(
+        action.name() + " resets the path of an owner that is neither a character nor a building");
+  }
+
+  /**
    * Starts an air-to-ground run on the owner, which only a character or a tower takes.
    *
    * @param action the row

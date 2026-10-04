@@ -882,7 +882,8 @@ public final class BattleRecords {
           "ActionSpawn",
           "ActionMegaKnightUppercut",
           "ActionSpawnResetableAeO",
-          "ActionSetVariable");
+          "ActionSetVariable",
+          "ActionGroup");
 
   /** The classes of the actions a completed charge runs whose runs are established. */
   private static final Set<String> CHARGE_ACTION_CLASSES = Set.of("ActionDamagingPushBack");
@@ -905,8 +906,9 @@ public final class BattleRecords {
   /**
    * The unmodelled columns with OnAttackAction added when the row names an action its hits run
    * whose run is not established: every hit schedules the row alike, but only a spawn's, the
-   * evolved Mega Knight's uppercut, the evolved Baby Dragon's wind and a variable's write (the
-   * evolved Inferno Dragon's attack count, kept in the attacker's own variable) are.
+   * evolved Mega Knight's uppercut, the evolved Baby Dragon's wind, a variable's write (the evolved
+   * Inferno Dragon's attack count, kept in the attacker's own variable) and a group's (the evolved
+   * Royal Hog's fall, whose parts are each built from their own rows and refused there) are.
    */
   private List<String> withAttackAction(List<String> columns, GameRow row) {
     if (!sets(row, "OnAttackAction")

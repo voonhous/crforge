@@ -168,7 +168,7 @@
   "evo-sweep-v2/evo_pekka_vs_musketeer": {"outcome": "unsupported", "feature": "Pekka_EV1 sets columns the battle does not model: [ResurrectChargeFilter, ResurrectFlyingEffect, ResurrectGainChargeEffect, ResurrectParameters, TempResurrect]", "input": "the run"},
   "evo-sweep-v2/evo_ragebarbarian_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_royalgiant_vs_musketeer": {"outcome": "diagnostic_match"},
-  "evo-sweep-v2/evo_royalhogs_vs_musketeer": {"outcome": "unsupported", "feature": "RoyalHog_EV1 sets columns the battle does not model: [OnAttackAction]", "input": "the run"},
+  "evo-sweep-v2/evo_royalhogs_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_royalrecruits_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_skeletonarmy_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_skeletonballoon_vs_musketeer": {"outcome": "diagnostic_match"},
