@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.MatchCard;
@@ -25,6 +24,7 @@ import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.CardLayout;
 import org.crforge.desktop.render.GoldenOverlay;
@@ -50,6 +50,8 @@ import org.crforge.desktop.render.RenderConstants;
  *   <li>N: Toggle the route, reference and state overlay
  *   <li>S: Run the next golden scenario (passive towers, the reference unit placed on tick 0)
  *   <li>E: Export the recorded trajectories of every played unit to build/trajectories
+ *   <li>V: Switch to the next data version of the data root and start a new Ladder battle on it; a
+ *       version the battle core refuses is reported in the messages and the battle stays
  *   <li>1-4: Select a card from the blue player's hand
  *   <li>5-8: Select a card from the red player's hand
  *   <li>+/-: Speed up/slow down simulation
@@ -70,9 +72,11 @@ public class DebugGameScreen implements Screen {
   private static final Path TRAJECTORY_DIRECTORY = Path.of("build", "trajectories");
 
   /** The note the status column carries for the control this screen no longer offers. */
-  private static final List<String> NOTES = List.of("M: n/a on the battle core");
+  private static final String M_NOTE = "M: n/a on the battle core";
 
-  private final GameTables tables;
+  /** The data versions {@code V} switches between, and the tables every battle reads now. */
+  private final DataVersions versions;
+
   private final BattleRenderer renderer;
   private final OrthographicCamera camera;
   private final Vector3 touchPos = new Vector3();
@@ -100,12 +104,13 @@ public class DebugGameScreen implements Screen {
   private int selectedSide = -1;
 
   /**
-   * A screen on the given tables, starting with a Ladder battle.
+   * A screen on the current tables of the given versions, starting with the given Ladder battle.
    *
-   * @param tables the game tables every battle of the screen reads
+   * @param versions the data versions, whose current tables every battle of the screen reads
+   * @param first the first battle, on those tables
    */
-  public DebugGameScreen(GameTables tables) {
-    this.tables = tables;
+  public DebugGameScreen(DataVersions versions, BattleSession first) {
+    this.versions = versions;
     this.renderer = new BattleRenderer();
 
     // Viewport includes UI margins
@@ -120,7 +125,7 @@ public class DebugGameScreen implements Screen {
     camera.position.set(viewWidth / 2, viewHeight / 2, 0);
     camera.update();
 
-    this.session = BattleSession.ladder(tables);
+    this.session = first;
     setupInput();
   }
 
@@ -166,6 +171,7 @@ public class DebugGameScreen implements Screen {
               }
               case Input.Keys.S -> startGoldenScenario();
               case Input.Keys.E -> exportTrajectories();
+              case Input.Keys.V -> switchDataVersion();
               case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
               case Input.Keys.MINUS -> adjustSpeed(0.5f);
 
@@ -304,13 +310,43 @@ public class DebugGameScreen implements Screen {
 
   /** Starts a new Ladder battle: the same decks, dealt and played the same way as the last. */
   private void resetBattle() {
-    session = BattleSession.ladder(tables);
+    startSession(versions.ladder());
+    log.info("Battle reset");
+  }
+
+  /** Shows a new battle from its first step, clearing what the last one left on the screen. */
+  private void startSession(BattleSession next) {
+    session = next;
     goldenScenario.clear();
     newAreaHits.clear();
     deselect();
     accumulator = 0f;
     paused = false;
-    log.info("Battle reset");
+  }
+
+  /**
+   * Switches to the data root's next data version and starts a Ladder battle on its tables. When
+   * its tables cannot be read or the battle core refuses a battle on them, the battle on screen
+   * stays and the refusal joins its messages; V again tries the version after it.
+   */
+  private void switchDataVersion() {
+    DataVersions.Switched switched = versions.next();
+    if (switched.session() == null) {
+      session.note(switched.refusal());
+      log.warn("Data version switch refused: {}", switched.refusal());
+      return;
+    }
+    startSession(switched.session());
+    session.note(
+        "data version "
+            + versions.current().version()
+            + " from "
+            + versions.currentFolder().toAbsolutePath().normalize());
+    log.info(
+        "Data version {} ({}), content sha {}",
+        versions.current().version(),
+        versions.currentFolder().toAbsolutePath().normalize(),
+        versions.current().contentSha());
   }
 
   /**
@@ -319,7 +355,7 @@ public class DebugGameScreen implements Screen {
    */
   private void startGoldenScenario() {
     GoldenScenario.Case scenarioCase = GoldenScenario.load(goldenScenario.nextCaseName());
-    session = BattleSession.scenario(tables, scenarioCase);
+    session = BattleSession.scenario(versions.current(), scenarioCase);
     goldenScenario.begin(scenarioCase, session.tick());
     newAreaHits.clear();
     deselect();
@@ -431,7 +467,7 @@ public class DebugGameScreen implements Screen {
               preview,
               goldenOverlay(),
               goldenScenario.statusLines(),
-              NOTES));
+              List.of(versions.statusLine(), M_NOTE)));
       newAreaHits.clear();
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
@@ -474,6 +510,9 @@ public class DebugGameScreen implements Screen {
           N     - Toggle route / reference / state overlay
           S     - Run next golden scenario (passive towers, reference unit on tick 0)
           E     - Export played units' trajectories to build/trajectories
+
+        Data:
+          V     - Switch to the next data version of the data root (new Ladder battle)
         ==============================================""");
   }
 

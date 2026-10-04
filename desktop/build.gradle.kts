@@ -39,14 +39,29 @@ application {
     }
 }
 
-// The debug visualizer runs the battle core, which reads the game tables from the folder the
-// crforge.gameTables system property names. It is passed from the Gradle property of that name
-// (for example in ~/.gradle/gradle.properties) or the CRFORGE_GAME_TABLES variable, the same way
-// the test tasks are given it.
+// The debug visualizer runs the battle core, which reads the game tables of one data version.
+// The run passes the program these system properties, each from the Gradle property of the same
+// name (for example in ~/.gradle/gradle.properties, or -P<name>=<value>) or its environment
+// variable:
+// - crforge.dataRoot (CRFORGE_DATA_ROOT): a checkout of the game data repository, one folder per
+//   data version; without it, the crforge-data folder beside the project folder;
+// - crforge.dataVersion: the data version to open, ahead of everything else;
+// - crforge.gameTables (CRFORGE_GAME_TABLES): a tables folder named outright, the same setting the
+//   test tasks are given; used when no data version is asked for;
+// - crforge.projectDir: this project's folder, whose crforge-data.lock names the default version.
+// See org.crforge.desktop.DataSelection for the order they are taken in.
 tasks.named<JavaExec>("run") {
-    val gameTables =
-        (findProperty("crforge.gameTables") as String?) ?: System.getenv("CRFORGE_GAME_TABLES")
-    if (gameTables != null) {
-        systemProperty("crforge.gameTables", gameTables)
+    systemProperty("crforge.projectDir", rootProject.projectDir.absolutePath)
+    val settings =
+        mapOf(
+            "crforge.dataRoot" to "CRFORGE_DATA_ROOT",
+            "crforge.dataVersion" to null,
+            "crforge.gameTables" to "CRFORGE_GAME_TABLES",
+        )
+    for ((name, variable) in settings) {
+        val value = (findProperty(name) as String?) ?: variable?.let { System.getenv(it) }
+        if (value != null) {
+            systemProperty(name, value)
+        }
     }
 }
