@@ -45,10 +45,12 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * horizon}, with the tick). Nothing from a reference decides where the run stops.
  *
  * <p>Arguments: {@code --scenario FILE --tables DIR --identity FILE --ticks N --out NEW_DIR
- * [--provenance FILE]}. The identity file gives the run's identity fields, copied into the
- * manifest; its schema and observation scope must be a supported pair, and its content version and
- * content hash must be those of the tables. The provenance file is the caller's record of the
- * source tree that was built, copied into the manifest as given.
+ * [--provenance FILE] [--scenario-shape replay|generated]}. The identity file gives the run's
+ * identity fields, copied into the manifest; its schema and observation scope must be a supported
+ * pair, and its content version and content hash must be those of the tables. The provenance file
+ * is the caller's record of the source tree that was built, copied into the manifest as given. The
+ * scenario shape names the kind of scenario ({@link ScenarioShape}): a replay, the default, or a
+ * generated case; the manifest's adapter records it.
  */
 public final class ReplaySmokeRun {
 
@@ -173,6 +175,23 @@ public final class ReplaySmokeRun {
    */
   public static InProcessRun runInProcess(
       SmokeSchema schema, int ticks, byte[] scenarioBytes, GameTables tables) {
+    return runInProcess(schema, ticks, scenarioBytes, tables, ScenarioShape.REPLAY);
+  }
+
+  /**
+   * Runs a scenario of a named kind in this process, as {@link #runInProcess(SmokeSchema, int,
+   * byte[], GameTables)} runs a replay.
+   *
+   * @param schema the observation schema
+   * @param ticks the horizon: exact under the exact-horizon schema, the most under the
+   *     terminal-aware one
+   * @param scenarioBytes the scenario file's bytes
+   * @param tables the game tables
+   * @param shape the kind of scenario: a replay or a generated case
+   * @return the run
+   */
+  public static InProcessRun runInProcess(
+      SmokeSchema schema, int ticks, byte[] scenarioBytes, GameTables tables, ScenarioShape shape) {
     Map<String, Object> manifest = new LinkedHashMap<>();
     manifest.put("engine", "java");
     manifest.put("status", "invalid");
@@ -182,7 +201,8 @@ public final class ReplaySmokeRun {
     byte[][] trace = {new byte[0]};
     attempt(
         () -> {
-          trace[0] = simulate(schema, ticks, MAPPER.readTree(scenarioBytes), tables, manifest);
+          trace[0] =
+              simulate(schema, ticks, MAPPER.readTree(scenarioBytes), tables, shape, manifest);
           return COMPLETED;
         },
         manifest);
@@ -198,6 +218,8 @@ public final class ReplaySmokeRun {
         SmokeSchema.of(
             identity.path("schema").asText(), identity.path("observation_scope").asText());
     int ticks = Integer.parseInt(required(options, "ticks"));
+    ScenarioShape shape =
+        ScenarioShape.of(options.getOrDefault("scenario-shape", ScenarioShape.REPLAY.id()));
     if (ticks < 0) {
       throw new IllegalArgumentException("a negative horizon: " + ticks);
     }
@@ -230,7 +252,7 @@ public final class ReplaySmokeRun {
               + ", not the identity's");
     }
 
-    byte[] bytes = simulate(schema, ticks, scenario, tables, manifest);
+    byte[] bytes = simulate(schema, ticks, scenario, tables, shape, manifest);
     Files.write(out.resolve("observations.jsonl"), bytes);
     Files.writeString(out.resolve("COMPLETE"), manifest.get("trace_sha256") + "\n");
     return COMPLETED;
@@ -238,8 +260,9 @@ public final class ReplaySmokeRun {
 
   /**
    * Builds the battle a scenario gives, steps it and observes it, recording the run's fields in the
-   * manifest (the adapter, the steps executed and why they ended, the observation count, the trace
-   * digest, the plays and ability commands that ran, and the completed status).
+   * manifest (the adapter and the scenario shape it read, the steps executed and why they ended,
+   * the observation count, the trace digest, the plays and ability commands that ran, and the
+   * completed status).
    *
    * @return the trace: one JSON line per observation
    */
@@ -248,12 +271,14 @@ public final class ReplaySmokeRun {
       int ticks,
       JsonNode scenario,
       GameTables tables,
+      ScenarioShape shape,
       Map<String, Object> manifest)
       throws IOException {
-    ReplayScenario translator = new ReplayScenario(tables);
+    ReplayScenario translator = new ReplayScenario(tables, shape);
     Map<String, Object> adapter = new LinkedHashMap<>();
     adapter.put("class", ReplaySmokeRun.class.getName());
     adapter.put("simulator", Standard1v1Battle.class.getName());
+    adapter.put("scenario_shape", shape.id());
     adapter.put("scenario_mapping", translator.mapping());
     manifest.put("adapter", adapter);
     ScenarioPlan plan = translator.translate(scenario);

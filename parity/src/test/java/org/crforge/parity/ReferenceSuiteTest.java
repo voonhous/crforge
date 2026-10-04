@@ -149,6 +149,45 @@ class ReferenceSuiteTest {
         .isEqualTo(outcome("mismatch").put("first_divergent_tick", 230).put("path", "$.rng"));
   }
 
+  @Test
+  void aCorpusOfGeneratedCasesNamesTheirShapeAndItsCasesAreReadAsSuch() throws IOException {
+    GameTables tables = Version16Tables.load();
+    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnightOfVersion16());
+    ReplaySmokeRun.InProcessRun recorded =
+        ReplaySmokeRun.runInProcess(SmokeSchema.V1, 260, scenario, tables, ScenarioShape.GENERATED);
+    writeReference("knight", scenario, recorded.trace());
+    Files.createDirectories(folder.resolve("corpora"));
+    // One listing names its cases generated, the other names no shape: its cases are replays.
+    for (String name : List.of("generated", "replays")) {
+      ObjectNode corpus = MAPPER.createObjectNode();
+      corpus.put("corpus", name);
+      corpus.put("content_version", tables.version());
+      corpus.put("content_sha", tables.contentSha());
+      if (name.equals("generated")) {
+        corpus.put("scenario_shape", "generated");
+      }
+      corpus
+          .withArray("cases")
+          .addObject()
+          .put("id", "knight")
+          .put("reference", "battles/knight")
+          .put("scenario_sha256", sha256(scenario))
+          .put("ticks", 260);
+      MAPPER.writeValue(folder.resolve("corpora/" + name + ".json").toFile(), corpus);
+    }
+
+    References references = ReferenceSuite.load(folder);
+    List<CaseResult> results = ReferenceSuite.runAll(references.cases(), tables, 1);
+
+    assertThat(references.cases())
+        .extracting(ReferenceSuite.Case::shape)
+        .containsExactly(ScenarioShape.GENERATED, ScenarioShape.REPLAY);
+    assertThat(results.get(0).expectation()).isEqualTo(outcome("diagnostic_match"));
+    assertThat(results.get(1).outcome()).isEqualTo("invalid");
+    assertThat(results.get(1).expectation().path("error").asText())
+        .contains("the scenario has no srq");
+  }
+
   /** Writes a reference battle folder: its scenario, its minimal manifest and its packed trace. */
   private void writeReference(String name, byte[] scenario, byte[] trace) throws IOException {
     Path battle = Files.createDirectories(folder.resolve("battles").resolve(name));

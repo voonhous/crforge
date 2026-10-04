@@ -138,6 +138,73 @@ class ReplayScenarioVersion16Test {
   }
 
   @Test
+  void readsACaseGeneratedForTheVersionByTheFieldsOfItsGeneratedCases() {
+    ReplayScenario mapping = new ReplayScenario(tables, ScenarioShape.GENERATED);
+    ObjectNode scenario = Scenarios.generatedKnightOfVersion16();
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+
+    // No player data gives a king level: each king stands at level 1, the princess towers at
+    // level index 0 at level 1.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1));
+    assertThat(plan.plays())
+        .containsExactly(
+            new ScenarioPlan.Play(
+                0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000, null, null));
+    assertThat(plan.accounts()).containsExactly(new int[] {0, 1}, new int[] {0, 2});
+    assertThat(plan.playerDataChoices()).containsExactly(1, 1);
+    assertThat(mapping.mapping())
+        .containsEntry("arena", "pinned: 54000001")
+        .containsEntry("expLevel", "pinned: 1")
+        .containsEntry("evt", "pinned: []")
+        .doesNotContainKeys("srq", "srs", "cardlvlmin", "battle.hbd[i].kt");
+    assertThat(mapping.mapping().get("cmd[i].ct")).startsWith("consumed: 153, a card play, or 189");
+  }
+
+  @Test
+  void refusesACaseGeneratedForTheVersionReadAsAReplay() {
+    // A replay of the version must hold the request lists: a generated case is read as one only
+    // when the caller names its shape.
+    assertThat(new ReplayScenario(tables).survey(Scenarios.generatedKnightOfVersion16()))
+        .containsExactly(
+            new ReplayScenario.Refusal("the scenario has no srq", "the reading stops here"));
+  }
+
+  @Test
+  void refusesInAGeneratedCaseTheFieldsOnlyTheVersionsReplaysWrite() {
+    ObjectNode scenario = Scenarios.generatedKnightOfVersion16();
+    scenario.putArray("srq");
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("seb", false);
+    battle.put("arena", 54000144);
+    ((ObjectNode) battle.path("hbd").get(0)).put("kt", 1);
+
+    List<ReplayScenario.Refusal> refusals =
+        new ReplayScenario(tables, ScenarioShape.GENERATED).survey(scenario);
+
+    assertThat(refusals)
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly(
+            "$.srq",
+            "battle.seb",
+            "arena=54000144",
+            "battle.hbd={\"em\":{\"oe\":[],\"de\":[]},\"kt\":1}");
+  }
+
+  @Test
+  void refusesInAGeneratedCaseTheCommandTypesOfVersion14_593_1() {
+    ObjectNode scenario = Scenarios.generatedKnightOfVersion16();
+    ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
+
+    assertThat(new ReplayScenario(tables, ScenarioShape.GENERATED).survey(scenario))
+        .containsExactly(new ReplayScenario.Refusal("the command type 124", "cmd[0].ct"));
+  }
+
+  @Test
   void refusesAFieldOnlyVersion16_402_18sReplaysWriteInAReplayOfVersion14_593_1() {
     // The 14.593.1 tables read a replay by 14.593.1's fields: kt is a field with no mapping there.
     GameTables shared = GameTables.loadConfigured();

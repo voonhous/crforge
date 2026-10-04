@@ -152,6 +152,17 @@ final class Scenarios {
     return scenario;
   }
 
+  /**
+   * The {@link #knight()} battle as a case generated for data version 16.402.18 writes it: the
+   * 14.593.1 replay shape with the play's command type 153. It has no request lists, no header
+   * switches of that version and no king levels in its player data, and keeps 14.593.1's arena.
+   */
+  static ObjectNode generatedKnightOfVersion16() {
+    ObjectNode scenario = knight();
+    ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 153);
+    return scenario;
+  }
+
   /** A replay event of a side's account at a tick, with one parameter; its type is put after. */
   private static ObjectNode event(int parameter, int accountLo, int tick) {
     ObjectNode event = JSON.objectNode();

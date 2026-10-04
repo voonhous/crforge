@@ -60,6 +60,11 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * is read by 14.593.1's. In 16.402.18's replays each side's king level is its player data's {@code
  * kt}, and the players' profiles, the cards' cosmetics and the replay's events are carried.
  *
+ * <p>The caller names the kind of scenario ({@link ScenarioShape}). A replay is read as above. A
+ * generated case is read by the fields of the version's generated cases ({@link
+ * ReplayFormat#generated}), which for 16.402.18 are 14.593.1's, with the version's command types; a
+ * version whose generated cases' fields are not established has the whole case refused.
+ *
  * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
  * scenario the same way and lists every refusal it meets instead: each field and pinned value it
  * refuses, and each command it cannot read, going on to the next. A refusal that leaves nothing to
@@ -175,9 +180,13 @@ public final class ReplayScenario {
 
   /**
    * The fields of the tables' data version's replays that differ from version to version ({@link
-   * ReplayFormat#orShared}).
+   * ReplayFormat#orShared}), or of its generated cases ({@link ReplayFormat#generated}); null for a
+   * generated case of a version whose generated cases' fields are not established.
    */
   private final ReplayFormat format;
+
+  /** The kind of scenario read: a replay or a generated case. */
+  private final ScenarioShape shape;
 
   /**
    * Each side's king level, counted from 1, from its player data, in a format that gives it there;
@@ -202,18 +211,45 @@ public final class ReplayScenario {
    * @param tables the game tables the ids are resolved against
    */
   public ReplayScenario(GameTables tables) {
-    this(tables, CommandTypes.of(tables.version()).orElse(null));
+    this(tables, ScenarioShape.REPLAY);
+  }
+
+  /**
+   * A translator of a kind of scenario, with the command types of the tables' data version ({@link
+   * CommandTypes#of}).
+   *
+   * @param tables the game tables the ids are resolved against
+   * @param shape the kind of scenario read, as the caller names it
+   */
+  public ReplayScenario(GameTables tables, ScenarioShape shape) {
+    this(tables, CommandTypes.of(tables.version()).orElse(null), shape);
+  }
+
+  /**
+   * A translator of replays.
+   *
+   * @param tables the game tables the ids are resolved against
+   * @param commandTypes the command types the commands are read by, or null for none established
+   */
+  public ReplayScenario(GameTables tables, CommandTypes commandTypes) {
+    this(tables, commandTypes, ScenarioShape.REPLAY);
   }
 
   /**
    * @param tables the game tables the ids are resolved against
    * @param commandTypes the command types the commands are read by, or null for none established
+   * @param shape the kind of scenario read: a replay is read by the fields of the tables' data
+   *     version's replays, a generated case by those of its generated cases
    */
-  public ReplayScenario(GameTables tables, CommandTypes commandTypes) {
+  public ReplayScenario(GameTables tables, CommandTypes commandTypes, ScenarioShape shape) {
     this.tables = tables;
     this.records = new BattleRecords(tables);
     this.commandTypes = commandTypes;
-    this.format = ReplayFormat.orShared(tables.version());
+    this.shape = shape;
+    this.format =
+        shape == ScenarioShape.GENERATED
+            ? ReplayFormat.generated(tables.version()).orElse(null)
+            : ReplayFormat.orShared(tables.version());
   }
 
   /** What became of each scenario field, in the order they were read. */
@@ -229,6 +265,14 @@ public final class ReplayScenario {
    * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
    */
   public ScenarioPlan translate(JsonNode scenario) {
+    if (format == null) {
+      // Nothing to read the scenario by: this ends a survey too.
+      throw new UnsupportedScenarioException(
+          "a generated case of data version "
+              + tables.version()
+              + ", whose generated cases' fields no recorded battle has established",
+          "the scenario shape " + shape.id());
+    }
     int seed = required(scenario, "rndSeed").asInt();
     mapping.put("rndSeed", "consumed: BattleWorld.seed, the battle stream's seed");
     mapping.put("time", "carried: the replay's wall clock, no battle input");

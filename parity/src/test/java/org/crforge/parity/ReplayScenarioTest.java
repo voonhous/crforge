@@ -470,7 +470,8 @@ class ReplayScenarioTest {
   @Test
   void refusesEveryCommandOfADataVersionWhoseCommandTypesAreNotEstablished() {
     // The tables' own version has its command types; none given is a version without them.
-    assertThatThrownBy(() -> new ReplayScenario(tables, null).translate(Scenarios.knight()))
+    assertThatThrownBy(
+            () -> new ReplayScenario(tables, (CommandTypes) null).translate(Scenarios.knight()))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessage(
             "the command type 124 of data version "
