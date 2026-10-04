@@ -18,6 +18,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.Clone;
+import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
@@ -410,8 +411,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The character's answers to its movement pass's requests: a state change goes to its state
-   * setter at once, and a completed charge is told to the world's observers. The action a completed
-   * charge runs is refused with its row.
+   * setter at once, and a completed charge is told to the world's observers and schedules the
+   * action the row runs on it.
    */
   private final MovementRequests movementRequests =
       new MovementRequests() {
@@ -425,6 +426,7 @@ public class CharacterEntity extends WorldEntity {
         @Override
         public void chargeCompleted() {
           world.chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
+          runChargeAction();
         }
 
         @Override
@@ -1752,6 +1754,20 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   public void launched(int aimX, int aimY) {
+    recoil(aimX, aimY);
+  }
+
+  /**
+   * The unit's recoil by its row's attack pushback, away from a point: after each projectile it
+   * launches, away from the projectile's aim, and after a direct hit, away from where its reference
+   * stood. The same request either way: the gates lifted, as an attack's pushback, the whole
+   * distance, and refused while a pushback is still in flight. A row without an attack pushback
+   * does not recoil.
+   *
+   * @param aimX the point it recoils from, along the width
+   * @param aimY the point it recoils from, along the length
+   */
+  void recoil(int aimX, int aimY) {
     int distance = getData().attackPushBack();
     if (distance < 1) {
       return;
@@ -1921,10 +1937,10 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * A guard's push: asked only of a character whose movement component is on and that is not
-   * waiting to deploy; refused while a pushback is in flight unless the longer one is to be kept;
-   * otherwise the pushback setter itself, every gate the request has skipped, so neither the row's
-   * ignoring of pushback nor a flag or state stops it.
+   * A guard's push, or a carried push's: asked only of a character whose movement component is on
+   * and that is not waiting to deploy; refused while a pushback is in flight unless the longer one
+   * is to be kept; otherwise the pushback setter itself, every gate the request has skipped, so
+   * neither the row's ignoring of pushback nor a flag or state stops it.
    *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
@@ -2041,6 +2057,46 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /** Starts a carried push's run on the character. A clone, a rider and a carrier are refused. */
+  @Override
+  public ActionInstance damagingPushBack(DamagingPushBack action, int phase) {
+    refuseRun(action.name());
+    return new DamagingPushBackRun(action, this);
+  }
+
+  /** The row the character's completed charge runs, built once; null before the first. */
+  private BattleAction chargeActionRow;
+
+  /**
+   * Schedules the row's action for a completed charge on the character, the character its own
+   * cause, queued as the row's own delay asks and never started at once: each time the charge
+   * progress reaches complete from below. Nothing for a row without one.
+   */
+  private void runChargeAction() {
+    String name = getData().onStartChargingAction();
+    if (name == null) {
+      return;
+    }
+    if (chargeActionRow == null) {
+      chargeActionRow = world.getActions().build(name, world.binding(this));
+    }
+    actionHolder().schedule(chargeActionRow, ActionHolder.OWN_DELAY, false, actionHolder());
+  }
+
+  /**
+   * A damage at the character's level, as its own row's rarity scales a card's damage.
+   *
+   * @param base the damage at the first level
+   */
+  int damageAtLevel(int base) {
+    return LevelScaling.scale(
+        ScalingGlobals.standard(),
+        base,
+        getPackedLevel(),
+        ScalingMode.CARD_DAMAGE,
+        getData().rarity());
   }
 
   /** Starts a barrage's run on the character. A clone, a rider and a carrier are refused. */

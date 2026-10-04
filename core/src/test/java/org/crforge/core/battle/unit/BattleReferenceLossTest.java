@@ -72,8 +72,8 @@ class BattleReferenceLossTest {
           "Wallbreaker_EV1",
           "Firecracker_EV1");
 
-  /** The character rows the records build, of the 387 shipped: all but ChefTowerKing. */
-  private static final int BUILT = 386;
+  /** The character rows the records build: all 387 shipped. */
+  private static final int BUILT = 387;
 
   /** Every character row the records build; a row they refuse is left out. */
   private static List<UnitData> characters() {

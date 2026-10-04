@@ -15,6 +15,7 @@ import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
+import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.EntityFlags;
@@ -555,8 +556,8 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a buff's start and remove actions are read when they name an action row, and listed as not"
-          + " modelled when written inline")
+      "a buff's start and remove actions are read when they name an action row or are an inline"
+          + " group of named rows, and listed as not modelled when written inline otherwise")
   void aBuffsHooksAreReadByName() {
     BuffData invisibility = records.buff("Ghost_EV1_Invisibility");
     assertThat(invisibility.onStartAction()).isEqualTo("Ghost_EV1_Invisible_Group");
@@ -564,9 +565,11 @@ class BattleRecordsTest {
     assertThat(invisibility.unmodelledColumns()).isEmpty();
     assertThat(records.buff("Rage").onStartAction()).isNull();
 
+    // The Royal Chef's level-up buff writes its start action inline, as a group of named rows,
+    // which is the actions table's row named after the buff and the column.
     BuffData chef = records.buff("ChefTower_increase_level_buff");
-    assertThat(chef.onStartAction()).isNull();
-    assertThat(chef.unmodelledColumns()).contains("OnStartAction");
+    assertThat(chef.onStartAction()).isEqualTo("ChefTower_increase_level_buff_OnStartAction");
+    assertThat(chef.unmodelledColumns()).isEmpty();
   }
 
   @Test
@@ -750,8 +753,11 @@ class BattleRecordsTest {
     assertThat(records.unit("Mortar").minimumRange()).isEqualTo(2900);
     assertThat(records.unit("Cannon").spawnCharacter()).isNull();
     assertThat(records.unit("DarkPrince").unmodelledColumns()).isEmpty();
-    assertThat(records.unit("Ram_crazy_1").unmodelledColumns())
-        .containsExactly("OnStartChargingAction");
+    // The evolved Battle Ram's completed charge runs its push, which is modelled.
+    assertThat(records.unit("BattleRam_EV1").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("BattleRam_EV1").onStartChargingAction())
+        .isEqualTo("BattleRam_EV1_PushBack");
+    assertThat(records.unit("BattleRam").onStartChargingAction()).isNull();
     assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
     // The evolved Wizard runs an action as its shield breaks; a push as it breaks is refused.
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).isEmpty();
@@ -1035,12 +1041,43 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
-  void anInlineHookIsRefused() {
-    assertThatThrownBy(() -> records.unit("DaggerDuchess"))
+  void anInlineHookIsRefused(@TempDir Path folder) throws IOException {
+    // Every shipped row's inline starting action is now built, so the Knight is given one the
+    // battle does not read: a group whose sub-action is itself written inline.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows ->
+                GameData.columns(rows, "Knight")
+                    .putObject("OnStartingAction")
+                    .put("ClassType", "ActionGroup")
+                    .putArray("SubActions")
+                    .addObject()
+                    .put("ClassType", "ActionBerserk"));
+
+    assertThatThrownBy(() -> new BattleRecords(tables).unit("Knight"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DaggerDuchess")
+        .hasMessageContaining("Knight")
         .hasMessageContaining("OnStartingAction")
-        .hasMessageContaining("ActionBurstAttack");
+        .hasMessageContaining("ActionGroup");
+  }
+
+  @Test
+  @DisplayName(
+      "the Dagger Duchess's inline charge counter is its row's action, and its entries pace")
+  void theDaggerDuchessStartsItsChargeCounterAndPacesItsEntries() {
+    UnitData duchess = records.unit("DaggerDuchess");
+
+    assertThat(duchess.onStartingAction()).isEqualTo("DaggerDuchess_OnStartingAction");
+    assertThat(duchess.attackSequence().mode()).isEqualTo(AttackSequence.MODE_NONE);
+    assertThat(duchess.attackSequence().order()).containsExactly(0, 1, 2, 3);
+    assertThat(duchess.attackSequence().entries())
+        .extracting(AttackSequence.Entry::hitSpeedMultiplier)
+        .containsExactly(100, 100, 70, 90);
+    assertThat(duchess.attackSequence().entries())
+        .extracting(entry -> entry.projectile().name())
+        .containsOnly("TowerKnifeThrowerProjectile");
   }
 
   @Test
