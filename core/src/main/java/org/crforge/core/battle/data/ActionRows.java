@@ -25,6 +25,7 @@ import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.CardDeployListener;
+import org.crforge.core.battle.action.ChainProjectileAttack;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.ChefCooking;
@@ -720,6 +721,20 @@ public final class ActionRows {
                   "CrownDamageDamageMultiplier",
                   "DamageList",
                   "OnHitAction")),
+          // The evolved Electro Dragon's chain: its hops' projectiles, the search's reach and
+          // filters, the repeat rules and the limits on hops, remembered targets, time and delays.
+          Map.entry(
+              "ActionChainProjectileAttack",
+              Set.of(
+                  "Projectiles",
+                  "ChainRange",
+                  "ChainTargets",
+                  "MaxChainLength",
+                  "RepeatTargets",
+                  "DeprioritizeRepeatTargets",
+                  "MaximumTargetsToRememberForRepeatChecks",
+                  "MaxTime",
+                  "ChainDelays")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -1269,6 +1284,7 @@ public final class ActionRows {
                       .damageList(List.copyOf(ints(f.get("DamageList"))))
                       .build());
             }
+            case "ActionChainProjectileAttack" -> chainProjectileAttack(name, shared, f);
             case "ActionBerserk" -> {
               // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained
               // action on such a run is held by no reference.
@@ -1390,6 +1406,35 @@ public final class ActionRows {
           .pausedIf(expression(f.get("ActionPausedIfTrue")))
           .abortIfInstigatorDies(f.path("AbortIfInstigatorDies").asBoolean(true))
           .build();
+    }
+
+    /**
+     * A chain projectile attack's columns, each with the default the game's loader gives a column
+     * the row leaves out. A row without a projectile or a filter is refused: its hops would index
+     * an empty list.
+     */
+    private ChainProjectileAttack chainProjectileAttack(String name, ActionRow shared, JsonNode f) {
+      List<String> projectiles = new ArrayList<>();
+      f.path("Projectiles").forEach(value -> projectiles.add(value.asText()));
+      List<GameObjectFilter> filters = new ArrayList<>();
+      f.path("ChainTargets").forEach(value -> filters.add(records.filter(value.asText())));
+      if (projectiles.isEmpty() || filters.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " chains with no projectile or no filter, which is not modelled");
+      }
+      return new ChainProjectileAttack(
+          shared,
+          ChainProjectileAttack.Columns.builder()
+              .projectiles(projectiles)
+              .chainRange(integer(f, "ChainRange"))
+              .chainTargets(filters)
+              .maxChainLength(f.path("MaxChainLength").asInt(-1))
+              .repeatTargets(f.path("RepeatTargets").asBoolean(true))
+              .deprioritizeRepeatTargets(f.path("DeprioritizeRepeatTargets").asBoolean(false))
+              .maxRemembered(f.path("MaximumTargetsToRememberForRepeatChecks").asInt(-1))
+              .maxTimeMs(f.path("MaxTime").asInt(-1))
+              .chainDelaysMs(ints(f.get("ChainDelays")))
+              .build());
     }
 
     /**

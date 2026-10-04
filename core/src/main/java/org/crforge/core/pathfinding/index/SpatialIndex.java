@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
  * The per-tick bucket index that answers "which entities are near this point".
@@ -264,6 +265,59 @@ public final class SpatialIndex {
           }
           if (accepts.test(entity)) {
             result.add(entity);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Answers the entities a centre query accepts: the buckets over the circle, x outer and y inner,
+   * each bucket in insertion order, each entity at most once. An entity is tested by the filter
+   * first, then accepted when its centre, where it stands now, lies strictly within the radius: its
+   * squared distance from the point, saturating, below the radius squared. No collision radius is
+   * added and a building is tested like anything else. Only an accepted entity is marked, so a
+   * rejected one is tested again in its next bucket. Answers null when no result list is free.
+   *
+   * @param x the circle's centre along the width
+   * @param y the circle's centre along the length
+   * @param radius the circle's radius
+   * @param passes the filter
+   */
+  public List<GridEntity> centreQuery(int x, int y, int radius, Predicate<GridEntity> passes) {
+    if (freeResultLists <= 0) {
+      return null;
+    }
+    freeResultLists--;
+    List<GridEntity> result = new ArrayList<>();
+    int xLow = (x - radius) >> BUCKET_SHIFT;
+    int xHigh = (x + radius) >> BUCKET_SHIFT;
+    if (xLow > xHigh) {
+      return result;
+    }
+    int yLow = (y - radius) >> BUCKET_SHIFT;
+    int yHigh = (y + radius) >> BUCKET_SHIFT;
+    if (yLow > yHigh) {
+      return result;
+    }
+    int reach = radius * radius;
+    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (int cx = xLow; cx <= xHigh; cx++) {
+      if (cx < 0 || cx >= width) {
+        continue;
+      }
+      for (int cy = yLow; cy <= yHigh; cy++) {
+        if (cy < 0 || cy >= high) {
+          continue;
+        }
+        for (GridEntity entity : buckets.get(width * cy + cx)) {
+          if (seen.contains(entity) || !passes.test(entity)) {
+            continue;
+          }
+          if (FixedMath.squaredDistance(entity.getX(), entity.getY(), x, y) < reach) {
+            result.add(entity);
+            seen.add(entity);
           }
         }
       }
