@@ -8,6 +8,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -30,6 +31,7 @@ import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
@@ -54,6 +56,7 @@ import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.spawn.SpawnPassable;
+import org.crforge.core.battle.spawn.SpawnPerform;
 import org.crforge.core.battle.spawn.SpawnPlacement;
 import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.fidelity.Fidelity;
@@ -380,6 +383,9 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** A step its buffs would scale, to tell whether any buff changes an entity's hit speed. */
+  private static final int HIT_SPEED_PROBE_MS = 1000;
+
   /**
    * What an action row built for an arena entity reads from it: its expressions compiled for it and
    * evaluated afresh each time, the battle's variable keys, its tag word and its spawn rate.
@@ -410,6 +416,11 @@ public class BattleWorld implements HolderPasses {
       @Override
       public IntSupplier spawnRate() {
         return () -> owner.getBuffs().spawnRate();
+      }
+
+      @Override
+      public BooleanSupplier hitSpeedBuffed() {
+        return () -> owner.getBuffs().hitSpeed(HIT_SPEED_PROBE_MS) != HIT_SPEED_PROBE_MS;
       }
     };
   }
@@ -3996,10 +4007,10 @@ public class BattleWorld implements HolderPasses {
    * which is presentation.
    *
    * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
-   * pushback, a ring around a character source, which reads its own spawn columns, a unit that
-   * paths to its spawn point, and a unit with a starting action of its own, which a child starts as
-   * it joins the live list. A child without a speed stands where it is made, and one without hit
-   * points is taken like any other.
+   * pushback, a ring around a character source, which reads its own spawn columns, and a unit that
+   * paths to its spawn point. A child without a speed stands where it is made, and one without hit
+   * points is taken like any other. A child with a starting action of its own starts it as the
+   * cleanup's fold admits it: the action is scheduled then, outside every pending pass.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
@@ -4039,6 +4050,9 @@ public class BattleWorld implements HolderPasses {
       if (arguments.deployTimeMs() != 0) {
         child.deployFor(arguments.deployTimeMs());
       }
+      // The child is registered now and joins the live list at the next cleanup's fold, which
+      // starts it: its row's starting action is scheduled then.
+      child.startOnAdmission();
       holder.addRegistered(child);
       if (arguments.deathSpawn() && DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         child.startSpawnImmunity();
@@ -4567,6 +4581,41 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The building placement a spawn row that validates its point as a building's asks for: the point
+   * clamped into the arena, kept when no building of the live list overlaps the child's circle
+   * there and its cell can be stood on. A blocked point is refused: the search over the rows toward
+   * or away from the side that would follow is not modelled. An owner that is itself a building,
+   * which the overlap query may leave out, is refused too.
+   *
+   * @param owner the object whose action spawns the child
+   * @param child the row of the child
+   * @return the search
+   */
+  SpawnPerform.PlacementSearch buildingPlacement(WorldEntity owner, UnitData child) {
+    if (owner.getTargetView().building()) {
+      throw new UnsupportedOperationException(
+          owner.name()
+              + " places a building it spawns while it is a building itself, which the overlap"
+              + " query may leave out; not established");
+    }
+    return (x, y) -> {
+      int clampedX = Math.max(0, Math.min(x, tileMap.width() * TileMap.CELL_UNITS - 1));
+      int clampedY = Math.max(0, Math.min(y, tileMap.height() * TileMap.CELL_UNITS - 1));
+      if (!buildingOver(clampedX, clampedY, child.collisionRadius())
+          && CellTests.cellBlocked(grid, clampedX, clampedY) == 0) {
+        return new int[] {clampedX, clampedY};
+      }
+      throw new UnsupportedOperationException(
+          child.name()
+              + " is placed as a building at ("
+              + x
+              + ", "
+              + y
+              + "), which is blocked; the search for a free row is not modelled");
+    };
+  }
+
+  /**
    * Whether a building of the live list has a circle that overlaps a circle: its collision radius
    * and the given one together reach further than its centre lies from the point. The squares are
    * taken in 32 bits and compared unsigned; a square distance of the largest integer is passed by.
@@ -4625,16 +4674,76 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Hands a champion a spawn made to its side's champion controllers. The observers are told, and
-   * nothing about the unit changes: no ability is modelled, so no controller acts on it.
+   * Hands a champion a spawn made to its side's champion slots: in a match the king's slot that
+   * follows its row follows its play, or a slot takes it ({@link TowerEntity#championSpawned}). The
+   * observers are told; nothing about the unit itself changes. A battle outside a match has no
+   * slots, and only the observers hear of it.
    *
    * @param source the object the champion was spawned from
    * @param child the champion
    */
   void handOverChampion(SpawnHost source, SpawnHost child) {
     CharacterEntity champion = (CharacterEntity) child;
+    TowerEntity king = kingTower(champion.side());
+    if (king != null && king.championSlot(1) != null) {
+      king.championSpawned(champion);
+    }
     for (WorldObserver observer : observers) {
       observer.championHandedOver(tick, source, champion);
+    }
+  }
+
+  /**
+   * Whether a champion slot of a character's side follows it: the character is no clone and the
+   * first or the second slot follows its row and its play's deploy count. Its hit points and
+   * whether the slot's last working out listed it are not asked. Outside a match no slot exists and
+   * no character is followed.
+   *
+   * @param unit the character
+   */
+  boolean followedChampion(CharacterEntity unit) {
+    if (unit.isClone()) {
+      return false;
+    }
+    TowerEntity king = kingTower(unit.side());
+    if (king == null || king.championSlot(1) == null) {
+      return false;
+    }
+    for (int slot = 1; slot <= 2; slot++) {
+      ChampionController controller = king.championSlot(slot);
+      UnitData followed = controller.getChampion();
+      if (followed != null
+          && followed.name().equals(unit.getData().name())
+          && controller.getDeployIndex() == unit.getDeployIndex()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Writes a button state override, and refills the charges when the row asks, into the slot of the
+   * owner's side that follows the row's champion; nothing when no slot follows it. The owner
+   * decides only the side.
+   *
+   * @param owner the object the row runs on
+   * @param action the row
+   */
+  void overrideAbilityButton(WorldEntity owner, OverrideAbilityButtonState action) {
+    TowerEntity king = kingTower(owner.side());
+    if (king == null || king.championSlot(1) == null) {
+      throw new UnsupportedOperationException(
+          action.name() + " outside a match, which has no champion slots");
+    }
+    ChampionController slot = king.championSlotFollowing(action.getChampion());
+    if (slot == null) {
+      return;
+    }
+    if (action.getState() != 0) {
+      slot.override(action.getState());
+    }
+    if (action.isResetCharges()) {
+      slot.refillCharges();
     }
   }
 
@@ -6109,8 +6218,6 @@ public class BattleWorld implements HolderPasses {
       refused = "a ring around a character, which reads the character's own spawn columns";
     } else if (data.spawnPathfindSpeed() != 0) {
       refused = "a unit that paths to its spawn point";
-    } else if (data.onStartingAction() != null) {
-      refused = "a child with a starting action, started as it joins the live list";
     } else if (data.groupMaxSize() > 0
         && !(source instanceof CharacterEntity character
             && !character.getData().name().equals(data.name()))) {

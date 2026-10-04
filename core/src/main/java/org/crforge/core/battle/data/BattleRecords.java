@@ -263,11 +263,19 @@ public final class BattleRecords {
       List.of("SpawnPushback", "SpawnConstPriority");
 
   /**
-   * The tags a unit's own row may set: those of the Phoenix's egg, each read where the battle reads
-   * the tag word. A row that sets any other is refused as the unit is created.
+   * The tags a unit's own row may set, each read where the battle reads the tag word: those of the
+   * Phoenix's egg, and those of the Goblins hero's banner - no damage taken (the damage entry), no
+   * contact (the push pass and its gate, and a filter's excluded tags) and no targeting (the
+   * targeting and its validator). A row that sets any other is refused as the unit is created.
    */
   private static final Set<String> MODELLED_ROW_TAGS =
-      Set.of("NO_GIANTBUFFER_CHEF_ENCHANTMENT", "AVOIDANCE_AS_OBSTACLE", "NO_MOVE_ALLOW_ATTRACT");
+      Set.of(
+          "NO_GIANTBUFFER_CHEF_ENCHANTMENT",
+          "AVOIDANCE_AS_OBSTACLE",
+          "NO_MOVE_ALLOW_ATTRACT",
+          "NO_DAMAGE",
+          "NO_CHECKCOLLISIONS",
+          "UNTARGETABLE");
 
   /**
    * The tags a buff may set: the one the push pass reads, which keeps the carrier's enemies from
@@ -1875,6 +1883,24 @@ public final class BattleRecords {
         listed,
         row.bool("CharactersOffsetsXMirrored"),
         row.bool("IsAGroup"));
+  }
+
+  /**
+   * The champion a champion slot finds for a card: its linked champion character when that is a
+   * champion, which only a hero form names - the Goblins' names the banner its last goblin leaves -
+   * else the champion the card summons ({@link DeployCard#champion()}); null for none.
+   *
+   * @param name the card row's name
+   */
+  public UnitData cardChampion(String name) {
+    GameRow row = cardRow(name);
+    if (set(row, "LinkedChampionCharacter")) {
+      UnitData linked = unit(row.string("LinkedChampionCharacter"));
+      if (linked.champion()) {
+        return linked;
+      }
+    }
+    return card(name).champion();
   }
 
   /**
