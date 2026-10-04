@@ -187,6 +187,38 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 
 The number keys only *select* a card; playing always goes through a left click on the arena.
 
+### Replays
+
+`./gradlew :desktop:run --args="--replay <file>"` (in the IDE, run `DesktopLauncher` with the program arguments `--replay <file>`) opens the replay viewer on a replay file instead of a Ladder battle. The tables are chosen as above, so `--args="--data-version 16.402.18 --replay <file>"` reads it against that version. A replay file dropped on the debug visualizer's or the viewer's window opens the same way, read against the version on screen.
+
+The replay is read against the chosen game tables through the parity module's replay mapping (`org.crforge.parity.ReplayScenario`), the same mapping the parity runs use, and its battle is built the way they build it (`ReplaySmokeRun.build`): the towers, the seed, the players' data, the Ladder match between the two decks and every command queued at its tick. The command type numbers are the tables' data version's (`org.crforge.parity.CommandTypes`): 124 a card play and 178 an ability command in 14.593.1. A version whose command types are not established has every command refused rather than read by another version's numbers.
+
+At startup the launcher prints the replay's file, its battle header (the game mode and location, both decks by card name, the end tick, the command count by type) and either what the mapping read or every reason the replay is refused:
+
+```
+replay: /path/to/replay.json
+  game mode: Ladder, location PvP_goblin
+  blue deck: ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
+  red deck: ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
+  end tick: 400
+  commands: 2 (type 124 x1, a card play; type 178 x1, an ability command)
+  recorded result: none in the replay
+  mapping: every field read; 1 plays, 1 ability commands
+```
+
+A replay is refused, never played in part, when the mapping refuses any of it (a field it has no mapping for, a pinned value other than the one it was established on, a command type the data version does not map, a play it cannot read), when the battle core refuses the tables, or when it refuses to set up the replay's battle. Each reason is listed once with its count (`the command type 153: cmd[0].ct and 36 more (37 in all)`), and the window shows the same list instead of a battle. Tables the battle core refuses do not stop the launcher here, as they do for a Ladder battle: the refusal is one of the replay's reasons.
+
+A replay that is played shows both sides' hands, elixir, crowns and the clock as the battle holds them. Each play and ability command that runs is noted in the message column (`blue plays ArcherQueen on tick 220 (cmd0)`), and each play's item is checked against the item the battle built for it, as a parity run checks it: a play that ran with another item halts the replay with the reason. The replay stops at its end tick (`endTick`), or when the battle ends by its own rule; one with no end tick plays until the battle ends. The status column then shows why it stopped, the battle's result and the replay's own recorded result; neither the replay files nor the scenario cases record a result, so that line reads "none in the replay".
+
+| Key           | Action                                                   |
+|---------------|----------------------------------------------------------|
+| `SPACE`       | Pause / resume                                           |
+| `R`           | Restart the replay from tick 0                           |
+| `+` / `-`     | Speed up / slow down (0.25x to 8x)                       |
+| `P`, `O`, `D`, `A`, `H`, `G`, `N` | The overlays, as on the debug screen |
+
+Cards are not selected or played from the viewer: the plays are the replay's own.
+
 ### Overlays
 
 `G` paints one square per 500-unit routing cell of the battle's own grid, coloured by what the route search would charge to enter it. The cost depends on the unit asking, so the overlay prices every cell for one fixed unit - a plain ground unit of the blue side, in the moving state, on lane 1, with no water permission - and the class of the cell under the mouse is printed with its cost in the status column. Roads, plain ground, water, blocked cells and cells under a building footprint each get their own colour.

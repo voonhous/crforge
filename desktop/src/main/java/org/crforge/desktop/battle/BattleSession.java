@@ -144,12 +144,26 @@ public final class BattleSession {
    * @param battle the battle, not yet stepped
    */
   public static BattleSession of(Standard1v1Battle battle) {
+    return of(battle, Map.of());
+  }
+
+  /**
+   * A session over a battle built and set up elsewhere, as {@link #of(Standard1v1Battle)}, whose
+   * queued plays are named after their cards: the messages about a play the battle refuses as it
+   * runs name its card, not the play.
+   *
+   * @param battle the battle, not yet stepped
+   * @param playCards the card of each queued play, by the play's name
+   */
+  public static BattleSession of(Standard1v1Battle battle, Map<String, String> playCards) {
     if (battle.getBattle().getTick() != 0) {
       throw new IllegalArgumentException(
           "a session starts before the battle's first step, not on tick "
               + battle.getBattle().getTick());
     }
-    return new BattleSession(battle, null, null);
+    BattleSession session = new BattleSession(battle, null, null);
+    session.playedCards.putAll(playCards);
+    return session;
   }
 
   /** The Ladder match, or null for a golden scenario. */
@@ -324,6 +338,20 @@ public final class BattleSession {
    */
   public void note(String message) {
     say(message);
+  }
+
+  /**
+   * Stops the session stepping, as a step the battle core refuses does, keeping the reason. The one
+   * driving the session halts it when it finds the battle has left what it can follow, such as a
+   * replay whose play ran with an item other than the replay's.
+   *
+   * @param reason why the session stops
+   */
+  public void halt(String reason) {
+    if (halted == null) {
+      halted = reason;
+      say("battle stopped on tick " + tick() + ", " + reason + " (R resets)");
+    }
   }
 
   /** The messages kept, oldest first. */
