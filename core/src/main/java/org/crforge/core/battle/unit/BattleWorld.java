@@ -5222,6 +5222,26 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The cooldown left on the champion slot of the unit's side that follows the unit, in
+   * milliseconds; 0 when no slot follows it (a clone is followed by none).
+   *
+   * @param unit the unit
+   */
+  int championCooldownMs(CharacterEntity unit) {
+    TowerEntity king = kingTower(unit.side());
+    if (king == null || king.championSlot(1) == null) {
+      return 0;
+    }
+    for (int n = 1; n <= 2; n++) {
+      ChampionController slot = king.championSlot(n);
+      if (slot != null && slot.follows(unit)) {
+        return slot.getCooldownMs();
+      }
+    }
+    return 0;
+  }
+
+  /**
    * Writes a button state override, and refills the charges when the row asks, into the slot of the
    * owner's side that follows the row's champion; nothing when no slot follows it. The owner
    * decides only the side.
