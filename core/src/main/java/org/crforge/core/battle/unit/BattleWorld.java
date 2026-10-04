@@ -391,6 +391,13 @@ public class BattleWorld implements HolderPasses {
    */
   public void declare(GameTables tables) {
     for (GameRow row : tables.table("variables").rows()) {
+      // Every variable starts at 0: a row that sets any column, as a start of its own, is refused.
+      for (String column : row.setColumns()) {
+        if (!column.equals("Name")) {
+          throw new UnsupportedOperationException(
+              "the variables row " + row.name() + " sets " + column + ", which is not modelled");
+        }
+      }
       registerVariable(row.name(), row.index());
     }
     for (GameRow row : tables.table("game_tags").rows()) {

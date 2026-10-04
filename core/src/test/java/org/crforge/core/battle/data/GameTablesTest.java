@@ -49,6 +49,55 @@ class GameTablesTest {
   }
 
   @Test
+  @DisplayName(
+      "a value of a shape the reader does not read is refused, naming the row, column and shape")
+  void aValueOfAnotherShapeIsRefused() throws Exception {
+    GameRow beta = GameTables.load(folder("synthetic")).table("characters").row("Beta");
+    assertThatThrownBy(() -> beta.intValue("Damage"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets Damage to a table of BaseDamage, TowerDamage where a"
+                + " number is read, which is not modelled");
+    assertThatThrownBy(() -> beta.intValue("DeathDamage"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets DeathDamage to the text \"RageDamage\" where a number is"
+                + " read, which is not modelled");
+    assertThatThrownBy(() -> beta.intValue("Speed"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets Speed to the fraction 1.5 where a number is read, which"
+                + " is not modelled");
+    assertThatThrownBy(() -> beta.bool("HitsAir"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets HitsAir to the number 1 where a boolean is read, which is"
+                + " not modelled");
+    assertThatThrownBy(() -> beta.string("SummonCharacter"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets SummonCharacter to a table of Name where a text is read,"
+                + " which is not modelled");
+    assertThatThrownBy(() -> beta.strings("IgnoreBuff"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets IgnoreBuff to the text \"Haste\" where a list of texts is"
+                + " read, which is not modelled");
+    assertThatThrownBy(() -> beta.ints("SpawnCounts"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the characters row Beta sets SpawnCounts to a list holding the text \"two\" where a"
+                + " list of numbers is read, which is not modelled");
+    assertThat(beta.intValue("Empty")).as("an empty cell reads as 0").isZero();
+    assertThat(beta.bool("Empty")).as("an empty cell reads as false").isFalse();
+    assertThat(beta.strings("Empty")).as("an empty cell reads as no list").isEmpty();
+    assertThat(beta.ints("Empty")).as("an empty cell reads as no list").isEmpty();
+    assertThat(beta.value("Damage").get("BaseDamage").asInt())
+        .as("the raw value stays readable")
+        .isEqualTo(75);
+  }
+
+  @Test
   @DisplayName("a tracking view records every column read through it; a plain row tracks nothing")
   void aTrackingViewRecordsItsReads() throws Exception {
     GameRow alpha = GameTables.load(folder("synthetic")).table("characters").row("Alpha");

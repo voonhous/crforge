@@ -224,6 +224,39 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
+      "a field of another shape than its reader reads, or an update phase the battle does not read,"
+          + " is refused naming the row, the field and the shape")
+  void aFieldOfAnotherShapeIsRefused(@TempDir Path folder) throws IOException {
+    String row = "GiantHero_Slap_Pushback";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "sets PushbackStrength to a table of BaseDamage where a number is read",
+            f -> f.putObject("PushbackStrength").put("BaseDamage", 23000),
+            "sets ForcedPushback to the text \"yes\" where a boolean is read",
+            f -> f.put("ForcedPushback", "yes"),
+            "sets DirectionMode to the number 3 where a text is read",
+            f -> f.put("DirectionMode", 3),
+            "sets UpdatePhase to the text \"PostComponentTick\" where a phase name the battle"
+                + " reads is read",
+            f -> f.put("UpdatePhase", "PostComponentTick"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(Integer.toString(change.getKey().hashCode()));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessage(row + " " + change.getKey() + ", which is not modelled");
+    }
+  }
+
+  @Test
+  @DisplayName(
       "a push from its cause with no delay, in another mode or skipping the request's checks is"
           + " refused")
   void aPushFromItsCauseIsRefused(@TempDir Path folder) throws IOException {

@@ -5,6 +5,7 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -316,6 +317,8 @@ public final class BattleRecords {
    */
   private static final Set<String> PRESENTATION_UNIT_COLUMNS =
       Set.of(
+          // The table of stats the card's info shows, as a buff's and an action row's are.
+          "StatsTags",
           "AbilityPendingEffect",
           "AppearEffect",
           "AttackStartEffect",
@@ -513,6 +516,8 @@ public final class BattleRecords {
    */
   private static final Set<String> PRESENTATION_PROJECTILE_COLUMNS =
       Set.of(
+          // The table of stats the card's info shows, as a buff's and an action row's are.
+          "StatsTags",
           "AlwaysResetAnimation",
           "DeathEffect",
           "DragEffect",
@@ -572,6 +577,8 @@ public final class BattleRecords {
    */
   private static final Set<String> PRESENTATION_AREA_EFFECT_COLUMNS =
       Set.of(
+          // The table of stats the card's info shows, as a buff's and an action row's are.
+          "StatsTags",
           "DeflectedProjectileEffect",
           "DeflectionFBEffect",
           // The art the evolved Cannon's crosshair shows.
@@ -890,13 +897,9 @@ public final class BattleRecords {
       return List.of();
     }
     if (!value.isArray()) {
-      return List.of(value.asInt());
+      return List.of(row.intValue(column));
     }
-    List<Integer> out = new ArrayList<>();
-    for (JsonNode element : value) {
-      out.add(element.asInt());
-    }
-    return List.copyOf(out);
+    return row.ints(column);
   }
 
   /** The classes of the actions a unit's hits run whose runs are established. */
@@ -979,7 +982,62 @@ public final class BattleRecords {
         break;
       }
     }
+    // An attack sequence entry that sets a field its entry does not read is not modelled.
+    JsonNode entries = row.value("AttackSequenceList");
+    if (entries != null && entries.isArray()) {
+      for (JsonNode entry : entries) {
+        if (entry.isObject() && unreadEntryField(entry)) {
+          columns.add("AttackSequenceList");
+          break;
+        }
+      }
+    }
     return columns;
+  }
+
+  /**
+   * The fields of an attack sequence entry its loader reads: its damage, projectile, timing, range
+   * overrides, push and attack action.
+   */
+  private static final Set<String> SEQUENCE_ENTRY_FIELDS =
+      Set.of(
+          "Damage",
+          "Projectile",
+          "VariableDamageTime",
+          "HitSpeedMultiplier",
+          "CustomRange",
+          "CustomSightRange",
+          "CustomMinimunRange",
+          "CustomProjectileStartZ",
+          "CustomProjectileStartRadius",
+          "MeleePushback",
+          "IsMeleePushbackAll",
+          "DoAttackAction");
+
+  /**
+   * The fields of an attack sequence entry that only show something: its effects, the stats its
+   * card's info shows, and the hit speed its animation shows, carried unread as before, classified
+   * by what they name.
+   */
+  private static final Set<String> PRESENTATION_SEQUENCE_ENTRY_FIELDS =
+      Set.of(
+          "AttackStartEffect",
+          "DamageEffect",
+          "FlameEffect",
+          "StatsTags",
+          "TargettedDamageEffect",
+          "VisualHitSpeed");
+
+  /** Whether an attack sequence entry sets a field that is neither read nor presentation. */
+  private static boolean unreadEntryField(JsonNode entry) {
+    for (Iterator<String> it = entry.fieldNames(); it.hasNext(); ) {
+      String field = it.next();
+      if (!SEQUENCE_ENTRY_FIELDS.contains(field)
+          && !PRESENTATION_SEQUENCE_ENTRY_FIELDS.contains(field)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -1000,14 +1058,38 @@ public final class BattleRecords {
    * A game object filter as the battle reads it, from the game object filters table. Every column
    * is its field of the same name; the dead are filtered unless the row says not; the tags it
    * excludes, written as names separated by commas, are the bits the game tags table gives them;
-   * the text the game shows for it is not read.
+   * the text the game shows for it is not read. A row that sets any other column, as a filter it
+   * builds on or a list of filters it joins, is refused: read without it, the filter would match
+   * what the row does not.
    *
    * @param name the row's name
    */
   public GameObjectFilter filter(String name) {
     GameTable table = tables.table(GAME_OBJECT_FILTERS);
     checkArgument(table.has(name), () -> "the game tables have no game object filter " + name);
-    GameRow row = table.row(name);
+    GameRow row = table.row(name).tracking();
+    GameObjectFilter filter = filterOf(row);
+    List<String> unread = new ArrayList<>();
+    for (String column : row.columns().keySet()) {
+      if (!row.read().contains(column)
+          && !PRESENTATION_FILTER_COLUMNS.contains(column)
+          && sets(row, column)) {
+        unread.add(column);
+      }
+    }
+    if (!unread.isEmpty()) {
+      Collections.sort(unread);
+      throw new UnsupportedOperationException(
+          "the game object filter " + name + " sets columns not modelled: " + unread);
+    }
+    return filter;
+  }
+
+  /** The columns of a game object filter's row that only show something: the text it shows. */
+  private static final Set<String> PRESENTATION_FILTER_COLUMNS = Set.of("FilterDescriptionTID");
+
+  /** A game object filter's fields, read from its row's columns of the same names. */
+  private GameObjectFilter filterOf(GameRow row) {
     return GameObjectFilter.builder()
         .matchTeamOwn(row.bool("MatchTeamOwn"))
         .matchTeamEnemy(row.bool("MatchTeamEnemy"))
@@ -1119,11 +1201,7 @@ public final class BattleRecords {
    * them making the mode 3.
    */
   private AttackSequence attackSequence(GameRow row) {
-    List<Integer> order = new ArrayList<>();
-    JsonNode orderColumn = row.value("AttackSequence");
-    if (orderColumn != null && orderColumn.isArray()) {
-      orderColumn.forEach(element -> order.add(element.asInt()));
-    }
+    List<Integer> order = new ArrayList<>(row.ints("AttackSequence"));
     int mode = 0;
     if (!order.isEmpty()) {
       String name = row.string("AttackSequenceMode");
@@ -1200,19 +1278,21 @@ public final class BattleRecords {
 
   /** An entry of an AttackSequenceList element, with the entry columns' defaults. */
   private AttackSequence.Entry listEntry(GameRow row, JsonNode element) {
-    String projectile = element.path("Projectile").asText("");
+    String column = "AttackSequenceList";
+    row.tableElement(column, element);
+    String projectile = row.textField(column, element, "Projectile");
     return new AttackSequence.Entry(
-        element.path("Damage").asInt(0),
+        row.intField(column, element, "Damage", 0),
         projectile.isEmpty() ? null : projectile(projectile),
-        element.path("VariableDamageTime").asInt(0),
-        element.path("HitSpeedMultiplier").asInt(100),
-        element.path("CustomRange").asInt(-1),
-        element.path("CustomSightRange").asInt(-1),
-        element.path("CustomMinimunRange").asInt(-1),
-        element.path("CustomProjectileStartZ").asInt(-1),
-        element.path("CustomProjectileStartRadius").asInt(-1),
-        element.path("MeleePushback").asInt(0),
-        element.path("IsMeleePushbackAll").asBoolean(false),
+        row.intField(column, element, "VariableDamageTime", 0),
+        row.intField(column, element, "HitSpeedMultiplier", 100),
+        row.intField(column, element, "CustomRange", -1),
+        row.intField(column, element, "CustomSightRange", -1),
+        row.intField(column, element, "CustomMinimunRange", -1),
+        row.intField(column, element, "CustomProjectileStartZ", -1),
+        row.intField(column, element, "CustomProjectileStartRadius", -1),
+        row.intField(column, element, "MeleePushback", 0),
+        row.boolField(column, element, "IsMeleePushbackAll", false),
         actionName(row.name(), "DoAttackAction", element.path("DoAttackAction")));
   }
 
@@ -1385,9 +1465,15 @@ public final class BattleRecords {
     if (sets(row, "FollowBehaviour") && !data.followsParent() && !data.followsTarget()) {
       unmodelled.add("FollowBehaviour");
     }
-    // The Filter is read only by the Shape path, which a row without a Shape never enters.
+    // The Filter is read only by the Shape path, which a row without a Shape never enters: a row
+    // without one hits by its air and ground switches, whatever filter it names, as the taunt
+    // cancelling rows do. A row that sets neither switch and names a filter would choose what it
+    // reaches by the filter alone, which is not modelled; read as its switches, it would reach
+    // nothing.
     if (!data.shaped()) {
-      row.has("Filter");
+      if (sets(row, "Filter") && !data.hitsAir() && !data.hitsGround()) {
+        unmodelled.add("Filter");
+      }
     }
     if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
       unmodelled.add("Clone");
@@ -1703,7 +1789,11 @@ public final class BattleRecords {
         .build();
   }
 
-  /** True when a row sets a column: a value other than empty, 0 or false. */
+  /**
+   * True when a row sets a column: a value other than empty, 0 or false. A table counts as set
+   * unless it is empty, and a fraction unless it is 0, so a column of either form is never taken
+   * for one the row leaves out.
+   */
   private static boolean sets(GameRow row, String column) {
     JsonNode value = row.value(column);
     if (value == null || value.isNull()) {
@@ -1715,10 +1805,10 @@ public final class BattleRecords {
     if (value.isBoolean()) {
       return value.asBoolean();
     }
-    if (value.isArray()) {
-      return !value.isEmpty();
+    if (value.isNumber()) {
+      return value.asDouble() != 0;
     }
-    return value.asInt() != 0;
+    return !value.isEmpty();
   }
 
   /**
@@ -2182,7 +2272,7 @@ public final class BattleRecords {
       return value.asBoolean();
     }
     if (value.isNumber()) {
-      return value.asInt() != 0;
+      return value.asDouble() != 0;
     }
     return !value.isEmpty();
   }
@@ -2343,7 +2433,7 @@ public final class BattleRecords {
     }
     List<Boolean> notify = new ArrayList<>();
     for (JsonNode element : arrayOf(row, "ElixirNotifyChange")) {
-      notify.add(element.asBoolean());
+      notify.add(row.boolElement("ElixirNotifyChange", element));
     }
     return new BattleTimeline(
         row.name(),
@@ -2389,10 +2479,10 @@ public final class BattleRecords {
     JsonNode listed = row.value("EvolvedSpells");
     if (listed != null && listed.isArray()) {
       for (JsonNode element : listed) {
-        evolved.add(matchCard(element.asText()));
+        evolved.add(matchCard(row.textElement("EvolvedSpells", element)));
       }
-    } else if (listed != null && !listed.asText().isEmpty()) {
-      evolved.add(matchCard(listed.asText()));
+    } else if (!row.string("EvolvedSpells").isEmpty()) {
+      evolved.add(matchCard(row.string("EvolvedSpells")));
     }
     return new MatchCard(
         row.name(),
@@ -2507,27 +2597,25 @@ public final class BattleRecords {
           row.name() + " is of the class " + type + ", which a match does not model");
     }
     List<SpellVariant.Option> options = new ArrayList<>();
-    JsonNode listed = row.value("Options");
-    if (listed != null) {
-      for (JsonNode option : listed) {
-        checkArgument(
-            option.hasNonNull("SpellData"), () -> row.name() + " has an option with no card");
-        GameRow spell = cardRow(option.get("SpellData").asText());
-        if (spell.bool("Mirror") || spell.bool("ManaCostFromSummonerMana")) {
-          throw new UnsupportedOperationException(
-              row.name()
-                  + "'s option "
-                  + spell.name()
-                  + " costs other than its own cost, which no option does");
-        }
-        options.add(
-            new SpellVariant.Option(
-                spell.name(),
-                option.path("AvailableManaTrigger").asInt() * TRIGGER_SCALE,
-                option.path("PrecastPendingTime").asInt(),
-                spell.intValue("ManaCost"),
-                spell.intValue("ElixirProductionStopTime")));
+    for (JsonNode listed : arrayOf(row, "Options")) {
+      JsonNode option = row.tableElement("Options", listed);
+      checkArgument(
+          option.hasNonNull("SpellData"), () -> row.name() + " has an option with no card");
+      GameRow spell = cardRow(row.textField("Options", option, "SpellData"));
+      if (spell.bool("Mirror") || spell.bool("ManaCostFromSummonerMana")) {
+        throw new UnsupportedOperationException(
+            row.name()
+                + "'s option "
+                + spell.name()
+                + " costs other than its own cost, which no option does");
       }
+      options.add(
+          new SpellVariant.Option(
+              spell.name(),
+              row.intField("Options", option, "AvailableManaTrigger", 0) * TRIGGER_SCALE,
+              row.intField("Options", option, "PrecastPendingTime", 0),
+              spell.intValue("ManaCost"),
+              spell.intValue("ElixirProductionStopTime")));
     }
     return new SpellVariant(row.bool("UseProjectedTimeSummon"), options);
   }
@@ -2583,17 +2671,23 @@ public final class BattleRecords {
   private static List<Integer> ints(GameRow row, String column) {
     List<Integer> out = new ArrayList<>();
     for (JsonNode element : arrayOf(row, column)) {
-      out.add(element.asInt());
+      out.add(row.intElement(column, element));
     }
     return out;
   }
 
-  /** An array column's elements; none for a column left out or not an array. */
+  /**
+   * An array column's elements; none for a column left out or an empty cell. A column of one value
+   * of another shape is refused.
+   */
   private static List<JsonNode> arrayOf(GameRow row, String column) {
     List<JsonNode> out = new ArrayList<>();
     JsonNode value = row.value(column);
     if (value != null && value.isArray()) {
       value.forEach(out::add);
+    } else if (value != null && !(value.isTextual() && value.asText().isEmpty())) {
+      // A column of one value where a list is read: refused, naming its shape.
+      row.strings(column);
     }
     return out;
   }

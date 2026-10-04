@@ -156,6 +156,7 @@ public final class GameTables {
       rows.put(
           entry.getKey(),
           new GameRow(
+              document.path("table").asText(),
               entry.getKey(),
               row.path("index").asInt(),
               className.isNull() || className.isMissingNode() ? null : className.asText(),
@@ -201,10 +202,13 @@ public final class GameTables {
       checkState(!name.isEmpty(), () -> action.name() + " writes its buff inline with no Name");
       Map<String, JsonNode> columns = new LinkedHashMap<>();
       data.fields().forEachRemaining(c -> columns.put(c.getKey(), c.getValue()));
-      rows.put(name, new GameRow(name, -1, INLINE_BUFF_CLASS, columns));
+      rows.put(name, new GameRow(CHARACTER_BUFFS, name, -1, INLINE_BUFF_CLASS, columns));
     }
     return rows;
   }
+
+  /** The table a buff written inline stands beside, and is named by in its refusals. */
+  private static final String CHARACTER_BUFFS = "character_buffs";
 
   /** The class of a buff row, which a buff written inline is too. */
   private static final String INLINE_BUFF_CLASS = "LogicCharacterBuffData";
