@@ -156,6 +156,14 @@ public interface HitQueries {
   default void runAttackAction(TargetView target) {}
 
   /**
+   * Schedules the action the owner's row runs on itself as it attacks on the owner, with the owner
+   * as its own cause, after a hit that was not cancelled for distance and after the action the row
+   * runs with the hit's target as cause. It is scheduled whether or not the hit has a target. An
+   * owner whose row names none schedules nothing.
+   */
+  default void runAttackSelfAction() {}
+
+  /**
    * Deals the damage of a landed hit to everything in a circle rather than to its target alone,
    * with the owner as the area's owner: its own side is spared and its own columns decide what it
    * may hit. A battle without an area to damage does nothing.

@@ -690,6 +690,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public void runAttackSelfAction() {
+        WorldEntity.this.runAttackSelfAction();
+      }
+
+      @Override
       public void areaDamage(int x, int y, int radius, int damage, int towerDamage, int hitId) {
         damageArea(x, y, radius, damage, towerDamage, hitId);
       }
@@ -1921,6 +1926,27 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       attackActionRow = world.getActions().build(data.onAttackAction(), world.binding(this));
     }
     actionHolder().schedule(attackActionRow, ActionHolder.OWN_DELAY, false, cause.actionHolder());
+  }
+
+  /** The row the entity's row runs on itself as it attacks, built on first use. */
+  private BattleAction attackSelfActionRow;
+
+  /**
+   * Schedules the row's own attack action (OnAttackSelfAction) on the entity with the entity itself
+   * as its cause, queued as the row's own delay asks and not run at once: from the targeting visit
+   * it runs in the entity's pending pass of the same tick, after the hit has read its attack
+   * sequence entry, so an index it sets reaches the following hit. Scheduled after the attack
+   * action, whether or not the hit has a target.
+   */
+  private void runAttackSelfAction() {
+    if (data.onAttackSelfAction() == null) {
+      return;
+    }
+    if (attackSelfActionRow == null) {
+      attackSelfActionRow =
+          world.getActions().build(data.onAttackSelfAction(), world.binding(this));
+    }
+    actionHolder().schedule(attackSelfActionRow, ActionHolder.OWN_DELAY, false, actionHolder());
   }
 
   /**
