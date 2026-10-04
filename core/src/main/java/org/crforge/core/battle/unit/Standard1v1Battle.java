@@ -778,21 +778,6 @@ public class Standard1v1Battle {
       MirrorItem mirror,
       VariantItem variant,
       EvolutionItem evolution) {
-    // The mask reads every character of the battle: the live list, then the ones still queued.
-    List<MaskEntity> entities = new ArrayList<>();
-    List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
-    all.addAll(target.getHolder().queued());
-    for (BattleEntity entity : all) {
-      if (entity instanceof WorldEntity w) {
-        entities.add(
-            PlacementSearch.maskEntity(
-                w.getData(),
-                w.side(),
-                w.getView().getX(),
-                w.getView().getY(),
-                w.getView().isAlive()));
-      }
-    }
     CardPlacement.Result result =
         CardPlacement.place(
             world.getTileMap(),
@@ -800,7 +785,7 @@ public class Standard1v1Battle {
             x,
             y,
             side,
-            entities,
+            maskEntities(target),
             SYMMETRICAL_DEPLOY_SNAP,
             LANE_BASED_DEPLOY_SEQUENCE);
     // In a match, the units carry the king's count of card plays before this one.
@@ -900,6 +885,52 @@ public class Standard1v1Battle {
             mirror,
             variant,
             evolution));
+  }
+
+  /**
+   * The characters a placement's mask reads: every character of the battle, the live list and then
+   * the ones still queued.
+   */
+  private static List<MaskEntity> maskEntities(Battle target) {
+    List<MaskEntity> entities = new ArrayList<>();
+    List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
+    all.addAll(target.getHolder().queued());
+    for (BattleEntity entity : all) {
+      if (entity instanceof WorldEntity w) {
+        entities.add(
+            PlacementSearch.maskEntity(
+                w.getData(),
+                w.side(),
+                w.getView().getX(),
+                w.getView().getY(),
+                w.getView().isAlive()));
+      }
+    }
+    return entities;
+  }
+
+  /**
+   * Works out where a play of a card would be placed against the battle as it stands now, as the
+   * play's own placement does, and changes nothing: no play is queued, nothing is paid and no unit
+   * is made. A play given now runs {@link #PLAY_DELAY_TICKS} ticks later against the battle as it
+   * stands then, so the two can differ when the characters around the point move in between.
+   *
+   * @param card the card
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @return what the placement comes to now: refused, or the placed point and each unit's position
+   */
+  public CardPlacement.Result previewPlacement(DeployCard card, int side, int x, int y) {
+    return CardPlacement.place(
+        world.getTileMap(),
+        card,
+        x,
+        y,
+        side,
+        maskEntities(battle),
+        SYMMETRICAL_DEPLOY_SNAP,
+        LANE_BASED_DEPLOY_SEQUENCE);
   }
 
   /**

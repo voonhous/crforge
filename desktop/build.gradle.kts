@@ -38,3 +38,15 @@ application {
         applicationDefaultJvmArgs = listOf("-XstartOnFirstThread")
     }
 }
+
+// The debug visualizer runs the battle core, which reads the game tables from the folder the
+// crforge.gameTables system property names. It is passed from the Gradle property of that name
+// (for example in ~/.gradle/gradle.properties) or the CRFORGE_GAME_TABLES variable, the same way
+// the test tasks are given it.
+tasks.named<JavaExec>("run") {
+    val gameTables =
+        (findProperty("crforge.gameTables") as String?) ?: System.getenv("CRFORGE_GAME_TABLES")
+    if (gameTables != null) {
+        systemProperty("crforge.gameTables", gameTables)
+    }
+}

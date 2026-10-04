@@ -30,41 +30,70 @@ public class DamageNumberRenderer {
   }
 
   /**
+   * One entity's health as a frame sees it, whichever engine holds it.
+   *
+   * @param id the entity's id, unique within its battle
+   * @param x its position along the width, in game units
+   * @param y its position along the length, in game units
+   * @param hp its hit points
+   * @param shield its shield
+   */
+  public record HealthSample(long id, int x, int y, int hp, int shield) {}
+
+  /**
    * Detect damage by comparing current health to previous frame snapshot, and age existing popups.
    * Must be called every frame (even when rendering is toggled off) to keep snapshots current.
    */
   public void update(GameState state) {
-    float deltaTime = Gdx.graphics.getDeltaTime();
-
-    // Detect damage for each alive entity
     List<Entity> alive = state.getAliveEntities();
-    Map<Long, HealthSnapshot> currentSnapshots = new HashMap<>(alive.size());
-
+    List<HealthSample> samples = new ArrayList<>(alive.size());
     for (Entity entity : alive) {
       Health health = entity.getHealth();
       if (health == null) {
         continue;
       }
+      samples.add(
+          new HealthSample(
+              entity.getId(),
+              entity.getPosition().getX(),
+              entity.getPosition().getY(),
+              health.getCurrent(),
+              health.getShield()));
+    }
+    update(samples);
+  }
 
-      long id = entity.getId();
-      int currentHp = health.getCurrent();
-      int currentShield = health.getShield();
+  /**
+   * Detect damage by comparing each sample to the previous frame's sample of the same id, and age
+   * existing popups. Must be called every frame (even when rendering is toggled off) to keep the
+   * snapshots current; an id missing from the samples is forgotten.
+   */
+  public void update(List<HealthSample> samples) {
+    float deltaTime = Gdx.graphics.getDeltaTime();
+
+    // Detect damage for each sampled entity
+    Map<Long, HealthSnapshot> currentSnapshots = new HashMap<>(samples.size());
+
+    for (HealthSample sample : samples) {
+      long id = sample.id();
+      int currentHp = sample.hp();
+      int currentShield = sample.shield();
 
       HealthSnapshot prev = previousHealth.get(id);
       if (prev != null) {
         // Check for HP damage
         int hpLost = prev.hp - currentHp;
         if (hpLost > 0) {
-          float worldX = unitsToPixels(entity.getPosition().getX());
-          float worldY = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+          float worldX = unitsToPixels(sample.x());
+          float worldY = unitsToPixels(sample.y()) + BOTTOM_UI_HEIGHT;
           activePopups.add(new DamagePopup(worldX, worldY, hpLost, false));
         }
 
         // Check for shield damage (shield decreased but HP unchanged)
         int shieldLost = prev.shield - currentShield;
         if (shieldLost > 0 && hpLost == 0) {
-          float worldX = unitsToPixels(entity.getPosition().getX());
-          float worldY = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+          float worldX = unitsToPixels(sample.x());
+          float worldY = unitsToPixels(sample.y()) + BOTTOM_UI_HEIGHT;
           activePopups.add(new DamagePopup(worldX, worldY, shieldLost, true));
         }
       }

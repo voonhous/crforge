@@ -10,6 +10,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.Entity;
 import org.crforge.core.entity.unit.Troop;
@@ -35,6 +37,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
  *
  * <p>Troops that are not driven by the routing grid - air units, jumping, tunnelling and attached
  * ones, and everything in a match under the waypoint rules - carry no grid state and are skipped.
+ * On the battle core every character carries its grid state, and the screen hands each one over.
  */
 public class RouteOverlayRenderer {
 
@@ -53,28 +56,52 @@ public class RouteOverlayRenderer {
     this.ctx = ctx;
   }
 
+  /**
+   * One grid-driven unit as the overlay draws it.
+   *
+   * @param x the unit's position along the width, in game units
+   * @param y the unit's position along the length, in game units
+   * @param radius the radius its label is dropped below, in game units
+   * @param unit its grid state: route, reference and entity state
+   * @param speed how far it may move this tick, in game units, for the label
+   */
+  public record Routed(int x, int y, float radius, GridUnitState unit, int speed) {}
+
   /** Draws the route, the reference marker and the label of every grid-driven troop. */
   public void render(GameEngine engine) {
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    ctx.getShapeRenderer().begin(ShapeType.Line);
+    List<Routed> units = new ArrayList<>();
     for (Entity entity : engine.getGameState().getAliveEntities()) {
       GridUnitState unit = gridState(entity);
-      if (unit == null) {
-        continue;
+      if (unit != null) {
+        units.add(
+            new Routed(
+                entity.getPosition().getX(),
+                entity.getPosition().getY(),
+                entity.getVisualRadius(),
+                unit,
+                speedBudget(unit)));
       }
-      drawRoute(entity, unit);
-      drawReference(unit);
+    }
+    render(units);
+  }
+
+  /**
+   * Draws the route, the reference marker and the label of each unit given, whichever engine moves
+   * it: the original engine's grid rules or the battle core.
+   */
+  public void render(List<Routed> units) {
+    Gdx.gl.glEnable(GL20.GL_BLEND);
+    ctx.getShapeRenderer().begin(ShapeType.Line);
+    for (Routed routed : units) {
+      drawRoute(routed);
+      drawReference(routed.unit());
     }
     ctx.getShapeRenderer().end();
 
     ctx.getSpriteBatch().begin();
     ctx.getEntityNameFont().setColor(COLOR_ROUTE_LINE);
-    for (Entity entity : engine.getGameState().getAliveEntities()) {
-      GridUnitState unit = gridState(entity);
-      if (unit == null) {
-        continue;
-      }
-      drawLabel(entity, unit);
+    for (Routed routed : units) {
+      drawLabel(routed);
     }
     ctx.getEntityNameFont().setColor(Color.WHITE);
     ctx.getSpriteBatch().end();
@@ -89,14 +116,14 @@ public class RouteOverlayRenderer {
   }
 
   /** The polyline from the troop through every remaining route cell, ending at the goal. */
-  private void drawRoute(Entity entity, GridUnitState unit) {
-    Route route = unit.movement().getRoute();
+  private void drawRoute(Routed routed) {
+    Route route = routed.unit().movement().getRoute();
     if (route.isEmpty()) {
       return;
     }
     int width = TileMap.standard1v1().width();
-    float x = unitsToPixels(entity.getPosition().getX());
-    float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
+    float x = unitsToPixels(routed.x());
+    float y = unitsToPixels(routed.y()) + BOTTOM_UI_HEIGHT;
 
     ctx.getShapeRenderer().setColor(COLOR_ROUTE_LINE);
     for (int i = route.size() - 1; i >= 0; i--) {
@@ -134,16 +161,17 @@ public class RouteOverlayRenderer {
   }
 
   /** The state name, the number of route cells left and this tick's movement budget. */
-  private void drawLabel(Entity entity, GridUnitState unit) {
+  private void drawLabel(Routed routed) {
+    GridUnitState unit = routed.unit();
     String label =
         stateName(unit.entity().getState())
             + " n="
             + unit.movement().getRoute().size()
             + " v="
-            + speedBudget(unit);
-    float x = unitsToPixels(entity.getPosition().getX());
-    float y = unitsToPixels(entity.getPosition().getY()) + BOTTOM_UI_HEIGHT;
-    float radius = unitsToPixels(entity.getVisualRadius());
+            + routed.speed();
+    float x = unitsToPixels(routed.x());
+    float y = unitsToPixels(routed.y()) + BOTTOM_UI_HEIGHT;
+    float radius = unitsToPixels(routed.radius());
     ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
     ctx.getEntityNameFont()
         .draw(
@@ -183,8 +211,8 @@ public class RouteOverlayRenderer {
     return SpeedBudget.speedBudget(inputs, unit.speedConfig(), SpeedGlobals.standard());
   }
 
-  /** The name of an entity state, for the label. */
-  private static String stateName(int state) {
+  /** The name of an entity state, for the label and the visualizer's other state readouts. */
+  public static String stateName(int state) {
     return switch (state) {
       case GridEntityState.STANDING -> "STANDING";
       case GridEntityState.MOVING -> "MOVING";

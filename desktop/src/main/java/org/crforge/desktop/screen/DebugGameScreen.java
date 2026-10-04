@@ -9,50 +9,52 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.crforge.core.arena.Arena;
-import org.crforge.core.card.Card;
-import org.crforge.core.engine.GameEngine;
-import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.match.PathfindingMode;
-import org.crforge.core.match.Standard1v1Match;
-import org.crforge.core.player.Deck;
-import org.crforge.core.player.LevelConfig;
-import org.crforge.core.player.Player;
-import org.crforge.core.player.Team;
-import org.crforge.core.player.dto.PlayerActionDTO;
-import org.crforge.data.card.CardRegistry;
+import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.match.MatchCard;
+import org.crforge.core.battle.unit.CharacterEntity;
+import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.util.GameUnits;
 import org.crforge.desktop.GoldenScenario;
-import org.crforge.desktop.TrajectoryRecorder;
+import org.crforge.desktop.battle.AreaHitLog;
+import org.crforge.desktop.battle.BattleAdapter;
+import org.crforge.desktop.battle.BattleFrame;
+import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.CardLayout;
-import org.crforge.desktop.render.DebugRenderer;
 import org.crforge.desktop.render.GoldenOverlay;
-import org.crforge.desktop.render.GridDebugStatus;
 import org.crforge.desktop.render.RenderConstants;
 
 /**
- * Debug screen for visualizing the game simulation.
+ * Debug screen for visualizing a battle on the battle core: a Ladder battle between the decks of
+ * {@link org.crforge.desktop.battle.BattleDecks}, its hands, elixir and clock the battle's own, and
+ * each card played through the battle's play path (see {@link BattleSession}).
  *
  * <p>Controls:
  *
  * <ul>
  *   <li>SPACE: Pause/resume simulation
- *   <li>R: Reset match
- *   <li>P: Toggle path visualization
- *   <li>O: Toggle attack range circles
+ *   <li>R: Reset to a new Ladder battle
+ *   <li>P: Toggle heading lines (each troop's direction of travel)
+ *   <li>O: Toggle attack, minimum and sight range circles
  *   <li>D: Toggle floating damage numbers
- *   <li>A: Toggle AOE damage indicators
+ *   <li>A: Toggle area damage indicators
  *   <li>H: Toggle HP numbers
- *   <li>M: Flip the pathfinding mode, applied on the next reset
- *   <li>G: Toggle the routing cell cost overlay
+ *   <li>M: Not offered: the battle core has one set of movement rules; logs a note
+ *   <li>G: Toggle the routing cell cost overlay, read from the battle's own grid
  *   <li>N: Toggle the route, reference and state overlay
- *   <li>S: Run the next golden scenario (resets the match under the grid rules)
- *   <li>E: Export the recorded trajectories to build/trajectories
+ *   <li>S: Run the next golden scenario (passive towers, the reference unit placed on tick 0)
+ *   <li>E: Export the recorded trajectories of every played unit to build/trajectories
  *   <li>1-4: Select a card from the blue player's hand
  *   <li>5-8: Select a card from the red player's hand
  *   <li>+/-: Speed up/slow down simulation
- *   <li>Click: Deploy selected card at position
+ *   <li>Click: Select a card from a hand, or play the selected one at the tile
+ *   <li>Right click: Deselect
  * </ul>
  */
 @Slf4j
@@ -61,23 +63,25 @@ public class DebugGameScreen implements Screen {
   private static final float SIM_SPEED_MIN = 0.25f;
   private static final float SIM_SPEED_MAX = 8f;
 
-  /** Level both the hands and the towers are scaled to, which is standard ladder play. */
-  private static final int LEVEL = 11;
+  /** Seconds of game time one battle step covers. */
+  private static final float STEP_SECONDS = Battle.STEP_MS / 1000f;
 
   /** Where the trajectory export writes its files. */
   private static final Path TRAJECTORY_DIRECTORY = Path.of("build", "trajectories");
 
-  private final GameEngine engine;
-  private final DebugRenderer renderer;
+  /** The note the status column carries for the control this screen no longer offers. */
+  private static final List<String> NOTES = List.of("M: n/a on the battle core");
+
+  private final GameTables tables;
+  private final BattleRenderer renderer;
   private final OrthographicCamera camera;
   private final Vector3 touchPos = new Vector3();
+
+  private BattleSession session;
 
   private float simSpeed = 1f;
   private boolean paused = false;
   private float accumulator = 0f;
-
-  private Player bluePlayer;
-  private Player redPlayer;
 
   private int hoverTileX = -1;
   private int hoverTileY = -1;
@@ -87,83 +91,37 @@ public class DebugGameScreen implements Screen {
 
   private int hoverCellY = -1;
 
-  /** The rules the next reset builds the match with; the running match keeps its own. */
-  private PathfindingMode pathfindingMode = PathfindingMode.WAYPOINTS;
-
   private final GoldenScenario goldenScenario = new GoldenScenario();
-  private final TrajectoryRecorder trajectoryRecorder = new TrajectoryRecorder();
 
-  private int selectedHandIndex = -1;
-  private Player selectedPlayer = null;
+  /** The area hits of the steps run since the last frame. */
+  private final List<AreaHitLog.AreaHit> newAreaHits = new ArrayList<>();
 
-  public DebugGameScreen() {
-    this.engine = new GameEngine();
-    this.renderer = new DebugRenderer();
+  private int selectedSlot = -1;
+  private int selectedSide = -1;
 
-    // Setup camera
-    float arenaWidth = Arena.WIDTH * RenderConstants.TILE_PIXELS;
-    float arenaHeight = Arena.HEIGHT * RenderConstants.TILE_PIXELS;
+  /**
+   * A screen on the given tables, starting with a Ladder battle.
+   *
+   * @param tables the game tables every battle of the screen reads
+   */
+  public DebugGameScreen(GameTables tables) {
+    this.tables = tables;
+    this.renderer = new BattleRenderer();
 
     // Viewport includes UI margins
-    float viewWidth = arenaWidth;
+    TileMap tileMap = TileMap.standard1v1();
+    float viewWidth = RenderConstants.unitsToPixels(tileMap.widthUnits());
     float viewHeight =
-        arenaHeight + RenderConstants.TOP_UI_HEIGHT + RenderConstants.BOTTOM_UI_HEIGHT;
+        RenderConstants.unitsToPixels(tileMap.heightUnits())
+            + RenderConstants.TOP_UI_HEIGHT
+            + RenderConstants.BOTTOM_UI_HEIGHT;
 
     this.camera = new OrthographicCamera(viewWidth, viewHeight);
     camera.position.set(viewWidth / 2, viewHeight / 2, 0);
     camera.update();
 
-    setupMatch();
+    this.session = BattleSession.ladder(tables);
     setupInput();
-  }
-
-  private void setupMatch() {
-    // Create a standard 1v1 match under the pathfinding rules currently selected
-    Standard1v1Match match = new Standard1v1Match(LEVEL, pathfindingMode);
-
-    // Decks showcasing special abilities and effects:
-    // Blue: charge, hook, variable damage, deploy effect, spawner, area effect spell, radial
-    // formation
-    List<Card> blueCards =
-        List.of(
-            CardRegistry.get("darkprince"), // Charge + Shield
-            CardRegistry.get("prince"), // Charge
-            CardRegistry.get("fisherman"), // Hook
-            CardRegistry.get("infernodragon"), // Variable damage (inferno stages)
-            CardRegistry.get("electrowizard"), // Deploy stun effect
-            CardRegistry.get("witch"), // Live spawner (skeletons)
-            CardRegistry.get("zap"), // Area effect spell (stun)
-            CardRegistry.get("skeletonarmy") // Radial formation (15 units)
-            );
-
-    // Red: dash, reflect, shield, spawner building, live spawn, radial formation (mirrored), charge
-    List<Card> redCards =
-        List.of(
-            CardRegistry.get("megaknight"), // Dash
-            CardRegistry.get("electrogiant"), // Reflect
-            CardRegistry.get("assassin"), // Dash
-            CardRegistry.get("skeletonwarriors"), // Shield
-            CardRegistry.get("tombstone"), // Spawner building
-            CardRegistry.get("darkwitch"), // Live spawn + death spawn
-            CardRegistry.get("skeletonarmy"), // Radial formation, mirrored for red
-            CardRegistry.get("ramrider") // Charge + live spawn
-            );
-
-    Deck blueDeck = new Deck(blueCards);
-    Deck redDeck = new Deck(redCards);
-
-    LevelConfig levelCfg = new LevelConfig(LEVEL); // Level 11 for standard ladder gameplay
-    bluePlayer = new Player(Team.BLUE, blueDeck, false, levelCfg);
-    redPlayer = new Player(Team.RED, redDeck, true, levelCfg);
-
-    // Default selection
-    selectedPlayer = bluePlayer;
-
-    match.addPlayer(bluePlayer);
-    match.addPlayer(redPlayer);
-
-    engine.setMatch(match);
-    engine.initMatch();
   }
 
   private void setupInput() {
@@ -173,10 +131,10 @@ public class DebugGameScreen implements Screen {
           public boolean keyDown(int keycode) {
             switch (keycode) {
               case Input.Keys.SPACE -> paused = !paused;
-              case Input.Keys.R -> resetMatch();
+              case Input.Keys.R -> resetBattle();
               case Input.Keys.P -> {
                 renderer.toggleDrawPaths();
-                log.info("Path visualization: {}", renderer.isDrawPaths() ? "ON" : "OFF");
+                log.info("Heading lines: {}", renderer.isDrawPaths() ? "ON" : "OFF");
               }
               case Input.Keys.O -> {
                 renderer.toggleDrawRanges();
@@ -194,7 +152,10 @@ public class DebugGameScreen implements Screen {
                 renderer.toggleDrawHpNumbers();
                 log.info("HP numbers: {}", renderer.isDrawHpNumbers() ? "ON" : "OFF");
               }
-              case Input.Keys.M -> togglePathfindingMode();
+              case Input.Keys.M ->
+                  log.info(
+                      "M flips the original engine's pathfinding mode; the battle core has one set"
+                          + " of movement rules, so there is nothing to flip");
               case Input.Keys.G -> {
                 renderer.toggleDrawCellCosts();
                 log.info("Cell cost overlay: {}", renderer.isDrawCellCosts() ? "ON" : "OFF");
@@ -209,16 +170,16 @@ public class DebugGameScreen implements Screen {
               case Input.Keys.MINUS -> adjustSpeed(0.5f);
 
               // Select card from hand (Blue Player) via keyboard
-              case Input.Keys.NUM_1 -> selectCard(bluePlayer, 0);
-              case Input.Keys.NUM_2 -> selectCard(bluePlayer, 1);
-              case Input.Keys.NUM_3 -> selectCard(bluePlayer, 2);
-              case Input.Keys.NUM_4 -> selectCard(bluePlayer, 3);
+              case Input.Keys.NUM_1 -> selectCard(0, 0);
+              case Input.Keys.NUM_2 -> selectCard(0, 1);
+              case Input.Keys.NUM_3 -> selectCard(0, 2);
+              case Input.Keys.NUM_4 -> selectCard(0, 3);
 
               // Select card from hand (Red Player) via keyboard
-              case Input.Keys.NUM_5 -> selectCard(redPlayer, 0);
-              case Input.Keys.NUM_6 -> selectCard(redPlayer, 1);
-              case Input.Keys.NUM_7 -> selectCard(redPlayer, 2);
-              case Input.Keys.NUM_8 -> selectCard(redPlayer, 3);
+              case Input.Keys.NUM_5 -> selectCard(1, 0);
+              case Input.Keys.NUM_6 -> selectCard(1, 1);
+              case Input.Keys.NUM_7 -> selectCard(1, 2);
+              case Input.Keys.NUM_8 -> selectCard(1, 3);
 
               default -> {
                 return false;
@@ -238,8 +199,7 @@ public class DebugGameScreen implements Screen {
             if (button == Input.Buttons.LEFT) {
               handleLeftClick(screenX, screenY);
             } else if (button == Input.Buttons.RIGHT) {
-              selectedHandIndex = -1;
-              selectedPlayer = null;
+              deselect();
             }
             return true;
           }
@@ -247,124 +207,94 @@ public class DebugGameScreen implements Screen {
   }
 
   private void updateHover(int screenX, int screenY) {
-    // Use camera unproject to handle coordinates correctly even if resized (though fixed size for
-    // now)
     touchPos.set(screenX, screenY, 0);
     camera.unproject(touchPos);
 
-    // touchPos.y is world Y (0 is bottom of UI)
-    // Arena starts at BOTTOM_UI_HEIGHT
+    // touchPos.y is world Y (0 is bottom of UI); the arena starts at BOTTOM_UI_HEIGHT
     float arenaY = touchPos.y - RenderConstants.BOTTOM_UI_HEIGHT;
     float arenaX = touchPos.x;
 
-    float rawTileX = arenaX / RenderConstants.TILE_PIXELS;
-    float rawTileY = arenaY / RenderConstants.TILE_PIXELS;
-
-    // Snap to grid
-    hoverTileX = (int) Math.floor(rawTileX);
-    hoverTileY = (int) Math.floor(rawTileY);
+    hoverTileX = (int) Math.floor(arenaX / RenderConstants.TILE_PIXELS);
+    hoverTileY = (int) Math.floor(arenaY / RenderConstants.TILE_PIXELS);
 
     // Routing cells are half a tile across, so the cost overlay needs its own hover
     hoverCellX = (int) Math.floor(arenaX / RenderConstants.CELL_PIXELS);
     hoverCellY = (int) Math.floor(arenaY / RenderConstants.CELL_PIXELS);
   }
 
+  /** Whether the hovered tile lies on the arena. */
+  private boolean hoverOnArena() {
+    TileMap tileMap = session.getBattle().getWorld().getTileMap();
+    return hoverTileX >= 0
+        && hoverTileY >= 0
+        && hoverTileX < tileMap.widthUnits() / GameUnits.UNITS_PER_TILE
+        && hoverTileY < tileMap.heightUnits() / GameUnits.UNITS_PER_TILE;
+  }
+
   private void handleLeftClick(int screenX, int screenY) {
     touchPos.set(screenX, screenY, 0);
     camera.unproject(touchPos);
 
-    // 1. Check for Card Selection (Clicking on hand in Bottom UI or Top UI)
-    // Check Bottom (Blue)
+    // 1. Card selection: the bottom panel is blue's hand, the top panel red's
     if (touchPos.y < RenderConstants.BOTTOM_UI_HEIGHT) {
-      checkHandSelection(touchPos.x, touchPos.y, bluePlayer, false);
+      checkHandSelection(touchPos.x, touchPos.y, 0, false);
       return;
     }
-
-    // Check Top (Red)
     float topUiStart = camera.viewportHeight - RenderConstants.TOP_UI_HEIGHT;
     if (touchPos.y > topUiStart) {
-      checkHandSelection(touchPos.x, touchPos.y, redPlayer, true);
+      checkHandSelection(touchPos.x, touchPos.y, 1, true);
       return;
     }
 
-    // 2. Play Card (Clicking on Arena)
-    if (selectedHandIndex != -1
-        && selectedPlayer != null
-        && hoverTileX >= 0
-        && hoverTileX < Arena.WIDTH
-        && hoverTileY >= 0
-        && hoverTileY < Arena.HEIGHT) {
-      float playX = hoverTileX + 0.5f;
-      float playY = hoverTileY + 0.5f;
-
-      // playX/playY are tile-center coordinates; the action is built in game units
-      PlayerActionDTO action = PlayerActionDTO.playAtTiles(selectedHandIndex, playX, playY);
-
-      // Pre-validate: check placement and elixir before queuing
-      Card card = selectedPlayer.getHand().getCard(selectedHandIndex);
-      if (card == null) {
-        return;
-      }
-
-      boolean validPlacement = engine.getMatch().validateAction(selectedPlayer, action);
-      boolean canAfford = selectedPlayer.getElixir().has(card.getCost());
-
-      if (!validPlacement) {
-        log.warn(
-            "[{}s] Invalid placement for {} at ({}, {})",
-            engine.getGameTimeSeconds(),
-            card.getName(),
-            playX,
-            playY);
-        return;
-      }
-
-      if (!canAfford) {
-        log.warn(
-            "[{}s] Not enough elixir for {} (cost {}, have {})",
-            engine.getGameTimeSeconds(),
-            card.getName(),
-            card.getCost(),
-            selectedPlayer.getElixir().getFloor());
-        return;
-      }
-
-      engine.queueAction(selectedPlayer, action);
-      log.info(
-          "[{}s] {} played {} at ({}, {})",
-          engine.getGameTimeSeconds(),
-          selectedPlayer.getTeam(),
-          card.getName(),
-          playX,
-          playY);
-
-      // Deselect after successful play (matches real CR)
-      selectedHandIndex = -1;
-      selectedPlayer = null;
+    // 2. Play the selected card at the clicked tile's centre, in game units
+    updateHover(screenX, screenY);
+    if (selectedSlot < 0 || !hoverOnArena()) {
+      return;
+    }
+    boolean played =
+        session.play(
+            selectedSide,
+            selectedSlot,
+            GameUnits.tileCenter(hoverTileX),
+            GameUnits.tileCenter(hoverTileY));
+    logLatestMessage();
+    if (played) {
+      // Deselect after a play that was given (matches real CR)
+      deselect();
     }
   }
 
-  private void checkHandSelection(float worldX, float worldY, Player player, boolean isTop) {
+  private void checkHandSelection(float worldX, float worldY, int side, boolean isTop) {
     int index =
         CardLayout.hitTest(worldX, worldY, isTop, camera.viewportWidth, camera.viewportHeight);
     if (index != -1) {
-      selectCard(player, index);
+      selectCard(side, index);
     }
   }
 
-  private void selectCard(Player player, int index) {
-    this.selectedPlayer = player;
-    this.selectedHandIndex = index;
-
-    Card c = player.getHand().getCard(index);
-    if (c != null) {
-      log.info(
-          "[{}s] Selected ({}): {} (cost {})",
-          engine.getGameTimeSeconds(),
-          player.getTeam(),
-          c.getName(),
-          c.getCost());
+  private void selectCard(int side, int slot) {
+    MatchCard card = session.handCard(side, slot);
+    if (card == null) {
+      log.info("[tick {}] No card in {} slot {}", session.tick(), sideName(side), slot + 1);
+      return;
     }
+    this.selectedSide = side;
+    this.selectedSlot = slot;
+    log.info(
+        "[tick {}] Selected ({}): {} (cost {})",
+        session.tick(),
+        sideName(side),
+        card.name(),
+        card.cost());
+  }
+
+  private void deselect() {
+    selectedSlot = -1;
+    selectedSide = -1;
+  }
+
+  private static String sideName(int side) {
+    return BattleSession.sideName(side);
   }
 
   private void adjustSpeed(float factor) {
@@ -372,51 +302,44 @@ public class DebugGameScreen implements Screen {
     log.info("Simulation speed: {}x", simSpeed);
   }
 
-  private void resetMatch() {
-    engine.getGameState().reset();
-    engine.getDeploymentSystem().reset();
-    setupMatch();
+  /** Starts a new Ladder battle: the same decks, dealt and played the same way as the last. */
+  private void resetBattle() {
+    session = BattleSession.ladder(tables);
     goldenScenario.clear();
-    trajectoryRecorder.clear();
+    newAreaHits.clear();
+    deselect();
+    accumulator = 0f;
     paused = false;
-    log.info("Match reset");
-  }
-
-  /** Flips the rules the next reset builds the match with. The running match keeps its own. */
-  private void togglePathfindingMode() {
-    pathfindingMode =
-        pathfindingMode == PathfindingMode.WAYPOINTS
-            ? PathfindingMode.GRID
-            : PathfindingMode.WAYPOINTS;
-    log.info("pathfinding mode {} (applied on reset)", pathfindingMode);
+    log.info("Battle reset");
   }
 
   /**
-   * Resets the match under the grid rules and deploys the next golden scenario's unit, so its first
-   * tick is the reference trajectory's tick 0.
+   * Starts the next golden scenario on a battle of its own: the towers passive and the reference
+   * unit placed on tick 0, so the battle's first step is the reference's tick 0.
    */
   private void startGoldenScenario() {
-    String caseName = goldenScenario.nextCaseName();
-    pathfindingMode = PathfindingMode.GRID;
-    resetMatch();
-    GoldenScenario.Case scenarioCase = GoldenScenario.load(caseName);
-    int spawnFrame = goldenScenario.deploy(engine, scenarioCase);
-    goldenScenario.begin(scenarioCase, spawnFrame);
+    GoldenScenario.Case scenarioCase = GoldenScenario.load(goldenScenario.nextCaseName());
+    session = BattleSession.scenario(tables, scenarioCase);
+    goldenScenario.begin(scenarioCase, session.tick());
+    newAreaHits.clear();
+    deselect();
+    accumulator = 0f;
+    paused = false;
     log.info(
         "Golden scenario {}: {} for side {} at ({}, {})",
-        caseName,
+        scenarioCase.name(),
         scenarioCase.card(),
         scenarioCase.side(),
         scenarioCase.deployX(),
         scenarioCase.deployY());
   }
 
-  /** Writes one file per recorded troop and logs where they went. */
+  /** Writes one file per recorded unit and logs where they went. */
   private void exportTrajectories() {
     try {
-      List<Path> written = trajectoryRecorder.export(TRAJECTORY_DIRECTORY);
+      List<Path> written = session.getTrajectories().export(TRAJECTORY_DIRECTORY);
       if (written.isEmpty()) {
-        log.info("No trajectories recorded yet");
+        log.info("No trajectories recorded yet: play a card first");
         return;
       }
       for (Path file : written) {
@@ -432,11 +355,27 @@ public class DebugGameScreen implements Screen {
     if (!goldenScenario.isActive()) {
       return GoldenOverlay.none();
     }
-    int tick = goldenScenario.referenceTick(engine.getGameState().getFrameCount());
+    int tick = goldenScenario.referenceTick(session.tick());
     return new GoldenOverlay(
         goldenScenario.goldenPath(),
         goldenScenario.goldenAt(tick),
         goldenScenario.deviationPoint());
+  }
+
+  /** Compares the golden scenario's unit with the reference trajectory for the step just run. */
+  private void sampleGoldenScenario() {
+    CharacterEntity unit = session.getScenarioUnit();
+    if (!goldenScenario.isActive() || unit == null) {
+      return;
+    }
+    goldenScenario.sample(session.tick(), unit.getView().getX(), unit.getView().getY());
+  }
+
+  private void logLatestMessage() {
+    List<String> messages = session.messages();
+    if (!messages.isEmpty()) {
+      log.info(messages.get(messages.size() - 1));
+    }
   }
 
   @Override
@@ -446,52 +385,58 @@ public class DebugGameScreen implements Screen {
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
     try {
-      // Update simulation
-      if (!paused && engine.isRunning()) {
+      // Fixed timestep simulation. Sampling happens inside this loop, not once a frame: a frame
+      // covers several steps at high speeds and none at low ones.
+      if (!paused && session.getHalted() == null && !session.isOver()) {
         accumulator += delta * simSpeed;
-
-        // Fixed timestep simulation. Sampling happens inside this loop, not once a frame: a
-        // frame covers several ticks at high speeds and none at low ones.
-        float tickDelta = GameEngine.DELTA_TIME;
-        while (accumulator >= tickDelta) {
-          engine.tick();
-          accumulator -= tickDelta;
-          trajectoryRecorder.sample(engine);
+        while (accumulator >= STEP_SECONDS) {
+          accumulator -= STEP_SECONDS;
+          boolean stepped = session.step();
+          newAreaHits.addAll(session.getAreaHits().drain());
+          if (!stepped) {
+            logLatestMessage();
+            accumulator = 0f;
+            break;
+          }
           sampleGoldenScenario();
         }
       }
 
-      // Render
       camera.update();
-      Team selTeam = selectedPlayer != null ? selectedPlayer.getTeam() : null;
-      GridDebugStatus gridStatus =
-          new GridDebugStatus(
-              engine.getMatch().getPathfindingMode(),
-              pathfindingMode,
+      BattleFrame frame = BattleAdapter.frame(session);
+      boolean previewing = selectedSlot >= 0 && hoverOnArena();
+      MatchCard selected = selectedSlot >= 0 ? session.handCard(selectedSide, selectedSlot) : null;
+      DeployCard selectedCard = session.deployCard(selected);
+      CardPlacement.Result preview =
+          previewing
+              ? session.preview(
+                  selectedSide,
+                  selectedSlot,
+                  GameUnits.tileCenter(hoverTileX),
+                  GameUnits.tileCenter(hoverTileY))
+              : null;
+      renderer.render(
+          frame,
+          camera,
+          new BattleRenderer.Inputs(
+              session.getBattle().getWorld(),
+              List.copyOf(newAreaHits),
+              hoverTileX,
+              hoverTileY,
               hoverCellX,
               hoverCellY,
+              selectedSide,
+              selectedSlot,
+              selectedCard,
+              preview,
               goldenOverlay(),
-              goldenScenario.statusLines());
-      renderer.render(
-          engine, camera, hoverTileX, hoverTileY, selectedHandIndex, selTeam, gridStatus);
+              goldenScenario.statusLines(),
+              NOTES));
+      newAreaHits.clear();
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
       paused = true;
       Gdx.app.exit();
-    }
-  }
-
-  /** Compares the golden scenario's unit with the reference trajectory for the tick just run. */
-  private void sampleGoldenScenario() {
-    if (!goldenScenario.isActive()) {
-      return;
-    }
-    Troop unit = goldenScenario.findUnit(engine);
-    if (unit != null) {
-      goldenScenario.sample(
-          engine.getGameState().getFrameCount(),
-          unit.getPosition().getX(),
-          unit.getPosition().getY());
     }
   }
 
@@ -504,31 +449,32 @@ public class DebugGameScreen implements Screen {
   public void show() {
     log.info(
         """
-        === CRForge Debug Visualizer ===
-        Match:
+        === CRForge Debug Visualizer (battle core) ===
+        Battle:
           SPACE - Pause/Resume
-          R     - Reset match
+          R     - Reset to a new Ladder battle
           +/-   - Speed up/slow down
 
         Cards:
           1-4   - Select blue card
           5-8   - Select red card
-          Click - Select a card, or deploy the selected one
+          Click - Select a card, or play the selected one
+          Right click - Deselect
 
         Combat overlays:
-          O     - Toggle attack range circles
+          O     - Toggle attack, minimum and sight range circles
           D     - Toggle floating damage numbers
-          A     - Toggle AOE damage indicators
+          A     - Toggle area damage indicators
           H     - Toggle HP numbers
 
         Pathing:
-          P     - Toggle path visualization
-          M     - Flip pathfinding mode (applied on reset)
+          P     - Toggle heading lines
+          M     - Not offered on the battle core (one set of movement rules)
           G     - Toggle routing cell cost overlay
           N     - Toggle route / reference / state overlay
-          S     - Run next golden scenario (resets under the grid rules)
-          E     - Export recorded trajectories to build/trajectories
-        ================================""");
+          S     - Run next golden scenario (passive towers, reference unit on tick 0)
+          E     - Export played units' trajectories to build/trajectories
+        ==============================================""");
   }
 
   @Override
