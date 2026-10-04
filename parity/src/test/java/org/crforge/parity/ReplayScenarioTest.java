@@ -39,7 +39,7 @@ class ReplayScenarioTest {
     assertThat(plan.playerDataChoices()).containsExactly(1, 1);
     assertThat(plan.plays())
         .containsExactly(
-            new ScenarioPlan.Play(0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000));
+            new ScenarioPlan.Play(0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000, null));
     // No deck item names slot flags: every card is in neither slot.
     assertThat(plan.slotFlags().get(0)).containsOnly(0);
     assertThat(plan.slotFlags().get(1)).containsOnly(0);
@@ -234,7 +234,8 @@ class ReplayScenarioTest {
 
     assertThat(plan.plays())
         .containsExactly(
-            new ScenarioPlan.Play(0, 200, 220, 0, "ArcherQueen", 11, 3500, 14000, 0x50402800));
+            new ScenarioPlan.Play(
+                0, 200, 220, 0, "ArcherQueen", 11, 3500, 14000, 0x50402800, null));
     assertThat(plan.abilities()).containsExactly(new ScenarioPlan.Ability(1, 330, 350, 0, 5000006));
   }
 
@@ -321,6 +322,55 @@ class ReplayScenarioTest {
       assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
           .isInstanceOf(UnsupportedScenarioException.class)
           .hasMessageContaining("packed item");
+    }
+  }
+
+  @Test
+  void readsTheCardAMirrorPlayRepeatsFromItsItem() {
+    ScenarioPlan plan = new ReplayScenario(tables).translate(Scenarios.knightThenMirror());
+
+    ScenarioPlan.Play mirror = plan.plays().get(4);
+    assertThat(mirror.card()).isEqualTo("Mirror");
+    assertThat(mirror.repeats()).isEqualTo(new ScenarioPlan.Repeated(Scenarios.KNIGHT, "Knight"));
+    // An Epic at level index 0: level 6 of all. Its item is kept whole for the run to check.
+    assertThat(mirror.level()).isEqualTo(6);
+    assertThat(mirror.item()).isEqualTo(0x41801800);
+    // A play of any other card repeats nothing.
+    assertThat(plan.plays().subList(0, 4)).allMatch(play -> play.repeats() == null);
+  }
+
+  @Test
+  void refusesARepeatedCardOnAPlayOfACardOtherThanTheMirror() {
+    ObjectNode scenario = Scenarios.knightThenMirror();
+    ((ObjectNode) scenario.path("cmd").get(3).path("c").path("sel")).put("fs", Scenarios.ARCHER);
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("cmd[3].c.sel.fs=" + Scenarios.ARCHER);
+  }
+
+  @Test
+  void refusesAMirrorPlayThatNamesNoRepeatedCard() {
+    ObjectNode scenario = Scenarios.knightThenMirror();
+    ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).remove("fs");
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessage(
+            "a Mirror play whose item names no repeated card, which no reference holds:"
+                + " cmd[4].c.sel");
+  }
+
+  @Test
+  void refusesAMirrorPlayWhoseItemNamesAnotherDeckIndexOrSetsAnOptionBit() {
+    // The deck index field 5 names index 4, the Archer's; the option field 1 is a variant's.
+    for (int item : new int[] {0x41401800, 0x41801810}) {
+      ObjectNode scenario = Scenarios.knightThenMirror();
+      ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).put("pd", item);
+
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessageContaining("cmd[4].c.sel.pd=" + item);
     }
   }
 

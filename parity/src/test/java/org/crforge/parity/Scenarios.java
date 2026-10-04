@@ -121,6 +121,48 @@ final class Scenarios {
     return scenario;
   }
 
+  /** The Mirror's card, by data id. */
+  static final int MIRROR = 28000006;
+
+  /** The Knight's card, by data id. */
+  static final int KNIGHT = 26000000;
+
+  /** The Archer's card, by data id. */
+  static final int ARCHER = 26000001;
+
+  /**
+   * The {@link #knight()} battle with side 0 on a deck that holds the Mirror at deck index 5: it
+   * plays Skeletons, Goblins, the Archer and the Knight, and then, on tick 410, the Mirror, which
+   * the Knight's play has put back in the hand. Side 1 holds its own eight cards and plays none.
+   *
+   * <p>The Mirror's item ({@code sel}) is what the player's client builds for it: {@code os} the
+   * Mirror, {@code fs} the card it repeats, the Knight, and {@code pd} the Mirror's deck index plus
+   * 1 (6), its level field plus 1 (an Epic at level index 0 is level field 5, so 6) and its cost
+   * plus the Knight's (1 + 3).
+   */
+  static ObjectNode knightThenMirror() {
+    ObjectNode scenario = knight();
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    int[][] decks = {
+      {28000001, 26000005, 27000000, KNIGHT, ARCHER, MIRROR, 26000010, 26000002},
+      {26000002, ARCHER, 26000003, KNIGHT, 26000014, 26000005, 27000000, 26000010}
+    };
+    for (int side = 0; side < 2; side++) {
+      ArrayNode cards = ((ObjectNode) battle.path("deck" + side)).putArray("sp");
+      for (int id : decks[side]) {
+        cards.addObject().put("d", id).put("l", 0);
+      }
+    }
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 230, 26000010, 0x11c00000, 3500, 9000);
+    addPlay(commands, 260, 26000002, 0x22000000, 3500, 9000);
+    addPlay(commands, 290, ARCHER, 0x31400000, 14500, 9000);
+    addPlay(commands, 320, KNIGHT, 0x31000000, 14500, 9500);
+    addPlay(commands, 410, MIRROR, 0x41801800, 14500, 9500);
+    ((ObjectNode) commands.get(4).path("c").path("sel")).put("fs", KNIGHT);
+    return scenario;
+  }
+
   /** The Archer Queen's card, by data id. */
   static final int ARCHER_QUEEN = 26000072;
 
