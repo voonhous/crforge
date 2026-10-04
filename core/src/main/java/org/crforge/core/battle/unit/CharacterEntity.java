@@ -1911,6 +1911,11 @@ public class CharacterEntity extends WorldEntity {
    * is left where it is. Otherwise its movement component is switched on and a pushback is asked
    * for, away from the point, with every gate in place and nothing lifted.
    *
+   * <p>The switch is the whole component's, as {@link #switchComponent} makes it: the slot, the
+   * view's flag and the targeting's bit together. For a unit a hook holds with its movement off
+   * (pulled, or the hook's owner) this lets the pushback fly from the next movement visit on while
+   * the hold lasts.
+   *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
    * @param distance how far
@@ -1923,7 +1928,7 @@ public class CharacterEntity extends WorldEntity {
         || !HitPoints.alive(getHitPoints())) {
       return false;
     }
-    getView().setMovementActive(true);
+    switchComponent(MOVEMENT_SLOT, true);
     MovementState movement = unit.movement();
     int ran =
         PushbackRequest.request(
