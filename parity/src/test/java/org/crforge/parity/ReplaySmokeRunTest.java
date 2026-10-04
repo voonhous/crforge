@@ -338,6 +338,54 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void anInProcessRunGivesTheTraceAndTheOutcomeOfARunFromTheCommandLine() throws IOException {
+    GameTables tables = GameTables.load(tablesFolder);
+    ObjectNode idle = Scenarios.knight();
+    idle.putArray("cmd");
+    run(idle, folder.resolve("terminal"), terminalIdentity, 6600);
+    ObjectNode unsupported = Scenarios.knight();
+    ((ObjectNode) unsupported.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);
+    run(unsupported, folder.resolve("unsupported"), identity, 30);
+    run(idle, folder.resolve("invalid"), identity, 6600);
+
+    ReplaySmokeRun.InProcessRun terminal =
+        ReplaySmokeRun.runInProcess(SmokeSchema.V2, 6600, MAPPER.writeValueAsBytes(idle), tables);
+    ReplaySmokeRun.InProcessRun refused =
+        ReplaySmokeRun.runInProcess(
+            SmokeSchema.V1, 30, MAPPER.writeValueAsBytes(unsupported), tables);
+    ReplaySmokeRun.InProcessRun stopped =
+        ReplaySmokeRun.runInProcess(SmokeSchema.V1, 6600, MAPPER.writeValueAsBytes(idle), tables);
+
+    // The same trace, digest, steps and termination as the run written to disk.
+    JsonNode manifest = MAPPER.readTree(folder.resolve("terminal/manifest.json").toFile());
+    assertThat(terminal.status()).isEqualTo("completed");
+    assertThat(terminal.trace())
+        .isEqualTo(Files.readAllBytes(folder.resolve("terminal/observations.jsonl")));
+    JsonNode inProcess = MAPPER.valueToTree(terminal.manifest());
+    for (String field :
+        List.of(
+            "trace_sha256",
+            "observations",
+            "executed_ticks",
+            "termination",
+            "scenario_sha256",
+            "schema",
+            "ticks")) {
+      assertThat(inProcess.get(field)).as(field).isEqualTo(manifest.get(field));
+    }
+    // The same refusal, and the same error.
+    JsonNode refusedManifest =
+        MAPPER.readTree(folder.resolve("unsupported/manifest.json").toFile());
+    assertThat(refused.status()).isEqualTo("unsupported");
+    assertThat(MAPPER.valueToTree(refused.manifest()).get("unsupported"))
+        .isEqualTo(refusedManifest.get("unsupported"));
+    assertThat(refused.trace()).isEmpty();
+    JsonNode invalidManifest = MAPPER.readTree(folder.resolve("invalid/manifest.json").toFile());
+    assertThat(stopped.status()).isEqualTo("invalid");
+    assertThat(stopped.manifest().get("error")).isEqualTo(invalidManifest.path("error").asText());
+  }
+
+  @Test
   void aRunRepeatsByteForByteFromAFreshBattle() throws IOException {
     run(Scenarios.knight(), folder.resolve("one"), identity, 260);
     run(Scenarios.knight(), folder.resolve("two"), identity, 260);

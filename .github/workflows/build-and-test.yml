@@ -17,20 +17,32 @@ jobs:
       # Only whether the key is set, not the key: every step sees the job's environment.
       HAS_GAME_TABLES_KEY: ${{ secrets.GAME_TABLES_KEY != '' }}
 
+    outputs:
+      has-game-data: ${{ steps.lock.outputs.available }}
+
     steps:
       - uses: actions/checkout@v7
 
+      # crforge-data.lock pins the data repository's commit, so a change and its data agree.
+      - name: Read the data lock
+        id: lock
+        run: |
+          echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -n 's/^version=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+          echo "available=${{ env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: Check out the game tables
-        if: env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != ''
+        if: steps.lock.outputs.available == 'true'
         uses: actions/checkout@v7
         with:
           repository: ${{ vars.GAME_TABLES_REPOSITORY }}
+          ref: ${{ steps.lock.outputs.commit }}
           ssh-key: ${{ secrets.GAME_TABLES_KEY }}
           path: game-tables
 
       - name: Point the tests at the game tables
-        if: env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != ''
-        run: echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ vars.GAME_TABLES_VERSION }}" >> "$GITHUB_ENV"
+        if: steps.lock.outputs.available == 'true'
+        run: echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -48,3 +60,63 @@ jobs:
 
       - name: Run Tests
         run: ./gradlew test
+
+  # Every recorded reference battle at the locked data commit, each case held to
+  # parity/reference-expectations/<version>.json. The cases are split across the matrix.
+  reference:
+    needs: build
+    if: needs.build.outputs.has-game-data == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ 0, 1 ]
+
+    env:
+      CRFORGE_REFERENCES_SHARD: ${{ matrix.shard }}
+      CRFORGE_REFERENCES_SHARDS: 2
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the data lock
+        id: lock
+        run: |
+          echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -n 's/^version=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the game data
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.GAME_TABLES_REPOSITORY }}
+          ref: ${{ steps.lock.outputs.commit }}
+          ssh-key: ${{ secrets.GAME_TABLES_KEY }}
+          path: game-tables
+
+      - name: Point the reference test at the game data
+        run: |
+          echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
+          echo "CRFORGE_REFERENCES=${{ github.workspace }}/game-tables/references/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+
+      - name: Run the reference battles
+        run: ./gradlew :parity:referenceTest
+
+      - name: Upload the scorecard
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reference-scorecard-${{ matrix.shard }}
+          path: parity/build/reference-scorecard/
+          if-no-files-found: warn
