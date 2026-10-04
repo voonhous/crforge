@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
@@ -15,7 +14,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 /**
  * The Boss Bandit's warp where the reference runs do not take it: a landing on water, past the
  * arena's edge, on the other side and inside a tower's footprint, each where the game lands it; and
- * a warp with a projectile aimed at the unit, which is refused.
+ * a warp with a projectile aimed at the unit, which loses the unit as its target and lands on
+ * nothing.
  */
 class BattleWarpTest {
 
@@ -57,8 +57,10 @@ class BattleWarpTest {
   }
 
   @Test
-  @DisplayName("a warp with a projectile aimed at the unit is refused")
-  void aWarpWithAProjectileAimedAtTheUnitIsRefused() {
+  @DisplayName(
+      "a warp drops the projectile aimed at the unit: it flies on to where the unit stood and"
+          + " lands on nothing")
+  void aWarpDropsTheProjectileAimedAtTheUnit() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     CharacterEntity bandit =
         match.deploy(0, GameData.unit("BossBandit"), LEVEL, 0, 3500, 12000, "BossBandit");
@@ -66,15 +68,37 @@ class BattleWarpTest {
     CharacterEntity musketeer =
         match.deploy(0, GameData.unit("Musketeer"), LEVEL, 1, 3500, 17000, "Musketeer");
     musketeer.setActive(CharacterEntity.MOVEMENT_SLOT, false);
-    for (int tick = 0; tick < TICKS && !aimedAt(match, bandit); tick++) {
+    for (int tick = 0; tick < TICKS && aimedAt(match, bandit) == null; tick++) {
       match.getBattle().step();
     }
-    assertThat(aimedAt(match, bandit)).as("a projectile in flight at the Boss Bandit").isTrue();
+    ProjectileEntity shot = aimedAt(match, bandit);
+    assertThat(shot).as("a projectile in flight at the Boss Bandit").isNotNull();
+    assertThat(bandit.getView().getPendingDamageAmount()).as("its damage on its way").isPositive();
+    int standX = bandit.getView().getX();
+    int standY = bandit.getView().getY();
+    int hitPoints = bandit.getHitPoints().getHitPoints();
 
-    assertThatThrownBy(() -> bandit.actionHolder().start(warp(match, bandit)))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(WARP + " warps BossBandit with")
-        .hasMessageContaining("aimed at it, whose drop no reference holds");
+    bandit.actionHolder().start(warp(match, bandit));
+
+    assertThat(shot.getTarget()).as("the target the reset drops").isNull();
+    assertThat(bandit.getView().getPendingDamageAmount()).isZero();
+    assertThat(new int[] {shot.getAimX(), shot.getAimY()})
+        .as("it still aims where the Boss Bandit stood")
+        .containsExactly(standX, standY);
+    int lastX = shot.getX();
+    int lastY = shot.getY();
+    for (int tick = 0;
+        tick < TICKS && match.getBattle().getHolder().entities().contains(shot);
+        tick++) {
+      lastX = shot.getX();
+      lastY = shot.getY();
+      match.getBattle().step();
+    }
+    assertThat(match.getBattle().getHolder().entities()).as("it has landed").doesNotContain(shot);
+    assertThat(new int[] {shot.getX(), shot.getY()})
+        .as("on the point it aimed at, from " + lastX + ", " + lastY)
+        .containsExactly(standX, standY);
+    assertThat(bandit.getHitPoints().getHitPoints()).as("on nothing").isEqualTo(hitPoints);
   }
 
   /** The warp row, built for the unit. */
@@ -82,13 +106,13 @@ class BattleWarpTest {
     return GameData.actions().build(WARP, match.getWorld().binding(unit));
   }
 
-  /** Whether a live projectile has the unit as its target. */
-  private static boolean aimedAt(Standard1v1Battle match, CharacterEntity unit) {
+  /** The first live projectile that has the unit as its target, or null. */
+  private static ProjectileEntity aimedAt(Standard1v1Battle match, CharacterEntity unit) {
     for (BattleEntity entity : match.getBattle().getHolder().entities()) {
       if (entity instanceof ProjectileEntity p && p.getTarget() == unit) {
-        return true;
+        return p;
       }
     }
-    return false;
+    return null;
   }
 }
