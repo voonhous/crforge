@@ -211,6 +211,18 @@ public interface ActionOwner {
   }
 
   /**
+   * What a mark's run, or its hand-over's, asks of the battle about the owner. Only a character
+   * runs one.
+   *
+   * @param action the row
+   * @return the owner's answers
+   */
+  default SetIndicatorOnTarget.Host markHost(BattleAction action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * Warps the owner, as a warp's perform does. Only a character is warped.
    *
    * @param action the row
