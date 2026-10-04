@@ -22,6 +22,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * are: a building that appears or disappears raises its side's flag for one tick, while a building
  * that merely moves does not.
  *
+ * <p>An entity answers that it occludes when it is a building, or when its row sets IsOccluder and
+ * it has no movement component or its movement component found it, on the last pass, where its tick
+ * began: such a character, the hero Elite Archer's decoy, stamps while it stands still.
+ *
  * <p>The end-of-tick rotation that turns the overlay just built into the previous one is {@link
  * CellGrid#swap()} and belongs to the tick driver, not to this class.
  */
@@ -30,8 +34,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Settled against the 53 reference walks, every one of which routes around tower"
             + " footprints stamped here, and against the per-side change flags the reference"
-            + " route retention reads. Only towers occlude in any reference; the rasteriser's"
-            + " handling of a moving occluder is held by its own tests.")
+            + " route retention reads. Only towers occlude in the walks; the hero Elite Archer's"
+            + " decoy, an IsOccluder character, stands still for its whole life in its reference"
+            + " battle. The rasteriser's handling of a moving occluder is held by its own tests.")
 public final class FootprintOverlay {
 
   /** Virtual type of the entities the build considers; everything else is skipped. */
@@ -145,7 +150,7 @@ public final class FootprintOverlay {
       if (entity.getType() != ROUTING_ENTITY_TYPE) {
         continue;
       }
-      if (!entity.isOccludes()) {
+      if (!entity.occludesCells()) {
         continue;
       }
       int radius = entity.getCollisionRadius();

@@ -121,6 +121,30 @@ public class GridEntity {
   private boolean occludes;
 
   /**
+   * True for a character whose row sets IsOccluder: it stamps its footprint into the routing cost
+   * overlay like a building, but only while it has no movement component or has not moved since its
+   * position copy, as {@link #isMovedSinceCopy()} records it.
+   */
+  private boolean occluder;
+
+  /**
+   * The movement component's record, written as each movement pass reaches it, of whether the
+   * position differs from the copy taken at the head of the tick; false until the first pass. The
+   * overlay build of the next tick reads it, so an occluder stops stamping on the tick after it
+   * moved and stamps again on the tick after it stood still.
+   */
+  private boolean movedSinceCopy;
+
+  /**
+   * Whether the overlay build stamps the entity's footprint now, as the entity's occlusion query
+   * answers it: a building always does; an occluder does while it has no movement component, or
+   * while its movement component records no move since the position copy.
+   */
+  public boolean occludesCells() {
+    return occludes || (occluder && (!movementComponent || !movedSinceCopy));
+  }
+
+  /**
    * True while the entity still has hit points. This is the alive answer the target validator asks
    * about a candidate, refreshed once per tick before the component passes run.
    */

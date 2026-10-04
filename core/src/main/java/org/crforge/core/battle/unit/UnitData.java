@@ -236,6 +236,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param ignoreClone true for a unit a Clone passes by
  * @param ignoreResurrect true for a unit whose death counts no soul for a unit whose ability
  *     collects them
+ * @param occluder true for a character whose row sets IsOccluder: it stamps the routing overlay
+ *     like a building while it has no movement component, or while its last movement pass found it
+ *     where that tick began
  * @param clonedVersion the row a Clone makes of this one instead of its own, or null for its own
  * @param reflectedAttackBuff the buff a reflecting unit puts on the attacker of a hit it reflects,
  *     or null for a unit that reflects nothing
@@ -407,6 +410,7 @@ public record UnitData(
     String onDisappearAction,
     boolean ignoreClone,
     boolean ignoreResurrect,
+    boolean occluder,
     String clonedVersion,
     String reflectedAttackBuff,
     int reflectedAttackBuffDurationMs,

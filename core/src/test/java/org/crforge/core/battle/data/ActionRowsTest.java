@@ -248,6 +248,43 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
+      "the hero Elite Archer decoy's hit threshold, which runs only its forced animation, is built"
+          + " as a run that lasts and shows something; one that runs on an attack, or runs an"
+          + " action that changes the battle, is refused")
+  void theDecoysHitThresholdIsInert(@TempDir Path folder) throws IOException {
+    String row = "EliteArcherHero_Dummy_Hit_Threshold";
+    BattleAction threshold = GameData.actions().build(row, INERT_BINDING);
+    assertThat(threshold).isInstanceOf(InertAction.class);
+    assertThat(((InertAction) threshold).isLasting()).isTrue();
+    ActionHolder holder = new ActionHolder();
+    holder.start(threshold);
+    assertThat(holder.running()).hasSize(1);
+    assertThat(GameData.actions().build("EliteArcherHero_Dummy_Start_Group", INERT_BINDING))
+        .isNotNull();
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "sets TriggerOnAttacked",
+            f -> f.put("TriggerOnAttacked", true),
+            "sets ActionToRun to EliteArcherHero_Destroy_Dummy",
+            f -> f.putObject("ActionToRun").put("action", "EliteArcherHero_Destroy_Dummy"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+  }
+
+  @Test
+  @DisplayName(
       "the hero Mini Pekka's ability level timer builds the timer's run; one with an action after"
           + " its last interval, a segmented bar or fewer upgrades than intervals is refused")
   void theHeroMiniPekkaTimerIsRefusedForWhatItDoesNotReach(@TempDir Path folder)
@@ -1492,12 +1529,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 871 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 873 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(871);
+    assertThat(built).as("rows built").isEqualTo(873);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 16, "column", 50, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 14, "column", 50, "spawn type", 9));
   }
 }
