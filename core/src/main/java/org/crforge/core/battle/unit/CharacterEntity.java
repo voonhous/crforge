@@ -2078,6 +2078,14 @@ public class CharacterEntity extends WorldEntity {
     return 1;
   }
 
+  /**
+   * Whether the targeting component is on and holds a reference, whether or not that reference is
+   * still in the battle: whether the unit has a current target an action could launch at.
+   */
+  boolean referenceHeld() {
+    return isActive(TARGETING_SLOT) && unit.targeting().getReference() != null;
+  }
+
   /** The object the targeting component has as its target while the component is on, or null. */
   WorldEntity currentTarget() {
     if (!isActive(TARGETING_SLOT)) {

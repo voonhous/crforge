@@ -50,13 +50,16 @@ public interface SpawnHost extends SpawnObject {
 
   /**
    * Launches a projectile an action's spawn row names from this object's point, with this object as
-   * its launcher and owner, at no target.
+   * its launcher and owner, at no target. A row of the plain class aimed by neither expression
+   * would launch at this object's current target, which is refused while it has one.
    *
    * @param action the spawn row's name
    * @param projectile the projectile row's name
-   * @param startHeight the height it is launched from
+   * @param startHeight the row's start height
    * @param aimX the aim along the arena's width, or null for this object's own coordinate
    * @param aimY the aim along the arena's length, or null for this object's own coordinate
+   * @param spawnClass true for a row of the plain spawn class, which adds this object's live height
+   *     to the start height and, aimed by neither expression, launches at its current target
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    */
   default void spawnProjectile(
@@ -65,6 +68,7 @@ public interface SpawnHost extends SpawnObject {
       int startHeight,
       IntSupplier aimX,
       IntSupplier aimY,
+      boolean spawnClass,
       int phase) {
     throw new UnsupportedOperationException(name() + " cannot launch a projectile");
   }

@@ -1664,8 +1664,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int startHeight,
       IntSupplier aimX,
       IntSupplier aimY,
+      boolean spawnClass,
       int phase) {
-    world.actionProjectile(this, action, projectile, startHeight, aimX, aimY, phase);
+    world.actionProjectile(this, action, projectile, startHeight, aimX, aimY, spawnClass, phase);
   }
 
   /**
