@@ -18,6 +18,7 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
+import org.crforge.core.battle.unit.AreaDamageType;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.BuffData;
@@ -227,6 +228,15 @@ public final class BattleRecords {
           "PushbackAll");
 
   private static final String GAME_TAGS = "game_tags";
+
+  private static final String DAMAGE_TYPES = "damage_types";
+
+  /**
+   * The fields of a damage type the filter form of an area effect deals as it is held for: its two
+   * amounts and the effect the view shows.
+   */
+  private static final Set<String> DAMAGE_TYPE_FIELDS =
+      Set.of("BaseDamage", "TowerDamage", "Effect");
 
   /**
    * The columns of what a unit does as it dies that the battle does not model: a unit whose row
@@ -1442,6 +1452,14 @@ public final class BattleRecords {
         unmodelled.add(column);
       }
     }
+    // The filter form: a row without a shape that names a filter and neither hit switch, as the
+    // area effect class of a newer data version writes every row, which has no hit switches. It
+    // chooses what it reaches by the filter alone and deals its damage as a damage type.
+    boolean filterHits =
+        !sets(row, "Shape")
+            && sets(row, "Filter")
+            && !row.bool("HitsAir")
+            && !row.bool("HitsGround");
     AreaEffectData data =
         AreaEffectData.builder()
             .name(row.name())
@@ -1451,7 +1469,7 @@ public final class BattleRecords {
             .maxRadius(row.intValue("MaxRadius"))
             .hitSpeedMs(row.intValue("HitSpeed"))
             .hitSpeedOffsetMs(row.intValue("HitSpeedOffset"))
-            .damage(row.intValue("Damage"))
+            .damage(filterHits ? 0 : row.intValue("Damage"))
             .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
             .hitsAir(row.bool("HitsAir"))
             .hitsGround(row.bool("HitsGround"))
@@ -1491,7 +1509,12 @@ public final class BattleRecords {
             .spawnClones(row.bool("SpawnClones"))
             .stayAfterParentDies(row.bool("StayAfterParentDies"))
             .shaped(sets(row, "Shape"))
-            .filter(sets(row, "Shape") && sets(row, "Filter") ? row.string("Filter") : null)
+            .filter(
+                (sets(row, "Shape") || filterHits) && sets(row, "Filter")
+                    ? row.string("Filter")
+                    : null)
+            .filterHits(filterHits)
+            .typedDamage(filterHits ? areaDamageType(row, unmodelled) : null)
             .unmodelledColumns(unmodelled)
             .build();
     if (data.shaped()) {
@@ -1558,10 +1581,13 @@ public final class BattleRecords {
     // cancelling rows do. A row that sets neither switch and names a filter would choose what it
     // reaches by the filter alone, which is not modelled; read as its switches, it would reach
     // nothing.
-    if (!data.shaped()) {
+    if (!data.shaped() && !data.filterHits()) {
       if (sets(row, "Filter") && !data.hitsAir() && !data.hitsGround()) {
         unmodelled.add("Filter");
       }
+    }
+    if (data.filterHits()) {
+      filterForm(data, unmodelled);
     }
     if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
       unmodelled.add("Clone");
@@ -1593,6 +1619,92 @@ public final class BattleRecords {
                 INERT_AREA_EFFECT_COLUMNS,
                 PENDING_AREA_EFFECT_COLUMNS))
         .build();
+  }
+
+  /**
+   * Refuses, for the filter form, what each object it lists would get beyond its damage and its
+   * buff: a push, a pull (a buff that attracts), a hit action, a launch, a spawner, one hit per
+   * target, a target limit, the biggest targets first, a clone and a deflection, none of which the
+   * filter form's hit pass is held for. A damage type that names a column the pass is not held for
+   * is refused by its Damage column.
+   */
+  private void filterForm(AreaEffectData data, List<String> unmodelled) {
+    if (data.pushback() != 0) {
+      unmodelled.add("Pushback");
+    }
+    if (data.buff() != null && buff(data.buff()).attracts()) {
+      unmodelled.add("Buff");
+    }
+    if (data.onHitAction() != null && !unmodelled.contains("OnHitAction")) {
+      unmodelled.add("OnHitAction");
+    }
+    if (data.projectile() != null) {
+      unmodelled.add("Projectile");
+    }
+    if (data.spawnCharacter() != null && !unmodelled.contains("SpawnCharacter")) {
+      unmodelled.add("SpawnCharacter");
+    }
+    if (data.oneHitPerTarget() && !unmodelled.contains("OneHitPerTarget")) {
+      unmodelled.add("OneHitPerTarget");
+    }
+    if (data.maximumTargets() != 0) {
+      unmodelled.add("MaximumTargets");
+    }
+    if (data.hitBiggestTargets()) {
+      unmodelled.add("HitBiggestTargets");
+    }
+    if (data.cloning() && !unmodelled.contains("Clone")) {
+      unmodelled.add("Clone");
+    }
+    if (data.deflectsProjectiles()) {
+      unmodelled.add("DeflectProjectilesEnabled");
+    }
+  }
+
+  /**
+   * The damage type a filter form row deals, from its Damage column: a table written inline or the
+   * name of a damage types row, each giving BaseDamage (0 when left out) and TowerDamage (none when
+   * left out), and an Effect, which only the view shows. A row without Damage deals none. A number,
+   * or a type that sets anything else (its Flags, an action on its source or its target, or a field
+   * the type has no column for), is refused by the Damage column.
+   */
+  private AreaDamageType areaDamageType(GameRow row, List<String> unmodelled) {
+    JsonNode value = row.value("Damage");
+    if (value == null || value.isTextual() && value.asText().isEmpty()) {
+      return null;
+    }
+    if (value.isObject()) {
+      for (Iterator<String> it = value.fieldNames(); it.hasNext(); ) {
+        if (!DAMAGE_TYPE_FIELDS.contains(it.next())) {
+          unmodelled.add("Damage");
+          return null;
+        }
+      }
+      return new AreaDamageType(
+          null,
+          row.intField("Damage", value, "BaseDamage", 0),
+          row.intField("Damage", value, "TowerDamage", AreaDamageType.NO_TOWER_DAMAGE));
+    }
+    if (value.isTextual()) {
+      GameTable types = tables.table(DAMAGE_TYPES);
+      if (!types.has(value.asText())) {
+        unmodelled.add("Damage");
+        return null;
+      }
+      GameRow type = types.row(value.asText());
+      for (String column : type.setColumns()) {
+        if (!DAMAGE_TYPE_FIELDS.contains(column)) {
+          unmodelled.add("Damage");
+          return null;
+        }
+      }
+      return new AreaDamageType(
+          type.name(),
+          type.intValue("BaseDamage"),
+          type.has("TowerDamage") ? type.intValue("TowerDamage") : AreaDamageType.NO_TOWER_DAMAGE);
+    }
+    unmodelled.add("Damage");
+    return null;
   }
 
   /**
