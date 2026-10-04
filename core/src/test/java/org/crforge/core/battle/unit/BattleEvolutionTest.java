@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
@@ -38,6 +40,10 @@ class BattleEvolutionTest {
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
   private static final int[] NO_SLOTS = new int[8];
+
+  /** Eight different cards of at most three elixir: a spell and a building first. */
+  private static final List<String> CHEAP_DECK =
+      List.of("Zap", "Cannon", "Skeletons", "IceSpirits", "Goblins", "Bats", "Knight", "Archer");
 
   /** Slot flags with the first card's set to the given flags. */
   private static int[] first(int flags) {
@@ -144,20 +150,75 @@ class BattleEvolutionTest {
 
   @Test
   @DisplayName(
-      "a card's slot outside a match's troop cards, and two copies of an evolution slot's card,"
-          + " are refused")
+      "an evolution slot's spell and building cards count their plays as a troop card does and are"
+          + " cast as their evolved rows once the count reaches the evolved row's DarkElixirCost:"
+          + " Zap and Cannon plain twice, evolved on the third play, plain again on the fourth")
+  void anEvolutionSlotsSpellAndBuildingEvolve() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    int[] slots = new int[8];
+    slots[0] = MatchSide.EVOLUTION_SLOT;
+    slots[1] = MatchSide.EVOLUTION_SLOT;
+    LadderMatch match = battle.startLadderMatch(CHEAP_DECK, KNIGHTS, 0, 0, slots, NO_SLOTS);
+    List<Standard1v1Battle.Play> zaps = new ArrayList<>();
+    List<Standard1v1Battle.Play> cannons = new ArrayList<>();
+    playThrough(battle, match, 4, zaps, cannons);
+
+    assertThat(zaps).extracting(play -> play.evolution().field()).containsExactly(0, 0, 1, 0);
+    assertThat(zaps)
+        .extracting(play -> play.evolution().spell().name())
+        .containsExactly("Zap", "Zap", "Zap_EV1", "Zap");
+    assertThat(zaps).extracting(play -> play.evolution().count()).containsExactly(0, 1, 2, 0);
+    assertThat(cannons).extracting(play -> play.evolution().field()).containsExactly(0, 0, 1, 0);
+    assertThat(cannons)
+        .extracting(play -> play.units().get(0).getData().name())
+        .containsExactly("Cannon", "Cannon", "Cannon_EV1", "Cannon");
+    // Every play was placed: none was turned away by a gate.
+    assertThat(battle.getPlays()).allSatisfy(play -> assertThat(play.matchCode()).isZero());
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved spell whose row runs an action as it is cast, which the cast does not model, is"
+          + " refused as it is cast: the third play of an evolution slot's Goblin Barrel")
+  void anEvolvedSpellsExecuteActionIsRefused() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    List<String> deck = new ArrayList<>(CHEAP_DECK);
+    deck.set(0, "GoblinBarrel");
+    LadderMatch match =
+        battle.startLadderMatch(deck, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
+
+    assertThatThrownBy(() -> playThrough(battle, match, 3, new ArrayList<>(), new ArrayList<>()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(
+            "GoblinBarrel_EV1 sets OnExecuteAction, which the spell's cast does not model");
+    assertThat(battle.getPlays())
+        .filteredOn(play -> play.name().startsWith("GoblinBarrel"))
+        .extracting(play -> play.evolution().field())
+        .containsExactly(0, 0);
+  }
+
+  @Test
+  @DisplayName(
+      "a spell in a hero slot, the Mirror in either slot, and two copies of an evolution slot's"
+          + " card are refused")
   void theSlotsNoReferenceHoldsAreRefused() {
     List<String> zaps =
         List.of("Zap", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
     assertThatThrownBy(
             () ->
                 new Standard1v1Battle(GameData.tables())
-                    .startLadderMatch(
-                        zaps, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS))
+                    .startLadderMatch(zaps, KNIGHTS, 0, 0, first(MatchSide.HERO_SLOT), NO_SLOTS))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Zap in an evolution or hero slot");
+        .hasMessageContaining("Zap in an evolution or hero slot, which is not a troop card");
     int[] mirrorSlot = new int[8];
     mirrorSlot[2] = MatchSide.HERO_SLOT;
+    assertThatThrownBy(
+            () ->
+                new Standard1v1Battle(GameData.tables())
+                    .startLadderMatch(KNIGHT_MIRRORS, KNIGHTS, 0, 0, mirrorSlot, NO_SLOTS))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Mirror in an evolution or hero slot");
+    mirrorSlot[2] = MatchSide.EVOLUTION_SLOT;
     assertThatThrownBy(
             () ->
                 new Standard1v1Battle(GameData.tables())
@@ -187,6 +248,50 @@ class BattleEvolutionTest {
     assertThatThrownBy(() -> run(battle, 30))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("k2: a play of Knight, an evolution slot's card");
+  }
+
+  /**
+   * Plays side 0's cards 200 ticks apart, from tick 20, until the first two deck cards have each
+   * been played the given number of times: the first deck card whenever it is in the hand, else the
+   * second, else the first other card in hand order. Spells go to (9000, 9000), other cards to
+   * (3500, 10000).
+   */
+  private static void playThrough(
+      Standard1v1Battle battle,
+      LadderMatch match,
+      int times,
+      List<Standard1v1Battle.Play> first,
+      List<Standard1v1Battle.Play> second) {
+    MatchSide side = match.side(0);
+    String firstName = side.deck().get(0).name();
+    String secondName = side.deck().get(1).name();
+    int[] played = new int[2];
+    for (int tick = 20; played[0] < times || played[1] < times; tick += 200) {
+      run(battle, tick - 1);
+      int pick = -1;
+      for (int index : side.getHand().slots()) {
+        if (index == 0 && played[0] < times) {
+          pick = 0;
+          break;
+        }
+        if (index == 1 && played[1] < times) {
+          pick = 1;
+        } else if (pick < 0 && index >= 2) {
+          pick = index;
+        }
+      }
+      DeployCard card = battle.getWorld().getRecords().card(side.deck().get(pick).name());
+      boolean spell = card.spell();
+      String name = card.name() + "-" + tick;
+      battle.play(tick, card, LEVEL, 0, spell ? 9000 : 3500, spell ? 9000 : 10000, name);
+      run(battle, tick);
+      Standard1v1Battle.Play play = battle.getPlays().get(battle.getPlays().size() - 1);
+      if (pick < 2) {
+        played[pick]++;
+        (pick == 0 ? first : second).add(play);
+      }
+    }
+    assertThat(firstName).isNotEqualTo(secondName);
   }
 
   /** Steps the battle through the given tick. */

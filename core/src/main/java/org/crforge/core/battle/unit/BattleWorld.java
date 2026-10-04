@@ -1185,9 +1185,20 @@ public class BattleWorld implements HolderPasses {
    * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not
    * established, so a morph of a unit such an attacker references is refused.
    *
+   * <p>The new object starts no action of its row here, so a morph whose row has a starting action
+   * - the evolved Goblin Drill's relocation, which takes the place of its area object - is refused.
+   *
    * @param old the unit that surfaced
    */
   void morph(CharacterEntity old) {
+    UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
+    if (data.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          old.getData().name()
+              + " morphs into "
+              + data.name()
+              + ", which starts an action, which a morph does not start and is not modelled");
+    }
     for (WorldEntity entity : present) {
       if (entity.getData().attackSequence().mode() != AttackSequence.MODE_NONE
           && entity.getTargeting().getReference() == old.getTargetView()) {
@@ -1198,7 +1209,6 @@ public class BattleWorld implements HolderPasses {
                 + " as it morphs, whose replacement is not modelled");
       }
     }
-    UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
     CharacterEntity made = CharacterEntity.morphedFrom(old, data);
     holder.addRegistered(made);
     made.startDeployingAfterMorph();
