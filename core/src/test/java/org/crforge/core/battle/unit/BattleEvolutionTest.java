@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -15,6 +16,7 @@ import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -178,23 +180,77 @@ class BattleEvolutionTest {
 
   @Test
   @DisplayName(
-      "an evolved spell whose row runs an action as it is cast, which the cast does not model, is"
-          + " refused as it is cast: the third play of an evolution slot's Goblin Barrel")
-  void anEvolvedSpellsExecuteActionIsRefused() {
+      "the evolved Goblin Barrel's cast runs its mirrored extra spell on the king at once: a decoy"
+          + " barrel from the barrel's start to the barrel's aim turned over across the arena's"
+          + " width, made right after it, whose impact makes three GoblinDummy in that lane")
+  void anEvolvedGoblinBarrelCastsItsDecoy() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     List<String> deck = new ArrayList<>(CHEAP_DECK);
     deck.set(0, "GoblinBarrel");
     LadderMatch match =
         battle.startLadderMatch(deck, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
-
-    assertThatThrownBy(() -> playThrough(battle, match, 3, new ArrayList<>(), new ArrayList<>()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(
-            "GoblinBarrel_EV1 sets OnExecuteAction, which the spell's cast does not model");
+    MatchSide side = match.side(0);
+    int barrels = 0;
+    int tick = 20;
+    while (barrels < 3) {
+      tick += 200;
+      run(battle, tick - 1);
+      int pick = -1;
+      for (int index : side.getHand().slots()) {
+        if (index == 0) {
+          pick = 0;
+          break;
+        }
+        if (pick < 0) {
+          pick = index;
+        }
+      }
+      DeployCard card = battle.getWorld().getRecords().card(side.deck().get(pick).name());
+      boolean barrel = pick == 0;
+      battle.play(
+          tick, card, LEVEL, 0, barrel ? 14500 : 3500, barrel ? 23000 : 10000, card.name() + tick);
+      run(battle, tick);
+      if (barrel) {
+        barrels++;
+      }
+    }
     assertThat(battle.getPlays())
         .filteredOn(play -> play.name().startsWith("GoblinBarrel"))
-        .extracting(play -> play.evolution().field())
-        .containsExactly(0, 0);
+        .extracting(play -> play.evolution().spell().name())
+        .containsExactly("GoblinBarrel", "GoblinBarrel", "GoblinBarrel_EV1");
+
+    List<ProjectileEntity> barrelsInFlight = new ArrayList<>();
+    for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+      if (entity instanceof ProjectileEntity projectile
+          && projectile.getData().name().startsWith("GoblinBarrelSpell")) {
+        barrelsInFlight.add(projectile);
+      }
+    }
+    assertThat(barrelsInFlight).hasSize(2);
+    ProjectileEntity real = barrelsInFlight.get(0);
+    ProjectileEntity decoy = barrelsInFlight.get(1);
+    assertThat(decoy.getId()).isEqualTo(real.getId() + 1);
+    assertThat(decoy.side()).isEqualTo(real.side());
+    assertThat(decoy.getPackedLevel()).isEqualTo(real.getPackedLevel());
+    // The placement takes the barrel's point to a tile's centre; the decoy's is that turned over.
+    assertThat(real.getAimX()).isEqualTo(14500);
+    assertThat(List.of(decoy.getAimX(), decoy.getAimY()))
+        .containsExactly(18000 - real.getAimX(), real.getAimY());
+    assertThat(List.of(decoy.getStartX(), decoy.getStartY(), decoy.getStartZ()))
+        .containsExactly(real.getStartX(), real.getStartY(), real.getStartZ());
+    assertThat(decoy.getDelayMs()).isZero();
+
+    run(battle, tick + 56);
+    List<int[]> dummies = new ArrayList<>();
+    for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+      if (entity instanceof CharacterEntity unit
+          && unit.getData().name().equals("GoblinDummy")
+          && unit.side() == 0) {
+        dummies.add(new int[] {unit.getView().getX(), unit.getView().getY()});
+      }
+    }
+    assertThat(dummies).hasSize(3);
+    assertThat(dummies).allSatisfy(at -> assertThat(at[0]).isBetween(2000, 5000));
   }
 
   @Test

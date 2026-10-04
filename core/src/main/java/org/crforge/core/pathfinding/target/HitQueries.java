@@ -53,7 +53,7 @@ public interface HitQueries {
   /**
    * Told once a hit is not cancelled for distance, before its damage or its launch: the owner
    * counts its attacks, the count and its id the key a reflecting target deals its damage back once
-   * by.
+   * by, and raises ATTACKING on its pending tags, so its tag word holds it for the next step.
    */
   default void attackCounted() {}
 

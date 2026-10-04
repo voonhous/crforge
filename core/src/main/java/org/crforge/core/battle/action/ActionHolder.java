@@ -271,8 +271,16 @@ public class ActionHolder implements EntityActions {
       for (ActionInstance instance : running) {
         if (instance.getAction().name().equals(action.name())) {
           if (!instance.isFinished()) {
+            // A class that tells its runs apart by their cause: whether a listed run of another
+            // cause lets the walk go on to the next run of the row is held by no reference.
+            if (!instance.sameRun(instigator)) {
+              throw new UnsupportedOperationException(
+                  action.name()
+                      + " starts again from another cause while a run of it is listed, not"
+                      + " modelled");
+            }
             listener.retriggering(action, passPhase, queued);
-            instance.retrigger(this);
+            instance.retrigger(this, instigator);
             return;
           }
           break;

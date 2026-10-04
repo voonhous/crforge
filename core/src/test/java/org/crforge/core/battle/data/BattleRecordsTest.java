@@ -695,15 +695,14 @@ class BattleRecordsTest {
     assertThat(clone.onHitAction()).isEqualTo("CloneAction");
     assertThat(clone.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").cloning()).isFalse();
-    // The Goblin Curse's base spawns two buffs with each hit; the Knight's hero taunts with its
-    // group, and the Blowdart Goblin's evolution deals its own damage.
+    // The Goblin Curse's base spawns two buffs with each hit and the Blowdart Goblin's evolution
+    // starts its poison damage; the Knight's hero taunts with its group, which is not modelled.
     AreaEffectData curse = records.areaEffect("GoblinCurseBase");
     assertThat(curse.onHitAction()).isEqualTo("GoblinCurseCreateBuffs");
     assertThat(curse.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Knight_hero_TauntAEO").unmodelledColumns())
         .contains("OnHitAction");
-    assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns())
-        .contains("OnHitAction");
+    assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns()).isEmpty();
     assertThat(records.unit("Recruit_Chess").ignoreClone()).isTrue();
     assertThat(records.unit("Knight").ignoreClone()).isFalse();
     assertThat(records.unit("Knight_EV1").clonedVersion()).isEqualTo("Knight");
@@ -1214,8 +1213,8 @@ class BattleRecordsTest {
     assertThat(records.projectile("FishermanProjectile").unmodelledColumns()).isEmpty();
     assertThat(records.unit("Firecracker_EV1").unmodelledColumns()).isEmpty();
     assertThat(records.unit("Fisherbarrel").unmodelledColumns()).contains("SpecialRange");
-    assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns())
-        .containsExactly("OnHitAction");
+    // The evolved Dart Goblin's poison area starts its poison damage, which is modelled.
+    assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns()).isEmpty();
     // Carried: art and effects, and inert columns (a Monk's later entries, a collector's
     // ManaOnDeath, a Bat's filter and attack dash time, a tower's turret and attached character).
     for (String unit :
