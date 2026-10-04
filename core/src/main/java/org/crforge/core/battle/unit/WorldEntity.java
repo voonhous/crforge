@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.FilterSubject;
@@ -29,6 +30,7 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.battle.spawn.SpawnPerform;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
@@ -1493,6 +1495,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public void handOverChampion(SpawnHost child) {
     world.handOverChampion(this, child);
+  }
+
+  @Override
+  public SpawnPerform.PlacementSearch buildingPlacement(UnitData child) {
+    return world.buildingPlacement(this, child);
+  }
+
+  @Override
+  public void overrideAbilityButton(OverrideAbilityButtonState action) {
+    world.overrideAbilityButton(this, action);
   }
 
   @Override

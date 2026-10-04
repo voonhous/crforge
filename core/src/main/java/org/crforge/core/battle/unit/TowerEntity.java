@@ -303,6 +303,60 @@ public class TowerEntity extends WorldEntity {
   }
 
   /**
+   * The slot that follows a champion row by its name: the first, else the second, else null.
+   *
+   * @param champion the champion row's name
+   */
+  ChampionController championSlotFollowing(String champion) {
+    for (int slot = 1; slot <= 2; slot++) {
+      UnitData followed = championSlot(slot).getChampion();
+      if (followed != null && followed.name().equals(champion)) {
+        return championSlot(slot);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * A champion an action spawned, handed to the king's slots: the slot that follows its row follows
+   * its play; else an empty slot, the first before the second, takes the row and follows the play;
+   * else, where the slot allows another champion, the slot that follows the earlier play of the two
+   * is given the row. With neither the unit is followed by no slot.
+   *
+   * @param unit the champion
+   * @return the slot that now follows it, or null
+   */
+  ChampionController championSpawned(CharacterEntity unit) {
+    UnitData row = unit.getData();
+    int index = unit.getDeployIndex();
+    ChampionController first = championSlot(1);
+    ChampionController second = championSlot(2);
+    for (ChampionController slot : List.of(first, second)) {
+      UnitData followed = slot.getChampion();
+      if (followed != null && followed.name().equals(row.name())) {
+        slot.followSpawned(index);
+        return slot;
+      }
+    }
+    ChampionController take = null;
+    if (first.getChampion() == null) {
+      take = first;
+    } else if (second.getChampion() == null) {
+      take = second;
+    } else if (first.allowsReassignment() && second.getDeployIndex() > first.getDeployIndex()) {
+      take = first;
+    } else if (second.allowsReassignment() && first.getDeployIndex() > second.getDeployIndex()) {
+      take = second;
+    }
+    if (take == null) {
+      return null;
+    }
+    take.assign(row);
+    take.followSpawned(index);
+    return take;
+  }
+
+  /**
    * The deck pass at the match's setup: both slots cleared, then the deck walked from its last card
    * to its first, at most eight: the first champion found goes to the first slot, with its card's
    * deck index, a second to the second slot, and the walk ends.

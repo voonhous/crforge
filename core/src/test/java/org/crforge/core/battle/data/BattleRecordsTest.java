@@ -841,9 +841,15 @@ class BattleRecordsTest {
     // The same three written with spaces are the same tags.
     assertThat(records.unit("EliteArcherHero_Dummy").gameTagsToSet())
         .isEqualTo(egg.gameTagsToSet());
-    // Any other tag a row sets is refused.
-    assertThat(records.unit("RageBarbarianEvoGhost").unmodelledColumns())
-        .containsExactly("GameTagsToSet");
+    // The Goblins hero's banner sets three more the battle reads: no damage, no contact, no
+    // targeting; a row with one of them alone is taken too.
+    assertThat(records.unit("GoblinHero_Flag_Building").gameTagsToSet())
+        .isEqualTo(
+            EntityFlags.NO_DAMAGE | EntityFlags.NO_CHECK_COLLISIONS | EntityFlags.UNTARGETABLE);
+    assertThat(records.unit("GoblinHero_Flag_Building").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("RageBarbarianEvoGhost").gameTagsToSet())
+        .isEqualTo(EntityFlags.NO_DAMAGE);
+    assertThat(records.unit("RageBarbarianEvoGhost").unmodelledColumns()).isEmpty();
   }
 
   @Test
