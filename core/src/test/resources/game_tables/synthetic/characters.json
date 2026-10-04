@@ -28,7 +28,15 @@
     "AttacksAir": false,
     "Projectile": "BetaShot",
     "Rarity": "Rare",
-    "DeployTime": 1000
+    "DeployTime": 1000,
+    "Damage": {"BaseDamage": 75, "TowerDamage": 19},
+    "DeathDamage": "RageDamage",
+    "Speed": 1.5,
+    "HitsAir": 1,
+    "SummonCharacter": {"Name": "Gamma"},
+    "IgnoreBuff": "Haste",
+    "SpawnCounts": [1, "two"],
+    "Empty": ""
    }
   }
  }

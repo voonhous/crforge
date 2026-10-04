@@ -3,6 +3,7 @@ package org.crforge.core.battle.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -1160,6 +1161,84 @@ class BattleRecordsTest {
     assertThat(noDash.isFilterSameObjects()).isFalse();
     assertThat(records.filter("passive_hit_ground_characters_not_same").isFilterSameObjects())
         .isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "an attack sequence entry that sets a field its entry does not read is listed as not"
+          + " modelled, and one of another shape is refused")
+  void anAttackSequenceEntryFieldNotReadIsListed(@TempDir Path folder) throws IOException {
+    String unit = attackSequenceListUnit();
+    assertThat(records.unit(unit).unmodelledColumns()).doesNotContain("AttackSequenceList");
+    BattleRecords altered =
+        new BattleRecords(
+            GameData.altered(
+                folder,
+                unitTable(unit),
+                rows -> {
+                  ObjectNode entry =
+                      (ObjectNode) GameData.columns(rows, unit).get("AttackSequenceList").get(0);
+                  entry.put("CustomOnAttackAction", "SomeAction");
+                }));
+    assertThat(altered.unit(unit).unmodelledColumns()).contains("AttackSequenceList");
+
+    BattleRecords mistyped =
+        new BattleRecords(
+            GameData.altered(
+                Files.createDirectories(folder.resolve("mistyped")),
+                unitTable(unit),
+                rows -> {
+                  ObjectNode entry =
+                      (ObjectNode) GameData.columns(rows, unit).get("AttackSequenceList").get(0);
+                  entry.put("Damage", "RageDamage");
+                }));
+    assertThatThrownBy(() -> mistyped.unit(unit))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageEndingWith(
+            " row "
+                + unit
+                + " sets AttackSequenceList to a table whose Damage is the text \"RageDamage\""
+                + " where a number is read, which is not modelled");
+  }
+
+  /** The first unit whose row lists its attack sequence entries, each with its damage. */
+  private static String attackSequenceListUnit() {
+    for (String table : List.of("characters", "buildings")) {
+      for (GameRow row : GameData.tables().table(table).rows()) {
+        JsonNode list = row.value("AttackSequenceList");
+        if (list != null && list.isArray() && !list.isEmpty() && list.get(0).has("Damage")) {
+          return row.name();
+        }
+      }
+    }
+    throw new IllegalStateException("no unit lists its attack sequence");
+  }
+
+  private static String unitTable(String unit) {
+    return GameData.tables().table("characters").has(unit) ? "characters" : "buildings";
+  }
+
+  @Test
+  @DisplayName(
+      "a game object filter that sets a column the filter does not read, as a base filter or a"
+          + " list of filters, is refused rather than read without it")
+  void aFilterColumnNotReadIsRefused(@TempDir Path folder) throws IOException {
+    BattleRecords altered =
+        new BattleRecords(
+            GameData.altered(
+                folder,
+                "game_object_filters",
+                rows -> {
+                  ObjectNode troop = GameData.columns(rows, "friendly_troop");
+                  troop.put("Base", "friendly_troop_no_buildings");
+                  troop.putArray("Filters").add("DefaultCharacterTargets");
+                }));
+    assertThatThrownBy(() -> altered.filter("friendly_troop"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the game object filter friendly_troop sets columns not modelled: [Base, Filters]");
+    // A filter that sets only what the filter reads, and the text the game shows for it, is built.
+    assertThat(altered.filter("friendly_troop_no_buildings").isMatchTeamOwn()).isTrue();
   }
 
   private static long tagBits(String... names) {
