@@ -3195,12 +3195,9 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           name() + " casts " + ability.name() + ", whose activation no reference holds");
     }
-    // Only the Goblins hero's banner is a building with an ability; its cast, the second wave of
-    // goblins, is held by no reference.
-    if (getData().building()) {
-      throw new UnsupportedOperationException(
-          name() + " casts " + ability.name() + " as a building, which no reference holds");
-    }
+    // A building casts as a troop does: the Goblins hero's banner, the only building with an
+    // ability, enters the casting state through the same setter, and its trigger delay fires its
+    // activation group, the second wave of goblins and the banner's own kill.
     if (ability.switchLanes() && getData().ingamePathfindVisible()) {
       throw new UnsupportedOperationException(
           name()
