@@ -34,6 +34,16 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
    */
   public static final int MODE_HITTIME = 3;
 
+  /**
+   * The mode in which only an action moves the index, as in mode 0, while the attack is a
+   * continuous-damage attacker's in every other respect: the attack range closer while it walks,
+   * the attack reset in place of the starting attack action on a new reference in range, the reset
+   * on a lost or replaced reference and on a broken shield, the drop of a reference out of range
+   * while the timer runs and the refusal of an untouchable target. No window is walked: the
+   * entries' variable damage times are not read.
+   */
+  public static final int MODE_MANUAL = 4;
+
   /** The sequence of a row without one: one element, no entry read. */
   public static final AttackSequence NONE = new AttackSequence(MODE_NONE, List.of(0), List.of());
 
