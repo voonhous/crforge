@@ -129,6 +129,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param shieldLostAction the action row the unit runs as its shield breaks, or null
  * @param onAttackSelfAction the action row the unit runs on itself, as its own cause, after each
  *     hit not cancelled for distance, or null
+ * @param onHitTargetAction the action row the unit runs, with what it hit as the cause, for each
+ *     hit of its own (a projectile's impact for its shooter) that the target's hit points let
+ *     through, before the damage is taken off, or null
  * @param minimumRange the closest distance to a target's edge it may attack from; 0 for none
  * @param sightClip how far short of its reach behind the unit a candidate may stand, as the loader
  *     leaves it: 1000 for a row that leaves it 0, 0 for a building
@@ -329,6 +332,7 @@ public record UnitData(
     String onStartChargingAction,
     String shieldLostAction,
     String onAttackSelfAction,
+    String onHitTargetAction,
     int minimumRange,
     int sightClip,
     int sightClipSide,
