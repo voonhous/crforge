@@ -23,10 +23,19 @@ import org.crforge.core.fidelity.FidelityStatus;
  * pick, the area effect as the cause, and the pick is remembered when the row picks each object
  * once. A step at which no entry is due later than its tick finishes the run.
  *
- * <p>Refused as the row is built: waiting for a target, pauses, a finishing action, the actions on
- * the area effect itself, a mode other than the two by current hit points, fewer actions than
- * delays, a singleton, a next action and tags, none of which a reference holds; and a row without a
- * filter, or whose shape is not a circle. As it starts: an owner other than an area effect.
+ * <p>A row that waits for a target, as the Giant hero form's slap does on the character itself,
+ * takes every entry due at or before the step's tick instead of exactly on it, and drops an entry
+ * once it picked: it finishes only when no entry is left, so it waits for as long as its circle
+ * stays empty. A step while the owner's tag word meets the row's pause tags does nothing at all.
+ * With a pick, the row's action on the owner by side runs first, on the owner, the pick as its
+ * cause: of side 1 with the pick to its left (the owner's x greater) the left one, of side 0 the
+ * right one, and the other way round otherwise; then the entry's action on the pick.
+ *
+ * <p>Refused as the row is built: a longest wait, a finishing action, the action on the owner
+ * whatever the side, the owner as the cause of its own actions, a mode other than the two by
+ * current hit points, fewer actions than delays, a singleton and a next action, none of which a
+ * reference holds; and a row without a filter, or whose shape is not a circle. As it starts: an
+ * owner other than an area effect or a character.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -35,10 +44,12 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " shield with ties to the lower id, each object picked once, an entry with nobody"
             + " left, the schedules and the finish; held by vines_group, three picks among four,"
             + " and vines_tower, the third entry picking nobody. An empty circle, which ends the"
-            + " step before the finish, is held by BattleShapeSelectorTest alone. Refused: waiting,"
-            + " pauses, a finishing action, the actions on the owner, the modes by maximum or"
-            + " distance, a singleton, a next action, tags, a missing filter and a shape other"
-            + " than a circle.")
+            + " step before the finish, is held by BattleShapeSelectorTest alone. Waiting for a"
+            + " target, the pause tags, the side actions on the owner and the row's tags on a"
+            + " character, held by ability_hero_giant_slap. Refused: a longest wait, a finishing"
+            + " action, the action on the owner whatever the side, the owner as cause, the modes"
+            + " by maximum or distance, a singleton, a next action, a missing filter and a shape"
+            + " other than a circle.")
 public final class ShapeSelector extends RowAction {
 
   /** The mode that scores an object by its hit points. */
@@ -50,17 +61,7 @@ public final class ShapeSelector extends RowAction {
   /** The step a delay is counted in, in milliseconds. */
   private static final int STEP_MS = 50;
 
-  /**
-   * The row's own columns.
-   *
-   * @param oncePerTarget true when an object picked once is never picked again
-   * @param targetSelectionMode how an object is scored
-   * @param targetFilter the filter its query asks
-   * @param shapeRadius the radius of its circle
-   * @param delaysMs when each entry is due after the start, in order
-   * @param actions the row of the action each entry runs on its pick, by index, built for the pick
-   *     as it is scheduled
-   */
+  /** The row's own columns; each action is built for the object it runs on as it is scheduled. */
   @Builder
   public record Columns(
       boolean oncePerTarget,
@@ -68,8 +69,24 @@ public final class ShapeSelector extends RowAction {
       GameObjectFilter targetFilter,
       int shapeRadius,
       List<Integer> delaysMs,
-      List<String> actions) {
+      List<String> actions,
+      boolean waitForTarget,
+      long pauseTags,
+      String actionOnSelfLeft,
+      String actionOnSelfRight) {
 
+    /**
+     * @param oncePerTarget true when an object picked once is never picked again
+     * @param targetSelectionMode how an object is scored
+     * @param targetFilter the filter its query asks
+     * @param shapeRadius the radius of its circle
+     * @param delaysMs when each entry is due after the start, in order
+     * @param actions the row of the action each entry runs on its pick, by index
+     * @param waitForTarget true when an entry stays due from its tick on until it picks
+     * @param pauseTags the tags that, in the owner's tag word, pause every step
+     * @param actionOnSelfLeft the row run on the owner for a pick on its left side, or null
+     * @param actionOnSelfRight the row run on the owner for a pick on its right side, or null
+     */
     public Columns {
       delaysMs = List.copyOf(delaysMs);
       actions = List.copyOf(actions);
@@ -140,6 +157,10 @@ public final class ShapeSelector extends RowAction {
 
     @Override
     protected void update(ActionHolder holder) {
+      // A step while the owner carries a pause tag does nothing at all.
+      if (columns.pauseTags() != 0 && (columns.pauseTags() & host.ownerTags()) != 0) {
+        return;
+      }
       List<Integer> dueBefore = List.copyOf(due);
       List<Integer> hitBefore = List.copyOf(hit);
       List<Integer> found = null;
@@ -151,7 +172,12 @@ public final class ShapeSelector extends RowAction {
       int later = 0;
       for (int i = 0; i < due.size(); i++) {
         int tick = due.get(i);
-        if (tick != now) {
+        if (columns.waitForTarget()) {
+          // A waiting entry is due from its tick on.
+          if (now < tick) {
+            continue;
+          }
+        } else if (tick != now) {
           later = Math.max(later, tick);
           continue;
         }
@@ -172,12 +198,22 @@ public final class ShapeSelector extends RowAction {
           continue;
         }
         chosen.add(new int[] {i, best});
+        String onSelf = sideAction(best);
+        if (onSelf != null) {
+          host.scheduleOnOwner(onSelf, best);
+        }
         host.schedule(best, columns.actions().get(i));
         if (columns.oncePerTarget()) {
           hit.add(best);
         }
+        if (columns.waitForTarget()) {
+          // The entry picked: swapped with the last one and dropped, the same index again.
+          due.set(i, due.get(due.size() - 1));
+          due.remove(due.size() - 1);
+          i--;
+        }
       }
-      boolean finishing = due.isEmpty() || later < now;
+      boolean finishing = due.isEmpty() || (!columns.waitForTarget() && later < now);
       if (finishing) {
         finish();
       }
@@ -195,6 +231,27 @@ public final class ShapeSelector extends RowAction {
                 hitBefore,
                 List.copyOf(hit)));
       }
+    }
+
+    /**
+     * The row run on the owner for a pick by the side it lies on: for an owner of side 1 the left
+     * row when the pick's x is below the owner's and the right row otherwise, for side 0 the other
+     * way round, for any other side neither.
+     */
+    private String sideAction(int pick) {
+      if (columns.actionOnSelfLeft() == null && columns.actionOnSelfRight() == null) {
+        return null;
+      }
+      int side = host.ownerSide();
+      boolean pickBelow = host.ownerX() > host.x(pick);
+      if (pickBelow) {
+        return side == 1
+            ? columns.actionOnSelfLeft()
+            : side == 0 ? columns.actionOnSelfRight() : null;
+      }
+      return side == 0
+          ? columns.actionOnSelfLeft()
+          : side == 1 ? columns.actionOnSelfRight() : null;
     }
 
     /**

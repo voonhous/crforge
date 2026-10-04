@@ -44,6 +44,41 @@ public interface ShapeSelectorHost {
    */
   void schedule(int targetId, String action);
 
+  /** The owner's tag word, which the row's pause tags are tested against. */
+  default long ownerTags() {
+    throw new UnsupportedOperationException("a shape selector's pause tags on this owner");
+  }
+
+  /** The owner's side, which picks the side action run on it. */
+  default int ownerSide() {
+    throw new UnsupportedOperationException("a shape selector's side action on this owner");
+  }
+
+  /** The owner's x, which the side action compares with the pick's. */
+  default int ownerX() {
+    throw new UnsupportedOperationException("a shape selector's side action on this owner");
+  }
+
+  /**
+   * An object's x.
+   *
+   * @param id the object's id
+   */
+  default int x(int id) {
+    throw new UnsupportedOperationException("a shape selector's side action on this owner");
+  }
+
+  /**
+   * Schedules an action row on the owner itself, built for it, with a picked object as its cause.
+   *
+   * @param action the action row's name
+   * @param causeId the id of the object picked
+   */
+  default void scheduleOnOwner(String action, int causeId) {
+    throw new UnsupportedOperationException(
+        "a shape selector's action on its owner " + action + " is not modelled for this owner");
+  }
+
   /**
    * A run started.
    *

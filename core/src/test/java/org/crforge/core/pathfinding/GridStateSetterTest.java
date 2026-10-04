@@ -3,6 +3,7 @@ package org.crforge.core.pathfinding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
@@ -207,6 +208,79 @@ class GridStateSetterTest {
 
       assertThat(movement.getRoute().isEmpty()).as("state %d", state).isTrue();
     }
+  }
+
+  @Test
+  @DisplayName(
+      "a cast with neither a cast time nor a trigger delay runs its effect in the casting state's"
+          + " entry, after the route is emptied, then goes back to the state it came from, whose"
+          + " change alone runs the combat gate")
+  void aCastWithNoCountdownsFiresInTheEntry() {
+    StateTimers timers = new StateTimers();
+    int[] gates = {0};
+    GridStateSetter setter =
+        new GridStateSetter(
+            unit, movement, targeting, () -> null, -1, MovementConfig.forGroundUnit());
+    List<String> seen = new ArrayList<>();
+    setter.setCasting(
+        new GridStateSetter.Casting(
+            timers,
+            0,
+            0,
+            false,
+            () -> gates[0]++,
+            0,
+            () ->
+                seen.add(
+                    "effect in "
+                        + unit.getState()
+                        + " route empty "
+                        + movement.getRoute().isEmpty())));
+    unit.setState(GridEntityState.STANDING);
+    movement.setRoute(Route.of(48 * WIDTH + 6, 47 * WIDTH + 7));
+
+    setter.setState(unit, GridEntityState.CASTING);
+
+    assertThat(seen).containsExactly("effect in " + GridEntityState.CASTING + " route empty true");
+    assertThat(unit.getState()).isEqualTo(GridEntityState.STANDING);
+    assertThat(gates[0]).as("the gate of the change back only").isEqualTo(1);
+    assertThat(unit.getPendingFlags() & EntityFlags.CASTING_ABILITY).isNotZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a cast with no countdowns whose effect sends the unit into the follow-up state stays there")
+  void aCastWithNoCountdownsKeepsTheFollowUp() {
+    StateTimers timers = new StateTimers();
+    int[] gates = {0};
+    GridStateSetter setter =
+        new GridStateSetter(
+            unit, movement, targeting, () -> null, -1, MovementConfig.forGroundUnit());
+    setter.setCasting(
+        new GridStateSetter.Casting(
+            timers,
+            0,
+            0,
+            false,
+            () -> gates[0]++,
+            500,
+            () -> setter.setState(unit, GridEntityState.ABILITY_FOLLOW_UP)));
+    unit.setState(GridEntityState.STANDING);
+
+    setter.setState(unit, GridEntityState.CASTING);
+
+    assertThat(unit.getState()).isEqualTo(GridEntityState.ABILITY_FOLLOW_UP);
+    assertThat(timers.getAbilityCountdown()).isEqualTo(10);
+    assertThat(gates[0]).as("the follow-up change's gate and the cast's own").isEqualTo(2);
+  }
+
+  @Test
+  @DisplayName("a cast with no countdowns and no effect to run in the entry is refused")
+  void aCastWithNoCountdownsAndNoEffectIsRefused() {
+    setter.setCasting(new GridStateSetter.Casting(new StateTimers(), 0, 0, false, () -> {}));
+    assertThatThrownBy(() -> setter.setState(unit, GridEntityState.CASTING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("casts with no cast time and no trigger delay");
   }
 
   @Test

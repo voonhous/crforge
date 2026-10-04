@@ -1454,6 +1454,24 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return data.flyingHeight() > 0;
   }
 
+  /**
+   * Whether the entity stands on the ground, as its tag word and its live height give it: with both
+   * force tags, at height 0; with FORCE_IS_GROUND alone on the ground, with FORCE_IS_AIR alone not;
+   * with neither, on the ground when its row's flying height is 0.
+   */
+  boolean layerGround() {
+    long flags = getView().getFlags();
+    boolean air = (flags & world.forceIsAir()) != 0;
+    boolean ground = (flags & world.forceIsGround()) != 0;
+    if (air && ground) {
+      return getView().getZ() + getView().getHeightOffset() == 0;
+    }
+    if (air || ground) {
+      return ground;
+    }
+    return data.flyingHeight() == 0;
+  }
+
   /** Whether the entity has a movement component, switched on or not. */
   boolean hasMovementComponent() {
     return component(CharacterEntity.MOVEMENT_SLOT) != null;
@@ -2158,6 +2176,24 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   DamageResult takeTypedHit(
       WorldEntity source, int amount, int damageId, int directionX, int directionY) {
+    return takeTypedHit(source, source, amount, damageId, directionX, directionY);
+  }
+
+  /**
+   * Takes a typed hit counted by one entity and caused by another, as an area effect's typed hit
+   * is: counted by nothing, its shield break naming the area effect as its cause.
+   *
+   * @param dealer what counts the hit, or null for nothing
+   * @param cause what a shield it breaks names as the cause of its action, or null for none
+   */
+  DamageResult takeTypedHit(
+      WorldEntity dealer,
+      SpawnHost cause,
+      int amount,
+      int damageId,
+      int directionX,
+      int directionY) {
+    WorldEntity source = dealer;
     refuseReflect("a typed hit");
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
@@ -2168,7 +2204,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             directionX,
             directionY,
             damageQueries(false, source, false));
-    shieldHit(amount, shieldBefore, source);
+    shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
 
     return result;

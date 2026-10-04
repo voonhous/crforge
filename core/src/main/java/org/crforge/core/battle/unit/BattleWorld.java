@@ -255,7 +255,8 @@ public class BattleWorld implements HolderPasses {
       DamageType type,
       int amount,
       int directionX,
-      int directionY) {}
+      int directionY,
+      AreaEffectEntity areaSource) {}
 
   /** The typed hits dealt this tick, in the order they were dealt. */
   private final List<TypedHit> typedHits = new ArrayList<>();
@@ -3933,7 +3934,21 @@ public class BattleWorld implements HolderPasses {
   public void queueTypedHit(WorldEntity source, WorldEntity target, DamageType type, int amount) {
     int directionX = source == null ? 0 : target.getView().getX() - source.getView().getX();
     int directionY = source == null ? 0 : target.getView().getY() - source.getView().getY();
-    typedHits.add(new TypedHit(source, target, type, amount, directionX, directionY));
+    typedHits.add(new TypedHit(source, target, type, amount, directionX, directionY, null));
+  }
+
+  /**
+   * Queues a typed hit from an area effect, as a shaped area effect's damage does: the area effect
+   * its source, with no direction. The drain deals it after the post-hooks of the tick.
+   *
+   * @param source the area effect that deals it
+   * @param target the entity it lands on
+   * @param type its damage type
+   * @param amount its amount, before the type's pipeline
+   */
+  public void queueTypedHit(
+      AreaEffectEntity source, WorldEntity target, DamageType type, int amount) {
+    typedHits.add(new TypedHit(null, target, type, amount, 0, 0, source));
   }
 
   /**
@@ -3947,6 +3962,10 @@ public class BattleWorld implements HolderPasses {
     for (TypedHit hit : due) {
       WorldEntity target = hit.target();
       if (target.getHitPoints() == null) {
+        continue;
+      }
+      if (hit.areaSource() != null) {
+        drainAreaTypedHit(hit);
         continue;
       }
       int amount = pipeline(hit);
@@ -3977,6 +3996,43 @@ public class BattleWorld implements HolderPasses {
       for (WorldObserver observer : observers) {
         observer.typedHitDealt(tick, source, target, amount, damageId, result);
       }
+    }
+  }
+
+  /**
+   * Deals a typed hit an area effect queued: the type's pipeline, in which the area effect, which
+   * carries no buffs, leaves the source's multiplier out; a damage id when the type takes one; the
+   * typed hit's entry, which no source counts and whose shield break names the area effect as its
+   * cause; the death the area effect caused; and the type's action on the target, the area effect
+   * its cause. A type that scales by the source's level, whose level an area effect source would
+   * give, and one with an action on the source are refused.
+   */
+  private void drainAreaTypedHit(TypedHit hit) {
+    WorldEntity target = hit.target();
+    AreaEffectEntity source = hit.areaSource();
+    DamageType type = hit.type();
+    if (type.enableLevelScaling() || type.actionOnSource() != null) {
+      throw new UnsupportedOperationException(
+          type.name()
+              + " of a typed hit from "
+              + source.getData().name()
+              + " scales by its source's level or runs an action on its source, not modelled");
+    }
+    boolean noDamage = (target.getView().getFlags() & EntityFlags.NO_DAMAGE) != 0;
+    int amount =
+        type.pipeline(hit.amount(), noDamage, false, null, 0, target.getBuffs()::damageReduction);
+    int damageId = type.acquireDamageId() ? nextHitId() : 0;
+    DamageResult result = target.takeTypedHit(null, source, amount, damageId, 0, 0);
+    if (result.died()) {
+      target.die(source);
+    }
+    if (type.actionOnTarget() != null) {
+      target
+          .actionHolder()
+          .schedule(type.actionOnTarget(), ActionHolder.OWN_DELAY, false, source.actionHolder());
+    }
+    for (WorldObserver observer : observers) {
+      observer.typedHitDealt(tick, null, target, amount, damageId, result);
     }
   }
 

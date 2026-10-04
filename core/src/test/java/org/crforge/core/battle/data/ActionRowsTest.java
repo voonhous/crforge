@@ -28,10 +28,12 @@ import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
+import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.Hide;
+import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
@@ -158,15 +160,94 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "a shape selector that waits for its target, scores by distance, has fewer actions than"
+      "the Giant hero form's slap selector reads its wait, its pause tags, its tags and its two"
+          + " side actions on the owner")
+  void theSlapSelectorIsBuilt() {
+    ShapeSelector slap =
+        (ShapeSelector) GameData.actions().build("GiantHero_Target_Selector", INERT_BINDING);
+    ShapeSelector.Columns columns = slap.getColumns();
+    assertThat(columns.waitForTarget()).isTrue();
+    assertThat(columns.pauseTags())
+        .isEqualTo(GameData.actions().tagMask("COMBAT_DISABLED,CAPTURED"))
+        .isNotZero();
+    assertThat(slap.tags())
+        .isEqualTo(GameData.actions().tagMask("UNIT_CUSTOM_TAG_1,ABILITY_COOLDOWN_PAUSED"));
+    assertThat(columns.actionOnSelfLeft()).isEqualTo("GiantHero_Slap_Group_On_Self_Left");
+    assertThat(columns.actionOnSelfRight()).isEqualTo("GiantHero_Slap_Group_On_Self_Right");
+    assertThat(columns.shapeRadius()).isEqualTo(2500);
+    assertThat(columns.delaysMs()).containsExactly(0);
+    assertThat(columns.actions()).containsExactly("GiantHero_Slap_Pushback");
+  }
+
+  @Test
+  @DisplayName(
+      "the slap's push from its cause reads its delay, strength, mode, tags, switches and three"
+          + " actions, the switches it leaves out at the loader's defaults")
+  void theSlapPushIsBuilt() {
+    DoPushbackFromInstigator push =
+        (DoPushbackFromInstigator)
+            GameData.actions().build("GiantHero_Slap_Pushback", INERT_BINDING);
+    DoPushbackFromInstigator.Columns columns = push.getColumns();
+    assertThat(columns.delayMs()).isEqualTo(400);
+    assertThat(push.dueTick(321)).isEqualTo(329);
+    assertThat(columns.strength()).isEqualTo(23000);
+    assertThat(columns.directionalOffset()).isEqualTo(50);
+    assertThat(columns.disallowTags())
+        .isEqualTo(
+            GameData.actions()
+                .tagMask(
+                    "NO_PUSHBACK,UNTARGETABLE,DASHING,DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS"));
+    assertThat(columns.forced()).isTrue();
+    assertThat(columns.resetIfStronger()).isTrue();
+    assertThat(columns.resetAvoidance()).isTrue();
+    assertThat(columns.attack()).isFalse();
+    assertThat(columns.proportional()).isFalse();
+    assertThat(columns.invisible()).isFalse();
+    assertThat(columns.successAction()).isEqualTo("GiantHero_Slap_Group_On_Target");
+    assertThat(columns.successOnInstigator()).isEqualTo("GiantHero_Slap_Active_Effect_End");
+    assertThat(columns.failureOnInstigator()).isEqualTo("GiantHero_Reenable_Ability");
+    Knockback knock =
+        (Knockback) GameData.actions().build("GiantHero_Slap_Knockback", INERT_BINDING);
+    assertThat(knock.getLandingAction()).isEqualTo("GiantHero_Slap_LandingGroup");
+    assertThat(knock.isPassInstigator()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a push from its cause with no delay, in another mode or skipping the request's checks is"
+          + " refused")
+  void aPushFromItsCauseIsRefused(@TempDir Path folder) throws IOException {
+    String row = "GiantHero_Slap_Pushback";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "sets no PushbackDelay", f -> f.remove("PushbackDelay"),
+            "sets DirectionMode FromInstigator", f -> f.put("DirectionMode", "FromInstigator"),
+            "sets IgnorePushbackChecks", f -> f.put("IgnorePushbackChecks", true));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a shape selector that waits at most a while, scores by distance, has fewer actions than"
           + " delays, has no filter or a shape other than a circle is refused")
   void aShapeSelectorIsRefused(@TempDir Path folder) throws IOException {
-    assertThatThrownBy(() -> GameData.actions().build("GiantHero_Target_Selector", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("sets WaitForTarget");
     String row = "Vines_Target_Selector";
     Map<String, Consumer<ObjectNode>> changes =
         Map.of(
+            "sets MaxWaitTimeForTarget", f -> f.put("MaxWaitTimeForTarget", 1000),
             "scores by Closest", f -> f.put("TargetSelectionMode", "Closest"),
             "fewer actions than delays", f -> f.putArray("Delays").add(0).add(50).add(100).add(150),
             "without a filter", f -> f.remove("TargetFilter"),
@@ -1262,12 +1343,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 823 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 831 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(823);
+    assertThat(built).as("rows built").isEqualTo(831);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 43, "column", 67, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 42, "column", 60, "spawn type", 13));
   }
 }

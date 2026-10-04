@@ -174,16 +174,17 @@ class BattleShapeSelectorTest {
   }
 
   @Test
-  @DisplayName("a shape selector run on a unit rather than an area effect is refused")
-  void onAUnitIsRefused() {
+  @DisplayName(
+      "a shape selector run on a crown tower, neither an area effect nor a character, is refused")
+  void onATowerIsRefused() {
     Scene scene = new Scene(GameData.tables());
-    CharacterEntity knight =
-        scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 0, X, Y, "knight");
     scene.steps(1);
+    TowerEntity king = scene.match.getWorld().kingTower(0);
     BattleAction selector =
-        GameData.actions().build(SELECTOR, scene.match.getWorld().binding(knight));
-    assertThatThrownBy(() -> knight.actionHolder().start(selector))
+        GameData.actions().build(SELECTOR, scene.match.getWorld().binding(king));
+    assertThatThrownBy(() -> king.actionHolder().start(selector))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a shape selector on an owner other than an area effect");
+        .hasMessageContaining(
+            "a shape selector on an owner other than an area effect or a character");
   }
 }

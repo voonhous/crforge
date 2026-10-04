@@ -64,11 +64,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnClones true when each it makes is a clone
  * @param stayAfterParentDies true when it stays, standing on its last point, as the object it
  *     follows leaves; false to end with it
- * @param shaped true when each update lists its targets in a rectangle, through its filter, in
- *     place of its circle
- * @param shapeWidth the width of that rectangle
- * @param shapeHeight its height
- * @param filter the game object filter the rectangle's list passes its objects through, or null
+ * @param shaped true when each update lists its targets in its shape, a rectangle or a circle,
+ *     through its filter, in place of its radius's circle
+ * @param shapeWidth the width of that rectangle; 0 for a circle
+ * @param shapeHeight its height; 0 for a circle
+ * @param shapeRadius the radius of a circle shape; 0 for a rectangle
+ * @param damageType the damage type a shaped row's damage is queued with as a typed hit, or null
+ * @param filter the game object filter the shape's list passes its objects through, or null
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder(toBuilder = true)
@@ -119,6 +121,8 @@ public record AreaEffectData(
     boolean shaped,
     int shapeWidth,
     int shapeHeight,
+    int shapeRadius,
+    String damageType,
     String filter,
     List<String> unmodelledColumns) {
 

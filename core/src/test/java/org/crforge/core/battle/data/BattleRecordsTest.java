@@ -552,7 +552,8 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "a shaped area effect reads its rectangle and its filter, and its damage type without"
-          + " damage; a shape of another class is not modelled")
+          + " damage; a circle with a filter and damage reads its radius and damage type; a circle"
+          + " that pushes or shares its damage with towers is not modelled")
   void aShapedAreaEffect() {
     AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
     assertThat(wind.shaped()).isTrue();
@@ -562,11 +563,22 @@ class BattleRecordsTest {
     assertThat(wind.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").shaped()).isFalse();
     assertThat(records.areaEffect("Zap").filter()).isNull();
-    // Two circles, the second dealing damage, whose damage type stays unread.
+    // A circle that pushes without damage, and one whose damage a crown tower takes less of, are
+    // not held.
     assertThat(records.areaEffect("IceGolemiteHero_KnockBack_AEO").unmodelledColumns())
         .contains("Shape");
-    assertThat(records.areaEffect("GiantHero_LandingAEO").unmodelledColumns())
-        .contains("Shape", "DamageType");
+    assertThat(records.areaEffect("IceGolemiteHero_Damage_AEO").unmodelledColumns())
+        .contains("Shape");
+    // A circle with a filter and damage queued through its damage type, as the Giant hero form's
+    // landing has.
+    AreaEffectData landing = records.areaEffect("GiantHero_LandingAEO");
+    assertThat(landing.unmodelledColumns()).isEmpty();
+    assertThat(landing.shaped()).isTrue();
+    assertThat(landing.shapeRadius()).isEqualTo(1000);
+    assertThat(landing.shapeWidth()).isZero();
+    assertThat(landing.damageType()).isEqualTo("GiantHero_LandingAEO_DamageType");
+    assertThat(landing.filter()).isEqualTo("GroundCharacterTargets");
+    assertThat(landing.damage()).isEqualTo(53);
   }
 
   @Test

@@ -1,6 +1,7 @@
 package org.crforge.core.battle.data;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +35,7 @@ import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DealDamage;
+import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.FilterByEnemy;
@@ -776,7 +778,26 @@ public final class ActionRows {
                   "BombAreaEffectObjects",
                   "BombSpellTargetIndicatorClips",
                   "BombSpellTargetIndicatorFiles")),
-          Map.entry("ActionCannonProjectileSpawn", Set.of("BombProjectile", "BombZOffset")));
+          Map.entry("ActionCannonProjectileSpawn", Set.of("BombProjectile", "BombZOffset")),
+          Map.entry(
+              "ActionDoPushbackFromInstigator",
+              Set.of(
+                  "DirectionMode",
+                  "PushbackStrength",
+                  "PushRadiusDirectionalOffset",
+                  "ResetPushbackIfStronger",
+                  "DistanceProportinalPush",
+                  "IgnorePushbackChecks",
+                  "ForcedPushback",
+                  "PushbackInvisible",
+                  "AttackPushback",
+                  "GameTagsToDisallowPush",
+                  "ResetAvoidanceOnTarget",
+                  "PushbackDelay",
+                  "SuccessActionOnInstigator",
+                  "FailureActionOnInstigator",
+                  "SuccessAction",
+                  "FailureAction")));
 
   /** The spawn columns: the character branch's, and the other branches' it does not read. */
   private static Set<String> spawnColumns() {
@@ -840,6 +861,17 @@ public final class ActionRows {
    */
   public BattleAction build(String name, ActionBinding binding) {
     return new Build(binding).action(name);
+  }
+
+  /**
+   * Builds a damage type row, its switches and the actions it runs, for one owner.
+   *
+   * @param name the damage type row's name
+   * @param binding the owner's binding, which its actions are built for
+   * @return the damage type, or null for no name
+   */
+  public DamageType damageType(String name, ActionBinding binding) {
+    return name == null ? null : new Build(binding).damageType(TextNode.valueOf(name));
   }
 
   /**
@@ -1086,6 +1118,7 @@ public final class ActionRows {
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
+            case "ActionDoPushbackFromInstigator" -> pushbackFromInstigator(name, shared, f);
             case "ActionDamagingPushBack" -> damagingPushBack(name, shared, f);
             case "ActionCannonBarrage" -> cannonBarrage(name, shared, f);
             case "ActionCannonProjectileSpawn" -> cannonProjectileSpawn(name, shared, f);
@@ -1580,25 +1613,22 @@ public final class ActionRows {
 
     /**
      * A shape selector's columns: its circle, its filter, how it scores, its delays and their
-     * actions, and whether it picks each object once, which by default it does. A row that waits
-     * for a target, pauses, runs an action as it finishes or on its owner, scores by maximum hit
-     * points or distance, has fewer actions than delays, is a singleton, chains a next action or
-     * sets tags is refused; so is one without a filter, or whose shape is not a circle.
+     * actions, whether it picks each object once, which by default it does, whether it waits for a
+     * target, its pause tags and its actions on the owner by the pick's side. A row that waits at
+     * most a while, runs an action as it finishes or on its owner whatever the side, makes its
+     * owner the cause of those, scores by maximum hit points or distance, has fewer actions than
+     * delays, is a singleton or chains a next action is refused; so is one without a filter, or
+     * whose shape is not a circle.
      */
     private ShapeSelector shapeSelector(String name, ActionRow shared, JsonNode f) {
       for (String column :
           List.of(
-              "WaitForTarget",
               "MaxWaitTimeForTarget",
-              "PauseTags",
               "OnFinishedAction",
               "ActionOnSelfWhenTriggered",
-              "ActionOnSelfWhenTriggeredLeft",
-              "ActionOnSelfWhenTriggeredRight",
               "ParentAsInstigatorForSelfActions",
               "Singleton",
-              "NextAction",
-              "GameTagsToSet")) {
+              "NextAction")) {
         if (sets(f, column)) {
           throw new UnsupportedOperationException(
               name + " is a shape selector that sets " + column + ", which is not modelled");
@@ -1640,6 +1670,10 @@ public final class ActionRows {
               .shapeRadius(records.circleRadius(f.path("Shape").asText()))
               .delaysMs(delays)
               .actions(actions)
+              .waitForTarget(f.path("WaitForTarget").asBoolean(false))
+              .pauseTags(f.has("PauseTags") ? tagMask(f.get("PauseTags").asText()) : 0)
+              .actionOnSelfLeft(rowName(f.get("ActionOnSelfWhenTriggeredLeft")))
+              .actionOnSelfRight(rowName(f.get("ActionOnSelfWhenTriggeredRight")))
               .build());
     }
 
@@ -1764,19 +1798,77 @@ public final class ActionRows {
     }
 
     /**
-     * A knock's columns. A row with a landing action, passing the cause on to it or the
-     * no-collision tag is refused.
+     * A push from its cause's columns, each the loader's default when left out: a strength of 1000,
+     * a directional offset of 50, forced, resetting only for a stronger push and resetting
+     * avoidance, the rest off. Refused: no delay, a mode other than toward the horizontal centre
+     * from the cause, the push that skips the request's checks and a failure action on the owner.
+     */
+    private DoPushbackFromInstigator pushbackFromInstigator(
+        String name, ActionRow shared, JsonNode f) {
+      int delay = integer(f, "PushbackDelay");
+      if (delay <= 0) {
+        throw new UnsupportedOperationException(
+            name + ", a push from its cause, sets no PushbackDelay, which is not modelled");
+      }
+      String mode = f.path("DirectionMode").asText("");
+      if (!mode.equals("ToHorizontalCenterFromInstigator")) {
+        throw new UnsupportedOperationException(
+            name
+                + ", a push from its cause, sets DirectionMode "
+                + mode
+                + ", which is not modelled");
+      }
+      if (bool(f, "IgnorePushbackChecks")) {
+        throw new UnsupportedOperationException(
+            name + ", a push from its cause, sets IgnorePushbackChecks, which is not modelled");
+      }
+      if (rowName(f.get("FailureAction")) != null) {
+        throw new UnsupportedOperationException(
+            name + ", a push from its cause, sets FailureAction, which is not modelled");
+      }
+      return new DoPushbackFromInstigator(
+          shared,
+          DoPushbackFromInstigator.Columns.builder()
+              .delayMs(delay)
+              .strength(f.hasNonNull("PushbackStrength") ? integer(f, "PushbackStrength") : 1000)
+              .directionalOffset(
+                  f.hasNonNull("PushRadiusDirectionalOffset")
+                      ? integer(f, "PushRadiusDirectionalOffset")
+                      : 50)
+              .disallowTags(
+                  f.has("GameTagsToDisallowPush")
+                      ? tagMask(f.get("GameTagsToDisallowPush").asText())
+                      : 0)
+              .forced(f.path("ForcedPushback").asBoolean(true))
+              .attack(bool(f, "AttackPushback"))
+              .proportional(bool(f, "DistanceProportinalPush"))
+              .resetIfStronger(f.path("ResetPushbackIfStronger").asBoolean(true))
+              .invisible(bool(f, "PushbackInvisible"))
+              .resetAvoidance(f.path("ResetAvoidanceOnTarget").asBoolean(true))
+              .successOnInstigator(rowName(f.get("SuccessActionOnInstigator")))
+              .failureOnInstigator(rowName(f.get("FailureActionOnInstigator")))
+              .successAction(rowName(f.get("SuccessAction")))
+              .build());
+    }
+
+    /**
+     * A knock's columns: its height, its duration, its landing action and whether that takes the
+     * knock's cause. A row with the no-collision tag is refused.
      */
     private Knockback knockback(String name, ActionRow shared, JsonNode f) {
       refuseUnread(name, f, true);
-      for (String column :
-          List.of("ActionOnLanding", "PassInstigatorToLandingAction", "ApplyNoCollisionTag")) {
-        if (sets(f, column)) {
-          throw new UnsupportedOperationException(
-              name + ", a knock, sets " + column + ", which is not modelled");
-        }
+      if (sets(f, "ApplyNoCollisionTag")) {
+        throw new UnsupportedOperationException(
+            name + ", a knock, sets ApplyNoCollisionTag, which is not modelled");
       }
-      return new Knockback(shared, integer(f, "Height"), integer(f, "Duration"));
+      // The landing action is built as it is scheduled, for the unit that lands.
+      String landing = rowName(f.get("ActionOnLanding"));
+      return new Knockback(
+          shared,
+          integer(f, "Height"),
+          integer(f, "Duration"),
+          landing,
+          f.path("PassInstigatorToLandingAction").asBoolean(false));
     }
 
     /**
