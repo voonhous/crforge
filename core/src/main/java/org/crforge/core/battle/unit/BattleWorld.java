@@ -2266,10 +2266,11 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Refused rather than guessed: a projectile's kill for a launcher with a killed-done action,
    * which the game hands on to the launcher by a path not followed, and a kill after the tick's
-   * last pending pass, as for the death hooks. The hook's other blocks - a resurrection, a buff or
-   * a conversion on a kill - read columns the battle refuses as it creates the unit. Its first
-   * block, the reference a row that passes over buffed targets drops on every hit, comes first -
-   * see {@link #referenceDrop}.
+   * last pending pass, as for the death hooks. Of the hook's other blocks, the evolved Pekka's
+   * TempResurrect hands a character's kill to the battle's presentation listener and changes
+   * nothing the battle reads, so it has no part here; a buff or a conversion on a kill read columns
+   * the battle refuses as it creates the unit. Its first block, the reference a row that passes
+   * over buffed targets drops on every hit, comes first - see {@link #referenceDrop}.
    *
    * @param dying the entity killed
    * @param attacker what killed it

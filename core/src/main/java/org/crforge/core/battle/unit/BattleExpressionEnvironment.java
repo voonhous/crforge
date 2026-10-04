@@ -7,6 +7,10 @@ import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.target.TargetView;
 
@@ -44,14 +48,20 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " building_evolutions_barbarians; is_active_or_secondary_champion and is_champion"
             + " alike as a character, no clone, that a champion slot of its side follows by its"
             + " row and play, held by hero_goblins; is_deploying as a character in the"
-            + " deploying state, 0 for any other object, held by hero_mega_minion. Supplied, not"
+            + " deploying state, 0 for any other object, held by hero_mega_minion;"
+            + " target_max_hp on the context's reference while its targeting runs, 0 without"
+            + " one or with the reference's hit points off, with no argument its maximum and"
+            + " with one its row's hit points at that many steps above the Common first level"
+            + " re-based on its rarity, held by evo_pekka_vs_musketeer and"
+            + " evo_pekka_kills_giant_knight_musketeer. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
-            + " would read first, refused; the other 23 functions, which fail"
+            + " would read first, refused; target_max_hp on a tower or on a reference that has"
+            + " left the battle, refused; the other 22 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -85,6 +95,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   private static final int HP = BattleFunctions.id("hp");
   private static final int MAX_HP = BattleFunctions.id("max_hp");
+  private static final int TARGET_MAX_HP = BattleFunctions.id("target_max_hp");
+
+  /** The component slot of a character's hit points, whose active bit target_max_hp tests. */
+  private static final int HIT_POINTS_SLOT = 2;
 
   /**
    * The growth percentage a unit's maximum hit points are read at: no unit that grows is modelled.
@@ -231,6 +245,9 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       // The maximum times the growth percentage, the usual 100: no unit that grows is modelled.
       return hitPoints.getMaximum() * GROWTH_PERCENT / 100;
     }
+    if (id == TARGET_MAX_HP) {
+      return targetMaxHp(arguments);
+    }
     if (id == TARGET_IN_RANGE) {
       // The context's own reference, whether its targeting component runs or not: within the
       // argument of it, measured from the target's edge and the context's own.
@@ -319,6 +336,47 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     int count = hitSpeed < 1 ? 0 : attackTime / hitSpeed;
     world.attackCountRead(context, attackTime, count);
     return count;
+  }
+
+  /**
+   * The maximum hit points of the context's reference: 0 while its targeting component is off, with
+   * no reference, or with the reference's hit points absent or switched off. Without an argument
+   * the reference's maximum as it stands, times the usual growth percentage of 100. With one, not
+   * the reference's own level: the argument's low byte as steps above the Common rarity's first
+   * level, re-based on the reference's own rarity, and the reference's row's hit points at that
+   * level, so target_max_hp(10) is a row's hit points at card level 11 whatever level it was played
+   * at. Nothing tests that the reference is alive.
+   *
+   * <p>Refused rather than guessed: a reference that has left the battle, and a tower, whose hit
+   * points are scaled by tables of their own.
+   */
+  private int targetMaxHp(int[] arguments) {
+    TargetView target = context.getTargeting().getReference();
+    if (!context.isActive(0) || target == null) {
+      return 0;
+    }
+    WorldEntity entity = world.entityOf(target.getEntity());
+    if (entity == null) {
+      throw new UnsupportedOperationException(
+          "target_max_hp on " + context.name() + "'s reference, which has left the battle");
+    }
+    if (!(entity instanceof CharacterEntity)) {
+      throw new UnsupportedOperationException(
+          "target_max_hp on " + entity.name() + ", which is not a character, is not modelled");
+    }
+    HitPoints hitPoints = entity.getHitPoints();
+    if (hitPoints == null || !entity.isActive(HIT_POINTS_SLOT)) {
+      return 0;
+    }
+    if (arguments.length == 0) {
+      return hitPoints.getMaximum() * GROWTH_PERCENT / 100;
+    }
+    UnitData row = entity.getData();
+    int packed =
+        PackedLevel.pack(
+            (RarityTable.COMMON.relativeLevel() << 8) | (arguments[0] & 0xff), row.rarity());
+    return LevelScaling.hitpoints(
+        ScalingGlobals.standard(), row.hitpoints(), packed, row.rarity(), false, false);
   }
 
   /**
