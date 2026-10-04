@@ -296,6 +296,19 @@
   "troop-interaction-v2/troops_musketeer_vs_archer_and_spears": {"outcome": "diagnostic_match"},
   "troop-interaction-v2/troops_skeletons_pull_knight": {"outcome": "diagnostic_match"},
   "troop-interaction-v2/troops_valkyrie_into_skeleton_army": {"outcome": "diagnostic_match"},
-  "troop-interaction-v2/troops_wizard_into_gang_and_minions": {"outcome": "diagnostic_match"}
+  "troop-interaction-v2/troops_wizard_into_gang_and_minions": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_ewiz_stuns_darkprince_charge": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_guards_shields_vs_valkyrie_and_archers": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_icespirit_freezes_battleram": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_icewizard_slows_minipekka_megaminion": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_inferno_dragon_ramp_retarget_stun": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_inferno_tower_ramp_zap_reset": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_inferno_tower_retarget_skeletons_giant": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_log_pushes_prince_charge": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_lumberjack_death_rage": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_snowball_fireball_on_darkprince_shield": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_sparky_charge_reset_by_zap": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_zap_interrupts_megaminion_minipekka": {"outcome": "diagnostic_match"},
+  "troop-status-v2/status_zap_stuns_prince_charge": {"outcome": "diagnostic_match"}
  }
 }
