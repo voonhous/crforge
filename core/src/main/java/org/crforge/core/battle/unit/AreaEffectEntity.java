@@ -1361,7 +1361,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   @Override
   public int variable(int key) {
-    return variables.getOrDefault(key, 0);
+    return variables.getOrDefault(key, world.variableStart(key));
   }
 
   @Override

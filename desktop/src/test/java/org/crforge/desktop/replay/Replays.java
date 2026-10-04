@@ -52,7 +52,7 @@ final class Replays {
 
   /**
    * A copy of the configured tables the battle core refuses ({@link TableCopies#refused}): a
-   * variable row's DefaultValue, which a newer data version sets and the battle does not model.
+   * variable row's Tid, a column the battle does not model.
    */
   static GameTables refusedTables(Path folder) throws IOException {
     return GameTables.load(TableCopies.refused(folder, "refused"));

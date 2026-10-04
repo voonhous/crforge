@@ -146,18 +146,17 @@ class BattleTableValueShapeTest {
   }
 
   @Test
-  @DisplayName("a variable whose row gives it a start other than 0 is refused as the battle starts")
-  void aVariableDefaultIsRefused(@TempDir Path folder) throws IOException {
+  @DisplayName("a variable row setting a column other than its name and start value is refused")
+  void aVariableColumnNotModelledIsRefused(@TempDir Path folder) throws IOException {
     GameTables tables =
         GameData.altered(
             folder,
             "variables",
-            rows -> GameData.columns(rows, "InfernoDragon_EV1_AttackCount").put("DefaultValue", 7));
+            rows -> GameData.columns(rows, "InfernoDragon_EV1_AttackCount").put("Tid", "TID_X"));
 
     assertThatThrownBy(() -> new Standard1v1Battle(tables, LEVEL, false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "the variables row InfernoDragon_EV1_AttackCount sets DefaultValue, which is not"
-                + " modelled");
+            "the variables row InfernoDragon_EV1_AttackCount sets Tid, which is not modelled");
   }
 }

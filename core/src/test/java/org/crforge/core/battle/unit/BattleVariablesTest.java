@@ -3,23 +3,28 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.data.ActionBinding;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.expression.ExpressionException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A variable an action writes is the one an expression naming it reads: the battle's environment
  * resolves a name its function table does not know to one of the battle's variables, and reads it
- * from the entity the expression runs from.
+ * from the entity the expression runs from. A variable no action wrote for the entity reads its
+ * row's start value, DefaultValue (0 when the row sets none).
  */
 class BattleVariablesTest {
 
@@ -78,5 +83,36 @@ class BattleVariablesTest {
         .isEqualTo(1);
     assertThat(match.getWorld().getActions()).isNotNull();
     assertThat(match.getWorld().getRecords()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("a variable never written reads its row's DefaultValue, per entity, until written")
+  void anUnwrittenVariableReadsItsDefault(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "variables",
+            rows -> GameData.columns(rows, "InfernoDragon_EV1_AttackCount").put("DefaultValue", 7));
+    Standard1v1Battle match = new Standard1v1Battle(tables);
+    TowerEntity king = tower(match, "KingTower_0_0");
+    TowerEntity other = tower(match, "PrincessTower_0_1");
+    ActionBinding binding = match.getWorld().binding(king);
+    int key = binding.variableKey("InfernoDragon_EV1_AttackCount");
+
+    assertThat(binding.expression("InfernoDragon_EV1_AttackCount + 1").getAsInt())
+        .as("never written, the variable reads its start value")
+        .isEqualTo(8);
+    assertThat(binding.expression("InfernoDragon_EV1_AttackDecayCounter").getAsInt())
+        .as("a row without DefaultValue starts at 0")
+        .isZero();
+
+    new ActionHolder(king).start(new SetVariable(ActionRow.named("set"), () -> 0, key));
+    assertThat(binding.expression("InfernoDragon_EV1_AttackCount + 1").getAsInt())
+        .as("a written 0 is read, not the start value")
+        .isEqualTo(1);
+    assertThat(
+            match.getWorld().binding(other).expression("InfernoDragon_EV1_AttackCount").getAsInt())
+        .as("another entity still reads the start value")
+        .isEqualTo(7);
   }
 }

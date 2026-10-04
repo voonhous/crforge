@@ -248,6 +248,12 @@ public class BattleWorld implements HolderPasses {
   private final Map<String, Integer> variableKeys = new HashMap<>();
 
   /**
+   * The start value of each declared variable whose row sets DefaultValue, by key: what an
+   * expression reads of the variable from an object no action has written it for.
+   */
+  private final Map<Integer, Integer> variableStarts = new HashMap<>();
+
+  /**
    * One typed hit waiting for the drain.
    *
    * @param source the entity that deals it, or null for none
@@ -305,6 +311,16 @@ public class BattleWorld implements HolderPasses {
   /** The key of a variable an expression may name, or null for a name that is none. */
   public Integer variableKey(String name) {
     return variableKeys.get(name);
+  }
+
+  /**
+   * The value a variable reads as from an object no action has written it for: its row's
+   * DefaultValue, or 0 for a row that sets none or a key no row declares.
+   *
+   * @param key the variable's key
+   */
+  public int variableStart(int key) {
+    return variableStarts.getOrDefault(key, 0);
   }
 
   /** The global ids of the data rows the battle's expressions have named, in the order named. */
@@ -391,14 +407,21 @@ public class BattleWorld implements HolderPasses {
    */
   public void declare(GameTables tables) {
     for (GameRow row : tables.table("variables").rows()) {
-      // Every variable starts at 0: a row that sets any column, as a start of its own, is refused.
+      // A row names its variable and may give it a start value; any other column it sets is
+      // refused.
       for (String column : row.setColumns()) {
-        if (!column.equals("Name")) {
+        if (!column.equals("Name") && !column.equals("DefaultValue")) {
           throw new UnsupportedOperationException(
               "the variables row " + row.name() + " sets " + column + ", which is not modelled");
         }
       }
       registerVariable(row.name(), row.index());
+      // An expression reading the variable from an object that has no value for it reads the
+      // row's DefaultValue (0 when unset), found by the variable's key.
+      int start = row.intValue("DefaultValue");
+      if (start != 0) {
+        variableStarts.put(row.index(), start);
+      }
     }
     for (GameRow row : tables.table("game_tags").rows()) {
       registerGameTag(row.name(), 1L << row.index());
