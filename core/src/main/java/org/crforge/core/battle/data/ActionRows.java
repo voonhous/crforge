@@ -63,6 +63,7 @@ import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
+import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunIfInstigatorMatches;
 import org.crforge.core.battle.action.RunIfUnitGroupContains;
@@ -74,6 +75,7 @@ import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.SoulDrain;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
@@ -388,6 +390,40 @@ public final class ActionRows {
           // The health bar's offset only shows something.
           Map.entry("ActionHide", Set.of("Duration", "StopWhenHiderDies", "HealthBarYOffset")),
           Map.entry("ActionRunActionOnInstigatorDeath", Set.of("ActionToRun")),
+          // The destroyed-object listener: its action, filter and two match switches. A trigger
+          // limit, a range and names to match are read too, and refused as the row is built.
+          Map.entry(
+              "ActionRunActionOnTroopDestroyed",
+              Set.of(
+                  "ActionToRun",
+                  "TroopFilter",
+                  "MatchOnlyOwnSpawnedTroops",
+                  "MatchOnlyFromSameOwnerIndex",
+                  "MaxTriggerCount",
+                  "MaxRange",
+                  "MatchName")),
+          // The soul's flight: its time and the action as it arrives. Its effects, their flags and
+          // loops, the pivot, the start at the character, the lerp, the waits and the wobble only
+          // show the flight.
+          Map.entry(
+              "ActionSoulDrain",
+              Set.of(
+                  "ConstantFlightDuration",
+                  "ActionOnTargetReached",
+                  "Effect",
+                  "SecondaryEffect",
+                  "EffectAbsolutePositionToParent",
+                  "SecondaryEffectAbsolutePositionToParent",
+                  "LoopEffect",
+                  "LoopSecondaryEffect",
+                  "PivotName",
+                  "CharacterPosAsStart",
+                  "UseLerpForSouls",
+                  "MinVisualWaitTime",
+                  "MaxVisualWaitTime",
+                  "MinWobble",
+                  "MaxWobble",
+                  "FlipPivotOffsetIfTopBottom")),
           // Every other column a taunt has keeps the loader's default here: the reach by
           // distance, the end as the duration runs out with no falloff, no end by a stun, no
           // building retargeting, the buff removed as it finishes, and no invalid or crown tower
@@ -1216,6 +1252,31 @@ public final class ActionRows {
                     name + " waits for its cause with no action to run, not modelled");
               }
               yield new RunActionOnInstigatorDeath(shared, toRun);
+            }
+            case "ActionRunActionOnTroopDestroyed" -> {
+              refuseUnread(name, f, true);
+              for (String column : List.of("MaxTriggerCount", "MaxRange", "MatchName")) {
+                if (sets(f, column)) {
+                  throw new UnsupportedOperationException(
+                      name + " listens for destroyed objects with " + column + ", not modelled");
+                }
+              }
+              String troopFilter = f.path("TroopFilter").asText("");
+              yield new RunActionOnTroopDestroyed(
+                  shared,
+                  action(f.get("ActionToRun")),
+                  troopFilter.isEmpty() ? null : records.filter(troopFilter),
+                  bool(f, "MatchOnlyOwnSpawnedTroops"),
+                  // The loader stores true for an empty column.
+                  !f.hasNonNull("MatchOnlyFromSameOwnerIndex")
+                      || bool(f, "MatchOnlyFromSameOwnerIndex"));
+            }
+            case "ActionSoulDrain" -> {
+              refuseUnread(name, f, true);
+              yield new SoulDrain(
+                  shared,
+                  integer(f, "ConstantFlightDuration"),
+                  action(f.get("ActionOnTargetReached")));
             }
             case "ActionRunIfGameObjectExists" ->
                 new RunIfGameObjectExists(

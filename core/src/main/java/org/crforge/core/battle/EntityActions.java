@@ -50,6 +50,14 @@ public interface EntityActions {
   default void objectLeft(int leftId) {}
 
   /**
+   * The entity's spawner made a character: each running action, from the last to the first, hears
+   * of it by its id, and does what its class does with the notice, most of them nothing.
+   *
+   * @param childId the id of the character made
+   */
+  default void childSpawned(int childId) {}
+
+  /**
    * An entity has left the battle: the queued actions it caused, and whose rows abort when their
    * cause does, are dropped. Running actions are left as they are.
    *
