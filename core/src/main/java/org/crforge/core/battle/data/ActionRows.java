@@ -1117,7 +1117,11 @@ public final class ActionRows {
    * @return the damage type, or null for no name
    */
   public DamageType damageType(String name, ActionBinding binding) {
-    return name == null ? null : new Build(binding).damageType(TextNode.valueOf(name));
+    try {
+      return name == null ? null : new Build(binding).damageType(TextNode.valueOf(name));
+    } catch (MistypedField e) {
+      throw new UnsupportedOperationException(name + " " + e.getMessage(), e);
+    }
   }
 
   /**
@@ -1157,7 +1161,19 @@ public final class ActionRows {
       this.binding = binding;
     }
 
+    /**
+     * The action a row names, built; a field of the row whose value is of another shape than its
+     * reader reads is refused, naming the row.
+     */
     BattleAction action(String name) {
+      try {
+        return buildRow(name);
+      } catch (MistypedField e) {
+        throw new UnsupportedOperationException(name + " " + e.getMessage(), e);
+      }
+    }
+
+    private BattleAction buildRow(String name) {
       BattleAction done = built.get(name);
       if (done != null) {
         return done;
@@ -1177,7 +1193,7 @@ public final class ActionRows {
       BattleAction action =
           switch (type) {
             case "ActionGroup" ->
-                new Group(shared, actions(f.get("SubActions")), ints(f.get("SubActionsDelay")));
+                new Group(shared, actions(f.get("SubActions")), ints(f, "SubActionsDelay"));
             case "ActionSelect" ->
                 new Select(
                     shared,
@@ -1222,7 +1238,7 @@ public final class ActionRows {
                   "ExecuteIfTrue",
                   "ActionPausedIfTrue",
                   "ForceStopIfTrue");
-              String group = f.path("CardGroup").asText("");
+              String group = text(f, "CardGroup", "");
               yield new CardDeployListener(
                   shared,
                   group,
@@ -1252,13 +1268,13 @@ public final class ActionRows {
                 throw new UnsupportedOperationException(
                     name + " names no champion, which is not modelled");
               }
-              String state = f.path("StateToSet").asText("");
+              String state = text(f, "StateToSet", "");
               yield new OverrideAbilityButtonState(
                   shared,
                   champion,
                   state.isEmpty() ? 0 : ChampionController.stateNamed(state),
                   bool(f, "ResetCharges"),
-                  f.path("Persistent").asBoolean(true));
+                  bool(f, "Persistent", true));
             }
             case "ActionRunActionIfUnitGroupContains" ->
                 new RunIfUnitGroupContains(
@@ -1276,7 +1292,7 @@ public final class ActionRows {
             // The hero Mini Pekka's quest builds the timer's own run: its instance starts and
             // steps as the timer's does.
             case "ActionTimerQuest", "ActionMiniPekkaHeroQuest" -> {
-              String barType = f.path("Type").asText("Continuous");
+              String barType = text(f, "Type", "Continuous");
               if (!barType.equals("Continuous")) {
                 throw new UnsupportedOperationException(
                     name + " sets Type " + barType + ", a segmented bar, which is not modelled");
@@ -1287,16 +1303,16 @@ public final class ActionRows {
                         + " sets OnMaxResetsReachedAction, the action after its last interval,"
                         + " which is not modelled");
               }
-              boolean affected = f.path("AffectedByHitSpeed").asBoolean(true);
+              boolean affected = bool(f, "AffectedByHitSpeed", true);
               BooleanSupplier buffed = binding.hitSpeedBuffed();
               yield new TimerQuest(
                   shared,
-                  ints(f.get("Intervals")),
+                  ints(f, "Intervals"),
                   integer(f, "IntervalStartAt"),
                   integer(f, "StartTimerDelay"),
                   integer(f, "MaxResets"),
                   expression(f.get("UpgradeBarIfTrue")),
-                  ints(f.get("AmountToIncreaseOnUpgradeBarList")),
+                  ints(f, "AmountToIncreaseOnUpgradeBarList"),
                   action(f.get("OnIntervalReachedAction")),
                   affected ? buffed : () -> false);
             }
@@ -1357,7 +1373,7 @@ public final class ActionRows {
             case "ActionSetInstantHit" -> new SetInstantHit(shared);
             case "ActionRunActionAtHealth" ->
                 new RunActionAtHealth(
-                    shared, ints(f.get("HealthPercentages")), actions(f.get("Actions")));
+                    shared, ints(f, "HealthPercentages"), actions(f.get("Actions")));
             case "ActionHeal" ->
                 new Heal(shared, expression(f.get("Value")), integer(f, "MaxOverHealPercent"));
             case "ActionKill" -> new Kill(shared, action(f.get("OnKillAction")));
@@ -1417,7 +1433,7 @@ public final class ActionRows {
               }
               // The new row must read as a unit here, so a row the battle cannot take is refused
               // as the action is built rather than when it runs.
-              String newRow = f.path("NewCharacterData").asText();
+              String newRow = text(f, "NewCharacterData", "");
               records.unit(newRow);
               yield new ChangeGameObjectData(shared, newRow, bool(f, "ResetTarget"));
             }
@@ -1449,7 +1465,7 @@ public final class ActionRows {
                       name + " listens for destroyed objects with " + column + ", not modelled");
                 }
               }
-              String troopFilter = f.path("TroopFilter").asText("");
+              String troopFilter = text(f, "TroopFilter", "");
               yield new RunActionOnTroopDestroyed(
                   shared,
                   action(f.get("ActionToRun")),
@@ -1487,11 +1503,11 @@ public final class ActionRows {
                 new SetCharacterLevel(
                     shared,
                     integer(f, "RelativeLevelAdjustment"),
-                    f.path("AbsoluteLevelToSet").asInt(1));
+                    integer(f, "AbsoluteLevelToSet", 1));
             case "ActionMirroredExtraSpell" ->
-                new MirroredExtraSpell(shared, f.path("Projectile").asText());
+                new MirroredExtraSpell(shared, text(f, "Projectile", ""));
             case "ActionShootProjectilesInCharacterDirection" -> {
-              String projectile = f.path("ProjectileType").asText("");
+              String projectile = text(f, "ProjectileType", "");
               yield new ShootProjectilesInCharacterDirection(
                   shared,
                   projectile.isEmpty() ? null : projectile,
@@ -1509,7 +1525,7 @@ public final class ActionRows {
                         ? integer(f, "CloneDuration")
                         : Clone.DEFAULT_CLONE_DURATION_MS);
             case "ActionSpawn", "ActionSpawnToLocation" ->
-                switch (f.path("SpawnType").asText("")) {
+                switch (text(f, "SpawnType", "")) {
                   case "BuffType" ->
                       type.equals("ActionSpawn")
                           ? spawnBuff(name, shared, f)
@@ -1567,7 +1583,7 @@ public final class ActionRows {
                         .maxChargeCount(integer(f, "MaxChargeCount"))
                         .rechargeTimeMs(integer(f, "RechargeTime"))
                         .rechargeIncrement(integer(f, "RechargeIncrement"))
-                        .attackSequenceIndices(ints(f.get("AttackSequenceIndices")))
+                        .attackSequenceIndices(ints(f, "AttackSequenceIndices"))
                         .depletedAttackSequenceIndex(integer(f, "DepletedAttackSequenceIndex"))
                         .build());
             case "ActionMusketeerSnipe" ->
@@ -1578,11 +1594,11 @@ public final class ActionRows {
                         .lockedTargetSnipeSideClip(integer(f, "LockedTargetSnipeSideClip"))
                         .snipeMaxRange(integer(f, "SnipeMaxRange"))
                         .snipeMinRange(integer(f, "SnipeMinRange"))
-                        .snipeTargetFilter(records.filter(f.path("SnipeTargetFilter").asText()))
+                        .snipeTargetFilter(records.filter(text(f, "SnipeTargetFilter", "")))
                         .build());
             case "ActionBlowdartGoblinEvoDartSelect" -> {
               BattleAction controller = action(f.get("ActionToTakeDataFrom"));
-              String special = f.path("SpecialProjectile").asText("");
+              String special = text(f, "SpecialProjectile", "");
               if (!(controller instanceof BlowdartController) || special.isEmpty()) {
                 throw new UnsupportedOperationException(
                     name
@@ -1597,7 +1613,7 @@ public final class ActionRows {
                 throw new UnsupportedOperationException(
                     name + " sets OnStackIncrementAction, which is not modelled");
               }
-              List<Integer> checks = ints(f.get("StackAmountChecks"));
+              List<Integer> checks = ints(f, "StackAmountChecks");
               List<String> areas = new ArrayList<>();
               f.path("AeoList").forEach(area -> areas.add(area.asText()));
               int maxStacks = integer(f, "MaxStacks");
@@ -1648,7 +1664,7 @@ public final class ActionRows {
                       .crownTowerDurationMs(
                           f.has("CrownTowerDuration") ? integer(f, "CrownTowerDuration") : -1)
                       .crownDamageMultiplier(integer(f, "CrownDamageDamageMultiplier"))
-                      .damageList(List.copyOf(ints(f.get("DamageList"))))
+                      .damageList(List.copyOf(ints(f, "DamageList")))
                       .build());
             }
             case "ActionChainProjectileAttack" -> chainProjectileAttack(name, shared, f);
@@ -1670,11 +1686,11 @@ public final class ActionRows {
                     shared,
                     GoblinHutLifeState.Columns.builder()
                         .spawnIntervalMs(integer(f, "SpawnInterval"))
-                        .spawnData(f.path("SpawnData").asText())
+                        .spawnData(text(f, "SpawnData", ""))
                         .spawnNumber(integer(f, "SpawnNumber"))
                         .spawnOffset(integer(f, "SpawnOffset"))
                         .singleDeployOffsetAngle(integer(f, "SingleDeployOffsetAngle"))
-                        .objectFilter(records.filter(f.path("ObjectFilter").asText()))
+                        .objectFilter(records.filter(text(f, "ObjectFilter", "")))
                         .onSpawnAction(action(f.get("OnSpawnAction")))
                         .onStartSpawningAction(action(f.get("OnStartSpawningAction")))
                         .onStartWaitingAction(action(f.get("OnStartWaitingAction")))
@@ -1686,14 +1702,14 @@ public final class ActionRows {
               // singleton never re-triggers its run, so its containers never drop.
               List<String> containers = new ArrayList<>();
               f.path("ContainerAeoList").forEach(value -> containers.add(value.asText()));
-              String doubleContainer = f.path("OverrideKamikazeDoubleContainer").asText("");
+              String doubleContainer = text(f, "OverrideKamikazeDoubleContainer", "");
               yield new PopBalloons(
                   shared,
                   containers,
                   doubleContainer.isEmpty() ? null : doubleContainer,
                   integer(f, "TotalBalloons"),
-                  ints(f.get("OffsetXList")),
-                  ints(f.get("OffsetYList")));
+                  ints(f, "OffsetXList"),
+                  ints(f, "OffsetYList"));
             }
             default -> {
               if (INERT.contains(type)) {
@@ -1723,12 +1739,7 @@ public final class ActionRows {
                     : value.isBoolean() ? value.asBoolean() : !value.asText().isEmpty());
         if (set) {
           throw new UnsupportedOperationException(
-              name
-                  + " sets "
-                  + column
-                  + " on a "
-                  + f.path("ClassType").asText()
-                  + ", not modelled");
+              name + " sets " + column + " on a " + text(f, "ClassType", "") + ", not modelled");
         }
       }
     }
@@ -1764,20 +1775,20 @@ public final class ActionRows {
       JsonNode f = row.fields();
       boolean bareEffect =
           row.classType().equals("ActionPlayEffect")
-              && !f.path("Singleton").asBoolean(false)
-              && f.path("GameTagsToSet").asText("").isEmpty();
+              && !bool(f, "Singleton", false)
+              && text(f, "GameTagsToSet", "").isEmpty();
       return ActionRow.builder()
           .name(row.name())
-          .phase(integer(f, "UpdatePhase"))
+          .phase(updatePhase(f))
           .delayMs(integer(f, "ActionDelay"))
-          .singleton(f.path("Singleton").asBoolean(false))
+          .singleton(bool(f, "Singleton", false))
           .nextAction(action(f.get("NextAction")))
-          .nextActionWait(f.path("NextActionWait").asBoolean(false))
+          .nextActionWait(bool(f, "NextActionWait", false))
           .tags(f.has("GameTagsToSet") ? tagMask(f.get("GameTagsToSet").asText()) : 0)
           .executeIf(expression(f.get("ExecuteIfTrue")))
           .forceStopIf(bareEffect ? null : expression(f.get("ForceStopIfTrue")))
           .pausedIf(expression(f.get("ActionPausedIfTrue")))
-          .abortIfInstigatorDies(f.path("AbortIfInstigatorDies").asBoolean(true))
+          .abortIfInstigatorDies(bool(f, "AbortIfInstigatorDies", true))
           .build();
     }
 
@@ -1801,12 +1812,12 @@ public final class ActionRows {
               .projectiles(projectiles)
               .chainRange(integer(f, "ChainRange"))
               .chainTargets(filters)
-              .maxChainLength(f.path("MaxChainLength").asInt(-1))
-              .repeatTargets(f.path("RepeatTargets").asBoolean(true))
-              .deprioritizeRepeatTargets(f.path("DeprioritizeRepeatTargets").asBoolean(false))
-              .maxRemembered(f.path("MaximumTargetsToRememberForRepeatChecks").asInt(-1))
-              .maxTimeMs(f.path("MaxTime").asInt(-1))
-              .chainDelaysMs(ints(f.get("ChainDelays")))
+              .maxChainLength(integer(f, "MaxChainLength", -1))
+              .repeatTargets(bool(f, "RepeatTargets", true))
+              .deprioritizeRepeatTargets(bool(f, "DeprioritizeRepeatTargets", false))
+              .maxRemembered(integer(f, "MaximumTargetsToRememberForRepeatChecks", -1))
+              .maxTimeMs(integer(f, "MaxTime", -1))
+              .chainDelaysMs(ints(f, "ChainDelays"))
               .build());
     }
 
@@ -1817,7 +1828,7 @@ public final class ActionRows {
      * a projectile.
      */
     private HunterNetAttack hunterNetAttack(String name, ActionRow shared, JsonNode f) {
-      if (f.path("MinRange").asInt(100) >= 1) {
+      if (integer(f, "MinRange", 100) >= 1) {
         throw new UnsupportedOperationException(
             name + " is a net attack with a MinRange of 1 or more, which is not modelled");
       }
@@ -1825,24 +1836,23 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + " is a net attack that sets ActionOnPrepareShot, which is not modelled");
       }
-      if (f.path("TargetFilter").asText("").isEmpty()
-          || f.path("Projectile").asText("").isEmpty()) {
+      if (text(f, "TargetFilter", "").isEmpty() || text(f, "Projectile", "").isEmpty()) {
         throw new UnsupportedOperationException(
             name + " is a net attack without a filter or a projectile, which is not modelled");
       }
       return new HunterNetAttack(
           shared,
           HunterNetAttack.Columns.builder()
-              .cooldownMs(f.path("Cooldown").asInt(4000))
-              .initialCooldownMs(f.path("InitialCooldown").asInt(0))
-              .range(f.path("Range").asInt(2000))
+              .cooldownMs(integer(f, "Cooldown", 4000))
+              .initialCooldownMs(integer(f, "InitialCooldown", 0))
+              .range(integer(f, "Range", 2000))
               .projectile(records.projectile(f.get("Projectile").asText()).name())
-              .projectileStartZ(f.path("ProjectileStartZ").asInt(1000))
-              .projectileStartExtraRadius(f.path("ProjectileStartExtraRadius").asInt(0))
+              .projectileStartZ(integer(f, "ProjectileStartZ", 1000))
+              .projectileStartExtraRadius(integer(f, "ProjectileStartExtraRadius", 0))
               .targetFilter(records.filter(f.get("TargetFilter").asText()))
-              .trapCastTimeMs(f.path("TrapCastTime").asInt(0))
-              .forbidIfAttackWithinMs(f.path("ForbidNetShotIfAttackWithin").asInt(200))
-              .forbidIfAttackedInMs(f.path("ForbidNetShotIfAttackedIn").asInt(200))
+              .trapCastTimeMs(integer(f, "TrapCastTime", 0))
+              .forbidIfAttackWithinMs(integer(f, "ForbidNetShotIfAttackWithin", 200))
+              .forbidIfAttackedInMs(integer(f, "ForbidNetShotIfAttackedIn", 200))
               .onCooldownReady(action(f.get("ActionOnCooldownReady")))
               .onShot(action(f.get("ActionOnShot")))
               .build());
@@ -1867,7 +1877,7 @@ public final class ActionRows {
               .distanceToBuff(integer(f, "DistanceToBuff"))
               .distanceToUnbuff(integer(f, "DistanceToUnbuff"))
               // The loader's default uses the ability.
-              .useAbility(f.path("UseAbility").asBoolean(true))
+              .useAbility(bool(f, "UseAbility", true))
               .buffDelayMs(integer(f, "BuffDelay"))
               .onBuffAction(action(f.get("OnBuffAction")))
               .onTargetBuffAction(action(f.get("OnTargetBuffAction")))
@@ -1883,26 +1893,26 @@ public final class ActionRows {
       return new ChefCooking(
           shared,
           ChefCooking.Columns.builder()
-              .startCookingDelayMs(f.path("StartCookingDelay").asInt(0))
-              .contributionNeeded(f.path("ContributionNeeded").asInt(1000))
-              .contributionBaseline(f.path("ContributionBaseline").asInt(22))
-              .contributionIdle(f.path("ContributionIdle").asInt(22))
-              .contributionAttacking(f.path("ContributionAttacking").asInt(11))
-              .contributionDestroyed(f.path("ContributionDestroyed").asInt(8))
+              .startCookingDelayMs(integer(f, "StartCookingDelay", 0))
+              .contributionNeeded(integer(f, "ContributionNeeded", 1000))
+              .contributionBaseline(integer(f, "ContributionBaseline", 22))
+              .contributionIdle(integer(f, "ContributionIdle", 22))
+              .contributionAttacking(integer(f, "ContributionAttacking", 11))
+              .contributionDestroyed(integer(f, "ContributionDestroyed", 8))
               .targetFilter(
                   f.hasNonNull("TargetFilter")
                       ? records.filter(f.get("TargetFilter").asText())
                       : null)
-              .minCurrentHpThreshold(f.path("MinCurrentHpThreshold").asInt(0))
-              .minCurrentHpPercentage(f.path("MinCurrentHpPercentageThreshold").asInt(0))
-              .minMaxHpThreshold(f.path("MinMaxHpThreshold").asInt(0))
-              .deprioritizeBuffed(f.path("DeprioritizeBuffed").asBoolean(false))
+              .minCurrentHpThreshold(integer(f, "MinCurrentHpThreshold", 0))
+              .minCurrentHpPercentage(integer(f, "MinCurrentHpPercentageThreshold", 0))
+              .minMaxHpThreshold(integer(f, "MinMaxHpThreshold", 0))
+              .deprioritizeBuffed(bool(f, "DeprioritizeBuffed", false))
               .buffProjectile(records.projectile(f.get("BuffProjectile").asText()))
-              .pancakeThrowDelayMs(f.path("PancakeThrowDelay").asInt(300))
-              .pancakeStartOffset(f.path("PancakeStartOffset").asInt(0))
-              .pancakeThrowDelayThresholdMs(f.path("PancakeThrowDelayTreshold").asInt(200))
-              .waitPancakeThrowAfterAttackMs(f.path("WaitPancakeThrowAfterAttackTime").asInt(200))
-              .finishWhenBothTowersLost(f.path("FinishWhenBothTowersLost").asBoolean(true))
+              .pancakeThrowDelayMs(integer(f, "PancakeThrowDelay", 300))
+              .pancakeStartOffset(integer(f, "PancakeStartOffset", 0))
+              .pancakeThrowDelayThresholdMs(integer(f, "PancakeThrowDelayTreshold", 200))
+              .waitPancakeThrowAfterAttackMs(integer(f, "WaitPancakeThrowAfterAttackTime", 200))
+              .finishWhenBothTowersLost(bool(f, "FinishWhenBothTowersLost", true))
               .build());
     }
 
@@ -1915,7 +1925,7 @@ public final class ActionRows {
       Map<String, Integer> characters = new HashMap<>();
       Map<String, Integer> projectiles = new HashMap<>();
       JsonNode names = f.path("DamageMultiplierPerUnitNames");
-      List<Integer> values = ints(f.get("DamageMultiplierPerUnitValues"));
+      List<Integer> values = ints(f, "DamageMultiplierPerUnitValues");
       for (int i = 0; i < names.size() && i < values.size(); i++) {
         String unit = names.get(i).asText();
         if (records.unitGlobalId(unit) != null) {
@@ -2007,11 +2017,11 @@ public final class ActionRows {
               name + " is a shape selector that sets " + column + ", which is not modelled");
         }
       }
-      if (f.path("TargetFilter").asText("").isEmpty()) {
+      if (text(f, "TargetFilter", "").isEmpty()) {
         throw new UnsupportedOperationException(
             name + " is a shape selector without a filter, which is not modelled");
       }
-      String mode = f.path("TargetSelectionMode").asText("HighestCurrentHpIncludeShields");
+      String mode = text(f, "TargetSelectionMode", "HighestCurrentHpIncludeShields");
       int selection =
           switch (mode) {
             case "HighestCurrentHp" -> ShapeSelector.HIGHEST_CURRENT_HP;
@@ -2024,7 +2034,7 @@ public final class ActionRows {
                         + mode
                         + ", which is not modelled");
           };
-      List<Integer> delays = ints(f.get("Delays"));
+      List<Integer> delays = ints(f, "Delays");
       // Each action is built for the object it is scheduled on, whose expressions it may ask.
       List<String> actions = new ArrayList<>();
       for (JsonNode reference : f.path("Actions")) {
@@ -2037,13 +2047,13 @@ public final class ActionRows {
       return new ShapeSelector(
           shared,
           ShapeSelector.Columns.builder()
-              .oncePerTarget(f.path("OncePerTarget").asBoolean(true))
+              .oncePerTarget(bool(f, "OncePerTarget", true))
               .targetSelectionMode(selection)
               .targetFilter(records.filter(f.get("TargetFilter").asText()))
-              .shapeRadius(records.circleRadius(f.path("Shape").asText()))
+              .shapeRadius(records.circleRadius(text(f, "Shape", "")))
               .delaysMs(delays)
               .actions(actions)
-              .waitForTarget(f.path("WaitForTarget").asBoolean(false))
+              .waitForTarget(bool(f, "WaitForTarget", false))
               .pauseTags(f.has("PauseTags") ? tagMask(f.get("PauseTags").asText()) : 0)
               .actionOnSelfLeft(rowName(f.get("ActionOnSelfWhenTriggeredLeft")))
               .actionOnSelfRight(rowName(f.get("ActionOnSelfWhenTriggeredRight")))
@@ -2066,10 +2076,10 @@ public final class ActionRows {
       }
       return new AirToGround(
           shared,
-          f.path("TransitionDuration").asInt(200),
-          f.path("TotalDuration").asInt(1000),
-          f.path("AllowIsGroundTagOnIdle").asBoolean(false),
-          f.path("ResetPathAtEnd").asBoolean(true),
+          integer(f, "TransitionDuration", 200),
+          integer(f, "TotalDuration", 1000),
+          bool(f, "AllowIsGroundTagOnIdle", false),
+          bool(f, "ResetPathAtEnd", true),
           action(f.get("ActionOnGround")));
     }
 
@@ -2085,11 +2095,11 @@ public final class ActionRows {
       }
       return new GroundToAir(
           shared,
-          f.path("FlyingHeight").asInt(0),
-          f.path("TransitionDuration").asInt(200),
-          f.path("TotalDuration").asInt(1000),
-          f.path("ResetPathInAir").asBoolean(false),
-          f.path("ResetPathWhenBackToGround").asBoolean(false),
+          integer(f, "FlyingHeight", 0),
+          integer(f, "TransitionDuration", 200),
+          integer(f, "TotalDuration", 1000),
+          bool(f, "ResetPathInAir", false),
+          bool(f, "ResetPathWhenBackToGround", false),
           tags(f, "GameTagsToSetOnToAirState"),
           tags(f, "GameTagsToSetOnOnAirState"),
           tags(f, "GameTagsToSetOnToGroundState"),
@@ -2106,9 +2116,9 @@ public final class ActionRows {
       return new BarbBarrelHeroReRoll(
           shared,
           BarbBarrelHeroReRoll.Columns.builder()
-              .offsetY(f.path("OffsetY").asInt(0))
-              .deployDurationMs(f.path("DeployDuration").asInt(0))
-              .spawnDelayMs(f.path("SpawnDelay").asInt(0))
+              .offsetY(integer(f, "OffsetY", 0))
+              .deployDurationMs(integer(f, "DeployDuration", 0))
+              .spawnDelayMs(integer(f, "SpawnDelay", 0))
               .reRollProjectile(f.get("ReRollProjectile").asText())
               .rollingTags(tags(f, "GameTagsToSetWhileOnReRolling"))
               .onReRollStartAction(action(f.get("OnReRollStartAction")))
@@ -2146,7 +2156,7 @@ public final class ActionRows {
           throw new UnsupportedOperationException(
               name
                   + ", an "
-                  + f.path("ClassType").asText()
+                  + text(f, "ClassType", "")
                   + ", sets "
                   + column
                   + ", which is not modelled");
@@ -2161,21 +2171,21 @@ public final class ActionRows {
      */
     private MegaKnightUppercut uppercut(String name, ActionRow shared, JsonNode f) {
       refuseUnread(name, f, true);
-      if (!f.path("IgnorePushbackChecks").asBoolean(false)) {
+      if (!bool(f, "IgnorePushbackChecks", false)) {
         throw new UnsupportedOperationException(
             name + " pushes through the pushback request's gates, which is not modelled");
       }
-      if (f.path("DoFollowUpJump").asBoolean(true)) {
+      if (bool(f, "DoFollowUpJump", true)) {
         throw new UnsupportedOperationException(
             name + " dashes after its delay, which is not modelled");
       }
       return new MegaKnightUppercut(
           shared,
           integer(f, "PushBackStrength"),
-          f.path("PushRadiusDirectionalOffset").asInt(50),
-          f.path("DistanceProportinalPush").asBoolean(false),
-          f.path("ResetPushbackIfStronger").asBoolean(true),
-          f.path("DashFollowUpDelay").asInt(1000),
+          integer(f, "PushRadiusDirectionalOffset", 50),
+          bool(f, "DistanceProportinalPush", false),
+          bool(f, "ResetPushbackIfStronger", true),
+          integer(f, "DashFollowUpDelay", 1000),
           action(f.get("ActionOnTargets")));
     }
 
@@ -2228,7 +2238,7 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + ", a push from its cause, sets no PushbackDelay, which is not modelled");
       }
-      String mode = f.path("DirectionMode").asText("");
+      String mode = text(f, "DirectionMode", "");
       if (!mode.equals("ToHorizontalCenterFromInstigator")) {
         throw new UnsupportedOperationException(
             name
@@ -2257,12 +2267,12 @@ public final class ActionRows {
                   f.has("GameTagsToDisallowPush")
                       ? tagMask(f.get("GameTagsToDisallowPush").asText())
                       : 0)
-              .forced(f.path("ForcedPushback").asBoolean(true))
+              .forced(bool(f, "ForcedPushback", true))
               .attack(bool(f, "AttackPushback"))
               .proportional(bool(f, "DistanceProportinalPush"))
-              .resetIfStronger(f.path("ResetPushbackIfStronger").asBoolean(true))
+              .resetIfStronger(bool(f, "ResetPushbackIfStronger", true))
               .invisible(bool(f, "PushbackInvisible"))
-              .resetAvoidance(f.path("ResetAvoidanceOnTarget").asBoolean(true))
+              .resetAvoidance(bool(f, "ResetAvoidanceOnTarget", true))
               .successOnInstigator(rowName(f.get("SuccessActionOnInstigator")))
               .failureOnInstigator(rowName(f.get("FailureActionOnInstigator")))
               .successAction(rowName(f.get("SuccessAction")))
@@ -2286,7 +2296,7 @@ public final class ActionRows {
           integer(f, "Height"),
           integer(f, "Duration"),
           landing,
-          f.path("PassInstigatorToLandingAction").asBoolean(false));
+          bool(f, "PassInstigatorToLandingAction", false));
     }
 
     /**
@@ -2314,7 +2324,7 @@ public final class ActionRows {
               .distanceBased(bool(f, "UseDistanceBasedPositioning"))
               .stepsToMove(f.hasNonNull("StepsToMove") ? integer(f, "StepsToMove") : 5)
               .hideTimeMs(integer(f, "HideTime"))
-              .hideHpThresholds(ints(f.get("HideHpThresholds")))
+              .hideHpThresholds(ints(f, "HideHpThresholds"))
               .firstAppearAction(action(f.get("FirstAppearAction")))
               .hideActions(actions(f.get("HideActions")))
               .reappearActions(List.of())
@@ -2426,13 +2436,13 @@ public final class ActionRows {
      */
     private CannonBarrage cannonBarrage(String name, ActionRow shared, JsonNode f) {
       refuseUnread(name, f, true);
-      List<Integer> vertical = ints(f.get("BombVerticalOffsets"));
-      List<Integer> absolute = ints(f.get("BombAbsoluteHorizontalOffsets"));
+      List<Integer> vertical = ints(f, "BombVerticalOffsets");
+      List<Integer> absolute = ints(f, "BombAbsoluteHorizontalOffsets");
       List<String> areas = new ArrayList<>();
       f.path("BombAreaEffectObjects").forEach(a -> areas.add(a.asText()));
       int bombs =
           Math.min(
-              vertical.size(), Math.min(ints(f.get("BombHorizontalOffsets")).size(), areas.size()));
+              vertical.size(), Math.min(ints(f, "BombHorizontalOffsets").size(), areas.size()));
       for (int i = 0; i < bombs; i++) {
         if (i >= absolute.size() || absolute.get(i) < 0) {
           throw new UnsupportedOperationException(
@@ -2470,7 +2480,7 @@ public final class ActionRows {
                   + ", which is not modelled");
         }
       }
-      String projectile = f.path("BombProjectile").asText("");
+      String projectile = text(f, "BombProjectile", "");
       if (projectile.isEmpty()) {
         throw new UnsupportedOperationException(
             name + " drops no projectile, which is not modelled");
@@ -2494,7 +2504,7 @@ public final class ActionRows {
     private SpawnResetableAreaEffect resetableAreaEffect(
         String name, ActionRow shared, JsonNode f) {
       refuseUnread(name, f, false);
-      if (f.path("StopAeoIfParentHasCombatDisabled").asBoolean(false)) {
+      if (bool(f, "StopAeoIfParentHasCombatDisabled", false)) {
         throw new UnsupportedOperationException(
             name
                 + " destroys its area effect while its owner's combat is disabled, which is not"
@@ -2505,7 +2515,7 @@ public final class ActionRows {
           f.get("Aeo").asText(),
           integer(f, "OffsetX"),
           integer(f, "OffsetY"),
-          f.path("StayAliveAfterParentDiesDuration").asInt(-1));
+          integer(f, "StayAliveAfterParentDiesDuration", -1));
     }
 
     /**
@@ -2523,9 +2533,9 @@ public final class ActionRows {
       }
       return new AliveTimer(
           shared,
-          ints(f.get("AliveTimeList")),
+          ints(f, "AliveTimeList"),
           actions(f.get("Actions")),
-          f.path("AllowRepeatAction").asBoolean(true));
+          bool(f, "AllowRepeatAction", true));
     }
 
     /** Whether a row sets a column to a value other than empty, 0, false or an empty list. */
@@ -2560,7 +2570,7 @@ public final class ActionRows {
               name + " is a laser ball that sets " + column + ", which is not modelled");
         }
       }
-      if (f.path("HitFilter").asText("").isEmpty()) {
+      if (text(f, "HitFilter", "").isEmpty()) {
         throw new UnsupportedOperationException(
             name + " is a laser ball without a filter, which is not modelled");
       }
@@ -2571,7 +2581,7 @@ public final class ActionRows {
               .firstHitDelayMs(integer(f, "FirstHitDelay"))
               .hitFrequencyMs(integer(f, "HitFrequency"))
               .hitFilter(records.filter(f.get("HitFilter").asText()))
-              .maxUnitPerActionList(ints(f.get("MaxUnitPerActionList")))
+              .maxUnitPerActionList(ints(f, "MaxUnitPerActionList"))
               .onDetectedUnitActionList(actions(f.get("OnDetectedUnitActionList")))
               .build());
     }
@@ -2593,13 +2603,13 @@ public final class ActionRows {
           "ActionPausedIfTrue",
           "ForceStopIfTrue",
           "UpdatePhase");
-      if (f.path("HitFilter").asText("").isEmpty()) {
+      if (text(f, "HitFilter", "").isEmpty()) {
         throw new UnsupportedOperationException(
             name + " is a guard spawn without a filter, which is not modelled");
       }
       // The guard must read as a unit here, so a row the battle cannot take is refused as the
       // action is built rather than when it runs.
-      String guard = f.path("SpawnData").asText();
+      String guard = text(f, "SpawnData", "");
       records.unit(guard);
       return new SpawnGuard(
           shared,
@@ -2637,7 +2647,7 @@ public final class ActionRows {
           shared,
           GhostEvo.Columns.builder()
               // The loader's default distance is 250.
-              .summonDistance(f.path("SummonDistance").asInt(250))
+              .summonDistance(integer(f, "SummonDistance", 250))
               .damageArea(rowName(f.get("DamageAEO")))
               .damageAreaDelayMs(integer(f, "DamageAEOSpawnDelay"))
               .leftArea(rowName(f.get("LeftSummonAreaType")))
@@ -2655,7 +2665,7 @@ public final class ActionRows {
       refuseGhostShared(name, f);
       if (bool(f, "InstantHitForSummons")
           || f.hasNonNull("ActionOnSummons")
-          || !f.path("UseDeployForSummons").asBoolean(true)) {
+          || !bool(f, "UseDeployForSummons", true)) {
         throw new UnsupportedOperationException(
             name
                 + " hits at once, runs an action on its summons or spawns them without their"
@@ -2718,7 +2728,7 @@ public final class ActionRows {
               .releaseLockDelayMs(integer(f, "ReleaseLockDelay"))
               .warpAction(warp)
               // The loader defaults the dash wait to on.
-              .waitForDashToFinish(f.path("WaitForDashToFinish").asBoolean(true))
+              .waitForDashToFinish(bool(f, "WaitForDashToFinish", true))
               .build());
     }
 
@@ -2743,7 +2753,7 @@ public final class ActionRows {
           "ActionPausedIfTrue",
           "ForceStopIfTrue",
           "MakeUntargetableForTickAfterWarp");
-      String mode = f.path("WarpMode").asText("");
+      String mode = text(f, "WarpMode", "");
       boolean injected = mode.equals("InjectedCharacter");
       if (!mode.isEmpty() && !mode.equals("RelativeWarp") && !injected) {
         throw new UnsupportedOperationException(
@@ -2767,7 +2777,7 @@ public final class ActionRows {
         flight =
             WarpCharacter.Flight.builder()
                 .speedPerStep(speed)
-                .acceleration(f.path("Acceleration").asInt(1000))
+                .acceleration(integer(f, "Acceleration", 1000))
                 .offsetX(integer(f, "OffsetX"))
                 .offsetY(integer(f, "OffsetY"))
                 .forceKeepTarget(bool(f, "ForceKeepTargetAfterWarp"))
@@ -2796,11 +2806,11 @@ public final class ActionRows {
           WarpCharacter.Columns.builder()
               .warpX(integer(f, "WarpX"))
               .warpY(integer(f, "WarpY"))
-              .resetPath(f.path("ResetPath").asBoolean(true))
+              .resetPath(bool(f, "ResetPath", true))
               .resetTarget(bool(f, "ResetTarget"))
-              .avoidWater(f.path("AvoidWaterVertically").asBoolean(true))
-              .avoidBlocked(f.path("AvoidBlockedTilesVertically").asBoolean(true))
-              .resetPendingDamage(f.path("ResetPendingDamageAtWarp").asBoolean(true))
+              .avoidWater(bool(f, "AvoidWaterVertically", true))
+              .avoidBlocked(bool(f, "AvoidBlockedTilesVertically", true))
+              .resetPendingDamage(bool(f, "ResetPendingDamageAtWarp", true))
               .build(),
           flight);
     }
@@ -2814,7 +2824,7 @@ public final class ActionRows {
      */
     private SetIndicatorOnTarget setIndicatorOnTarget(String name, ActionRow shared, JsonNode f) {
       refuseShared(name, f, "NextActionWait");
-      String resolverName = f.path("TargetResolver").asText("");
+      String resolverName = text(f, "TargetResolver", "");
       if (resolverName.isEmpty()) {
         throw new UnsupportedOperationException(
             name + " marks with no target resolver, which is not modelled");
@@ -2855,8 +2865,8 @@ public final class ActionRows {
               .strategies(strategies)
               .onPickNewTarget(action(f.get("OnPickNewTargetAction")))
               .onTargetDied(rowName(f.get("OnTargetDiedAction")))
-              .tagsWithoutTarget(tagMask(f.path("GameTagsToSetWhileHasNotTarget").asText("")))
-              .tagsWithTarget(tagMask(f.path("GameTagsToSetWhileHasTarget").asText("")))
+              .tagsWithoutTarget(tagMask(text(f, "GameTagsToSetWhileHasNotTarget", "")))
+              .tagsWithTarget(tagMask(text(f, "GameTagsToSetWhileHasTarget", "")))
               .pauseIfInCooldown(bool(f, "PauseIfInCooldown"))
               .delayBeforeSearchMs(integer(f, "DelayBeforeSearchForNextTarget"))
               .build());
@@ -2914,11 +2924,11 @@ public final class ActionRows {
                 + " is a target indicator attack that sets a negative AttackDelay or a"
                 + " MinimumRange below 1, which is not modelled");
       }
-      if (f.path("TargetFilter").asText("").isEmpty()) {
+      if (text(f, "TargetFilter", "").isEmpty()) {
         throw new UnsupportedOperationException(
             name + " is a target indicator attack without a filter, which is not modelled");
       }
-      String signal = f.path("TargetAoE").asText();
+      String signal = text(f, "TargetAoE", "");
       AreaEffectData signalData = records.areaEffect(signal);
       if (signalData.followsParent() || !signalData.unmodelledColumns().isEmpty()) {
         throw new UnsupportedOperationException(
@@ -2927,7 +2937,7 @@ public final class ActionRows {
                 + signal
                 + ", which follows something or sets columns not modelled");
       }
-      ProjectileData projectile = records.projectile(f.path("Projectile").asText());
+      ProjectileData projectile = records.projectile(text(f, "Projectile", ""));
       if (projectile.homing()
           || projectile.homingTimeMs() >= 1
           || projectile.pingpongVisualTimeMs() >= 1
@@ -2986,7 +2996,7 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + " spawns an area effect written inline, which is not modelled");
       }
-      String areaEffect = f.path("SpawnData").asText();
+      String areaEffect = text(f, "SpawnData", "");
       List<String> unmodelled = records.areaEffect(areaEffect).unmodelledColumns();
       if (!unmodelled.isEmpty()) {
         throw new UnsupportedOperationException(
@@ -3011,8 +3021,8 @@ public final class ActionRows {
       String crown = buffName(name, f, "CrownTowerBuff");
       return Taunt.builder()
           .row(shared)
-          .resetsOnDistance(f.path("ResetsOnDistance").asBoolean(true))
-          .resetOnExpiration(f.path("ResetOnExpiration").asBoolean(true))
+          .resetsOnDistance(bool(f, "ResetsOnDistance", true))
+          .resetOnExpiration(bool(f, "ResetOnExpiration", true))
           .allowBuildingRetargeting(bool(f, "AllowBuildingRetargeting"))
           .falloffDelayMs(integer(f, "FalloffDelay"))
           .validDurationMs(integer(f, "ValidDuration"))
@@ -3021,7 +3031,7 @@ public final class ActionRows {
           .invalidTargetBuff(invalid)
           .crownTowerDurationMs(integer(f, "CrownTowerDuration"))
           .crownTowerBuff(crown)
-          .removeBuffOnDeath(f.path("RemoveBuffOnDeath").asBoolean(true))
+          .removeBuffOnDeath(bool(f, "RemoveBuffOnDeath", true))
           .build();
     }
 
@@ -3074,7 +3084,7 @@ public final class ActionRows {
       }
       return new SpawnProjectile(
           shared,
-          f.path("SpawnData").asText(),
+          text(f, "SpawnData", ""),
           integer(f, "StartPositionZOffset"),
           aimX,
           aimY,
@@ -3084,7 +3094,7 @@ public final class ActionRows {
 
     /** A character spawn row's columns; any other spawn type is refused. */
     private SpawnRow spawn(String name, String type, JsonNode f) {
-      String spawnType = f.path("SpawnType").asText("");
+      String spawnType = text(f, "SpawnType", "");
       if (!spawnType.equals("CharacterType")) {
         throw new UnsupportedOperationException(
             name + " spawns " + spawnType + ", which is not modelled");
@@ -3186,7 +3196,12 @@ public final class ActionRows {
       if (reference == null || reference.isNull()) {
         return null;
       }
-      String name = reference.isObject() ? reference.path("action").asText("") : reference.asText();
+      JsonNode named = reference.isObject() ? reference.get("action") : reference;
+      if (named == null || !named.isTextual()) {
+        throw new MistypedField(
+            "names an action as " + GameRow.shape(reference) + " where a row's name is read");
+      }
+      String name = named.asText();
       return name.isEmpty() ? null : action(name);
     }
 
@@ -3206,8 +3221,16 @@ public final class ActionRows {
         return null;
       }
       if (value.isNumber()) {
+        if (!GameRow.isWhole(value)) {
+          throw new MistypedField(
+              "writes an expression as " + GameRow.shape(value) + " where a whole number is read");
+        }
         int constant = value.asInt();
         return () -> constant;
+      }
+      if (!value.isTextual()) {
+        throw new MistypedField(
+            "writes an expression as " + GameRow.shape(value) + " where a text is read");
       }
       String text = value.asText();
       return text.isEmpty() ? null : binding.expression(text);
@@ -3310,14 +3333,75 @@ public final class ActionRows {
     return name.isEmpty() ? null : name;
   }
 
+  /**
+   * The phase name a row's UpdatePhase writes that the reader reads, as the phase it reads it as.
+   * The column is written only as a name. PostGameObjectTick, the one name a row the battle builds
+   * writes (the Giant hero's slap push), is read as it always has been: as any phase, not as the
+   * post game object pass its name says, which is left for a trace to settle.
+   */
+  private static final Map<String, Integer> UPDATE_PHASES =
+      Map.of("PostGameObjectTick", BattleAction.ANY_PHASE);
+
+  /**
+   * A row's update phase: any phase when it sets none; a phase name the reader reads as above.
+   *
+   * @throws MistypedField for any other value, a name or a number alike
+   */
+  private static int updatePhase(JsonNode fields) {
+    JsonNode value = fields.get("UpdatePhase");
+    if (value == null || value.isNull() || value.isTextual() && value.asText().isEmpty()) {
+      return BattleAction.ANY_PHASE;
+    }
+    Integer phase = value.isTextual() ? UPDATE_PHASES.get(value.asText()) : null;
+    if (phase == null) {
+      throw new MistypedField("UpdatePhase", value, "a phase name the battle reads");
+    }
+    return phase;
+  }
+
+  /**
+   * A field as an integer: 0 when the row leaves it out or sets an empty cell.
+   *
+   * @throws MistypedField when it holds anything but a whole number
+   */
   private static int integer(JsonNode fields, String column) {
+    return integer(fields, column, 0);
+  }
+
+  /**
+   * A field as an integer: the fallback when the row leaves it out or sets an empty cell.
+   *
+   * @throws MistypedField when it holds anything but a whole number
+   */
+  private static int integer(JsonNode fields, String column, int fallback) {
     JsonNode value = fields.get(column);
-    return value == null || value.isNull() ? 0 : value.asInt();
+    if (value == null || value.isNull() || value.isTextual() && value.asText().isEmpty()) {
+      return fallback;
+    }
+    if (!GameRow.isWhole(value)) {
+      throw new MistypedField(column, value, "a number");
+    }
+    return value.asInt();
+  }
+
+  /**
+   * A field of an action row whose value is of another shape than its reader reads, refused with
+   * the row that sets it once the row's build names it.
+   */
+  private static final class MistypedField extends UnsupportedOperationException {
+    MistypedField(String column, JsonNode value, String expected) {
+      this("sets " + column + " to " + GameRow.shape(value) + " where " + expected + " is read");
+    }
+
+    /** A refusal of what the row does, said without the row's name, which the build adds. */
+    MistypedField(String what) {
+      super(what + ", which is not modelled");
+    }
   }
 
   /** A group check's filter, which it must name. */
   private GameObjectFilter objectFilter(String name, JsonNode fields) {
-    String filter = fields.path("ObjectFilter").asText("");
+    String filter = text(fields, "ObjectFilter", "");
     if (filter.isEmpty()) {
       throw new UnsupportedOperationException(
           name + " checks its group with no filter, which is not modelled");
@@ -3325,16 +3409,68 @@ public final class ActionRows {
     return records.filter(filter);
   }
 
+  /**
+   * A field as a boolean: false when the row leaves it out or sets an empty cell.
+   *
+   * @throws MistypedField when it holds anything but a boolean
+   */
   private static boolean bool(JsonNode fields, String column) {
-    return fields.path(column).asBoolean(false);
+    return bool(fields, column, false);
   }
 
-  private static List<Integer> ints(JsonNode values) {
+  /**
+   * A field as a boolean: the fallback when the row leaves it out or sets an empty cell.
+   *
+   * @throws MistypedField when it holds anything but a boolean
+   */
+  private static boolean bool(JsonNode fields, String column, boolean fallback) {
+    JsonNode value = fields.get(column);
+    if (value == null || value.isNull() || value.isTextual() && value.asText().isEmpty()) {
+      return fallback;
+    }
+    if (!value.isBoolean()) {
+      throw new MistypedField(column, value, "a boolean");
+    }
+    return value.asBoolean();
+  }
+
+  /**
+   * A field as a string: the fallback when the row leaves it out.
+   *
+   * @throws MistypedField when it holds anything but a text
+   */
+  private static String text(JsonNode fields, String column, String fallback) {
+    JsonNode value = fields.get(column);
+    if (value == null || value.isNull()) {
+      return fallback;
+    }
+    if (!value.isTextual()) {
+      throw new MistypedField(column, value, "a text");
+    }
+    return value.asText();
+  }
+
+  /**
+   * A field of whole numbers, written as a list of them or as one: none when the row leaves it out
+   * or sets an empty cell.
+   *
+   * @throws MistypedField when it, or an element of its list, is anything but a whole number
+   */
+  private static List<Integer> ints(JsonNode fields, String column) {
     List<Integer> out = new ArrayList<>();
+    JsonNode values = fields.get(column);
     if (values != null && values.isArray()) {
-      values.forEach(value -> out.add(value.asInt()));
+      for (JsonNode value : values) {
+        if (!GameRow.isWhole(value)) {
+          throw new MistypedField(column, value, "a list of numbers");
+        }
+        out.add(value.asInt());
+      }
     } else if (values != null && !values.isNull()) {
-      out.add(values.asInt());
+      int value = integer(fields, column);
+      if (!(values.isTextual() && values.asText().isEmpty())) {
+        out.add(value);
+      }
     }
     return out;
   }
