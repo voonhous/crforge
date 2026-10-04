@@ -1055,11 +1055,12 @@ public final class ActionRows {
         "XPositionExpression",
         "YPositionExpression",
         // Not read by the character branch: the offsets are the area-effect branch's, the spawn
-        // time is the buff branch's, and the start height and the target expressions are the
-        // projectile branch's.
+        // time and the source as the buff's parent are the buff branch's, and the start height
+        // and the target expressions are the projectile branch's.
         "OffsetX",
         "OffsetY",
         "SpawnTime",
+        "InstigatorAsBuffController",
         "StartPositionZOffset",
         "TargetExprX",
         "TargetExprY");
@@ -1910,17 +1911,23 @@ public final class ActionRows {
     }
 
     /**
-     * A buff spawn row's columns: the buff, its time and whether the owner is the source, nothing
-     * more. A buff written inline is the buff row of its Name. A row that sets any other spawn
-     * column, names a buff the battle does not model or one its parent controls, or gives it a time
-     * below 1 is refused.
+     * A buff spawn row's columns: the buff, its time, whether the owner is the source and whether
+     * the source is the buff's parent, nothing more. A buff written inline is the buff row of its
+     * Name. A row that sets any other spawn column, names a buff the battle does not model or one
+     * its parent controls without taking the source as its parent, or gives it a time below 1 is
+     * refused.
      */
     private SpawnBuff spawnBuff(String name, ActionRow shared, JsonNode f) {
       f.fieldNames()
           .forEachRemaining(
               column -> {
                 if (spawnColumns().contains(column)
-                    && !Set.of("SpawnData", "SpawnType", "SpawnTime", "ParentGOAsSource")
+                    && !Set.of(
+                            "SpawnData",
+                            "SpawnType",
+                            "SpawnTime",
+                            "ParentGOAsSource",
+                            "InstigatorAsBuffController")
                         .contains(column)) {
                   throw new UnsupportedOperationException(
                       name + " spawns a buff and sets " + column + ", which is not modelled");
@@ -1936,11 +1943,16 @@ public final class ActionRows {
                 + ", which sets columns not modelled: "
                 + records.buff(buff).unmodelledColumns());
       }
-      if (records.buff(buff).controlledByParent() || integer(f, "SpawnTime") < 1) {
+      boolean sourceAsParent = bool(f, "InstigatorAsBuffController");
+      // Without InstigatorAsBuffController a buff its parent controls takes the owner as its
+      // parent, which no reference holds.
+      if ((records.buff(buff).controlledByParent() && !sourceAsParent)
+          || integer(f, "SpawnTime") < 1) {
         throw new UnsupportedOperationException(
             name + " spawns a buff its parent controls or for no time, which is not modelled");
       }
-      return new SpawnBuff(shared, buff, integer(f, "SpawnTime"), bool(f, "ParentGOAsSource"));
+      return new SpawnBuff(
+          shared, buff, integer(f, "SpawnTime"), bool(f, "ParentGOAsSource"), sourceAsParent);
     }
 
     /**
@@ -2718,8 +2730,8 @@ public final class ActionRows {
      * A mark's columns: its resolver's filter and strategies, the names of its two actions, its two
      * tag masks, its pause and its search delay. Refused: a row without a resolver, a resolver
      * whose shape is not a Global one or that has no filter, and a row that waits for its next
-     * action. The two actions are not built: only a pick reaches them, and a pick is refused as it
-     * is made.
+     * action. The pick's action is built; the died action is not, as its leave notice is refused as
+     * it is sent.
      */
     private SetIndicatorOnTarget setIndicatorOnTarget(String name, ActionRow shared, JsonNode f) {
       refuseShared(name, f, "NextActionWait");
@@ -2762,7 +2774,7 @@ public final class ActionRows {
               .resolver(resolverName)
               .filter(records.filter(filter))
               .strategies(strategies)
-              .onPickNewTarget(rowName(f.get("OnPickNewTargetAction")))
+              .onPickNewTarget(action(f.get("OnPickNewTargetAction")))
               .onTargetDied(rowName(f.get("OnTargetDiedAction")))
               .tagsWithoutTarget(tagMask(f.path("GameTagsToSetWhileHasNotTarget").asText("")))
               .tagsWithTarget(tagMask(f.path("GameTagsToSetWhileHasTarget").asText("")))

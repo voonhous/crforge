@@ -1848,6 +1848,35 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The live list's objects a target resolver's Global shape collects and its filter lets through,
+   * asked for a team and a row name, in the holder's order. Every object is offered, so a
+   * projectile or an area effect the filter lets through is refused: no strategy's reading of one
+   * is modelled.
+   *
+   * @param filter the resolver's filter
+   * @param team the asking entity's team
+   * @param rowName the asking entity's row name
+   * @param action the name of the action that resolves
+   */
+  List<WorldEntity> resolverCandidates(
+      GameObjectFilter filter, int team, String rowName, String action) {
+    List<WorldEntity> out = new ArrayList<>();
+    for (FilterSubject subject : filterSubjects()) {
+      if (!(subject instanceof EntityFilterSubject entity)) {
+        if (filter.matches(subject, team, rowName)) {
+          throw new UnsupportedOperationException(
+              action + " resolves an object other than a character or building, not modelled");
+        }
+        continue;
+      }
+      if (filter.matches(entity, team, rowName)) {
+        out.add(entity.entity());
+      }
+    }
+    return out;
+  }
+
+  /**
    * Sends a card play to every card-play listener on the live and the queued objects, in that
    * order: each hears it as its row says, and an activating play schedules the row's action on the
    * listener's owner, the owner its cause, to run in its next pending pass.
@@ -6491,11 +6520,28 @@ public class BattleWorld implements HolderPasses {
    * @param source what applies it
    */
   void spawnBuff(WorldEntity owner, String action, String buff, int timeMs, SpawnHost source) {
+    spawnBuff(owner, action, buff, timeMs, source, null);
+  }
+
+  /**
+   * A buff-spawning action's buff on its owner, as {@link #spawnBuff(WorldEntity, String, String,
+   * int, SpawnHost)} puts it, with a parent: the source, for a row that makes it the buff's
+   * controller. A buff that stacks keeps it, and its leaving removes the instance.
+   *
+   * @param parent the buff's parent, or null for none
+   */
+  void spawnBuff(
+      WorldEntity owner,
+      String action,
+      String buff,
+      int timeMs,
+      SpawnHost source,
+      BattleEntity parent) {
     BuffData data = buffData(buff);
     for (WorldObserver observer : observers) {
       observer.buffSpawned(tick, owner, action, data, timeMs, source.packedLevel(), source);
     }
-    owner.getBuffs().apply(data, timeMs, source.packedLevel(), source, source.side());
+    owner.getBuffs().apply(data, timeMs, source.packedLevel(), source, source.side(), parent);
   }
 
   /**
