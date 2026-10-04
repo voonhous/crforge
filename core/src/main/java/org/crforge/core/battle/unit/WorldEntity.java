@@ -719,6 +719,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * A damage the entity deals outside a direct hit or a launch, handed through its listening
+   * actions from the last listed down, as its hits' damage is, with the hit id it carries.
+   *
+   * @param damage the damage before the listeners
+   * @param hitId the hit's id
+   * @return the damage the listeners hand back
+   */
+  int listenedDamage(int damage, int hitId) {
+    List<GiantBufferBuff.Run> runs = hitListenerRuns();
+    int out = damage;
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      out = runs.get(i).damage(out, hitId, false);
+    }
+    return out;
+  }
+
+  /**
    * The entity's running actions that change its hits' damage, in list order: its enchanting buffs.
    * Every other class keeps the base damage slots, which hand a damage on unchanged, so the chains
    * are those of the enchanting buffs alone. The king tower's own actions are never listed as
