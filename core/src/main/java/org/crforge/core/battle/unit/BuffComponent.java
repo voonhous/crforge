@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.ToIntFunction;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
@@ -27,15 +28,18 @@ import org.crforge.core.pathfinding.target.TargetingState;
 /**
  * The buffs listed on a character or a tower, in slot 3, and what they make of its speeds.
  *
- * <p><b>Apply.</b> A buff reaches an entity from an area effect's hit or a projectile's impact. A
- * building takes nothing of a buff that ignores buildings, an entity tagged against buffs takes
- * nothing, and a crown tower nothing of one that spares them. Otherwise an instance of the same row
- * is refreshed instead of a second one listed: any instance of the row, or with stacking only the
- * one the same source applied, or for a buff specific to a player only one from the same side. A
- * refresh keeps the longer time, growing the whole by the difference, and the higher level. A buff
- * added as an individual one, as Dark Magic's are, refreshes nothing. With nothing to refresh a new
- * instance is listed last, its level packed against the buff's rarity. A buff with a death spawn
- * that would make another with a death spawn give way is refused.
+ * <p><b>Apply.</b> A buff reaches an entity from an area effect's hit or a projectile's impact.
+ * First the entity's running actions, if it has a holder, see the buff from the last listed to the
+ * first, each handed what the one after it answered, and may put another buff in its place; only
+ * the evolved Rage Barbarian's ghost wait does. Then a building takes nothing of a buff that
+ * ignores buildings, an entity tagged against buffs takes nothing, and a crown tower nothing of one
+ * that spares them. Otherwise an instance of the same row is refreshed instead of a second one
+ * listed: any instance of the row, or with stacking only the one the same source applied, or for a
+ * buff specific to a player only one from the same side. A refresh keeps the longer time, growing
+ * the whole by the difference, and the higher level. A buff added as an individual one, as Dark
+ * Magic's are, refreshes nothing. With nothing to refresh a new instance is listed last, its level
+ * packed against the buff's rarity. A buff with a death spawn that would make another with a death
+ * spawn give way is refused.
  *
  * <p><b>Riders.</b> An apply on a parent that carries riders, the Goblin Giant or the Ram, that was
  * not refused ends by handing the buff to each rider in the order they were made: every row but a
@@ -263,6 +267,15 @@ public final class BuffComponent implements BattleComponent {
       int side,
       BattleEntity parent,
       boolean handedOver) {
+    // The entity's running actions see the buff before any gate, from the last listed to the
+    // first, and may put another buff in its place.
+    ActionHolder holder = entity.madeActionHolder();
+    if (holder != null) {
+      String offered = holder.offerBuff(buff.name());
+      if (!offered.equals(buff.name())) {
+        buff = world.getRecords().buff(offered);
+      }
+    }
     if (entity.getTargetView().building() && buff.ignoreBuildings()) {
       return;
     }

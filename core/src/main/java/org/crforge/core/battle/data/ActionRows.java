@@ -54,6 +54,7 @@ import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
+import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.MusketeerSnipe;
@@ -429,6 +430,15 @@ public final class ActionRows {
           // building retargeting, the buff removed as it finishes, and no invalid or crown tower
           // duration or buff.
           Map.entry("ActionTaunt", Set.of("ValidDuration", "ValidTargetBuff")),
+          Map.entry(
+              "ActionLumberjackGhostWaitUntilLooseBuff",
+              Set.of(
+                  "BuffToConsider",
+                  "BuffOverride",
+                  "ActionToExecute",
+                  "Delay",
+                  "PortalTimer",
+                  "OnAboutToDieAction")),
           Map.entry(
               "ActionRunActionListOnObjectsInShapeWithPrio",
               Set.of(
@@ -1184,6 +1194,7 @@ public final class ActionRows {
                 new SetAttackSequenceIndex(
                     shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
             case "ActionTaunt" -> taunt(name, shared, f);
+            case "ActionLumberjackGhostWaitUntilLooseBuff" -> lumberjackGhostWait(shared, f);
             case "ActionLaserBall" -> laserBall(name, shared, f);
             case "ActionSpawnGuard" -> spawnGuard(name, shared, f);
             case "ActionBossBanditAbility" -> bossBanditAbility(name, shared, f);
@@ -2729,6 +2740,32 @@ public final class ActionRows {
           .actionOnSource(action(actionOnSource))
           .actionOnTarget(action(actionOnTarget))
           .build();
+    }
+
+    /**
+     * The evolved Rage Barbarian's ghost wait, each column with the loader's default when the row
+     * leaves it out: no buff, no action, a delay and portal time of 0. Each buff it names must be a
+     * buff row. A raged-back action and ResetOnDelay are not read: a row setting either is refused
+     * by its columns.
+     */
+    private LumberjackGhostWait lumberjackGhostWait(ActionRow shared, JsonNode f) {
+      String consider = f.has("BuffToConsider") ? f.get("BuffToConsider").asText() : null;
+      String override = f.has("BuffOverride") ? f.get("BuffOverride").asText() : null;
+      for (String buff : new String[] {consider, override}) {
+        if (buff != null) {
+          records.buff(buff);
+        }
+      }
+      return new LumberjackGhostWait(
+          shared,
+          LumberjackGhostWait.Columns.builder()
+              .buffToConsider(consider)
+              .buffOverride(override)
+              .actionToExecute(action(f.get("ActionToExecute")))
+              .delayMs(integer(f, "Delay"))
+              .portalTimerMs(integer(f, "PortalTimer"))
+              .onAboutToDie(action(f.get("OnAboutToDieAction")))
+              .build());
     }
 
     /** A named action, a row inline by name, or null for none. */
