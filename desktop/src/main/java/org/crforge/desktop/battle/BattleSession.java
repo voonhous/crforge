@@ -6,6 +6,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntFunction;
 import lombok.Getter;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
@@ -67,7 +68,8 @@ public final class BattleSession {
 
   @Getter private final AreaHitLog areaHits = new AreaHitLog();
 
-  private final Deque<String> messages = new ArrayDeque<>();
+  /** The messages kept, oldest first, each naming its side when it has one. */
+  private final Deque<Message> messages = new ArrayDeque<>();
 
   /** The card each play was given for, by the play's name. */
   private final Map<String, String> playedCards = new HashMap<>();
@@ -266,23 +268,22 @@ public final class BattleSession {
    * @return true when the play was given
    */
   public boolean play(int side, int slot, int x, int y) {
-    String who = sideName(side);
     LadderMatch match = match();
     if (match == null) {
-      say(who + ": no hand in a golden scenario (R starts a Ladder battle)");
+      say(side, ": no hand in a golden scenario (R starts a Ladder battle)");
       return false;
     }
     if (halted != null) {
-      say(who + ": the battle has stopped (R resets)");
+      say(side, ": the battle has stopped (R resets)");
       return false;
     }
     MatchCard card = handCard(side, slot);
     if (card == null) {
-      say(who + ": slot " + (slot + 1) + " is empty");
+      say(side, ": slot " + (slot + 1) + " is empty");
       return false;
     }
     if (isPending(side, slot)) {
-      say(who + ": " + card.name() + " is already played and waits to run");
+      say(side, ": " + card.name() + " is already played and waits to run");
       return false;
     }
     MatchSide matchSide = match.side(side);
@@ -295,18 +296,14 @@ public final class BattleSession {
     if (!itemCost) {
       int code = match.gate(side, deckIndex, card.cost() + setAside);
       if (code != 0) {
-        say(who + ": " + card.name() + " refused, " + refusal(code));
+        say(side, ": " + card.name() + " refused, " + refusal(code));
         return false;
       }
       CardPlacement.Result preview = preview(side, slot, x, y);
       if (!preview.placed()) {
         say(
-            who
-                + ": "
-                + card.name()
-                + " has no legal tile there (code "
-                + hex(preview.code())
-                + ")");
+            side,
+            ": " + card.name() + " has no legal tile there (code " + hex(preview.code()) + ")");
         return false;
       }
     }
@@ -321,12 +318,12 @@ public final class BattleSession {
         battle.submit(deployCard(card), LEVEL, side, x, y, name);
       }
     } catch (RuntimeException e) {
-      say(who + ": " + card.name() + " refused, " + e.getMessage());
+      say(side, ": " + card.name() + " refused, " + e.getMessage());
       return false;
     }
     playedCards.put(name, card.name());
     pending.put(name, new Pending(side, deckIndex, itemCost ? 0 : card.cost()));
-    say(who + ": " + card.name() + " played, runs on tick " + runTick);
+    say(side, ": " + card.name() + " played, runs on tick " + runTick);
     return true;
   }
 
@@ -338,6 +335,18 @@ public final class BattleSession {
    */
   public void note(String message) {
     say(message);
+  }
+
+  /**
+   * Adds a message about one side, such as a replay's play as it ran. The side is named when the
+   * messages are read, by the names the reader gives the sides, so a message names a side by its
+   * colour on screen whichever way up the arena is drawn.
+   *
+   * @param side the side the message is about, 0 or 1
+   * @param message the message, read after the side's name, such as {@code " plays Knight"}
+   */
+  public void note(int side, String message) {
+    say(side, message);
   }
 
   /**
@@ -354,9 +363,27 @@ public final class BattleSession {
     }
   }
 
-  /** The messages kept, oldest first. */
+  /** The messages kept, oldest first, naming the sides as {@link #sideName} does. */
   public List<String> messages() {
-    return new ArrayList<>(messages);
+    return messages(BattleSession::sideName);
+  }
+
+  /**
+   * The messages kept, oldest first, each stamped with its tick.
+   *
+   * @param sideNames the name a message about a side gives it
+   */
+  public List<String> messages(IntFunction<String> sideNames) {
+    List<String> lines = new ArrayList<>(messages.size());
+    for (Message message : messages) {
+      lines.add(
+          "["
+              + message.tick()
+              + "] "
+              + (message.side() < 0 ? "" : sideNames.apply(message.side()))
+              + message.text());
+    }
+    return lines;
   }
 
   /** Reads the plays that ran since the last read and reports each one the battle refused. */
@@ -366,13 +393,12 @@ public final class BattleSession {
       Standard1v1Battle.Play play = plays.get(playsRead);
       pending.remove(play.name());
       String card = playedCards.getOrDefault(play.name(), play.name());
-      String who = sideName(play.side());
       if (play.matchCode() != 0) {
-        say(who + ": " + card + " refused as it ran, " + refusal(play.matchCode()));
+        say(play.side(), ": " + card + " refused as it ran, " + refusal(play.matchCode()));
       } else if (play.result() != null && !play.result().placed()) {
         say(
-            who
-                + ": "
+            play.side(),
+            ": "
                 + card
                 + " found no legal tile as it ran (code "
                 + hex(play.result().code())
@@ -392,7 +418,7 @@ public final class BattleSession {
     };
   }
 
-  /** The name the messages give a side. */
+  /** The name the messages give a side with side 0 at the bottom, as the Ladder screen draws it. */
   public static String sideName(int side) {
     return side == 0 ? "blue" : "red";
   }
@@ -402,9 +428,18 @@ public final class BattleSession {
   }
 
   private void say(String message) {
-    messages.addLast("[" + tick() + "] " + message);
+    say(-1, message);
+  }
+
+  private void say(int side, String message) {
+    messages.addLast(new Message(tick(), side, message));
     while (messages.size() > MESSAGES_KEPT) {
       messages.removeFirst();
     }
   }
+
+  /**
+   * One message as kept: its tick, the side it names first (-1 for none) and the rest of its text.
+   */
+  private record Message(int tick, int side, String text) {}
 }

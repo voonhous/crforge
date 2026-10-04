@@ -1,6 +1,5 @@
 package org.crforge.desktop.render;
 
-import static org.crforge.desktop.render.RenderConstants.BOTTOM_UI_HEIGHT;
 import static org.crforge.desktop.render.RenderConstants.CELL_PIXELS;
 import static org.crforge.desktop.render.RenderConstants.COLOR_CELL_HOVER;
 
@@ -88,7 +87,7 @@ public class CellCostOverlayRenderer {
    * @param hoverRow the row under the mouse
    */
   public void render(GameEngine engine, int hoverCol, int hoverRow) {
-    render(snapshot(engine), hoverCol, hoverRow);
+    render(snapshot(engine), hoverCol, hoverRow, ViewOrientation.STANDARD);
   }
 
   /**
@@ -101,10 +100,23 @@ public class CellCostOverlayRenderer {
    * @param hoverRow the row under the mouse
    */
   public void render(CellGrid grid, int hoverCol, int hoverRow) {
-    render(live(grid), hoverCol, hoverRow);
+    render(grid, hoverCol, hoverRow, ViewOrientation.STANDARD);
   }
 
-  private void render(Snapshot snapshot, int hoverCol, int hoverRow) {
+  /**
+   * Fills every cell of a live routing grid as {@link #render(CellGrid, int, int)} does, drawn the
+   * way up the view has the arena.
+   *
+   * @param grid the live grid, between two ticks
+   * @param hoverCol the battle's column under the mouse, or a value outside the grid
+   * @param hoverRow the battle's row under the mouse
+   * @param view which way up the arena is drawn
+   */
+  public void render(CellGrid grid, int hoverCol, int hoverRow, ViewOrientation view) {
+    render(live(grid), hoverCol, hoverRow, view);
+  }
+
+  private void render(Snapshot snapshot, int hoverCol, int hoverRow, ViewOrientation view) {
     CellGrid grid = snapshot.grid();
 
     Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -114,7 +126,10 @@ public class CellCostOverlayRenderer {
         ctx.getShapeRenderer().setColor(snapshot.classOf(col, row).color());
         ctx.getShapeRenderer()
             .rect(
-                col * CELL_PIXELS, row * CELL_PIXELS + BOTTOM_UI_HEIGHT, CELL_PIXELS, CELL_PIXELS);
+                view.left(col * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
+                view.bottom(row * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
+                CELL_PIXELS,
+                CELL_PIXELS);
       }
     }
     ctx.getShapeRenderer().end();
@@ -124,8 +139,8 @@ public class CellCostOverlayRenderer {
       ctx.getShapeRenderer().setColor(COLOR_CELL_HOVER);
       ctx.getShapeRenderer()
           .rect(
-              hoverCol * CELL_PIXELS,
-              hoverRow * CELL_PIXELS + BOTTOM_UI_HEIGHT,
+              view.left(hoverCol * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
+              view.bottom(hoverRow * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
               CELL_PIXELS,
               CELL_PIXELS);
       ctx.getShapeRenderer().end();

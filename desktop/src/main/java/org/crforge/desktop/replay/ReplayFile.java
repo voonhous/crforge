@@ -13,6 +13,8 @@ import java.util.Optional;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.Standard1v1Battle;
+import org.crforge.desktop.render.ViewOrientation;
+import org.crforge.desktop.render.ViewState;
 import org.crforge.parity.CommandTypes;
 import org.crforge.parity.ReplayScenario;
 import org.crforge.parity.ReplaySmokeRun;
@@ -164,16 +166,32 @@ public final class ReplayFile {
     return NO_RECORDED_RESULT;
   }
 
-  /** The lines the viewer prints at startup and shows for a refused replay. */
+  /**
+   * The lines the viewer prints at startup and shows for a refused replay, each deck labelled with
+   * its side and its colour and place in the viewer's default orientation.
+   */
   public List<String> describe() {
+    return describe(ViewState.replay().getOrientation());
+  }
+
+  /**
+   * The lines the viewer prints at startup and shows for a refused replay.
+   *
+   * @param view the orientation whose colours and places label the decks
+   */
+  public List<String> describe(ViewOrientation view) {
     List<String> lines = new ArrayList<>();
     lines.add("replay: " + path.toAbsolutePath().normalize());
     lines.add("  game mode: " + header.gameMode() + ", location " + header.location());
     for (int side = 0; side < header.decks().size(); side++) {
       lines.add(
-          "  "
-              + (side == 0 ? "blue" : "red")
-              + " deck: "
+          "  side "
+              + side
+              + " deck ("
+              + view.sideName(side)
+              + ", "
+              + (view.atTop(side) ? "top" : "bottom")
+              + "): "
               + String.join(", ", header.decks().get(side)));
     }
     lines.add(

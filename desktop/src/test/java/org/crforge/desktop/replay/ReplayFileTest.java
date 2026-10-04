@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.desktop.render.ViewOrientation;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,6 +63,14 @@ class ReplayFileTest {
     assertThat(replay.recordedResult()).isEqualTo("none in the replay");
     List<String> lines = replay.describe();
     assertThat(lines.get(0)).isEqualTo("replay: " + file.toAbsolutePath().normalize());
+    // The decks are labelled by side and by the viewer's default view: side 1 at the bottom.
+    assertThat(lines)
+        .contains(
+            "  side 0 deck (red, top): ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer,"
+                + " Fireball, Arrows",
+            "  side 1 deck (blue, bottom): " + String.join(", ", replay.header().decks().get(1)));
+    assertThat(replay.describe(ViewOrientation.STANDARD))
+        .contains("  side 1 deck (red, top): " + String.join(", ", replay.header().decks().get(1)));
     assertThat(lines)
         .contains(
             "  end tick: 400",

@@ -29,6 +29,8 @@ import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.CardLayout;
 import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.RenderConstants;
+import org.crforge.desktop.render.ViewOrientation;
+import org.crforge.desktop.render.ViewState;
 
 /**
  * Debug screen for visualizing a battle on the battle core: a Ladder battle between the decks of
@@ -52,6 +54,9 @@ import org.crforge.desktop.render.RenderConstants;
  *   <li>E: Export the recorded trajectories of every played unit to build/trajectories
  *   <li>V: Switch to the next data version of the data root and start a new Ladder battle on it; a
  *       version the battle core refuses is reported in the messages and the battle stays
+ *   <li>F: Not offered here: the view flips in the replay viewer only, since this screen's clicks,
+ *       hand panels and number keys play for a side as the arena is drawn standing; logs a note
+ *   <li>T: Hide or show the text annotations (status column, messages)
  *   <li>1-4: Select a card from the blue player's hand
  *   <li>5-8: Select a card from the red player's hand
  *   <li>+/-: Speed up/slow down simulation
@@ -74,12 +79,18 @@ public class DebugGameScreen implements Screen {
   /** The note the status column carries for the control this screen no longer offers. */
   private static final String M_NOTE = "M: n/a on the battle core";
 
+  /** The note the status column carries for the flip this screen does not offer. */
+  private static final String F_NOTE = "F: flips a replay only";
+
   /** The data versions {@code V} switches between, and the tables every battle reads now. */
   private final DataVersions versions;
 
   private final BattleRenderer renderer;
   private final OrthographicCamera camera;
   private final Vector3 touchPos = new Vector3();
+
+  /** The view settings: standing, side 0 at the bottom; F does not flip it, T hides annotations. */
+  private final ViewState view = ViewState.ladder();
 
   private BattleSession session;
 
@@ -169,6 +180,17 @@ public class DebugGameScreen implements Screen {
                 renderer.toggleDrawRoutes();
                 log.info("Route overlay: {}", renderer.isDrawRoutes() ? "ON" : "OFF");
               }
+              case Input.Keys.F -> {
+                if (!view.flip()) {
+                  log.info(
+                      "F flips the view in the replay viewer only: this screen's clicks, hand"
+                          + " panels and number keys play for a side as the arena stands");
+                }
+              }
+              case Input.Keys.T -> {
+                view.toggleAnnotations();
+                log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
+              }
               case Input.Keys.S -> startGoldenScenario();
               case Input.Keys.E -> exportTrajectories();
               case Input.Keys.V -> switchDataVersion();
@@ -216,16 +238,15 @@ public class DebugGameScreen implements Screen {
     touchPos.set(screenX, screenY, 0);
     camera.unproject(touchPos);
 
-    // touchPos.y is world Y (0 is bottom of UI); the arena starts at BOTTOM_UI_HEIGHT
-    float arenaY = touchPos.y - RenderConstants.BOTTOM_UI_HEIGHT;
-    float arenaX = touchPos.x;
-
-    hoverTileX = (int) Math.floor(arenaX / RenderConstants.TILE_PIXELS);
-    hoverTileY = (int) Math.floor(arenaY / RenderConstants.TILE_PIXELS);
+    // touchPos.y is world Y (0 is bottom of UI); the arena starts at BOTTOM_UI_HEIGHT. The view
+    // maps the pixel to the battle's tile, which is the pixel's own on this standing screen.
+    ViewOrientation orientation = view.getOrientation();
+    hoverTileX = orientation.tileColumnAt(touchPos.x);
+    hoverTileY = orientation.tileRowAt(touchPos.y);
 
     // Routing cells are half a tile across, so the cost overlay needs its own hover
-    hoverCellX = (int) Math.floor(arenaX / RenderConstants.CELL_PIXELS);
-    hoverCellY = (int) Math.floor(arenaY / RenderConstants.CELL_PIXELS);
+    hoverCellX = orientation.cellColumnAt(touchPos.x);
+    hoverCellY = orientation.cellRowAt(touchPos.y);
   }
 
   /** Whether the hovered tile lies on the arena. */
@@ -439,7 +460,7 @@ public class DebugGameScreen implements Screen {
       }
 
       camera.update();
-      BattleFrame frame = BattleAdapter.frame(session);
+      BattleFrame frame = BattleAdapter.frame(session, view.getOrientation()::sideName);
       boolean previewing = selectedSlot >= 0 && hoverOnArena();
       MatchCard selected = selectedSlot >= 0 ? session.handCard(selectedSide, selectedSlot) : null;
       DeployCard selectedCard = session.deployCard(selected);
@@ -467,7 +488,8 @@ public class DebugGameScreen implements Screen {
               preview,
               goldenOverlay(),
               goldenScenario.statusLines(),
-              List.of(versions.statusLine(), M_NOTE)));
+              List.of(versions.statusLine(), M_NOTE, F_NOTE),
+              view));
       newAreaHits.clear();
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
@@ -513,6 +535,10 @@ public class DebugGameScreen implements Screen {
 
         Data:
           V     - Switch to the next data version of the data root (new Ladder battle)
+
+        View:
+          F     - Not offered here: flips the replay viewer only
+          T     - Hide/show the text annotations
         ==============================================""");
   }
 
