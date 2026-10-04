@@ -2598,9 +2598,11 @@ public class BattleWorld implements HolderPasses {
    * @param name the play's name, which a cast area effect names as its source
    */
   public void castSpell(DeployCard card, int cardLevel, int side, int x, int y, String name) {
+    AreaEffectEntity areaEffect = null;
     if (card.areaEffect() != null) {
-      createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
+      areaEffect = createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
     }
+    ProjectileEntity firstProjectile = null;
     if (card.projectile() != null) {
       ProjectileData data = records.projectile(card.projectile());
       if (!data.unmodelledColumns().isEmpty()) {
@@ -2613,8 +2615,57 @@ public class BattleWorld implements HolderPasses {
       }
       TowerEntity king = kingTower(side);
       checkState(king != null, () -> "side " + side + " has no king tower to cast from");
-      castProjectiles(card, data, king, cardLevel, side, x, y);
+      firstProjectile = castProjectiles(card, data, king, cardLevel, side, x, y);
     }
+    if (card.onExecuteAction() != null) {
+      // The cast's last step: the action runs on the king at once, with the first object the cast
+      // made as its cause - its first projectile, else its area effect. A cast that made nothing
+      // schedules nothing.
+      ActionHolder cause =
+          firstProjectile != null
+              ? firstProjectile.actionHolder()
+              : areaEffect != null ? areaEffect.actionHolder() : null;
+      TowerEntity king = kingTower(side);
+      checkState(king != null, () -> "side " + side + " has no king tower to run an action on");
+      if (cause != null) {
+        king.actionHolder()
+            .schedule(
+                actions.build(card.onExecuteAction(), binding(king)),
+                ActionHolder.OWN_DELAY,
+                true,
+                cause);
+      }
+    }
+  }
+
+  /**
+   * A mirrored extra spell's projectile, thrown for a cast projectile: the row's projectile for the
+   * cast's side, from where the cast stands to the cast's aim - its target's position when it homes
+   * onto one - turned over across the arena's width, handed to the holder as the cast's are.
+   *
+   * @param source the cast projectile, the extra spell's cause
+   * @param projectileName the projectile row the extra spell throws
+   * @param action the extra spell's name
+   */
+  public void castMirroredExtraSpell(
+      ProjectileEntity source, String projectileName, String action) {
+    ProjectileData data = records.projectile(projectileName);
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action
+              + " throws "
+              + data.name()
+              + ", which sets columns its impact does not model: "
+              + data.unmodelledColumns());
+    }
+    WorldEntity sourceTarget = source.getTarget();
+    boolean homing = sourceTarget != null && source.getData().homing();
+    int aimX = homing ? sourceTarget.getView().getX() : source.getAimX();
+    int aimY = homing ? sourceTarget.getView().getY() : source.getAimY();
+    ProjectileEntity projectile = new ProjectileEntity(this, data, source.side());
+    projectile.castMirrored(source, tileMap.width() * TileMap.CELL_UNITS - aimX, aimY);
+    holder.add(projectile);
+    registrationPass(projectile);
   }
 
   /**
@@ -2626,8 +2677,10 @@ public class BattleWorld implements HolderPasses {
    * tenths of the spell's radius, and starts at the king tower plus a quarter of that offset across
    * and the whole of it along. A chain shares its circle, the placed point and the spell's radius,
    * and the ids it has hit.
+   *
+   * @return the first projectile cast
    */
-  private void castProjectiles(
+  private ProjectileEntity castProjectiles(
       DeployCard card,
       ProjectileData data,
       TowerEntity king,
@@ -2650,6 +2703,7 @@ public class BattleWorld implements HolderPasses {
     int ky = king.getView().getY();
     int height = 3 * king.getData().collisionRadius();
     int base = 0;
+    ProjectileEntity first = null;
     for (int wave = 0; wave < waves; wave++) {
       int delay = base;
       ProjectileChain chain = ring ? new ProjectileChain(x, y, radius) : null;
@@ -2710,10 +2764,14 @@ public class BattleWorld implements HolderPasses {
         if (chain != null) {
           projectile.joinChain(chain, rx, ry);
         }
+        if (first == null) {
+          first = projectile;
+        }
         delay += card.projectileIntervalMs();
       }
       base += card.projectileWaveIntervalMs();
     }
+    return first;
   }
 
   /** A vector's squared length; the largest int when a component or the sum would overflow. */
