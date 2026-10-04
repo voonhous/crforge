@@ -136,6 +136,9 @@ public final class EntityFlags {
   /** The entity's ability cooldown is held. */
   public static final long ABILITY_COOLDOWN_PAUSED = 1L << 55;
 
+  /** The entity is flying a warp at a speed: raised by each of the warp's steps for one step. */
+  public static final long WARP = 1L << 56;
+
   /** A Clone passes the entity by. */
   public static final long NO_CLONE = 1L << 57;
 
