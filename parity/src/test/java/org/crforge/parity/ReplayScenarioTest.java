@@ -159,6 +159,24 @@ class ReplayScenarioTest {
   }
 
   @Test
+  void buildsEachKingTowerAtTheAvatarsLevelWhateverTheSelectionLevel() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0))
+        .put("d", 159000001)
+        .put("l", 10);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // The king row's level comes from the avatar's exp level, not from the tower selection: the
+    // first level at exp level 1, the only exp level the adapter accepts.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 3),
+            new Standard1v1Battle.Towers("King_CannonTowers", 1, 16));
+  }
+
+  @Test
   void refusesATowerLevelOutsideItsSelectionsLevels() {
     for (int level : new int[] {11, -1}) {
       ObjectNode scenario = Scenarios.knight();

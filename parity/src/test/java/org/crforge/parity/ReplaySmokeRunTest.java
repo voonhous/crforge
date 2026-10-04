@@ -138,6 +138,50 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void aTowerSelectionLevelRaisesItsSidesPrincessTowersButNotItsKing() throws IOException {
+    ObjectNode scenario = Scenarios.knight();
+    // Side 0 selects the princess towers one level up, side 1 eight levels up.
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 1);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("l", 8);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, identity, 330);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    // Each king stands at the avatar's level (exp level 1: the first level), whatever its side's
+    // selection level is; the princess towers stand at their own side's selection level.
+    for (int i : new int[] {0, 3}) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("KingTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2400);
+    }
+    for (int i : new int[] {1, 2}) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("PrincessTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(1512);
+    }
+    for (int i : new int[] {4, 5}) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("PrincessTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2534);
+    }
+    // Side 0's Knight walks up the left lane into side 1's low princess tower's range: its first
+    // arrow takes 90, the projectile's 50 at the tower's level.
+    int firstHp = -1;
+    for (String line : lines) {
+      for (JsonNode entity : MAPPER.readTree(line).path("entities")) {
+        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < 690) {
+          firstHp = entity.path("hp").asInt();
+          break;
+        }
+      }
+      if (firstHp >= 0) {
+        break;
+      }
+    }
+    assertThat(firstHp).isEqualTo(600);
+  }
+
+  @Test
   void aRoyalChefTowerSelectionCooksAPancakeThatRaisesAFriendlyTroopsLevel() throws IOException {
     Path out = folder.resolve("run");
 

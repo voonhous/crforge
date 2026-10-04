@@ -71,6 +71,19 @@ public final class ReplayScenario {
           "GoblinQueen_SpawnAbility",
           "the Goblin Queen's towers, a selection the game data marks not in use");
 
+  /**
+   * The only avatar exp level the adapter accepts. The exp level table is not one of the game
+   * tables, so another exp level has no production input.
+   */
+  private static final int EXP_LEVEL = 1;
+
+  /**
+   * The level a side's king row is created at, counted from 1: the summoner level of the avatar's
+   * exp level, which for {@link #EXP_LEVEL} is the first. It does not depend on the side's tower
+   * selection or its level index.
+   */
+  private static final int KING_LEVEL = 1;
+
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
@@ -334,7 +347,8 @@ public final class ReplayScenario {
    * level index counted from 0 on the card's rarity's first level.
    *
    * <p>The rows in the princess slots stand at the level index plus the support rarity's
-   * RelativeLevel plus 1, as a Common row; the king row stands at the level index plus 1.
+   * RelativeLevel plus 1, as a Common row. The king row stands at the avatar's level, {@link
+   * #KING_LEVEL}, whatever the selection and its level index are.
    *
    * @return the side's towers
    */
@@ -384,12 +398,10 @@ public final class ReplayScenario {
     mapping.put(
         "battle.deckN.sc[0].l",
         "consumed: the towers' level index, 0 to the support rarity's LevelCount less 1; the"
-            + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1,"
-            + " the king row at the index plus 1");
+            + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1;"
+            + " the king row does not use it");
     return new Standard1v1Battle.Towers(
-        card.string("SpawnGroup"),
-        levelIndex + 1,
-        levelIndex + rarity.intValue("RelativeLevel") + 1);
+        card.string("SpawnGroup"), KING_LEVEL, levelIndex + rarity.intValue("RelativeLevel") + 1);
   }
 
   /**
@@ -399,9 +411,9 @@ public final class ReplayScenario {
    */
   private int[] avatar(JsonNode avatar, int side) {
     String field = "battle.avatar" + side;
-    // The king tower is created at the tower selection's level index plus 1; an avatar level
-    // that would disagree with it has no production input.
-    pin(avatar, "expLevel", "1");
+    // The king tower is created at the summoner level of the avatar's exp level; only the first
+    // exp level, whose king level is KING_LEVEL, has a production input.
+    pin(avatar, "expLevel", String.valueOf(EXP_LEVEL));
     pin(avatar, "npc", "false");
     pin(avatar, "arena", "54000001");
     onlyFields(avatar, field, "accountID.hi", "accountID.lo", "expLevel", "name", "arena", "npc");

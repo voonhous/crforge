@@ -643,6 +643,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public boolean ownerMovementOn() {
+        return WorldEntity.this instanceof CharacterEntity c && c.movementOn();
+      }
+
+      @Override
+      public void attackRecoil(int x, int y) {
+        if (WorldEntity.this instanceof CharacterEntity c) {
+          c.recoil(x, y);
+        }
+      }
+
+      @Override
       public int nextHitId() {
         return world.nextHitId();
       }
@@ -716,6 +728,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         projectile.actionHolder().list(copy);
       }
     }
+  }
+
+  /**
+   * A damage the entity deals outside a direct hit or a launch, handed through its listening
+   * actions from the last listed down, as its hits' damage is, with the hit id it carries.
+   *
+   * @param damage the damage before the listeners
+   * @param hitId the hit's id
+   * @return the damage the listeners hand back
+   */
+  int listenedDamage(int damage, int hitId) {
+    List<GiantBufferBuff.Run> runs = hitListenerRuns();
+    int out = damage;
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      out = runs.get(i).damage(out, hitId, false);
+    }
+    return out;
   }
 
   /**
