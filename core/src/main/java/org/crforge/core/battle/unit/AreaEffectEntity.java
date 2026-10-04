@@ -554,9 +554,10 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * circle around its point that pass its filter, listed once for the update - a building when its
    * square comes within the radius, anything else when its centre lies strictly within the radius
    * plus its collision radius - and, for each hit, the level-scaled damage queued on every one of
-   * them as a typed hit of the row's damage type, the area effect its source, with no direction;
-   * the queue is dealt after the tick's post-hooks. The row's load refuses a circle whose hits
-   * would do more, or share or scale their damage for a crown tower.
+   * them as a typed hit of the row's damage type, the area effect its source, with no direction; a
+   * crown tower takes the row's crown tower share of it instead, rounded up. The queue is dealt
+   * after the tick's post-hooks. The row's load refuses a circle whose hits would do more, or split
+   * their damage among what they reach.
    */
   private void circleShapeHits(int hits, int damage) {
     List<WorldEntity> listed =
@@ -566,9 +567,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       return;
     }
     DamageType type = world.getActions().damageType(data.damageType(), binding());
+    int tower = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
     for (int i = 0; i < hits; i++) {
       for (WorldEntity target : listed) {
-        world.queueTypedHit(this, target, type, damage);
+        world.queueTypedHit(
+            this, target, type, target.getTargetView().crownTower() ? tower : damage);
       }
     }
   }

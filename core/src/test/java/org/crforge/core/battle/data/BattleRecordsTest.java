@@ -597,9 +597,9 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "a shaped area effect reads its rectangle and its filter, and its damage type without"
-          + " damage; a circle with a filter and damage reads its radius and damage type; a circle"
-          + " that pushes or shares its damage with towers is not modelled")
-  void aShapedAreaEffect() {
+          + " damage; a circle with a filter and damage reads its radius and damage type, with a"
+          + " crown tower share too; a circle that pushes or splits its damage is not modelled")
+  void aShapedAreaEffect(@TempDir Path folder) throws IOException {
     AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
     assertThat(wind.shaped()).isTrue();
     assertThat(List.of(wind.shapeWidth(), wind.shapeHeight())).containsExactly(8000, 9000);
@@ -608,11 +608,26 @@ class BattleRecordsTest {
     assertThat(wind.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").shaped()).isFalse();
     assertThat(records.areaEffect("Zap").filter()).isNull();
-    // A circle that pushes without damage, and one whose damage a crown tower takes less of, are
-    // not held.
+    // A circle that pushes without damage is not held.
     assertThat(records.areaEffect("IceGolemiteHero_KnockBack_AEO").unmodelledColumns())
         .contains("Shape");
-    assertThat(records.areaEffect("IceGolemiteHero_Damage_AEO").unmodelledColumns())
+    // A circle whose damage a crown tower takes less of, hitting every 1500 ms, as the Ice
+    // Golemite hero form's ability has; where its looping effect is shown is the view's.
+    AreaEffectData storm = records.areaEffect("IceGolemiteHero_Damage_AEO");
+    assertThat(storm.unmodelledColumns()).isEmpty();
+    assertThat(storm.shapeRadius()).isEqualTo(4000);
+    assertThat(storm.crownTowerDamagePercent()).isEqualTo(-95);
+    assertThat(storm.damageType()).isEqualTo("IceGolemiteHero_AEO_Damage");
+    assertThat(storm.filter()).isEqualTo("CommonAreaDamageFilter");
+    assertThat(List.of(storm.hitSpeedMs(), storm.hitSpeedOffsetMs())).containsExactly(1500, 1450);
+    // The same circle splitting its damage among what it reaches is not held.
+    GameTables shared =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> GameData.columns(rows, "IceGolemiteHero_Damage_AEO").put("SharedDamage", true));
+    assertThat(
+            new BattleRecords(shared).areaEffect("IceGolemiteHero_Damage_AEO").unmodelledColumns())
         .contains("Shape");
     // A circle with a filter and damage queued through its damage type, as the Giant hero form's
     // landing has.
