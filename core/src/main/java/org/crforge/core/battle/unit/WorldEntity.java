@@ -1979,20 +1979,25 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * One hit the entity dealt that the target's hit points let through, past the battle's hold, the
    * untouchable test and the dedupe list and before the subtraction: one count per target per
-   * damage, a projectile's impact for its shooter. The counter goes up by one; then the
-   * BuffAfterHits entries are walked in order, an entry whose count is not above the old counter
-   * skipped and the walk ended at the first above the new one, so the entry picked is the one whose
-   * count the counter just reached; the last entry, picked, sets the counter back to 0. The buff
-   * picked is applied to the entity itself, with no parent, for its BuffAfterHitsTime, at the
-   * entity's level, the entity its source and its side the side.
+   * damage, a projectile's impact for its shooter. The counter goes up by one; then the row's hit
+   * action (OnHitTargetAction) is scheduled on the entity with the target as its cause, queued as
+   * the row's own delay asks and not run at once, so it runs in the entity's pending pass of the
+   * hit's tick, after the damage; then the BuffAfterHits entries are walked in order, an entry
+   * whose count is not above the old counter skipped and the walk ended at the first above the new
+   * one, so the entry picked is the one whose count the counter just reached; the last entry,
+   * picked, sets the counter back to 0. The buff picked is applied to the entity itself, with no
+   * parent, for its BuffAfterHitsTime, at the entity's level, the entity its source and its side
+   * the side.
    *
    * @param target what the hit reached
-   * @param buffHeld false on a path no reference holds a BuffAfterHits buff on, a typed hit's or a
-   *     buff's damage over time, where a row that would apply one is refused
+   * @param buffHeld false on a path no reference holds a BuffAfterHits buff or a hit action on, a
+   *     typed hit's or a buff's damage over time, where a row that would apply or run one is
+   *     refused
    */
   void countHit(WorldEntity target, boolean buffHeld) {
     int old = hitCounter;
     hitCounter = old + 1;
+    runHitTargetAction(target, buffHeld);
     List<Integer> counts = data.buffAfterHitsCounts();
     if (counts.isEmpty()) {
       return;
@@ -2031,6 +2036,37 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (buff != null) {
       buffs.apply(world.buffData(buff), time, getPackedLevel(), this, side());
     }
+  }
+
+  /** The row the entity's row runs for each hit it lands, built on first use. */
+  private BattleAction hitTargetActionRow;
+
+  /**
+   * Schedules the row's hit action (OnHitTargetAction) on the entity with what it hit as its cause,
+   * queued as the row's own delay asks and not run at once. A row without one schedules nothing.
+   *
+   * @param target what the hit reached
+   * @param held false on a typed hit's or a buff's damage over time, which no reference holds a hit
+   *     action on: a row that sets one is refused there
+   */
+  private void runHitTargetAction(WorldEntity target, boolean held) {
+    if (data.onHitTargetAction() == null) {
+      return;
+    }
+    if (!held) {
+      throw new UnsupportedOperationException(
+          name()
+              + " hits "
+              + target.name()
+              + " with OnHitTargetAction "
+              + data.onHitTargetAction()
+              + " by a typed hit or damage over time, which is not modelled");
+    }
+    if (hitTargetActionRow == null) {
+      hitTargetActionRow = world.getActions().build(data.onHitTargetAction(), world.binding(this));
+    }
+    actionHolder()
+        .schedule(hitTargetActionRow, ActionHolder.OWN_DELAY, false, target.actionHolder());
   }
 
   /** The row the entity's row runs as it attacks, built on first use. */

@@ -289,9 +289,12 @@ public final class BattleRecords {
 
   /**
    * The tags a buff may set: the one the push pass reads, which keeps the carrier's enemies from
-   * pushing it. A buff that sets any other is refused.
+   * pushing it, and UNIT_CUSTOM_TAG_1, which no battle code and no filter tests, read only by the
+   * expressions of the carrier's own action rows, which read the tag word the buff is folded into.
+   * A buff that sets any other is refused.
    */
-  private static final Set<String> MODELLED_BUFF_TAGS = Set.of("NO_PUSHED_BY_ENEMY");
+  private static final Set<String> MODELLED_BUFF_TAGS =
+      Set.of("NO_PUSHED_BY_ENEMY", "UNIT_CUSTOM_TAG_1");
 
   /**
    * The actions a buff schedules on its carrier as an instance is listed and removed: read when
@@ -700,6 +703,7 @@ public final class BattleRecords {
             .onStartChargingAction(actionName(row, "OnStartChargingAction"))
             .shieldLostAction(actionName(row, "ShieldLostAction"))
             .onAttackSelfAction(actionName(row, "OnAttackSelfAction"))
+            .onHitTargetAction(actionName(row, "OnHitTargetAction"))
             .minimumRange(row.intValue("MinimumRange"))
             .sightClip(sightClip(row))
             .sightClipSide(row.intValue("SightClipSide"))
@@ -1525,7 +1529,8 @@ public final class BattleRecords {
 
   /**
    * Whether a buff column is its tags and every tag it sets is one the battle reads where it reads
-   * the tag word of the buff's carrier: only the one that keeps enemies from pushing it.
+   * the tag word of the buff's carrier: the one that keeps enemies from pushing it, and the custom
+   * tag only expressions read.
    */
   private static boolean modelledBuffTags(GameRow row, String column) {
     if (!column.equals("GameTagsToSet")) {
