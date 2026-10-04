@@ -4199,8 +4199,27 @@ public class BattleWorld implements HolderPasses {
       int halfWidth,
       int halfHeight,
       GameObjectFilter filter) {
-    int team = owner.side() & 1;
-    String name = owner.getData().name();
+    return rectangleQuery(
+        owner.side(), owner.getData().name(), x, y, halfWidth, halfHeight, filter);
+  }
+
+  /**
+   * The objects in the rectangle about a point that pass the filter for the given side's team and
+   * row name, as {@link #rectangleQuery(AreaEffectEntity, int, int, int, int, GameObjectFilter)}
+   * lists them for an area effect.
+   *
+   * @param side the asking object's side
+   * @param name the asking object's row name
+   * @param x the rectangle's centre along the width
+   * @param y the rectangle's centre along the length
+   * @param halfWidth half its width
+   * @param halfHeight half its height
+   * @param filter the filter
+   * @return the objects, in the query's order
+   */
+  List<WorldEntity> rectangleQuery(
+      int side, String name, int x, int y, int halfWidth, int halfHeight, GameObjectFilter filter) {
+    int team = side & 1;
     List<WorldEntity> out = new ArrayList<>();
     for (GridEntity view :
         index.boxQuery(

@@ -4,6 +4,7 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import lombok.Getter;
@@ -1310,11 +1311,12 @@ public class CharacterEntity extends WorldEntity {
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
    * mode moves the index by itself other than a continuous-damage attacker's and a static loop's,
-   * an entry that sets more than its damage, its projectile, its action and its direct hit's
-   * pushback (and, for a continuous-damage attacker, its window), and an entry without a projectile
-   * or an action on a unit that fires. An entry's action is established in place of a projectile,
-   * read from an order of two or more by an index only actions move; one with a projectile, in a
-   * sequence of one, in a continuous-damage attacker's or on a charging row is refused.
+   * an entry that sets more than its damage, its projectile, its action, its direct hit's pushback
+   * and its attack range and minimum range (and, for a continuous-damage attacker, its window), and
+   * an entry without a projectile or an action on a unit that fires. An entry's action is
+   * established in place of a projectile, read from an order of two or more by an index only
+   * actions move; one with a projectile, in a sequence of one, in a continuous-damage attacker's or
+   * on a charging row is refused.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
@@ -1629,6 +1631,10 @@ public class CharacterEntity extends WorldEntity {
         .allTargetsHit(data.allTargetsHit())
         .attackSequenceMode(data.attackSequence().mode())
         .attackSequenceLength(data.attackSequence().order().size())
+        // The range helpers read the entry the index selects: its attack range and minimum range
+        // replace the row's at any length of the order.
+        .attackSequenceStepIds(data.attackSequence().order())
+        .attackSequenceEntries(data.attackSequence().targetingEntries())
         .hasOnStartingAttackAction(data.onStartingAttackAction() != null)
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .hasProjectile(data.hasProjectile())
@@ -3329,6 +3335,39 @@ public class CharacterEntity extends WorldEntity {
         world.launchAt(CharacterEntity.this, projectile, (WorldEntity) world.liveObject(friendId));
       }
     };
+  }
+
+  /**
+   * The candidates a snipe's look lists around the character: the box query about where it stands,
+   * less the objects inside the minimum range, nearest first.
+   */
+  @Override
+  public List<Integer> snipeCandidates(
+      int halfWidth, int halfLength, int minimumRange, GameObjectFilter filter) {
+    GridEntity at = getView();
+    long reach = (long) at.getCollisionRadius() + minimumRange;
+    long reachSquared = reach * reach;
+    List<long[]> kept = new ArrayList<>();
+    for (WorldEntity object :
+        world.rectangleQuery(
+            side(), getData().name(), at.getX(), at.getY(), halfWidth, halfLength, filter)) {
+      GridEntity view = object.getView();
+      long dx = view.getX() - at.getX();
+      long dy = view.getY() - at.getY();
+      long radius = view.getCollisionRadius();
+      long beyond = Math.max(0, dx * dx + dy * dy - radius * radius);
+      if (minimumRange >= 1 && reachSquared > beyond) {
+        continue;
+      }
+      kept.add(new long[] {dx * dx + dy * dy, object.getId()});
+    }
+    // Nearest first; the sort is stable, so objects at one distance keep the box's order.
+    kept.sort(Comparator.comparingLong(candidate -> candidate[0]));
+    List<Integer> ids = new ArrayList<>();
+    for (long[] candidate : kept) {
+      ids.add((int) candidate[1]);
+    }
+    return ids;
   }
 
   /**
