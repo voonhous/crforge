@@ -3801,8 +3801,8 @@ class BattleActionSpawnRunTest {
       }
 
       @Override
-      public void captureStarted(int tick, ProjectileEntity projectile, String action, int phase) {
-        log.add("%d instance %s %s %d".formatted(tick, projectile.name(), action, phase));
+      public void captureStarted(int tick, BattleEntity owner, String action, int phase) {
+        log.add("%d instance %s %s %d".formatted(tick, nameOf(owner), action, phase));
       }
 
       @Override
@@ -3833,10 +3833,10 @@ class BattleActionSpawnRunTest {
 
       @Override
       public void captureRequested(
-          int tick, ProjectileEntity projectile, WorldEntity unit, int priority, boolean answer) {
+          int tick, BattleEntity owner, WorldEntity unit, int priority, boolean answer) {
         log.add(
             "%d lock_request %s %s %d %d"
-                .formatted(tick, projectile.name(), unit.name(), priority, answer ? 1 : 0));
+                .formatted(tick, nameOf(owner), unit.name(), priority, answer ? 1 : 0));
       }
 
       @Override
@@ -3848,7 +3848,7 @@ class BattleActionSpawnRunTest {
       @Override
       public void captureStepped(
           int tick,
-          ProjectileEntity projectile,
+          BattleEntity owner,
           List<Integer> captured,
           List<Integer> complete,
           List<Integer> timesMs) {
@@ -3866,7 +3866,7 @@ class BattleActionSpawnRunTest {
         }
         log.add(
             "%d capture %s %s %s %s %s"
-                .formatted(tick, projectile.name(), names, done, timesMs, positions));
+                .formatted(tick, nameOf(owner), names, done, timesMs, positions));
       }
 
       @Override

@@ -2030,14 +2030,14 @@ public interface WorldObserver {
       int destinationY) {}
 
   /**
-   * A capture started on a projectile.
+   * A capture started on its owner, a projectile or a character.
    *
    * @param tick the battle tick
-   * @param projectile the projectile
+   * @param owner the owner
    * @param action the capture's row name
    * @param phase the phase of the pending pass that ran it
    */
-  default void captureStarted(int tick, ProjectileEntity projectile, String action, int phase) {}
+  default void captureStarted(int tick, BattleEntity owner, String action, int phase) {}
 
   /**
    * A roll buffed what it found.
@@ -2064,13 +2064,13 @@ public interface WorldObserver {
    * A capture asked for a lock on a unit.
    *
    * @param tick the battle tick
-   * @param projectile the capturing projectile
+   * @param owner the capturing owner
    * @param unit the unit
    * @param priority the request's priority
    * @param answer the request's answer
    */
   default void captureRequested(
-      int tick, ProjectileEntity projectile, WorldEntity unit, int priority, boolean answer) {}
+      int tick, BattleEntity owner, WorldEntity unit, int priority, boolean answer) {}
 
   /**
    * A capture scheduled an action on an object, with another as its cause.
@@ -2086,14 +2086,14 @@ public interface WorldObserver {
    * A capture's step ended.
    *
    * @param tick the battle tick
-   * @param projectile the capturing projectile
+   * @param owner the capturing owner
    * @param captured the ids it holds
    * @param complete the ids whose drag is complete
    * @param timesMs the time of each capture
    */
   default void captureStepped(
       int tick,
-      ProjectileEntity projectile,
+      BattleEntity owner,
       List<Integer> captured,
       List<Integer> complete,
       List<Integer> timesMs) {}

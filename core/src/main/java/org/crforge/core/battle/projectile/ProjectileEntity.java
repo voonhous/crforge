@@ -17,6 +17,7 @@ import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.RollingProjectile;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.unit.AreaEffectEntity;
@@ -875,7 +876,99 @@ public class ProjectileEntity extends BattleEntity
   @Override
   public ActionInstance captureCharacter(CaptureCharacter action, int phase) {
     world.captureStarted(this, action.name(), phase);
-    return new CaptureRun(action, this);
+    return new CaptureRun(action, captureHost());
+  }
+
+  /**
+   * What a capture on the projectile asks of it: it always claims, queries at its point, buffs its
+   * captures as their parent and source, and keeps no tag word and no buffs, so its hit timer steps
+   * by 50. Refused as it runs: a hit on a capture, which no projectile row deals.
+   */
+  private CaptureHost captureHost() {
+    ProjectileEntity projectile = this;
+    return new CaptureHost() {
+      @Override
+      public BattleEntity owner() {
+        return projectile;
+      }
+
+      @Override
+      public int id() {
+        return getId();
+      }
+
+      @Override
+      public String name() {
+        return projectile.name();
+      }
+
+      @Override
+      public int x() {
+        return getX();
+      }
+
+      @Override
+      public int y() {
+        return getY();
+      }
+
+      @Override
+      public BattleWorld world() {
+        return world;
+      }
+
+      @Override
+      public ActionHolder actionHolder() {
+        return projectile.actionHolder();
+      }
+
+      @Override
+      public boolean claims() {
+        return true;
+      }
+
+      @Override
+      public List<WorldEntity> query(int radius, GameObjectFilter filter) {
+        return world.captureQuery(projectile, radius, filter);
+      }
+
+      @Override
+      public boolean passes(WorldEntity unit, GameObjectFilter filter) {
+        return world.capturePasses(projectile, unit, filter);
+      }
+
+      @Override
+      public void buff(WorldEntity unit, String buff, int timeMs) {
+        world.captureBuff(projectile, unit, buff, timeMs);
+      }
+
+      @Override
+      public void scheduleOnOwner(WorldEntity cause, String action) {
+        projectile
+            .actionHolder()
+            .schedule(
+                world.getActions().build(action, new ProjectileBinding(world, projectile)),
+                ActionHolder.OWN_DELAY,
+                false,
+                cause.actionHolder());
+      }
+
+      @Override
+      public void hasCapture() {
+        // A projectile keeps no tag word: nothing reads its HAS_CAPTURE.
+      }
+
+      @Override
+      public int hitStep(int stepMs) {
+        return stepMs;
+      }
+
+      @Override
+      public void hit(WorldEntity unit, int damagePerHit) {
+        throw new UnsupportedOperationException(
+            projectile.name() + " hits its capture " + unit.name() + ", not modelled");
+      }
+    };
   }
 
   /**
