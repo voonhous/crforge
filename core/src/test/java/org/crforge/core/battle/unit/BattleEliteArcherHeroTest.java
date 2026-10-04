@@ -10,6 +10,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,9 @@ class BattleEliteArcherHeroTest {
 
   /** How far the ability's warp carries the hero back toward its own side. */
   private static final int WARP_LENGTH = 5000;
+
+  /** How far the hero is pushed off the decoy that spawns on its point, on the next tick. */
+  private static final int DECOY_PUSH = 150;
 
   /** The ability shot, the attack sequence's second entry. */
   private static final String MIDDLE = "EliteArcherHero_Ability_Power_Shot_Projectile_Middle";
@@ -82,13 +86,27 @@ class BattleEliteArcherHeroTest {
     ProjectileEntity arrow = aimedAt(battle, hero);
     int hitPoints = hero.getHitPoints().getHitPoints();
     battle.useAbility(battle.getBattle().getTick(), 0, hero.name(), "a");
+    int heroX = hero.getView().getX();
+    int heroY = hero.getView().getY();
     while (named(battle, DECOY).isEmpty()) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      heroX = hero.getView().getX();
+      heroY = hero.getView().getY();
       step(battle);
     }
     CharacterEntity decoy = named(battle, DECOY).get(0);
     assertThat(decoy.getView().isOccluder()).isTrue();
     assertThat(decoy.getView().isOccludes()).as("no building").isFalse();
+    // The holder's add folds the decoy's row tags into its tag word before its registration visit,
+    // so the push pass of that visit leaves it alone: it stands on the hero's point.
+    assertThat(decoy.getView().getFlags() & EntityFlags.AVOIDANCE_AS_OBSTACLE).isNotZero();
+    assertThat(decoy.getView().getX()).isEqualTo(heroX);
+    assertThat(decoy.getView().getY()).as("not pushed on its spawn tick").isEqualTo(heroY);
+    step(battle);
+    // On the next tick the decoy still stands, and the hero is pushed off it toward its own side.
+    assertThat(decoy.getView().getY()).isEqualTo(heroY);
+    assertThat(hero.getView().getX()).isEqualTo(heroX);
+    assertThat(hero.getView().getY()).isEqualTo(heroY - DECOY_PUSH);
     int warpedFrom = hero.getView().getY();
     while (hero.getView().getY() > warpedFrom - WARP_LENGTH / 2) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);

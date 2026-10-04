@@ -150,8 +150,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnCharacterWithDeploy true when its spawner's children deploy for their own deploy time
  * @param untargetableWhenSpawned true when the unit starts with the immunity of a spawned child,
  *     refusing every character that asks to target it until its sixth state visit
- * @param gameTagsToSet the tags the unit's own row sets, in its tag word from the tick after it is
- *     made; 0 for none
+ * @param gameTagsToSet the tags the unit's own row sets, in its tag word from the moment the holder
+ *     takes it, before its registration visit, and every tick after; 0 for none
  * @param manaCollectAmount the whole elixir it pays its king each time its collector's timer runs
  *     out; 0 for no collector
  * @param manaGenerateTimeMs the time its collector counts between payouts
