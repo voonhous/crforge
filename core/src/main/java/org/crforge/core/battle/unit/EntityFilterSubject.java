@@ -12,12 +12,11 @@ import org.crforge.core.pathfinding.GridEntity;
         "Answered from the entity: its kind, team, tag word, crown tower, building, alive, flying,"
             + " whether it is a clone,"
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
-            + " pushback, and its buffs' invisible count; the summoner is the king tower. Supplied:"
-            + " a princess tower is a row with the summoner-tower column, and nothing is"
-            + " underground or immune while dashing, neither of which the battle models yet;"
-            + " nothing is hidden either, though a unit in its tunnel and a hidden Tesla"
-            + " are hidden to the validator: which test a filter's hidden flag asks is not"
-            + " established, and no run's filter meets a hidden entity.")
+            + " pushback, its buffs' invisible count, and whether it is hidden, which asks the"
+            + " entity's own hidden test as the filter's hidden flag does; the summoner is the"
+            + " king tower. Supplied: a princess tower is a row with the summoner-tower column,"
+            + " and nothing is underground or immune while dashing, neither of which the battle"
+            + " models yet.")
 final class EntityFilterSubject implements FilterSubject {
 
   private final WorldEntity entity;
@@ -65,9 +64,14 @@ final class EntityFilterSubject implements FilterSubject {
     return view().isAlive();
   }
 
+  /**
+   * The filter's hidden flag asks the entity's own hidden test, the one every hit, area and
+   * attacker asks: so a filter that drops hidden objects drops a unit that still waits its turn to
+   * deploy, one in its tunnel and a hidden Tesla alike.
+   */
   @Override
   public boolean hidden() {
-    return false;
+    return entity.hidden();
   }
 
   @Override
