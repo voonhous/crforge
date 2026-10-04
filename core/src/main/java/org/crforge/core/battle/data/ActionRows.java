@@ -83,6 +83,7 @@ import org.crforge.core.battle.action.SetInstantHit;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SoulDrain;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
@@ -998,6 +999,16 @@ public final class ActionRows {
               Set.of("OnClonedAction", "CloneDuration", "SpawnDeployBaseAnim", "CardDataForStats")),
           // The evolved Goblin Barrel's decoy: the projectile it throws, mirrored.
           Map.entry("ActionMirroredExtraSpell", Set.of("Projectile")),
+          // A row of projectiles shot across the line of the projectile it runs on. ShooterData is
+          // read by no part of the perform; a row that sets it is refused until it is traced.
+          // CustomForwardOffset moves only a character's line, which is refused as it runs.
+          Map.entry(
+              "ActionShootProjectilesInCharacterDirection",
+              Set.of(
+                  "ProjectileType",
+                  "ProjectileCount",
+                  "ProjectileDistance",
+                  "CustomForwardOffset")),
           Map.entry("ActionSpawn", spawnColumns()),
           Map.entry("ActionSpawnToLocation", spawnColumns()),
           // The evolved Cannon's barrage: its bombs' areas and points. The relative offsets are
@@ -1479,6 +1490,14 @@ public final class ActionRows {
                     f.path("AbsoluteLevelToSet").asInt(1));
             case "ActionMirroredExtraSpell" ->
                 new MirroredExtraSpell(shared, f.path("Projectile").asText());
+            case "ActionShootProjectilesInCharacterDirection" -> {
+              String projectile = f.path("ProjectileType").asText("");
+              yield new ShootProjectilesInCharacterDirection(
+                  shared,
+                  projectile.isEmpty() ? null : projectile,
+                  integer(f, "ProjectileCount"),
+                  integer(f, "ProjectileDistance"));
+            }
             case "ActionDealDamage" ->
                 new DealDamage(
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));

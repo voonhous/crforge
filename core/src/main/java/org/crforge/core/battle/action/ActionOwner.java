@@ -697,6 +697,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Shoots the action's row of projectiles across the owner's line. Only a projectile answers: a
+   * character's line starts its projectile start radius along it and no reference holds one, and
+   * any other owner shoots nothing; both are refused.
+   *
+   * @param action the action, which names the row, the count and the spread
+   */
+  default void shootProjectilesAcross(ShootProjectilesInCharacterDirection action) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on an owner other than a projectile, which is not modelled");
+  }
+
+  /**
    * Starts a rolling run on the owner, which moves it in place of its flight.
    *
    * @param action the roll

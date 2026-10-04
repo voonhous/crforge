@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,7 +17,7 @@ import org.junit.jupiter.api.Test;
  * The Elite Archer's hero form played from the hero slot: it fights with its arrow, and a use of
  * its ability runs its activation group, which leaves the decoy behind; the warp that carries the
  * hero back while a tower's arrow is on its way to it drops the hero as the arrow's target, and the
- * arrow lands on nothing. The ability shot's side shots, which come later, are refused.
+ * arrow lands on nothing. The ability shot the hero fires later starts two side shots beside it.
  */
 class BattleEliteArcherHeroTest {
 
@@ -30,6 +29,12 @@ class BattleEliteArcherHeroTest {
 
   /** How far the ability's warp carries the hero back toward its own side. */
   private static final int WARP_LENGTH = 5000;
+
+  /** The ability shot, the attack sequence's second entry. */
+  private static final String MIDDLE = "EliteArcherHero_Ability_Power_Shot_Projectile_Middle";
+
+  /** The row of the ability shot's two side shots. */
+  private static final String SIDE = "EliteArcherHero_Ability_Triple_Shot_Projectile";
 
   /** Long enough for the hero to walk back and fire its ability shot. */
   private static final int SHOT_TICKS = 300;
@@ -48,7 +53,8 @@ class BattleEliteArcherHeroTest {
   @DisplayName(
       "a hero slot's Elite Archer plays the hero form; a use of its ability leaves the decoy, which"
           + " stamps the routing overlay while it stands still, and the warp drops the tower's arrow"
-          + " aimed at the hero, which lands on nothing")
+          + " aimed at the hero, which lands on nothing; the ability shot then starts its two side"
+          + " shots")
   void theHeroAbilityLeavesTheDecoy() {
     Standard1v1Battle battle = null;
     LadderMatch match = null;
@@ -97,16 +103,49 @@ class BattleEliteArcherHeroTest {
       step(battle);
     }
     assertThat(hero.getHitPoints().getHitPoints()).as("it landed on nothing").isEqualTo(hitPoints);
-    Standard1v1Battle played = battle;
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < SHOT_TICKS; i++) {
-                step(played);
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(
-            "EliteArcherHero_Triple_Shot_Action is an ActionShootProjectilesInCharacterDirection");
+    // The ability shot, fired once the hero has walked back, starts its side shots as it sets
+    // off: one tick after it, before its first step, two shots of the side row, each 750 to one
+    // side of where it stands, across its line.
+    limit = battle.getBattle().getTick() + SHOT_TICKS;
+    while (shots(battle, MIDDLE).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    ProjectileEntity middle = shots(battle, MIDDLE).get(0);
+    assertThat(shots(battle, SIDE)).isEmpty();
+    int startX = middle.getX();
+    int startY = middle.getY();
+    int[] line = {middle.getAimX() - startX, middle.getAimY() - startY};
+    step(battle);
+    List<ProjectileEntity> sides = shots(battle, SIDE);
+    assertThat(sides).hasSize(2);
+    ProjectileEntity first = sides.get(0);
+    ProjectileEntity second = sides.get(1);
+    assertThat(first.getId()).isLessThan(second.getId());
+    assertThat(first.getX() + second.getX()).isEqualTo(2 * startX);
+    assertThat(first.getY() + second.getY()).isEqualTo(2 * startY);
+    int acrossX = first.getX() - startX;
+    int acrossY = first.getY() - startY;
+    // Across the line, the first to the right of it as it flies.
+    assertThat(Math.abs(acrossX * line[0] + acrossY * line[1]))
+        .isLessThan(Math.abs(line[0]) + Math.abs(line[1]));
+    assertThat(acrossX * line[1] - acrossY * line[0]).isPositive();
+    assertThat(Math.round(Math.hypot(acrossX, acrossY))).isBetween(749L, 751L);
+    for (ProjectileEntity side : sides) {
+      assertThat(side.side()).isEqualTo(middle.side());
+      assertThat(side.level()).isEqualTo(middle.level());
+      assertThat(side.getTarget()).isNull();
+      assertThat(side.getRoot()).as("the ability shot's root").isSameAs(hero);
+      assertThat(side.getZ()).as("its constant height").isEqualTo(2000);
+    }
+  }
+
+  /** The projectiles of a row the holder lists, in its order. */
+  private static List<ProjectileEntity> shots(Standard1v1Battle battle, String row) {
+    return battle.getWorld().getHolder().entities().stream()
+        .filter(e -> e instanceof ProjectileEntity p && p.getData().name().equals(row))
+        .map(ProjectileEntity.class::cast)
+        .toList();
   }
 
   /** The first projectile the holder lists on its way to a unit, or null. */
