@@ -746,11 +746,9 @@ public final class ActionRows {
                   "NumMatchesNeeded",
                   "ActionToRun",
                   "ActionToRunIfNoMatch")),
-          // A check of the cause reads no object filter: no shipped row sets one, so a row that
-          // does is refused as a column nothing reads.
           Map.entry(
               "ActionRunIfInstigatorMatches",
-              Set.of("MatchName", "ActionToRun", "ActionToRunIfNoMatch")),
+              Set.of("GameObjectFilter", "MatchName", "ActionToRun", "ActionToRunIfNoMatch")),
           Map.entry(
               "ActionSetCharacterLevel", Set.of("RelativeLevelAdjustment", "AbsoluteLevelToSet")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
@@ -1496,6 +1494,9 @@ public final class ActionRows {
             case "ActionRunIfInstigatorMatches" ->
                 new RunIfInstigatorMatches(
                     shared,
+                    f.hasNonNull("GameObjectFilter")
+                        ? records.filter(f.get("GameObjectFilter").asText())
+                        : null,
                     globalIds(f.get("MatchName")),
                     action(f.get("ActionToRun")),
                     action(f.get("ActionToRunIfNoMatch")));

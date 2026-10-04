@@ -1221,7 +1221,7 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "a game object filter that sets a column the filter does not read, as a base filter or a"
-          + " match on its instigator, is refused rather than read without it")
+          + " buff checker, is refused rather than read without it")
   void aFilterColumnNotReadIsRefused(@TempDir Path folder) throws IOException {
     BattleRecords altered =
         new BattleRecords(
@@ -1231,12 +1231,13 @@ class BattleRecordsTest {
                 rows -> {
                   ObjectNode troop = GameData.columns(rows, "friendly_troop");
                   troop.put("Base", "friendly_troop_no_buildings");
-                  troop.put("MatchSelf", true);
+                  troop.put("FilterIfBuffedByChecker", "Rage");
                 }));
     assertThatThrownBy(() -> altered.filter("friendly_troop"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "the game object filter friendly_troop sets columns not modelled: [Base, MatchSelf]");
+            "the game object filter friendly_troop sets columns not modelled: [Base,"
+                + " FilterIfBuffedByChecker]");
     // A filter that sets only what the filter reads, and the text the game shows for it, is built.
     assertThat(altered.filter("friendly_troop_no_buildings").isMatchTeamOwn()).isTrue();
   }

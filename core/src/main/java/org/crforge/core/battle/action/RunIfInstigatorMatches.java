@@ -1,6 +1,7 @@
 package org.crforge.core.battle.action;
 
 import java.util.List;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -9,10 +10,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * its row, its cause and its owner, and does not last.
  *
  * <p>Without a cause it does nothing at all, not even its action to run when nothing matches. With
- * one, the cause's row is compared by its global id with the character and building rows the row
+ * one and an object filter, the cause goes through the filter first, asked for the owner's team and
+ * row and with whether the cause is the owner itself; a cause the filter refuses does not match.
+ * Then the cause's row is compared by its global id with the character and building rows the row
  * names: without names anything matches, and a cause of no such row, such as a projectile, matches
- * none. A name the data has no row for was dropped as the row was read. Whether the cause is still
- * alive is not asked: a dead cause matches as a living one does.
+ * none. A name the data has no row for was dropped as the row was read. Without a filter, whether
+ * the cause is still alive is not asked: a dead cause matches as a living one does.
  *
  * <p>On a match it schedules its action to run, and otherwise its action to run when nothing
  * matches, each on the owner with the owner as its cause, the row's own delay and not asked to
@@ -24,23 +27,32 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled by the native cases of its perform and held by boss_bandit_bandit_knight and"
             + " boss_bandit_tower_bandit: a killer's check of what it killed and a killed unit's"
             + " check of its killer, each matching a Bandit and missing a Knight, the branch"
-            + " scheduled on the owner as its own cause. A row with an object filter is refused"
-            + " as it is read, as no shipped row sets one.")
+            + " scheduled on the owner as its own cause. The object filter (a newer data"
+            + " version's JumpHack check) is read from the newer build's perform, which passes"
+            + " the cause, the owner's team and the owner's identity to the filter test before"
+            + " the names.")
 public final class RunIfInstigatorMatches extends RowAction {
 
+  private final GameObjectFilter filter;
   private final List<Integer> matchIds;
   private final BattleAction onMatch;
   private final BattleAction onNoMatch;
 
   /**
    * @param row the row's shared columns
+   * @param filter the filter the cause must pass, or null for none
    * @param matchIds the global ids of the rows a cause must have to match; empty for any
    * @param onMatch scheduled on a match, or null
    * @param onNoMatch scheduled otherwise, or null
    */
   public RunIfInstigatorMatches(
-      ActionRow row, List<Integer> matchIds, BattleAction onMatch, BattleAction onNoMatch) {
+      ActionRow row,
+      GameObjectFilter filter,
+      List<Integer> matchIds,
+      BattleAction onMatch,
+      BattleAction onNoMatch) {
     super(row);
+    this.filter = filter;
     this.matchIds = List.copyOf(matchIds);
     this.onMatch = onMatch;
     this.onNoMatch = onNoMatch;
@@ -57,12 +69,20 @@ public final class RunIfInstigatorMatches extends RowAction {
       return null;
     }
     ActionOwner cause = instigator.getOwner();
-    boolean matches = matchIds.isEmpty() || matchIds.contains(cause.actionUnitGlobalId());
+    ActionOwner owner = holder.getOwner();
+    boolean matches =
+        (filter == null
+                || filter.matches(
+                    cause.actionFilterSubject(),
+                    owner.actionTeam(),
+                    owner.actionRowName(),
+                    cause == owner))
+            && (matchIds.isEmpty() || matchIds.contains(cause.actionUnitGlobalId()));
     BattleAction chosen = matches ? onMatch : onNoMatch;
     if (chosen != null) {
       holder.schedule(chosen, ActionHolder.OWN_DELAY, false, holder);
     }
-    holder.getOwner().instigatorChecked(name(), cause, chosen == null ? null : chosen.name());
+    owner.instigatorChecked(name(), cause, chosen == null ? null : chosen.name());
     return null;
   }
 }
