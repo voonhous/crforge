@@ -497,7 +497,15 @@ public final class BattleRecords {
           "ShakesTargets",
           "SpawnDeployBaseAnim",
           "TargettedEffect",
-          "TrailEffect");
+          "TrailEffect",
+          // The filtered hit effects: the hit-effect chooser tries the filters in order for the
+          // entity hit and the first that accepts names the effect shown, the shooter's own target
+          // keeping HitEffect under the last; its answer only goes to the effect display.
+          "FilteredHitEffects",
+          "HitEffectFilters",
+          "FilteredHitEffectOnlyIfNotShootersTarget",
+          // Read only by the projectile view, for the angle it draws the projectile at.
+          "MinimumLengthForVisualAngleCalculation");
 
   /** The columns of a projectile's row the record shows no battle logic reads to any effect. */
   private static final Set<String> INERT_PROJECTILE_COLUMNS =
@@ -660,6 +668,7 @@ public final class BattleRecords {
             .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
             .onAttackAction(actionName(row, "OnAttackAction"))
             .shieldLostAction(actionName(row, "ShieldLostAction"))
+            .onAttackSelfAction(actionName(row, "OnAttackSelfAction"))
             .minimumRange(row.intValue("MinimumRange"))
             .sightClip(sightClip(row))
             .sightClipSide(row.intValue("SightClipSide"))
@@ -1696,6 +1705,10 @@ public final class BattleRecords {
             .customDeflectAction(actionName(row, "CustomDeflectAction"))
             .useCustomMovement(row.bool("UseCustomMovement"))
             .spawnAxisY(row.bool("SpawnAxisY"))
+            .initialCollisionCheckFilter(
+                set(row, "InitialCollisionCheckFilter")
+                    ? filter(row.string("InitialCollisionCheckFilter"))
+                    : null)
             .build();
     List<String> unmodelled =
         new ArrayList<>(

@@ -2,6 +2,7 @@ package org.crforge.core.battle.projectile;
 
 import java.util.List;
 import lombok.Builder;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.combat.PackedLevel;
@@ -113,6 +114,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     run on it moves instead, as the evolved Snowball's rolling snowball rolls
  * @param spawnAxisY true for a projectile whose impact aims the projectile it spawns straight
  *     forward for its side, its minimum distance beyond the aim, in place of the fan
+ * @param initialCollisionCheckFilter the filter of the check its first flight step makes along the
+ *     segment from its owner to where it was launched, or null for no check
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -189,6 +192,7 @@ public record ProjectileData(
     String customDeflectAction,
     boolean useCustomMovement,
     boolean spawnAxisY,
+    GameObjectFilter initialCollisionCheckFilter,
     List<String> unmodelledColumns) {
 
   /** The deflection bit of a projectile no deflecting area effect turns around. */

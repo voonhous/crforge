@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.battle.BattleComponent;
@@ -284,6 +285,13 @@ public class CharacterEntity extends WorldEntity {
 
   /** The length the targeting visit's turn scales the facing to. */
   private static final int FACING_LENGTH = 256;
+
+  /**
+   * The abilities whose activation no reference holds, refused as they are requested: the hero
+   * Elite Archer's, whose group warps it back, sets its attack sequence onto the ability's shot,
+   * tags it for the triple shot and leaves a decoy, none of which is established.
+   */
+  private static final Set<String> UNHELD_ABILITIES = Set.of("EliteArcherHero_Ability");
 
   /** How far beyond its attack range a dash's single landing hit still reaches its reference. */
   private static final int DASH_HIT_EXTENSION = 500;
@@ -2928,8 +2936,8 @@ public class CharacterEntity extends WorldEntity {
    * casting state now, through its setter; shut, the ability is left pending, which the state
    * visit's pending branch turns into the cast on the first visit the gate opens. A unit without an
    * ability does nothing. An ability whose columns the battle does not model, or that keeps a buff
-   * on a unit waiting to cast, is refused, and so is a lane switch for a row that stays visible
-   * while it routes across, which no reference holds.
+   * on a unit waiting to cast, is refused, and so is one whose activation no reference holds and a
+   * lane switch for a row that stays visible while it routes across, which no reference holds.
    */
   public void requestAbility() {
     AbilityData ability = getData().ability();
@@ -2943,6 +2951,10 @@ public class CharacterEntity extends WorldEntity {
               + ability.name()
               + ", which sets columns the battle does not model: "
               + ability.unmodelledColumns());
+    }
+    if (UNHELD_ABILITIES.contains(ability.name())) {
+      throw new UnsupportedOperationException(
+          name() + " casts " + ability.name() + ", whose activation no reference holds");
     }
     // Only the Goblins hero's banner is a building with an ability; its cast, the second wave of
     // goblins, is held by no reference.

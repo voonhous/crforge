@@ -82,7 +82,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. The on-impact area effect at"
             + " the impact point, after the spawned characters and before the spawned projectiles,"
-            + " by heal_spirit_group. Not modelled: the area impact"
+            + " by heal_spirit_group. The first step's collision check along the segment from"
+            + " the owner to the projectile, by the hero Elite Archer's arrow, which finds"
+            + " nothing there. Not modelled: the area impact"
             + " of one that only heals, the height toward a moving target under the"
             + " z-distance column, the drag-back hook, and the"
             + " hit effects.")
@@ -107,9 +109,11 @@ final class ProjectileFlight {
    */
   static void fly(ProjectileEntity p, BattleWorld world) {
     ProjectileData data = p.getData();
-    // The first step would spawn a following area effect and run the initial collision check,
-    // neither of which any row carried here has.
-    p.takeFirstVisit();
+    // The first step would spawn a following area effect, which no row carried here has, and runs
+    // the initial collision check of a row that has one.
+    if (p.takeFirstVisit()) {
+      world.initialCollisionCheck(p);
+    }
     // A projectile with a custom movement is moved by a run on it: its visit ends here.
     if (data.useCustomMovement()) {
       return;

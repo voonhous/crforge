@@ -1794,11 +1794,19 @@ public class BattleWorld implements HolderPasses {
    */
   List<WorldEntity> segmentQuery(
       AreaEffectEntity owner, int ax, int ay, int bx, int by, int width, GameObjectFilter filter) {
+    return segmentQuery(owner.side() & 1, owner.getData().name(), ax, ay, bx, by, width, filter);
+  }
+
+  /**
+   * The segment query for an owner of the given team and row name, which the filter is asked for.
+   *
+   * @return the objects, in the query's order; null with no filter or no free result list
+   */
+  private List<WorldEntity> segmentQuery(
+      int team, String name, int ax, int ay, int bx, int by, int width, GameObjectFilter filter) {
     if (filter == null) {
       return null;
     }
-    int team = owner.side() & 1;
-    String name = owner.getData().name();
     List<GridEntity> found =
         index.segmentQuery(
             ax,
@@ -2829,6 +2837,48 @@ public class BattleWorld implements HolderPasses {
       }
     }
     index.release(found);
+  }
+
+  /**
+   * The initial collision check of a projectile's first flight step, for a row with an initial
+   * collision check filter and an owner of the character kind: the segment query from the owner's
+   * position to the projectile's, with no width beyond the objects' own radii (a projectile's own
+   * radius slot answers 0), the filter asked for the owner's team and row name. When the query
+   * answers, one fresh hit id is drawn, even for an empty answer, and everything of the character
+   * kind found, in the query's order, takes the projectile's travelling hit measured from the
+   * owner's position, until one finishes the projectile. A projectile without the filter or without
+   * an owner checks nothing.
+   *
+   * @param projectile the projectile on its first flight step
+   */
+  public void initialCollisionCheck(ProjectileEntity projectile) {
+    GameObjectFilter filter = projectile.getData().initialCollisionCheckFilter();
+    WorldEntity owner = projectile.getOwner();
+    if (filter == null || owner == null || owner.kind() != BattleEntity.KIND_CHARACTER) {
+      return;
+    }
+    int ox = owner.getView().getX();
+    int oy = owner.getView().getY();
+    List<WorldEntity> found =
+        segmentQuery(
+            owner.side() & 1,
+            owner.getData().name(),
+            ox,
+            oy,
+            projectile.getX(),
+            projectile.getY(),
+            0,
+            filter);
+    if (found == null) {
+      return;
+    }
+    int hitId = nextHitId();
+    for (WorldEntity entity : found) {
+      if (entity.kind() == BattleEntity.KIND_CHARACTER
+          && travellingHit(projectile, entity, ox, oy, hitId)) {
+        break;
+      }
+    }
   }
 
   /**
